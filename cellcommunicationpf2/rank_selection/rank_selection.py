@@ -1,21 +1,18 @@
 """PARAFAC2 Rank Selection via Cell Holdout Cross-Validation."""
 
 import time
-import numpy as np
-import pandas as pd
+
 import jax
 import jax.numpy as jnp
-from sklearn.model_selection import StratifiedKFold
-from scipy.sparse import issparse
-
+import numpy as np
+import pandas as pd
 from ott.geometry import pointcloud
 from ott.tools import sinkhorn_divergence
+from scipy.sparse import issparse
+from sklearn.model_selection import StratifiedKFold
 from tensorly.parafac2_tensor import parafac2_to_slices
 
-try:
-    from parafac2.parafac2 import parafac2_nd
-except ImportError:
-    raise ImportError("Could not import 'parafac2_nd'.")
+from parafac2.parafac2 import parafac2_nd
 
 jax.config.update("jax_enable_x64", True)
 
@@ -25,49 +22,76 @@ def create_stratified_splits(adata, condition_key, n_folds=5, random_state=42):
     if condition_key not in adata.obs:
         raise ValueError(f"Condition key '{condition_key}' not found in adata.obs")
 
-    conditions = adata.obs[condition_key].astype('category').cat.codes.values
+    conditions = adata.obs[condition_key].astype("category").cat.codes.values
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
-    
-    return [(i, train_idx, test_idx) 
-            for i, (train_idx, test_idx) in enumerate(skf.split(np.zeros(len(conditions)), conditions))]
+
+    splits = []
+    for i, (train_idx, test_idx) in enumerate(skf.split(np.zeros(len(conditions)), conditions)):
+        splits.append((i, train_idx, test_idx))
+    return splits
 
 
 def reconstruct_from_pf2(pf2_output, condition_idxs):
     """Reconstruct expression matrix from PARAFAC2 output."""
     weights, factors, projections = pf2_output
     slices = parafac2_to_slices((weights, factors, projections))
-    
+
     n_genes = factors[2].shape[0]
     n_cells = len(condition_idxs)
     X_recon = np.zeros((n_cells, n_genes), dtype=np.float64)
-    
+
     for cond_idx in np.unique(condition_idxs):
-        mask = (condition_idxs == cond_idx)
+        mask = condition_idxs == cond_idx
         X_recon[mask, :] = slices[cond_idx]
-        
+
     return X_recon
 
 
-def compute_ot_score(X_recon, X_real, epsilon=0.1):
-    """Compute Sinkhorn divergence between reconstructed and real data."""
-    if issparse(X_real):
-        X_real = X_real.toarray()
-    
-    X_real = np.asarray(X_real, dtype=np.float64)
-    X_recon = np.asarray(X_recon, dtype=np.float64)
-    
+def _compute_sinkhorn_divergence(X_recon, X_real, epsilon):
+    """Compute Sinkhorn divergence between two point clouds."""
     scale = np.mean(np.linalg.norm(X_real, axis=1))
     if scale == 0:
         scale = 1.0
-    
+
     X_real_norm = jnp.array(X_real / scale, dtype=jnp.float64)
     X_recon_norm = jnp.array(X_recon / scale, dtype=jnp.float64)
-    
+
     div = sinkhorn_divergence.sinkhorn_divergence(
         pointcloud.PointCloud, x=X_recon_norm, y=X_real_norm, epsilon=epsilon
     )
-    
+
     return float(div[0]) if isinstance(div, tuple) else float(div.divergence)
+
+
+def compute_ot_score(X_recon, X_real, epsilon=0.1, condition_idxs=None):
+    """Compute Sinkhorn divergence between reconstructed and real data.
+
+    If condition_idxs provided, computes per-condition OT and returns the mean.
+    """
+    if issparse(X_real):
+        X_real = X_real.toarray()
+
+    X_real = np.asarray(X_real, dtype=np.float64)
+    X_recon = np.asarray(X_recon, dtype=np.float64)
+
+    if condition_idxs is None:
+        return _compute_sinkhorn_divergence(X_recon, X_real, epsilon)
+    
+    condition_idxs = np.asarray(condition_idxs)
+    slice_scores = []
+
+    for cond_idx in np.unique(condition_idxs):
+        mask = condition_idxs == cond_idx
+        X_real_slice = X_real[mask]
+        X_recon_slice = X_recon[mask]
+        
+        if len(X_real_slice) == 0:
+            continue
+        
+        score = _compute_sinkhorn_divergence(X_recon_slice, X_real_slice, epsilon)
+        slice_scores.append(score)
+    
+    return np.mean(slice_scores) if slice_scores else 0.0
 
 
 def run_rank_selection(
