@@ -26,50 +26,61 @@ adata_full = import_balf_covid()
 print(f"Full data: {adata_full.shape}")
 
 
-def create_known_rank_data(adata_full, true_rank, n_conditions=8, cells_per_cond=100, n_genes=200):
+def create_known_rank_data(adata_full, true_rank, cells_per_cond=100, n_genes=200,
+                            random_state=42):
     """Factorize real data at known rank, then reconstruct to get data with known effective rank."""
     print(f"\n=== Creating known-rank-{true_rank} data (factorize-reconstruct) ===")
     
-    conditions = adata_full.obs['sample'].unique()[:n_conditions]
-    print(f"Using {len(conditions)} conditions")
+    np.random.seed(random_state)
     
-    indices = []
-    for cond in conditions:
-        cond_idx = np.where(adata_full.obs['sample'] == cond)[0]
-        n_sample = min(cells_per_cond, len(cond_idx))
-        np.random.seed(42)
-        sampled = np.random.choice(cond_idx, size=n_sample, replace=False)
-        indices.extend(sampled)
+    # Select conditions and sample cells from each
+    all_conditions = adata_full.obs['sample'].unique()
+    n_conditions = len(all_conditions)
     
-    adata_sub = adata_full[indices].copy()
-    gene_means = np.array(adata_sub.X.mean(axis=0)).flatten()
-    top_genes = np.argsort(gene_means)[-n_genes:]
-    adata_sub = adata_sub[:, top_genes].copy()
-    adata_sub = add_cond_idxs(adata_sub, "sample")
+    all_sampled_indices = []
+    for condition in all_conditions:
+        cell_indices_for_condition = np.where(adata_full.obs['sample'] == condition)[0]
+        n_cells_to_sample = min(cells_per_cond, len(cell_indices_for_condition))
+        sampled_cell_indices = np.random.choice(
+            cell_indices_for_condition, size=n_cells_to_sample, replace=False
+        )
+        all_sampled_indices.extend(sampled_cell_indices)
     
-    print(f"Subsampled: {adata_sub.shape}")
+    adata_subsampled = adata_full[all_sampled_indices].copy()
     
+    # Keep only the top expressed genes
+    gene_mean_expression = np.asarray(adata_subsampled.X.mean(axis=0)).flatten()
+    top_gene_indices = np.argsort(gene_mean_expression)[-n_genes:]
+    adata_subsampled = adata_subsampled[:, top_gene_indices].copy()
+    
+    # Add condition index column required by parafac2_nd
+    adata_subsampled = add_cond_idxs(adata_subsampled, "sample")
+    print(f"Subsampled: {adata_subsampled.shape}")
+    
+    # Factorize at the true rank
     print(f"Factorizing at rank {true_rank}...")
     pf2_output, r2x = parafac2_nd(
-        adata_sub, rank=true_rank, n_iter_max=100, tol=1e-6, random_state=42
+        adata_subsampled, rank=true_rank, n_iter_max=100, tol=1e-6, random_state=random_state
     )
     print(f"R2X at rank {true_rank}: {r2x:.4f}")
     
-    weights, factors, projections = pf2_output
-    slices = parafac2_to_slices((weights, factors, projections))
+    # Reconstruct data from the factorization (this gives us exact-rank data)
+    reconstructed_slices = parafac2_to_slices(pf2_output)
+    condition_idxs = adata_subsampled.obs["condition_unique_idxs"].values
     
-    condition_idxs = adata_sub.obs["condition_unique_idxs"].values
-    n_genes_out = factors[2].shape[0]
+    reconstructed_X_per_condition = []
+    for cond_idx in range(n_conditions):
+        cells_in_condition = (condition_idxs == cond_idx).sum()
+        reconstructed_slice = reconstructed_slices[cond_idx][:cells_in_condition, :]
+        reconstructed_X_per_condition.append(reconstructed_slice)
     
-    X_recon = np.zeros((adata_sub.n_obs, n_genes_out), dtype=np.float32)
-    for cond_idx in np.unique(condition_idxs):
-        mask = (condition_idxs == cond_idx)
-        X_recon[mask, :] = slices[cond_idx]
+    reconstructed_X = np.vstack(reconstructed_X_per_condition).astype(np.float32)
     
-    adata_recon = adata_sub.copy()
-    adata_recon.X = csr_array(X_recon)
+    # Create output AnnData with reconstructed matrix
+    adata_reconstructed = adata_subsampled.copy()
+    adata_reconstructed.X = csr_array(reconstructed_X)
     
-    return adata_recon, r2x
+    return adata_reconstructed, r2x
 
 
 def create_random_parafac2_data(true_rank, n_conditions=8, cells_per_cond=100, n_genes=200,
@@ -130,7 +141,6 @@ for true_rank in true_ranks:
     else:
         adata, r2x = create_known_rank_data(
             adata_full, true_rank,
-            n_conditions=TARGET_N_CONDITIONS,
             cells_per_cond=TARGET_CELLS_PER_COND,
             n_genes=TARGET_N_GENES
         )
