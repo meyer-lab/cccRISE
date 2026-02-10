@@ -21,17 +21,27 @@ def makeFigure():
     subplotLabel(ax)
 
     X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad.h5ad")
-    cmp5 = [5, "CD4 T cells"]
-    cmp7 = [7, "CD4 T cells"]
-    cmp13 = [13, "Dendritic Cells"]
-    cmp17 = [17, "NK cells"]
-    ccc_rise_cmp = cmp13[0]
+    # Change type to sender or receiver as needed
+    # Sender cell type comparisons
+    # cmp = [5, "CD4 T cells"] # cmp5
+    # cmp = [7, "CD4 T cells"] # cmp7
+    # cmp = [13, "Dendritic Cells"] # cmp13
+    # cmp = [17, "NK cells"] # cmp17
+    # type = "sender"
+    # Receiver cell type comparisons
+    # cmp = [5, "Dendritic Cells"] # cmp5
+    # cmp = [7, "CD4 T cells"] # cmp7
+    # cmp = [13, "Epithelial cells"] # cmp13
+    cmp = [17, "CD8 T cells"] # cmp17
+    type = "receiver"
+    
+    ccc_rise_cmp = cmp[0]
     pos_perc = [True, False]
     axs = 0
     
     for i in pos_perc:
-        X_epi_sender = X[X.obs["broad_cell_type"] == cmp13[1]]
-        X_epi_sender = add_obs_cmp_label(X_epi_sender, cmp=ccc_rise_cmp, pos=i, top_perc=10, type="sender")
+        X_epi_sender = X[X.obs["broad_cell_type"] == cmp[1]]
+        X_epi_sender = add_obs_cmp_label(X_epi_sender, cmp=ccc_rise_cmp, pos=i, top_perc=10, type=type)
         X_epi_sender = add_obs_cmp_unique_one(X_epi_sender, cmp=ccc_rise_cmp)
 
         method_test = ["logreg", "wilcoxon"]
