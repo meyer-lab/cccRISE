@@ -1,7 +1,7 @@
 """
-Figure A7b: CD70 expression in CD4+ T cells by ALAD status in independent
-airway brushing dataset. Per-patient % of CD70+ CD4+ T cells across all
-ALAD groups.
+Figure A7b: CD70 sender cell analysis in the independent ALAD airway
+brushing dataset. CD70 expression across cell types and CD70+ T cell
+abundance by ALAD group.
 """
 
 import anndata
@@ -12,48 +12,60 @@ from .common import getSetup, subplotLabel
 
 
 def makeFigure():
-    ax, f = getSetup((3, 3), (1, 1))
+    ax, f = getSetup((14, 4), (1, 3))
     subplotLabel(ax)
 
     X = anndata.read_h5ad("/opt/alad.brush.sc.h5ad")
-    X_tcell = X[X.obs["cell_type_inintegrated"] == "Tcell"]
-    print(f"CD4+ T cells: {X_tcell.shape[0]} cells")
+    alad_rename = {"ALAD int": "ALAD Int", "ALAD recovered": "Recovered", "ALAD declined": "Declined"}
+    alad_order = ["Control", "ALAD Int", "Recovered", "Declined"]
 
-    gene_expr = np.asarray(X_tcell[:, "CD70"].X.todense()).ravel()
-    is_positive = gene_expr > 0
+    # (a) CD70 expression by cell type
+    ct_stats = []
+    for ct in X.obs["cell_type_inintegrated"].unique():
+        expr = np.asarray(X[X.obs["cell_type_inintegrated"] == ct, "CD70"].X.todense()).ravel()
+        ct_stats.append({"cell_type": ct, "pct_CD70_pos": (expr > 0).mean() * 100, "n_cells": len(expr)})
+    ct_df = pd.DataFrame(ct_stats).sort_values("pct_CD70_pos")
+    print("CD70 expression by cell type:")
+    print(ct_df.to_string())
 
+    ct_df.plot.barh(x="cell_type", y="pct_CD70_pos", ax=ax[0], legend=False)
+    ax[0].set_xlabel("% CD70+ Cells")
+    ax[0].set_ylabel("")
+    ax[0].set_title("CD70 Expression by Cell Type")
+
+    # (b) Per-patient % CD70+ T cells by ALAD
+    X_t = X[X.obs["cell_type_inintegrated"] == "Tcell"]
     records = []
-    for pid in X_tcell.obs["subj"].unique():
-        mask = (X_tcell.obs["subj"] == pid).values
-        n_total = mask.sum()
-        n_pos = (mask & is_positive).sum()
-        pct = (n_pos / n_total) * 100 if n_total > 0 else 0.0
-        alad = X_tcell.obs.loc[mask, "ALAD"].iloc[0]
-        records.append({"patient": pid, "pct_CD70_pos": pct, "ALAD": alad, "n_cells": n_total})
-    df = pd.DataFrame(records)
-    df["ALAD"] = df["ALAD"].replace({"ALAD int": "ALAD Int", "ALAD recovered": "Recovered", "ALAD declined": "Declined"})
-    print(df.to_string())
+    for pid in X_t.obs["subj"].unique():
+        mask = (X_t.obs["subj"] == pid).values
+        expr = np.asarray(X_t[mask, "CD70"].X.todense()).ravel()
+        records.append({"patient": pid, "pct_CD70_pos": (expr > 0).mean() * 100,
+                        "ALAD": X_t.obs.loc[mask, "ALAD"].iloc[0], "n_cells": mask.sum()})
+    df_b = pd.DataFrame(records)
+    df_b["ALAD"] = df_b["ALAD"].replace(alad_rename)
+    print("\nPer-patient % CD70+ T cells:")
+    print(df_b.to_string())
 
-    order = ["Control", "ALAD Int", "Recovered", "Declined"]
-    sns.boxplot(
-        data=df,
-        x="ALAD",
-        y="pct_CD70_pos",
-        order=order,
-        boxprops=dict(facecolor="none"),
-        ax=ax[0],
-    )
-    sns.stripplot(
-        data=df,
-        x="ALAD",
-        y="pct_CD70_pos",
-        order=order,
-        size=5,
-        jitter=0.15,
-        ax=ax[0],
-    )
-    ax[0].set_ylabel("% CD70+ CD4+ T cells")
-    ax[0].set_xlabel("")
-    ax[0].set_title("CD70 Expression in CD4+ T Cells")
+    _boxstrip(ax[1], df_b, "pct_CD70_pos", alad_order, "% CD70+ T Cells", "CD70+ T Cells by ALAD")
+
+    # (c) Mean CD70 expression in T cells per patient by ALAD
+    records_m = []
+    for pid in X_t.obs["subj"].unique():
+        mask = (X_t.obs["subj"] == pid).values
+        expr = np.asarray(X_t[mask, "CD70"].X.todense()).ravel()
+        records_m.append({"patient": pid, "mean_CD70": expr.mean(),
+                          "ALAD": X_t.obs.loc[mask, "ALAD"].iloc[0]})
+    df_c = pd.DataFrame(records_m)
+    df_c["ALAD"] = df_c["ALAD"].replace(alad_rename)
+
+    _boxstrip(ax[2], df_c, "mean_CD70", alad_order, "Mean CD70 Expression", "CD70 Level in T Cells")
 
     return f
+
+
+def _boxstrip(ax, df, y_col, order, ylabel, title):
+    sns.boxplot(data=df, x="ALAD", y=y_col, order=order, boxprops=dict(facecolor="none"), ax=ax)
+    sns.stripplot(data=df, x="ALAD", y=y_col, order=order, size=5, jitter=0.15, ax=ax)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel("")
+    ax.set_title(title)
