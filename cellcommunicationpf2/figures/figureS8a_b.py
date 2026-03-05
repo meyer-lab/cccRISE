@@ -25,13 +25,13 @@ def makeFigure():
 
     X_mdc_sender = X[X.obs["broad_cell_type"] == "Dendritic Cells"]
     X_mdc_sender = X_mdc_sender[
-        np.argsort(-X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1])
+        np.argsort(X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1])
     ]
 
     X_mdc_receiver = X[(X.obs["broad_cell_type"] == "Dendritic Cells")]
 
     X_mdc_receiver = X_mdc_receiver[
-        np.argsort(X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1])
+        np.argsort(-X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1])
     ]
 
 
@@ -75,13 +75,13 @@ def makeFigure():
 
     X_mdc_sender = X[X.obs["broad_cell_type"] == "Dendritic Cells"]
     X_mdc_sender = X_mdc_sender[
-        np.argsort(-X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1])
+        np.argsort(X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1])
     ]
 
     X_mdc_receiver = X[(X.obs["broad_cell_type"] == "Epithelial cells")]
 
     X_mdc_receiver = X_mdc_receiver[
-        np.argsort(X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1])
+        np.argsort(-X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1])
     ]
 
 
