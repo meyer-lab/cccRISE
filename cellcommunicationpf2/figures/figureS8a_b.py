@@ -8,10 +8,9 @@ from .common import (
     getSetup,
 )
 import numpy as np
+import pandas as pd
 import seaborn as sns
 from ..utils import (
-    add_obs_cmp_label,
-    add_obs_cmp_unique_one,
     expression_product_matrix,
 )
 
@@ -24,14 +23,15 @@ def makeFigure():
     ccc_rise_cmp = 13
 
     X_mdc_sender = X[X.obs["broad_cell_type"] == "Dendritic Cells"]
+    sender_weights = X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1]
     X_mdc_sender = X_mdc_sender[
-        np.argsort(X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1])
+        np.argsort(-np.abs(sender_weights))
     ]
 
     X_mdc_receiver = X[(X.obs["broad_cell_type"] == "Dendritic Cells")]
-
+    receiver_weights = X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1]
     X_mdc_receiver = X_mdc_receiver[
-        np.argsort(-X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1])
+        np.argsort(np.abs(receiver_weights))
     ]
 
 
@@ -70,18 +70,27 @@ def makeFigure():
         ax[i].set_xlabel("Dendritic Cells")
         ax[i].set_ylabel("Dendritic Cells")
 
+    # Weight verification: sender + receiver component weight sums
+    s_sorted = np.abs(sender_weights[np.argsort(-np.abs(sender_weights))])
+    r_sorted = np.abs(receiver_weights[np.argsort(np.abs(receiver_weights))])
+    weight_matrix = group_weight_sum(s_sorted, r_sorted)
+    sns.heatmap(weight_matrix, ax=ax[1], cmap="viridis")
+    ax[1].set_title("Component Weight (sender + receiver)")
+    ax[1].set_xlabel("Dendritic Cells")
+    ax[1].set_ylabel("Dendritic Cells")
+
 
     ccc_rise_cmp = 13
 
     X_mdc_sender = X[X.obs["broad_cell_type"] == "Dendritic Cells"]
     X_mdc_sender = X_mdc_sender[
-        np.argsort(X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1])
+        np.argsort(-np.abs(X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1]))
     ]
 
     X_mdc_receiver = X[(X.obs["broad_cell_type"] == "Epithelial cells")]
 
     X_mdc_receiver = X_mdc_receiver[
-        np.argsort(-X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1])
+        np.argsort(np.abs(X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1]))
     ]
 
 
@@ -120,7 +129,23 @@ def makeFigure():
         ax[i+2].set_xlabel("Epithelial Cells")
         ax[i+2].set_ylabel("Dendritic Cells")
 
-
-
+    # Component weight distributions
+    ax[3].hist(sender_weights, bins=30, alpha=0.6, label=f"Sender sc_B (DCs)\nn={len(sender_weights)}, {np.sum(sender_weights<0)} neg")
+    ax[3].hist(receiver_weights, bins=30, alpha=0.6, label=f"Receiver rc_C (DCs)\nn={len(receiver_weights)}, {np.sum(receiver_weights<0)} neg")
+    ax[3].axvline(0, color="black", linestyle="--", linewidth=0.5)
+    ax[3].set_xlabel("Component Weight")
+    ax[3].set_ylabel("Count")
+    ax[3].set_title(f"Cmp {ccc_rise_cmp} Weight Distribution")
+    ax[3].legend(fontsize=6)
 
     return f
+
+
+def group_weight_sum(sender_weights, receiver_weights):
+    """Bin weights into 10 groups each, return 10x10 matrix of sender + receiver means."""
+    n_s, n_r = len(sender_weights), len(receiver_weights)
+    s_groups = np.clip(np.arange(n_s) // (n_s // 10), 0, 9)
+    r_groups = np.clip(np.arange(n_r) // (n_r // 10), 0, 9)
+    s_means = pd.Series(sender_weights).groupby(s_groups).mean().values
+    r_means = pd.Series(receiver_weights).groupby(r_groups).mean().values
+    return pd.DataFrame(s_means[:, None] + r_means[None, :])
