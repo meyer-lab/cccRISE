@@ -4,18 +4,18 @@ brushing dataset. CD70 expression across cell types and CD70+ T cell
 abundance by ALAD group.
 """
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from .common import getSetup, subplotLabel
+from ..import_data import import_alad_brush
 
 
 def makeFigure():
     ax, f = getSetup((14, 4), (1, 3))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/alad.brush.sc.h5ad")
+    X = import_alad_brush()
     alad_rename = {"ALAD int": "ALAD Int", "ALAD recovered": "Recovered", "ALAD declined": "Declined"}
     alad_order = ["Control", "ALAD Int", "Recovered", "Declined"]
 

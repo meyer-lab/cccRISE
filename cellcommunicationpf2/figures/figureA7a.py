@@ -3,21 +3,21 @@ Figure A7a: Overview of the independent ALAD airway brushing dataset.
 68,140 cells from 20 patients across 4 ALAD groups.
 """
 
-import anndata
 import pandas as pd
 import seaborn as sns
 from matplotlib.patches import Patch
 from .common import getSetup, subplotLabel
+from ..import_data import import_alad_brush
 
 
 def makeFigure():
     ax, f = getSetup((14, 4), (1, 3))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/alad.brush.sc.h5ad")
+    X = import_alad_brush()
 
     alad_order = ["Control", "ALAD int", "ALAD recovered", "ALAD declined"]
-    palette = dict(zip(alad_order, sns.color_palette("colorblind", len(alad_order))))
+    palette = dict(zip(alad_order, sns.color_palette("Set2", len(alad_order))))
 
     # (a) Cell type composition
     ct_counts = X.obs["cell_type_inintegrated"].value_counts().sort_values()

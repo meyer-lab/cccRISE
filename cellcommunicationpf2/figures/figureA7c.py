@@ -3,26 +3,25 @@ Figure A7c: Single-cell CD70→CD27 communication scores in the independent
 ALAD airway brushing dataset. Recovered vs Declined.
 """
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from .common import getSetup, subplotLabel
+from ..import_data import import_alad_brush
 
 
 def makeFigure():
-    ax, f = getSetup((8, 4), (1, 2))
+    ax, f = getSetup((10, 4), (1, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/alad.brush.sc.h5ad")
+    X = import_alad_brush()
     alad_rename = {"ALAD int": "ALAD Int", "ALAD recovered": "Recovered", "ALAD declined": "Declined"}
-    order = ["Recovered", "Declined"]
+    order = ["Control", "ALAD Int", "Recovered", "Declined"]
 
     # (a) All T cells as senders
     df_all = _comm_scores_by_patient(X, cd70_pos_only=False)
     df_all["ALAD"] = df_all["ALAD"].replace(alad_rename)
-    df_all = df_all[df_all["ALAD"].isin(order)]
-    print("All T-cell senders (Recovered vs Declined):")
+    print("All T-cell senders:")
     print(df_all.to_string())
 
     _boxstrip(ax[0], df_all, order, "Single-Cell CCC: CD70→CD27")
@@ -30,8 +29,7 @@ def makeFigure():
     # (b) CD70+ senders only
     df_pos = _comm_scores_by_patient(X, cd70_pos_only=True)
     df_pos["ALAD"] = df_pos["ALAD"].replace(alad_rename)
-    df_pos = df_pos[df_pos["ALAD"].isin(order)]
-    print("\nCD70+ senders only (Recovered vs Declined):")
+    print("\nCD70+ senders only:")
     print(df_pos.to_string())
 
     _boxstrip(ax[1], df_pos, order, "CCC: CD70+ Senders Only")
@@ -49,7 +47,7 @@ def _comm_scores_by_patient(X, cd70_pos_only=False):
     for pid in X.obs["subj"].unique():
         patient = X[X.obs["subj"] == pid]
         senders = patient[patient.obs["cell_type_inintegrated"] == "Tcell"]
-        receivers = patient[patient.obs["cell_type_inintegrated"] != "Tcell"]
+        receivers = patient  # All cells are potential receivers
         if senders.shape[0] == 0 or receivers.shape[0] == 0:
             continue
 
