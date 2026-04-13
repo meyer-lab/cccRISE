@@ -12,7 +12,7 @@ from ..import_data import import_alad_brush
 
 
 def makeFigure():
-    ax, f = getSetup((14, 4), (1, 3))
+    ax, f = getSetup((10, 4), (1, 2))
     subplotLabel(ax)
 
     X = import_alad_brush()
@@ -48,17 +48,7 @@ def makeFigure():
 
     _boxstrip(ax[1], df_b, "pct_CD70_pos", alad_order, "% CD70+ T Cells", "CD70+ T Cells by ALAD")
 
-    # (c) Mean CD70 expression in T cells per patient by ALAD
-    records_m = []
-    for pid in X_t.obs["subj"].unique():
-        mask = (X_t.obs["subj"] == pid).values
-        expr = np.asarray(X_t[mask, "CD70"].X.todense()).ravel()
-        records_m.append({"patient": pid, "mean_CD70": expr.mean(),
-                          "ALAD": X_t.obs.loc[mask, "ALAD"].iloc[0]})
-    df_c = pd.DataFrame(records_m)
-    df_c["ALAD"] = df_c["ALAD"].replace(alad_rename)
 
-    _boxstrip(ax[2], df_c, "mean_CD70", alad_order, "Mean CD70 Expression", "CD70 Level in T Cells")
 
     return f
 
