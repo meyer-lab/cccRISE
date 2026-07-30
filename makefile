@@ -1,4 +1,4 @@
-.PHONY: clean test pyright profile_cpu
+.PHONY: clean test ty profile_cpu
 
 flist = $(wildcard cellcommunicationpf2/figures/figure*.py)
 allOutput = $(patsubst cellcommunicationpf2/figures/figure%.py, output/figure%.svg, $(flist))
@@ -26,8 +26,8 @@ test: .venv
 coverage.xml: .venv
 	uv run pytest --junitxml=junit.xml --cov=cellcommunicationpf2 --cov-report xml:coverage.xml
 
-pyright: .venv
-	uv run pyright cellcommunicationpf2
+ty: .venv
+	uv run ty check cellcommunicationpf2
 
 clean:
 	rm -rf output profile profile.svg
