@@ -2,15 +2,18 @@
 Figure S1e_g: Cell type proportions across conditions in BALF COVID-19 data.
 """
 
+from typing import cast
+
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
 from scipy.stats import spearmanr
+
+from .common import (
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():
@@ -18,11 +21,13 @@ def makeFigure():
     subplotLabel(ax)
 
     X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    obs = cast(pd.DataFrame, X.obs)
 
-    df = X.obs.groupby(["celltype", "sample"]).size().reset_index(name="count")
+    celltype_counts = cast(pd.Series, obs.groupby(["celltype", "sample"]).size())
+    df = celltype_counts.reset_index(name="count")
 
     # Add condition information back by merging with sample-condition mapping
-    sample_condition_map = X.obs[["sample", "condition"]].drop_duplicates()
+    sample_condition_map = obs[["sample", "condition"]].drop_duplicates()
     df = df.merge(sample_condition_map, on="sample", how="left")
 
     df["celltype"] = pd.Categorical(
@@ -62,7 +67,7 @@ def makeFigure():
             pval = spearmanr(subset["proportion"], subset["severity"])[1]
             correlation_results.append((celltype, corr, pval))
     corr_df = pd.DataFrame(
-        correlation_results, columns=["celltype", "correlation", "pvalue"]
+        correlation_results, columns=pd.Index(["celltype", "correlation", "pvalue"])
     ).dropna()
     print(corr_df)
     sns.scatterplot(

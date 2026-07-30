@@ -32,7 +32,9 @@ from cellcommunicationpf2.ccc_rise import run_ccc_rise_workflow
 import pandas as pd
 
 # Load your ligand-receptor pairs database
-lr_pairs = pd.read_csv("lr_pairs.csv")  # Should contain ligand-receptor interaction information
+lr_pairs = pd.read_csv(
+    "lr_pairs.csv"
+)  # Should contain ligand-receptor interaction information
 
 # Perform CCC-RISE tensor decomposition
 adata, r2x = run_ccc_rise_workflow(
@@ -41,7 +43,7 @@ adata, r2x = run_ccc_rise_workflow(
     lr_pairs=lr_pairs,
     condition_column="sample",
     doEmbedding=True,
-    random_state=42
+    random_state=42,
 )
 
 # Results are stored in the AnnData object:

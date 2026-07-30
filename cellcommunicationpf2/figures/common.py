@@ -2,6 +2,7 @@
 This file contains functions that are used in multiple figures.
 """
 
+import importlib
 import sys
 import time
 from pathlib import Path
@@ -73,15 +74,15 @@ def genFigure():
     start = time.time()
     nameOut = "figure" + sys.argv[1]
 
-    exec(f"from cellcommunicationpf2.figures.{nameOut} import makeFigure", globals())
-    ff = makeFigure()
+    module = importlib.import_module(f"cellcommunicationpf2.figures.{nameOut}")
+    ff = module.makeFigure()
 
     if ff is not None:
         # Find project root (where pyproject.toml is located)
         project_root = Path(__file__).parent.parent.parent
         output_dir = project_root / "output"
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         ff.savefig(
             output_dir / f"{nameOut}.svg",
             dpi=300,

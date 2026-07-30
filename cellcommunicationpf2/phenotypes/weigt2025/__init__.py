@@ -21,6 +21,7 @@ Expression data (normalized counts) is stored separately on Aretha due to size.
 """
 
 from pathlib import Path
+
 import pandas as pd
 
 DATA_DIR = Path(__file__).parent

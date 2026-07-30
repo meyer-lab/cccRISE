@@ -3,12 +3,12 @@ Figure A5d_g: Violin plots of cell weight distributions for specific cell types 
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
-import anndata
 import seaborn as sns
+
+from .common import (
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():

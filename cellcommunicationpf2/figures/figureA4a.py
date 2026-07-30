@@ -3,12 +3,9 @@ Figure A4a: Prediction accuracy of RISE ranks using logistic regression on ALAD 
 """
 
 import numpy as np
+
 from ..import_data import add_cond_idxs, import_alad
 from .common import getSetup, subplotLabel
-import numpy as np
-from ..import_data import add_cond_idxs
-from ..logreg import rise_ranks_logreg
-import pandas as pd
 
 
 def makeFigure():
@@ -34,10 +31,9 @@ def makeFigure():
         lambda x: "alad" if x != "control" else "control"
     )
     sample_to_group = sample_to_group.astype("category").cat.codes
-    scoring = ["roc_auc", "accuracy"]
 
-    rank_list = list(np.append([1], range(5, 66, 5)))
-    rank_list = list(range(1, 4, 2))
+    # rank_list = list(np.append([1], range(5, 66, 5)))
+    # rank_list = list(range(1, 4, 2))
 
     # scores_aucroc, scores_accuracy = rise_ranks_logreg(
     #     X, rank_list, sample_to_group, scoring, n_iter_max=10000, tolerance=1e-9

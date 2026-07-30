@@ -2,12 +2,13 @@
 Figure S3: CCC-RISE on BALF alad data. Showing weighted sender and receiver cell factors.
 """
 
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import anndata
-from .commonFuncs.plotPaCMAP import plot_wc_per_celltype, plot_wc_pacmap
+
+from .common import (
+    getSetup,
+    subplotLabel,
+)
+from .commonFuncs.plotPaCMAP import plot_wc_pacmap
 
 
 def makeFigure():

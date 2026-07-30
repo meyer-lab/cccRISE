@@ -7,7 +7,6 @@ from ..import_data import (
     import_balf_covid,
 )
 from .common import getSetup, subplotLabel
-from .commonFuncs.plotGeneral import plot_fms_r2x_diff_ranks
 
 
 def makeFigure():

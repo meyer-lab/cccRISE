@@ -3,14 +3,15 @@ Figure A4g: Heatmaps of ligand-receptor expression products for CCL17-CCR4 and C
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import numpy as np
 import seaborn as sns
+
 from ..utils import (
     expression_product_matrix,
+)
+from .common import (
+    getSetup,
+    subplotLabel,
 )
 
 
@@ -32,7 +33,6 @@ def makeFigure():
         np.argsort(X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1])
     ]
 
-
     pairs = ["CD40LG", "CD40"]
     df = expression_product_matrix(X_mdc_sender, X_mdc_receiver, pairs[0], pairs[1])
     df_grouped = group_matrix(df)
@@ -41,9 +41,7 @@ def makeFigure():
     ax[0].set_title(f"{pairs[0]}-{pairs[1]} Interaction")
     ax[0].set_xlabel("Receiver Epithelial Cells")
     ax[0].set_ylabel("Sender CD4 T Cells")
-    
-    
-    
+
     X_mdc_sender = X[(X.obs["broad_cell_type"] == "Epithelial cells")]
     X_mdc_sender = X_mdc_sender[
         np.argsort(-X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1])

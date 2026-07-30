@@ -2,13 +2,14 @@
 Figure A4d: Logistic regression weights for ALAD vs Control classification based on CCC-RISE components.
 """
 
-import numpy as np
-from ..import_data import add_cond_idxs
 import anndata
-from .common import getSetup, subplotLabel
+import numpy as np
+
 from ..import_data import add_cond_idxs
 from ..logreg import ccc_rise_logreg_weights
 from ..utils import correct_conditions
+from .common import getSetup, subplotLabel
+
 
 def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
@@ -32,12 +33,12 @@ def makeFigure():
         lambda x: "alad" if x != "control" else "control"
     )
     sample_to_group = sample_to_group.astype("category").cat.codes
-    
+
     X.uns["A"] = correct_conditions(X)
 
     auc_roc_weights, _ = ccc_rise_logreg_weights(X, sample_to_group)
 
-    ax[0].bar(np.arange(len(auc_roc_weights))+1, auc_roc_weights)
+    ax[0].bar(np.arange(len(auc_roc_weights)) + 1, auc_roc_weights)
 
     ax[0].set_xlabel("Component")
     ax[0].set_ylabel("Logistic Regression Weight")
