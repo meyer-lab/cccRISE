@@ -2,18 +2,22 @@
 Figure A3l_m: Scatter plots of condition factors and ligand-receptor factors for CCC-RISE on BALF COVID-19 data.
 """
 
+from typing import cast
+
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import numpy as np
+import pandas as pd
 import seaborn as sns
+
+from .common import (
+    getSetup,
+    subplotLabel,
+)
 from .commonFuncs.plotFactors import plot_pair_lr_factors
 
 
 def makeFigure():
-    ax, f = getSetup((6, 6), (2, 2)) 
+    ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
     X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
@@ -28,12 +32,13 @@ def makeFigure():
     ax[0].set_xlim(-lim, lim)
     ax[0].set_ylim(-lim, lim)
 
-
     condition_column = "sample"
     group_col = "condition"
-    sample_to_group = X.obs.drop_duplicates(
-        subset=[condition_column, group_col]
-    ).set_index(condition_column)[group_col]
+    sample_to_group = (
+        cast(pd.DataFrame, X.obs)
+        .drop_duplicates(subset=[condition_column, group_col])
+        .set_index(condition_column)[group_col]
+    )
     sample_to_group = sample_to_group.loc[
         np.unique(X.obs[condition_column], return_index=True)[0]
     ]
@@ -52,8 +57,8 @@ def makeFigure():
     ax[2].set_xscale("log")
     ax[2].set_yscale("log")
     r = np.corrcoef(A_factor[:, ccc_rise_cmp1 - 1], A_factor[:, ccc_rise_cmp2 - 1])[
-            0, 1
-        ]
+        0, 1
+    ]
     print("Condition factor correlation:", r)
     ax[2].set_xlabel(f"CCC-RISE Condition Component {ccc_rise_cmp1}")
     ax[2].set_ylabel(f"CCC-RISE Condition Component {ccc_rise_cmp2}")

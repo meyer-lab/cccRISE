@@ -3,14 +3,15 @@ Figure S4e-i: Heatmaps of ligand-receptor expression products for NK cell to Den
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import numpy as np
 import seaborn as sns
+
 from ..utils import (
     expression_product_matrix,
+)
+from .common import (
+    getSetup,
+    subplotLabel,
 )
 
 
@@ -21,9 +22,8 @@ def makeFigure():
     X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
     ccc_rise_cmp = 3
 
-
     X_mdc_sender = X[X.obs["celltype"] == "Epithelial"]
-    
+
     # Alter order based on factor value high to low
     X_mdc_sender = X_mdc_sender[
         np.argsort(-X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1])
@@ -38,7 +38,6 @@ def makeFigure():
 
     print("Epithelial sender cells:", X_mdc_sender.shape)
 
-
     pairs = [["PTN", "PTPRZ1"], ["PTN", "SDC1"]]
     for i, (lig, rec) in enumerate(pairs):
         df = expression_product_matrix(X_mdc_sender, X_mdc_receiver, lig, rec)
@@ -50,9 +49,6 @@ def makeFigure():
         ax[i].set_title(f"{lig}-{rec} Interaction")
         ax[i].set_xticks([])
         ax[i].set_yticks([])
-        
-        
-    
 
     return f
 

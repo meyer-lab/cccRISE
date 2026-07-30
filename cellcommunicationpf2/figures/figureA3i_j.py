@@ -3,12 +3,12 @@ Figure A3i-j: Violin plots of cell weight distributions for epithelial cell in C
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
-import anndata
 import seaborn as sns
+
+from .common import (
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():

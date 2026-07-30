@@ -3,12 +3,12 @@ Figure A2j: Violin plot of cell weight distributions for mDCs in CCC-RISE on BAL
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
-import anndata
 import seaborn as sns
+
+from .common import (
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():
@@ -28,5 +28,5 @@ def makeFigure():
     ax[0].set_ylim(-0.1, 0.85)
     ax[0].set_xlabel("mDC Weight Distribution")
     ax[0].set_ylabel(f"Sender Cell Component {ccc_rise_cmp} Association")
-    
+
     return f

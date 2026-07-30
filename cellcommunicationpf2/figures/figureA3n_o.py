@@ -3,22 +3,23 @@ Figure A3n-o: Heatmaps of ligand-receptor expression products for selected cell 
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import numpy as np
+import pandas as pd
 import seaborn as sns
+
 from ..utils import (
     add_obs_cmp_both_label,
     add_obs_cmp_unique_two,
     expression_product_matrix,
 )
-import pandas as pd
+from .common import (
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():
-    ax, f = getSetup((10, 10), (3, 3))  
+    ax, f = getSetup((10, 10), (3, 3))
     subplotLabel(ax)
 
     X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
