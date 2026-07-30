@@ -3,14 +3,15 @@ Figure A5k_l: Heatmaps of ligand-receptor expression products for NK cell to Den
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import numpy as np
 import seaborn as sns
+
 from ..utils import (
     expression_product_matrix,
+)
+from .common import (
+    getSetup,
+    subplotLabel,
 )
 
 
@@ -22,7 +23,7 @@ def makeFigure():
     ccc_rise_cmp = 5
 
     X_mdc_sender = X[X.obs["broad_cell_type"] == "CD8 T cells"]
-    
+
     # Sample from whole cell population instead of filtering by top percentile
     if len(X_mdc_sender) > 500:  # Limit sample size for computational efficiency
         sample_indices = np.random.choice(len(X_mdc_sender), size=300, replace=False)
@@ -34,7 +35,7 @@ def makeFigure():
     ]
 
     X_mdc_receiver = X[(X.obs["broad_cell_type"] == "CD8 T cells")]
-    
+
     # Sample from whole cell population instead of filtering by top percentile
     if len(X_mdc_receiver) > 500:  # Limit sample size for computational efficiency
         sample_indices = np.random.choice(len(X_mdc_receiver), size=300, replace=False)

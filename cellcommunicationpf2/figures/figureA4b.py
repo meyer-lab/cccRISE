@@ -3,11 +3,9 @@ Figure A4b: Prediction accuracy of CPD ranks using logistic regression on ALAD d
 """
 
 import numpy as np
+
 from ..import_data import add_cond_idxs, import_alad, import_ligand_receptor_pairs
 from .common import getSetup, subplotLabel
-from ..tensor import calculate_interaction_tensor
-from ..import_data import add_cond_idxs
-from ..logreg import cpd_ranks_logreg
 
 
 def makeFigure():
@@ -17,7 +15,7 @@ def makeFigure():
     # Import and prepare data
     print("Importing and preparing")
     X = import_alad(gene_threshold=0.001, normalize=True)
-    lr_pairs = import_ligand_receptor_pairs()
+    lr_pairs = import_ligand_receptor_pairs()  # noqa: F841
 
     # Add numerical indices for each patient sample, which is the primary condition
     condition_column = "dsco_id"

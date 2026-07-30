@@ -1,16 +1,17 @@
+from typing import Any, cast
+
 import anndata
 import numpy as np
-from tensorly.cp_tensor import CPTensor
-from tlviz.factor_tools import factor_match_score as fms
-from .ccc_rise import ccc_rise, standardize_cc_pf2
-from .import_data import add_cond_idxs
 import pandas as pd
 from pacmap import PaCMAP
-from parafac2.parafac2 import parafac2_nd, store_pf2, anndata_to_list
-from tensorly.cp_tensor import CPTensor
-from tensorly.cp_tensor import cp_to_tensor
+from parafac2.parafac2 import anndata_to_list, parafac2_nd, store_pf2
+from scipy.sparse import spmatrix
+from tensorly.cp_tensor import CPTensor, cp_to_tensor
 from tensorly.decomposition import parafac
-from .ccc_rise import calc_communication_score
+from tlviz.factor_tools import factor_match_score as fms
+
+from .ccc_rise import calc_communication_score, ccc_rise, standardize_cc_pf2
+from .import_data import add_cond_idxs
 
 
 def resample_tensor(interaction_tensors):
@@ -26,7 +27,7 @@ def rise_store_r2x(
     rank: int,
     n_iter_max: int,
     tolerance: float,
-    random_state: int = None,
+    random_state: int | None = None,
 ):
     """Runs RISE and stores the results."""
     pf2_out, r2x = parafac2_nd(
@@ -51,7 +52,7 @@ def calculate_fms_cpd(weightsA, factorsA, weightsB, factorsB):
             factorsB,
         )
     )
-    return fms(A_CP, B_CP, consider_weights=False, skip_mode=3)  # type: ignore
+    return fms(A_CP, B_CP, consider_weights=False, skip_mode=3)
 
 
 def calculate_fms_rise(A: anndata.AnnData, B: anndata.AnnData):
@@ -71,7 +72,7 @@ def calculate_fms_rise(A: anndata.AnnData, B: anndata.AnnData):
             factors,
         )
     )
-    return fms(A_CP, B_CP, consider_weights=False, skip_mode=1)  # type: ignore
+    return fms(A_CP, B_CP, consider_weights=False, skip_mode=1)
 
 
 def calculate_r2x(cp_weights, cp_factors, interaction_tensor):
@@ -93,7 +94,7 @@ def run_ccc_rise_workflow(
     n_iter_max: int = 100,
     tol: float = 1e-3,
     random_state: int | None = None,
-    complex_sep: str = None,
+    complex_sep: str | None = None,
     doEmbedding: bool = True,
     svd_init: str = "svd",
 ) -> tuple[anndata.AnnData, float]:
@@ -174,9 +175,7 @@ def calculate_interaction_tensor(
     X_filtered: anndata.AnnData, lr_pairs: pd.DataFrame, rise_rank: int
 ):
     """Calculate interaction tensor from AnnData object using PARAFAC2 and communication scores."""
-    pf2_out, rise_rank = parafac2_nd(
-        X_filtered, rank=rise_rank, n_iter_max=1000, tol=1e-9
-    )
+    pf2_out, _ = parafac2_nd(X_filtered, rank=rise_rank, n_iter_max=1000, tol=1e-9)
     _, _, projections = pf2_out
 
     # Project matrices
@@ -185,7 +184,9 @@ def calculate_interaction_tensor(
     for i, tensor in enumerate(X_list):
         proj = projections[i]
         # Convert tensor to NumPy
-        tensor_np = tensor.get()
+        tensor_np = (
+            cast(Any, tensor).toarray() if isinstance(tensor, spmatrix) else tensor
+        )
         projected_matrices.append(proj.T @ tensor_np)
 
     # Calculate cell-cell communication scores
@@ -199,7 +200,7 @@ def calculate_interaction_tensor(
 
 def run_fms_r2x_analysis(
     interaction_tensor: np.ndarray,
-    rank_list: list[int] = None,
+    rank_list: list[int] | None = None,
     runs: int = 1,
     svd_init: str = "svd",
 ) -> pd.DataFrame:
@@ -276,7 +277,7 @@ def run_fms_r2x_data_percentage_analysis(
     lr_pairs: pd.DataFrame,
     rise_rank: int,
     cp_rank: int,
-    percentage_list: list[int] = None,
+    percentage_list: list[int] | None = None,
     runs: int = 1,
     svd_init: str = "svd",
 ) -> pd.DataFrame:

@@ -7,8 +7,6 @@ from ..import_data import (
     import_alad,
 )
 from .common import getSetup, subplotLabel
-from .commonFuncs.plotGeneral import plot_fms_r2x_diff_ranks
-import numpy as np
 
 
 def makeFigure():
