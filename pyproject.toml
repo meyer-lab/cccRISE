@@ -17,7 +17,7 @@ dependencies = [
     "datashader>=0.17.0",
     "pacmap>=0.8.0",
     "tensorly-viz>=0.1.7",
-    "parafac2 @ git+https://github.com/meyer-lab/parafac2.git@v1.3.0",
+    "parafac2 @ git+https://github.com/meyer-lab/parafac2.git@sparse-cpu",
     "zstandard>=0.23.0",
     "pyarrow>=15.0.0",
 ]
