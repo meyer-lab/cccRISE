@@ -35,12 +35,30 @@ def _to_hex(arr):
 
 def ds_show(result, ax):
     result = tf.set_background(result, "white")
-    img_rev = result.data[::-1]
-    mpl_img = np.dstack(
-        [img_rev & 0x0000FF, (img_rev & 0x00FF00) >> 8, (img_rev & 0xFF0000) >> 16]
+    ax.imshow(result.to_pil())
+
+
+def _plot_shaded_pacmap(
+    points, values, ax: Axes, cmap, span: tuple[float, float], title: str
+):
+    """Shade PaCMAP points by a continuous value and draw the result with a colorbar"""
+    canvas = _get_canvas(points)
+    data = pd.DataFrame(points, columns=pd.Index(["x", "y"]))
+    data["val_cat"] = values
+    result = tf.shade(
+        agg=canvas.points(data, "x", "y", agg=ds.mean("val_cat")),
+        cmap=cmap,
+        span=span,
+        how="linear",
+        min_alpha=255,
     )
 
-    ax.imshow(mpl_img)
+    ds_show(result, ax)
+
+    psm = plt.pcolormesh([list(span), list(span)], cmap=cmap)
+    plt.colorbar(psm, ax=ax)
+    ax.set(title=title)
+    assign_labels(ax)
 
 
 def plot_wc_pacmap(
@@ -60,27 +78,11 @@ def plot_wc_pacmap(
     points = np.array(X.obsm["PaCMAP"])
 
     cmap = sns.diverging_palette(240, 10, as_cmap=True)
-    canvas = _get_canvas(points)
-    data = pd.DataFrame(points, columns=pd.Index(["x", "y"]))
-
     values /= np.max(values)
 
-    data["val_cat"] = values
-    result = tf.shade(
-        agg=canvas.points(data, "x", "y", agg=ds.mean("val_cat")),
-        cmap=cmap,
-        span=(-cbarMax, cbarMax),
-        how="linear",
-        alpha=255,
-        min_alpha=255,
+    _plot_shaded_pacmap(
+        points, values, ax, cmap, (-cbarMax, cbarMax), "Cmp. " + str(cmp)
     )
-
-    ds_show(result, ax)
-
-    psm = plt.pcolormesh([[-cbarMax, cbarMax], [-cbarMax, cbarMax]], cmap=cmap)
-    plt.colorbar(psm, ax=ax)
-    ax.set(title="Cmp. " + str(cmp))
-    ax = assign_labels(ax)
 
 
 def plot_labels_pacmap(
@@ -169,30 +171,12 @@ def plot_lr_pacmap(lr: str, X: anndata.AnnData, ax: Axes, clip_outliers=0.9995):
     cmap = sns.color_palette("ch:s=-.2,r=.6", as_cmap=True)
 
     values = lrList
+    values -= np.min(values)
+    values /= np.max(values)
 
     points = np.array(X.obsm["PaCMAP"])
 
-    canvas = _get_canvas(points)
-    data = pd.DataFrame(points, columns=pd.Index(["x", "y"]))
-
-    values -= np.min(values)
-    values /= np.max(values)
-    data["val_cat"] = values
-    result = tf.shade(
-        agg=canvas.points(data, "x", "y", agg=ds.mean("val_cat")),
-        cmap=cmap,
-        span=(0, 1),
-        how="linear",
-        min_alpha=255,
-    )
-
-    ds_show(result, ax)
-
-    psm = plt.pcolormesh([[0, 1], [0, 1]], cmap=cmap)
-    plt.colorbar(psm, ax=ax)
-
-    ax = assign_labels(ax)
-    ax.set(title=f"{lr}")
+    _plot_shaded_pacmap(points, values, ax, cmap, (0, 1), f"{lr}")
 
 
 def assign_labels(ax):
