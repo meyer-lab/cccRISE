@@ -136,6 +136,14 @@ def add_obs_cmp_label(
     return X
 
 
+def _gene_vector(X: anndata.AnnData, gene: str) -> np.ndarray:
+    """Extract a gene's expression as a dense 1D array, whether X.X is sparse or dense."""
+    expr = X[:, gene].X
+    if isinstance(expr, spmatrix):
+        return cast(Any, expr).toarray().flatten()
+    return np.ravel(np.array(expr))
+
+
 def expression_product_matrix(
     X1: anndata.AnnData, X2: anndata.AnnData, ligand: str, receptor: str
 ):
@@ -148,21 +156,8 @@ def expression_product_matrix(
     assert ligand in X1.var_names, f"{ligand} not in X1"
     assert receptor in X2.var_names, f"{receptor} not in X2"
 
-    # Get expression vectors
-
-    # Ensure 1D dense arrays
-    # Convert to dense 1D arrays, even if sparse
-    expr1 = X1[:, ligand].X
-    if isinstance(expr1, spmatrix):
-        expr1 = cast(Any, expr1).toarray().flatten()
-    else:
-        expr1 = np.ravel(np.array(expr1))
-
-    expr2 = X2[:, receptor].X
-    if isinstance(expr2, spmatrix):
-        expr2 = cast(Any, expr2).toarray().flatten()
-    else:
-        expr2 = np.ravel(np.array(expr2))
+    expr1 = _gene_vector(X1, ligand)
+    expr2 = _gene_vector(X2, receptor)
 
     # Compute outer product
     product_matrix = np.outer(expr1, expr2)
@@ -170,6 +165,45 @@ def expression_product_matrix(
     # Build DataFrame
     df = pd.DataFrame(product_matrix, index=X1.obs_names, columns=X2.obs_names)
     return df
+
+
+def _binned_means(expr: np.ndarray, n_bins: int) -> np.ndarray:
+    """Mean of `expr` within `n_bins` contiguous blocks (last block absorbs the remainder)."""
+    n = len(expr)
+    group_size = n // n_bins
+    groups = np.clip(np.arange(n) // group_size, 0, n_bins - 1)
+    return np.array(
+        [expr[groups == g].mean() for g in range(n_bins)]
+    )
+
+
+def binned_expression_product_matrix(
+    X1: anndata.AnnData,
+    X2: anndata.AnnData,
+    ligand: str,
+    receptor: str,
+    n_bins: int = 10,
+) -> pd.DataFrame:
+    """
+    Equivalent to binning `expression_product_matrix(X1, X2, ligand, receptor)` into an
+    `n_bins` x `n_bins` matrix of block means, but computed without ever materializing the
+    full len(X1) x len(X2) outer product: since block entries are a product of independent
+    per-cell terms, the mean of a block is just the product of the row- and column-block
+    means of the two expression vectors.
+    """
+    assert ligand in X1.var_names, f"{ligand} not in X1"
+    assert receptor in X2.var_names, f"{receptor} not in X2"
+
+    expr1 = _gene_vector(X1, ligand)
+    expr2 = _gene_vector(X2, receptor)
+
+    row_means = _binned_means(expr1, n_bins)
+    col_means = _binned_means(expr2, n_bins)
+
+    product_matrix = np.outer(row_means, col_means)
+    return pd.DataFrame(
+        product_matrix, index=np.arange(n_bins), columns=np.arange(n_bins)
+    )
 
 
 def add_obs_cmp_both_label(
