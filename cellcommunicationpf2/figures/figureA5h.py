@@ -11,6 +11,7 @@ import seaborn as sns
 from scipy.stats import f_oneway, ttest_ind
 
 from .common import (
+    ALAD_PATH,
     getSetup,
     subplotLabel,
 )
@@ -22,7 +23,7 @@ def makeFigure():
     ax, f = getSetup((8, 8), (3, 3))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad.h5ad")
+    X = anndata.read_h5ad(ALAD_PATH)
     X.obs["alad_status"] = (
         X.obs["ALADstatus"]
         .astype(str)

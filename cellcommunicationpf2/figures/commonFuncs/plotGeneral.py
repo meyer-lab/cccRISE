@@ -1,3 +1,5 @@
+from typing import cast
+
 import anndata
 import numpy as np
 import pandas as pd
@@ -6,6 +8,38 @@ from matplotlib.axes import Axes
 
 from ...tensor import calculate_fms_rise, rise_store_r2x
 from ...utils import resample
+
+
+def get_sample_to_group(
+    X: anndata.AnnData, condition_column: str, group_col: str
+) -> pd.Series:
+    """Map each unique sample to its group label, ordered to match
+    np.unique(X.obs[condition_column])."""
+    sample_to_group = (
+        cast(pd.DataFrame, X.obs)
+        .drop_duplicates(subset=[condition_column, group_col])
+        .set_index(condition_column)[group_col]
+    )
+    return sample_to_group.loc[
+        np.unique(X.obs[condition_column], return_index=True)[0]
+    ]
+
+
+def binarize_group(
+    sample_to_group: pd.Series, match_value: str, match_name: str, other_name: str
+) -> pd.Series:
+    """Collapse a group Series into two named categories and return integer codes."""
+    binary = sample_to_group.apply(
+        lambda x: match_name if x == match_value else other_name
+    )
+    return binary.astype("category").cat.codes
+
+
+def symmetrize_axes(ax: Axes):
+    """Set both x and y limits to +/- the largest absolute limit on either axis."""
+    lim = max(np.max(np.abs(ax.get_xlim())), np.max(np.abs(ax.get_ylim())))
+    ax.set_xlim(-lim, lim)
+    ax.set_ylim(-lim, lim)
 
 
 def rotate_xaxis(ax, rotation=90):

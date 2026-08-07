@@ -9,6 +9,7 @@ import seaborn as sns
 
 from ..utils import expression_product_matrix
 from .common import (
+    COVID19_PATH,
     getSetup,
     subplotLabel,
 )
@@ -18,7 +19,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
 
     # Create barplot of percent of cell-cell interactions that are non-zero for each sample
     pal = sns.color_palette("Set2")

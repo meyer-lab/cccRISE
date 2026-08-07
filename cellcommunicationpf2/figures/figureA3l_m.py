@@ -2,46 +2,33 @@
 Figure A3l_m: Scatter plots of condition factors and ligand-receptor factors for CCC-RISE on BALF COVID-19 data.
 """
 
-from typing import cast
-
 import anndata
 import numpy as np
-import pandas as pd
 import seaborn as sns
 
 from .common import (
+    COVID19_PATH,
     getSetup,
     subplotLabel,
 )
 from .commonFuncs.plotFactors import plot_pair_lr_factors
+from .commonFuncs.plotGeneral import get_sample_to_group, symmetrize_axes
 
 
 def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
     ccc_rise_cmp1 = 3
     ccc_rise_cmp2 = 5
 
     plot_pair_lr_factors(X, ccc_rise_cmp1, ccc_rise_cmp2, ax[0])
-
-    xlim = np.max(np.abs(ax[0].get_xlim()))
-    ylim = np.max([xlim, np.max(np.abs(ax[0].get_ylim()))])
-    lim = max(xlim, ylim)
-    ax[0].set_xlim(-lim, lim)
-    ax[0].set_ylim(-lim, lim)
+    symmetrize_axes(ax[0])
 
     condition_column = "sample"
     group_col = "condition"
-    sample_to_group = (
-        cast(pd.DataFrame, X.obs)
-        .drop_duplicates(subset=[condition_column, group_col])
-        .set_index(condition_column)[group_col]
-    )
-    sample_to_group = sample_to_group.loc[
-        np.unique(X.obs[condition_column], return_index=True)[0]
-    ]
+    sample_to_group = get_sample_to_group(X, condition_column, group_col)
     pal = sns.color_palette(palette="Set2", n_colors=len(sample_to_group.unique()))
     pal = pal.as_hex()
     color_map = {k: v for k, v in zip(sample_to_group.unique(), pal)}

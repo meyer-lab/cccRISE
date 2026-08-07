@@ -6,6 +6,7 @@ import anndata
 import seaborn as sns
 
 from .common import (
+    COVID19_PATH,
     getSetup,
     subplotLabel,
 )
@@ -16,7 +17,7 @@ def makeFigure():
     subplotLabel(ax)
 
     # Import Anndata file
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
     ccc_rise_cmp = 6
 
     # Violin plot of cell weighting distribution for Mast cells for a component

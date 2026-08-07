@@ -9,6 +9,7 @@ import pandas as pd
 
 from ..utils import correct_conditions
 from .common import (
+    ALAD_PATH,
     getSetup,
     subplotLabel,
 )
@@ -54,7 +55,7 @@ def makeFigure():
     # # Save anndata object with results
     # X.write_h5ad("cellcommunicationpf2/alad.h5ad")
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad.h5ad")
+    X = anndata.read_h5ad(ALAD_PATH)
     condition_column = "dsco_id"
     X.uns["A"] = correct_conditions(X)
 
