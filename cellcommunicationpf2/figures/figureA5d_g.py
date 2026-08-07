@@ -6,6 +6,7 @@ import anndata
 import seaborn as sns
 
 from .common import (
+    ALAD_PATH,
     getSetup,
     subplotLabel,
 )
@@ -16,7 +17,7 @@ def makeFigure():
     subplotLabel(ax)
 
     # Import Anndata file
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad.h5ad")
+    X = anndata.read_h5ad(ALAD_PATH)
 
     ccc_rise_cmp = 13
 

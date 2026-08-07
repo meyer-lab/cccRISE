@@ -2,10 +2,9 @@
 Figure A4b: Prediction accuracy of CPD ranks using logistic regression on ALAD data.
 """
 
-import numpy as np
-
 from ..import_data import add_cond_idxs, import_alad, import_ligand_receptor_pairs
 from .common import getSetup, subplotLabel
+from .commonFuncs.plotGeneral import binarize_group, get_sample_to_group
 
 
 def makeFigure():
@@ -22,16 +21,8 @@ def makeFigure():
     X = add_cond_idxs(X, condition_column)
 
     group_col = "ALADstatus"
-    sample_to_group = X.obs.drop_duplicates(
-        subset=[condition_column, group_col]
-    ).set_index(condition_column)[group_col]
-    sample_to_group = sample_to_group.loc[
-        np.unique(X.obs[condition_column], return_index=True)[0]
-    ]
-    sample_to_group = sample_to_group.apply(
-        lambda x: "alad" if x != "control" else "control"
-    )
-    sample_to_group = sample_to_group.astype("category").cat.codes
+    sample_to_group = get_sample_to_group(X, condition_column, group_col)
+    sample_to_group = binarize_group(sample_to_group, "control", "control", "alad")
 
     # interaction_tensor = calculate_interaction_tensor(X, lr_pairs, rise_rank=15)
 

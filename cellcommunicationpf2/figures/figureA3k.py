@@ -8,6 +8,7 @@ import seaborn as sns
 
 from ..utils import average_product_matrix_ccc, expression_product_matrix
 from .common import (
+    COVID19_PATH,
     getSetup,
     subplotLabel,
 )
@@ -17,7 +18,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
     ccc_rise_cmp = 5
 
     X_epi_sender = X[X.obs["celltype"] == "Epithelial"]

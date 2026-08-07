@@ -10,6 +10,7 @@ from ..utils import (
     expression_product_matrix,
 )
 from .common import (
+    ALAD_STABLE_PATH,
     getSetup,
     subplotLabel,
 )
@@ -19,7 +20,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad_stable.h5ad")
+    X = anndata.read_h5ad(ALAD_STABLE_PATH)
     ccc_rise_cmp = 9
 
     X_mdc_sender = X[X.obs["broad_cell_type"] == "Dendritic Cells"]
