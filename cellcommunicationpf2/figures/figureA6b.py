@@ -14,7 +14,7 @@ def makeFigure():
 
     # Import and prepare data
     print("Importing and preparing")
-    X = import_alad(gene_threshold=0.001, normalize=True)
+    X = import_alad(gene_threshold=0.01, normalize=True)
 
     # Add numerical indices for each patient sample, which is the primary condition
     condition_column = "dsco_id"

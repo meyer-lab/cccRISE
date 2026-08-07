@@ -24,7 +24,7 @@ def makeFigure():
     ax, f = getSetup((20, 8), (1, 4))
     subplotLabel(ax)
 
-    # X = import_balf_covid(gene_threshold=0.001, normalize=True)
+    # X = import_balf_covid(gene_threshold=0.01, normalize=True)
     # lr_pairs = import_ligand_receptor_pairs()
     # groupby = "celltype"
     # condition_column = "sample"

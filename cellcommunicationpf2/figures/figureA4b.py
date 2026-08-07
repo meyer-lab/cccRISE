@@ -14,7 +14,7 @@ def makeFigure():
 
     # Import and prepare data
     print("Importing and preparing")
-    X = import_alad(gene_threshold=0.001, normalize=True)
+    X = import_alad(gene_threshold=0.01, normalize=True)
     lr_pairs = import_ligand_receptor_pairs()  # noqa: F841
 
     # Add numerical indices for each patient sample, which is the primary condition
