@@ -142,13 +142,22 @@ def prepare_dataset(
     assert np.amin(data.data) >= 0.0
 
     # Filter out genes with too few reads, and cells with fewer than 10 counts
-    X.X = data
-    X = X[data.sum(axis=1) > 10, data.mean(axis=0) > geneThreshold]
+    row_mask = data.sum(axis=1) > 10
+    col_mask = data.mean(axis=0) > geneThreshold
+
+    # Do the (expensive) sparse row/column filtering ourselves, once. Some source
+    # files alias X.layers[None] to the same array as X.X, which would otherwise
+    # make AnnData's view/copy machinery redundantly filter and copy the same
+    # large matrix twice. Swap in a cheap empty placeholder first so that step
+    # only has to filter/copy the (tiny) placeholder to keep obs/var/obsm aligned.
+    filtered_data = data[row_mask][:, col_mask]
+    X.X = csr_array(X.shape, dtype=data.dtype)
+    X = X[row_mask, col_mask]
 
     # Copy so that the subsetting is preserved
     X._init_as_actual(X.copy())
-    data = cast(Any, csr_array(X.X))
-    X.X = data
+    X.X = filtered_data
+    data = filtered_data
 
     # Convert counts to floats
     if issubclass(data.dtype.type, int | np.integer):
