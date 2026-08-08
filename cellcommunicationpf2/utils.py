@@ -279,6 +279,34 @@ def binned_expression_product_matrix(
     )
 
 
+def binned_complex_ligand_product_matrix(
+    X1: anndata.AnnData,
+    X2: anndata.AnnData,
+    ligand_subunits: list[str],
+    receptor: str,
+    n_bins: int = 10,
+) -> pd.DataFrame:
+    """
+    Same as `binned_expression_product_matrix`, but for a multi-subunit ligand complex
+    (e.g. LTA&LTB). The complex's per-cell expression is the minimum across its subunits,
+    the limiting-subunit convention used elsewhere for scoring ligand complexes.
+    """
+    for subunit in ligand_subunits:
+        assert subunit in X1.var_names, f"{subunit} not in X1"
+    assert receptor in X2.var_names, f"{receptor} not in X2"
+
+    expr1 = np.minimum.reduce([_gene_vector(X1, s) for s in ligand_subunits])
+    expr2 = _gene_vector(X2, receptor)
+
+    row_means = _binned_means(expr1, n_bins)
+    col_means = _binned_means(expr2, n_bins)
+
+    product_matrix = np.outer(row_means, col_means)
+    return pd.DataFrame(
+        product_matrix, index=np.arange(n_bins), columns=np.arange(n_bins)
+    )
+
+
 def add_obs_cmp_both_label(
     X: anndata.AnnData,
     cmp1: int,

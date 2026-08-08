@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.cm import ScalarMappable
 from matplotlib.figure import Figure
 from matplotlib.patches import Patch
 
@@ -58,8 +59,8 @@ def _plot_shaded_pacmap(
 
     ds_show(result, ax)
 
-    psm = plt.pcolormesh([list(span), list(span)], cmap=cmap)
-    plt.colorbar(psm, ax=ax)
+    sm = ScalarMappable(norm=matplotlib.colors.Normalize(*span), cmap=cmap)
+    plt.colorbar(sm, ax=ax)
     ax.set(title=title)
     assign_labels(ax)
 
