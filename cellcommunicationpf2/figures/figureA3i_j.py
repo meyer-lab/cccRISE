@@ -3,19 +3,20 @@ Figure A3i-j: Violin plots of cell weight distributions for epithelial cell in C
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
-import anndata
 import seaborn as sns
+
+from .common import (
+    COVID19_PATH,
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
 
     ccc_rise_cmp = 5
 

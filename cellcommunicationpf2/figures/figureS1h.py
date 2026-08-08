@@ -2,32 +2,23 @@
 Figure S1h: Decomposition of the pseudobulk communication data and tensor for BAL data.
 """
 
+from typing import cast
+
+import anndata
 import numpy as np
-from ..import_data import (
-    add_cond_idxs,
-    import_balf_covid,
-    import_ligand_receptor_pairs,
-)
+import pandas as pd
+
 from .common import (
-    subplotLabel,
+    COVID19_PSEUDOBULK_PATH,
     getSetup,
-)
-from ..utils import (
-    pseudobulk_X,
-)
-from ..ccc_rise import (
-    calc_communication_score_pseudobulk,
-    pseudobulk_cp_decomposition,
-    save_ccc_rise_results,
+    subplotLabel,
 )
 from .commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_lr_factors,
 )
-
 from .commonFuncs.plotGeneral import rotate_yaxis
-import anndata
 
 
 def makeFigure():
@@ -53,13 +44,15 @@ def makeFigure():
 
     # X = X.write_h5ad("cellcommunicationpf2/data/bal/bal_pseudobulk.h5ad")
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19_pseudobulk.h5ad")
+    X = anndata.read_h5ad(COVID19_PSEUDOBULK_PATH)
     groupby = "celltype"
     condition_column = "sample"
     group_col = "condition"
-    sample_to_group = X.obs.drop_duplicates(
-        subset=[condition_column, group_col]
-    ).set_index(condition_column)[group_col]
+    sample_to_group = (
+        cast(pd.DataFrame, X.obs)
+        .drop_duplicates(subset=[condition_column, group_col])
+        .set_index(condition_column)[group_col]
+    )
 
     plot_condition_factors(
         data=X,

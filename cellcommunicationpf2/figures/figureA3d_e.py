@@ -3,13 +3,15 @@ Figure A3d_e: Violin plots of cell weight distributions for specific cell types 
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
-import seaborn as sns
-import pandas as pd
 import numpy as np
+import pandas as pd
+import seaborn as sns
+
+from .common import (
+    COVID19_PATH,
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():
@@ -17,13 +19,13 @@ def makeFigure():
     subplotLabel(ax)
 
     # Import Anndata file
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
     ccc_rise_cmp = 3
 
     both = ["sc_B", "rc_C"]
     for i, b in enumerate(both):
         X_all_epithelial = X[X.obs["celltype"] == "Epithelial"]
-        X_epi= X_all_epithelial.obsm[b][:, ccc_rise_cmp - 1]
+        X_epi = X_all_epithelial.obsm[b][:, ccc_rise_cmp - 1]
         if b == "sc_B":
             title = "Sender"
         else:

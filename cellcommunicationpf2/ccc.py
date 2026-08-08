@@ -3,6 +3,7 @@ from collections import Counter
 
 import numpy as np
 from scipy.stats.mstats import gmean
+from tensorly.cp_tensor import cp_to_tensor
 
 """
 This file is entirely methods taken from Tensor Cell2Cell
@@ -155,7 +156,7 @@ def get_genes_from_complexes(ppi_data, complex_sep="&", interaction_columns=("A"
     col_a_genes = set()
     col_b_genes = set()
 
-    complexes = dict()
+    complexes = {}
     complex_a = set()
     complex_b = set()
     for _, row in ppi_data.iterrows():
@@ -163,14 +164,14 @@ def get_genes_from_complexes(ppi_data, complex_sep="&", interaction_columns=("A"
         prot_b = row[col_b]
 
         if complex_sep in prot_a:
-            comp = set([l for l in prot_a.split(complex_sep)])
+            comp = {l for l in prot_a.split(complex_sep)}
             complexes[prot_a] = comp
             complex_a = complex_a.union(comp)
         else:
             col_a_genes.add(prot_a)
 
         if complex_sep in prot_b:
-            comp = set([r for r in prot_b.split(complex_sep)])
+            comp = {r for r in prot_b.split(complex_sep)}
             complexes[prot_b] = comp
             complex_b = complex_b.union(comp)
         else:
@@ -231,7 +232,7 @@ def filter_complex_ppi_by_proteins(
     if upper_letter_comparison:
         integrated_ppi[col_a] = integrated_ppi[col_a].apply(lambda x: str(x).upper())
         integrated_ppi[col_b] = integrated_ppi[col_b].apply(lambda x: str(x).upper())
-        prots = set([str(p).upper() for p in proteins])
+        prots = {str(p).upper() for p in proteins}
     else:
         prots = set(proteins)
 
@@ -319,7 +320,7 @@ def filter_ppi_by_proteins(
     if upper_letter_comparison:
         integrated_ppi[col_a] = integrated_ppi[col_a].apply(lambda x: str(x).upper())
         integrated_ppi[col_b] = integrated_ppi[col_b].apply(lambda x: str(x).upper())
-        prots = set([str(p).upper() for p in proteins])
+        prots = {str(p).upper() for p in proteins}
     else:
         prots = set(proteins)
 
@@ -547,9 +548,9 @@ def build_context_ccc_tensor(
         )
 
     # Preserve order or sort new set (either inner or outer)
-    genes = df_idxs[0] if set(df_idxs[0]) == genes else sorted(list(genes))
+    genes = df_idxs[0] if set(df_idxs[0]) == genes else sorted(genes)
 
-    cells = df_cols[0] if set(df_cols[0]) == cells else sorted(list(cells))
+    cells = df_cols[0] if set(df_cols[0]) == cells else sorted(cells)
 
     # Filter PPI data for
     ppi_data_ = filter_ppi_by_proteins(
@@ -724,3 +725,13 @@ def aggregate_ccc_tensor(
             ).tolist()
         )
     return aggregated_tensor
+
+
+def calculate_r2x(cp_weights, cp_factors, interaction_tensor):
+    """Calculate R2X for the CP decomposition of the interaction tensor"""
+    reconstructed = cp_to_tensor((cp_weights, cp_factors))
+    total_variance = np.sum(interaction_tensor**2)
+    error = np.sum((interaction_tensor - reconstructed) ** 2)
+    final_R2X = 1 - (error / total_variance) if total_variance > 0 else 0.0
+
+    return final_R2X

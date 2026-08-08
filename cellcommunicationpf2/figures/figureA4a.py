@@ -2,13 +2,9 @@
 Figure A4a: Prediction accuracy of RISE ranks using logistic regression on ALAD data.
 """
 
-import numpy as np
 from ..import_data import add_cond_idxs, import_alad
 from .common import getSetup, subplotLabel
-import numpy as np
-from ..import_data import add_cond_idxs
-from ..logreg import rise_ranks_logreg
-import pandas as pd
+from .commonFuncs.plotGeneral import binarize_group, get_sample_to_group
 
 
 def makeFigure():
@@ -24,20 +20,11 @@ def makeFigure():
     X = add_cond_idxs(X, condition_column)
 
     group_col = "ALADstatus"
-    sample_to_group = X.obs.drop_duplicates(
-        subset=[condition_column, group_col]
-    ).set_index(condition_column)[group_col]
-    sample_to_group = sample_to_group.loc[
-        np.unique(X.obs[condition_column], return_index=True)[0]
-    ]
-    sample_to_group = sample_to_group.apply(
-        lambda x: "alad" if x != "control" else "control"
-    )
-    sample_to_group = sample_to_group.astype("category").cat.codes
-    scoring = ["roc_auc", "accuracy"]
+    sample_to_group = get_sample_to_group(X, condition_column, group_col)
+    sample_to_group = binarize_group(sample_to_group, "control", "control", "alad")
 
-    rank_list = list(np.append([1], range(5, 66, 5)))
-    rank_list = list(range(1, 4, 2))
+    # rank_list = list(np.append([1], range(5, 66, 5)))
+    # rank_list = list(range(1, 4, 2))
 
     # scores_aucroc, scores_accuracy = rise_ranks_logreg(
     #     X, rank_list, sample_to_group, scoring, n_iter_max=10000, tolerance=1e-9

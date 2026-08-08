@@ -2,6 +2,7 @@
 This file contains functions that are used in multiple figures.
 """
 
+import importlib
 import sys
 import time
 from pathlib import Path
@@ -12,6 +13,8 @@ import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
+
+from ..import_data import DATA_DIR
 
 matplotlib.use("AGG")
 
@@ -31,6 +34,11 @@ matplotlib.rcParams["svg.fonttype"] = "none"
 DEFAULT_CMAP = sns.color_palette("ch:s=-.2,r=.6", as_cmap=True)
 DIVERGING_CMAP = sns.diverging_palette(250, 30, l=65, center="dark", as_cmap=True)
 LIGHT_DIVERGING = sns.diverging_palette(240, 10, as_cmap=True)
+
+COVID19_PATH = str(DATA_DIR / "bal_covid19.h5ad")
+COVID19_PSEUDOBULK_PATH = str(DATA_DIR / "bal_covid19_pseudobulk.h5ad")
+ALAD_PATH = str(DATA_DIR / "bal_alad.h5ad")
+ALAD_STABLE_PATH = str(DATA_DIR / "bal_alad_stable.h5ad")
 
 
 def getSetup(
@@ -73,15 +81,15 @@ def genFigure():
     start = time.time()
     nameOut = "figure" + sys.argv[1]
 
-    exec(f"from cellcommunicationpf2.figures.{nameOut} import makeFigure", globals())
-    ff = makeFigure()
+    module = importlib.import_module(f"cellcommunicationpf2.figures.{nameOut}")
+    ff = module.makeFigure()
 
     if ff is not None:
         # Find project root (where pyproject.toml is located)
         project_root = Path(__file__).parent.parent.parent
         output_dir = project_root / "output"
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         ff.savefig(
             output_dir / f"{nameOut}.svg",
             dpi=300,

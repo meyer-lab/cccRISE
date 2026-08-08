@@ -1,10 +1,45 @@
-import numpy as np
+from typing import cast
+
 import anndata
+import numpy as np
 import pandas as pd
 import seaborn as sns
-from ...tensor import rise_store_r2x, calculate_fms_rise
-from ...utils import resample
 from matplotlib.axes import Axes
+
+from ...tensor import calculate_fms_rise, rise_store_r2x
+from ...utils import resample
+
+
+def get_sample_to_group(
+    X: anndata.AnnData, condition_column: str, group_col: str
+) -> pd.Series:
+    """Map each unique sample to its group label, ordered to match
+    np.unique(X.obs[condition_column])."""
+    sample_to_group = (
+        cast(pd.DataFrame, X.obs)
+        .drop_duplicates(subset=[condition_column, group_col])
+        .set_index(condition_column)[group_col]
+    )
+    return sample_to_group.loc[
+        np.unique(X.obs[condition_column], return_index=True)[0]
+    ]
+
+
+def binarize_group(
+    sample_to_group: pd.Series, match_value: str, match_name: str, other_name: str
+) -> pd.Series:
+    """Collapse a group Series into two named categories and return integer codes."""
+    binary = sample_to_group.apply(
+        lambda x: match_name if x == match_value else other_name
+    )
+    return binary.astype("category").cat.codes
+
+
+def symmetrize_axes(ax: Axes):
+    """Set both x and y limits to +/- the largest absolute limit on either axis."""
+    lim = max(np.max(np.abs(ax.get_xlim())), np.max(np.abs(ax.get_ylim())))
+    ax.set_xlim(-lim, lim)
+    ax.set_ylim(-lim, lim)
 
 
 def rotate_xaxis(ax, rotation=90):
@@ -28,12 +63,8 @@ def plot_fms_r2x_diff_ranks(
     runs: int,
 ):
     """Plots FMS when using different RISE components"""
-    fmsLists = []
-    r2xLists = []
-
-    for j in range(0, runs, 1):
-        scores = []
-        r2x_scores = []
+    rows = []
+    for j in range(runs):
         for i in ranksList:
             print(f"Run {j + 1}, Rank {i}")
             dataX, r2x = rise_store_r2x(X, rank=i, n_iter_max=1000, tolerance=1e-9)
@@ -44,35 +75,10 @@ def plot_fms_r2x_diff_ranks(
                 tolerance=1e-9,
             )
             fmsScore = calculate_fms_rise(dataX, sampledX)
-            scores.append(fmsScore)
-            # Calculate R2X for X only (not resampled)
-            r2x_scores.append(r2x)
-        fmsLists.append(scores)
-        r2xLists.append(r2x_scores)
+            # R2X is for X only (not resampled)
+            rows.append({"Run": j, "Component": i, "FMS": fmsScore, "R2X": r2x})
 
-    runsList_df = []
-    for i in range(0, runs):
-        for _j in range(0, len(ranksList)):
-            runsList_df.append(i)
-    ranksList_df = []
-    for _i in range(0, runs):
-        for j in range(0, len(ranksList)):
-            ranksList_df.append(ranksList[j])
-    fmsList_df = []
-    for sublist in fmsLists:
-        fmsList_df += sublist
-    r2xList_df = []
-    for sublist in r2xLists:
-        r2xList_df += sublist
-
-    df = pd.DataFrame(
-        {
-            "Run": runsList_df,
-            "Component": ranksList_df,
-            "FMS": fmsList_df,
-            "R2X": r2xList_df,
-        }
-    )
+    df = pd.DataFrame(rows)
 
     # Plot FMS
     sns.lineplot(data=df, x="Component", y="FMS", ax=ax1, label="FMS")

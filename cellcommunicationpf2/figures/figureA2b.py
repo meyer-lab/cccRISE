@@ -2,22 +2,21 @@
 Figure A2b: CCC-RISE on BALF COVID-19 data. Plotting factors for conditions, sender cells, receiver cells, and ligand-receptor pairs.
 """
 
+from typing import cast
+
+import anndata
+import pandas as pd
+
 from .common import (
-    subplotLabel,
+    COVID19_PATH,
     getSetup,
+    subplotLabel,
 )
-from ..import_data import (
-    add_cond_idxs,
-    import_balf_covid,
-    import_ligand_receptor_pairs,
-)
-from ..tensor import run_ccc_rise_workflow
 from .commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_lr_factors,
 )
-import anndata
 from .commonFuncs.plotGeneral import rotate_yaxis
 
 
@@ -61,13 +60,14 @@ def makeFigure():
     # # Save anndata object with results
     # adata_filtered.write_h5ad("cellcommunicationpf2/data/bal/bal.h5ad")
 
-
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
     condition_column = "sample"
     group_col = "condition"
-    sample_to_group = X.obs.drop_duplicates(
-        subset=[condition_column, group_col]
-    ).set_index(condition_column)[group_col]
+    sample_to_group = (
+        cast(pd.DataFrame, X.obs)
+        .drop_duplicates(subset=[condition_column, group_col])
+        .set_index(condition_column)[group_col]
+    )
 
     # Factor 0: Patient Conditions (Samples)
     plot_condition_factors(

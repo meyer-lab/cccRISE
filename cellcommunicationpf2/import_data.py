@@ -1,18 +1,22 @@
-import os
 import io
-import zstandard as zstd
+import os
+import urllib.request
 from functools import lru_cache
-import urllib
+from pathlib import Path
+from typing import Any, cast
+
 import anndata
-import pandas as pd
 import numpy as np
-from scipy.sparse import issparse, csr_array
 import pandas as pd
+import zstandard as zstd
+from scipy.sparse import csr_array, issparse
+
+DATA_DIR = Path("/opt/andrew/ccc")
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
-    filename="/opt/andrew/ccc/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad",
+    filename=str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
     gene_threshold: float = 0.01,
     normalize: bool = True,
 ) -> anndata.AnnData:
@@ -60,7 +64,7 @@ def import_balf_covid(
 
 @lru_cache(maxsize=1)
 def import_ligand_receptor_pairs(
-    filename="/opt/andrew/ccc/Human-2020-Jin-LR-pairs.csv.zst",
+    filename=str(DATA_DIR / "Human-2020-Jin-LR-pairs.csv.zst"),
     update_interaction_names: bool = True,
 ) -> pd.DataFrame:
     """Import ligand-receptor pairs from a zstd-compressed CSV with caching."""
@@ -79,11 +83,13 @@ def import_ligand_receptor_pairs(
                 lambda x: x.split(" - ")[0].upper()
             )
             df["receptor"] = df["interaction_name_2"].apply(
-                lambda x: x.split(" - ")[1]
-                .upper()
-                .replace("(", "")
-                .replace(")", "")
-                .replace("+", "&")
+                lambda x: (
+                    x.split(" - ")[1]
+                    .upper()
+                    .replace("(", "")
+                    .replace(")", "")
+                    .replace("+", "&")
+                )
             )
         # Also update interaction_symbol if present
         if "interaction_symbol" in df.columns:
@@ -135,43 +141,49 @@ def prepare_dataset(
 ) -> anndata.AnnData:
     assert issparse(X.X)
     # Use raw data if available, otherwise use the current X data
-    if X.raw is not None:
-        X.X = csr_array(X.raw.X)
-    else:
-        # If no raw data is available, use the current X matrix
-        X.X = csr_array(X.X)
-    assert np.amin(X.X.data) >= 0.0
+    data = cast(Any, csr_array(X.raw.X if X.raw is not None else X.X))
+    assert np.amin(data.data) >= 0.0
 
     # Filter out genes with too few reads, and cells with fewer than 10 counts
-    X = X[X.X.sum(axis=1) > 10, X.X.mean(axis=0) > geneThreshold]
+    row_mask = data.sum(axis=1) > 10
+    col_mask = data.mean(axis=0) > geneThreshold
+
+    # Do the (expensive) sparse row/column filtering ourselves, once. Some source
+    # files alias X.layers[None] to the same array as X.X, which would otherwise
+    # make AnnData's view/copy machinery redundantly filter and copy the same
+    # large matrix twice. Swap in a cheap empty placeholder first so that step
+    # only has to filter/copy the (tiny) placeholder to keep obs/var/obsm aligned.
+    filtered_data = data[row_mask][:, col_mask]
+    X.X = csr_array(X.shape, dtype=data.dtype)
+    X = X[row_mask, col_mask]
 
     # Copy so that the subsetting is preserved
     X._init_as_actual(X.copy())
-    X.X = csr_array(X.X)
+    X.X = filtered_data
+    data = filtered_data
 
     # Convert counts to floats
-    if issubclass(X.X.dtype.type, int | np.integer):
-        X.X.data = X.X.data.astype(np.float32)
+    if issubclass(data.dtype.type, int | np.integer):
+        data.data = data.data.astype(np.float32)
 
     if normalize:
         ## Normalize total counts per cell
         # Keep the counts on a reasonable scale to avoid accuracy issues
-        counts_per_cell = X.X.sum(axis=1)
+        counts_per_cell = data.sum(axis=1)
         counts_per_cell /= np.median(counts_per_cell)
         # inplace csr row scale
-        X.X.data /= np.repeat(counts_per_cell, np.diff(X.X.indptr))
+        data.data /= np.repeat(counts_per_cell, np.diff(data.indptr))
 
         # Scale genes by sum, inplace csr col scale
-        X.X.data /= X.X.sum(axis=0).take(X.X.indices, mode="clip")
+        data.data /= data.sum(axis=0).take(data.indices, mode="clip")
 
         # Transform values
-        X.X.data = np.log10((1000.0 * X.X.data) + 1.0)
+        data.data = np.log10((1000.0 * data.data) + 1.0)
 
     # Get the indices for subsetting the data
-    _, sgIndex = np.unique(X.obs_vector(condition_name), return_inverse=True)
-    X.obs["condition_unique_idxs"] = sgIndex
+    X = add_cond_idxs(X, condition_name)
 
     # Pre-calculate gene means
-    X.var["means"] = X.X.mean(axis=0)
+    X.var["means"] = data.mean(axis=0)
 
     return X

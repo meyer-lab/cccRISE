@@ -3,12 +3,13 @@ Figure A2j: Violin plot of cell weight distributions for mDCs in CCC-RISE on BAL
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
-import anndata
 import seaborn as sns
+
+from .common import (
+    COVID19_PATH,
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():
@@ -16,7 +17,7 @@ def makeFigure():
     subplotLabel(ax)
 
     # Import Anndata file
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
     ccc_rise_cmp = 6
 
     # Violin plot of cell weighting distribution for Mast cells for a component
@@ -28,5 +29,5 @@ def makeFigure():
     ax[0].set_ylim(-0.1, 0.85)
     ax[0].set_xlabel("mDC Weight Distribution")
     ax[0].set_ylabel(f"Sender Cell Component {ccc_rise_cmp} Association")
-    
+
     return f

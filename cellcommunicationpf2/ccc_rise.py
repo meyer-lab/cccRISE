@@ -1,22 +1,25 @@
+from typing import Any, cast
+
 import anndata
 import numpy as np
 import pandas as pd
 from parafac2.parafac2 import anndata_to_list, parafac2_nd
-from tensorly.cp_tensor import cp_flip_sign, cp_normalize, cp_to_tensor
+from scipy.sparse import spmatrix
+from tensorly.cp_tensor import cp_flip_sign, cp_normalize
 from tensorly.decomposition import parafac
 
-from .ccc import build_context_ccc_tensor
+from .ccc import build_context_ccc_tensor, calculate_r2x, get_genes_from_complexes
 from .import_data import import_ligand_receptor_pairs
 
 
 def calc_communication_score(
     projected_matrices: list[np.ndarray],
-    gene_names: list[str] = None,
-    lr_pairs: pd.DataFrame = None,
-    complex_sep: str = None,
+    gene_names: list[str] | None = None,
+    lr_pairs: pd.DataFrame | None = None,
+    complex_sep: str | None = None,
     complex_agg_method: str = "min",
     verbose: bool = False,
-) -> np.ndarray:
+) -> tuple[np.ndarray, pd.DataFrame]:
     """
     Calculate cell-cell communication scores using build_context_ccc_tensor
     from Tensor Cell2Cell for all conditions at once.
@@ -49,8 +52,8 @@ def calc_communication_score(
     for matrix in projected_matrices:
         df = pd.DataFrame(
             matrix.T,
-            index=gene_names,
-            columns=[f"rank_{j}" for j in range(matrix.shape[0])],
+            index=pd.Index(gene_names),
+            columns=pd.Index([f"rank_{j}" for j in range(matrix.shape[0])]),
         )
         rnaseq_matrices.append(df)
 
@@ -112,8 +115,8 @@ def ccc_rise(
     tol: float,
     cp_rank: int | None = None,
     random_state: int | None = None,
-    complex_sep: str = None,
-    lr_pairs: pd.DataFrame = None,
+    complex_sep: str | None = None,
+    lr_pairs: pd.DataFrame | None = None,
     svd_init: str = "svd",
 ) -> tuple[tuple, float, pd.DataFrame]:
     """
@@ -157,7 +160,9 @@ def ccc_rise(
     for i, tensor in enumerate(X_list):
         proj = projections[i]
         # Convert tensor to NumPy
-        tensor_np = tensor.get()
+        tensor_np = (
+            cast(Any, tensor).toarray() if isinstance(tensor, spmatrix) else tensor
+        )
 
         projected_matrices.append(proj.T @ tensor_np)
 
@@ -186,17 +191,14 @@ def ccc_rise(
     )
 
     # Calculate R2X for the CP decomposition of the interaction tensor
-    reconstructed = cp_to_tensor((cp_weights, cp_factors))
-    total_variance = np.sum(interaction_tensors**2)
-    error = np.sum((interaction_tensors - reconstructed) ** 2)
-    final_R2X = 1 - (error / total_variance) if total_variance > 0 else 0.0
+    final_R2X = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
 
     return ((cp_weights, cp_factors), projections), final_R2X, filtered_lr_pairs
 
 
 def standardize_cc_pf2(
-    weights: np.ndarray | None = None, factors: list[np.ndarray] = None
-) -> tuple[np.ndarray, list[np.ndarray], list[np.ndarray]]:
+    weights: np.ndarray, factors: list[np.ndarray]
+) -> tuple[np.ndarray, list[np.ndarray]]:
     """
     Standardize CP factors for better interpretability.
     This function expects all inputs to be NumPy arrays on the CPU.
@@ -227,12 +229,12 @@ def standardize_cc_pf2(
 
 def calc_communication_score_pseudobulk(
     pseudobulk_matrices_df: list[pd.DataFrame],
-    gene_names: list[str] = None,
-    lr_pairs: pd.DataFrame = None,
+    gene_names: list[str] | None = None,
+    lr_pairs: pd.DataFrame | None = None,
     complex_sep: str = "&",
     complex_agg_method: str = "min",
     verbose: bool = False,
-) -> np.ndarray:
+) -> tuple[np.ndarray, pd.DataFrame]:
     """
     Calculate cell-cell communication scores for pseudobulk
     Parameters:
@@ -320,7 +322,7 @@ def pseudobulk_cp_decomposition(
     n_iter_max: int,
     tol: float | None = None,
     random_state: int | None = None,
-) -> tuple[tuple[np.ndarray, list[np.ndarray]], float, pd.DataFrame]:
+) -> tuple[np.ndarray, list[np.ndarray], float]:
     """
     Perform non-negative CP decomposition on the pseudobulk interaction tensors.
     Parameters
@@ -337,9 +339,8 @@ def pseudobulk_cp_decomposition(
         Random seed for reproducibility.
     Returns
     -------
-    tuple[tuple[np.ndarray, list[np.ndarray]], float, pd.DataFrame]
-        A tuple containing the CP decomposition results, the R2X value,
-        and the filtered ligand-receptor pairs.
+    tuple[np.ndarray, list[np.ndarray], float]
+        A tuple containing the CP weights, CP factors, and the R2X value.
     """
     # CP decomposition
     cp_weights, cp_factors = parafac(
@@ -353,10 +354,7 @@ def pseudobulk_cp_decomposition(
     )
 
     # Calculate R2X for the CP decomposition of the interaction tensor
-    reconstructed = cp_to_tensor((cp_weights, cp_factors))
-    total_variance = np.sum(interaction_tensors**2)
-    error = np.sum((interaction_tensors - reconstructed) ** 2)
-    r2x = 1 - (error / total_variance) if total_variance > 0 else 0.0
+    r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
 
     return cp_weights, cp_factors, r2x
 
@@ -365,7 +363,7 @@ def save_ccc_rise_results(
     X: anndata.AnnData,
     cpd_factors: list[np.ndarray],
     weights: np.ndarray,
-    lr_pairs: np.array,
+    lr_pairs: pd.DataFrame,
 ):
     """Save CPD results in an AnnData object."""
     X.uns["A"] = cpd_factors[0]  # Condition factor
@@ -376,83 +374,6 @@ def save_ccc_rise_results(
     X.uns["weights"] = weights  # Component weights
 
     return X
-
-
-def get_genes_from_complexes(ppi_data, complex_sep="&", interaction_columns=("A", "B")):
-    """
-    Gets protein/gene names for individual proteins (subunits when in complex)
-    in a list of PPIs. If protein is a complex, for example ProtA&ProtB, it will
-    return ProtA and ProtB separately.
-
-    Parameters
-    ----------
-    ppi_data : pandas.DataFrame
-        List of protein-protein interactions (or ligand-receptor pairs) used
-        for inferring the cell-cell interactions and communication.
-
-    complex_sep : str, default=None
-        Symbol that separates the protein subunits in a multimeric complex.
-        For example, '&' is the complex_sep for a list of ligand-receptor pairs
-        where a protein partner could be "CD74&CD44".
-
-    interaction_columns : tuple, default=('A', 'B')
-        Contains the names of the columns where to find the partners in a
-        dataframe of protein-protein interactions. If the list is for
-        ligand-receptor pairs, the first column is for the ligands and the second
-        for the receptors.
-
-    Returns
-    -------
-    col_a_genes : list
-        List of protein/gene names for proteins and subunits in the first column
-        of interacting partners.
-
-    complex_a : list
-        List of list of subunits of each complex that were present in the first
-        column of interacting partners and that were returned as subunits in the
-        previous list.
-
-    col_b_genes : list
-        List of protein/gene names for proteins and subunits in the second column
-        of interacting partners.
-
-    complex_b : list
-        List of list of subunits of each complex that were present in the second
-        column of interacting partners and that were returned as subunits in the
-        previous list.
-
-    complexes : dict
-        Dictionary where keys are the complex names in the list of PPIs, while
-        values are list of subunits for the respective complex names.
-    """
-    col_a = interaction_columns[0]
-    col_b = interaction_columns[1]
-
-    col_a_genes = set()
-    col_b_genes = set()
-
-    complexes = dict()
-    complex_a = set()
-    complex_b = set()
-    for idx, row in ppi_data.iterrows():
-        prot_a = row[col_a]
-        prot_b = row[col_b]
-
-        if complex_sep in prot_a:
-            comp = set([l for l in prot_a.split(complex_sep)])
-            complexes[prot_a] = comp
-            complex_a = complex_a.union(comp)
-        else:
-            col_a_genes.add(prot_a)
-
-        if complex_sep in prot_b:
-            comp = set([r for r in prot_b.split(complex_sep)])
-            complexes[prot_b] = comp
-            complex_b = complex_b.union(comp)
-        else:
-            col_b_genes.add(prot_b)
-
-    return col_a_genes, complex_a, col_b_genes, complex_b, complexes
 
 
 def add_complexes_to_expression(rnaseq_data, complexes, agg_method="min"):
@@ -494,7 +415,7 @@ def add_complexes_to_expression(rnaseq_data, complexes, agg_method="min"):
         elif isinstance(v, list):
             pass  # No need to convert, already a list
         else:
-            raise ValueError(
+            raise TypeError(
                 "Values in the `complexes`dictionary must be sets or lists."
             )
         if all(g in tmp_rna.index for g in v):
@@ -508,7 +429,7 @@ def add_complexes_to_expression(rnaseq_data, complexes, agg_method="min"):
                     lambda x: np.exp(np.mean(np.log(x)))
                 ).values.tolist()
             else:
-                ValueError("{} is not a valid agg_method".format(agg_method))
+                raise ValueError(f"{agg_method} is not a valid agg_method")
         else:
             tmp_rna.loc[k] = [0] * tmp_rna.shape[1]
     return tmp_rna

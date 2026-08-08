@@ -3,12 +3,13 @@ Figure A5d_g: Violin plots of cell weight distributions for specific cell types 
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
-import anndata
 import seaborn as sns
+
+from .common import (
+    ALAD_PATH,
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():
@@ -16,7 +17,7 @@ def makeFigure():
     subplotLabel(ax)
 
     # Import Anndata file
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad.h5ad")
+    X = anndata.read_h5ad(ALAD_PATH)
 
     ccc_rise_cmp = 13
 

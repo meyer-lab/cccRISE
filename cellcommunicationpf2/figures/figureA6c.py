@@ -1,28 +1,23 @@
 """
-Figure A6c: CCC-RISE on BAL ALAD data with 
+Figure A6c: CCC-RISE on BAL ALAD data with
 """
 
-from .common import (
-    subplotLabel,
-    getSetup,
-)
-import numpy as np
-import seaborn as sns
+from typing import cast
+
+import anndata
 import pandas as pd
-from scipy.stats import pearsonr
-from ..import_data import (
-    add_cond_idxs,
-    import_alad,
-    import_ligand_receptor_pairs,
-)
+
 from ..utils import correct_conditions
-from ..tensor import run_ccc_rise_workflow
+from .common import (
+    ALAD_STABLE_PATH,
+    getSetup,
+    subplotLabel,
+)
 from .commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_lr_factors,
 )
-import anndata
 from .commonFuncs.plotGeneral import rotate_yaxis
 
 
@@ -60,14 +55,16 @@ def makeFigure():
     # # Save anndata object with results
     # X.write_h5ad("cellcommunicationpf2/alad_stable.h5ad")
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad_stable.h5ad")
+    X = anndata.read_h5ad(ALAD_STABLE_PATH)
     condition_column = "dsco_id"
     X.uns["A"] = correct_conditions(X)
 
     group_col = "ALADstatus"
-    sample_to_group = X.obs.drop_duplicates(
-        subset=[condition_column, group_col]
-    ).set_index(condition_column)[group_col]
+    sample_to_group = (
+        cast(pd.DataFrame, X.obs)
+        .drop_duplicates(subset=[condition_column, group_col])
+        .set_index(condition_column)[group_col]
+    )
 
     # Factor 0: Patient Conditions (Samples)
     plot_condition_factors(
