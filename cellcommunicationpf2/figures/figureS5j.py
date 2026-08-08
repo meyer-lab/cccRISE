@@ -3,7 +3,6 @@ Figure A4d: Logistic regression weights for ALAD vs Control classification based
 """
 
 import itertools
-from typing import cast
 
 import anndata
 import numpy as np
@@ -14,8 +13,13 @@ from sklearn.linear_model import LogisticRegression
 
 from ..import_data import add_cond_idxs
 from ..utils import correct_conditions
-from .common import getSetup, subplotLabel
-from .commonFuncs.plotGeneral import rotate_xaxis, rotate_yaxis
+from .common import ALAD_PATH, getSetup, subplotLabel
+from .commonFuncs.plotGeneral import (
+    binarize_group,
+    get_sample_to_group,
+    rotate_xaxis,
+    rotate_yaxis,
+)
 
 
 def makeFigure():
@@ -23,26 +27,15 @@ def makeFigure():
     subplotLabel(ax)
 
     # Import and prepare data
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad.h5ad")
+    X = anndata.read_h5ad(ALAD_PATH)
 
     # Add numerical indices for each patient sample, which is the primary condition
     condition_column = "dsco_id"
     X = add_cond_idxs(X, condition_column)
 
     group_col = "ALADstatus"
-    sample_to_group = (
-        cast(pd.DataFrame, X.obs)
-        .drop_duplicates(subset=[condition_column, group_col])
-        .set_index(condition_column)[group_col]
-    )
-    sample_to_group = sample_to_group.loc[
-        np.unique(X.obs[condition_column], return_index=True)[0]
-    ]
-    sample_to_group = sample_to_group.apply(
-        lambda x: "alad" if x != "control" else "control"
-    )
-    print(np.unique(sample_to_group, return_counts=True))
-    sample_to_group = sample_to_group.astype("category").cat.codes
+    sample_to_group = get_sample_to_group(X, condition_column, group_col)
+    sample_to_group = binarize_group(sample_to_group, "control", "control", "alad")
     print(np.unique(sample_to_group, return_counts=True))
 
     print(sample_to_group.shape)

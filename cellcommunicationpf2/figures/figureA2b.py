@@ -8,6 +8,7 @@ import anndata
 import pandas as pd
 
 from .common import (
+    COVID19_PATH,
     getSetup,
     subplotLabel,
 )
@@ -59,7 +60,7 @@ def makeFigure():
     # # Save anndata object with results
     # adata_filtered.write_h5ad("cellcommunicationpf2/data/bal/bal.h5ad")
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
     condition_column = "sample"
     group_col = "condition"
     sample_to_group = (

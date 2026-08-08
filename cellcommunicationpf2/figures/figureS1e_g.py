@@ -11,6 +11,7 @@ import seaborn as sns
 from scipy.stats import spearmanr
 
 from .common import (
+    COVID19_PATH,
     getSetup,
     subplotLabel,
 )
@@ -20,7 +21,7 @@ def makeFigure():
     ax, f = getSetup((4, 4), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
     obs = cast(pd.DataFrame, X.obs)
 
     celltype_counts = cast(pd.Series, obs.groupby(["celltype", "sample"]).size())

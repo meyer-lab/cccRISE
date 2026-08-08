@@ -7,7 +7,10 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.patches import Patch
+
+from ..common import getSetup, subplotLabel
 
 
 def _get_canvas(points: np.ndarray) -> ds.Canvas:
@@ -35,12 +38,30 @@ def _to_hex(arr):
 
 def ds_show(result, ax):
     result = tf.set_background(result, "white")
-    img_rev = result.data[::-1]
-    mpl_img = np.dstack(
-        [img_rev & 0x0000FF, (img_rev & 0x00FF00) >> 8, (img_rev & 0xFF0000) >> 16]
+    ax.imshow(result.to_pil())
+
+
+def _plot_shaded_pacmap(
+    points, values, ax: Axes, cmap, span: tuple[float, float], title: str
+):
+    """Shade PaCMAP points by a continuous value and draw the result with a colorbar"""
+    canvas = _get_canvas(points)
+    data = pd.DataFrame(points, columns=pd.Index(["x", "y"]))
+    data["val_cat"] = values
+    result = tf.shade(
+        agg=canvas.points(data, "x", "y", agg=ds.mean("val_cat")),
+        cmap=cmap,
+        span=span,
+        how="linear",
+        min_alpha=255,
     )
 
-    ax.imshow(mpl_img)
+    ds_show(result, ax)
+
+    psm = plt.pcolormesh([list(span), list(span)], cmap=cmap)
+    plt.colorbar(psm, ax=ax)
+    ax.set(title=title)
+    assign_labels(ax)
 
 
 def plot_wc_pacmap(
@@ -60,27 +81,65 @@ def plot_wc_pacmap(
     points = np.array(X.obsm["PaCMAP"])
 
     cmap = sns.diverging_palette(240, 10, as_cmap=True)
-    canvas = _get_canvas(points)
-    data = pd.DataFrame(points, columns=pd.Index(["x", "y"]))
-
     values /= np.max(values)
 
-    data["val_cat"] = values
-    result = tf.shade(
-        agg=canvas.points(data, "x", "y", agg=ds.mean("val_cat")),
-        cmap=cmap,
-        span=(-cbarMax, cbarMax),
-        how="linear",
-        alpha=255,
-        min_alpha=255,
+    _plot_shaded_pacmap(
+        points, values, ax, cmap, (-cbarMax, cbarMax), "Cmp. " + str(cmp)
     )
 
-    ds_show(result, ax)
 
-    psm = plt.pcolormesh([[-cbarMax, cbarMax], [-cbarMax, cbarMax]], cmap=cmap)
-    plt.colorbar(psm, ax=ax)
-    ax.set(title="Cmp. " + str(cmp))
-    ax = assign_labels(ax)
+def make_wc_pacmap_figure(
+    h5ad_path: str, grid: tuple[int, int], figsize: tuple[int, int] = (18, 18)
+) -> Figure:
+    """Build a grid figure of weighted sender/receiver cell PaCMAPs for every component."""
+    ax, f = getSetup(figsize, grid)
+    subplotLabel(ax)
+
+    X = anndata.read_h5ad(h5ad_path)
+    cp_rank = X.uns["A"].shape[1]
+
+    for i in range(cp_rank):
+        plot_wc_pacmap(X, i + 1, ax[i], factor_matrix="B", cbarMax=0.3)
+        ax[i].set_title(f"Cmp.{i + 1} Sender Cells")
+
+    for i in range(cp_rank):
+        plot_wc_pacmap(X, i + 1, ax[i + cp_rank], factor_matrix="C", cbarMax=0.3)
+        ax[i + cp_rank].set_title(f"Cmp.{i + 1} Receiver Cells")
+
+    return f
+
+
+def make_celltype_condition_pacmap_figure(
+    h5ad_path: str,
+    celltype_col: str,
+    condition_col: str,
+    sample_col: str | None = None,
+) -> Figure:
+    """Build a figure of PaCMAPs colored by cell type, by condition, and
+    optionally by sample."""
+    ax, f = getSetup((6, 6), (2, 2))
+    subplotLabel(ax)
+
+    X = anndata.read_h5ad(h5ad_path)
+
+    celltype_counts = X.obs[celltype_col].value_counts()
+    print("Cell type counts:\n", celltype_counts)
+
+    pal = sns.color_palette(palette="Set3")
+    pal = pal.as_hex()
+    plot_labels_pacmap(X, labelType=celltype_col, ax=ax[0], color_key=pal)
+
+    pal = sns.color_palette("Set2")
+    pal = [pal[0], pal[1], pal[2]]
+    pal = [
+        f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}" for r, g, b in pal
+    ]
+    plot_labels_pacmap(X, labelType=condition_col, ax=ax[1], color_key=pal)
+
+    if sample_col is not None:
+        plot_labels_pacmap(X, labelType=sample_col, ax=ax[2])
+
+    return f
 
 
 def plot_labels_pacmap(
@@ -159,40 +218,6 @@ def plot_wc_per_celltype(
     maxvalue = np.max(np.abs(ax.get_xticks()))
     ax.set(xticks=np.linspace(-maxvalue, maxvalue, num=5), xlabel="WC Weight")
     ax.set_title(cmpName)
-
-
-def plot_lr_pacmap(lr: str, X: anndata.AnnData, ax: Axes, clip_outliers=0.9995):
-    """Scatterplot of PaCMAP visualization weighted by lr"""
-    lrList = X[:, lr].to_df().values
-
-    lrList = np.clip(lrList, None, np.quantile(lrList, clip_outliers))
-    cmap = sns.color_palette("ch:s=-.2,r=.6", as_cmap=True)
-
-    values = lrList
-
-    points = np.array(X.obsm["PaCMAP"])
-
-    canvas = _get_canvas(points)
-    data = pd.DataFrame(points, columns=pd.Index(["x", "y"]))
-
-    values -= np.min(values)
-    values /= np.max(values)
-    data["val_cat"] = values
-    result = tf.shade(
-        agg=canvas.points(data, "x", "y", agg=ds.mean("val_cat")),
-        cmap=cmap,
-        span=(0, 1),
-        how="linear",
-        min_alpha=255,
-    )
-
-    ds_show(result, ax)
-
-    psm = plt.pcolormesh([[0, 1], [0, 1]], cmap=cmap)
-    plt.colorbar(psm, ax=ax)
-
-    ax = assign_labels(ax)
-    ax.set(title=f"{lr}")
 
 
 def assign_labels(ax):

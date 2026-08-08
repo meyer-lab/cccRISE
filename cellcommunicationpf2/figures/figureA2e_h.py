@@ -2,8 +2,6 @@
 Figure A2e-h: Comparison of CCC-RISE and Pseudobulk CPD on BALF COVID-19
 """
 
-from typing import cast
-
 import anndata
 import numpy as np
 import pandas as pd
@@ -11,29 +9,23 @@ import seaborn as sns
 from scipy.stats import pearsonr
 
 from .common import (
+    COVID19_PATH,
+    COVID19_PSEUDOBULK_PATH,
     getSetup,
     subplotLabel,
 )
-from .commonFuncs.plotGeneral import rotate_yaxis
+from .commonFuncs.plotGeneral import get_sample_to_group, rotate_yaxis
 
 
 def makeFigure():
     ax, f = getSetup((8, 8), (3, 3))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
-    X_pseudo = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19_pseudobulk.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
+    X_pseudo = anndata.read_h5ad(COVID19_PSEUDOBULK_PATH)
     condition_column = "sample"
     group_col = "condition"
-    sample_to_group = (
-        cast(pd.DataFrame, X.obs)
-        .drop_duplicates(subset=[condition_column, group_col])
-        .set_index(condition_column)[group_col]
-    )
-    # Reorder index based on np.unique
-    sample_to_group = sample_to_group.loc[
-        np.unique(X.obs[condition_column], return_index=True)[0]
-    ]
+    sample_to_group = get_sample_to_group(X, condition_column, group_col)
     pal = sns.color_palette(palette="Set2", n_colors=len(sample_to_group.unique()))
     pal = pal.as_hex()
     color_map = {k: v for k, v in zip(sample_to_group.unique(), pal)}

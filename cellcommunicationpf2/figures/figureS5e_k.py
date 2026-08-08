@@ -11,6 +11,7 @@ import seaborn as sns
 from scipy.stats import spearmanr
 
 from .common import (
+    ALAD_PATH,
     getSetup,
     subplotLabel,
 )
@@ -20,7 +21,7 @@ def makeFigure():
     ax, f = getSetup((4, 4), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad.h5ad")
+    X = anndata.read_h5ad(ALAD_PATH)
     sample_id = "dsco_id"
     condition_id = "ALADstatus"
     celltype_id = "broad_cell_type"

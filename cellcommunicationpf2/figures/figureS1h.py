@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from .common import (
+    COVID19_PSEUDOBULK_PATH,
     getSetup,
     subplotLabel,
 )
@@ -43,7 +44,7 @@ def makeFigure():
 
     # X = X.write_h5ad("cellcommunicationpf2/data/bal/bal_pseudobulk.h5ad")
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19_pseudobulk.h5ad")
+    X = anndata.read_h5ad(COVID19_PSEUDOBULK_PATH)
     groupby = "celltype"
     condition_column = "sample"
     group_col = "condition"

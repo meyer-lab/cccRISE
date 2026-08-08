@@ -3,6 +3,7 @@ from collections import Counter
 
 import numpy as np
 from scipy.stats.mstats import gmean
+from tensorly.cp_tensor import cp_to_tensor
 
 """
 This file is entirely methods taken from Tensor Cell2Cell
@@ -724,3 +725,13 @@ def aggregate_ccc_tensor(
             ).tolist()
         )
     return aggregated_tensor
+
+
+def calculate_r2x(cp_weights, cp_factors, interaction_tensor):
+    """Calculate R2X for the CP decomposition of the interaction tensor"""
+    reconstructed = cp_to_tensor((cp_weights, cp_factors))
+    total_variance = np.sum(interaction_tensor**2)
+    error = np.sum((interaction_tensor - reconstructed) ** 2)
+    final_R2X = 1 - (error / total_variance) if total_variance > 0 else 0.0
+
+    return final_R2X
