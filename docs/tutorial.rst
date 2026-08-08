@@ -490,10 +490,7 @@ Visualize the most important ligand-receptor pairs for a specific component::
 
 Visualize the ligand-receptor expression products between sender and receiver cell populations to validate predicted interactions::
 
-    from cellcommunicationpf2.utils import (
-        expression_product_matrix,
-        average_product_matrix_ccc
-    )
+    from cellcommunicationpf2.utils import binned_expression_product_matrix
     import numpy as np
     import seaborn as sns
     import matplotlib.pyplot as plt
@@ -512,8 +509,7 @@ Visualize the ligand-receptor expression products between sender and receiver ce
     X_mdc_receiver = X_mdc_receiver[np.argsort(X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp-1])]
     
     # Calculate expression product matrix for mDC -> mDC
-    df = expression_product_matrix(X_mdc_sender, X_mdc_receiver, ligand, receptor)
-    df = average_product_matrix_ccc(df)
+    df = binned_expression_product_matrix(X_mdc_sender, X_mdc_receiver, ligand, receptor)
     
     # Create heatmap
     fig, ax = plt.subplots(figsize=(6, 6))

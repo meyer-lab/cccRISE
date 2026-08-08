@@ -3,11 +3,10 @@ Figure S4a_c: Heatmaps of ligand-receptor expression products for selected cell 
 """
 
 import anndata
-import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..utils import expression_product_matrix
+from ..utils import aggregate_communication_scores_by_group
 from .common import (
     COVID19_PATH,
     getSetup,
@@ -45,25 +44,27 @@ def makeFigure():
             ]
 
             if len(X_mdc_sender_sample) > 0 and len(X_mdc_receiver_sample) > 0:
-                df = expression_product_matrix(
-                    X_mdc_sender_sample, X_mdc_receiver_sample, lig, rec
-                )
+                scores = aggregate_communication_scores_by_group(
+                    X_mdc_sender_sample,
+                    X_mdc_receiver_sample,
+                    lig,
+                    rec,
+                    stat="pct_nonzero",
+                ).iloc[0]
 
-                # Count total interactions and non-zero interactions
-                total_interactions = df.size  # Total number of cell-cell pairs
-                nonzero_interactions = np.sum(
-                    df.values > 0
-                )  # Number of non-zero interactions
+                total_interactions = scores["n_interactions"]
+                percent_nonzero = scores["communication_score"]
 
                 if total_interactions > 0:
-                    percent_nonzero = (nonzero_interactions / total_interactions) * 100
                     results_data.append(
                         {
                             "pair": pair_name,
                             "sample": sample,
                             "condition": sample_condition,
                             "percent_nonzero": percent_nonzero,
-                            "nonzero_interactions": nonzero_interactions,
+                            "nonzero_interactions": round(
+                                percent_nonzero / 100 * total_interactions
+                            ),
                             "total_interactions": total_interactions,
                         }
                     )
