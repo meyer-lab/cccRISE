@@ -201,7 +201,9 @@ def aggregate_communication_scores_by_group(
     product_matrix = expression_product_matrix(X_sender, X_receiver, ligand, receptor)
 
     sender_group = (
-        np.full(X_sender.n_obs, "All") if sender_group is None else np.asarray(sender_group)
+        np.full(X_sender.n_obs, "All")
+        if sender_group is None
+        else np.asarray(sender_group)
     )
     receiver_group = (
         np.full(X_receiver.n_obs, "All")
@@ -245,9 +247,7 @@ def _binned_means(expr: np.ndarray, n_bins: int) -> np.ndarray:
     n = len(expr)
     group_size = n // n_bins
     groups = np.clip(np.arange(n) // group_size, 0, n_bins - 1)
-    return np.array(
-        [expr[groups == g].mean() for g in range(n_bins)]
-    )
+    return np.array([expr[groups == g].mean() for g in range(n_bins)])
 
 
 def binned_expression_product_matrix(
@@ -340,5 +340,3 @@ def add_obs_cmp_unique_two(X: anndata.AnnData, cmp1: int, cmp2: int):
     )
 
     return X
-
-

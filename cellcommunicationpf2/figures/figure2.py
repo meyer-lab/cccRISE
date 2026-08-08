@@ -168,9 +168,9 @@ def makeFigure():
     )
     ax_g.set_xscale("log")
     ax_g.set_yscale("log")
-    r = np.corrcoef(A_factor[:, CCC_RISE_CMP - 1], A_factor_pseudo[:, PSEUDOBULK_CMP - 1])[
-        0, 1
-    ]
+    r = np.corrcoef(
+        A_factor[:, CCC_RISE_CMP - 1], A_factor_pseudo[:, PSEUDOBULK_CMP - 1]
+    )[0, 1]
     ax_g.set_xlabel(f"CCC-RISE Condition Component {CCC_RISE_CMP}")
     ax_g.set_ylabel(f"Pseudobulk CPD Condition Component {PSEUDOBULK_CMP}")
     ax_g.set_title(f"r = {r:.3f}")
@@ -182,9 +182,9 @@ def makeFigure():
         ax=ax_h,
         color="black",
     )
-    r = np.corrcoef(lr_factor[:, CCC_RISE_CMP - 1], lr_factor_pseudo[:, PSEUDOBULK_CMP - 1])[
-        0, 1
-    ]
+    r = np.corrcoef(
+        lr_factor[:, CCC_RISE_CMP - 1], lr_factor_pseudo[:, PSEUDOBULK_CMP - 1]
+    )[0, 1]
     ax_h.set_xlabel(f"CCC-RISE LR Component {CCC_RISE_CMP}")
     ax_h.set_ylabel(f"Pseudobulk CPD LR Component {PSEUDOBULK_CMP}")
     ax_h.set_xscale("log")

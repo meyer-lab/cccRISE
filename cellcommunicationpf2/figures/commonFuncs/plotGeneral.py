@@ -20,9 +20,7 @@ def get_sample_to_group(
         .drop_duplicates(subset=[condition_column, group_col])
         .set_index(condition_column)[group_col]
     )
-    return sample_to_group.loc[
-        np.unique(X.obs[condition_column], return_index=True)[0]
-    ]
+    return sample_to_group.loc[np.unique(X.obs[condition_column], return_index=True)[0]]
 
 
 def binarize_group(
