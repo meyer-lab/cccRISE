@@ -13,7 +13,7 @@ def makeFigure():
 
     # Import and prepare data
     print("Importing and preparing")
-    X = import_alad(gene_threshold=0.001, normalize=True)
+    X = import_alad(gene_threshold=0.01, normalize=True)
     print(X)
 
     condition_column = "dsco_id"

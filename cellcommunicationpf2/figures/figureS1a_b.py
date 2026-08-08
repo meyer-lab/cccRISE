@@ -15,7 +15,7 @@ def makeFigure():
 
     # Import and prepare data
     print("Importing and preparing")
-    X = import_balf_covid(gene_threshold=0.001, normalize=True)
+    X = import_balf_covid(gene_threshold=0.01, normalize=True)
 
     # Add condition indices using sample as the condition
     condition_column = "sample"
