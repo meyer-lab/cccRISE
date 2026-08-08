@@ -38,9 +38,7 @@ def makeFigure():
         np.argsort(X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1])
     ]
 
-    df = binned_expression_product_matrix(
-        X_mdc_sender, X_mdc_receiver, "CCL19", "CCR7"
-    )
+    df = binned_expression_product_matrix(X_mdc_sender, X_mdc_receiver, "CCL19", "CCR7")
     sns.heatmap(df, ax=ax[0], cmap="viridis", vmax=0.12)
 
     X_b_receiver = X[(X.obs["celltype"] == "NK")]

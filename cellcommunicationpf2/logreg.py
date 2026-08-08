@@ -185,7 +185,9 @@ def population_gene_logreg_weights(
     association with `cmp` from the remainder of that population. Returns the
     fitted per-gene weights, sorted from most to least positive.
     """
-    X = add_obs_cmp_label(X.copy(), cmp=cmp, pos=pos, top_perc=top_perc, type=factor_type)
+    X = add_obs_cmp_label(
+        X.copy(), cmp=cmp, pos=pos, top_perc=top_perc, type=factor_type
+    )
     y = X.obs[f"Cmp{cmp}"].to_numpy()
 
     expr = X.X

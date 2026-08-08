@@ -280,7 +280,9 @@ if (
     ]
 
     # Calculate expression product matrix for mDC -> mDC
-    df = binned_expression_product_matrix(X_mdc_sender, X_mdc_receiver, ligand, receptor)
+    df = binned_expression_product_matrix(
+        X_mdc_sender, X_mdc_receiver, ligand, receptor
+    )
 
     fig, ax = plt.subplots(figsize=(6, 6))
     sns.heatmap(df, ax=ax, cmap="viridis", vmax=0.12)

@@ -154,7 +154,9 @@ def makeFigure():
     X.uns["A"] = correct_conditions(X)
     group_col = "ALADstatus"
     sample_to_group_bin = get_sample_to_group(X, condition_column, group_col)
-    sample_to_group_bin = binarize_group(sample_to_group_bin, "control", "control", "alad")
+    sample_to_group_bin = binarize_group(
+        sample_to_group_bin, "control", "control", "alad"
+    )
 
     auc_roc_weights, _ = ccc_rise_logreg_weights(X, sample_to_group_bin)
     ax_d.bar(np.arange(len(auc_roc_weights)) + 1, auc_roc_weights)
@@ -188,8 +190,12 @@ def makeFigure():
     ax_h.set_title(f"Cmp. {CMP_ALAD}: Receiver Cells")
     label_panel(ax_h, "h")
 
-    cd4t_sender = _ordered_population(X, celltype_col, "CD4 T cells", CMP_ALAD, "sender")
-    dc_receiver = _ordered_population(X, celltype_col, "Dendritic Cells", CMP_ALAD, "receiver")
+    cd4t_sender = _ordered_population(
+        X, celltype_col, "CD4 T cells", CMP_ALAD, "sender"
+    )
+    dc_receiver = _ordered_population(
+        X, celltype_col, "Dendritic Cells", CMP_ALAD, "receiver"
+    )
 
     df = binned_expression_product_matrix(cd4t_sender, dc_receiver, "CD40LG", "CD40")
     sns.heatmap(df, ax=ax_i, cmap="rocket")
@@ -236,7 +242,9 @@ def makeFigure():
     ax_m.set_title(f"Cmp. {CMP_DC}: Receiver Cells")
     label_panel(ax_m, "m")
 
-    dc_sender_13 = X[X.obs[celltype_col] == "Dendritic Cells"].obsm["sc_B"][:, CMP_DC - 1]
+    dc_sender_13 = X[X.obs[celltype_col] == "Dendritic Cells"].obsm["sc_B"][
+        :, CMP_DC - 1
+    ]
     sns.violinplot(data=dc_sender_13, ax=ax_n, cut=0)
     ax_n.set_xlabel("DCs Weight Distribution")
     ax_n.set_ylabel(f"Sender Cell Component {CMP_DC} Association")
@@ -257,8 +265,12 @@ def makeFigure():
     ax_o.set_ylabel(f"Receiver Cell Component {CMP_DC} Association")
     label_panel(ax_o, "o")
 
-    dc_sender = _ordered_population(X, celltype_col, "Dendritic Cells", CMP_DC, "sender")
-    epi_receiver = _ordered_population(X, celltype_col, "Epithelial cells", CMP_DC, "receiver")
+    dc_sender = _ordered_population(
+        X, celltype_col, "Dendritic Cells", CMP_DC, "sender"
+    )
+    epi_receiver = _ordered_population(
+        X, celltype_col, "Epithelial cells", CMP_DC, "receiver"
+    )
     df = binned_expression_product_matrix(dc_sender, epi_receiver, "CD200", "CD200R1")
     sns.heatmap(df, ax=ax_p, cmap="rocket", vmax=0.015)
     ax_p.set_title("CD200-CD200R1 Interaction")
@@ -314,7 +326,9 @@ def makeFigure():
     label_panel(ax_u, "u")
 
     cd8t_sender = _ordered_population(X, celltype_col, "CD8 T cells", CMP_NK, "sender")
-    cd8t_receiver = _ordered_population(X, celltype_col, "CD8 T cells", CMP_NK, "receiver")
+    cd8t_receiver = _ordered_population(
+        X, celltype_col, "CD8 T cells", CMP_NK, "receiver"
+    )
     df = binned_expression_product_matrix(cd8t_sender, cd8t_receiver, "GZMA", "F2R")
     sns.heatmap(df, ax=ax_v, cmap="rocket")
     ax_v.set_title("GZMA-F2R Interaction")

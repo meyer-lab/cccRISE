@@ -54,7 +54,10 @@ def _condition_colors(X, condition_column, group_col):
 
 
 def _epithelial_weight_violin(X, cmp, ax_sender, ax_receiver):
-    for ax, factor, title in ((ax_sender, "sc_B", "Sender"), (ax_receiver, "rc_C", "Receiver")):
+    for ax, factor, title in (
+        (ax_sender, "sc_B", "Sender"),
+        (ax_receiver, "rc_C", "Receiver"),
+    ):
         X_epi = X[X.obs["celltype"] == "Epithelial"].obsm[factor][:, cmp - 1]
         X_epi = X_epi[np.argsort(X_epi)]
         thresholds = np.percentile(X_epi, [10, 30, 50, 70, 90, 95, 99])
@@ -72,7 +75,9 @@ def _epithelial_weight_violin(X, cmp, ax_sender, ax_receiver):
         groups = pd.cut(X_epi, bins=bounds, labels=labels)
         df = pd.DataFrame({"Epithelial Weight": X_epi, "Group": groups})
 
-        sns.violinplot(data=df, ax=ax, x="Group", y="Epithelial Weight", order=labels, cut=0)
+        sns.violinplot(
+            data=df, ax=ax, x="Group", y="Epithelial Weight", order=labels, cut=0
+        )
         ax.set_xlabel("Epithelial Weight Distribution")
         ax.set_ylabel(f"{title} Cell Component {cmp} Association")
         ax.tick_params(axis="x", rotation=45)
@@ -100,9 +105,18 @@ def makeFigure():
     cmp = A_factor.shape[1]
     spearman_corr = [spearmanr(A_factor[:, i], severity_numeric)[0] for i in range(cmp)]
     spearman_df = pd.DataFrame(
-        {"Component": [f"{i + 1}" for i in range(cmp)], "Spearman Correlation": spearman_corr}
+        {
+            "Component": [f"{i + 1}" for i in range(cmp)],
+            "Spearman Correlation": spearman_corr,
+        }
     )
-    sns.barplot(x="Component", y="Spearman Correlation", data=spearman_df, ax=ax_a, color="black")
+    sns.barplot(
+        x="Component",
+        y="Spearman Correlation",
+        data=spearman_df,
+        ax=ax_a,
+        color="black",
+    )
     ax_a.set_ylim(-0.1, 1)
     ax_a.set_title("Condition Factor Vs. COVID-19 Severity")
     label_panel(ax_a, "a")
@@ -127,7 +141,9 @@ def makeFigure():
     ax_f, ax_g, ax_h, ax_i, ax_j = row2
 
     X_epi_sender = X[X.obs["celltype"] == "Epithelial"]
-    X_epi_sender = add_obs_cmp_label(X_epi_sender, cmp=CMP1, pos=True, top_perc=10, type="sender")
+    X_epi_sender = add_obs_cmp_label(
+        X_epi_sender, cmp=CMP1, pos=True, top_perc=10, type="sender"
+    )
     X_epi_sender = add_obs_cmp_unique_one(X_epi_sender, cmp=CMP1)
 
     X_epi_receiver = X[X.obs["celltype"] == "Epithelial"]
@@ -155,7 +171,11 @@ def makeFigure():
                 sender_sample.obs["Label"] == "NoLabel", "0-90%", "Top 10%"
             )
             scores = aggregate_communication_scores_by_group(
-                sender_sample, receiver_sample, ligand, receptor, sender_group=sender_label_group
+                sender_sample,
+                receiver_sample,
+                ligand,
+                receptor,
+                sender_group=sender_label_group,
             ).set_index("sender_group")["communication_score"]
             communication_data.append(
                 {
@@ -178,7 +198,11 @@ def makeFigure():
         comm_df_melted["condition"] + ": " + comm_df_melted["label_type"]
     )
     sns.boxplot(
-        data=comm_df_melted, x="pair", y="communication_score", hue="condition_label", ax=ax_f
+        data=comm_df_melted,
+        x="pair",
+        y="communication_score",
+        hue="condition_label",
+        ax=ax_f,
     )
     ax_f.set_xlabel("Ligand-Receptor Pair")
     ax_f.set_ylabel("Average Communication Score")
@@ -214,10 +238,16 @@ def makeFigure():
     ax_k, ax_l, ax_m = row3
 
     X_epi_sender_5 = X[X.obs["celltype"] == "Epithelial"]
-    X_epi_sender_5 = X_epi_sender_5[np.argsort(-X_epi_sender_5.obsm["sc_B"][:, CMP2 - 1])]
+    X_epi_sender_5 = X_epi_sender_5[
+        np.argsort(-X_epi_sender_5.obsm["sc_B"][:, CMP2 - 1])
+    ]
     X_epi_receiver_5 = X[X.obs["celltype"] == "Epithelial"]
-    X_epi_receiver_5 = X_epi_receiver_5[np.argsort(X_epi_receiver_5.obsm["rc_C"][:, CMP2 - 1])]
-    df = binned_expression_product_matrix(X_epi_sender_5, X_epi_receiver_5, "CDH1", "CDH1")
+    X_epi_receiver_5 = X_epi_receiver_5[
+        np.argsort(X_epi_receiver_5.obsm["rc_C"][:, CMP2 - 1])
+    ]
+    df = binned_expression_product_matrix(
+        X_epi_sender_5, X_epi_receiver_5, "CDH1", "CDH1"
+    )
     sns.heatmap(df, ax=ax_k, cmap="viridis")
     ax_k.set_xlabel("Receiver Epithelial Cells")
     ax_k.set_ylabel("Sender Epithelial Cells")
@@ -248,7 +278,13 @@ def makeFigure():
 
     X_epi_sender_both = X[X.obs["celltype"] == "Epithelial"]
     X_epi_sender_both = add_obs_cmp_both_label(
-        X_epi_sender_both, cmp1=CMP1, cmp2=CMP2, pos1=True, pos2=True, top_perc=10, type="sender"
+        X_epi_sender_both,
+        cmp1=CMP1,
+        cmp2=CMP2,
+        pos1=True,
+        pos2=True,
+        top_perc=10,
+        type="sender",
     )
     X_epi_sender_both = add_obs_cmp_unique_two(X_epi_sender_both, cmp1=CMP1, cmp2=CMP2)
     X_epi_sender_both = X_epi_sender_both[X_epi_sender_both.obs["Label"] != "NoLabel"]
@@ -263,11 +299,19 @@ def makeFigure():
         top_perc=10,
         type="receiver",
     )
-    X_epi_receiver_both = add_obs_cmp_unique_two(X_epi_receiver_both, cmp1=CMP1, cmp2=CMP2)
-    X_epi_receiver_both = X_epi_receiver_both[X_epi_receiver_both.obs["Label"] != "NoLabel"]
+    X_epi_receiver_both = add_obs_cmp_unique_two(
+        X_epi_receiver_both, cmp1=CMP1, cmp2=CMP2
+    )
+    X_epi_receiver_both = X_epi_receiver_both[
+        X_epi_receiver_both.obs["Label"] != "NoLabel"
+    ]
 
     no_pairs = [["PTN", "PTPRZ1"], ["CDH1", "CDH1"]]
-    label_rename = {f"Cmp{CMP1}": f"Cmp. {CMP1}", f"Cmp{CMP2}": f"Cmp. {CMP2}", "Both": "Co-selected"}
+    label_rename = {
+        f"Cmp{CMP1}": f"Cmp. {CMP1}",
+        f"Cmp{CMP2}": f"Cmp. {CMP2}",
+        "Both": "Co-selected",
+    }
     order = [f"Cmp. {CMP1}", f"Cmp. {CMP2}", "Co-selected"]
     for ax, (lig, rec) in zip((ax_n, ax_o), no_pairs):
         pair_df = aggregate_communication_scores_by_group(
@@ -285,7 +329,14 @@ def makeFigure():
             aggfunc="mean",
         ).reindex(index=order, columns=order)
         pivot = (pivot - pivot.min().min()) / (pivot.max().max() - pivot.min().min())
-        sns.heatmap(pivot, cmap="Purples", vmin=0, vmax=1, ax=ax, cbar_kws={"label": "Avg Communication Score"})
+        sns.heatmap(
+            pivot,
+            cmap="Purples",
+            vmin=0,
+            vmax=1,
+            ax=ax,
+            cbar_kws={"label": "Avg Communication Score"},
+        )
         ax.set_xlabel("Top 10% Sender/Receiver Cells")
         ax.set_ylabel("Top 10% Sender Epithelial Cells")
         ax.set_title(f"{lig}-{rec} Interaction")
