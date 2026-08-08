@@ -2,6 +2,7 @@ import io
 import os
 import urllib.request
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, cast
 
 import anndata
@@ -10,10 +11,12 @@ import pandas as pd
 import zstandard as zstd
 from scipy.sparse import csr_array, issparse
 
+DATA_DIR = Path("/opt/andrew/ccc")
+
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
-    filename="/opt/andrew/ccc/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad",
+    filename=str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
     gene_threshold: float = 0.01,
     normalize: bool = True,
 ) -> anndata.AnnData:
@@ -61,7 +64,7 @@ def import_balf_covid(
 
 @lru_cache(maxsize=1)
 def import_ligand_receptor_pairs(
-    filename="/opt/andrew/ccc/Human-2020-Jin-LR-pairs.csv.zst",
+    filename=str(DATA_DIR / "Human-2020-Jin-LR-pairs.csv.zst"),
     update_interaction_names: bool = True,
 ) -> pd.DataFrame:
     """Import ligand-receptor pairs from a zstd-compressed CSV with caching."""
@@ -178,8 +181,7 @@ def prepare_dataset(
         data.data = np.log10((1000.0 * data.data) + 1.0)
 
     # Get the indices for subsetting the data
-    _, sgIndex = np.unique(X.obs_vector(condition_name), return_inverse=True)
-    X.obs["condition_unique_idxs"] = sgIndex
+    X = add_cond_idxs(X, condition_name)
 
     # Pre-calculate gene means
     X.var["means"] = data.mean(axis=0)

@@ -14,6 +14,8 @@ from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
+from ..import_data import DATA_DIR
+
 matplotlib.use("AGG")
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
@@ -33,7 +35,6 @@ DEFAULT_CMAP = sns.color_palette("ch:s=-.2,r=.6", as_cmap=True)
 DIVERGING_CMAP = sns.diverging_palette(250, 30, l=65, center="dark", as_cmap=True)
 LIGHT_DIVERGING = sns.diverging_palette(240, 10, as_cmap=True)
 
-DATA_DIR = Path("/opt/andrew/ccc")
 COVID19_PATH = str(DATA_DIR / "bal_covid19.h5ad")
 COVID19_PSEUDOBULK_PATH = str(DATA_DIR / "bal_covid19_pseudobulk.h5ad")
 ALAD_PATH = str(DATA_DIR / "bal_alad.h5ad")

@@ -220,22 +220,6 @@ def plot_wc_per_celltype(
     ax.set_title(cmpName)
 
 
-def plot_lr_pacmap(lr: str, X: anndata.AnnData, ax: Axes, clip_outliers=0.9995):
-    """Scatterplot of PaCMAP visualization weighted by lr"""
-    lrList = X[:, lr].to_df().values
-
-    lrList = np.clip(lrList, None, np.quantile(lrList, clip_outliers))
-    cmap = sns.color_palette("ch:s=-.2,r=.6", as_cmap=True)
-
-    values = lrList
-    values -= np.min(values)
-    values /= np.max(values)
-
-    points = np.array(X.obsm["PaCMAP"])
-
-    _plot_shaded_pacmap(points, values, ax, cmap, (0, 1), f"{lr}")
-
-
 def assign_labels(ax):
     ax.set(xlabel="PaCMAP1", ylabel="PaCMAP2", xticks=[], yticks=[])
     return ax

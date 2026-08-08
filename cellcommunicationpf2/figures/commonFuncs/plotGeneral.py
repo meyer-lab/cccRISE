@@ -63,12 +63,8 @@ def plot_fms_r2x_diff_ranks(
     runs: int,
 ):
     """Plots FMS when using different RISE components"""
-    fmsLists = []
-    r2xLists = []
-
-    for j in range(0, runs, 1):
-        scores = []
-        r2x_scores = []
+    rows = []
+    for j in range(runs):
         for i in ranksList:
             print(f"Run {j + 1}, Rank {i}")
             dataX, r2x = rise_store_r2x(X, rank=i, n_iter_max=1000, tolerance=1e-9)
@@ -79,35 +75,10 @@ def plot_fms_r2x_diff_ranks(
                 tolerance=1e-9,
             )
             fmsScore = calculate_fms_rise(dataX, sampledX)
-            scores.append(fmsScore)
-            # Calculate R2X for X only (not resampled)
-            r2x_scores.append(r2x)
-        fmsLists.append(scores)
-        r2xLists.append(r2x_scores)
+            # R2X is for X only (not resampled)
+            rows.append({"Run": j, "Component": i, "FMS": fmsScore, "R2X": r2x})
 
-    runsList_df = []
-    for i in range(runs):
-        for _j in range(len(ranksList)):
-            runsList_df.append(i)
-    ranksList_df = []
-    for _i in range(runs):
-        for j in range(len(ranksList)):
-            ranksList_df.append(ranksList[j])
-    fmsList_df = []
-    for sublist in fmsLists:
-        fmsList_df += sublist
-    r2xList_df = []
-    for sublist in r2xLists:
-        r2xList_df += sublist
-
-    df = pd.DataFrame(
-        {
-            "Run": runsList_df,
-            "Component": ranksList_df,
-            "FMS": fmsList_df,
-            "R2X": r2xList_df,
-        }
-    )
+    df = pd.DataFrame(rows)
 
     # Plot FMS
     sns.lineplot(data=df, x="Component", y="FMS", ax=ax1, label="FMS")
