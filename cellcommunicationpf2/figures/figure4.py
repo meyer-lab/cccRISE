@@ -129,7 +129,7 @@ def makeFigure():
     # from ..logreg import rise_ranks_logreg, cpd_ranks_logreg
     # from ..tensor import calculate_interaction_tensor
     #
-    # X_raw = import_alad(gene_threshold=0.001, normalize=True)
+    # X_raw = import_alad(gene_threshold=0.01, normalize=True)
     # lr_pairs = import_ligand_receptor_pairs()
     # condition_column = "dsco_id"
     # X_raw = add_cond_idxs(X_raw, condition_column)
