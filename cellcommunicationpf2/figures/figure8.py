@@ -10,7 +10,7 @@ def makeFigure():
     subplotLabel(ax)
 
     #     # Import and prepare data
-    #     X = import_balf_covid(gene_threshold=0.001, normalize=True)
+    #     X = import_balf_covid(gene_threshold=0.01, normalize=True)
     #     lr_pairs = import_ligand_receptor_pairs()
 
     #     condition_column = "sample"

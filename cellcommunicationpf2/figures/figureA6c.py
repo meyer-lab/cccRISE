@@ -26,7 +26,7 @@ def makeFigure():
     subplotLabel(ax)
 
     # # Import and prepare data
-    # X = import_alad(gene_threshold=0.001, normalize=True)
+    # X = import_alad(gene_threshold=0.01, normalize=True)
     # lr_pairs = import_ligand_receptor_pairs()
 
     # # Add numerical indices for each patient sample, which is the primary condition
