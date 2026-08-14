@@ -8,11 +8,12 @@ for the COVID dataset using cached RISE factors.
 import pandas as pd
 from matplotlib import pyplot as plt
 from tensorly.decomposition import parafac
+from tlviz.model_evaluation import core_consistency
 
 from ..ccc import calculate_r2x
 from ..import_data import import_ligand_receptor_pairs
 from ..tensor import calculate_interaction_tensor
-from .common import get_covid_data, load_or_compute_dataframe, subplotLabel
+from .common import get_covid_data, subplotLabel
 
 
 def compute_cp_rank_sweep(
@@ -21,9 +22,9 @@ def compute_cp_rank_sweep(
     tol: float = 1e-3,
     random_state: int = 42,
 ) -> pd.DataFrame:
-    """Compute R2X across CP ranks for cached RISE factors of the COVID dataset."""
+    """Compute R2X and core consistency across CP ranks for cached RISE factors of the COVID dataset."""
     if cp_ranks is None:
-        cp_ranks = list(range(10, 101, 10))
+        cp_ranks = list(range(1, 13, 1))
 
     adata = get_covid_data(project_cells=True)
     lr_pairs = import_ligand_receptor_pairs()
@@ -34,19 +35,19 @@ def compute_cp_rank_sweep(
     r2x_results = []
     for cp_rank in cp_ranks:
         print(f"CP rank: {cp_rank}")
-        try:
-            cp_weights, cp_factors = parafac(
-                interaction_tensor,
-                rank=cp_rank,
-                n_iter_max=n_iter_max,
-                tol=tol,
-                normalize_factors=True,
-                random_state=random_state,
-            )
-            r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
-            r2x_results.append({"cp_rank": cp_rank, "r2x": r2x})
-        except Exception:
-            r2x_results.append({"cp_rank": cp_rank, "r2x": float("nan")})
+        cp_weights, cp_factors = parafac(
+            interaction_tensor,
+            rank=cp_rank,
+            n_iter_max=n_iter_max,
+            tol=tol,
+            normalize_factors=True,
+            random_state=random_state,
+            svd="randomized_svd",
+        )
+        r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
+        cc = core_consistency((cp_weights, cp_factors), interaction_tensor, normalised=True)
+        print(f"R2X: {r2x}, Core Consistency: {cc}")
+        r2x_results.append({"cp_rank": cp_rank, "r2x": r2x, "core_consistency": cc})
 
     return pd.DataFrame(r2x_results)
 
@@ -56,19 +57,25 @@ def makeFigure():
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
     subplotLabel([ax])
 
-    df = load_or_compute_dataframe(
-        "fig6_cp_ranks.csv",
-        compute_cp_rank_sweep,
-    )
+    df = compute_cp_rank_sweep()
 
     ax.plot(
         df["cp_rank"],
         df["r2x"],
         marker="o",
         color="blue",
+        label="R²X",
+    )
+    ax.plot(
+        df["cp_rank"],
+        df["core_consistency"] / 100.0,
+        marker="o",
+        color="orange",
+        label="Core Consistency",
     )
     ax.set_xlabel("CP Rank")
-    ax.set_ylabel("R²X")
+    ax.set_ylabel("Score")
     ax.set_title("CP Rank Selection")
+    ax.legend()
 
     return fig
