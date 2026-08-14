@@ -27,7 +27,7 @@ Preprocessing
    :returns: Preprocessed AnnData object with filtered cells/genes, added condition_unique_idxs column, and gene means in X.var["means"].
    :rtype: anndata.AnnData
 
-.. py:function:: import_ligand_receptor_pairs(filename: str = "/opt/andrew/ccc/Human-2020-Jin-LR-pairs.csv.zst", update_interaction_names: bool = True)
+.. py:function:: import_ligand_receptor_pairs(filename: str | Path = "cellcommunicationpf2/data/Human-2020-Jin-LR-pairs.csv.zst", update_interaction_names: bool = True)
    :module: cellcommunicationpf2.import_data
 
    Import ligand-receptor pairs from a compressed CSV file with caching.

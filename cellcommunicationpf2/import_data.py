@@ -11,12 +11,13 @@ import pandas as pd
 import zstandard as zstd
 from scipy.sparse import csr_array, issparse
 
-DATA_DIR = Path("/opt/andrew/ccc")
+DATA_DIR = Path(__file__).parent / "data"
+LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.csv.zst"
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
-    filename=str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
+    filename: str = str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
     gene_threshold: float = 0.01,
     normalize: bool = True,
 ) -> anndata.AnnData:
@@ -64,7 +65,7 @@ def import_balf_covid(
 
 @lru_cache(maxsize=1)
 def import_ligand_receptor_pairs(
-    filename=str(DATA_DIR / "Human-2020-Jin-LR-pairs.csv.zst"),
+    filename: str | Path = LR_PAIRS_PATH,
     update_interaction_names: bool = True,
 ) -> pd.DataFrame:
     """Import ligand-receptor pairs from a zstd-compressed CSV with caching."""
