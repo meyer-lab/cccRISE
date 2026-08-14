@@ -170,3 +170,4 @@ output/
 nohup.out
 
 data/
+!cellcommunicationpf2/data/

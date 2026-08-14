@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import anndata
 import numpy as np
 import pandas as pd
@@ -175,13 +177,22 @@ def plot_lr_factors_partial(
 
 
 def make_lr_factors_partial_figure(
-    h5ad_path: str, grid: tuple[int, int], figsize: tuple[int, int] = (12, 12)
+    data_or_path: str | Path | anndata.AnnData,
+    grid: tuple[int, int],
+    figsize: tuple[int, int] = (12, 12),
 ) -> Figure:
     """Build a grid figure of top/bottom LR factor weights for every component."""
+    from ...factors import load_factors_to_anndata
+
     ax, f = getSetup(figsize, grid)
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(h5ad_path)
+    if isinstance(data_or_path, anndata.AnnData):
+        X = data_or_path
+    elif str(data_or_path).endswith(".nc"):
+        X = load_factors_to_anndata(data_or_path)
+    else:
+        X = anndata.read_h5ad(data_or_path)
 
     for i in range(X.uns["A"].shape[1]):
         plot_lr_factors_partial(X, i + 1, ax[2 * i], geneAmount=10, top=True)

@@ -4,7 +4,6 @@ Figure S5c_d: Correlation analysis of patient continuous variables in ALAD lung 
 
 from typing import cast
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -12,7 +11,7 @@ from matplotlib.axes import Axes
 from scipy.stats import pearsonr
 
 from .common import (
-    ALAD_PATH,
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
@@ -24,7 +23,7 @@ def makeFigure():
     ax, f = getSetup((12, 12), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(ALAD_PATH)
+    X = get_alad_data(project_cells=True)
     X.obs["alad_status"] = (
         X.obs["ALADstatus"]
         .astype(str)

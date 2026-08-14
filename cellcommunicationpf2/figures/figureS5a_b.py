@@ -4,14 +4,13 @@ Figure S5a_b: Cell type proportions in BALF ALAD data
 
 from typing import cast
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy.stats import pearsonr
 
 from .common import (
-    ALAD_PATH,
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
@@ -21,7 +20,7 @@ def makeFigure():
     ax, f = getSetup((12, 6), (1, 2))  # Create 1x2 subplot layout
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(ALAD_PATH)
+    X = get_alad_data(project_cells=True)
     sample_id = "dsco_id"
     condition_id = "ALADstatus"
     celltype_id = "broad_cell_type"

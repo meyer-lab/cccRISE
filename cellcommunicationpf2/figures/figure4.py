@@ -16,7 +16,6 @@ gene panel with repeated 10-fold CV). This is also slow, so those calls are
 left commented out below their placeholder axes; uncomment to run them.
 """
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -28,7 +27,7 @@ from ..utils import (
     binned_expression_product_matrix,
     correct_conditions,
 )
-from .common import ALAD_PATH
+from .common import get_alad_data
 from .commonFuncs.plotFactors import plot_lr_factors
 from .commonFuncs.plotGeneral import binarize_group, get_sample_to_group
 from .commonFuncs.plotPaCMAP import plot_labels_pacmap, plot_wc_pacmap
@@ -82,7 +81,7 @@ def _ordered_population(X, celltype_col, celltype, cmp, factor_type):
 
 
 def makeFigure():
-    X = anndata.read_h5ad(ALAD_PATH)
+    X = get_alad_data(project_cells=True, do_embedding=True)
     celltype_col = "broad_cell_type"
 
     f = plt.figure(figsize=(24, 26), layout="constrained")

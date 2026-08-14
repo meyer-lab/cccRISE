@@ -3,7 +3,6 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
-from scipy.sparse import spmatrix
 from sklearn.linear_model import LinearRegression
 
 
@@ -139,9 +138,11 @@ def add_obs_cmp_label(
 def _gene_vector(X: anndata.AnnData, gene: str) -> np.ndarray:
     """Extract a gene's expression as a dense 1D array, whether X.X is sparse or dense."""
     expr = X[:, gene].X
-    if isinstance(expr, spmatrix):
-        return cast(Any, expr).toarray().flatten()
-    return np.ravel(np.array(expr))
+    if hasattr(expr, "toarray"):
+        return np.ravel(expr.toarray())
+    if hasattr(expr, "to_memory"):
+        return np.ravel(expr.to_memory())
+    return np.ravel(np.asarray(expr))
 
 
 def expression_product_matrix(
@@ -245,9 +246,16 @@ def aggregate_communication_scores_by_group(
 def _binned_means(expr: np.ndarray, n_bins: int) -> np.ndarray:
     """Mean of `expr` within `n_bins` contiguous blocks (last block absorbs the remainder)."""
     n = len(expr)
-    group_size = n // n_bins
+    if n == 0:
+        return np.zeros(n_bins)
+    group_size = max(1, n // n_bins)
     groups = np.clip(np.arange(n) // group_size, 0, n_bins - 1)
-    return np.array([expr[groups == g].mean() for g in range(n_bins)])
+    return np.array(
+        [
+            float(np.mean(expr[groups == g])) if np.any(groups == g) else 0.0
+            for g in range(n_bins)
+        ]
+    )
 
 
 def binned_expression_product_matrix(

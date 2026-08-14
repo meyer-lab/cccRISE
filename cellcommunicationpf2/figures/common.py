@@ -8,13 +8,12 @@ import time
 from pathlib import Path
 from string import ascii_letters
 
+import anndata
 import matplotlib
 import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
-
-from ..import_data import DATA_DIR
 
 matplotlib.use("AGG")
 
@@ -35,10 +34,36 @@ DEFAULT_CMAP = sns.color_palette("ch:s=-.2,r=.6", as_cmap=True)
 DIVERGING_CMAP = sns.diverging_palette(250, 30, l=65, center="dark", as_cmap=True)
 LIGHT_DIVERGING = sns.diverging_palette(240, 10, as_cmap=True)
 
-COVID19_PATH = str(DATA_DIR / "bal_covid19.h5ad")
-COVID19_PSEUDOBULK_PATH = str(DATA_DIR / "bal_covid19_pseudobulk.h5ad")
-ALAD_PATH = str(DATA_DIR / "bal_alad.h5ad")
-ALAD_STABLE_PATH = str(DATA_DIR / "bal_alad_stable.h5ad")
+from ..factors import (
+    ALAD_FACTORS_PATH,
+    COVID19_FACTORS_PATH,
+    load_factors_to_anndata,
+)
+from ..import_data import import_alad, import_balf_covid
+
+
+def get_covid_data(
+    project_cells: bool = False, do_embedding: bool = False
+) -> anndata.AnnData:
+    """Load COVID dataset with factors and optional single-cell projections."""
+    if not project_cells:
+        return load_factors_to_anndata(COVID19_FACTORS_PATH)
+    raw = import_balf_covid(gene_threshold=0.01, normalize=True)
+    return load_factors_to_anndata(
+        COVID19_FACTORS_PATH, adata=raw, do_embedding=do_embedding
+    )
+
+
+def get_alad_data(
+    project_cells: bool = False, do_embedding: bool = False
+) -> anndata.AnnData:
+    """Load ALAD dataset with factors and optional single-cell projections."""
+    if not project_cells:
+        return load_factors_to_anndata(ALAD_FACTORS_PATH)
+    raw = import_alad(gene_threshold=0.01, normalize=True)
+    return load_factors_to_anndata(
+        ALAD_FACTORS_PATH, adata=raw, do_embedding=do_embedding
+    )
 
 
 def getSetup(

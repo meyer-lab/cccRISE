@@ -253,6 +253,30 @@ The function returns the AnnData object with added results and the final R²X va
 - ``X.obsm["rc_C"]`` - Receiver cell loadings (n_cells × ``cp_rank``)
 - ``X.obsm["PaCMAP"]`` - PaCMAP embedding for visualization (n_cells × 2, if ``doEmbedding=True``)
 
+Saving and Loading Factor Models with NetCDF
+--------------------------------------------
+
+Rather than saving entire multi-gigabyte AnnData files containing full single-cell matrices, you can export the decomposition factor matrices and metadata to a compact NetCDF file (< 100 KB - 2 MB)::
+
+    from cellcommunicationpf2.factors import factors_to_xarray, save_factors_netcdf, load_factors_to_anndata
+
+    # 1. Export factors to an annotated xarray Dataset
+    factors_ds = factors_to_xarray(
+        cpd_factors=[X.uns["A"], X.uns["B"], X.uns["C"], X.uns["D"]],
+        cpd_weights=X.uns["weights"],
+        filtered_lr_pairs=X.uns["lr_pairs"],
+        condition_names=X.obs["sample"].unique(),
+        gene_names=list(X.var_names),
+        r2x_cp=r2x,
+    )
+
+    # 2. Save lightweight NetCDF file
+    save_factors_netcdf(factors_ds, "study_factors.nc")
+
+    # 3. Load on-demand and project single cells instantaneously
+    X_projected = load_factors_to_anndata("study_factors.nc", adata=X_raw, do_embedding=True)
+
+
 **Additional Information**:
 
 - ``X.uns["lr_pairs"]`` - Array of ligand-receptor pair names used in the analysis

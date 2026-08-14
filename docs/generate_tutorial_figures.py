@@ -7,7 +7,6 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend
 from pathlib import Path
 
-import anndata
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -112,9 +111,11 @@ plt.tight_layout()
 plt.savefig(output_dir / "step2_cpd_fms_r2x.png", dpi=150, bbox_inches="tight")
 plt.close()
 
+from cellcommunicationpf2.figures.common import get_covid_data
+
 print("\n=== Running CCC-RISE Factorization ===")
 
-X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+X = get_covid_data(project_cells=True, do_embedding=True)
 
 # Figure 3: Individual Factor Visualizations
 print("Generating Figure 3: Individual factor visualizations...")
