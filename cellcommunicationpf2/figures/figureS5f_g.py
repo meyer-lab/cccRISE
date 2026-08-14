@@ -2,11 +2,8 @@
 Figure S5c_d: Decomposition of the communication tensor from Tensorcell2cell
 """
 
-import seaborn as sns
-import numpy as np
 from ..import_data import add_cond_idxs, import_alad, import_ligand_receptor_pairs
 from .common import getSetup, subplotLabel
-from ..tensor import run_fms_r2x_analysis, calculate_interaction_tensor
 
 
 def makeFigure():
@@ -16,11 +13,11 @@ def makeFigure():
     # Import and prepare data
     print("Importing and preparing")
     X = import_alad(gene_threshold=0.001, normalize=True)
-    lr_pairs = import_ligand_receptor_pairs()
+    lr_pairs = import_ligand_receptor_pairs()  # noqa: F841
 
     # Add numerical indices for each patient sample, which is the primary condition
     condition_column = "dsco_id"
-    X_filtered = add_cond_idxs(X, condition_column)
+    X_filtered = add_cond_idxs(X, condition_column)  # noqa: F841
 
     # # Calculate interaction tensor
     # interaction_tensor = calculate_interaction_tensor(

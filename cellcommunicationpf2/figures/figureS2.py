@@ -2,11 +2,12 @@
 Figure S2: CCC-RISE on BALF COVID-19 data. Showing ligand-receptor factors.
 """
 
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import anndata
+
+from .common import (
+    getSetup,
+    subplotLabel,
+)
 from .commonFuncs.plotFactors import plot_lr_factors_partial
 
 

@@ -2,14 +2,17 @@
 Figure A2e-h: Comparison of CCC-RISE and Pseudobulk CPD on BALF COVID-19
 """
 
-import numpy as np
+from typing import cast
+
 import anndata
+import numpy as np
+import pandas as pd
 import seaborn as sns
 from scipy.stats import pearsonr
-import pandas as pd
+
 from .common import (
-    subplotLabel,
     getSetup,
+    subplotLabel,
 )
 from .commonFuncs.plotGeneral import rotate_yaxis
 
@@ -22,9 +25,11 @@ def makeFigure():
     X_pseudo = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19_pseudobulk.h5ad")
     condition_column = "sample"
     group_col = "condition"
-    sample_to_group = X.obs.drop_duplicates(
-        subset=[condition_column, group_col]
-    ).set_index(condition_column)[group_col]
+    sample_to_group = (
+        cast(pd.DataFrame, X.obs)
+        .drop_duplicates(subset=[condition_column, group_col])
+        .set_index(condition_column)[group_col]
+    )
     # Reorder index based on np.unique
     sample_to_group = sample_to_group.loc[
         np.unique(X.obs[condition_column], return_index=True)[0]
@@ -96,8 +101,8 @@ def makeFigure():
             r_mat[i, j] = pearsonr(A_factor[:, i], A_factor_pseudo[:, j])[0]
     r_df = pd.DataFrame(
         r_mat,
-        index=[f"{i + 1}" for i in range(cmp)],
-        columns=[f"{i + 1}" for i in range(cmp)],
+        index=pd.Index([f"{i + 1}" for i in range(cmp)]),
+        columns=pd.Index([f"{i + 1}" for i in range(cmp)]),
     )
     sns.heatmap(r_df, cmap="coolwarm", ax=ax[2], vmin=-1, vmax=1)
     ax[2].set_title("Condition Factor Correlation")
@@ -111,8 +116,8 @@ def makeFigure():
             r_mat[i, j] = pearsonr(lr_factor[:, i], lr_factor_pseudo[:, j])[0]
     r_df = pd.DataFrame(
         r_mat,
-        index=[f"{i + 1}" for i in range(cmp)],
-        columns=[f"{i + 1}" for i in range(cmp)],
+        index=pd.Index([f"{i + 1}" for i in range(cmp)]),
+        columns=pd.Index([f"{i + 1}" for i in range(cmp)]),
     )
     sns.heatmap(r_df, cmap="coolwarm", ax=ax[3], vmin=-1, vmax=1)
     ax[3].set_title("LR Factor Correlation")

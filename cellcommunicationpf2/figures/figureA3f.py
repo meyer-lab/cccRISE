@@ -3,17 +3,18 @@ Figure A3f: Heatmaps of ligand-receptor expression products for selected cell ty
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
 from ..utils import (
     add_obs_cmp_label,
     add_obs_cmp_unique_one,
     expression_product_matrix,
+)
+from .common import (
+    getSetup,
+    subplotLabel,
 )
 
 

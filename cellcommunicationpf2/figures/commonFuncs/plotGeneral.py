@@ -1,10 +1,11 @@
-import numpy as np
 import anndata
+import numpy as np
 import pandas as pd
 import seaborn as sns
-from ...tensor import rise_store_r2x, calculate_fms_rise
-from ...utils import resample
 from matplotlib.axes import Axes
+
+from ...tensor import calculate_fms_rise, rise_store_r2x
+from ...utils import resample
 
 
 def rotate_xaxis(ax, rotation=90):
@@ -51,12 +52,12 @@ def plot_fms_r2x_diff_ranks(
         r2xLists.append(r2x_scores)
 
     runsList_df = []
-    for i in range(0, runs):
-        for _j in range(0, len(ranksList)):
+    for i in range(runs):
+        for _j in range(len(ranksList)):
             runsList_df.append(i)
     ranksList_df = []
-    for _i in range(0, runs):
-        for j in range(0, len(ranksList)):
+    for _i in range(runs):
+        for j in range(len(ranksList)):
             ranksList_df.append(ranksList[j])
     fmsList_df = []
     for sublist in fmsLists:

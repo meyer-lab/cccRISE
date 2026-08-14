@@ -1,9 +1,10 @@
 import numpy as np
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.model_selection import RepeatedStratifiedKFold
+from tensorly.decomposition import parafac
+
 from .tensor import rise_store_r2x
 from .utils import correct_conditions
-from tensorly.decomposition import parafac
 
 
 def logistic_regression(scoring, random_state=0):
@@ -23,7 +24,7 @@ def rise_ranks_logreg(
     X,
     rank_list,
     sample_to_group,
-    scoring=["roc_auc", "accuracy"],
+    scoring=None,
     n_iter_max=10000,
     tolerance=1e-9,
     random_state=0,
@@ -37,6 +38,9 @@ def rise_ranks_logreg(
     scores_accuracy : list
         Accuracy scores for each rank
     """
+    if scoring is None:
+        scoring = ["roc_auc", "accuracy"]
+
     # Initialize score lists
     scores_aucroc = []
     scores_accuracy = []
@@ -62,7 +66,9 @@ def rise_ranks_logreg(
 
         # Calculate scores for this rank
         for metric in scoring:
-            lr_fit = logistic_regression(metric, random_state=random_state).fit(X_work.uns["A"], sample_to_group)
+            lr_fit = logistic_regression(metric, random_state=random_state).fit(
+                X_work.uns["A"], sample_to_group
+            )
             score = float(
                 np.max(np.mean(lr_fit.scores_[1], axis=0))
             )  # Convert to plain float
@@ -80,7 +86,7 @@ def cpd_ranks_logreg(
     interaction_tensor,
     rank_list,
     sample_to_group,
-    scoring=["roc_auc", "accuracy"],
+    scoring=None,
     n_iter_max=10000,
     random_state=0,
 ):
@@ -94,6 +100,8 @@ def cpd_ranks_logreg(
     scores_accuracy : list
         Accuracy scores for each rank
     """
+    if scoring is None:
+        scoring = ["roc_auc", "accuracy"]
 
     # Initialize score lists
     scores_aucroc = []
@@ -123,7 +131,9 @@ def cpd_ranks_logreg(
 
         # Calculate scores for this rank
         for i in scoring:
-            lr_fit = logistic_regression(i, random_state=random_state).fit(cp_factors[0], sample_to_group)
+            lr_fit = logistic_regression(i, random_state=random_state).fit(
+                cp_factors[0], sample_to_group
+            )
             score = float(
                 np.max(np.mean(lr_fit.scores_[1], axis=0))
             )  # Convert to plain float
@@ -138,15 +148,19 @@ def cpd_ranks_logreg(
 def ccc_rise_logreg_weights(
     X,
     sample_to_group,
-    scoring=["roc_auc", "accuracy"],
+    scoring=None,
     random_state=0,
 ):
     """
     Evaluate logistic regression weights using CPD factors.
     """
+    if scoring is None:
+        scoring = ["roc_auc", "accuracy"]
 
     for i in scoring:
-        lr_fit = logistic_regression(i, random_state=random_state).fit(X.uns["A"], sample_to_group)
+        lr_fit = logistic_regression(i, random_state=random_state).fit(
+            X.uns["A"], sample_to_group
+        )
         if i == "roc_auc":
             weights_aucroc = lr_fit.coef_[0]
         elif i == "accuracy":

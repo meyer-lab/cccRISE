@@ -3,14 +3,15 @@ Figure S4a_c: Heatmaps of ligand-receptor expression products for selected cell 
 """
 
 import anndata
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
 from ..utils import expression_product_matrix
+from .common import (
+    getSetup,
+    subplotLabel,
+)
 
 
 def makeFigure():

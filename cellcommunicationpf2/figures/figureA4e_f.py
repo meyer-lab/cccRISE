@@ -3,15 +3,15 @@ Figure A2b-c: CCC-RISE on BALF COVID-19 data. Showing PaCMAP of cells colored by
 """
 
 import anndata
+import seaborn as sns
+
 from .common import (
-    subplotLabel,
     getSetup,
+    subplotLabel,
 )
 from .commonFuncs.plotPaCMAP import (
     plot_labels_pacmap,
 )
-
-import seaborn as sns
 
 
 def makeFigure():

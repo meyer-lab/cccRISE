@@ -2,11 +2,12 @@
 Figure S9: CCC-RISE on BALF alad data. Showing ligand-receptor factors.
 """
 
-from .common import (
-    subplotLabel,
-    getSetup,
-)
 import anndata
+
+from .common import (
+    getSetup,
+    subplotLabel,
+)
 from .commonFuncs.plotFactors import plot_lr_factors_partial
 
 
@@ -15,7 +16,7 @@ def makeFigure():
     subplotLabel(ax)
 
     X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad_stable.h5ad")
-    
+
     for i in range(X.uns["A"].shape[1]):
         plot_lr_factors_partial(X, i + 1, ax[2 * i], geneAmount=10, top=True)
         plot_lr_factors_partial(X, i + 1, ax[2 * i + 1], geneAmount=10, top=False)
