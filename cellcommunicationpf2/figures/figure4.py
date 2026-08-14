@@ -8,14 +8,10 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from ..import_data import add_cond_idxs, import_alad, import_ligand_receptor_pairs
 from ..logreg import (
     ccc_rise_logreg_weights,
-    cpd_ranks_logreg,
     population_gene_logreg_weights,
-    rise_ranks_logreg,
 )
-from ..tensor import calculate_interaction_tensor
 from ..utils import (
     binned_complex_ligand_product_matrix,
     binned_expression_product_matrix,
@@ -56,44 +52,6 @@ def _ordered_population(X, celltype_col, celltype, cmp, factor_type):
     if factor_type == "sender":
         return Xp[np.argsort(-Xp.obsm["sc_B"][:, cmp - 1])]
     return Xp[np.argsort(Xp.obsm["rc_C"][:, cmp - 1])]
-
-
-def compute_fig4_rise_ranks() -> pd.DataFrame:
-    """Compute RISE rank sweep ROC AUC for ALAD."""
-    X_raw = import_alad(gene_threshold=0.01, normalize=True)
-    condition_column = "dsco_id"
-    X_raw = add_cond_idxs(X_raw, condition_column)
-    group_col = "ALADstatus"
-    sample_to_group = get_sample_to_group(X_raw, condition_column, group_col)
-    sample_to_group = binarize_group(sample_to_group, "control", "control", "alad")
-
-    rise_rank_list = list(np.append([1], range(5, 66, 5)))
-    scores_aucroc_rise, scores_acc = rise_ranks_logreg(
-        X_raw, rise_rank_list, sample_to_group, n_iter_max=10000, tolerance=1e-9
-    )
-    return pd.DataFrame(
-        {"rank": rise_rank_list, "roc_auc": scores_aucroc_rise, "accuracy": scores_acc}
-    )
-
-
-def compute_fig4_cpd_ranks() -> pd.DataFrame:
-    """Compute CPD rank sweep ROC AUC for ALAD."""
-    X_raw = import_alad(gene_threshold=0.01, normalize=True)
-    lr_pairs = import_ligand_receptor_pairs()
-    condition_column = "dsco_id"
-    X_raw = add_cond_idxs(X_raw, condition_column)
-    group_col = "ALADstatus"
-    sample_to_group = get_sample_to_group(X_raw, condition_column, group_col)
-    sample_to_group = binarize_group(sample_to_group, "control", "control", "alad")
-
-    interaction_tensor = calculate_interaction_tensor(X_raw, lr_pairs, rise_rank=15)
-    cpd_rank_list = list(range(2, 42, 2))
-    scores_aucroc_cpd, scores_acc = cpd_ranks_logreg(
-        X_raw, interaction_tensor, cpd_rank_list, sample_to_group, n_iter_max=10000
-    )
-    return pd.DataFrame(
-        {"rank": cpd_rank_list, "roc_auc": scores_aucroc_cpd, "accuracy": scores_acc}
-    )
 
 
 def compute_fig4_gene_weights() -> pd.DataFrame:
@@ -140,7 +98,7 @@ def makeFigure():
     #        (d) component logreg weights, (e) LR pair factor heatmap
     # ------------------------------------------------------------------
     row1 = subfigs[0].subplots(1, 5, width_ratios=[1.3, 1, 1, 1, 2])
-    ax_a, ax_b, ax_c, ax_d, ax_e = row1
+    ax_a, _ax_b, _ax_c, ax_d, ax_e = row1
 
     ax_a.axis("off")
     ax_a.text(
@@ -155,19 +113,8 @@ def makeFigure():
     )
     label_panel(ax_a, "a")
 
-    df_rise = load_or_compute_dataframe("fig4_rise_ranks.csv", compute_fig4_rise_ranks)
-    ax_b.plot(df_rise["rank"], df_rise["roc_auc"], "o-", color="steelblue")
-    ax_b.set_xlabel("RISE Rank")
-    ax_b.set_ylabel("10-Fold CV ROC-AUC")
-    ax_b.set_ylim(0, 1.05)
-    label_panel(ax_b, "b")
-
-    df_cpd = load_or_compute_dataframe("fig4_cpd_ranks.csv", compute_fig4_cpd_ranks)
-    ax_c.plot(df_cpd["rank"], df_cpd["roc_auc"], "o-", color="darkorange")
-    ax_c.set_xlabel("CPD Rank")
-    ax_c.set_ylabel("10-Fold CV ROC-AUC")
-    ax_c.set_ylim(0, 1.05)
-    label_panel(ax_c, "c")
+    # REMOVED: We no longer plot RISE/CPD rank-vs-AUC plots.
+    # Rank should be determined from the reconstruction properties.
 
     condition_column = "dsco_id"
     X.uns["A"] = correct_conditions(X)
