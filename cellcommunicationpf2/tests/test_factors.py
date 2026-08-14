@@ -59,9 +59,13 @@ def test_factors_to_xarray_and_netcdf_roundtrip():
         save_factors_netcdf(ds, tmp.name)
         loaded_ds = load_factors_netcdf(tmp.name)
 
-        np.testing.assert_allclose(loaded_ds["cp_A"].values, A_cp)
-        np.testing.assert_allclose(loaded_ds["cp_D"].values, D_cp)
-        np.testing.assert_allclose(loaded_ds["pf2_C"].values, C_pf2)
+        assert loaded_ds["cp_A"].dtype == np.float32
+        assert loaded_ds["pf2_C"].dtype == np.float32
+        np.testing.assert_allclose(loaded_ds["cp_A"].values, A_cp, rtol=1e-5, atol=1e-6)
+        np.testing.assert_allclose(loaded_ds["cp_D"].values, D_cp, rtol=1e-5, atol=1e-6)
+        np.testing.assert_allclose(
+            loaded_ds["pf2_C"].values, C_pf2, rtol=1e-5, atol=1e-6
+        )
 
         # Test conversion to lightweight AnnData
         adata_light = load_factors_to_anndata(loaded_ds)

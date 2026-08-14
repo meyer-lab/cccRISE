@@ -83,11 +83,23 @@ def factors_to_xarray(
     cp_rank = cpd_factors[0].shape[1]
 
     data_vars: dict[str, tuple[list[str], np.ndarray]] = {
-        "cp_A": (["condition", "cp_component"], cpd_factors[0]),
-        "cp_B": (["rise_component", "cp_component"], cpd_factors[1]),
-        "cp_C": (["rise_component", "cp_component"], cpd_factors[2]),
-        "cp_D": (["lr_pair", "cp_component"], cpd_factors[3]),
-        "cp_weights": (["cp_component"], cpd_weights),
+        "cp_A": (
+            ["condition", "cp_component"],
+            np.asarray(cpd_factors[0], dtype=np.float32),
+        ),
+        "cp_B": (
+            ["rise_component", "cp_component"],
+            np.asarray(cpd_factors[1], dtype=np.float32),
+        ),
+        "cp_C": (
+            ["rise_component", "cp_component"],
+            np.asarray(cpd_factors[2], dtype=np.float32),
+        ),
+        "cp_D": (
+            ["lr_pair", "cp_component"],
+            np.asarray(cpd_factors[3], dtype=np.float32),
+        ),
+        "cp_weights": (["cp_component"], np.asarray(cpd_weights, dtype=np.float32)),
     }
 
     coords: dict[str, Any] = {
@@ -101,16 +113,25 @@ def factors_to_xarray(
         coords["gene"] = np.asarray(gene_names)
 
     if pf2_factors is not None and len(pf2_factors) >= 3:
-        data_vars["pf2_A"] = (["condition", "rise_component"], pf2_factors[0])
+        data_vars["pf2_A"] = (
+            ["condition", "rise_component"],
+            np.asarray(pf2_factors[0], dtype=np.float32),
+        )
         data_vars["pf2_B"] = (
             ["rise_component", "rise_component_dim2"],
-            pf2_factors[1],
+            np.asarray(pf2_factors[1], dtype=np.float32),
         )
         coords["rise_component_dim2"] = np.arange(1, pf2_factors[1].shape[1] + 1)
         if gene_names is not None:
-            data_vars["pf2_C"] = (["gene", "rise_component"], pf2_factors[2])
+            data_vars["pf2_C"] = (
+                ["gene", "rise_component"],
+                np.asarray(pf2_factors[2], dtype=np.float32),
+            )
         if pf2_weights is not None:
-            data_vars["pf2_weights"] = (["rise_component"], pf2_weights)
+            data_vars["pf2_weights"] = (
+                ["rise_component"],
+                np.asarray(pf2_weights, dtype=np.float32),
+            )
 
     ds_attrs = {
         "rise_rank": rise_rank,
@@ -127,10 +148,14 @@ def factors_to_xarray(
 
 
 def save_factors_netcdf(ds: xr.Dataset, filepath: str | Path) -> None:
-    """Save an xarray Dataset of factors to a NetCDF file."""
+    """Save an xarray Dataset of factors to a NetCDF file, ensuring float arrays are float32."""
     path = Path(filepath)
     path.parent.mkdir(parents=True, exist_ok=True)
-    ds.to_netcdf(path)
+    ds_to_save = ds.copy()
+    for var_name in ds_to_save.data_vars:
+        if np.issubdtype(ds_to_save[var_name].dtype, np.floating):
+            ds_to_save[var_name] = ds_to_save[var_name].astype(np.float32)
+    ds_to_save.to_netcdf(path)
 
 
 def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:

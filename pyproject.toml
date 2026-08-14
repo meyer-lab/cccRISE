@@ -62,3 +62,7 @@ ignore = [
     "N999",   # figure modules are intentionally named figureXX.py
     "BLE001", # figure scripts deliberately catch broad exceptions to keep batch analyses running
 ]
+
+[tool.pytest.ini_options]
+addopts = "-n auto"
+
