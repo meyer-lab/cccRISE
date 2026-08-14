@@ -1,22 +1,9 @@
 import anndata
 import pandas as pd
-from sklearn.linear_model import LogisticRegressionCV
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.model_selection import RepeatedStratifiedKFold
 
 from .utils import add_obs_cmp_label
-
-
-def logistic_regression(scoring, random_state=0):
-    """Standardizing LogReg for all functions"""
-    cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=5)
-    return LogisticRegressionCV(
-        random_state=random_state,
-        max_iter=10000,
-        penalty="l1",
-        solver="saga",
-        cv=cv,
-        scoring=scoring,
-    )
 
 
 def ccc_rise_logreg_weights(
@@ -31,10 +18,17 @@ def ccc_rise_logreg_weights(
     if scoring is None:
         scoring = ["roc_auc", "accuracy"]
 
+    cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=5, random_state=random_state)
     for i in scoring:
-        lr_fit = logistic_regression(i, random_state=random_state).fit(
-            X.uns["A"], sample_to_group
-        )
+        lr_fit = LogisticRegressionCV(
+            random_state=random_state,
+            max_iter=5000,
+            solver="saga",
+            l1_ratios=(1.0,),
+            cv=cv,
+            scoring=i,
+            use_legacy_attributes=False,
+        ).fit(X.uns["A"], sample_to_group)
         if i == "roc_auc":
             weights_aucroc = lr_fit.coef_[0]
         elif i == "accuracy":
@@ -63,9 +57,15 @@ def population_gene_logreg_weights(
     y = X.obs[f"Cmp{cmp}"].to_numpy()
 
     expr = X.X
-    if hasattr(expr, "toarray"):
-        expr = expr.toarray()
+    if hasattr(expr, "tocsr"):
+        expr = expr.tocsr()
 
-    lr_fit = logistic_regression("roc_auc", random_state=random_state).fit(expr, y)
+    lr_fit = LogisticRegression(
+        solver="saga",
+        l1_ratio=1.0,
+        random_state=random_state,
+        tol=1e-3,
+        max_iter=1000,
+    ).fit(expr, y)
     weights = pd.Series(lr_fit.coef_[0], index=X.var_names)
     return weights.sort_values(ascending=False)

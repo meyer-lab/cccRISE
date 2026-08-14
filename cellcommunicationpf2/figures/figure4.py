@@ -3,6 +3,7 @@ Figure 4: CCC-RISE identifies communication programs distinguishing ALAD
 lung transplant recipients from controls.
 """
 
+import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -17,7 +18,7 @@ from ..utils import (
     binned_expression_product_matrix,
     correct_conditions,
 )
-from .common import get_alad_data, load_or_compute_dataframe
+from .common import get_alad_data
 from .commonFuncs.plotFactors import plot_lr_factors
 from .commonFuncs.plotGeneral import binarize_group, get_sample_to_group
 from .commonFuncs.plotPaCMAP import plot_labels_pacmap, plot_wc_pacmap
@@ -54,9 +55,8 @@ def _ordered_population(X, celltype_col, celltype, cmp, factor_type):
     return Xp[np.argsort(Xp.obsm["rc_C"][:, cmp - 1])]
 
 
-def compute_fig4_gene_weights() -> pd.DataFrame:
+def compute_fig4_gene_weights(X: anndata.AnnData) -> pd.DataFrame:
     """Compute logistic regression gene weights across cell populations."""
-    X = get_alad_data(project_cells=True, do_embedding=False)
     celltype_col = "broad_cell_type"
 
     cd4t_weights = population_gene_logreg_weights(
@@ -185,10 +185,7 @@ def makeFigure():
     ax_j.set_yticks([])
     label_panel(ax_j, "j")
 
-    # Load gene weights DataFrame
-    df_weights = load_or_compute_dataframe(
-        "fig4_gene_weights.parquet", compute_fig4_gene_weights
-    )
+    df_weights = compute_fig4_gene_weights(X)
 
     # ------------------------------------------------------------------
     # Row 3: (k) Cmp.5 gene weights (CD4 T, bottom 10%),
@@ -234,21 +231,22 @@ def makeFigure():
     ax_o.set_ylabel(f"Receiver Cell Component {CMP_DC} Association")
     label_panel(ax_o, "o")
 
-    dc_sender = _ordered_population(
-        X, celltype_col, "Dendritic Cells", CMP_DC, "sender"
-    )
-    epi_receiver = _ordered_population(
-        X, celltype_col, "Epithelial cells", CMP_DC, "receiver"
-    )
-    df_cd200 = binned_expression_product_matrix(
-        dc_sender, epi_receiver, "CD200", "CD200R1"
-    )
-    sns.heatmap(df_cd200, ax=ax_p, cmap="rocket", vmax=0.015)
-    ax_p.set_title("CD200-CD200R1 Interaction")
-    ax_p.set_xlabel("Receiver Epithelial Cell Population")
-    ax_p.set_ylabel("Sender DC Population")
-    ax_p.set_xticks([])
-    ax_p.set_yticks([])
+    # dc_sender = _ordered_population(
+    #     X, celltype_col, "Dendritic Cells", CMP_DC, "sender"
+    # )
+    # epi_receiver = _ordered_population(
+    #     X, celltype_col, "Epithelial cells", CMP_DC, "receiver"
+    # )
+    # df_cd200 = binned_expression_product_matrix(
+    #     dc_sender, epi_receiver, "CD200", "CD200R1"
+    # )
+    # sns.heatmap(df_cd200, ax=ax_p, cmap="rocket", vmax=0.015)
+    # ax_p.set_title("CD200-CD200R1 Interaction")
+    # ax_p.set_xlabel("Receiver Epithelial Cell Population")
+    # ax_p.set_ylabel("Sender DC Population")
+    # ax_p.set_xticks([])
+    # ax_p.set_yticks([])
+    ax_p.axis("off")
     label_panel(ax_p, "p")
 
     if "dc_sender_cmp13" in df_weights:
