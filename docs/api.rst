@@ -146,22 +146,22 @@ Factorization
    :returns: Tuple containing the updated AnnData object with stored results and the R²X value (variance explained).
    :rtype: tuple[anndata.AnnData, float]
 
-.. py:function:: calculate_interaction_tensor(X_filtered: anndata.AnnData, lr_pairs: pd.DataFrame, rise_rank: int)
+.. py:function:: calculate_interaction_tensor(adata: anndata.AnnData, lr_pairs: pd.DataFrame, complex_sep: str = "&")
    :module: cellcommunicationpf2.tensor
 
-   Calculate the interaction tensor from AnnData object using PARAFAC2 and communication scores.
+   Calculate the interaction tensor from an AnnData object that has already been processed with RISE.
    
-   This function performs RISE decomposition and computes cell-cell communication scores for 
-   all ligand-receptor pairs across sender-receiver latent cell state pairs. The resulting 
-   tensor has dimensions (rise_rank × rise_rank × n_lr_pairs × n_conditions).
+   This function computes cell-cell communication scores for all ligand-receptor pairs across
+   sender-receiver latent cell state pairs using the pre-computed RISE projections in `adata.obsm["projections"]`.
+   The resulting tensor has dimensions (n_conditions × rise_rank × rise_rank × n_lr_pairs).
    
-   :param X_filtered: AnnData object containing preprocessed expression data.
-   :type X_filtered: anndata.AnnData
+   :param adata: AnnData object containing expression data and RISE projections in ``obsm["projections"]``.
+   :type adata: anndata.AnnData
    :param lr_pairs: DataFrame of ligand-receptor pairs with 'ligand' and 'receptor' columns.
    :type lr_pairs: pd.DataFrame
-   :param rise_rank: Number of PARAFAC2 components to extract before computing communication scores.
-   :type rise_rank: int
-   :returns: Interaction tensor with dimensions (rise_rank × rise_rank × n_lr_pairs × n_conditions).
+   :param complex_sep: Symbol that separates protein subunits in multimeric complexes (default: "&").
+   :type complex_sep: str, optional
+   :returns: Interaction tensor with dimensions (n_conditions × rise_rank × rise_rank × n_lr_pairs).
    :rtype: np.ndarray
 
 .. py:function:: run_fms_r2x_analysis(interaction_tensor: np.ndarray, rank_list: list[int] = None, runs: int = 1, svd_init: str = "svd")

@@ -274,3 +274,50 @@ def load_factors_to_anndata(
             out.obsm["PaCMAP"] = pcm.fit_transform(out.obsm["projections"])
 
     return out
+
+
+def clean_memory() -> None:
+    """Explicitly garbage collect and release CuPy device and pinned host memory pools."""
+    import gc
+
+    gc.collect()
+    try:
+        import cupy as cp
+
+        cp.get_default_memory_pool().free_all_blocks()
+        cp.get_default_pinned_memory_pool().free_all_blocks()
+    except (ImportError, AttributeError):
+        return
+
+
+def load_or_compute_dataframe(
+    filename: str | Path,
+    compute_fn,
+    *args,
+    recompute: bool = False,
+    **kwargs,
+) -> pd.DataFrame:
+    """
+    Load a DataFrame from a cached file in DATA_DIR or an absolute path,
+    or compute it via `compute_fn(*args, **kwargs)` and cache it to disk.
+
+    Supports .csv and .parquet formats based on file extension.
+    """
+    path = Path(filename)
+    if not path.is_absolute():
+        path = DATA_DIR / path
+
+    if path.exists() and not recompute:
+        if path.suffix == ".parquet":
+            return pd.read_parquet(path)
+        return pd.read_csv(path)
+
+    df: pd.DataFrame = compute_fn(*args, **kwargs)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix == ".parquet":
+        df.to_parquet(path, index=False)
+    else:
+        df.to_csv(path, index=False)
+
+    clean_memory()
+    return df

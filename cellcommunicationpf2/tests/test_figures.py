@@ -2,7 +2,12 @@
 
 import importlib
 import os
+from pathlib import Path
 from unittest.mock import patch
+
+# Ensure CUDA headers are found by CuPy in test workers
+if "CUDA_PATH" not in os.environ and Path("/usr/include/cuda.h").exists():
+    os.environ["CUDA_PATH"] = "/usr"
 
 import matplotlib.pyplot as plt
 import pytest

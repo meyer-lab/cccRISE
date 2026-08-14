@@ -1,75 +1,81 @@
-# """
-# Figure 6: CP Rank Selection Analysis
+"""
+Figure 6: CP Rank Selection Analysis
 
-# This figure demonstrates how R²X changes with increasing CP rank
-# while keeping the RISE rank fixed at 30.
-# """
+This figure demonstrates how R²X changes with increasing CP rank
+for the COVID dataset using cached RISE factors.
+"""
 
-# from matplotlib import pyplot as plt
+import pandas as pd
+from matplotlib import pyplot as plt
+from tensorly.decomposition import parafac
+from tlviz.model_evaluation import core_consistency
 
-# from ..import_data import (
-#     add_cond_idxs,
-#     import_balf_covid,
-#     import_ligand_receptor_pairs,
-# )
-# from .common import subplotLabel
-# from ..utils import run_cc_pf2_workflow
+from ..ccc import calculate_r2x
+from ..import_data import import_ligand_receptor_pairs
+from ..tensor import calculate_interaction_tensor
+from .common import get_covid_data, subplotLabel
 
 
-# def makeFigure():
-#     """Generate Figure 6 showing CP rank selection analysis with fixed RISE rank."""
-#     fig, ax = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
-#     subplotLabel([ax])
+def compute_cp_rank_sweep(
+    cp_ranks: list[int] | None = None,
+    n_iter_max: int = 200,
+    tol: float = 1e-3,
+    random_state: int = 42,
+) -> pd.DataFrame:
+    """Compute R2X and core consistency across CP ranks for cached RISE factors of the COVID dataset."""
+    if cp_ranks is None:
+        cp_ranks = list(range(1, 13, 1))
 
-#     # Import and prepare data
-#     print("Importing and preparing data for Figure 6...")
-#     adata = import_balf_covid()
-#     adata_filtered = add_cond_idxs(adata, "sample")
-#     lr_pairs = import_ligand_receptor_pairs()
-#     print(f"Data shape: {adata_filtered.shape}")
+    adata = get_covid_data(project_cells=True)
+    lr_pairs = import_ligand_receptor_pairs()
 
-#     rise_rank = 30
-#     cp_ranks = list(range(10, 101, 10))
-#     print(
-#         f"Testing CP ranks {cp_ranks[0]}-{cp_ranks[-1]} in steps of 5 (RISE rank fixed at {rise_rank})..."
-#     )
+    # Calculate interaction tensor ONCE for the cached RISE dataset
+    interaction_tensor = calculate_interaction_tensor(adata, lr_pairs)
 
-#     n_iter_max = 100
-#     tol = 1e-6
-#     random_state = 42
+    r2x_results = []
+    for cp_rank in cp_ranks:
+        print(f"CP rank: {cp_rank}")
+        cp_weights, cp_factors = parafac(
+            interaction_tensor,
+            rank=cp_rank,
+            n_iter_max=n_iter_max,
+            tol=tol,
+            normalize_factors=True,
+            random_state=random_state,
+            svd="randomized_svd",
+        )
+        r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
+        cc = core_consistency((cp_weights, cp_factors), interaction_tensor, normalised=True)
+        print(f"R2X: {r2x}, Core Consistency: {cc}")
+        r2x_results.append({"cp_rank": cp_rank, "r2x": r2x, "core_consistency": cc})
 
-#     r2x_results = {}
+    return pd.DataFrame(r2x_results)
 
-#     for i, cp_rank in enumerate(cp_ranks):
-#         print(f"Testing CP rank {cp_rank} ({i+1}/{len(cp_ranks)})...")
-#         try:
-#             _, r2x = run_cc_pf2_workflow(
-#                 adata_filtered,
-#                 rise_rank=rise_rank,
-#                 lr_pairs=lr_pairs,
-#                 cp_rank=cp_rank,
-#                 n_iter_max=n_iter_max,
-#                 tol=tol,
-#                 random_state=random_state,
-#             )
-#             r2x_results[cp_rank] = r2x
-#             print(f"  CP Rank {cp_rank}: R²X = {r2x:.6f}")
 
-#         except Exception as e:
-#             print(f"  CP Rank {cp_rank}: Failed - {e}")
-#             r2x_results[cp_rank] = float("nan")
+def makeFigure():
+    """Generate Figure 6 showing CP rank selection analysis with cached RISE factors."""
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
+    subplotLabel([ax])
 
-#     # Filter valid results and plot
-#     valid_results = {k: v for k, v in r2x_results.items() if not (v is None or v != v)}
-#     cp_ranks = sorted(valid_results.keys())
-#     r2x_values = [valid_results[r] for r in cp_ranks]
+    df = compute_cp_rank_sweep()
 
-#     # Plot R²X curve
-#     ax.plot(cp_ranks, r2x_values, "o-", linewidth=2, markersize=6, color="darkorange")
-#     ax.set_xlabel("CP Rank", fontsize=14)
-#     ax.set_ylabel("R²X", fontsize=14)
-#     ax.set_title(f"CP Rank Selection (RISE Rank = {rise_rank})", fontsize=16)
-#     ax.grid(True, alpha=0.3)
+    ax.plot(
+        df["cp_rank"],
+        df["r2x"],
+        marker="o",
+        color="blue",
+        label="R²X",
+    )
+    ax.plot(
+        df["cp_rank"],
+        df["core_consistency"] / 100.0,
+        marker="o",
+        color="orange",
+        label="Core Consistency",
+    )
+    ax.set_xlabel("CP Rank")
+    ax.set_ylabel("Score")
+    ax.set_title("CP Rank Selection")
+    ax.legend()
 
-#     print("Figure 6 generation complete.")
-#     return fig
+    return fig
