@@ -7,19 +7,24 @@ while keeping the RISE rank fixed at 30.
 
 import pandas as pd
 from matplotlib import pyplot as plt
+from tensorly.decomposition import parafac
 
+from ..ccc import calculate_r2x
 from ..import_data import (
     add_cond_idxs,
     import_balf_covid,
     import_ligand_receptor_pairs,
 )
-from ..tensor import run_ccc_rise_workflow
+from ..tensor import calculate_interaction_tensor
 from .common import load_or_compute_dataframe, subplotLabel
 
 
 def compute_cp_rank_sweep(
     cp_ranks: list[int] | None = None,
     rise_rank: int = 30,
+    n_iter_max: int = 1000,
+    tol: float = 1e-6,
+    random_state: int = 42,
 ) -> pd.DataFrame:
     """Compute R2X across CP ranks for a fixed RISE rank."""
     if cp_ranks is None:
@@ -29,19 +34,23 @@ def compute_cp_rank_sweep(
     adata_filtered = add_cond_idxs(adata, "sample")
     lr_pairs = import_ligand_receptor_pairs()
 
+    # Calculate interaction tensor ONCE for the fixed RISE rank
+    interaction_tensor = calculate_interaction_tensor(
+        adata_filtered, lr_pairs, rise_rank=rise_rank
+    )
+
     r2x_results = []
     for cp_rank in cp_ranks:
         try:
-            _, r2x = run_ccc_rise_workflow(
-                adata_filtered,
-                rise_rank=rise_rank,
-                lr_pairs=lr_pairs,
-                cp_rank=cp_rank,
-                n_iter_max=100,
-                tol=1e-6,
-                random_state=42,
-                doEmbedding=False,
+            cp_weights, cp_factors = parafac(
+                interaction_tensor,
+                rank=cp_rank,
+                n_iter_max=n_iter_max,
+                tol=tol,
+                normalize_factors=True,
+                random_state=random_state,
             )
+            r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
             r2x_results.append({"cp_rank": cp_rank, "r2x": r2x})
         except Exception:
             r2x_results.append({"cp_rank": cp_rank, "r2x": float("nan")})
@@ -60,20 +69,17 @@ def makeFigure():
         compute_cp_rank_sweep,
         rise_rank=rise_rank,
     )
-    df = df.dropna().sort_values("cp_rank")
 
-    # Plot R²X curve
     ax.plot(
         df["cp_rank"],
         df["r2x"],
-        "o-",
-        linewidth=2,
-        markersize=6,
-        color="darkorange",
+        marker="o",
+        color="blue",
+        label=f"RISE Rank {rise_rank}",
     )
-    ax.set_xlabel("CP Rank", fontsize=14)
-    ax.set_ylabel("R²X", fontsize=14)
-    ax.set_title(f"CP Rank Selection (RISE Rank = {rise_rank})", fontsize=16)
-    ax.grid(True, alpha=0.3)
+    ax.set_xlabel("CP Rank")
+    ax.set_ylabel("R²X")
+    ax.set_title("CP Rank Selection")
+    ax.legend()
 
     return fig

@@ -37,6 +37,7 @@ LIGHT_DIVERGING = sns.diverging_palette(240, 10, as_cmap=True)
 from ..factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
+    clean_memory,
     load_factors_to_anndata,
     load_or_compute_dataframe,
 )
@@ -48,6 +49,7 @@ __all__ = [
     "DEFAULT_CMAP",
     "DIVERGING_CMAP",
     "LIGHT_DIVERGING",
+    "clean_memory",
     "genFigure",
     "getSetup",
     "get_alad_data",

@@ -276,6 +276,20 @@ def load_factors_to_anndata(
     return out
 
 
+def clean_memory() -> None:
+    """Explicitly garbage collect and release CuPy device and pinned host memory pools."""
+    import gc
+
+    gc.collect()
+    try:
+        import cupy as cp
+
+        cp.get_default_memory_pool().free_all_blocks()
+        cp.get_default_pinned_memory_pool().free_all_blocks()
+    except (ImportError, AttributeError):
+        return
+
+
 def load_or_compute_dataframe(
     filename: str | Path,
     compute_fn,
@@ -304,4 +318,6 @@ def load_or_compute_dataframe(
         df.to_parquet(path, index=False)
     else:
         df.to_csv(path, index=False)
+
+    clean_memory()
     return df
