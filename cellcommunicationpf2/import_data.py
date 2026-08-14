@@ -114,41 +114,70 @@ def import_alad(gene_threshold: float = 0.1, normalize: bool = True):
     # Load data without backing to avoid issues with sparse conversion
     data = anndata.read_h5ad("/opt/BAL-scRNAseq-raw.h5ad")
 
-    # Add cell type annotations if available
-    celltype_csv = Path("/opt/andrew/ccc/bal_alad_celltype.csv")
-    if celltype_csv.exists():
-        ct_df = pd.read_csv(celltype_csv, index_col=0)
-        data.obs["celltype"] = ct_df.loc[data.obs_names, "celltype"].values
-
-        broad_map = {
-            "Macrophage 1": "Macrophages",
-            "Macrophage 2": "Macrophages",
-            "Macrophage 3": "Macrophages",
-            "Macrophage 4": "Macrophages",
-            "Macrophage 5": "Macrophages",
-            "Macrophage 6": "Macrophages",
-            "Macrophage 7": "Macrophages",
-            "Macrophage 8": "Macrophages",
-            "Macrophage": "Macrophages",
-            "Tissue resident Macrophage": "Macrophages",
-            "Cytokine prod.macrophage": "Macrophages",
-            "Cytokine prod.macrophage 2": "Macrophages",
-            "Anti-Inflammatory Macrophages": "Macrophages",
-            "Macrophage Ribo-high": "Macrophages",
-            "Monocyte": "Monocytes",
-            "Activated Mono/Mac": "Macrophages",
-            "cDC1": "Dendritic Cells",
-            "cDC2": "Dendritic Cells",
-            "Activated DCs": "Dendritic Cells",
-            "Lung epithelium": "Epithelial cells",
-            "CD4 T cells": "CD4 T cells",
-            "Treg": "CD4 T cells",
-            "NK cells": "NK cells",
-            "CD8 T cells": "CD8 T cells",
-            "Activated CD8": "CD8 T cells",
-            "Proliferating cells": "Proliferating cells",
+    # Map cell types directly from the metadata column revised_annotations_10_5
+    if "revised_annotations_10_5" in data.obs:
+        celltype_map = {
+            0: "Macrophage 1",
+            1: "Macrophage 2",
+            2: "Monocyte",
+            3: "Macrophage 3",
+            4: "Macrophage 4",
+            5: "Macrophage 5",
+            7: "Macrophage 6",
+            8: "Macrophage 7",
+            9: "Macrophage",
+            10: "Macrophage 8",
+            11: "Macrophage Ribo-high",
+            12: "CD8 T cells",
+            13: "Cytokine prod.macrophage",
+            15: "Cytokine prod.macrophage 2",
+            16: "CD4 T cells",
+            17: "Tissue resident Macrophage",
+            18: "Activated Mono/Mac",
+            19: "Proliferating cells",
+            20: "cDC2",
+            21: "NK cells",
+            22: "Treg",
+            23: "Lung epithelium",
+            24: "Activated CD8",
+            25: "Activated DCs",
+            26: "Anti-Inflammatory Macrophages",
+            27: "cDC1",
         }
-        data.obs["broad_cell_type"] = data.obs["celltype"].map(broad_map).values
+        broad_map = {
+            0: "Macrophages",
+            1: "Macrophages",
+            2: "Monocytes",
+            3: "Macrophages",
+            4: "Macrophages",
+            5: "Macrophages",
+            7: "Macrophages",
+            8: "Macrophages",
+            9: "Macrophages",
+            10: "Macrophages",
+            11: "Macrophages",
+            12: "CD8 T cells",
+            13: "Macrophages",
+            15: "Macrophages",
+            16: "CD4 T cells",
+            17: "Macrophages",
+            18: "Macrophages",
+            19: "Proliferating cells",
+            20: "Dendritic Cells",
+            21: "NK cells",
+            22: "CD4 T cells",
+            23: "Epithelial cells",
+            24: "CD8 T cells",
+            25: "Dendritic Cells",
+            26: "Macrophages",
+            27: "Dendritic Cells",
+        }
+        data.obs["celltype"] = (
+            data.obs["revised_annotations_10_5"].map(celltype_map).values
+        )
+        data.obs["broad_cell_type"] = (
+            data.obs["revised_annotations_10_5"].map(broad_map).values
+        )
 
     # Convert to sparse format if not already sparse
     if not issparse(data.X):
