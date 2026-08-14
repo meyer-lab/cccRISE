@@ -12,6 +12,7 @@ from cellcommunicationpf2.factors import (
     load_factors_to_anndata,
     save_factors_netcdf,
 )
+from cellcommunicationpf2.tensor import calculate_interaction_tensor
 
 
 def test_factors_to_xarray_and_netcdf_roundtrip():
@@ -125,3 +126,35 @@ def test_load_factors_with_sc_projection():
     assert out.obsm["rc_C"].shape == (n_cells, cp_rank)
     assert "PaCMAP" in out.obsm
     assert out.obsm["PaCMAP"].shape == (n_cells, 2)
+
+
+def test_calculate_interaction_tensor():
+    n_cells = 20
+    n_genes = 6
+    rise_rank = 3
+    n_cond = 2
+
+    # Create dummy AnnData with projections
+    X_counts = np.random.poisson(lam=2.0, size=(n_cells, n_genes)).astype(float)
+    gene_names = ["L1", "R1", "L2", "R2", "L3", "R3"]
+    obs = pd.DataFrame(
+        {
+            "sample": [f"S{i % n_cond}" for i in range(n_cells)],
+            "condition_unique_idxs": [i % n_cond for i in range(n_cells)],
+        },
+        index=[f"cell_{i}" for i in range(n_cells)],
+    )
+    var = pd.DataFrame(index=gene_names)
+    adata = anndata.AnnData(X=X_counts, obs=obs, var=var)
+    adata.obsm["projections"] = np.random.rand(n_cells, rise_rank)
+
+    lr_pairs = pd.DataFrame(
+        {
+            "ligand": ["L1", "L2"],
+            "receptor": ["R1", "R2"],
+            "interaction_symbol": ["L1&R1", "L2&R2"],
+        }
+    )
+
+    tensor = calculate_interaction_tensor(adata, lr_pairs)
+    assert tensor.shape == (n_cond, rise_rank, rise_rank, len(lr_pairs))

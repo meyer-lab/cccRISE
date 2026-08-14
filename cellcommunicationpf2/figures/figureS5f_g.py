@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..import_data import add_cond_idxs, import_alad, import_ligand_receptor_pairs
+from ..import_data import import_ligand_receptor_pairs
 from ..tensor import calculate_interaction_tensor, run_fms_r2x_analysis
-from .common import getSetup, load_or_compute_dataframe, subplotLabel
+from .common import get_alad_data, getSetup, load_or_compute_dataframe, subplotLabel
 
 
 def compute_alad_cpd_stability_data(
@@ -19,14 +19,10 @@ def compute_alad_cpd_stability_data(
     if rank_list is None:
         rank_list = list(range(1, 27, 1))
 
-    X = import_alad(gene_threshold=0.01, normalize=True)
+    X = get_alad_data(project_cells=True)
     lr_pairs = import_ligand_receptor_pairs()
-    condition_column = "dsco_id"
-    X_filtered = add_cond_idxs(X, condition_column)
 
-    interaction_tensor = calculate_interaction_tensor(
-        X_filtered, lr_pairs, rise_rank=15
-    )
+    interaction_tensor = calculate_interaction_tensor(X, lr_pairs)
     return run_fms_r2x_analysis(
         interaction_tensor, rank_list=rank_list, runs=runs, svd_init="random"
     )

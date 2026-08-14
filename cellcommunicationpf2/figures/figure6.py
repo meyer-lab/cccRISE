@@ -2,7 +2,7 @@
 Figure 6: CP Rank Selection Analysis
 
 This figure demonstrates how R²X changes with increasing CP rank
-while keeping the RISE rank fixed at 30.
+for the COVID dataset using cached RISE factors.
 """
 
 import pandas as pd
@@ -10,37 +10,30 @@ from matplotlib import pyplot as plt
 from tensorly.decomposition import parafac
 
 from ..ccc import calculate_r2x
-from ..import_data import (
-    add_cond_idxs,
-    import_balf_covid,
-    import_ligand_receptor_pairs,
-)
+from ..import_data import import_ligand_receptor_pairs
 from ..tensor import calculate_interaction_tensor
-from .common import load_or_compute_dataframe, subplotLabel
+from .common import get_covid_data, load_or_compute_dataframe, subplotLabel
 
 
 def compute_cp_rank_sweep(
     cp_ranks: list[int] | None = None,
-    rise_rank: int = 30,
-    n_iter_max: int = 1000,
-    tol: float = 1e-6,
+    n_iter_max: int = 200,
+    tol: float = 1e-3,
     random_state: int = 42,
 ) -> pd.DataFrame:
-    """Compute R2X across CP ranks for a fixed RISE rank."""
+    """Compute R2X across CP ranks for cached RISE factors of the COVID dataset."""
     if cp_ranks is None:
         cp_ranks = list(range(10, 101, 10))
 
-    adata = import_balf_covid()
-    adata_filtered = add_cond_idxs(adata, "sample")
+    adata = get_covid_data(project_cells=True)
     lr_pairs = import_ligand_receptor_pairs()
 
-    # Calculate interaction tensor ONCE for the fixed RISE rank
-    interaction_tensor = calculate_interaction_tensor(
-        adata_filtered, lr_pairs, rise_rank=rise_rank
-    )
+    # Calculate interaction tensor ONCE for the cached RISE dataset
+    interaction_tensor = calculate_interaction_tensor(adata, lr_pairs)
 
     r2x_results = []
     for cp_rank in cp_ranks:
+        print(f"CP rank: {cp_rank}")
         try:
             cp_weights, cp_factors = parafac(
                 interaction_tensor,
@@ -59,15 +52,13 @@ def compute_cp_rank_sweep(
 
 
 def makeFigure():
-    """Generate Figure 6 showing CP rank selection analysis with fixed RISE rank."""
+    """Generate Figure 6 showing CP rank selection analysis with cached RISE factors."""
     fig, ax = plt.subplots(1, 1, figsize=(8, 6), constrained_layout=True)
     subplotLabel([ax])
 
-    rise_rank = 30
     df = load_or_compute_dataframe(
         "fig6_cp_ranks.csv",
         compute_cp_rank_sweep,
-        rise_rank=rise_rank,
     )
 
     ax.plot(
@@ -75,11 +66,9 @@ def makeFigure():
         df["r2x"],
         marker="o",
         color="blue",
-        label=f"RISE Rank {rise_rank}",
     )
     ax.set_xlabel("CP Rank")
     ax.set_ylabel("R²X")
     ax.set_title("CP Rank Selection")
-    ax.legend()
 
     return fig

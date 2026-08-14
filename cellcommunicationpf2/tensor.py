@@ -240,17 +240,42 @@ def run_pseudobulk_workflow(
 
 
 def calculate_interaction_tensor(
-    X_filtered: anndata.AnnData, lr_pairs: pd.DataFrame, rise_rank: int
-):
-    """Calculate interaction tensor from AnnData object using PARAFAC2 and communication scores."""
-    pf2_out, _ = parafac2_nd(X_filtered, rank=rise_rank, n_iter_max=1000, tol=1e-9)
-    _, _, projections = pf2_out
+    adata: anndata.AnnData,
+    lr_pairs: pd.DataFrame,
+    complex_sep: str | None = "&",
+) -> np.ndarray:
+    """
+    Calculate interaction tensor from an AnnData object that has already been processed with RISE.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        AnnData object with single-cell expression and RISE projections in `adata.obsm["projections"]`.
+    lr_pairs : pd.DataFrame
+        DataFrame of ligand-receptor pairs.
+    complex_sep : str, optional, default="&"
+        Separator for multimeric complexes.
+
+    Returns
+    -------
+    np.ndarray
+        4D cell-cell communication interaction tensor.
+    """
+    assert (
+        "projections" in adata.obsm
+    ), "AnnData object must have 'projections' in obsm (processed with RISE)."
+
+    sgIndex = (
+        adata.obs["condition_unique_idxs"].to_numpy(dtype=int)
+        if "condition_unique_idxs" in adata.obs
+        else np.zeros(adata.n_obs, dtype=int)
+    )
 
     # Project matrices
-    X_list = anndata_to_list(X_filtered)
+    X_list = anndata_to_list(adata)
     projected_matrices = []
     for i, tensor in enumerate(X_list):
-        proj = projections[i]
+        proj = adata.obsm["projections"][sgIndex == i]
         # Convert tensor to NumPy
         tensor_np = (
             cast(Any, tensor).toarray() if isinstance(tensor, spmatrix) else tensor
@@ -258,9 +283,12 @@ def calculate_interaction_tensor(
         projected_matrices.append(proj.T @ tensor_np)
 
     # Calculate cell-cell communication scores
-    gene_names = list(X_filtered.var_names)
+    gene_names = list(adata.var_names)
     interaction_tensor, _ = calc_communication_score(
-        projected_matrices, gene_names=gene_names, lr_pairs=lr_pairs, complex_sep="&"
+        projected_matrices,
+        gene_names=gene_names,
+        lr_pairs=lr_pairs,
+        complex_sep=complex_sep,
     )
 
     return interaction_tensor
@@ -316,10 +344,13 @@ def run_fms_r2x_data_percentage_analysis(
     if percentage_list is None:
         percentage_list = list(range(100, 45, -5))
 
+    if "projections" not in X_filtered.obsm:
+        X_filtered, _ = rise_store_r2x(
+            X_filtered, rank=rise_rank, n_iter_max=1000, tolerance=1e-9
+        )
+
     # 0) Reference on FULL data (no bootstrapping here)
-    full_tensor = calculate_interaction_tensor(
-        X_filtered, lr_pairs, rise_rank=rise_rank
-    )
+    full_tensor = calculate_interaction_tensor(X_filtered, lr_pairs)
     w_full, f_full = parafac(
         tensor=full_tensor,
         rank=cp_rank,
@@ -341,9 +372,7 @@ def run_fms_r2x_data_percentage_analysis(
                 X_sub = X_filtered
 
             # 2) Tensor on subsample
-            sub_tensor = calculate_interaction_tensor(
-                X_sub, lr_pairs, rise_rank=rise_rank
-            )
+            sub_tensor = calculate_interaction_tensor(X_sub, lr_pairs)
 
             # 3) CP on subsample
             w_sub, f_sub = parafac(

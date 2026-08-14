@@ -35,6 +35,7 @@ from cellcommunicationpf2.import_data import (
 )
 from cellcommunicationpf2.tensor import (
     calculate_interaction_tensor,
+    rise_store_r2x,
     run_fms_r2x_analysis,
 )
 from cellcommunicationpf2.utils import (
@@ -80,11 +81,10 @@ print("\n=== CPD Rank Selection ===")
 print("Calculating interaction tensor for CPD rank selection...")
 rise_rank_for_cpd = 35
 
-# Calculate interaction tensor
-print(f"Building interaction tensor with RISE rank={rise_rank_for_cpd}...")
-interaction_tensor = calculate_interaction_tensor(
-    X, lr_pairs, rise_rank=rise_rank_for_cpd
-)
+# Process with RISE and calculate interaction tensor
+print(f"Fitting RISE with rank={rise_rank_for_cpd} and building interaction tensor...")
+X, _ = rise_store_r2x(X, rank=rise_rank_for_cpd, n_iter_max=1000, tolerance=1e-9)
+interaction_tensor = calculate_interaction_tensor(X, lr_pairs)
 print(f"Interaction tensor shape: {interaction_tensor.shape}")
 
 # Run actual CPD FMS/R2X analysis
