@@ -147,13 +147,16 @@ After RISE, an interaction tensor is computed from cell-cell communication score
 
 First, calculate the interaction tensor using a selected RISE rank, then test different CPD ranks::
 
-    from cellcommunicationpf2.tensor import calculate_interaction_tensor, run_fms_r2x_analysis
+    from cellcommunicationpf2.tensor import calculate_interaction_tensor, rise_store_r2x, run_fms_r2x_analysis
     import seaborn as sns
     import matplotlib.pyplot as plt
     
-    # Calculate interaction tensor with chosen RISE rank
+    # Process dataset with chosen RISE rank
     rise_rank = 35  # Based on RISE analysis above
-    interaction_tensor = calculate_interaction_tensor(X, lr_pairs, rise_rank=rise_rank)
+    X, _ = rise_store_r2x(X, rank=rise_rank, n_iter_max=1000, tolerance=1e-9)
+    
+    # Calculate interaction tensor
+    interaction_tensor = calculate_interaction_tensor(X, lr_pairs)
     
     # Test CPD ranks
     rank_list = list(range(1, 11, 2))

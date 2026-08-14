@@ -171,3 +171,4 @@ nohup.out
 
 data/
 !cellcommunicationpf2/data/
+*.h5ad
