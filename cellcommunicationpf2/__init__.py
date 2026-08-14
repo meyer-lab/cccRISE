@@ -1,5 +1,12 @@
 """Cell communication analysis using PARAFAC2 (CCC-RISE)."""
 
+import os
+from pathlib import Path
+
+# Ensure CUDA headers are found by CuPy if present
+if "CUDA_PATH" not in os.environ and Path("/usr/include/cuda.h").exists():
+    os.environ["CUDA_PATH"] = "/usr"
+
 from .factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
