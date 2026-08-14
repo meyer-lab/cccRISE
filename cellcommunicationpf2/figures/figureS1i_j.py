@@ -2,7 +2,6 @@
 Figure S2i_j: Heatmaps of ligand-receptor expression products for selected cell types and components in CCC-RISE on BALF COVID-19 data.
 """
 
-import anndata
 import numpy as np
 import seaborn as sns
 
@@ -10,7 +9,7 @@ from ..utils import (
     binned_expression_product_matrix,
 )
 from .common import (
-    COVID19_PATH,
+    get_covid_data,
     getSetup,
     subplotLabel,
 )
@@ -20,7 +19,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(COVID19_PATH)
+    X = get_covid_data(project_cells=True)
     ccc_rise_cmp = 6
 
     X_mdc_sender = X[X.obs["celltype"] == "Macrophages"]

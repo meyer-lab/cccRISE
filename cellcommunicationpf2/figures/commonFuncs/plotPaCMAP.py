@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import anndata
 import datashader as ds
 import datashader.transfer_functions as tf
@@ -90,13 +92,25 @@ def plot_wc_pacmap(
 
 
 def make_wc_pacmap_figure(
-    h5ad_path: str, grid: tuple[int, int], figsize: tuple[int, int] = (18, 18)
+    data_or_path: str | Path | anndata.AnnData,
+    grid: tuple[int, int],
+    figsize: tuple[int, int] = (18, 18),
 ) -> Figure:
     """Build a grid figure of weighted sender/receiver cell PaCMAPs for every component."""
+    from ..common import get_alad_data, get_covid_data
+
     ax, f = getSetup(figsize, grid)
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(h5ad_path)
+    if isinstance(data_or_path, anndata.AnnData):
+        X = data_or_path
+    elif "covid" in str(data_or_path).lower():
+        X = get_covid_data(project_cells=True, do_embedding=True)
+    elif "alad" in str(data_or_path).lower():
+        X = get_alad_data(project_cells=True, do_embedding=True)
+    else:
+        X = anndata.read_h5ad(data_or_path)
+
     cp_rank = X.uns["A"].shape[1]
 
     for i in range(cp_rank):

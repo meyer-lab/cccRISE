@@ -6,7 +6,6 @@ Panel letters follow the manuscript figure. All panels are generated from
 data already computed and stored on the COVID-19 BALF AnnData object.
 """
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -21,7 +20,7 @@ from ..utils import (
     aggregate_communication_scores_by_group,
     binned_expression_product_matrix,
 )
-from .common import COVID19_PATH
+from .common import get_covid_data
 from .commonFuncs.plotFactors import plot_pair_lr_factors
 from .commonFuncs.plotGeneral import get_sample_to_group, symmetrize_axes
 from .commonFuncs.plotPaCMAP import plot_wc_pacmap
@@ -84,7 +83,7 @@ def _epithelial_weight_violin(X, cmp, ax_sender, ax_receiver):
 
 
 def makeFigure():
-    X = anndata.read_h5ad(COVID19_PATH)
+    X = get_covid_data(project_cells=True, do_embedding=True)
     condition_column = "sample"
     group_col = "condition"
 

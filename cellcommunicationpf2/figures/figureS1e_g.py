@@ -4,14 +4,13 @@ Figure S1e_g: Cell type proportions across conditions in BALF COVID-19 data.
 
 from typing import cast
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy.stats import spearmanr
 
 from .common import (
-    COVID19_PATH,
+    get_covid_data,
     getSetup,
     subplotLabel,
 )
@@ -21,7 +20,7 @@ def makeFigure():
     ax, f = getSetup((4, 4), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(COVID19_PATH)
+    X = get_covid_data(project_cells=True)
     obs = cast(pd.DataFrame, X.obs)
 
     celltype_counts = cast(pd.Series, obs.groupby(["celltype", "sample"]).size())
