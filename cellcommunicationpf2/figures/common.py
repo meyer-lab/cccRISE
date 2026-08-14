@@ -38,8 +38,24 @@ from ..factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
     load_factors_to_anndata,
+    load_or_compute_dataframe,
 )
 from ..import_data import import_alad, import_balf_covid
+
+__all__ = [
+    "ALAD_FACTORS_PATH",
+    "COVID19_FACTORS_PATH",
+    "DEFAULT_CMAP",
+    "DIVERGING_CMAP",
+    "LIGHT_DIVERGING",
+    "genFigure",
+    "getSetup",
+    "get_alad_data",
+    "get_covid_data",
+    "load_factors_to_anndata",
+    "load_or_compute_dataframe",
+    "subplotLabel",
+]
 
 
 def get_covid_data(

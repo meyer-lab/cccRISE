@@ -2,36 +2,59 @@
 Figure S1a_b: FMS across RISE ranks (only) for COVID-19
 """
 
-from ..import_data import (
-    add_cond_idxs,
-    import_balf_covid,
-)
-from .common import getSetup, subplotLabel
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+from ..import_data import add_cond_idxs, import_balf_covid
+from ..tensor import calculate_fms_rise, rise_store_r2x
+from ..utils import resample
+from .common import getSetup, load_or_compute_dataframe, subplotLabel
+
+
+def compute_covid_rise_stability_data(
+    ranks: list[int] | None = None,
+    runs: int = 3,
+) -> pd.DataFrame:
+    """Compute FMS and R2X stability metrics across RISE ranks on COVID-19."""
+    if ranks is None:
+        ranks = list(range(1, 61, 5))
+
+    X = import_balf_covid(gene_threshold=0.01, normalize=True)
+    condition_column = "sample"
+    X = add_cond_idxs(X, condition_column)
+
+    rows = []
+    for j in range(runs):
+        for i in ranks:
+            dataX, r2x = rise_store_r2x(X, rank=i, n_iter_max=1000, tolerance=1e-9)
+            sampledX, _ = rise_store_r2x(
+                resample(X, condition_name=condition_column),
+                rank=i,
+                n_iter_max=1000,
+                tolerance=1e-9,
+            )
+            fmsScore = calculate_fms_rise(dataX, sampledX)
+            rows.append({"Run": j, "Component": i, "FMS": fmsScore, "R2X": r2x})
+
+    return pd.DataFrame(rows)
 
 
 def makeFigure():
     ax, f = getSetup((6, 3), (1, 2))
     subplotLabel(ax)
 
-    # Import and prepare data
-    print("Importing and preparing")
-    X = import_balf_covid(gene_threshold=0.01, normalize=True)
+    df = load_or_compute_dataframe(
+        "figS1a_b_rise_stability.csv",
+        compute_covid_rise_stability_data,
+    )
 
-    # Add condition indices using sample as the condition
-    condition_column = "sample"
-    X = add_cond_idxs(X, condition_column)
+    sns.lineplot(data=df, x="Component", y="FMS", ax=ax[0], label="FMS")
+    ax[0].set_ylim(0, 1)
+    ax[0].set_title("RISE on COVID-19: FMS")
 
-    # # Parameters for stability plots
-    # ranks = list(range(1, 61, 5))
-    # ranks = list(range(1, 11, 5))
-    # runs = 3
-    # runs = 1
-
-    # print("Plotting FMS vs. rank...")
-    # plot_fms_r2x_diff_ranks(
-    #     X, condition_column, ax[0], ax[1], ranksList=ranks, runs=runs
-    # )
-    # ax[0].set_title(f"RISE on COVID-19 scRNA-seq: {X.shape[1]} genes")
-    # ax[1].set_title(f"RISE on COVID-19 scRNA-seq: {X.shape[1]} genes")
+    sns.lineplot(data=df, x="Component", y="R2X", ax=ax[1], color="orange", label="R2X")
+    ax[1].set_ylim(0, float(np.max(df["R2X"])) + 0.02)
+    ax[1].set_title("RISE on COVID-19: R2X")
 
     return f

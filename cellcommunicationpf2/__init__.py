@@ -6,6 +6,7 @@ from .factors import (
     factors_to_xarray,
     load_factors_netcdf,
     load_factors_to_anndata,
+    load_or_compute_dataframe,
     save_factors_netcdf,
 )
 from .tensor import run_ccc_rise_workflow, run_pseudobulk_workflow
@@ -16,6 +17,7 @@ __all__ = [
     "factors_to_xarray",
     "load_factors_netcdf",
     "load_factors_to_anndata",
+    "load_or_compute_dataframe",
     "run_ccc_rise_workflow",
     "run_pseudobulk_workflow",
     "save_factors_netcdf",

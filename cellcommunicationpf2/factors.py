@@ -274,3 +274,34 @@ def load_factors_to_anndata(
             out.obsm["PaCMAP"] = pcm.fit_transform(out.obsm["projections"])
 
     return out
+
+
+def load_or_compute_dataframe(
+    filename: str | Path,
+    compute_fn,
+    *args,
+    recompute: bool = False,
+    **kwargs,
+) -> pd.DataFrame:
+    """
+    Load a DataFrame from a cached file in DATA_DIR or an absolute path,
+    or compute it via `compute_fn(*args, **kwargs)` and cache it to disk.
+
+    Supports .csv and .parquet formats based on file extension.
+    """
+    path = Path(filename)
+    if not path.is_absolute():
+        path = DATA_DIR / path
+
+    if path.exists() and not recompute:
+        if path.suffix == ".parquet":
+            return pd.read_parquet(path)
+        return pd.read_csv(path)
+
+    df: pd.DataFrame = compute_fn(*args, **kwargs)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix == ".parquet":
+        df.to_parquet(path, index=False)
+    else:
+        df.to_csv(path, index=False)
+    return df

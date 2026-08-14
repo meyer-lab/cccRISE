@@ -47,8 +47,14 @@ def import_balf_covid(
     url = "https://zenodo.org/record/7535867/files/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     if not os.path.exists(filename):
-        print("Downloading data from Zenodo...")
-        urllib.request.urlretrieve(url, filename)
+        local_opt = Path("/opt/andrew/ccc/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad")
+        if local_opt.exists():
+            import shutil
+
+            shutil.copyfile(local_opt, filename)
+        else:
+            print("Downloading data from Zenodo...")
+            urllib.request.urlretrieve(url, filename)
 
     print("Loading BALF COVID data (preserving sparse format)...")
     adata = anndata.read_h5ad(filename)
@@ -107,6 +113,42 @@ def import_alad(gene_threshold: float = 0.1, normalize: bool = True):
     """
     # Load data without backing to avoid issues with sparse conversion
     data = anndata.read_h5ad("/opt/BAL-scRNAseq-raw.h5ad")
+
+    # Add cell type annotations if available
+    celltype_csv = Path("/opt/andrew/ccc/bal_alad_celltype.csv")
+    if celltype_csv.exists():
+        ct_df = pd.read_csv(celltype_csv, index_col=0)
+        data.obs["celltype"] = ct_df.loc[data.obs_names, "celltype"].values
+
+        broad_map = {
+            "Macrophage 1": "Macrophages",
+            "Macrophage 2": "Macrophages",
+            "Macrophage 3": "Macrophages",
+            "Macrophage 4": "Macrophages",
+            "Macrophage 5": "Macrophages",
+            "Macrophage 6": "Macrophages",
+            "Macrophage 7": "Macrophages",
+            "Macrophage 8": "Macrophages",
+            "Macrophage": "Macrophages",
+            "Tissue resident Macrophage": "Macrophages",
+            "Cytokine prod.macrophage": "Macrophages",
+            "Cytokine prod.macrophage 2": "Macrophages",
+            "Anti-Inflammatory Macrophages": "Macrophages",
+            "Macrophage Ribo-high": "Macrophages",
+            "Monocyte": "Monocytes",
+            "Activated Mono/Mac": "Macrophages",
+            "cDC1": "Dendritic Cells",
+            "cDC2": "Dendritic Cells",
+            "Activated DCs": "Dendritic Cells",
+            "Lung epithelium": "Epithelial cells",
+            "CD4 T cells": "CD4 T cells",
+            "Treg": "CD4 T cells",
+            "NK cells": "NK cells",
+            "CD8 T cells": "CD8 T cells",
+            "Activated CD8": "CD8 T cells",
+            "Proliferating cells": "Proliferating cells",
+        }
+        data.obs["broad_cell_type"] = data.obs["celltype"].map(broad_map).values
 
     # Convert to sparse format if not already sparse
     if not issparse(data.X):
