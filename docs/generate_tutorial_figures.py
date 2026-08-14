@@ -39,12 +39,11 @@ from cellcommunicationpf2.tensor import (
     run_fms_r2x_analysis,
 )
 from cellcommunicationpf2.utils import (
-    average_product_matrix_ccc,
-    expression_product_matrix,
+    binned_expression_product_matrix,
 )
 
 print("Loading dataset...")
-X = import_balf_covid(gene_threshold=0.001, normalize=True)
+X = import_balf_covid(gene_threshold=0.01, normalize=True)
 lr_pairs = import_ligand_receptor_pairs()
 
 # Add numerical indices for each sample (condition)
@@ -281,8 +280,9 @@ if (
     ]
 
     # Calculate expression product matrix for mDC -> mDC
-    df = expression_product_matrix(X_mdc_sender, X_mdc_receiver, ligand, receptor)
-    df = average_product_matrix_ccc(df)
+    df = binned_expression_product_matrix(
+        X_mdc_sender, X_mdc_receiver, ligand, receptor
+    )
 
     fig, ax = plt.subplots(figsize=(6, 6))
     sns.heatmap(df, ax=ax, cmap="viridis", vmax=0.12)

@@ -9,6 +9,7 @@ import pandas as pd
 
 from ..utils import correct_conditions
 from .common import (
+    ALAD_STABLE_PATH,
     getSetup,
     subplotLabel,
 )
@@ -25,7 +26,7 @@ def makeFigure():
     subplotLabel(ax)
 
     # # Import and prepare data
-    # X = import_alad(gene_threshold=0.001, normalize=True)
+    # X = import_alad(gene_threshold=0.01, normalize=True)
     # lr_pairs = import_ligand_receptor_pairs()
 
     # # Add numerical indices for each patient sample, which is the primary condition
@@ -54,7 +55,7 @@ def makeFigure():
     # # Save anndata object with results
     # X.write_h5ad("cellcommunicationpf2/alad_stable.h5ad")
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad_stable.h5ad")
+    X = anndata.read_h5ad(ALAD_STABLE_PATH)
     condition_column = "dsco_id"
     X.uns["A"] = correct_conditions(X)
 

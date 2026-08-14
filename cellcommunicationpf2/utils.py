@@ -136,6 +136,14 @@ def add_obs_cmp_label(
     return X
 
 
+def _gene_vector(X: anndata.AnnData, gene: str) -> np.ndarray:
+    """Extract a gene's expression as a dense 1D array, whether X.X is sparse or dense."""
+    expr = X[:, gene].X
+    if isinstance(expr, spmatrix):
+        return cast(Any, expr).toarray().flatten()
+    return np.ravel(np.array(expr))
+
+
 def expression_product_matrix(
     X1: anndata.AnnData, X2: anndata.AnnData, ligand: str, receptor: str
 ):
@@ -148,21 +156,8 @@ def expression_product_matrix(
     assert ligand in X1.var_names, f"{ligand} not in X1"
     assert receptor in X2.var_names, f"{receptor} not in X2"
 
-    # Get expression vectors
-
-    # Ensure 1D dense arrays
-    # Convert to dense 1D arrays, even if sparse
-    expr1 = X1[:, ligand].X
-    if isinstance(expr1, spmatrix):
-        expr1 = cast(Any, expr1).toarray().flatten()
-    else:
-        expr1 = np.ravel(np.array(expr1))
-
-    expr2 = X2[:, receptor].X
-    if isinstance(expr2, spmatrix):
-        expr2 = cast(Any, expr2).toarray().flatten()
-    else:
-        expr2 = np.ravel(np.array(expr2))
+    expr1 = _gene_vector(X1, ligand)
+    expr2 = _gene_vector(X2, receptor)
 
     # Compute outer product
     product_matrix = np.outer(expr1, expr2)
@@ -170,6 +165,146 @@ def expression_product_matrix(
     # Build DataFrame
     df = pd.DataFrame(product_matrix, index=X1.obs_names, columns=X2.obs_names)
     return df
+
+
+def aggregate_communication_scores_by_group(
+    X_sender: anndata.AnnData,
+    X_receiver: anndata.AnnData,
+    ligand: str,
+    receptor: str,
+    sender_group: np.ndarray | pd.Series | None = None,
+    receiver_group: np.ndarray | pd.Series | None = None,
+    stat: str = "mean",
+) -> pd.DataFrame:
+    """
+    Compute a communication-score statistic for a ligand-receptor pair, aggregated over
+    sender/receiver cell groups.
+
+    Parameters
+    ----------
+    sender_group, receiver_group : array-like, optional
+        Group label for each sender/receiver cell (aligned to X_sender/X_receiver obs
+        order). Cells are left ungrouped (a single "All" group) if omitted.
+    stat : str, default='mean'
+        Aggregation statistic within each sender-group x receiver-group block.
+        Options are:
+
+        - 'mean' : Mean communication score.
+        - 'pct_nonzero' : Percentage of sender-receiver cell pairs with a nonzero score.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Long-format DataFrame with one row per (sender_group, receiver_group)
+        combination present, containing the aggregated score and cell counts.
+    """
+    product_matrix = expression_product_matrix(X_sender, X_receiver, ligand, receptor)
+
+    sender_group = (
+        np.full(X_sender.n_obs, "All")
+        if sender_group is None
+        else np.asarray(sender_group)
+    )
+    receiver_group = (
+        np.full(X_receiver.n_obs, "All")
+        if receiver_group is None
+        else np.asarray(receiver_group)
+    )
+
+    if stat == "mean":
+        agg = lambda values: values.mean() if values.size else np.nan
+    elif stat == "pct_nonzero":
+        agg = lambda values: 100 * np.mean(values > 0) if values.size else np.nan
+    else:
+        raise ValueError(f"Unknown stat: {stat}")
+
+    values = product_matrix.values
+    rows = []
+    for s_label in np.unique(sender_group):
+        s_idx = np.where(sender_group == s_label)[0]
+        for r_label in np.unique(receiver_group):
+            r_idx = np.where(receiver_group == r_label)[0]
+            if s_idx.size == 0 or r_idx.size == 0:
+                continue
+
+            block = values[np.ix_(s_idx, r_idx)]
+            rows.append(
+                {
+                    "sender_group": s_label,
+                    "receiver_group": r_label,
+                    "communication_score": agg(block),
+                    "n_sender_cells": s_idx.size,
+                    "n_receiver_cells": r_idx.size,
+                    "n_interactions": s_idx.size * r_idx.size,
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def _binned_means(expr: np.ndarray, n_bins: int) -> np.ndarray:
+    """Mean of `expr` within `n_bins` contiguous blocks (last block absorbs the remainder)."""
+    n = len(expr)
+    group_size = n // n_bins
+    groups = np.clip(np.arange(n) // group_size, 0, n_bins - 1)
+    return np.array([expr[groups == g].mean() for g in range(n_bins)])
+
+
+def binned_expression_product_matrix(
+    X1: anndata.AnnData,
+    X2: anndata.AnnData,
+    ligand: str,
+    receptor: str,
+    n_bins: int = 10,
+) -> pd.DataFrame:
+    """
+    Equivalent to binning `expression_product_matrix(X1, X2, ligand, receptor)` into an
+    `n_bins` x `n_bins` matrix of block means, but computed without ever materializing the
+    full len(X1) x len(X2) outer product: since block entries are a product of independent
+    per-cell terms, the mean of a block is just the product of the row- and column-block
+    means of the two expression vectors.
+    """
+    assert ligand in X1.var_names, f"{ligand} not in X1"
+    assert receptor in X2.var_names, f"{receptor} not in X2"
+
+    expr1 = _gene_vector(X1, ligand)
+    expr2 = _gene_vector(X2, receptor)
+
+    row_means = _binned_means(expr1, n_bins)
+    col_means = _binned_means(expr2, n_bins)
+
+    product_matrix = np.outer(row_means, col_means)
+    return pd.DataFrame(
+        product_matrix, index=np.arange(n_bins), columns=np.arange(n_bins)
+    )
+
+
+def binned_complex_ligand_product_matrix(
+    X1: anndata.AnnData,
+    X2: anndata.AnnData,
+    ligand_subunits: list[str],
+    receptor: str,
+    n_bins: int = 10,
+) -> pd.DataFrame:
+    """
+    Same as `binned_expression_product_matrix`, but for a multi-subunit ligand complex
+    (e.g. LTA&LTB). The complex's per-cell expression is the minimum across its subunits,
+    the limiting-subunit convention used elsewhere for scoring ligand complexes.
+    """
+    for subunit in ligand_subunits:
+        assert subunit in X1.var_names, f"{subunit} not in X1"
+    assert receptor in X2.var_names, f"{receptor} not in X2"
+
+    expr1 = np.minimum.reduce([_gene_vector(X1, s) for s in ligand_subunits])
+    expr2 = _gene_vector(X2, receptor)
+
+    row_means = _binned_means(expr1, n_bins)
+    col_means = _binned_means(expr2, n_bins)
+
+    product_matrix = np.outer(row_means, col_means)
+    return pd.DataFrame(
+        product_matrix, index=np.arange(n_bins), columns=np.arange(n_bins)
+    )
 
 
 def add_obs_cmp_both_label(
@@ -182,55 +317,10 @@ def add_obs_cmp_both_label(
     type="sender",
 ):
     """Adds if cells in top/bot percentage"""
-    if type == "sender":
-        factor_type = cast(np.ndarray, X.obsm["sc_B"])
-    elif type == "receiver":
-        factor_type = cast(np.ndarray, X.obsm["rc_C"])
+    X = add_obs_cmp_label(X, cmp1, pos1, top_perc, type)
+    X = add_obs_cmp_label(X, cmp2, pos2, top_perc, type)
 
-    pos_neg = [pos1, pos2]
-
-    for i, cmp in enumerate([cmp1, cmp2]):
-        if i == 0:
-            if pos_neg[i] is True:
-                thres_value = 100 - top_perc
-                threshold1 = np.percentile(factor_type, thres_value, axis=0)
-                idx = factor_type[:, cmp - 1] > threshold1[cmp - 1]
-
-            else:
-                thres_value = top_perc
-                threshold1 = np.percentile(factor_type, thres_value, axis=0)
-                idx = factor_type[:, cmp - 1] < threshold1[cmp - 1]
-
-        if i == 1:
-            if pos_neg[i] is True:
-                thres_value = 100 - top_perc
-                threshold2 = np.percentile(factor_type, thres_value, axis=0)
-                idx = factor_type[:, cmp - 1] > threshold2[cmp - 1]
-            else:
-                thres_value = top_perc
-                threshold2 = np.percentile(factor_type, thres_value, axis=0)
-                idx = factor_type[:, cmp - 1] < threshold2[cmp - 1]
-
-        X.obs[f"Cmp{cmp}"] = idx
-
-    if pos1 is True and pos2 is True:
-        idx = (factor_type[:, cmp1 - 1] > threshold1[cmp1 - 1]) & (
-            factor_type[:, cmp2 - 1] > threshold2[cmp2 - 1]
-        )
-    elif pos1 is False and pos2 is False:
-        idx = (factor_type[:, cmp1 - 1] < threshold1[cmp1 - 1]) & (
-            factor_type[:, cmp2 - 1] < threshold2[cmp2 - 1]
-        )
-    elif pos1 is True and pos2 is False:
-        idx = (factor_type[:, cmp1 - 1] > threshold1[cmp1 - 1]) & (
-            factor_type[:, cmp2 - 1] < threshold2[cmp2 - 1]
-        )
-    elif pos1 is False and pos2 is True:
-        idx = (factor_type[:, cmp1 - 1] < threshold1[cmp1 - 1]) & (
-            factor_type[:, cmp2 - 1] > threshold2[cmp2 - 1]
-        )
-
-    X.obs["Both"] = idx
+    X.obs["Both"] = X.obs[f"Cmp{cmp1}"] & X.obs[f"Cmp{cmp2}"]
 
     return X
 
@@ -250,26 +340,3 @@ def add_obs_cmp_unique_two(X: anndata.AnnData, cmp1: int, cmp2: int):
     )
 
     return X
-
-
-def average_product_matrix_ccc(df):
-    """
-    Groups a DataFrame into a 10x10 matrix by binning rows and columns and averaging within bins.
-    Prints shape information for debugging.
-    """
-    n_rows = len(df)
-    n_cols = len(df.columns)
-    row_group_size = n_rows // 10
-    col_group_size = n_cols // 10
-    row_groups = np.arange(n_rows) // row_group_size
-    col_groups = np.arange(n_cols) // col_group_size
-    row_groups = np.clip(row_groups, 0, 9)
-    col_groups = np.clip(col_groups, 0, 9)
-
-    # Group rows
-    df_grouped = df.groupby(row_groups).mean()
-
-    # Group columns by transposing, grouping, then transposing back
-    df_grouped = df_grouped.T.groupby(col_groups).mean().T
-
-    return df_grouped

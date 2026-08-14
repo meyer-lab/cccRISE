@@ -5,7 +5,10 @@ import scipy.cluster.hierarchy as sch
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.patches import Patch
+
+from ..common import getSetup, subplotLabel
 
 cmap = sns.diverging_palette(240, 10, as_cmap=True)
 
@@ -169,6 +172,22 @@ def plot_lr_factors_partial(
         sns.barplot(data=df.iloc[:geneAmount, :], x="LR", y=cmpName, color="k", ax=ax)
 
     ax.tick_params(axis="x", rotation=90)
+
+
+def make_lr_factors_partial_figure(
+    h5ad_path: str, grid: tuple[int, int], figsize: tuple[int, int] = (12, 12)
+) -> Figure:
+    """Build a grid figure of top/bottom LR factor weights for every component."""
+    ax, f = getSetup(figsize, grid)
+    subplotLabel(ax)
+
+    X = anndata.read_h5ad(h5ad_path)
+
+    for i in range(X.uns["A"].shape[1]):
+        plot_lr_factors_partial(X, i + 1, ax[2 * i], geneAmount=10, top=True)
+        plot_lr_factors_partial(X, i + 1, ax[2 * i + 1], geneAmount=10, top=False)
+
+    return f
 
 
 def reorder_table(projs: np.ndarray):

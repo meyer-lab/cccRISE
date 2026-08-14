@@ -11,6 +11,7 @@ from ..utils import (
     add_obs_cmp_unique_one,
 )
 from .common import (
+    COVID19_PATH,
     getSetup,
     subplotLabel,
 )
@@ -21,7 +22,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+    X = anndata.read_h5ad(COVID19_PATH)
     ccc_rise_cmp = 6
 
     X_mdc_receiver = add_obs_cmp_label(

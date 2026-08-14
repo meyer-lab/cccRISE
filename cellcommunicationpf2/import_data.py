@@ -2,6 +2,7 @@ import io
 import os
 import urllib.request
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, cast
 
 import anndata
@@ -10,10 +11,12 @@ import pandas as pd
 import zstandard as zstd
 from scipy.sparse import csr_array, issparse
 
+DATA_DIR = Path("/opt/andrew/ccc")
+
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
-    filename="/opt/andrew/ccc/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad",
+    filename=str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
     gene_threshold: float = 0.01,
     normalize: bool = True,
 ) -> anndata.AnnData:
@@ -61,7 +64,7 @@ def import_balf_covid(
 
 @lru_cache(maxsize=1)
 def import_ligand_receptor_pairs(
-    filename="/opt/andrew/ccc/Human-2020-Jin-LR-pairs.csv.zst",
+    filename=str(DATA_DIR / "Human-2020-Jin-LR-pairs.csv.zst"),
     update_interaction_names: bool = True,
 ) -> pd.DataFrame:
     """Import ligand-receptor pairs from a zstd-compressed CSV with caching."""
@@ -163,13 +166,22 @@ def prepare_dataset(
     assert np.amin(data.data) >= 0.0
 
     # Filter out genes with too few reads, and cells with fewer than 10 counts
-    X.X = data
-    X = X[data.sum(axis=1) > 10, data.mean(axis=0) > geneThreshold]
+    row_mask = data.sum(axis=1) > 10
+    col_mask = data.mean(axis=0) > geneThreshold
+
+    # Do the (expensive) sparse row/column filtering ourselves, once. Some source
+    # files alias X.layers[None] to the same array as X.X, which would otherwise
+    # make AnnData's view/copy machinery redundantly filter and copy the same
+    # large matrix twice. Swap in a cheap empty placeholder first so that step
+    # only has to filter/copy the (tiny) placeholder to keep obs/var/obsm aligned.
+    filtered_data = data[row_mask][:, col_mask]
+    X.X = csr_array(X.shape, dtype=data.dtype)
+    X = X[row_mask, col_mask]
 
     # Copy so that the subsetting is preserved
     X._init_as_actual(X.copy())
-    data = cast(Any, csr_array(X.X))
-    X.X = data
+    X.X = filtered_data
+    data = filtered_data
 
     # Convert counts to floats
     if issubclass(data.dtype.type, int | np.integer):
@@ -190,8 +202,7 @@ def prepare_dataset(
         data.data = np.log10((1000.0 * data.data) + 1.0)
 
     # Get the indices for subsetting the data
-    _, sgIndex = np.unique(X.obs_vector(condition_name), return_inverse=True)
-    X.obs["condition_unique_idxs"] = sgIndex
+    X = add_cond_idxs(X, condition_name)
 
     # Pre-calculate gene means
     X.var["means"] = data.mean(axis=0)

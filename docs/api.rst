@@ -318,16 +318,27 @@ Analysis Functions
    :returns: DataFrame with sender cells as rows and receiver cells as columns, values are expression products.
    :rtype: pd.DataFrame
 
-.. py:function:: average_product_matrix_ccc(df: pd.DataFrame)
+.. py:function:: binned_expression_product_matrix(X1: anndata.AnnData, X2: anndata.AnnData, ligand: str, receptor: str, n_bins: int = 10)
    :module: cellcommunicationpf2.utils
 
-   Reduce an expression product matrix to a 10×10 matrix by binning rows and columns and averaging.
-   
-   This function groups rows and columns into 10 bins each and computes the mean within 
-   each bin, creating a summarized heatmap suitable for visualization of large cell-cell 
-   interaction matrices.
-   
-   :param df: Expression product matrix from expression_product_matrix().
-   :type df: pd.DataFrame
-   :returns: 10×10 DataFrame with averaged expression products.
+   Compute the expression product matrix for a ligand-receptor pair, binned into an
+   n_bins x n_bins matrix of block means.
+
+   Equivalent to binning ``expression_product_matrix(X1, X2, ligand, receptor)`` into an
+   n_bins x n_bins matrix of block means, but computed without ever materializing the full
+   len(X1) x len(X2) outer product: since block entries are a product of independent per-cell
+   terms, the mean of a block is just the product of the row- and column-block means of the
+   two expression vectors.
+
+   :param X1: AnnData object containing sender cells.
+   :type X1: anndata.AnnData
+   :param X2: AnnData object containing receiver cells.
+   :type X2: anndata.AnnData
+   :param ligand: Ligand gene name (must be present in X1.var_names).
+   :type ligand: str
+   :param receptor: Receptor gene name (must be present in X2.var_names).
+   :type receptor: str
+   :param n_bins: Number of bins per axis.
+   :type n_bins: int
+   :returns: n_bins x n_bins DataFrame with averaged expression products.
    :rtype: pd.DataFrame
