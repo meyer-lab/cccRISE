@@ -4,12 +4,12 @@ Figure S1h: Decomposition of the pseudobulk communication data and tensor for BA
 
 from typing import cast
 
-import anndata
 import numpy as np
 import pandas as pd
 
+from ..tensor import run_pseudobulk_workflow
 from .common import (
-    COVID19_PSEUDOBULK_PATH,
+    get_covid_data,
     getSetup,
     subplotLabel,
 )
@@ -25,26 +25,8 @@ def makeFigure():
     ax, f = getSetup((20, 8), (1, 4))
     subplotLabel(ax)
 
-    # X = import_balf_covid(gene_threshold=0.01, normalize=True)
-    # lr_pairs = import_ligand_receptor_pairs()
-    # groupby = "celltype"
-    # condition_column = "sample"
-    # group_col = "condition"
-    # X = add_cond_idxs(X, condition_column)
-    # type = "mean"
-
-    # appended_pseudobulk = pseudobulk_X(X, condition_name=condition_column, groupby=groupby, type=type)
-    # interaction_tensor, filtered_lr_pairs = calc_communication_score_pseudobulk(appended_pseudobulk, lr_pairs=lr_pairs, complex_sep="&")
-
-    # print(np.shape(interaction_tensor))
-    # cp_rank = 8
-    # cpd_weights, cpd_factors, _ = pseudobulk_cp_decomposition(interaction_tensor, cp_rank=cp_rank, n_iter_max=1000, tol=1e-11)
-
-    # save_ccc_rise_results(X, cpd_factors, cpd_weights, filtered_lr_pairs)
-
-    # X = X.write_h5ad("cellcommunicationpf2/data/bal/bal_pseudobulk.h5ad")
-
-    X = anndata.read_h5ad(COVID19_PSEUDOBULK_PATH)
+    X = get_covid_data(project_cells=True)
+    X, _ = run_pseudobulk_workflow(X, cp_rank=8)
     groupby = "celltype"
     condition_column = "sample"
     group_col = "condition"

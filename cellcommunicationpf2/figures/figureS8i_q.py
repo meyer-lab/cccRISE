@@ -4,14 +4,13 @@ Figure S8i-q: Box plots of condition and ALAD status comparisons for specific co
 
 from typing import cast
 
-import anndata
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from scipy.stats import f_oneway, ttest_ind
 
 from .common import (
-    ALAD_PATH,
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
@@ -21,7 +20,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (3, 3))  # 3 rows x 4 columns for 12 plots total
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(ALAD_PATH)
+    X = get_alad_data(project_cells=True)
     X.obs["alad_status"] = (
         X.obs["ALADstatus"]
         .astype(str)

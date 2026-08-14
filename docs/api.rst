@@ -27,7 +27,7 @@ Preprocessing
    :returns: Preprocessed AnnData object with filtered cells/genes, added condition_unique_idxs column, and gene means in X.var["means"].
    :rtype: anndata.AnnData
 
-.. py:function:: import_ligand_receptor_pairs(filename: str = "/opt/andrew/ccc/Human-2020-Jin-LR-pairs.csv.zst", update_interaction_names: bool = True)
+.. py:function:: import_ligand_receptor_pairs(filename: str | Path = "cellcommunicationpf2/data/Human-2020-Jin-LR-pairs.csv.zst", update_interaction_names: bool = True)
    :module: cellcommunicationpf2.import_data
 
    Import ligand-receptor pairs from a compressed CSV file with caching.
@@ -57,6 +57,54 @@ Preprocessing
    :param condition_key: Column name in X.obs containing condition identifiers.
    :type condition_key: str
    :returns: AnnData object with added condition_unique_idxs column in X.obs.
+   :rtype: anndata.AnnData
+
+Factor Storage & Reconstruction (xarray / NetCDF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. py:function:: factors_to_xarray(cpd_factors: list[np.ndarray], cpd_weights: np.ndarray, filtered_lr_pairs: pd.DataFrame | list[str] | np.ndarray, condition_names: list[str] | np.ndarray, gene_names: list[str] | np.ndarray | None = None, pf2_factors: list[np.ndarray] | None = None, pf2_weights: np.ndarray | None = None, r2x_cp: float | None = None, r2x_pf2: float | None = None, attrs: dict | None = None)
+   :module: cellcommunicationpf2.factors
+
+   Convert PARAFAC2 and CP decomposition factor matrices into a compact, coordinate-annotated xarray Dataset.
+
+   :param cpd_factors: List of 4 CP factor matrices: [A (condition), B (sender), C (receiver), D (LR)].
+   :param cpd_weights: Component scaling weights for CP decomposition.
+   :param filtered_lr_pairs: Ligand-receptor pair symbols matching dimension 3.
+   :param condition_names: Labels for conditions / samples matching dimension 0.
+   :param gene_names: List of gene identifiers matching single-cell features.
+   :param pf2_factors: Optional list of PARAFAC2 factor matrices [A_pf2, B_pf2, C_pf2].
+   :param pf2_weights: Optional PARAFAC2 component weights.
+   :param r2x_cp: Variance explained by CP decomposition.
+   :param r2x_pf2: Variance explained by PARAFAC2 decomposition.
+   :param attrs: Additional metadata dictionary.
+   :returns: Annotated xarray Dataset holding the factor matrices and coordinates.
+   :rtype: xr.Dataset
+
+.. py:function:: save_factors_netcdf(ds: xr.Dataset, filepath: str | Path)
+   :module: cellcommunicationpf2.factors
+
+   Save an xarray Dataset of factors to a compact NetCDF file (< 100 KB - 2 MB).
+
+.. py:function:: load_factors_netcdf(filepath: str | Path)
+   :module: cellcommunicationpf2.factors
+
+   Load an xarray Dataset of factors from a NetCDF file.
+
+.. py:function:: load_factors_to_anndata(factors_ds: xr.Dataset | str | Path, adata: anndata.AnnData | None = None, condition_column: str | None = None, do_embedding: bool = False, random_state: int | None = 0)
+   :module: cellcommunicationpf2.factors
+
+   Populate or construct an AnnData object with decomposition factors from an xarray Dataset.
+   
+   If ``adata`` is provided, computes single-cell factor projections (``obsm["projections"]``),
+   sender loadings (``obsm["sc_B"]``), receiver loadings (``obsm["rc_C"]``), and optional 2D PaCMAP embeddings.
+   If ``adata`` is None, creates a lightweight factor container AnnData in milliseconds without loading scRNA-seq matrices.
+
+   :param factors_ds: Factor dataset or path to NetCDF file.
+   :param adata: Optional single-cell AnnData to project onto.
+   :param condition_column: Condition column name in adata.obs.
+   :param do_embedding: If True, computes 2D PaCMAP on cell projections.
+   :param random_state: Random seed for reproducibility.
+   :returns: AnnData object populated with factors and projections.
    :rtype: anndata.AnnData
 
 

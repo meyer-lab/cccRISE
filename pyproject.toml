@@ -20,6 +20,9 @@ dependencies = [
     "parafac2 @ git+https://github.com/meyer-lab/parafac2.git@v1.4.0",
     "zstandard>=0.23.0",
     "pyarrow>=15.0.0",
+    "xarray>=2024.1.0",
+    "netcdf4>=1.6.5",
+    "scanpy>=1.12.3",
 ]
 
 readme = "README.md"
@@ -59,3 +62,7 @@ ignore = [
     "N999",   # figure modules are intentionally named figureXX.py
     "BLE001", # figure scripts deliberately catch broad exceptions to keep batch analyses running
 ]
+
+[tool.pytest.ini_options]
+addopts = "-n auto"
+

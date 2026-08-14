@@ -4,13 +4,12 @@ Figure S3: CCC-RISE on BALF alad data. Showing weighted sender and receiver cell
 
 from typing import cast
 
-import anndata
 import pandas as pd
 import seaborn as sns
 from scipy.stats import pearsonr, ttest_ind
 
 from .common import (
-    ALAD_PATH,
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
@@ -22,7 +21,7 @@ def makeFigure():
     ax, f = getSetup((10, 4), (1, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(ALAD_PATH)
+    X = get_alad_data(project_cells=True)
     X.obs["alad_status"] = (
         X.obs["ALADstatus"]
         .astype(str)
