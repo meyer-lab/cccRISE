@@ -1,0 +1,16 @@
+Rank,ResampleAxis,Boot,mean_matched_similarity,n_replicated_tau0.6,n_replicated_tau0.7,n_replicated_tau0.8
+2,splithalf_conditions,0,0.701540302622962,1.0,1.0,1.0
+2,splithalf_conditions,1,0.2802869666366128,0.0,0.0,0.0
+2,splithalf_conditions,2,0.5011473153425401,1.0,1.0,1.0
+4,splithalf_conditions,0,0.4544444764231743,2.0,1.0,1.0
+4,splithalf_conditions,1,0.6795356600241929,3.0,2.0,2.0
+4,splithalf_conditions,2,0.5309238150241522,2.0,1.0,1.0
+8,splithalf_conditions,0,0.5790032903081938,5.0,4.0,4.0
+8,splithalf_conditions,1,0.6468015024304801,5.0,5.0,4.0
+8,splithalf_conditions,2,0.6733980711991576,5.0,5.0,5.0
+12,splithalf_conditions,0,0.6222928552086858,8.0,7.0,7.0
+12,splithalf_conditions,1,0.6984286840971796,9.0,9.0,8.0
+12,splithalf_conditions,2,0.6658020754747181,8.0,8.0,8.0
+16,splithalf_conditions,0,0.5191036863208408,8.0,7.0,7.0
+16,splithalf_conditions,1,0.5827584898247777,10.0,9.0,9.0
+16,splithalf_conditions,2,0.6716980711091676,10.0,10.0,10.0

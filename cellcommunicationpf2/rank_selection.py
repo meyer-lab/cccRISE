@@ -22,7 +22,11 @@ from parafac2.sample import SampleArray
 from parafac2.utils import anndata_to_list, parafac_update, project_data
 from scipy.optimize import linear_sum_assignment
 from scipy.sparse import csr_array, issparse
+from tensorly.cp_tensor import cp_to_tensor
+from tensorly.decomposition import parafac
+from tensorly.tenalg.core_tenalg.n_mode_product import multi_mode_dot
 
+from .ccc import calculate_r2x
 from .import_data import add_cond_idxs
 
 Factors = list[np.ndarray]
@@ -685,6 +689,728 @@ def degeneracy_diagnostics(
                 "InitSubspaceAgreement_min": (
                     float(np.min(init_cosines)) if init_cosines else float("nan")
                 ),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+# =============================================================================
+# CPD rank-selection criteria for the interaction tensor (PLAN_INTERACTION.md)
+# =============================================================================
+#
+# The interaction tensor is (condition x sender-state x receiver-state x
+# LR-pair): small, dense, and fully in memory, so unlike RISE there is no
+# per-row projection that must be refit from a held-out cell -- masking
+# entries directly is a safe, non-leaking holdout here (contrast with
+# PLAN_RISE.md's approach-1a caveat). CP components carry the same sign/order
+# ambiguity as PARAFAC2; matching always uses `match_components_by_gene_factor`
+# / `component_replication_counts` on |cos|, applied to the LR-pair factor
+# `D` (index 3), which is the interpretable, cross-fit-comparable mode for
+# this tensor (the analogue of RISE's gene factor `C`).
+
+
+# ---------------------------------------------------------------------------
+# Approach A - missing-entry cross-validation (primary recommendation)
+# ---------------------------------------------------------------------------
+
+
+def cp_masked_reconstruction_error(
+    tensor: np.ndarray,
+    rank: int,
+    mask_frac: float = 0.1,
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+) -> dict[str, float]:
+    """One fold of entry-masked CP cross-validation.
+
+    A random `mask_frac` of tensor entries are held out (mask=0), CP is fit
+    with `tensorly`'s built-in EM-style masked ALS, and R2X is scored on the
+    held-out entries only using the same normalization as `calculate_r2x`
+    (sum-of-squares ratio) so held-out and in-sample numbers are comparable.
+    """
+    rng = np.random.default_rng(random_state)
+    observed = rng.random(tensor.shape) >= mask_frac  # True/1 = observed
+    mask = observed.astype(float)
+
+    cp_weights, cp_factors = parafac(
+        tensor=tensor,
+        rank=rank,
+        mask=mask,
+        n_iter_max=n_iter_max,
+        init=init,
+        normalize_factors=True,
+        linesearch=True,
+        random_state=random_state,
+    )
+    recon = cp_to_tensor((cp_weights, cp_factors))
+
+    held = ~observed
+    sse = float(np.sum((tensor[held] - recon[held]) ** 2))
+    sst = float(np.sum(tensor[held] ** 2))
+    held_out_r2x = 1.0 - sse / sst if sst > 0 else np.nan
+    in_sample_r2x = calculate_r2x(cp_weights, cp_factors, tensor)
+
+    return {
+        "Rank": rank,
+        "HeldOutR2X": held_out_r2x,
+        "InSampleR2X": in_sample_r2x,
+        "MaskFrac": mask_frac,
+        "NHeldOut": int(held.sum()),
+    }
+
+
+def cp_masked_reconstruction_sweep(
+    tensor: np.ndarray,
+    ranks: list[int],
+    n_masks: int = 5,
+    mask_frac: float = 0.1,
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+) -> pd.DataFrame:
+    """Approach A across a rank grid, averaged over `n_masks` independent masks."""
+    rows = []
+    for rank in ranks:
+        for m in range(n_masks):
+            seed = None if random_state is None else random_state * 1000 + m
+            res = cp_masked_reconstruction_error(
+                tensor,
+                rank,
+                mask_frac=mask_frac,
+                n_iter_max=n_iter_max,
+                init=init,
+                random_state=seed,
+            )
+            res["Mask"] = m
+            rows.append(res)
+    return pd.DataFrame(rows)
+
+
+def cp_condition_holdout_error(
+    tensor: np.ndarray,
+    rank: int,
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+    conditions: np.ndarray | None = None,
+) -> pd.DataFrame:
+    """Structured holdout variant of Approach A: hold out whole conditions.
+
+    For each held-out condition, CP is fit with that condition's entire slab
+    masked out (shared sender/receiver/LR factors B, C, D never see it), then
+    only that condition's own loading is re-estimated by closed-form least
+    squares against the frozen factors, and reconstruction is scored on the
+    real (unmasked) held-out slab. This speaks directly to generalization
+    across patients, unlike entry-masking.
+    """
+    from tensorly.tenalg.core_tenalg._khatri_rao import khatri_rao
+
+    n_cond = tensor.shape[0]
+    which = conditions if conditions is not None else np.arange(n_cond)
+
+    rows = []
+    for held in which:
+        mask = np.ones(tensor.shape, dtype=float)
+        mask[held] = 0.0
+        cp_weights, cp_factors = parafac(
+            tensor=tensor,
+            rank=rank,
+            mask=mask,
+            n_iter_max=n_iter_max,
+            init=init,
+            normalize_factors=True,
+            linesearch=True,
+            random_state=random_state,
+        )
+        B, C, D = cp_factors[1], cp_factors[2], cp_factors[3]
+        design = khatri_rao([B, C, D]) * cp_weights  # fold weights in once
+        y = tensor[held].reshape(-1)
+        a_held, *_ = np.linalg.lstsq(design, y, rcond=None)
+        recon_held = (design @ a_held).reshape(tensor.shape[1:])
+
+        sse = float(np.sum((tensor[held] - recon_held) ** 2))
+        sst = float(np.sum(tensor[held] ** 2))
+        r2x = 1.0 - sse / sst if sst > 0 else np.nan
+        rows.append(
+            {"Rank": rank, "HeldOutCondition": int(held), "HeldOutConditionR2X": r2x}
+        )
+
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Approach B - permutation null / parallel analysis, and per-component
+# significance (doubles as Reviewer #1 comment 6's requested null model)
+# ---------------------------------------------------------------------------
+
+
+def permute_lr_within_fiber(
+    tensor: np.ndarray, random_state: int | None = None
+) -> np.ndarray:
+    """Independently permute the LR-pair mode within each (cond, sender, recv)
+    fiber. Preserves each fiber's marginal, destroys which LR pair carries
+    which score -- the weaker of the two nulls implemented here."""
+    rng = np.random.default_rng(random_state)
+    shp = tensor.shape
+    flat = tensor.reshape(-1, shp[-1]).copy()
+    for i in range(flat.shape[0]):
+        flat[i] = flat[i, rng.permutation(shp[-1])]
+    return flat.reshape(shp)
+
+
+def permute_eigenstate_labels(
+    tensor: np.ndarray, random_state: int | None = None
+) -> np.ndarray:
+    """Independently permute sender and receiver eigen-state labels, per
+    condition. Stronger null than the LR-fiber permutation: it also destroys
+    which sender/receiver pair talks to which."""
+    rng = np.random.default_rng(random_state)
+    n_cond = tensor.shape[0]
+    out = np.empty_like(tensor)
+    for i in range(n_cond):
+        send_perm = rng.permutation(tensor.shape[1])
+        recv_perm = rng.permutation(tensor.shape[2])
+        out[i] = tensor[i][send_perm][:, recv_perm]
+    return out
+
+
+def cpd_permutation_null_sweep(
+    tensor: np.ndarray,
+    ranks: list[int],
+    n_null_replicates: int = 2,
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+) -> pd.DataFrame:
+    """Observed vs. null R2X across CPD ranks (Approach B), for both null types."""
+    rows = []
+    for rank in ranks:
+        w, f = parafac(
+            tensor=tensor,
+            rank=rank,
+            n_iter_max=n_iter_max,
+            init=init,
+            normalize_factors=True,
+            linesearch=True,
+            random_state=random_state,
+        )
+        rows.append(
+            {
+                "Rank": rank,
+                "NullType": "observed",
+                "Replicate": 0,
+                "R2X": calculate_r2x(w, f, tensor),
+            }
+        )
+
+        for rep in range(n_null_replicates):
+            seed = None if random_state is None else random_state * 1000 + rep
+
+            lr_null = permute_lr_within_fiber(tensor, random_state=seed)
+            w2, f2 = parafac(
+                tensor=lr_null,
+                rank=rank,
+                n_iter_max=n_iter_max,
+                init=init,
+                normalize_factors=True,
+                linesearch=True,
+                random_state=random_state,
+            )
+            rows.append(
+                {
+                    "Rank": rank,
+                    "NullType": "lr_within_fiber",
+                    "Replicate": rep,
+                    "R2X": calculate_r2x(w2, f2, lr_null),
+                }
+            )
+
+            es_null = permute_eigenstate_labels(tensor, random_state=seed)
+            w3, f3 = parafac(
+                tensor=es_null,
+                rank=rank,
+                n_iter_max=n_iter_max,
+                init=init,
+                normalize_factors=True,
+                linesearch=True,
+                random_state=random_state,
+            )
+            rows.append(
+                {
+                    "Rank": rank,
+                    "NullType": "eigenstate_labels",
+                    "Replicate": rep,
+                    "R2X": calculate_r2x(w3, f3, es_null),
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def cpd_component_significance(
+    tensor: np.ndarray,
+    rank: int,
+    n_null: int = 20,
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+) -> pd.DataFrame:
+    """Sketch of a per-component empirical significance test (Reviewer #1
+    major comment 6): reuses the Approach-B permutation machinery.
+
+    For each observed component, its explained-variance fraction
+    (weight^2 / total sum-of-squares, valid since `normalize_factors=True`
+    gives unit-norm factor columns) is compared to the distribution of the
+    *best* component's explained-variance fraction across `n_null`
+    LR-within-fiber null fits at the same rank. Using the null's best
+    component (rather than a positionally-matched one, which is meaningless
+    under permutation) as the comparison baseline is what makes this
+    calibrated: it asks "could a component this strong have arisen with no
+    real communication structure at all," for every observed component
+    independently.
+    """
+    w, _f = parafac(
+        tensor=tensor,
+        rank=rank,
+        n_iter_max=n_iter_max,
+        init=init,
+        normalize_factors=True,
+        linesearch=True,
+        random_state=random_state,
+    )
+    total_var = float(np.sum(tensor**2))
+    obs_ev = (w**2) / total_var if total_var > 0 else np.full(rank, np.nan)
+
+    null_best_ev = np.empty(n_null)
+    for i in range(n_null):
+        seed = None if random_state is None else random_state * 1000 + i
+        null_tensor = permute_lr_within_fiber(tensor, random_state=seed)
+        wn, _fn = parafac(
+            tensor=null_tensor,
+            rank=rank,
+            n_iter_max=n_iter_max,
+            init=init,
+            normalize_factors=True,
+            linesearch=True,
+            random_state=random_state,
+        )
+        null_total_var = float(np.sum(null_tensor**2))
+        null_ev = (
+            (wn**2) / null_total_var if null_total_var > 0 else np.full(rank, np.nan)
+        )
+        null_best_ev[i] = float(np.max(null_ev))
+
+    pvals = [float(np.mean(null_best_ev >= ev)) for ev in obs_ev]
+    return pd.DataFrame(
+        {
+            "Rank": rank,
+            "Component": np.arange(1, rank + 1),
+            "ExplainedVarFrac": obs_ev,
+            "NullBestEV_mean": float(np.mean(null_best_ev)),
+            "EmpiricalP": pvals,
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Approach C - core consistency diagnostic (CORCONDIA)
+# ---------------------------------------------------------------------------
+
+
+def corcondia(
+    tensor: np.ndarray,
+    rank: int,
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+) -> float:
+    """Core consistency diagnostic (Bro & Kiers 2003).
+
+    Fits CP at `rank`, projects the tensor onto the pseudo-inverted factor
+    matrices to obtain the implied Tucker core, and scores how close that
+    core is to the superdiagonal identity: 100 while the model is genuinely
+    multilinear, falling off a cliff once over-factored. Known to be
+    pessimistic under high noise -- use as corroboration, not a sole
+    criterion (see PLAN_INTERACTION.md Approach C).
+    """
+    w, f = parafac(
+        tensor=tensor,
+        rank=rank,
+        n_iter_max=n_iter_max,
+        init=init,
+        normalize_factors=True,
+        linesearch=True,
+        random_state=random_state,
+    )
+    factors = [f[0] * w] + list(f[1:])  # fold weights into mode 0
+    pinvs = [np.linalg.pinv(mat) for mat in factors]
+    core = multi_mode_dot(tensor, pinvs, modes=list(range(len(factors))))
+
+    ideal = np.zeros((rank,) * len(factors))
+    idx = np.arange(rank)
+    ideal[(idx,) * len(factors)] = 1.0
+    return float(100.0 * (1.0 - np.sum((core - ideal) ** 2) / rank))
+
+
+def corcondia_sweep(
+    tensor: np.ndarray,
+    ranks: list[int],
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+) -> pd.DataFrame:
+    rows = [
+        {
+            "Rank": rank,
+            "CORCONDIA": corcondia(
+                tensor,
+                rank,
+                n_iter_max=n_iter_max,
+                init=init,
+                random_state=random_state,
+            ),
+        }
+        for rank in ranks
+    ]
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Approach D - replicable component counts, multiple resampling axes
+# ---------------------------------------------------------------------------
+
+
+def resample_tensor_conditions(
+    tensor: np.ndarray, random_state: int | None = None
+) -> np.ndarray:
+    """Bootstrap over conditions/patients (mode 0), with replacement.
+
+    Companion to `tensor.resample_tensor` (which bootstraps the LR-pair mode
+    and tests robustness to the LR database): this tests whether a program
+    replicates across people, which is the claim the biology rests on.
+    """
+    rng = np.random.default_rng(random_state)
+    idx = rng.integers(0, tensor.shape[0], size=tensor.shape[0])
+    return tensor[idx]
+
+
+def split_half_conditions(
+    tensor: np.ndarray, random_state: int | None = None
+) -> tuple[np.ndarray, np.ndarray]:
+    """Split conditions/patients into two independent halves."""
+    rng = np.random.default_rng(random_state)
+    n_cond = tensor.shape[0]
+    perm = rng.permutation(n_cond)
+    half = n_cond // 2
+    return tensor[perm[:half]], tensor[perm[half:]]
+
+
+def cpd_replication_sweep(
+    tensor: np.ndarray,
+    ranks: list[int],
+    resample_axis: str = "lr",
+    n_boot: int = 5,
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+    thresholds: tuple[float, ...] = (0.6, 0.7, 0.8),
+) -> pd.DataFrame:
+    """Per-component replicable-count sweep (Approach D), matched on the
+    LR-pair factor D. `resample_axis` selects what is resampled:
+      - "lr": bootstrap the LR-pair mode (robustness to the LR database).
+      - "conditions": bootstrap conditions/patients with replacement.
+      - "splithalf_conditions": split conditions into two independent halves.
+    Different axes answer different questions and are reported separately,
+    per the plan's explicit instruction not to conflate them.
+    """
+    from .tensor import resample_tensor
+
+    rng = np.random.default_rng(random_state)
+    rows = []
+    for rank in ranks:
+        _w_full, f_full = parafac(
+            tensor=tensor,
+            rank=rank,
+            n_iter_max=n_iter_max,
+            init=init,
+            normalize_factors=True,
+            linesearch=True,
+            random_state=random_state,
+        )
+        for b in range(n_boot):
+            seed = int(rng.integers(0, 2**31 - 1))
+
+            if resample_axis == "lr":
+                t_boot = resample_tensor(tensor)
+                _w_boot, f_boot = parafac(
+                    tensor=t_boot,
+                    rank=rank,
+                    n_iter_max=n_iter_max,
+                    init=init,
+                    normalize_factors=True,
+                    linesearch=True,
+                    random_state=random_state,
+                )
+                counts = component_replication_counts(f_full[3], f_boot[3], thresholds)
+            elif resample_axis == "conditions":
+                t_boot = resample_tensor_conditions(tensor, random_state=seed)
+                _w_boot, f_boot = parafac(
+                    tensor=t_boot,
+                    rank=rank,
+                    n_iter_max=n_iter_max,
+                    init=init,
+                    normalize_factors=True,
+                    linesearch=True,
+                    random_state=random_state,
+                )
+                counts = component_replication_counts(f_full[3], f_boot[3], thresholds)
+            elif resample_axis == "splithalf_conditions":
+                t_a, t_b = split_half_conditions(tensor, random_state=seed)
+                _w_a, f_a = parafac(
+                    tensor=t_a,
+                    rank=rank,
+                    n_iter_max=n_iter_max,
+                    init=init,
+                    normalize_factors=True,
+                    linesearch=True,
+                    random_state=random_state,
+                )
+                _w_b, f_b = parafac(
+                    tensor=t_b,
+                    rank=rank,
+                    n_iter_max=n_iter_max,
+                    init=init,
+                    normalize_factors=True,
+                    linesearch=True,
+                    random_state=random_state,
+                )
+                counts = component_replication_counts(f_a[3], f_b[3], thresholds)
+            else:
+                raise ValueError(f"Unknown resample_axis: {resample_axis!r}")
+
+            rows.append(
+                {"Rank": rank, "ResampleAxis": resample_axis, "Boot": b, **counts}
+            )
+
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Approach E - degeneracy and multi-start diagnostics
+# ---------------------------------------------------------------------------
+
+
+def cpd_degeneracy_diagnostics(
+    tensor: np.ndarray,
+    ranks: list[int],
+    n_inits: int = 3,
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+) -> pd.DataFrame:
+    """Multi-start degeneracy/conditioning diagnostics for the CP fit.
+
+    Reports the classic two-factor-degeneracy signature (signed, not
+    absolute, pairwise triple congruence across B, C, D approaching -1),
+    condition numbers per factor, weight spread, and init-to-init agreement
+    of both R2X and the D-factor subspace. `init="random"` by default to
+    match `figureS1c_d.py`'s COVID setting -- pass `init="svd"` to check
+    whether ALAD's deterministic init masks the same sensitivity.
+    """
+    rows = []
+    for rank in ranks:
+        init_factors = []
+        init_r2x = []
+        for seed in range(n_inits):
+            rs = seed if random_state is None else random_state + seed
+            w, f = parafac(
+                tensor=tensor,
+                rank=rank,
+                n_iter_max=n_iter_max,
+                init=init,
+                normalize_factors=True,
+                linesearch=True,
+                random_state=rs,
+            )
+            init_factors.append((w, f))
+            init_r2x.append(calculate_r2x(w, f, tensor))
+
+        w0, f0 = init_factors[0]
+        cong = np.ones((rank, rank))
+        for mat in (f0[1], f0[2], f0[3]):
+            n = np.linalg.norm(mat, axis=0, keepdims=True)
+            n = np.where(n > 1e-12, n, 1.0)
+            cos = (mat / n).T @ (mat / n)
+            cong *= cos
+        np.fill_diagonal(cong, 0.0)
+        max_pairwise_cong = float(np.max(cong)) if rank > 1 else float("nan")
+        min_pairwise_cong = float(np.min(cong)) if rank > 1 else float("nan")
+
+        cond_numbers = {
+            f"CondNumber_{name}": float(np.linalg.cond(mat))
+            for name, mat in zip("ABCD", f0, strict=True)
+        }
+
+        weight_norms = np.sort(np.abs(w0))[::-1]
+        weight_spread = (
+            float(weight_norms[0] / weight_norms[-1])
+            if weight_norms[-1] > 1e-12
+            else float("inf")
+        )
+
+        init_subspace = [
+            subspace_similarity(f0[3], init_factors[i][1][3])[
+                "mean_cos_principal_angle"
+            ]
+            for i in range(1, n_inits)
+        ]
+
+        rows.append(
+            {
+                "Rank": rank,
+                "R2X_mean": float(np.mean(init_r2x)),
+                "R2X_std": float(np.std(init_r2x)),
+                "MaxPairwiseTripleCongruence": max_pairwise_cong,
+                "MinPairwiseTripleCongruence": min_pairwise_cong,
+                "WeightSpread": weight_spread,
+                "InitSubspaceAgreement_mean": (
+                    float(np.mean(init_subspace)) if init_subspace else float("nan")
+                ),
+                "InitSubspaceAgreement_min": (
+                    float(np.min(init_subspace)) if init_subspace else float("nan")
+                ),
+                **cond_numbers,
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Section 4 - joint (RISE x CPD) rank selection
+# ---------------------------------------------------------------------------
+
+
+def rise_cpd_joint_heatmap(
+    adata_raw: anndata.AnnData,
+    lr_pairs: pd.DataFrame,
+    rise_ranks: list[int],
+    cpd_ranks: list[int],
+    condition_column: str,
+    mask_frac: float = 0.1,
+    n_masks: int = 2,
+    rise_n_iter_max: int = 100,
+    rise_tol: float = 1e-6,
+    cp_n_iter_max: int = 500,
+    cp_init: str = "random",
+    random_state: int = 0,
+) -> pd.DataFrame:
+    """2-D grid of held-out imputation error (Approach A) over (RISE rank x
+    CPD rank). For each RISE rank, RISE is fit once and the interaction
+    tensor built from it; CPD ranks are then swept with masked
+    cross-validation on that one tensor, so the expensive step (RISE
+    refitting) is not repeated per CPD rank. Budget this last, at coarse
+    resolution -- it is the most expensive item in the plan.
+    """
+    from .tensor import calculate_interaction_tensor
+
+    rows = []
+    for rise_rank in rise_ranks:
+        ad = add_cond_idxs(adata_raw.copy(), condition_column)
+        (_, _factors, projections), rise_r2x = parafac2_nd(
+            ad,
+            rank=rise_rank,
+            n_iter_max=rise_n_iter_max,
+            tol=rise_tol,
+            random_state=random_state,
+        )
+        sg_index = ad.obs["condition_unique_idxs"].to_numpy(dtype=int)
+        ad.obsm["projections"] = np.zeros((ad.n_obs, rise_rank))
+        for i, p in enumerate(projections):
+            ad.obsm["projections"][sg_index == i, :] = p
+
+        tensor = calculate_interaction_tensor(ad, lr_pairs)
+
+        for cpd_rank in cpd_ranks:
+            for m in range(n_masks):
+                seed = random_state * 1000 + m
+                res = cp_masked_reconstruction_error(
+                    tensor,
+                    cpd_rank,
+                    mask_frac=mask_frac,
+                    n_iter_max=cp_n_iter_max,
+                    init=cp_init,
+                    random_state=seed,
+                )
+                rows.append(
+                    {
+                        "RISE_Rank": rise_rank,
+                        "RISE_R2X": rise_r2x,
+                        "CPD_Rank": cpd_rank,
+                        "Mask": m,
+                        **res,
+                    }
+                )
+
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Section 5 - consequence for the ALAD predictive analysis
+# ---------------------------------------------------------------------------
+
+
+def cpd_rank_auc_sweep(
+    tensor: np.ndarray,
+    sample_to_group_bin: np.ndarray,
+    ranks: list[int],
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int = 0,
+    n_splits: int = 5,
+    n_repeats: int = 5,
+) -> pd.DataFrame:
+    """Cross-validated AUC of the condition factor A at each CPD rank.
+
+    For *reporting only*, alongside the unsupervised criterion (Approach A),
+    to quantify how much AUC changes at an unsupervised-selected rank versus
+    the predictive-performance-optimized published rank (PLAN_INTERACTION.md
+    Sec 5). The unsupervised criterion must be computed, and its selected
+    rank recorded, before this function's results are ever inspected --
+    calling it does not itself violate that ordering, but consuming its
+    output to choose a rank would.
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import RepeatedStratifiedKFold, cross_val_score
+
+    y = np.asarray(sample_to_group_bin)
+    cv = RepeatedStratifiedKFold(
+        n_splits=n_splits, n_repeats=n_repeats, random_state=random_state
+    )
+
+    rows = []
+    for rank in ranks:
+        w, f = parafac(
+            tensor=tensor,
+            rank=rank,
+            n_iter_max=n_iter_max,
+            init=init,
+            normalize_factors=True,
+            linesearch=True,
+            random_state=random_state,
+        )
+        A = f[0] * w  # fold weights into the condition factor
+        clf = LogisticRegression(
+            solver="saga", l1_ratio=1.0, max_iter=10000, random_state=random_state
+        )
+        scores = cross_val_score(clf, A, y, scoring="roc_auc", cv=cv)
+        rows.append(
+            {
+                "Rank": rank,
+                "AUC_mean": float(np.mean(scores)),
+                "AUC_std": float(np.std(scores)),
             }
         )
 
