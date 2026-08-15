@@ -312,6 +312,7 @@ def run_fms_r2x_analysis(
             n_iter_max=1000,
             init=svd_init,
             normalize_factors=True,
+            linesearch=True,
         )
 
         for i in range(runs):
@@ -322,11 +323,13 @@ def run_fms_r2x_analysis(
                 n_iter_max=1000,
                 init=svd_init,
                 normalize_factors=True,
+                linesearch=True,
             )
             fms_score = calculate_fms_cpd(
                 cp_weights, cp_factors, cp_boot_weights, cp_boot_factors
             )
             rows.append({"Run": i, "Component": j, "FMS": fms_score, "R2X": r2x})
+            print(f"Run {i}, Component {j}, FMS: {fms_score}, R2X: {r2x}")
 
     return pd.DataFrame(rows)
 
