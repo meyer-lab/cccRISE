@@ -261,9 +261,9 @@ def calculate_interaction_tensor(
     np.ndarray
         4D cell-cell communication interaction tensor.
     """
-    assert (
-        "projections" in adata.obsm
-    ), "AnnData object must have 'projections' in obsm (processed with RISE)."
+    assert "projections" in adata.obsm, (
+        "AnnData object must have 'projections' in obsm (processed with RISE)."
+    )
 
     sgIndex = (
         adata.obs["condition_unique_idxs"].to_numpy(dtype=int)

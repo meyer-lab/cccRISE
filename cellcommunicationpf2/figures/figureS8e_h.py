@@ -30,9 +30,6 @@ def makeFigure():
 
     # Convert d2b_index to continuous/numeric variable
     X.obs["d2b_index"] = pd.to_numeric(X.obs["d2b_index"], errors="coerce")
-    print(f"d2b_index data type after conversion: {X.obs['d2b_index'].dtype}")
-    print(f"d2b_index unique values: {X.obs['d2b_index'].unique()}")
-    print(f"d2b_index value counts:\n{X.obs['d2b_index'].value_counts()}")
 
     # Define patient categorical information
     patient_info = [

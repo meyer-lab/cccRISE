@@ -45,7 +45,9 @@ def compute_cp_rank_sweep(
             svd="randomized_svd",
         )
         r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
-        cc = core_consistency((cp_weights, cp_factors), interaction_tensor, normalised=True)
+        cc = core_consistency(
+            (cp_weights, cp_factors), interaction_tensor, normalised=True
+        )
         print(f"R2X: {r2x}, Core Consistency: {cc}")
         r2x_results.append({"cp_rank": cp_rank, "r2x": r2x, "core_consistency": cc})
 
