@@ -72,7 +72,7 @@ Import your dataset as an AnnData object with preprocessed data::
     X = anndata.read_h5ad("your_data.h5ad")
     
     # Prepare the dataset
-    X = prepare_dataset(X, condition_name="condition", geneThreshold=0.01)
+    X = prepare_dataset(X, condition_name="condition", geneThreshold=0.001)
     
     # Load ligand-receptor pairs
     lr_pairs = import_ligand_receptor_pairs()

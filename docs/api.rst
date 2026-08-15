@@ -27,16 +27,16 @@ Preprocessing
    :returns: Preprocessed AnnData object with filtered cells/genes, added condition_unique_idxs column, and gene means in X.var["means"].
    :rtype: anndata.AnnData
 
-.. py:function:: import_ligand_receptor_pairs(filename: str | Path = "cellcommunicationpf2/data/Human-2020-Jin-LR-pairs.csv.zst", update_interaction_names: bool = True)
+.. py:function:: import_ligand_receptor_pairs(filename: str | Path = "cellcommunicationpf2/data/Human-2020-Jin-LR-pairs.parquet", update_interaction_names: bool = True)
    :module: cellcommunicationpf2.import_data
 
-   Import ligand-receptor pairs from a compressed CSV file with caching.
+   Import ligand-receptor pairs from a compressed parquet file with caching.
    
    Loads a curated database of ligand-receptor pairs from CellChat. The function uses 
    LRU caching to avoid repeated file reads. For protein complexes, subunits are separated 
    by & (e.g., CD74&CD44).
    
-   :param filename: Path to the compressed CSV file containing ligand-receptor pairs.
+   :param filename: Path to the parquet file containing ligand-receptor pairs.
    :type filename: str, optional
    :param update_interaction_names: If True, updates interaction names to use standardized formatting (uppercase, & for complexes).
    :type update_interaction_names: bool, optional

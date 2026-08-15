@@ -13,13 +13,9 @@ from ..logreg import (
     ccc_rise_logreg_weights,
     population_gene_logreg_weights,
 )
-from ..utils import (
-    binned_complex_ligand_product_matrix,
-    binned_expression_product_matrix,
-    correct_conditions,
-)
+from ..utils import correct_conditions
 from .common import get_alad_data
-from .commonFuncs.plotFactors import plot_lr_factors
+from .commonFuncs.plotFactors import plot_interaction_heatmap, plot_lr_factors
 from .commonFuncs.plotGeneral import binarize_group, get_sample_to_group
 from .commonFuncs.plotPaCMAP import plot_labels_pacmap, plot_wc_pacmap
 
@@ -46,13 +42,6 @@ def _gene_weight_barplot(weights: pd.Series, ax, n=N_TOP_GENES):
     sns.barplot(x=top.values, y=top.index, ax=ax, color="goldenrod")
     ax.set_xlabel("Logistic Regression Weight")
     ax.set_ylabel("")
-
-
-def _ordered_population(X, celltype_col, celltype, cmp, factor_type):
-    Xp = X[X.obs[celltype_col] == celltype]
-    if factor_type == "sender":
-        return Xp[np.argsort(-Xp.obsm["sc_B"][:, cmp - 1])]
-    return Xp[np.argsort(Xp.obsm["rc_C"][:, cmp - 1])]
 
 
 def compute_fig4_gene_weights(X: anndata.AnnData) -> pd.DataFrame:
@@ -156,33 +145,34 @@ def makeFigure():
     ax_h.set_title(f"Cmp. {CMP_ALAD}: Receiver Cells")
     label_panel(ax_h, "h")
 
-    cd4t_sender = _ordered_population(
-        X, celltype_col, "CD4 T cells", CMP_ALAD, "sender"
+    plot_interaction_heatmap(
+        X,
+        cmp=CMP_ALAD,
+        ligand="CD40LG",
+        receptor="CD40",
+        ax=ax_i,
+        sender_celltype="CD4 T cells",
+        receiver_celltype="Dendritic Cells",
+        celltype_col=celltype_col,
+        cmap="rocket",
+        sender_label="Sender CD4 T cell Population",
+        receiver_label="Receiver DC Population",
     )
-    dc_receiver = _ordered_population(
-        X, celltype_col, "Dendritic Cells", CMP_ALAD, "receiver"
-    )
-
-    df_cd40 = binned_expression_product_matrix(
-        cd4t_sender, dc_receiver, "CD40LG", "CD40"
-    )
-    sns.heatmap(df_cd40, ax=ax_i, cmap="rocket")
-    ax_i.set_title("CD40LG-CD40 Interaction")
-    ax_i.set_xlabel("Receiver DC Population")
-    ax_i.set_ylabel("Sender CD4 T cell Population")
-    ax_i.set_xticks([])
-    ax_i.set_yticks([])
     label_panel(ax_i, "i")
 
-    df_lt = binned_complex_ligand_product_matrix(
-        cd4t_sender, dc_receiver, ["LTA", "LTB"], "LTBR"
+    plot_interaction_heatmap(
+        X,
+        cmp=CMP_ALAD,
+        ligand=["LTA", "LTB"],
+        receptor="LTBR",
+        ax=ax_j,
+        sender_celltype="CD4 T cells",
+        receiver_celltype="Dendritic Cells",
+        celltype_col=celltype_col,
+        cmap="rocket",
+        sender_label="Sender CD4 T cell Population",
+        receiver_label="Receiver DC Population",
     )
-    sns.heatmap(df_lt, ax=ax_j, cmap="rocket")
-    ax_j.set_title("LTA&LTB-LTBR Interaction")
-    ax_j.set_xlabel("Receiver DC Population")
-    ax_j.set_ylabel("Sender CD4 T cell Population")
-    ax_j.set_xticks([])
-    ax_j.set_yticks([])
     label_panel(ax_j, "j")
 
     df_weights = compute_fig4_gene_weights(X)
@@ -276,28 +266,34 @@ def makeFigure():
     ax_t.set_title(f"Cmp. {CMP_NK}: Receiver Cells")
     label_panel(ax_t, "t")
 
-    nk_sender = _ordered_population(X, celltype_col, "NK cells", CMP_NK, "sender")
-    nk_receiver = _ordered_population(X, celltype_col, "NK cells", CMP_NK, "receiver")
-    df_nk = binned_expression_product_matrix(nk_sender, nk_receiver, "GZMA", "F2R")
-    sns.heatmap(df_nk, ax=ax_u, cmap="rocket")
-    ax_u.set_title("GZMA-F2R Interaction")
-    ax_u.set_xlabel("Receiver NK Population")
-    ax_u.set_ylabel("Sender NK Population")
-    ax_u.set_xticks([])
-    ax_u.set_yticks([])
+    plot_interaction_heatmap(
+        X,
+        cmp=CMP_NK,
+        ligand="GZMA",
+        receptor="F2R",
+        ax=ax_u,
+        sender_celltype="NK cells",
+        receiver_celltype="NK cells",
+        celltype_col=celltype_col,
+        cmap="rocket",
+        sender_label="Sender NK Population",
+        receiver_label="Receiver NK Population",
+    )
     label_panel(ax_u, "u")
 
-    cd8t_sender = _ordered_population(X, celltype_col, "CD8 T cells", CMP_NK, "sender")
-    cd8t_receiver = _ordered_population(
-        X, celltype_col, "CD8 T cells", CMP_NK, "receiver"
+    plot_interaction_heatmap(
+        X,
+        cmp=CMP_NK,
+        ligand="GZMA",
+        receptor="F2R",
+        ax=ax_v,
+        sender_celltype="CD8 T cells",
+        receiver_celltype="CD8 T cells",
+        celltype_col=celltype_col,
+        cmap="rocket",
+        sender_label="Sender CD8 T Population",
+        receiver_label="Receiver CD8 T Population",
     )
-    df_cd8 = binned_expression_product_matrix(cd8t_sender, cd8t_receiver, "GZMA", "F2R")
-    sns.heatmap(df_cd8, ax=ax_v, cmap="rocket")
-    ax_v.set_title("GZMA-F2R Interaction")
-    ax_v.set_xlabel("Receiver CD8 T Population")
-    ax_v.set_ylabel("Sender CD8 T Population")
-    ax_v.set_xticks([])
-    ax_v.set_yticks([])
     label_panel(ax_v, "v")
 
     if "nk_sender_cmp17" in df_weights:

@@ -2,14 +2,13 @@
 Figure S1a_b: FMS across RISE ranks (only) for COVID-19
 """
 
-import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from ..import_data import add_cond_idxs, import_balf_covid
 from ..tensor import calculate_fms_rise, rise_store_r2x
 from ..utils import resample
 from .common import getSetup, load_or_compute_dataframe, subplotLabel
+from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 
 
 def compute_covid_rise_stability_data(
@@ -18,24 +17,25 @@ def compute_covid_rise_stability_data(
 ) -> pd.DataFrame:
     """Compute FMS and R2X stability metrics across RISE ranks on COVID-19."""
     if ranks is None:
-        ranks = list(range(1, 61, 5))
+        ranks = list(range(1, 20))
 
-    X = import_balf_covid(gene_threshold=0.01, normalize=True)
+    X = import_balf_covid()
     condition_column = "sample"
     X = add_cond_idxs(X, condition_column)
 
     rows = []
-    for j in range(runs):
-        for i in ranks:
-            dataX, r2x = rise_store_r2x(X, rank=i, n_iter_max=1000, tolerance=1e-9)
+    for i in ranks:
+        print(f"Computing rank {i}")
+        dataX, r2x = rise_store_r2x(X, rank=i)
+
+        for j in range(runs):
             sampledX, _ = rise_store_r2x(
                 resample(X, condition_name=condition_column),
                 rank=i,
-                n_iter_max=1000,
-                tolerance=1e-9,
             )
             fmsScore = calculate_fms_rise(dataX, sampledX)
             rows.append({"Run": j, "Component": i, "FMS": fmsScore, "R2X": r2x})
+            print(f"  Run {j}, FMS={fmsScore:.4f}, R2X={r2x:.4f}")
 
     return pd.DataFrame(rows)
 
@@ -49,12 +49,5 @@ def makeFigure():
         compute_covid_rise_stability_data,
     )
 
-    sns.lineplot(data=df, x="Component", y="FMS", ax=ax[0], label="FMS")
-    ax[0].set_ylim(0, 1)
-    ax[0].set_title("RISE on COVID-19: FMS")
-
-    sns.lineplot(data=df, x="Component", y="R2X", ax=ax[1], color="orange", label="R2X")
-    ax[1].set_ylim(0, float(np.max(df["R2X"])) + 0.02)
-    ax[1].set_title("RISE on COVID-19: R2X")
-
+    plot_fms_r2x_stability(df, ax, title_prefix="RISE on COVID-19")
     return f

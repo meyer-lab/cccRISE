@@ -96,7 +96,9 @@ def calc_communication_score(
     )
 
     # Filter the original lr_pairs to match the pairs used in the tensor
-    lr_pair_names = lr_pairs["ligand"] + "^" + lr_pairs["receptor"]
+    lr_pair_names = (
+        lr_pairs["ligand"].astype(str) + "^" + lr_pairs["receptor"].astype(str)
+    )
     filtered_lr_pairs = lr_pairs[lr_pair_names.isin(ppi_names)].reset_index(drop=True)
 
     # Convert to numpy and transpose to expected format
@@ -304,7 +306,9 @@ def calc_communication_score_pseudobulk(
     )
 
     # Only keep ppi_names to match the pairs used in the tensor in the interaction symbol column of the lr_pairs DataFrame
-    lr_pair_names = lr_pairs["ligand"] + "^" + lr_pairs["receptor"]
+    lr_pair_names = (
+        lr_pairs["ligand"].astype(str) + "^" + lr_pairs["receptor"].astype(str)
+    )
     filtered_lr_pairs = lr_pairs[lr_pair_names.isin(ppi_names)].reset_index(drop=True)
 
     # Convert to numpy and transpose to expected format

@@ -2,10 +2,6 @@
 Figure S1e_g: Cell type proportions in BALF ALAD data and ratios of DCs to CD4 T cells.
 """
 
-from typing import cast
-
-import numpy as np
-import pandas as pd
 import seaborn as sns
 from scipy.stats import spearmanr
 
@@ -14,6 +10,7 @@ from .common import (
     getSetup,
     subplotLabel,
 )
+from .commonFuncs.plotGeneral import compute_cell_type_proportions
 
 
 def makeFigure():
@@ -25,25 +22,9 @@ def makeFigure():
     condition_id = "ALADstatus"
     celltype_id = "broad_cell_type"
 
-    obs = cast(pd.DataFrame, X.obs)
-    counts = cast(pd.Series, obs.groupby([celltype_id, sample_id]).size())
-    df = counts.reset_index(name="count")
-
-    # Add condition information back by merging with sample-condition mapping
-    sample_condition_map = obs[[sample_id, condition_id]].drop_duplicates()
-    df = df.merge(sample_condition_map, on=sample_id, how="left")
-
-    df[celltype_id] = pd.Categorical(
-        df[celltype_id], categories=np.unique(df[celltype_id]), ordered=True
+    df = compute_cell_type_proportions(
+        X, celltype_col=celltype_id, sample_col=sample_id, condition_col=condition_id
     )
-    df[sample_id] = pd.Categorical(
-        df[sample_id], categories=np.unique(df[sample_id]), ordered=True
-    )
-    df[condition_id] = pd.Categorical(
-        df[condition_id], categories=np.unique(df[condition_id]), ordered=True
-    )
-    df = df.sort_values([condition_id, sample_id, celltype_id])
-    df["proportion"] = df.groupby(sample_id)["count"].transform(lambda x: x / x.sum())
     print(df)
 
     sns.boxplot(

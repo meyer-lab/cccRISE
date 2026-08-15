@@ -22,7 +22,7 @@ def ccc_rise_logreg_weights(
     for i in scoring:
         lr_fit = LogisticRegressionCV(
             random_state=random_state,
-            max_iter=5000,
+            max_iter=10000,
             solver="saga",
             l1_ratios=(1.0,),
             cv=cv,
