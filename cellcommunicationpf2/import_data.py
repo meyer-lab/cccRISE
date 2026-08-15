@@ -1,4 +1,3 @@
-import io
 import os
 import urllib.request
 from functools import lru_cache
@@ -8,11 +7,10 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
-import zstandard as zstd
 from scipy.sparse import csr_array, issparse
 
 DATA_DIR = Path(__file__).parent / "data"
-LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.csv.zst"
+LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
@@ -74,29 +72,28 @@ def import_ligand_receptor_pairs(
     filename: str | Path = LR_PAIRS_PATH,
     update_interaction_names: bool = True,
 ) -> pd.DataFrame:
-    """Import ligand-receptor pairs from a zstd-compressed CSV with caching."""
-    print("Loading ligand-receptor pairs data (zstd compressed)...")
-    with open(filename, "rb") as f:
-        dctx = zstd.ZstdDecompressor()
-        with dctx.stream_reader(f) as reader:
-            text_stream = io.TextIOWrapper(reader, encoding="utf-8")
-            df = pd.read_csv(text_stream)
-
-    print(f"Cached {len(df)} ligand-receptor pairs")
+    """Import ligand-receptor pairs from a parquet file with caching."""
+    df = pd.read_parquet(filename)
 
     if update_interaction_names:
         if "interaction_name_2" in df.columns:
-            df["ligand"] = df["interaction_name_2"].apply(
-                lambda x: x.split(" - ")[0].upper()
+            df["ligand"] = (
+                df["interaction_name_2"]
+                .apply(lambda x: x.split(" - ")[0].upper())
+                .astype("category")
             )
-            df["receptor"] = df["interaction_name_2"].apply(
-                lambda x: (
-                    x.split(" - ")[1]
-                    .upper()
-                    .replace("(", "")
-                    .replace(")", "")
-                    .replace("+", "&")
+            df["receptor"] = (
+                df["interaction_name_2"]
+                .apply(
+                    lambda x: (
+                        x.split(" - ")[1]
+                        .upper()
+                        .replace("(", "")
+                        .replace(")", "")
+                        .replace("+", "&")
+                    )
                 )
+                .astype("category")
             )
         # Also update interaction_symbol if present
         if "interaction_symbol" in df.columns:

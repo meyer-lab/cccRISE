@@ -2,14 +2,13 @@
 Figure S1a_b: FMS across RISE ranks (only) for COVID-19
 """
 
-import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from ..import_data import add_cond_idxs, import_balf_covid
 from ..tensor import calculate_fms_rise, rise_store_r2x
 from ..utils import resample
 from .common import getSetup, load_or_compute_dataframe, subplotLabel
+from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 
 
 def compute_covid_rise_stability_data(
@@ -50,12 +49,5 @@ def makeFigure():
         compute_covid_rise_stability_data,
     )
 
-    sns.lineplot(data=df, x="Component", y="FMS", ax=ax[0], label="FMS")
-    ax[0].set_ylim(0, 1)
-    ax[0].set_title("RISE on COVID-19: FMS")
-
-    sns.lineplot(data=df, x="Component", y="R2X", ax=ax[1], color="orange", label="R2X")
-    ax[1].set_ylim(0, float(np.max(df["R2X"])) + 0.02)
-    ax[1].set_title("RISE on COVID-19: R2X")
-
+    plot_fms_r2x_stability(df, ax, title_prefix="RISE on COVID-19")
     return f

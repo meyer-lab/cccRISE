@@ -2,8 +2,6 @@
 Figure S3: CCC-RISE on BALF alad data. Showing weighted sender and receiver cell factors.
 """
 
-from typing import cast
-
 import pandas as pd
 import seaborn as sns
 from scipy.stats import pearsonr, ttest_ind
@@ -13,8 +11,10 @@ from .common import (
     getSetup,
     subplotLabel,
 )
-
-# from ..utils import rotate_xaxis, rotate_yaxis
+from .commonFuncs.plotGeneral import (
+    DEFAULT_PATIENT_INFO,
+    get_alad_patient_factors_df,
+)
 
 
 def makeFigure():
@@ -22,29 +22,8 @@ def makeFigure():
     subplotLabel(ax)
 
     X = get_alad_data(project_cells=True)
-    X.obs["alad_status"] = (
-        X.obs["ALADstatus"]
-        .astype(str)
-        .replace({"recovered": "ALAD", "declined": "ALAD"})
-    )
+    target_components = [5, 13, 17]
 
-    # Convert d2b_index to continuous/numeric variable
-    X.obs["d2b_index"] = pd.to_numeric(X.obs["d2b_index"], errors="coerce")
-
-    # Define patient categorical information
-    patient_info = [
-        "diagnosisgroup",
-        "sex",
-        "transplanttype",
-        "cmvstatus",
-        "cmv_status",
-        "cmvstatus2",
-        "ethnicity",
-        "6monthcondition",
-        "1yearcondition",
-    ]
-
-    # Define patient continuous variables
     patient_continuous = [
         "age",
         "timeaftertx",
@@ -60,56 +39,20 @@ def makeFigure():
         "d2b_index",
     ]
 
-    # Get unique samples with their information
-    obs = cast(pd.DataFrame, X.obs)
-    patient_continuous_df = (
-        obs[["dsco_id", "alad_status"] + patient_continuous]
-        .drop_duplicates(subset=["dsco_id"])
-        .reset_index(drop=True)
-    )
-    patient_info_df = (
-        obs[["dsco_id", "alad_status"] + patient_info]
-        .drop_duplicates(subset=["dsco_id"])
-        .reset_index(drop=True)
-    )
-
-    # Get the tensor decomposition factor matrix A (condition/sample factors)
-    factor_A = X.uns["A"]  # Shape: (n_samples, n_components)
-
-    # Create a mapping from sample to factor values
-    sample_to_idx = {
-        sample: idx for idx, sample in enumerate(X.obs["dsco_id"].cat.categories)
-    }
-
-    # Analyze all components
-    target_components = [5, 13, 17]  # Specific components of interest
-    target_indices = [comp - 1 for comp in target_components]  # Convert to 0-indexed
-
-    # Create DataFrame combining factor values with continuous variables
-    combined_data_cont = []
-    for _, sample_row in patient_continuous_df.iterrows():
-        sample = sample_row["dsco_id"]
-        if sample in sample_to_idx:
-            sample_idx = sample_to_idx[sample]
-            row_data = {"sample": sample}
-            for comp_idx in target_indices:
-                comp_name = f"Component_{comp_idx + 1}"
-                row_data[comp_name] = factor_A[sample_idx, comp_idx]
-            for cont_var in patient_continuous:
-                row_data[cont_var] = sample_row[cont_var]
-            combined_data_cont.append(row_data)
-    combined_df_cont = pd.DataFrame(combined_data_cont)
+    _, factor_df = get_alad_patient_factors_df(X, target_components=target_components)
 
     # Pearson correlations for continuous variables
     correlation_results = []
-    for comp_idx in target_indices:
-        comp_name = f"Component_{comp_idx + 1}"
+    for comp_num in target_components:
+        comp_name = f"Component_{comp_num}"
+        comp_data = factor_df[factor_df["component"] == comp_name]
         for cont_var in patient_continuous:
-            valid_mask = (
-                combined_df_cont[comp_name].notna() & combined_df_cont[cont_var].notna()
-            )
-            valid_comp = combined_df_cont.loc[valid_mask, comp_name]
-            valid_var = combined_df_cont.loc[valid_mask, cont_var]
+            if cont_var not in comp_data.columns:
+                continue
+            numeric_var = pd.to_numeric(comp_data[cont_var], errors="coerce")
+            valid_mask = comp_data["factor_value"].notna() & numeric_var.notna()
+            valid_comp = comp_data.loc[valid_mask, "factor_value"]
+            valid_var = numeric_var.loc[valid_mask]
             if len(valid_comp) > 3:
                 try:
                     _, p_value = pearsonr(valid_comp, valid_var)
@@ -124,31 +67,17 @@ def makeFigure():
                     print(f"Pearson failed for {comp_name}, {cont_var}: {e}")
     pearson_df = pd.DataFrame(correlation_results)
 
-    # Create DataFrame combining factor values with categorical variables
-    combined_data_cat = []
-    for _, sample_row in patient_info_df.iterrows():
-        sample = sample_row["dsco_id"]
-        if sample in sample_to_idx:
-            sample_idx = sample_to_idx[sample]
-            row_data = {"sample": sample}
-            for comp_idx in target_indices:
-                comp_name = f"Component_{comp_idx + 1}"
-                row_data[comp_name] = factor_A[sample_idx, comp_idx]
-            for cat_var in patient_info:
-                row_data[cat_var] = sample_row[cat_var]
-            combined_data_cat.append(row_data)
-    combined_df_cat = pd.DataFrame(combined_data_cat)
-
     # T-test p-values for categorical variables
     ttest_results = []
-    for comp_idx in target_indices:
-        comp_name = f"Component_{comp_idx + 1}"
-        for cat_var in patient_info:
-            valid_mask = (
-                combined_df_cat[comp_name].notna() & combined_df_cat[cat_var].notna()
-            )
-            valid_comp = combined_df_cat.loc[valid_mask, comp_name]
-            valid_cat = combined_df_cat.loc[valid_mask, cat_var]
+    for comp_num in target_components:
+        comp_name = f"Component_{comp_num}"
+        comp_data = factor_df[factor_df["component"] == comp_name]
+        for cat_var in DEFAULT_PATIENT_INFO:
+            if cat_var not in comp_data.columns:
+                continue
+            valid_mask = comp_data["factor_value"].notna() & comp_data[cat_var].notna()
+            valid_comp = comp_data.loc[valid_mask, "factor_value"]
+            valid_cat = comp_data.loc[valid_mask, cat_var]
             if valid_cat.nunique() == 2 and len(valid_comp) > 3:
                 try:
                     groups = [valid_comp[valid_cat == g] for g in valid_cat.unique()]

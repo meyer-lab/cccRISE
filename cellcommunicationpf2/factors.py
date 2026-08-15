@@ -71,7 +71,9 @@ def factors_to_xarray(
             and "receptor" in filtered_lr_pairs.columns
         ):
             lr_symbols = (
-                filtered_lr_pairs["ligand"] + "_" + filtered_lr_pairs["receptor"]
+                filtered_lr_pairs["ligand"].astype(str)
+                + "_"
+                + filtered_lr_pairs["receptor"].astype(str)
             ).values
         else:
             lr_symbols = np.array([f"pair_{i}" for i in range(len(filtered_lr_pairs))])

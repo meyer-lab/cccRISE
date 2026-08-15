@@ -12,6 +12,7 @@ from cellcommunicationpf2.factors import (
     load_factors_to_anndata,
     save_factors_netcdf,
 )
+from cellcommunicationpf2.import_data import import_ligand_receptor_pairs
 from cellcommunicationpf2.tensor import calculate_interaction_tensor
 
 
@@ -158,3 +159,19 @@ def test_calculate_interaction_tensor():
 
     tensor = calculate_interaction_tensor(adata, lr_pairs)
     assert tensor.shape == (n_cond, rise_rank, rise_rank, len(lr_pairs))
+
+
+def test_import_ligand_receptor_pairs():
+    df = import_ligand_receptor_pairs()
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2005
+    assert df["ligand"].dtype.name == "category"
+    assert df["receptor"].dtype.name == "category"
+    assert df["pathway_name"].dtype.name == "category"
+    assert df["annotation"].dtype.name == "category"
+    assert df["agonist"].dtype.name == "category"
+    assert df["antagonist"].dtype.name == "category"
+    assert df["co_A_receptor"].dtype.name == "category"
+    assert df["co_I_receptor"].dtype.name == "category"
+    assert df["evidence"].dtype.name == "category"
+    assert "interaction_symbol" in df.columns

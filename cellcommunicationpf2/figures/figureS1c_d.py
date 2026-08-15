@@ -2,13 +2,12 @@
 Figure S1c_d: FMS across CPD ranks (only) for COVID-19
 """
 
-import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from ..import_data import import_ligand_receptor_pairs
 from ..tensor import calculate_interaction_tensor, run_fms_r2x_analysis
 from .common import get_covid_data, getSetup, load_or_compute_dataframe, subplotLabel
+from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 
 
 def compute_covid_cpd_stability_data(
@@ -37,10 +36,5 @@ def makeFigure():
         compute_covid_cpd_stability_data,
     )
 
-    sns.lineplot(data=df, x="Component", y="FMS", ax=ax[0], label="FMS")
-    ax[0].set_ylim(0, 1)
-
-    sns.lineplot(data=df, x="Component", y="R2X", ax=ax[1], color="orange", label="R2X")
-    ax[1].set_ylim(0, float(np.max(df["R2X"])) + 0.02)
-
+    plot_fms_r2x_stability(df, ax)
     return f
