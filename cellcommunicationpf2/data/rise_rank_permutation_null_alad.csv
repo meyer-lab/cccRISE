@@ -1,0 +1,10 @@
+Rank,NullType,Replicate,R2X
+10,observed,0,0.030069962644116544
+10,gene_permutation,0,0.004732293166200052
+10,condition_label_permutation,0,0.030378243546430594
+25,observed,0,0.039276310593374775
+25,gene_permutation,0,0.007935353161486525
+25,condition_label_permutation,0,0.03949706498862582
+40,observed,0,0.044463548264791486
+40,gene_permutation,0,0.011191289442877284
+40,condition_label_permutation,0,0.04483373361645582
