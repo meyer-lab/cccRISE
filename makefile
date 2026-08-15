@@ -1,4 +1,4 @@
-.PHONY: clean test ty profile_cpu
+.PHONY: clean test ty profile_cpu manuscript
 
 flist = $(wildcard cellcommunicationpf2/figures/figure*.py)
 allOutput = $(patsubst cellcommunicationpf2/figures/figure%.py, output/figure%.svg, $(flist))
@@ -29,6 +29,10 @@ coverage.xml: .venv
 ty: .venv
 	uv run ty check cellcommunicationpf2
 
+manuscript:
+	quarto render manuscript
+
 clean:
 	rm -rf output profile profile.svg
 	rm -rf factor_cache
+	rm -rf manuscript/_output manuscript/.quarto

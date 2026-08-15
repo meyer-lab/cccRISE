@@ -1,0 +1,20 @@
+project:
+  type: default
+  render:
+    - manuscript.qmd
+    - supplemental.qmd
+    - review-response.qmd
+  output-dir: _output
+
+format:
+  html:
+    toc: true
+    number-sections: false
+    embed-resources: true
+    theme: cosmo
+  typst:
+    papersize: us-letter
+    margin:
+      x: 1in
+      y: 1in
+    number-sections: false
