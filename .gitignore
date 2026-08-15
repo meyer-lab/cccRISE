@@ -172,3 +172,8 @@ nohup.out
 data/
 !cellcommunicationpf2/data/
 *.h5ad
+# Quarto manuscript build outputs
+manuscript/_output/
+manuscript/.quarto/
+manuscript/_site/
+manuscript/*_files/
