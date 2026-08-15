@@ -102,6 +102,8 @@ def pseudobulk_X(
 
 def add_obs_cmp_unique_one(X: anndata.AnnData, cmp: int):
     """Creates AnnData observation column for a single component."""
+    if X.is_view:
+        X = X.copy()
     label_col = f"Cmp{cmp}"
     X.obs["Label"] = np.where(X.obs[label_col], label_col, "NoLabel")
 
@@ -116,6 +118,8 @@ def add_obs_cmp_label(
     type: str = "receiver",
 ):
     """Adds a boolean label to X.obs for cells in the top or bottom percentage of a single component."""
+    if X.is_view:
+        X = X.copy()
     if type == "sender":
         factor_type = cast(np.ndarray, X.obsm["sc_B"])
     elif type == "receiver":

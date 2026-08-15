@@ -33,7 +33,7 @@ def makeFigure():
     X_epi_sender_top = add_obs_cmp_unique_one(X_epi_sender_top, cmp=ccc_rise_cmp)
     X_epi_sender_top = X_epi_sender_top[
         X_epi_sender_top.obs["Label"].isin([f"Cmp{ccc_rise_cmp}"])
-    ]
+    ].copy()
     X_epi_sender_top.obs["Label"] = f"Cmp{ccc_rise_cmp}_Top"
 
     X_epi_sender_bottom = add_obs_cmp_label(
@@ -42,7 +42,7 @@ def makeFigure():
     X_epi_sender_bottom = add_obs_cmp_unique_one(X_epi_sender_bottom, cmp=ccc_rise_cmp)
     X_epi_sender_bottom = X_epi_sender_bottom[
         X_epi_sender_bottom.obs["Label"].isin([f"Cmp{ccc_rise_cmp}"])
-    ]
+    ].copy()
     X_epi_sender_bottom.obs["Label"] = "NoLabel"
 
     combined_X = anndata.concat([X_epi_sender_top, X_epi_sender_bottom])
