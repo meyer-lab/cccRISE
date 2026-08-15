@@ -66,7 +66,7 @@ def get_covid_data(
     """Load COVID dataset with factors and optional single-cell projections."""
     if not project_cells:
         return load_factors_to_anndata(COVID19_FACTORS_PATH)
-    raw = import_balf_covid(gene_threshold=0.01, normalize=True)
+    raw = import_balf_covid(gene_threshold=0.001, normalize=True)
     return load_factors_to_anndata(
         COVID19_FACTORS_PATH, adata=raw, do_embedding=do_embedding
     )
@@ -78,7 +78,7 @@ def get_alad_data(
     """Load ALAD dataset with factors and optional single-cell projections."""
     if not project_cells:
         return load_factors_to_anndata(ALAD_FACTORS_PATH)
-    raw = import_alad(gene_threshold=0.01, normalize=True)
+    raw = import_alad(gene_threshold=0.001, normalize=True)
     return load_factors_to_anndata(
         ALAD_FACTORS_PATH, adata=raw, do_embedding=do_embedding
     )

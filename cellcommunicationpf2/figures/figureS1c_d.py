@@ -17,7 +17,7 @@ def compute_covid_cpd_stability_data(
 ) -> pd.DataFrame:
     """Compute FMS and R2X stability metrics across CPD ranks on COVID-19."""
     if rank_list is None:
-        rank_list = list(range(1, 15, 2))
+        rank_list = list(range(1, 20))
 
     X = get_covid_data(project_cells=True)
     lr_pairs = import_ligand_receptor_pairs()

@@ -21,24 +21,24 @@ def compute_alad_rise_stability_data(
 ) -> pd.DataFrame:
     """Compute FMS and R2X stability metrics across RISE ranks on ALAD."""
     if rank_list is None:
-        rank_list = list(np.append([1], range(5, 66, 5)))
+        rank_list = list(range(1, 30, 2))
 
-    X = import_alad(gene_threshold=0.01, normalize=True)
+    X = import_alad()
     condition_column = "dsco_id"
     X = add_cond_idxs(X, condition_column)
 
     rows = []
-    for j in range(runs):
-        for i in rank_list:
-            dataX, r2x = rise_store_r2x(X, rank=i, n_iter_max=1000, tolerance=1e-9)
+    for i in rank_list:
+        dataX, r2x = rise_store_r2x(X, rank=i)
+
+        for j in range(runs):
             sampledX, _ = rise_store_r2x(
                 resample(X, condition_name=condition_column),
                 rank=i,
-                n_iter_max=1000,
-                tolerance=1e-9,
             )
             fmsScore = calculate_fms_rise(dataX, sampledX)
             rows.append({"Run": j, "Component": i, "FMS": fmsScore, "R2X": r2x})
+            print(f"Rank {i}, Run {j}: FMS={fmsScore:.4f}, R2X={r2x:.4f}")
 
     return pd.DataFrame(rows)
 

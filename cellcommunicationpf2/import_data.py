@@ -18,7 +18,7 @@ LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.csv.zst"
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
     filename: str = str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
-    gene_threshold: float = 0.01,
+    gene_threshold: float = 0.001,
     normalize: bool = True,
 ) -> anndata.AnnData:
     """BALF samples from COVID-19 patients
@@ -47,11 +47,11 @@ def import_balf_covid(
     url = "https://zenodo.org/record/7535867/files/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     if not os.path.exists(filename):
-        local_opt = Path("/opt/andrew/ccc/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad")
-        if local_opt.exists():
+        local_file = Path("./BALF-COVID19-Liao_et_al-NatMed-2020.h5ad")
+        if local_file.exists():
             import shutil
 
-            shutil.copyfile(local_opt, filename)
+            shutil.copyfile(local_file, filename)
         else:
             print("Downloading data from Zenodo...")
             urllib.request.urlretrieve(url, filename)
@@ -107,12 +107,16 @@ def import_ligand_receptor_pairs(
     return df
 
 
-def import_alad(gene_threshold: float = 0.1, normalize: bool = True):
+def import_alad(
+    filename: str | Path = "./BAL-scRNAseq-raw.h5ad",
+    gene_threshold: float = 0.001,
+    normalize: bool = True,
+):
     """Generate data for ALAD analysis, filtering and scaling as needed.
     patient ids: dsco_id
     """
     # Load data without backing to avoid issues with sparse conversion
-    data = anndata.read_h5ad("/opt/BAL-scRNAseq-raw.h5ad")
+    data = anndata.read_h5ad(filename)
 
     # Map cell types directly from the metadata column revised_annotations_10_5
     if "revised_annotations_10_5" in data.obs:

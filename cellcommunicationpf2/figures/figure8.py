@@ -17,7 +17,7 @@ def compute_fms_r2x_percentage_data(
     runs: int = 3,
 ) -> pd.DataFrame:
     """Run FMS and R2X analysis across data subsampling percentages."""
-    X = import_balf_covid(gene_threshold=0.01, normalize=True)
+    X = import_balf_covid(gene_threshold=0.001, normalize=True)
     lr_pairs = import_ligand_receptor_pairs()
     condition_column = "sample"
     X_filtered = add_cond_idxs(X, condition_column)

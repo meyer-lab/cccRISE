@@ -34,8 +34,8 @@ def resample_tensor(interaction_tensors):
 def rise_store_r2x(
     X: anndata.AnnData,
     rank: int,
-    n_iter_max: int,
-    tolerance: float,
+    n_iter_max: int = 100,
+    tolerance: float = 1e-6,
     random_state: int | None = None,
 ):
     """Runs RISE and stores the results."""
@@ -302,23 +302,22 @@ def run_fms_r2x_analysis(
 ) -> pd.DataFrame:
     """Run FMS and R2X analysis across different CP ranks and bootstrap runs."""
     if rank_list is None:
-        rank_list = list(range(1, 4, 2))
+        rank_list = list(range(1, 4))
 
     rows = []
-    for i in range(runs):
-        for j in rank_list:
-            print(f"Run {i + 1}, Rank {j}")
-            boot_tensor = resample_tensor(interaction_tensor)
-            cp_weights, cp_factors = parafac(
-                tensor=interaction_tensor,
-                rank=j,
-                n_iter_max=1000,
-                init=svd_init,
-                normalize_factors=True,
-            )
+    for j in rank_list:
+        cp_weights, cp_factors = parafac(
+            tensor=interaction_tensor,
+            rank=j,
+            n_iter_max=1000,
+            init=svd_init,
+            normalize_factors=True,
+        )
+
+        for i in range(runs):
             r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
             cp_boot_weights, cp_boot_factors = parafac(
-                tensor=boot_tensor,
+                tensor=resample_tensor(interaction_tensor),
                 rank=j,
                 n_iter_max=1000,
                 init=svd_init,
