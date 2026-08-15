@@ -1,4 +1,3 @@
-import io
 import os
 import urllib.request
 from functools import lru_cache
@@ -8,17 +7,16 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
-import zstandard as zstd
 from scipy.sparse import csr_array, issparse
 
 DATA_DIR = Path(__file__).parent / "data"
-LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.csv.zst"
+LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
     filename: str = str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
-    gene_threshold: float = 0.01,
+    gene_threshold: float = 0.001,
     normalize: bool = True,
 ) -> anndata.AnnData:
     """BALF samples from COVID-19 patients
@@ -47,11 +45,11 @@ def import_balf_covid(
     url = "https://zenodo.org/record/7535867/files/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     if not os.path.exists(filename):
-        local_opt = Path("/opt/andrew/ccc/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad")
-        if local_opt.exists():
+        local_file = Path("./BALF-COVID19-Liao_et_al-NatMed-2020.h5ad")
+        if local_file.exists():
             import shutil
 
-            shutil.copyfile(local_opt, filename)
+            shutil.copyfile(local_file, filename)
         else:
             print("Downloading data from Zenodo...")
             urllib.request.urlretrieve(url, filename)
@@ -74,29 +72,28 @@ def import_ligand_receptor_pairs(
     filename: str | Path = LR_PAIRS_PATH,
     update_interaction_names: bool = True,
 ) -> pd.DataFrame:
-    """Import ligand-receptor pairs from a zstd-compressed CSV with caching."""
-    print("Loading ligand-receptor pairs data (zstd compressed)...")
-    with open(filename, "rb") as f:
-        dctx = zstd.ZstdDecompressor()
-        with dctx.stream_reader(f) as reader:
-            text_stream = io.TextIOWrapper(reader, encoding="utf-8")
-            df = pd.read_csv(text_stream)
-
-    print(f"Cached {len(df)} ligand-receptor pairs")
+    """Import ligand-receptor pairs from a parquet file with caching."""
+    df = pd.read_parquet(filename)
 
     if update_interaction_names:
         if "interaction_name_2" in df.columns:
-            df["ligand"] = df["interaction_name_2"].apply(
-                lambda x: x.split(" - ")[0].upper()
+            df["ligand"] = (
+                df["interaction_name_2"]
+                .apply(lambda x: x.split(" - ")[0].upper())
+                .astype("category")
             )
-            df["receptor"] = df["interaction_name_2"].apply(
-                lambda x: (
-                    x.split(" - ")[1]
-                    .upper()
-                    .replace("(", "")
-                    .replace(")", "")
-                    .replace("+", "&")
+            df["receptor"] = (
+                df["interaction_name_2"]
+                .apply(
+                    lambda x: (
+                        x.split(" - ")[1]
+                        .upper()
+                        .replace("(", "")
+                        .replace(")", "")
+                        .replace("+", "&")
+                    )
                 )
+                .astype("category")
             )
         # Also update interaction_symbol if present
         if "interaction_symbol" in df.columns:
@@ -107,12 +104,16 @@ def import_ligand_receptor_pairs(
     return df
 
 
-def import_alad(gene_threshold: float = 0.1, normalize: bool = True):
+def import_alad(
+    filename: str | Path = "./BAL-scRNAseq-raw.h5ad",
+    gene_threshold: float = 0.001,
+    normalize: bool = True,
+):
     """Generate data for ALAD analysis, filtering and scaling as needed.
     patient ids: dsco_id
     """
     # Load data without backing to avoid issues with sparse conversion
-    data = anndata.read_h5ad("/opt/BAL-scRNAseq-raw.h5ad")
+    data = anndata.read_h5ad(filename)
 
     # Map cell types directly from the metadata column revised_annotations_10_5
     if "revised_annotations_10_5" in data.obs:

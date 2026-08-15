@@ -14,8 +14,6 @@ Classification: Research report
 
 **Keywords:** PARAFAC2, tensor decomposition, cell-cell communication, scRNA-seq, ligand-receptor interactions, multi-condition
 
-**\**
-
 **Abstract:**
 
 Cell-cell communication (CCC) coordinates cellular activities that vary dynamically across time, location, and biological context. Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, the methods that do preserve single-cell resolution cannot model how communication is regulated across conditions. To bridge this gap, we developed CCC-RISE, an extension of the tensor-based method Reduction and Insight in Single-cell Exploration (RISE). Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by sender cells, receiver cells, ligand-receptor pairs, and conditions, then maps each program back to the individual cells that drive it. Applied to a COVID-19 severity cohort and a lung transplant cohort with acute allograft dysfunction, CCC-RISE recovered disease-associated communication programs and traced them to specific signaling subpopulations that cross conventional cell-type boundaries: for example, CCL19-CCR7 recruitment signaling restricted to an active subset of mDCs rather than the whole population. CCC-RISE thus resolves disease-relevant signaling subpopulations that are invisible to aggregate methods.
@@ -30,31 +28,21 @@ Cell-cell communication (CCC) coordinates cellular activities that vary dynamica
 
 - In COVID-19 and lung transplant cohorts, CCC-RISE links disease-associated communication programs to specific cell subsets invisible to aggregate methods**\**
 
-## INTRODUCTION
+<!-- Introduction -->
 
-Multicellular organisms rely on coordinated cell-cell communication (CCC) to guide development, maintain homeostasis, and mount immune responses^1^. This communication is mediated by a diverse molecular toolkit, including ligands, receptors, chemokines, hormones, and structural proteins^1,2^. CCC is initiated when extracellular signals trigger intracellular cascades, often altering gene expression to regulate cellular behavior and function. By mapping how diseases disrupt these pathways, we can characterize the specific cellular responses that drive and define pathological states.
+{{< include _introduction.qmd >}}
 
-To better understand how cells interact, researchers have developed various computational techniques to infer cell-cell communication (CCC) from transcriptomic data^3,4^. These methods typically leverage single-cell RNA sequencing (scRNA-seq) to identify the co-expression of ligand-receptor (LR) gene pairs documented in curated databases^5,6^. This approach hinges on the central assumption that transcript levels accurately reflect functional protein abundance, which in turn determines the probability of interaction. While this is a significant simplification of biological complexity, it allows for the high-throughput screening of thousands of interactions, providing a data-driven way to prioritize specific communication events for experimental validation^7,8^. Initial tools such as CellPhoneDB and CellChat use statistical tests to compare communication scores against a null distribution created by randomly permuting cell labels^5,9^. Originally designed to detect the presence of signaling pathways, these foundational tools have since inspired a diverse analytical toolkit capable of addressing increasingly complex biological questions^10^.
+## RESULTS
 
-A critical objective of CCC analysis is to understand how cellular interactions evolve across distinct biological contexts, such as disease states, developmental stages, or treatment groups^11--14^. By mapping alterations in ligand-receptor activity and signaling pathways, researchers can pinpoint the communication programs that drive phenotypic outcomes and identify potential therapeutic targets. Computational approaches for multi-condition CCC analysis generally fall into two primary categories: matrix-based and tensor-based methods. Matrix-based strategies---including DIALOGUE, MultiNicheNet, and Multicellular Factor Analysis---typically flatten complex data into two-dimensional arrays, such as rows of samples against columns of sender-receiver features^15--17^. While these methods can successfully identify statistically significant ligand-receptor pairs, the flattening process creates a confounding mixture of signals that makes it difficult to track context-dependent communication events across specific sender and receiver cell types. In contrast, tensor-based methods like Tensor-cell2cell, scTensor, STACCato, and scITD address this limitation by modeling data across all dimensions simultaneously. By arranging data into higher-order tensors rather than flat matrices, these methods preserve the multi-dimensional structure of the interaction, allowing for the identification of coordinated changes in CCC and the regulation of communication programs across conditions^11,18--20^. To extract these insights, tensor-based tools employ factorization techniques, such as Canonical Polyadic Decomposition (CPD), which model the tensor as a sum of rank-one components to reveal distinct signaling patterns^21,22^.
-
-Despite the advantages of current tensor-based methods, their reliance on pseudobulking single-cell data represents a significant bottleneck. Because standard decompositions like CPD require data dimensions to be strictly aligned (i.e., \"sender cell type 1\" must match perfectly across all conditions) researchers are forced to aggregate raw single-cell data into discrete categories. This approach relies on the reductive assumption that a cell can be fully defined by a single label^8^. In biological reality, cells are multifaceted entities that often hold simultaneous identities, blending stable lineage markers with transient functional states driven by their immediate environment^23--25^. Furthermore, the process of annotation itself is fraught with challenges; cell type labeling is inevitably incomplete or inaccurate, particularly when researchers attempt to define fine-grained labels to capture subtle heterogeneity. By forcing cells into these rigid, pre-defined boxes, pseudobulking obscures the functional diversity essential for understanding cellular communication, as distinct subpopulations within a single "type" may participate in entirely different signaling programs. Conversely, while methods such as Scriabin, DeepCOLOR, and NICHES allow for analysis at single-cell resolution, they lack the ability to model how communication programs are regulated across biological contexts, a key strength of tensor-based approaches^26--30^. Therefore, there is a pressing need for a framework that can interpret the multi-dimensional nature of CCC across conditions while preserving the resolution necessary to capture the complex, overlapping identities of individual cells.
-
-To address these limitations, here we developed CCC-RISE, a framework designed to bridge the gap between multi-condition analysis and single-cell resolution. CCC-RISE builds upon the Reduction and Insight in Single-cell Exploration (RISE) method, which utilizes PARAFAC2 to analyze scRNA-seq data without requiring predefined cell type labels or aggregation^31^. PARAFAC2 aligns cells across conditions by solving an Orthogonal Procrustes problem, projecting each cell onto a shared set of latent expression programs, termed "eigen-states", that capture the dominant axes of transcriptional variation common to all samples. Each eigen-state represents a weighted combination of genes, and each cell receives a loading across all eigen-states, preserving continuous variation rather than forcing discrete assignments. By applying CCC scoring to these eigen-states, we can identify core communication programs across varying conditions while preserving the ability to interpret these signals at the individual cell level. We demonstrate the utility of CCC-RISE in two clinical applications, effectively linking coordinated communication signatures to relevant patient features and offering a precise new approach to dissecting CCC dynamics across biological contexts.
-
-## RESULTS CCC-RISE framework overview and validation strategy
-
-## ![](media/image1.emf){width="6.75in" height="5.702083333333333in"}
+### CCC-RISE framework overview and validation strategy
 
 ## Figure 1. CCC-RISE deconvolves cell communication variability across single cells and conditions. (a) The CCC-RISE workflow. The RISE method first projects multi-condition scRNA-seq data into eigen-states to model cell heterogeneity. Communication scores are then computed between these eigen-states for ligand-receptor (LR) pairs to form a 4D tensor. Finally, CPD factorization decomposes this tensor into distinct factors that describe the component associations with sender eigen-states, receiver eigen-states, LR pairs, and conditions. (b) RISE projections serve as a common embedding basis to visualize cell-to-cell heterogeneity across all conditions. (c) Interpreting communication programs. Each extracted component is defined by the association weights across four dimensions: sender cells, receiver cells, LR pairs, and experimental conditions. (d) Linking factors to cells. Sender and receiver eigen-state factors are mathematically combined with the RISE projections to map communication patterns back to specific single-cell populations.
 
-RISE projects cells from multiple conditions onto a common reference frame, effectively aligning them based on gene expression without requiring *a priori* labeling. To overcome the limitations of aggregating data into pre-defined cell types, CCC-RISE builds upon the unsupervised \"eigen-states\" generated by the RISE framework (Fig. 1a)^31^. CCC-RISE computes communication scores directly on these intermediate eigen-states rather than on individual cells or broad populations. Because RISE projections summarize the common gene expression profiles across the eigen-states, these matrices can serve as the basis for an overall cell embedding (Fig. 1b). For every experimental condition and ligand-receptor (LR) pair, a score is calculated for all combinations of sender and receiver eigen-states by integrating the ligand expression of the sender with the receptor expression of the receiver. This process constructs a four-dimensional tensor describing the data across sender eigen-states, receiver eigen-states, experimental conditions, and LR pairs.
+RISE projects cells from multiple conditions onto a common reference frame, effectively aligning them based on gene expression without requiring _a priori_ labeling. To overcome the limitations of aggregating data into pre-defined cell types, CCC-RISE builds upon the unsupervised \"eigen-states\" generated by the RISE framework (Fig. 1a)^31^. CCC-RISE computes communication scores directly on these intermediate eigen-states rather than on individual cells or broad populations. Because RISE projections summarize the common gene expression profiles across the eigen-states, these matrices can serve as the basis for an overall cell embedding (Fig. 1b). For every experimental condition and ligand-receptor (LR) pair, a score is calculated for all combinations of sender and receiver eigen-states by integrating the ligand expression of the sender with the receptor expression of the receiver. This process constructs a four-dimensional tensor describing the data across sender eigen-states, receiver eigen-states, experimental conditions, and LR pairs.
 
 To extract patterns from this high-dimensional structure, the method employs Canonical Polyadic Decomposition (CPD), which factors the 4D tensor into distinct components. Similar to how principal component analysis (PCA) reduces dimensionality, this decomposition approximates the tensor as a sum of rank-one tensors, each representing a coordinated communication program defined by specific variations in sender and receiver states, LR pairs, and conditions (Fig. 1c)^21,22,32^. Crucially, because the original RISE projections preserve cell-to-cell heterogeneity, the component loadings on eigen-states can be projected back onto individual cells. By multiplying the RISE projections with the sender and receiver eigen-state factors, the specific association of individual cells with each communication component is recovered. This allows for the identification of specific cell subpopulations driving communication signals, enabling the tracing of signaling programs across conditions without losing the granularity of single-cell data (Fig. 1d).
 
 ## CCC-RISE Uncovers Subpopulation-Specific Immune Signaling Heterogeneity in COVID-19
-
-## ![](media/image2.emf){width="6.75in" height="8.207638888888889in"}
 
 ## Figure 2. CCC-RISE resolves COVID-19-associated communication patterns to specific immune subpopulations. (a) Schematic of the CCC-RISE workflow applied to bronchoalveolar lavage (BAL) samples from patients with healthy, moderate, and severe COVID-19. (b) Decomposed factor matrices representing the conditions, sender eigen-states, receiver eigen-states, and ligand-receptor (LR) pairs for each identified component. (c--d) PaCMAP embeddings of the RISE projections, visualizing cell-to-cell heterogeneity colored by (c) patient severity group and (d) cell-type annotations. (e-f) Heatmaps displaying the Pearson correlation between components identified by CCC-RISE and those from pseudobulk CPD analysis for (e) condition factors and (f) LR pair factors. (g) Correlation between CCC-RISE Component 6 and Pseudobulk Component 8 condition factors, annotated with Pearson correlation coefficients and colored by patient group. (h) Correlation between CCC-RISE Component 6 and Pseudobulk Component 8 LR pair factors, highlighting the top-weighted pair (CCL19-CCR7). (i) PaCMAP embedding of RISE projections with sender cells colored by their specific loadings in Component 6. (j) Distribution of Component 6 loadings specifically within the sender mDC population, showing intra-type heterogeneity. (k) PaCMAP embedding of RISE projections with receiver cells colored by their loadings in Component 6. (l-m) Normalized communication scores for the CCL19-CCR7 interaction in Component 6, visualized for (l) sender mDCs to receiver mDCs, and (m) sender mDCs to receiver B cells.
 
@@ -68,8 +56,6 @@ In contrast, CCC-RISE revealed significant heterogeneity within these canonical 
 
 ## CCC-RISE reveals severity-associated communication programs in COVID-19 at single-cell resolution
 
-![](media/image3.emf){width="6.75in" height="6.7375in"}
-
 **Figure 3. Identification of communication components correlated with COVID-19 severity.**\
 **(a)** Spearman correlation between CCC-RISE condition components and patient disease severity (ranked: healthy, moderate, severe). **(b, c, g, h)** PaCMAP embeddings of RISE projections visualizing single-cell heterogeneity. Cells are colored by their loadings for (b, g) sender and (c, h) receiver activity in (b-c) Component 3 and (g-h) Component 5. **(d, e, i, j)** Distribution of epithelial cell weights within (d, e) Component 3 and (i, j) Component 5, stratified by (d, i) sender and (e, j) receiver populations. **(f)** Average communication scores for the top five Ligand-Receptor (LR) pairs in Component 3, stratified by condition and cell weight. **(k, n, o)** Normalized communication scores for key interactions between top-weighted epithelial sender and receiver cells: (k, o) CDH1-CDH1 (Component 5) and (n) PTN-PTPRZ1 (Component 3 vs 5 comparison). **(l, m)** Comparison of Components 3 and 5, showing correlations between their (l) condition weights and (m) LR pair weights.
 
@@ -82,8 +68,6 @@ Despite both Component 3 and 5 being \"epithelial-specific,\" they described non
 Finally, Component 8 also tracked with severity but displayed a broader connectivity pattern. While epithelial cells remained the primary senders, the signals---mediated largely by PTN-SDC3, PTN-SDC2, and PTN-SDC4 (Supplementary Fig. 4j)---were targeted toward a diverse array of receiver types, including B cells, mast cells, plasma cells, mDCs, and pDCs (Supplementary Fig. 4k--m).
 
 ## Distinct CD4+ T cell and NK cell signaling programs define ALAD
-
-![](media/image4.emf){width="6.597916666666666in" height="8.79722331583552in"}
 
 **Figure 4. Identification of single-cell communication signatures associated with ALAD. (a)** Workflow applied to BAL samples from lung transplant recipients to discriminate ALAD from control status. **(b-c)** ROC AUC performance of logistic regression classifiers using (b) RISE condition factors and (c) CPD condition factors across varying component ranks. **(d)** Feature weights for the optimal 18-component CPD logistic regression model; components 5, 13, and 17 are highlighted as top predictors. **(e)** Ligand-Receptor (LR) pair loadings for the top components. **(f)** PaCMAP embedding of RISE projections colored by cell type. **(g-h, l-m, s-t)** Visualization of key predictive components: PaCMAP embeddings show sender and receiver cell loadings for (g-h) Component 5 (ALAD-associated), (l-m) Component 13 (Control-associated), and (s-t) Component 17 (Control-associated). **(i-j, p, u-v)** Normalized communication scores for top interactions: (i-j) Component 5-driven CD40LG-CD40 and LTA-LTBR signaling between CD4+ T cells and DCs; (p) Component 13-driven CD200-CD200R1 signaling between DCs and epithelial cells; and (u-v) Component 17-driven GZMA-F2R signaling among NK and CD8+ T cell populations. **(k, q-r, w-x)** Differentially weighted genes based on logistic regression distinguishing the (k) bottom 10% from the remaining sender CD4+ T cells for Cmp. 5, the bottom 10% (q) sender DCs for Cmp. 13 and (r) receiver epithelial cells for Cmp. 13, and the top 10% (w) sender NK cells and (x) receiver CD8 T cells for Cmp. 17. **(n-o)** Distribution of Component 13 loadings within (n) DCs and (o) epithelial cells.
 
@@ -99,7 +83,7 @@ In contrast, Components 13 and 17 defined distinct signaling networks associated
 
 **Figure 5. Communication programs distinguish stable outcomes from chronic decline in lung transplants. (a)** Logistic regression weights for an 18-component CPD model, identifying the most predictive components for patient stability. **(b-c)** PaCMAP embeddings of RISE projections, with (b) sender and (c) receiver cells colored by their loadings in Component 7. **(d)** The top 10 most positively weighted ligand-receptor (LR) pairs identified by CCC-RISE for Component 7. **(e-f)** Normalized communication scores between Component 7 sender CD4+ T cells and receiver CD4+ T cells for the (e) CD70-CD27 and (f) LTA-TNFRSF1B signaling axes. **(g-h)** Differentially weighted genes based on logistic regression distinguishing the top 10% (g) sender NK cells and (h) receiver CD4 T cells for Cmp. 7.
 
-Having defined the cellular communication networks associated with ALAD, we sought to contextualize their broader clinical significance by comparing the identified CCC-RISE components against patient demographic and physiological variables. We found no significant correlations between the components and variables such as sex, age, or FEV~1~ measured at 6 months and 1-year post-transplant (Supplementary Fig. 8a-b). Beyond the initial ALAD diagnosis, we investigated whether these components could predict progression to CLAD or mortality, outcomes marked by continued functional decline^41^. Our analysis revealed that the sample associations for these components did not clearly associate with either CLAD or deceased status at 6 months and 1-year post-ALAD diagnosis as separate outcomes (Supplementary Fig. 8c-h).
+Having defined the cellular communication networks associated with ALAD, we sought to contextualize their broader clinical significance by comparing the identified CCC-RISE components against patient demographic and physiological variables. We found no significant correlations between the components and variables such as sex, age, or FEV~~1~~ measured at 6 months and 1-year post-transplant (Supplementary Fig. 8a-b). Beyond the initial ALAD diagnosis, we investigated whether these components could predict progression to CLAD or mortality, outcomes marked by continued functional decline^41^. Our analysis revealed that the sample associations for these components did not clearly associate with either CLAD or deceased status at 6 months and 1-year post-ALAD diagnosis as separate outcomes (Supplementary Fig. 8c-h).
 
 Given these findings, we expanded our analysis to determine if other signatures from CCC-RISE could stratify patients based on their clinical trajectories, specifically distinguishing those who remained stable from those who experienced clinical decline leading to CLAD or death in aggregate. Using the original factorization, we applied logistic regression to identify components predictive of these outcomes. Components 7 and 17 emerged as significant predictors for stratifying patient stability (Fig. 5a). Notably, the components differentiating stable status were consistently identified as significant when assessing pairwise interactions, even if they were potentially filtered out by L1 regularization in isolation (Supplementary Fig. 8i).
 
@@ -119,7 +103,7 @@ A central advantage of this framework is its ability to bypass the limitations o
 
 In summary, CCC-RISE provides an unbiased framework for investigating CCC across multiple conditions at single-cell resolution. By integrating the cell-alignment capabilities of RISE with the pattern-finding benefits of tensor decomposition, our method reveals context-specific communication programs that are directly interpretable at the level of individual cells. As single-cell multi-condition studies become increasingly common, CCC-RISE serves as a powerful tool to unravel the complex cellular dialogues that underpin diseases. Understanding CCC will rely on high-level analysis tools like CCC-RISE to map the entire landscape of potential interactions in an unbiased way, followed by targeted experiments to confirm which of these predicted pathways are functionally important.
 
-**Acknowledgements:** This work was supported by NIAID U19-AI172713 to A.S.M. and a Cota Robles Fellowship to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their invaluable advice for the development of this method and its application to cell-cell communication.
+**Acknowledgements:** This work was supported by NIAID U19-AI172713 to A.S.M. and a Cota Robles Fellowship to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice for the development of this method and its application to cell-cell communication.
 
 **Author Contributions:** A.R. and A.S.M. conceived of the study. All authors performed the computational analysis and helped analyze the data. All authors wrote and revised the paper.
 
@@ -149,7 +133,7 @@ This study did not generate new unique reagents.
 
 **RISE, CPD, and CCC-RISE**
 
-*Canonical Polyadic Decomposition*
+_Canonical Polyadic Decomposition_
 
 Canonical Polyadic Decomposition (CPD) is a tensor decomposition method that generalizes PCA to higher-order data structures. While PCA operates on matrices (second-order tensors), CPD extends this logic to third-order (and higher-order) tensors. Given a third-order tensor, $\mathbf{X}$, of shape $I \times J \times K$, CPD seeks to approximate $\mathbf{X}$ as a sum of component rank-one tensors. This set of component rank-one tensors are collectively represented in factor matrices: $A$ of shape $I \times R$, $B$ of shape $J \times R$, and $C$ of shape $K \times R$, where $R$ is the number of components into which $\mathbf{X}$ is decomposed. Specifically, CPD seeks
 
@@ -157,9 +141,9 @@ $$\underset{A,B,C}{argmin}\sum_{i = 1}^{I}\left\| X_{i} - Bdiag\left( a_{i} \rig
 
 where $X_{\mathbf{i}}$ is the $i$^th^ slice of $\mathbf{X}$ along the first mode, and $diag\left( a_{i} \right)$ is the diagonal matrix whose nonzero entries are equal to the $i$^th^ row of $A$. While many algorithms exist for deriving CPD, we applied alternating least squares (ALS), wherein each mode is iteratively solved using least squares. A tolerance of 1x10^-11^ and maximum of 10,000 iterations was defined. As an iterative procedure, ALS must be initialized with a starting estimate of the factorization. The factor matrices were initialized using the SVD of the matrix-flattened data. Each of $X_{i}\$was concatenated to form a matrix. Randomized SVD was performed on this matrix and the first $R$ right singular vectors were used to initialize $B$. $A$ was filled with ones and $C$ was initialized to the identity matrix.
 
-#### *Reduction and Insight in Single-cell Exploration*
+#### Reduction and Insight in Single-cell Exploration
 
-#### Reduction and Insight in Single-cell Exploration (RISE) is a computational framework based on the PARAFAC2 tensor decomposition method, optimized for analyzing multi-condition scRNA-seq data. A major challenge in scRNA-seq is that the data lacks alignment when reconstructed into a 3D tensor, because the same cell is not measured across conditions. RISE overcomes this by using the PARAFAC2 model, which solves for the alignment of the data along one dimension---the cell axis. In fitting the RISE model, we seek:
+Reduction and Insight in Single-cell Exploration (RISE) is a computational framework based on the PARAFAC2 tensor decomposition method, optimized for analyzing multi-condition scRNA-seq data. A major challenge in scRNA-seq is that the data lacks alignment when reconstructed into a 3D tensor, because the same cell is not measured across conditions. RISE overcomes this by using the PARAFAC2 model, which solves for the alignment of the data along one dimension---the cell axis. In fitting the RISE model, we seek:
 
 $$\underset{A,B,C,\mathbf{P}}{argmin}\sum_{i = 1}^{I}\left\| X_{sc,i} - P_{i}Bdiag\left( a_{i} \right)C^{T} \right\|^{2}\text{subject to}\ {P_{i}}^{T}P_{i}\mathbf{\ } = \mathbf{I\ \forall\ }i$$
 
@@ -171,7 +155,7 @@ $$= \underset{A,B,C}{argmin}\sum_{i = 1}^{I}\left\| {P_{i}^{T}X}_{sc,i} - Bdiag\
 
 which is equivalent to running PARAFAC on the single, aligned, third-order tensor whose $i$^th^ slice along the first mode is equal to ${P_{i}^{T}X}_{sc,i}$. Then, the projection matrices, $\mathbf{P,}$ are updated by solving the Orthogonal Procrustes problem. Given matrices $X,Y \in \mathbb{R}^{n \times m}$, the Orthogonal Procrustes problem seeks an orthogonal matrix $Q \in \mathbb{R}^{n \times n}$ that minimizes $\left\| XQ - Y \right\|_{F}^{2}$. The solution is given by $Q = UV^{T}$, where $U\Sigma V^{T}$is the singular value decomposition of $Y^{T}X$. For a low-rank decomposition, we update each $\mathbf{P}_{\mathbf{i}}\mathbf{\in}\mathbf{P}$ as the product of the first $R$ left and right singular vectors from the SVD of $Bdiag\left( a_{i} \right)C^{T}X_{sc,i}^{T}$. This process of updating the factor matrices using PARAFAC and the projections via Orthogonal Procrustes is repeated until a specific number of iterations elapses or the difference in R2X between iterations reaches a threshold. This cycle of aligning the tensor and then factoring it is repeated until either 100 iterations elapse or the difference in R²X between iterations falls below 1×10⁻⁶. RISE enhances the core PARAFAC2 algorithm with several key optimizations including a parameter initialization scheme via SVD, the implementation of Nesterov acceleration to improve convergence, and post-factorization alignment procedures to ensure consistent, interpretable results.^65,66^
 
-*CCC-RISE*
+_CCC-RISE_
 
 CCC-RISE is a computational pipeline for the analysis of CCC across multiple conditions from scRNA-seq data. The method proceeds in three key steps. The scRNA-seq data tensor is first decomposed using RISE. From the eigen-state tensor that RISE produces based on the factors, CCC scores are calculated for all relevant LR pairs in each experimental condition, with each pair of eigen-states as sender and receiver.
 
@@ -179,7 +163,7 @@ To model CCC, we represent the expression of a ligand and its receptor as the ou
 
 #### Data Normalization, Processing, and Visualization
 
-*BAL COVID-19*
+_BAL COVID-19_
 
 The single-cell gene expression was obtained from Liao et al^33^. Genes with less than 0.001 mean counts across all cells were removed. The size of the dataset included 63,103 cells and 17,714 genes. Each cell was then normalized by read depth using CPM normalization. Next, each gene was scaled according to its sum. Finally, the data was log transformed via the Delta method,
 
@@ -187,7 +171,7 @@ $$g(y) = log(y + 1000)$$
 
 where $g(y)$ is the transformed gene and $y$ is the pre-transformed gene. Finally, each gene was mean-centered. The data was then fit using the RISE model with 35 components as described above. PaCMAP was applied to the concatenated matrix of the projections across all conditions to visualize cell-to-cell variation as an embedding. PaCMAP's default parameters of n_neighbors=10, MN=0.5, and FP_ratio=2.0 were used^67^. The communication tensor was calculated based on a human list of 2,005 ligand-receptor pairs, including multimeric protein complexes, was obtained from CellChat^5^. We filtered this list by considering the genes expressed in the dataset, resulting in 895 LR pairs. The data was then fit using the CPD model with 8 components as described above. Cell annotations were reused from the initial data collection and analysis^33^.
 
-*BAL ALAD*
+_BAL ALAD_
 
 The single-cell gene expression was obtained from Calabrese et al^41^. The same normalization pipeline was used as described above. The final dataset consisted of 51,273 cells across all conditions and 15,899 genes. The data was first fit using the RISE model with 15 components. For visualization, the same PaCMAP parameters were applied. After filtering the list and considering the genes expressed in the dataset, a total of 445 LR pairs were identified. The data was then fit using the CPD model with 18 components. Cell annotations were performed during the initial data collection and subsequent analysis^41^.
 
@@ -237,140 +221,140 @@ Figure captions detail pertinent statistical analyses or metrics, the number of 
 
 ## REFERENCES
 
-1\. Wang, X., Almet, A. A. & Nie, Q. The promising application of cell-cell interaction analysis in cancer from single-cell and spatial transcriptomics. *Seminars in Cancer Biology* **95**, 42--51 (2023).
+1\. Wang, X., Almet, A. A. & Nie, Q. The promising application of cell-cell interaction analysis in cancer from single-cell and spatial transcriptomics. _Seminars in Cancer Biology_ **95**, 42--51 (2023).
 
-2\. Su, J. *et al.* Cell--cell communication: new insights and clinical implications. *Sig Transduct Target Ther* **9**, 196 (2024).
+2\. Su, J. _et al._ Cell--cell communication: new insights and clinical implications. _Sig Transduct Target Ther_ **9**, 196 (2024).
 
-3\. Armingol, E., Officer, A., Harismendy, O. & Lewis, N. E. Deciphering cell--cell interactions and communication from gene expression. *Nat Rev Genet* **22**, 71--88 (2021).
+3\. Armingol, E., Officer, A., Harismendy, O. & Lewis, N. E. Deciphering cell--cell interactions and communication from gene expression. _Nat Rev Genet_ **22**, 71--88 (2021).
 
-4\. Dimitrov, D. *et al.* Comparison of methods and resources for cell-cell communication inference from single-cell RNA-Seq data. *Nat Commun* **13**, 3224 (2022).
+4\. Dimitrov, D. _et al._ Comparison of methods and resources for cell-cell communication inference from single-cell RNA-Seq data. _Nat Commun_ **13**, 3224 (2022).
 
-5\. Jin, S. *et al.* Inference and analysis of cell-cell communication using CellChat. *Nat Commun* **12**, 1088 (2021).
+5\. Jin, S. _et al._ Inference and analysis of cell-cell communication using CellChat. _Nat Commun_ **12**, 1088 (2021).
 
-6\. Zhang, Y. *et al.* Cellinker: a platform of ligand--receptor interactions for intercellular communication analysis. *Bioinformatics* **37**, 2025--2032 (2021).
+6\. Zhang, Y. _et al._ Cellinker: a platform of ligand--receptor interactions for intercellular communication analysis. _Bioinformatics_ **37**, 2025--2032 (2021).
 
-7\. Jin, S., Plikus, M. V. & Nie, Q. CellChat for systematic analysis of cell--cell communication from single-cell transcriptomics. *Nat Protoc* **20**, 180--219 (2025).
+7\. Jin, S., Plikus, M. V. & Nie, Q. CellChat for systematic analysis of cell--cell communication from single-cell transcriptomics. _Nat Protoc_ **20**, 180--219 (2025).
 
-8\. Cesaro, G. *et al.* Advances and challenges in cell--cell communication inference: a comprehensive review of tools, resources, and future directions. *Briefings in Bioinformatics* **26**, bbaf280 (2025).
+8\. Cesaro, G. _et al._ Advances and challenges in cell--cell communication inference: a comprehensive review of tools, resources, and future directions. _Briefings in Bioinformatics_ **26**, bbaf280 (2025).
 
-9\. Efremova, M., Vento-Tormo, M., Teichmann, S. A. & Vento-Tormo, R. CellPhoneDB: inferring cell--cell communication from combined expression of multi-subunit ligand--receptor complexes. *Nat Protoc* **15**, 1484--1506 (2020).
+9\. Efremova, M., Vento-Tormo, M., Teichmann, S. A. & Vento-Tormo, R. CellPhoneDB: inferring cell--cell communication from combined expression of multi-subunit ligand--receptor complexes. _Nat Protoc_ **15**, 1484--1506 (2020).
 
-10\. Armingol, E., Baghdassarian, H. M. & Lewis, N. E. The diversification of methods for studying cell--cell interactions and communication. *Nat Rev Genet* **25**, 381--400 (2024).
+10\. Armingol, E., Baghdassarian, H. M. & Lewis, N. E. The diversification of methods for studying cell--cell interactions and communication. _Nat Rev Genet_ **25**, 381--400 (2024).
 
-11\. Armingol, E. *et al.* Context-aware deconvolution of cell--cell communication with Tensor-cell2cell. *Nat Commun* **13**, 3665 (2022).
+11\. Armingol, E. _et al._ Context-aware deconvolution of cell--cell communication with Tensor-cell2cell. _Nat Commun_ **13**, 3665 (2022).
 
-12\. Schubert, M. *et al.* Perturbation-response genes reveal signaling footprints in cancer gene expression. *Nat Commun* **9**, 20 (2018).
+12\. Schubert, M. _et al._ Perturbation-response genes reveal signaling footprints in cancer gene expression. _Nat Commun_ **9**, 20 (2018).
 
-13\. Griffiths, J. I. *et al.* Circulating immune cell phenotype dynamics reflect the strength of tumor--immune cell interactions in patients during immunotherapy. *Proc. Natl. Acad. Sci. U.S.A.* **117**, 16072--16082 (2020).
+13\. Griffiths, J. I. _et al._ Circulating immune cell phenotype dynamics reflect the strength of tumor--immune cell interactions in patients during immunotherapy. _Proc. Natl. Acad. Sci. U.S.A._ **117**, 16072--16082 (2020).
 
-14\. Hwang, S., Kim, S., Shin, H. & Lee, D. Context-dependent transcriptional regulations between signal transduction pathways. *BMC Bioinformatics* **12**, 19 (2011).
+14\. Hwang, S., Kim, S., Shin, H. & Lee, D. Context-dependent transcriptional regulations between signal transduction pathways. _BMC Bioinformatics_ **12**, 19 (2011).
 
-15\. Jerby-Arnon, L. & Regev, A. DIALOGUE maps multicellular programs in tissue from single-cell or spatial transcriptomics data. *Nat Biotechnol* **40**, 1467--1477 (2022).
+15\. Jerby-Arnon, L. & Regev, A. DIALOGUE maps multicellular programs in tissue from single-cell or spatial transcriptomics data. _Nat Biotechnol_ **40**, 1467--1477 (2022).
 
-16\. Ramirez Flores, R. O., Lanzer, J. D., Dimitrov, D., Velten, B. & Saez-Rodriguez, J. Multicellular factor analysis of single-cell data for a tissue-centric understanding of disease. *eLife* **12**, e93161 (2023).
+16\. Ramirez Flores, R. O., Lanzer, J. D., Dimitrov, D., Velten, B. & Saez-Rodriguez, J. Multicellular factor analysis of single-cell data for a tissue-centric understanding of disease. _eLife_ **12**, e93161 (2023).
 
-17\. Browaeys, R. *et al.* MultiNicheNet: a flexible framework for differential cell-cell communication analysis from multi-sample multi-condition single-cell transcriptomics data. Preprint at https://doi.org/10.1101/2023.06.13.544751 (2023).
+17\. Browaeys, R. _et al._ MultiNicheNet: a flexible framework for differential cell-cell communication analysis from multi-sample multi-condition single-cell transcriptomics data. Preprint at https://doi.org/10.1101/2023.06.13.544751 (2023).
 
 18\. Dai, Q., Yang, J. & Epstein, M. P. Identifying condition-related cell-cell communication events using supervised tensor analysis.
 
-19\. Mitchel, J. *et al.* Coordinated, multicellular patterns of transcriptional variation that stratify patient cohorts are revealed by tensor decomposition. *Nat Biotechnol* **43**, 1192--1201 (2025).
+19\. Mitchel, J. _et al._ Coordinated, multicellular patterns of transcriptional variation that stratify patient cohorts are revealed by tensor decomposition. _Nat Biotechnol_ **43**, 1192--1201 (2025).
 
-20\. Tsuyuzaki, K., Ishii, M. & Nikaido, I. Sctensor detects many-to-many cell--cell interactions from single cell RNA-sequencing data. *BMC Bioinformatics* **24**, 420 (2023).
+20\. Tsuyuzaki, K., Ishii, M. & Nikaido, I. Sctensor detects many-to-many cell--cell interactions from single cell RNA-sequencing data. _BMC Bioinformatics_ **24**, 420 (2023).
 
-21\. Kolda, T. G. & Bader, B. W. Tensor Decompositions and Applications. *SIAM Rev.* **51**, 455--500 (2009).
+21\. Kolda, T. G. & Bader, B. W. Tensor Decompositions and Applications. _SIAM Rev._ **51**, 455--500 (2009).
 
-22\. Tan, Z. C. & Meyer, A. S. The structure is the message: Preserving experimental context through tensor decomposition. *Cell Systems* **15**, 679--693 (2024).
+22\. Tan, Z. C. & Meyer, A. S. The structure is the message: Preserving experimental context through tensor decomposition. _Cell Systems_ **15**, 679--693 (2024).
 
-23\. Cembrowski, M. S. & Spruston, N. Heterogeneity within classical cell types is the rule: lessons from hippocampal pyramidal neurons. *Nat Rev Neurosci* **20**, 193--204 (2019).
+23\. Cembrowski, M. S. & Spruston, N. Heterogeneity within classical cell types is the rule: lessons from hippocampal pyramidal neurons. _Nat Rev Neurosci_ **20**, 193--204 (2019).
 
 24\. Sparta, B., Hamilton, T., Hughes, S., Natesan, G. & Deeds, E. J. A lack of distinct cell identities in single-cell measurements: revisiting Waddington's landscape. Preprint at https://doi.org/10.1101/2022.06.03.494765 (2022).
 
-25\. Qi, L. & Teschendorff, A. E. Cell-type heterogeneity: Why we should adjust for it in epigenome and biomarker studies. *Clin Epigenet* **14**, 31 (2022).
+25\. Qi, L. & Teschendorff, A. E. Cell-type heterogeneity: Why we should adjust for it in epigenome and biomarker studies. _Clin Epigenet_ **14**, 31 (2022).
 
-26\. Wilk, A. J., Shalek, A. K., Holmes, S. & Blish, C. A. Comparative analysis of cell--cell communication at single-cell resolution. *Nat Biotechnol* **42**, 470--483 (2024).
+26\. Wilk, A. J., Shalek, A. K., Holmes, S. & Blish, C. A. Comparative analysis of cell--cell communication at single-cell resolution. _Nat Biotechnol_ **42**, 470--483 (2024).
 
-27\. Kojima, Y. *et al.* Single-cell colocalization analysis using a deep generative model. *Cell Systems* **15**, 180-192.e7 (2024).
+27\. Kojima, Y. _et al._ Single-cell colocalization analysis using a deep generative model. _Cell Systems_ **15**, 180-192.e7 (2024).
 
-28\. Raredon, M. S. B. *et al.* Comprehensive visualization of cell--cell interactions in single-cell and spatial transcriptomics with NICHES. *Bioinformatics* **39**, btac775 (2023).
+28\. Raredon, M. S. B. _et al._ Comprehensive visualization of cell--cell interactions in single-cell and spatial transcriptomics with NICHES. _Bioinformatics_ **39**, btac775 (2023).
 
-29\. Subedi, S. & Park, Y. P. Single-cell pair-wise relationships untangled by composite embedding model. *iScience* **26**, 106025 (2023).
+29\. Subedi, S. & Park, Y. P. Single-cell pair-wise relationships untangled by composite embedding model. _iScience_ **26**, 106025 (2023).
 
-30\. Yang, W. *et al.* Deciphering cell--cell communication at single-cell resolution for spatial transcriptomics with subgraph-based graph attention network. *Nat Commun* **15**, 7101 (2024).
+30\. Yang, W. _et al._ Deciphering cell--cell communication at single-cell resolution for spatial transcriptomics with subgraph-based graph attention network. _Nat Commun_ **15**, 7101 (2024).
 
-31\. Ramirez, A. *et al.* Integrative, high-resolution analysis of single-cell gene expression across experimental conditions with PARAFAC2-RISE. *Cell Systems* **16**, 101294 (2025).
+31\. Ramirez, A. _et al._ Integrative, high-resolution analysis of single-cell gene expression across experimental conditions with PARAFAC2-RISE. _Cell Systems_ **16**, 101294 (2025).
 
-32\. Wall, M. E., Rechtsteiner, A. & Rocha, L. M. Singular Value Decomposition and Principal Component Analysis. in *A Practical Approach to Microarray Data Analysis* (eds Berrar, D. P., Dubitzky, W. & Granzow, M.) 91--109 (Springer US, Boston, MA, 2003). doi:10.1007/0-306-47815-3_5.
+32\. Wall, M. E., Rechtsteiner, A. & Rocha, L. M. Singular Value Decomposition and Principal Component Analysis. in _A Practical Approach to Microarray Data Analysis_ (eds Berrar, D. P., Dubitzky, W. & Granzow, M.) 91--109 (Springer US, Boston, MA, 2003). doi:10.1007/0-306-47815-3_5.
 
-33\. Liao, M. *et al.* Single-cell landscape of bronchoalveolar immune cells in patients with COVID-19. *Nat Med* **26**, 842--844 (2020).
+33\. Liao, M. _et al._ Single-cell landscape of bronchoalveolar immune cells in patients with COVID-19. _Nat Med_ **26**, 842--844 (2020).
 
-34\. Alanko, J. *et al.* CCR7 acts as both a sensor and a sink for CCL19 to coordinate collective leukocyte migration. *Sci. Immunol.* **8**, eadc9584 (2023).
+34\. Alanko, J. _et al._ CCR7 acts as both a sensor and a sink for CCL19 to coordinate collective leukocyte migration. _Sci. Immunol._ **8**, eadc9584 (2023).
 
-35\. Tveita, A. *et al.* High Circulating Levels of the Homeostatic Chemokines CCL19 and CCL21 Predict Mortality and Disease Severity in COVID-19. *The Journal of Infectious Diseases* **226**, 2150--2160 (2022).
+35\. Tveita, A. _et al._ High Circulating Levels of the Homeostatic Chemokines CCL19 and CCL21 Predict Mortality and Disease Severity in COVID-19. _The Journal of Infectious Diseases_ **226**, 2150--2160 (2022).
 
-36\. Wimmers, F. *et al.* Multi-omics analysis of mucosal and systemic immunity to SARS-CoV-2 after birth. *Cell* **186**, 4632-4651.e23 (2023).
+36\. Wimmers, F. _et al._ Multi-omics analysis of mucosal and systemic immunity to SARS-CoV-2 after birth. _Cell_ **186**, 4632-4651.e23 (2023).
 
-37\. Mothes, R. *et al.* Distinct tissue niches direct lung immunopathology via CCL18 and CCL21 in severe COVID-19. *Nat Commun* **14**, 791 (2023).
+37\. Mothes, R. _et al._ Distinct tissue niches direct lung immunopathology via CCL18 and CCL21 in severe COVID-19. _Nat Commun_ **14**, 791 (2023).
 
-38\. Cong, Y. & Ren, X. Coronavirus entry and release in polarized epithelial cells: a review. *Reviews in Medical Virology* **24**, 308--315 (2014).
+38\. Cong, Y. & Ren, X. Coronavirus entry and release in polarized epithelial cells: a review. _Reviews in Medical Virology_ **24**, 308--315 (2014).
 
-39\. Maddaloni, L. *et al.* Pattern Recognition Receptors (PRRs) Expression and Activation in COVID-19 and Long COVID: From SARS-CoV-2 Escape Mechanisms to Emerging PRR-Targeted Immunotherapies. *Microorganisms* **13**, 2176 (2025).
+39\. Maddaloni, L. _et al._ Pattern Recognition Receptors (PRRs) Expression and Activation in COVID-19 and Long COVID: From SARS-CoV-2 Escape Mechanisms to Emerging PRR-Targeted Immunotherapies. _Microorganisms_ **13**, 2176 (2025).
 
-40\. Kam, N.-W., Lau, C.-Y., Che, C.-M. & Lee, V. H.-F. Nasopharynx Battlefield: Cellular Immune Responses Mediated by Midkine in Nasopharyngeal Carcinoma and COVID-19. *Cancers* **15**, 4850 (2023).
+40\. Kam, N.-W., Lau, C.-Y., Che, C.-M. & Lee, V. H.-F. Nasopharynx Battlefield: Cellular Immune Responses Mediated by Midkine in Nasopharyngeal Carcinoma and COVID-19. _Cancers_ **15**, 4850 (2023).
 
-41\. Calabrese, D. R. *et al.* Macrophage and CD8 T cell discordance are associated with acute lung allograft dysfunction progression. *The Journal of Heart and Lung Transplantation* **43**, 1074--1086 (2024).
+41\. Calabrese, D. R. _et al._ Macrophage and CD8 T cell discordance are associated with acute lung allograft dysfunction progression. _The Journal of Heart and Lung Transplantation_ **43**, 1074--1086 (2024).
 
-42\. Van Der Ploeg, E. A., Melgert, B. N., Burgess, J. K. & Gan, C. T. The potential of biomarkers of fibrosis in chronic lung allograft dysfunction. *Transplantation Reviews* **35**, 100626 (2021).
+42\. Van Der Ploeg, E. A., Melgert, B. N., Burgess, J. K. & Gan, C. T. The potential of biomarkers of fibrosis in chronic lung allograft dysfunction. _Transplantation Reviews_ **35**, 100626 (2021).
 
-43\. Moshkelgosha, S. *et al.* Interferon-stimulated and metallothionein-expressing macrophages are associated with acute and chronic allograft dysfunction after lung transplantation. *The Journal of Heart and Lung Transplantation* **41**, 1556--1569 (2022).
+43\. Moshkelgosha, S. _et al._ Interferon-stimulated and metallothionein-expressing macrophages are associated with acute and chronic allograft dysfunction after lung transplantation. _The Journal of Heart and Lung Transplantation_ **41**, 1556--1569 (2022).
 
-44\. Brunet-Ratnasingham, E. *et al.* Persistent and progressive acute lung allograft dysfunction is linked to cell compositional and transcriptional changes in small airways. *The Journal of Heart and Lung Transplantation* **44**, 1482--1492 (2025).
+44\. Brunet-Ratnasingham, E. _et al._ Persistent and progressive acute lung allograft dysfunction is linked to cell compositional and transcriptional changes in small airways. _The Journal of Heart and Lung Transplantation_ **44**, 1482--1492 (2025).
 
-45\. Lin, W. *et al.* scRNA-Seq Analysis Revealed CAFs Regulating HCC Cells via PTN Signaling. *JHC* **Volume 11**, 2269--2281 (2024).
+45\. Lin, W. _et al._ scRNA-Seq Analysis Revealed CAFs Regulating HCC Cells via PTN Signaling. _JHC_ **Volume 11**, 2269--2281 (2024).
 
-46\. Poimenidi, E. *et al.* Regulation of Pleiotrophin and PTPRZ1 Expression by Hypoxia to Restrict Hypoxia-Induced Cell Migration. *Cancers* **17**, 1516 (2025).
+46\. Poimenidi, E. _et al._ Regulation of Pleiotrophin and PTPRZ1 Expression by Hypoxia to Restrict Hypoxia-Induced Cell Migration. _Cancers_ **17**, 1516 (2025).
 
-47\. Mourkogianni, E. *et al.* Pleiotrophin Activates cMet- and mTORC1-Dependent Protein Synthesis through PTPRZ1---The Role of ανβ3 Integrin. *IJMS* **25**, 10839 (2024).
+47\. Mourkogianni, E. _et al._ Pleiotrophin Activates cMet- and mTORC1-Dependent Protein Synthesis through PTPRZ1---The Role of ανβ3 Integrin. _IJMS_ **25**, 10839 (2024).
 
-48\. Teoh, K.-T. *et al.* The SARS Coronavirus E Protein Interacts with PALS1 and Alters Tight Junction Formation and Epithelial Morphogenesis. *MBoC* **21**, 3838--3852 (2010).
+48\. Teoh, K.-T. _et al._ The SARS Coronavirus E Protein Interacts with PALS1 and Alters Tight Junction Formation and Epithelial Morphogenesis. _MBoC_ **21**, 3838--3852 (2010).
 
-49\. Zhang, J. *et al.* Tight junction protein occludin is an internalization factor for SARS-CoV-2 infection and mediates virus cell-to-cell transmission. *Proc. Natl. Acad. Sci. U.S.A.* **120**, e2218623120 (2023).
+49\. Zhang, J. _et al._ Tight junction protein occludin is an internalization factor for SARS-CoV-2 infection and mediates virus cell-to-cell transmission. _Proc. Natl. Acad. Sci. U.S.A._ **120**, e2218623120 (2023).
 
-50\. Weigt, S. S. *et al.* Development and validation of a bronchoalveolar lavage genomic classifier for acute cellular rejection. *eBioMedicine* **122**, 106046 (2025).
+50\. Weigt, S. S. _et al._ Development and validation of a bronchoalveolar lavage genomic classifier for acute cellular rejection. _eBioMedicine_ **122**, 106046 (2025).
 
-51\. Kotwica-Mojzych, K., Jodłowska-Jędrych, B. & Mojzych, M. CD200:CD200R Interactions and Their Importance in Immunoregulation. *IJMS* **22**, 1602 (2021).
+51\. Kotwica-Mojzych, K., Jodłowska-Jędrych, B. & Mojzych, M. CD200:CD200R Interactions and Their Importance in Immunoregulation. _IJMS_ **22**, 1602 (2021).
 
-52\. Patoine, D., Bouchard, K., Lemay, A.-M., Bissonnette, E. Y. & Lauzon-Joset, J.-F. Specificity of CD200/CD200R pathway in LPS-induced lung inflammation. *Front. Immunol.* **13**, 1092126 (2022).
+52\. Patoine, D., Bouchard, K., Lemay, A.-M., Bissonnette, E. Y. & Lauzon-Joset, J.-F. Specificity of CD200/CD200R pathway in LPS-induced lung inflammation. _Front. Immunol._ **13**, 1092126 (2022).
 
-53\. Oweira, H. *et al.* Pre-transplant CD200 and CD200R1 concentrations are associated with post-transplant events in kidney transplant recipients. *Medicine* **98**, e17006 (2019).
+53\. Oweira, H. _et al._ Pre-transplant CD200 and CD200R1 concentrations are associated with post-transplant events in kidney transplant recipients. _Medicine_ **98**, e17006 (2019).
 
-54\. Verma, K. *et al.* CD70 identifies alloreactive T cells and represents a potential target for prevention and treatment of acute GVHD. *Blood Advances* **8**, 4900--4912 (2024).
+54\. Verma, K. _et al._ CD70 identifies alloreactive T cells and represents a potential target for prevention and treatment of acute GVHD. _Blood Advances_ **8**, 4900--4912 (2024).
 
-55\. Lee, W.-W., Yang, Z.-Z., Li, G., Weyand, C. M. & Goronzy, J. J. Unchecked CD70 Expression on T Cells Lowers Threshold for T Cell Activation in Rheumatoid Arthritis. *The Journal of Immunology* **179**, 2609--2615 (2007).
+55\. Lee, W.-W., Yang, Z.-Z., Li, G., Weyand, C. M. & Goronzy, J. J. Unchecked CD70 Expression on T Cells Lowers Threshold for T Cell Activation in Rheumatoid Arthritis. _The Journal of Immunology_ **179**, 2609--2615 (2007).
 
-56\. Lutfi, F., Wu, L., Sunshine, S. & Cao, X. Targeting the CD27-CD70 Pathway to Improve Outcomes in Both Checkpoint Immunotherapy and Allogeneic Hematopoietic Cell Transplantation. *Front. Immunol.* **12**, 715909 (2021).
+56\. Lutfi, F., Wu, L., Sunshine, S. & Cao, X. Targeting the CD27-CD70 Pathway to Improve Outcomes in Both Checkpoint Immunotherapy and Allogeneic Hematopoietic Cell Transplantation. _Front. Immunol._ **12**, 715909 (2021).
 
-57\. Valujskikh, A. The Challenge of Inhibiting Alloreactive T-Cell Memory. *American Journal of Transplantation* **6**, 647--651 (2006).
+57\. Valujskikh, A. The Challenge of Inhibiting Alloreactive T-Cell Memory. _American Journal of Transplantation_ **6**, 647--651 (2006).
 
-58\. Kim, H. *et al.* scICE: enhancing clustering reliability and efficiency of scRNA-seq data with multi-cluster label consistency evaluation. *Nat Commun* **16**, 6031 (2025).
+58\. Kim, H. _et al._ scICE: enhancing clustering reliability and efficiency of scRNA-seq data with multi-cluster label consistency evaluation. _Nat Commun_ **16**, 6031 (2025).
 
-59\. Su, K., Wu, Z. & Wu, H. Simulation, power evaluation and sample size recommendation for single-cell RNA-seq. *Bioinformatics* **36**, 4860--4868 (2020).
+59\. Su, K., Wu, Z. & Wu, H. Simulation, power evaluation and sample size recommendation for single-cell RNA-seq. _Bioinformatics_ **36**, 4860--4868 (2020).
 
-60\. Davis, A., Gao, R. & Navin, N. E. SCOPIT: sample size calculations for single-cell sequencing experiments. *BMC Bioinformatics* **20**, 566 (2019).
+60\. Davis, A., Gao, R. & Navin, N. E. SCOPIT: sample size calculations for single-cell sequencing experiments. _BMC Bioinformatics_ **20**, 566 (2019).
 
-61\. Jeon, H. *et al.* Statistical Power Analysis for Designing Bulk, Single-Cell, and Spatial Transcriptomics Experiments: Review, Tutorial, and Perspectives. *Biomolecules* **13**, 221 (2023).
+61\. Jeon, H. _et al._ Statistical Power Analysis for Designing Bulk, Single-Cell, and Spatial Transcriptomics Experiments: Review, Tutorial, and Perspectives. _Biomolecules_ **13**, 221 (2023).
 
-62\. Zanzoni, A., Spinelli, L., Ribeiro, D. M., Tartaglia, G. G. & Brun, C. Post-transcriptional regulatory patterns revealed by protein-RNA interactions. *Sci Rep* **9**, 4302 (2019).
+62\. Zanzoni, A., Spinelli, L., Ribeiro, D. M., Tartaglia, G. G. & Brun, C. Post-transcriptional regulatory patterns revealed by protein-RNA interactions. _Sci Rep_ **9**, 4302 (2019).
 
-63\. Sinn, L. R. & Demichev, V. Entering the era of deep single-cell proteomics. *Nat Methods* **22**, 459--460 (2025).
+63\. Sinn, L. R. & Demichev, V. Entering the era of deep single-cell proteomics. _Nat Methods_ **22**, 459--460 (2025).
 
-64\. Momenzadeh, A. & Meyer, J. G. Single-cell proteomics using mass spectrometry. *Cell Genomics* **5**, 100973 (2025).
+64\. Momenzadeh, A. & Meyer, J. G. Single-cell proteomics using mass spectrometry. _Cell Genomics_ **5**, 100973 (2025).
 
-65\. Kiers, H. A. L., ten Berge, J. M. F. & Bro, R. PARAFAC2---Part I. A direct fitting algorithm for the PARAFAC2 model. *J. Chemometrics* **13**, 275--294 (1999).
+65\. Kiers, H. A. L., ten Berge, J. M. F. & Bro, R. PARAFAC2---Part I. A direct fitting algorithm for the PARAFAC2 model. _J. Chemometrics_ **13**, 275--294 (1999).
 
-66\. Yu, H., Augustijn, D. & Bro, R. Accelerating PARAFAC2 algorithms for non-negative complex tensor decomposition. *Chemometrics and Intelligent Laboratory Systems* **214**, 104312 (2021).
+66\. Yu, H., Augustijn, D. & Bro, R. Accelerating PARAFAC2 algorithms for non-negative complex tensor decomposition. _Chemometrics and Intelligent Laboratory Systems_ **214**, 104312 (2021).
 
 67\. Wang, Y., Huang, H., Rudin, C. & Shaposhnik, Y. Understanding How Dimension Reduction Tools Work: An Empirical Approach to Deciphering t-SNE, UMAP, TriMap, and PaCMAP for Data Visualization.
 
-68\. Roald, M. *et al.* An AO-ADMM Approach to Constraining PARAFAC2 on All Modes. *SIAM Journal on Mathematics of Data Science* **4**, 1191--1222 (2022).
+68\. Roald, M. _et al._ An AO-ADMM Approach to Constraining PARAFAC2 on All Modes. _SIAM Journal on Mathematics of Data Science_ **4**, 1191--1222 (2022).
 
 69\. Defazio, A., Bach, F. & Lacoste-Julien, S. SAGA: A Fast Incremental Gradient Method With Support for Non-Strongly Convex Composite Objectives.

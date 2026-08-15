@@ -2,13 +2,12 @@
 Figure 8: FMS and R2X across data percentage with fixed CPD and RISE ranks for COVID-19
 """
 
-import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from ..import_data import add_cond_idxs, import_balf_covid, import_ligand_receptor_pairs
 from ..tensor import run_fms_r2x_data_percentage_analysis
 from .common import getSetup, load_or_compute_dataframe, subplotLabel
+from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 
 
 def compute_fms_r2x_percentage_data(
@@ -17,7 +16,7 @@ def compute_fms_r2x_percentage_data(
     runs: int = 3,
 ) -> pd.DataFrame:
     """Run FMS and R2X analysis across data subsampling percentages."""
-    X = import_balf_covid(gene_threshold=0.01, normalize=True)
+    X = import_balf_covid(gene_threshold=0.001, normalize=True)
     lr_pairs = import_ligand_receptor_pairs()
     condition_column = "sample"
     X_filtered = add_cond_idxs(X, condition_column)
@@ -43,16 +42,13 @@ def makeFigure():
         compute_fms_r2x_percentage_data,
     )
 
-    sns.lineplot(data=df, x="Data_Percentage", y="FMS", ax=ax[0])
-    ax[0].set_xlabel("Data Percentage (%)")
-    ax[0].set_ylabel("FMS")
-    ax[0].set_ylim(0, 1)
-    ax[0].invert_xaxis()
-
-    sns.lineplot(data=df, x="Data_Percentage", y="R2X", ax=ax[1], color="orange")
-    ax[1].set_xlabel("Data Percentage (%)")
-    ax[1].set_ylabel("R2X")
-    ax[1].set_ylim(0, float(np.max(df["R2X"])) + 0.02)
-    ax[1].invert_xaxis()
-
+    plot_fms_r2x_stability(
+        df,
+        ax,
+        x_col="Data_Percentage",
+        x_label="Data Percentage (%)",
+        y_label_fms="FMS",
+        y_label_r2x="R2X",
+        invert_xaxis=True,
+    )
     return f

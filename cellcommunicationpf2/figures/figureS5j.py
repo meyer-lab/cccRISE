@@ -47,7 +47,7 @@ def makeFigure():
 
 def pair_logistic_regression(X: np.ndarray, status_df: pd.DataFrame, ax: Axes):
     """Plot factor weights for donor SLE prediction"""
-    lrmodel = LogisticRegression(penalty=None)
+    lrmodel = LogisticRegression(C=np.inf)
     all_comps = np.arange(X.shape[1])
     acc = np.zeros((X.shape[1], X.shape[1]))
 

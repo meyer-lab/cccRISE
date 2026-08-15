@@ -10,6 +10,10 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.patches import Patch
 
+from ...utils import (
+    binned_complex_ligand_product_matrix,
+    binned_expression_product_matrix,
+)
 from ..common import getSetup, subplotLabel
 
 cmap = sns.diverging_palette(240, 10, as_cmap=True)
@@ -227,3 +231,68 @@ def plot_pair_lr_factors(X: anndata.AnnData, cmp1: int, cmp2: int, ax: Axes):
     )
     sns.scatterplot(data=df, x=f"Cmp. {cmp1}", y=f"Cmp. {cmp2}", ax=ax, color="k")
     ax.set(title="LR Factors")
+
+
+def plot_interaction_heatmap(
+    X: anndata.AnnData,
+    cmp: int,
+    ligand: str | list[str],
+    receptor: str,
+    ax: Axes,
+    sender_celltype: str | None = None,
+    receiver_celltype: str | None = None,
+    celltype_col: str = "celltype",
+    cmap: str = "viridis",
+    vmax: float | None = None,
+    title: str | None = None,
+    sender_label: str | None = None,
+    receiver_label: str | None = None,
+):
+    """Plot binned expression product heatmap between sender and receiver cells for a component."""
+    if sender_celltype is not None:
+        X_sender = X[X.obs[celltype_col] == sender_celltype]
+    else:
+        X_sender = X
+
+    if receiver_celltype is not None:
+        X_receiver = X[X.obs[celltype_col] == receiver_celltype]
+    else:
+        X_receiver = X
+
+    # Sort sender cells high to low by sc_B
+    X_sender = X_sender[np.argsort(-X_sender.obsm["sc_B"][:, cmp - 1])]
+    # Sort receiver cells low to high by rc_C
+    X_receiver = X_receiver[np.argsort(X_receiver.obsm["rc_C"][:, cmp - 1])]
+
+    if isinstance(ligand, list):
+        df = binned_complex_ligand_product_matrix(
+            X_sender, X_receiver, ligand, receptor
+        )
+        lig_name = "&".join(ligand)
+    else:
+        df = binned_expression_product_matrix(X_sender, X_receiver, ligand, receptor)
+        lig_name = ligand
+
+    sns.heatmap(df, ax=ax, cmap=cmap, vmax=vmax)
+
+    if title is None:
+        ax.set_title(f"{lig_name}-{receptor} Interaction")
+    else:
+        ax.set_title(title)
+
+    if receiver_label is not None:
+        ax.set_xlabel(receiver_label)
+    elif receiver_celltype is not None:
+        ax.set_xlabel(f"Receiver {receiver_celltype}")
+    else:
+        ax.set_xlabel("Receiver Cells")
+
+    if sender_label is not None:
+        ax.set_ylabel(sender_label)
+    elif sender_celltype is not None:
+        ax.set_ylabel(f"Sender {sender_celltype}")
+    else:
+        ax.set_ylabel("Sender Cells")
+
+    ax.set_xticks([])
+    ax.set_yticks([])

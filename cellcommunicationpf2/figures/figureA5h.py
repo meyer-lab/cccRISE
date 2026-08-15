@@ -14,8 +14,10 @@ from .common import (
     getSetup,
     subplotLabel,
 )
-
-# from ..utils import rotate_xaxis, rotate_yaxis
+from .commonFuncs.plotGeneral import (
+    DEFAULT_PATIENT_INFO,
+    get_alad_patient_factors_df,
+)
 
 
 def makeFigure():
@@ -23,102 +25,13 @@ def makeFigure():
     subplotLabel(ax)
 
     X = get_alad_data(project_cells=True)
-    X.obs["alad_status"] = (
-        X.obs["ALADstatus"]
-        .astype(str)
-        .replace({"recovered": "ALAD", "declined": "ALAD"})
-    )
-
-    # Convert d2b_index to continuous/numeric variable
-    X.obs["d2b_index"] = pd.to_numeric(X.obs["d2b_index"], errors="coerce")
-    print(f"d2b_index data type after conversion: {X.obs['d2b_index'].dtype}")
-    print(f"d2b_index unique values: {X.obs['d2b_index'].unique()}")
-    print(f"d2b_index value counts:\n{X.obs['d2b_index'].value_counts()}")
-
-    # Define patient categorical information
-    patient_info = [
-        "diagnosisgroup",
-        "sex",
-        "transplanttype",
-        "cmvstatus",
-        "cmv_status",
-        "cmvstatus2",
-        "ethnicity",
-        "6monthcondition",
-        "1yearcondition",
-    ]
-
-    # Get unique samples with their information
-    obs = cast(pd.DataFrame, X.obs)
-    patient_info_df = (
-        obs[["dsco_id", "alad_status"] + patient_info]
-        .drop_duplicates(subset=["dsco_id"])
-        .reset_index(drop=True)
-    )
-
-    print(patient_info_df["6monthcondition"].unique())
-    print(patient_info_df["1yearcondition"].unique())
-
-    # Create simplified outcome categories
-    def categorize_outcome(condition):
-        condition_str = str(condition)
-
-        # Handle exact category matches
-        if condition_str == "Died":
-            return "Died"
-        elif condition_str in ["CLAD", "CLAD/Stable", "CLAD/Declined"]:
-            return "CLAD"
-        elif condition_str in [
-            "No CLAD/Stable",
-            "No CLAD/Recovered",
-            "No CLAD/Declined",
-            "Recovered",
-        ]:
-            return "No CLAD"
-
-    # Apply outcome categorization to both 6-month and 1-year conditions
-    patient_info_df["6monthcondition"] = patient_info_df["6monthcondition"].apply(
-        categorize_outcome
-    )
-    patient_info_df["1yearcondition"] = patient_info_df["1yearcondition"].apply(
-        categorize_outcome
-    )
-
-    # Make a t-test comparison for X component values between alad statuses for each categorical variable
-    # Get the tensor decomposition factor matrix A (condition/sample factors)
-    factor_A = X.uns["A"]  # Shape: (n_samples, n_components)
-
-    # Create a mapping from sample to factor values
-    sample_to_idx = {
-        sample: idx for idx, sample in enumerate(X.obs["dsco_id"].cat.categories)
-    }
-
-    # Only analyze components 12, 16, and 4
     target_components = [4, 12, 16]  # 1-indexed component numbers
     target_indices = [comp - 1 for comp in target_components]  # Convert to 0-indexed
+    patient_info = DEFAULT_PATIENT_INFO
 
-    # Create DataFrame with factor values and sample metadata
-    factor_df_list = []
-    for _, sample_row in patient_info_df.iterrows():
-        sample = sample_row["dsco_id"]
-        if sample in sample_to_idx:
-            sample_idx = sample_to_idx[sample]
-
-            # Add factor values for target components only
-            for comp_idx in target_indices:
-                row_data = {
-                    "sample": sample,
-                    "alad_status": sample_row["alad_status"],
-                    "component": f"Component_{comp_idx + 1}",
-                    "factor_value": factor_A[sample_idx, comp_idx],
-                    "component_idx": comp_idx,
-                }
-                # Add all patient info variables
-                for info_var in patient_info:
-                    row_data[info_var] = sample_row[info_var]
-                factor_df_list.append(row_data)
-
-    factor_df = pd.DataFrame(factor_df_list)
+    _patient_info_df, factor_df = get_alad_patient_factors_df(
+        X, target_components=target_components
+    )
 
     # Perform t-tests for specific components only (12, 16, and 4)
     results = []

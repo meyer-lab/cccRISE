@@ -2,17 +2,12 @@
 Figure S4e-i: Heatmaps of ligand-receptor expression products for NK cell to Dendritic Cell interactions in CCC-RISE on BALF alad data.
 """
 
-import numpy as np
-import seaborn as sns
-
-from ..utils import (
-    binned_expression_product_matrix,
-)
 from .common import (
     get_covid_data,
     getSetup,
     subplotLabel,
 )
+from .commonFuncs.plotFactors import plot_interaction_heatmap
 
 
 def makeFigure():
@@ -22,31 +17,18 @@ def makeFigure():
     X = get_covid_data(project_cells=True)
     ccc_rise_cmp = 3
 
-    X_mdc_sender = X[X.obs["celltype"] == "Epithelial"]
-
-    # Alter order based on factor value high to low
-    X_mdc_sender = X_mdc_sender[
-        np.argsort(-X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp - 1])
-    ]
-
-    X_mdc_receiver = X[(X.obs["celltype"] == "Epithelial")]
-
-    # Alter order based on factor value low to high
-    X_mdc_receiver = X_mdc_receiver[
-        np.argsort(X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp - 1])
-    ]
-
-    print("Epithelial sender cells:", X_mdc_sender.shape)
-
     pairs = [["PTN", "PTPRZ1"], ["PTN", "SDC1"]]
     for i, (lig, rec) in enumerate(pairs):
-        df = binned_expression_product_matrix(X_mdc_sender, X_mdc_receiver, lig, rec)
-        sns.heatmap(df, ax=ax[i], cmap="viridis")
-
-        ax[i].set_xlabel("Receiver Epithelial Cells")
-        ax[i].set_ylabel("Sender Epithelial Cells")
-        ax[i].set_title(f"{lig}-{rec} Interaction")
-        ax[i].set_xticks([])
-        ax[i].set_yticks([])
+        plot_interaction_heatmap(
+            X,
+            cmp=ccc_rise_cmp,
+            ligand=lig,
+            receptor=rec,
+            ax=ax[i],
+            sender_celltype="Epithelial",
+            receiver_celltype="Epithelial",
+            sender_label="Sender Epithelial Cells",
+            receiver_label="Receiver Epithelial Cells",
+        )
 
     return f
