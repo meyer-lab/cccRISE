@@ -155,7 +155,7 @@ requires-dist = [
     { name = "netcdf4", specifier = ">=1.6.5" },
     { name = "numpy", specifier = ">=2.2" },
     { name = "pacmap", specifier = ">=0.8.0" },
-    { name = "parafac2", extras = ["gpu"], git = "https://github.com/meyer-lab/parafac2.git?rev=v1.4.0" },
+    { name = "parafac2", extras = ["gpu"], git = "https://github.com/meyer-lab/parafac2.git?rev=0bddf71aaa906d5f7133993f1797953031873c0e" },
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "scanpy", specifier = ">=1.12.3" },
     { name = "scikit-learn", specifier = ">=1.4.2" },
@@ -1389,7 +1389,7 @@ wheels = [
 [[package]]
 name = "parafac2"
 version = "1.2.0"
-source = { git = "https://github.com/meyer-lab/parafac2.git?rev=v1.4.0#4ef7a042de5e9fe53852e71bf06037b43c44646f" }
+source = { git = "https://github.com/meyer-lab/parafac2.git?rev=0bddf71aaa906d5f7133993f1797953031873c0e#0bddf71aaa906d5f7133993f1797953031873c0e" }
 dependencies = [
     { name = "anndata" },
     { name = "numpy" },
