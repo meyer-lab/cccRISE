@@ -1,50 +1,52 @@
 """
-Rank-selection criteria for the RISE (PARAFAC2) stage of CCC-RISE.
-
-All functions here are computable from the single-cell expression data alone: no
-ligand-receptor tensor, no CPD, no downstream classifier or clinical outcome. See
-PLAN_RISE.md for the rationale and the exact leakage constraints each function is
-designed to respect.
-
-Model recap: X_i ~= P_i diag(a_i) B C^T, where P_i (cells_i x rank) has orthonormal
-columns, B is (rank x rank), C is (genes x rank) and shared across conditions, and
-a_i is row i of A (n_cond x rank). P_i and a_i are per-condition.
+Rank-selection criteria for RISE (PARAFAC2) and interaction-tensor (CPD) stages.
 """
 
-from itertools import pairwise
 from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
 from parafac2.parafac2 import parafac2_nd
-from parafac2.sample import SampleArray
-from parafac2.utils import anndata_to_list, parafac_update, project_data
 from scipy.optimize import linear_sum_assignment
 from scipy.sparse import csr_array, issparse
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
-from tensorly.tenalg.core_tenalg.n_mode_product import multi_mode_dot
 
-from .ccc import calculate_r2x
 from .import_data import add_cond_idxs
 
 Factors = list[np.ndarray]
 
 
-# ---------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------
+# =============================================================================
+# Helper utilities
+# =============================================================================
+
+
+def calculate_r2x(weights: np.ndarray, factors: Factors, tensor: np.ndarray) -> float:
+    """Calculate reconstruction R2X for a CP decomposition."""
+    reconstruction = cp_to_tensor((weights, factors))
+    norm_tensor_sq = np.sum(tensor**2)
+    if norm_tensor_sq == 0:
+        return 0.0
+    norm_residual_sq = np.sum((tensor - reconstruction) ** 2)
+    return float(1.0 - norm_residual_sq / norm_tensor_sq)
 
 
 def match_components_by_gene_factor(
     C1: np.ndarray, C2: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Match components of two gene-loading matrices (genes x rank) by |cosine|.
+    """Greedily (via Hungarian algorithm) match components between two fits.
 
-    Uses the Hungarian algorithm on the absolute cosine-similarity matrix, since
-    PARAFAC2 components carry an arbitrary sign and ordering ambiguity (never
-    compare positionally).
+    Matches based on the maximum absolute cosine similarity of their factor
+    matrices. Resolves arbitrary component permutation and column signs.
+
+    Parameters
+    ----------
+    C1 : np.ndarray
+        (features, rank1) factor matrix.
+    C2 : np.ndarray
+        (features, rank2) factor matrix.
 
     Returns
     -------
@@ -88,7 +90,7 @@ def principal_angle_cosines(C1: np.ndarray, C2: np.ndarray) -> np.ndarray:
 
 
 def subspace_similarity(C1: np.ndarray, C2: np.ndarray) -> dict[str, float]:
-    """Summarize subspace agreement between two gene-loading matrices via principal angles."""
+    """Summarize subspace agreement between two factor matrices via principal angles."""
     cosines = principal_angle_cosines(C1, C2)
     return {
         "mean_cos_principal_angle": float(np.mean(cosines)),
@@ -100,17 +102,17 @@ def subspace_similarity(C1: np.ndarray, C2: np.ndarray) -> dict[str, float]:
 def component_replication_counts(
     C1: np.ndarray, C2: np.ndarray, thresholds: tuple[float, ...] = (0.6, 0.7, 0.8)
 ) -> dict[str, float]:
-    """Count matched (by |cos| on gene factor C) components exceeding each threshold.
-
-    This is a per-component alternative to averaging FMS over all components: an
-    average must decay smoothly as more marginal components are added at higher
-    rank, while a count can plateau.
-    """
+    """Count matched (by |cos| on factor matrix) components exceeding each threshold."""
     _, similarity = match_components_by_gene_factor(C1, C2)
     out: dict[str, float] = {"mean_matched_similarity": float(np.nanmean(similarity))}
     for tau in thresholds:
         out[f"n_replicated_tau{tau}"] = float(np.sum(similarity > tau))
     return out
+
+
+# =============================================================================
+# RISE (PARAFAC2) rank-selection criteria
+# =============================================================================
 
 
 def _subset_genes_with_recomputed_means(
@@ -155,112 +157,6 @@ def _projections_to_matrix(
     return out
 
 
-# ---------------------------------------------------------------------------
-# Approach 1a - leave-one-sample-out reconstruction (likely-leaky variant)
-# ---------------------------------------------------------------------------
-
-
-def _fit_held_out_condition(
-    X_list: list[SampleArray],
-    B: np.ndarray,
-    C: np.ndarray,
-    n_iter: int = 10,
-) -> tuple[np.ndarray, np.ndarray, float]:
-    """Estimate (P, a) for a single held-out condition, with B and C frozen.
-
-    Alternates between the projection step (closed-form given the current `a`)
-    and the closed-form `a` update used inside the ordinary PARAFAC2 mode-0
-    update -- i.e. it runs the *same* per-condition inner loop the training
-    algorithm runs, restricted to one condition and with B, C never updated.
-    Returns the final projection, `a` row, and reconstruction R2X for this
-    condition alone.
-    """
-    rank = B.shape[0]
-    a = np.ones((1, rank))
-    norm_x_sq = X_list[0].norm_sq()
-
-    proj = None
-    err = norm_x_sq
-    for _ in range(n_iter):
-        mttkrp, err = project_data(X_list, [a, B, C], norm_x_sq, mode=0)
-        factors = parafac_update([a, B, C], mttkrp, mode=0)
-        a = factors[0]
-
-    proj_list = project_data(
-        X_list, [a, B, C], norm_x_sq, mode=0, return_projections=True
-    )
-    proj = cast(list[np.ndarray], proj_list)[0]
-    _, err = project_data(X_list, [a, B, C], norm_x_sq, mode=0)
-    r2x = 1.0 - err / norm_x_sq
-    return proj, a[0], float(r2x)
-
-
-def leave_one_sample_out_r2x(
-    adata: anndata.AnnData,
-    rank: int,
-    condition_column: str,
-    n_iter_max: int = 100,
-    tol: float = 1e-6,
-    random_state: int | None = None,
-    n_folds: int | None = None,
-) -> pd.DataFrame:
-    """Leave-one-sample-out reconstruction R2X at a given rank (Approach 1a).
-
-    For each fold, RISE is fit on all samples but one; B and C from that fit are
-    then frozen and used to score the held-out sample after re-estimating only
-    its own projection P and condition scaling a (never seen during training).
-
-    Caveat (see PLAN_RISE.md): because P and a are refit from the held-out
-    sample's own data, and a larger rank always enlarges the subspace it can
-    project into, this quantity may be monotonically increasing in rank just
-    like in-sample R2X. That is an empirical question this function is meant to
-    answer, not something assumed away here.
-
-    Parameters
-    ----------
-    n_folds : int | None
-        If given, only this many (randomly ordered but deterministic) samples are
-        held out, instead of every sample -- a compute-budget knob, since a full
-        leave-one-out sweep is O(n_samples) full refits per rank.
-    """
-    adata = add_cond_idxs(adata, condition_column)
-    samples = np.unique(adata.obs[condition_column].to_numpy())
-    if n_folds is not None:
-        rng = np.random.default_rng(0)
-        samples = rng.choice(samples, size=min(n_folds, len(samples)), replace=False)
-
-    rows = []
-    for held_out in samples:
-        train_mask = (adata.obs[condition_column] != held_out).to_numpy()
-        train = add_cond_idxs(adata[train_mask].copy(), condition_column)
-        factors, _, train_r2x = _fit_rank(
-            train, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
-        )
-        _, B, C = factors
-
-        test = adata[~train_mask].copy()
-        test = add_cond_idxs(test, condition_column)
-        test_list = anndata_to_list(test)
-
-        _, _, held_out_r2x = _fit_held_out_condition(test_list, B, C)
-
-        rows.append(
-            {
-                "Rank": rank,
-                "HeldOutSample": held_out,
-                "TrainR2X": train_r2x,
-                "HeldOutR2X": held_out_r2x,
-            }
-        )
-
-    return pd.DataFrame(rows)
-
-
-# ---------------------------------------------------------------------------
-# Approach 1b - gene x cell block holdout (bi-cross-validation)
-# ---------------------------------------------------------------------------
-
-
 def bicv_reconstruction_error(
     adata: anndata.AnnData,
     rank: int,
@@ -270,7 +166,7 @@ def bicv_reconstruction_error(
     tol: float = 1e-6,
     random_state: int | None = None,
 ) -> dict[str, float]:
-    """One fold of the bi-cross-validation scheme (Approach 1b).
+    """Calculate one fold of the bi-cross-validation (BiCV) reconstruction error.
 
     Leakage bookkeeping (every parameter used in the final score is fit on data
     disjoint from the scored block):
@@ -282,8 +178,7 @@ def bicv_reconstruction_error(
         fit without ever seeing that block.
 
     Returns a dict with the held-out-block R2X plus the in-sample R2X on the
-    training block (G_tr, all cells) as a self-check -- it should match the R2X
-    `parafac2_nd` itself reports for the same fit.
+    training block (G_tr, all cells) as a reference check.
     """
     rng = np.random.default_rng(random_state)
     n_genes = adata.n_vars
@@ -338,381 +233,69 @@ def bicv_reconstruction_error(
     sst = float(np.sum(Y_test**2))
     held_out_r2x = 1.0 - sse / sst if sst > 0 else np.nan
 
-    # Self-check: in-sample R2X on the training block should reproduce parafac2's
-    # own reported number for this fit (same genes, same cells).
-    train_block_r2x = train_r2x_reported
-
     return {
         "Rank": rank,
         "HeldOutBlockR2X": held_out_r2x,
-        "TrainBlockR2X": train_block_r2x,
+        "TrainBlockR2X": train_r2x_reported,
         "NTestGenes": n_test_genes,
         "NTrainGenes": int(tr_gene_mask.sum()),
     }
 
 
-# ---------------------------------------------------------------------------
-# Approach 3 - permutation null for R2X
-# ---------------------------------------------------------------------------
-
-
-def permute_within_sample_genes(
-    adata: anndata.AnnData, condition_column: str, random_state: int | None = None
-) -> anndata.AnnData:
-    """Independently permute each gene's values across cells, within each sample.
-
-    Preserves each gene's marginal distribution exactly (same multiset of values
-    per gene per sample) while destroying cross-gene structure -- the "no
-    structure at all" null. Do NOT permute the whole matrix at once, which would
-    also destroy the per-cell depth/library-size structure.
-    """
-    rng = np.random.default_rng(random_state)
-    out = adata.copy()
-    was_sparse = issparse(out.X)
-    X = cast(Any, out.X)
-    X = csr_array(X).toarray() if was_sparse else np.asarray(X).copy()
-
-    cond = out.obs[condition_column].to_numpy()
-    for sample in np.unique(cond):
-        block_idx = np.where(cond == sample)[0]
-        block = X[block_idx]
-        rand = rng.random(block.shape)
-        order = np.argsort(rand, axis=0)
-        X[block_idx] = np.take_along_axis(block, order, axis=0)
-
-    out.X = csr_array(X) if was_sparse else X
-    out = add_cond_idxs(out, condition_column)
-    out.var["means"] = X.mean(axis=0)
-    return out
-
-
-def permute_condition_labels(
-    adata: anndata.AnnData, condition_column: str, random_state: int | None = None
-) -> anndata.AnnData:
-    """Randomly reassign cells to samples (weaker null: cell content is untouched).
-
-    Brackets "no sample-specific structure" against the stronger gene-permutation
-    null's "no structure at all".
-    """
-    rng = np.random.default_rng(random_state)
-    out = adata.copy()
-    shuffled = rng.permutation(out.obs[condition_column].to_numpy())
-    out.obs[condition_column] = shuffled
-    out = add_cond_idxs(out, condition_column)
-    return out
-
-
-def permutation_null_r2x_sweep(
+def run_bicv(
     adata: anndata.AnnData,
-    ranks: list[int],
+    ranks: list[int] | range,
     condition_column: str,
-    n_null_replicates: int = 2,
+    n_folds: int = 3,
+    gene_test_frac: float = 0.1,
     n_iter_max: int = 100,
     tol: float = 1e-6,
-    random_state: int | None = None,
 ) -> pd.DataFrame:
-    """Observed vs. null R2X across ranks (Approach 3), for both null types."""
-    adata = add_cond_idxs(adata, condition_column)
+    """Run bi-cross-validation rank selection across specified ranks and folds.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        Single-cell expression data.
+    ranks : list[int] | range
+        Collection of ranks to evaluate.
+    condition_column : str
+        Column name in `adata.obs` specifying sample or condition.
+    n_folds : int, default=3
+        Number of cross-validation folds per rank.
+    gene_test_frac : float, default=0.1
+        Fraction of genes held out for testing in each fold.
+    n_iter_max : int, default=100
+        Maximum number of iterations for PARAFAC2 fitting.
+    tol : float, default=1e-6
+        Tolerance threshold for PARAFAC2 fitting convergence.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing results for each rank and fold with columns:
+        'Rank', 'Fold', 'HeldOutBlockR2X', 'TrainBlockR2X', 'NTestGenes', 'NTrainGenes'.
+    """
     rows = []
     for rank in ranks:
-        _, _, obs_r2x = _fit_rank(
-            adata, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
-        )
-        rows.append(
-            {"Rank": rank, "NullType": "observed", "Replicate": 0, "R2X": obs_r2x}
-        )
-
-        for rep in range(n_null_replicates):
-            seed = None if random_state is None else random_state * 1000 + rep
-            gene_null = permute_within_sample_genes(
-                adata, condition_column, random_state=seed
-            )
-            _, _, gene_null_r2x = _fit_rank(
-                gene_null,
-                rank,
+        for fold in range(n_folds):
+            res = bicv_reconstruction_error(
+                adata=adata,
+                rank=rank,
+                condition_column=condition_column,
+                gene_test_frac=gene_test_frac,
                 n_iter_max=n_iter_max,
                 tol=tol,
-                random_state=random_state,
+                random_state=fold,
             )
-            rows.append(
-                {
-                    "Rank": rank,
-                    "NullType": "gene_permutation",
-                    "Replicate": rep,
-                    "R2X": gene_null_r2x,
-                }
-            )
-
-            label_null = permute_condition_labels(
-                adata, condition_column, random_state=seed
-            )
-            _, _, label_null_r2x = _fit_rank(
-                label_null,
-                rank,
-                n_iter_max=n_iter_max,
-                tol=tol,
-                random_state=random_state,
-            )
-            rows.append(
-                {
-                    "Rank": rank,
-                    "NullType": "condition_label_permutation",
-                    "Replicate": rep,
-                    "R2X": label_null_r2x,
-                }
-            )
-
-    return pd.DataFrame(rows)
-
-
-# ---------------------------------------------------------------------------
-# Approach 4 - component replication via split-half / bootstrap
-# ---------------------------------------------------------------------------
-
-
-def split_half_replication(
-    adata: anndata.AnnData,
-    ranks: list[int],
-    condition_column: str,
-    n_splits: int = 3,
-    n_iter_max: int = 100,
-    tol: float = 1e-6,
-    random_state: int | None = None,
-    thresholds: tuple[float, ...] = (0.6, 0.7, 0.8),
-) -> pd.DataFrame:
-    """Split *samples* (not cells) into two halves and fit each independently.
-
-    Tests whether a program replicates across people/patients, matching on the
-    gene factor C (the interpretable, cross-fit-comparable mode).
-    """
-    adata = add_cond_idxs(adata, condition_column)
-    samples = np.unique(adata.obs[condition_column].to_numpy())
-    rng = np.random.default_rng(random_state)
-
-    rows = []
-    for split in range(n_splits):
-        perm = rng.permutation(samples)
-        half = len(perm) // 2
-        half_a, half_b = perm[:half], perm[half:]
-
-        mask_a = adata.obs[condition_column].isin(half_a).to_numpy()
-        mask_b = adata.obs[condition_column].isin(half_b).to_numpy()
-        X_a = add_cond_idxs(adata[mask_a].copy(), condition_column)
-        X_b = add_cond_idxs(adata[mask_b].copy(), condition_column)
-
-        for rank in ranks:
-            factors_a, _, r2x_a = _fit_rank(
-                X_a, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
-            )
-            factors_b, _, r2x_b = _fit_rank(
-                X_b, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
-            )
-            counts = component_replication_counts(
-                factors_a[2], factors_b[2], thresholds
-            )
-            subspace = subspace_similarity(factors_a[2], factors_b[2])
-            rows.append(
-                {
-                    "Rank": rank,
-                    "Split": split,
-                    "R2X_A": r2x_a,
-                    "R2X_B": r2x_b,
-                    **counts,
-                    **subspace,
-                }
-            )
-
-    return pd.DataFrame(rows)
-
-
-def bootstrap_replication(
-    adata: anndata.AnnData,
-    ranks: list[int],
-    condition_column: str,
-    n_boot: int = 3,
-    n_iter_max: int = 100,
-    tol: float = 1e-6,
-    random_state: int | None = None,
-    thresholds: tuple[float, ...] = (0.6, 0.7, 0.8),
-) -> pd.DataFrame:
-    """Per-component replication under the existing stratified cell bootstrap.
-
-    Companion to `split_half_replication`: this tests robustness to sequencing
-    depth (resampling cells within sample), not replication across patients.
-    """
-    from .utils import resample
-
-    adata = add_cond_idxs(adata, condition_column)
-    rows = []
-    for rank in ranks:
-        factors_full, _, r2x_full = _fit_rank(
-            adata, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
-        )
-        for b in range(n_boot):
-            boot = resample(adata, condition_name=condition_column, random_seed=b)
-            boot = add_cond_idxs(boot, condition_column)
-            factors_boot, _, r2x_boot = _fit_rank(
-                boot, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
-            )
-            counts = component_replication_counts(
-                factors_full[2], factors_boot[2], thresholds
-            )
-            subspace = subspace_similarity(factors_full[2], factors_boot[2])
-            rows.append(
-                {
-                    "Rank": rank,
-                    "Boot": b,
-                    "R2X_Full": r2x_full,
-                    "R2X_Boot": r2x_boot,
-                    **counts,
-                    **subspace,
-                }
-            )
-
-    return pd.DataFrame(rows)
-
-
-# ---------------------------------------------------------------------------
-# Approach 5 - nested subspace stability across consecutive ranks
-# ---------------------------------------------------------------------------
-
-
-def nested_rank_subspace_stability(
-    adata: anndata.AnnData,
-    ranks: list[int],
-    condition_column: str,
-    n_iter_max: int = 100,
-    tol: float = 1e-6,
-    random_state: int | None = None,
-) -> pd.DataFrame:
-    """How much of the rank-r gene-factor subspace is contained in rank-(r+1)'s.
-
-    Sharp drops indicate the model reorganizing rather than refining as rank
-    increases; `ranks` must be given in ascending, consecutive-enough order for
-    this comparison to be meaningful (the function only compares adjacent pairs
-    in the list, whatever their gap).
-    """
-    adata = add_cond_idxs(adata, condition_column)
-    fits: dict[int, np.ndarray] = {}
-    r2x_by_rank: dict[int, float] = {}
-    for rank in ranks:
-        factors, _, r2x = _fit_rank(
-            adata, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
-        )
-        fits[rank] = factors[2]
-        r2x_by_rank[rank] = r2x
-
-    rows = []
-    for r_lo, r_hi in pairwise(ranks):
-        subspace = subspace_similarity(fits[r_lo], fits[r_hi])
-        rows.append(
-            {
-                "RankLo": r_lo,
-                "RankHi": r_hi,
-                "R2X_Lo": r2x_by_rank[r_lo],
-                "R2X_Hi": r2x_by_rank[r_hi],
-                **subspace,
-            }
-        )
-    return pd.DataFrame(rows)
-
-
-# ---------------------------------------------------------------------------
-# Approach 6 - degeneracy / conditioning diagnostics
-# ---------------------------------------------------------------------------
-
-
-def degeneracy_diagnostics(
-    adata: anndata.AnnData,
-    ranks: list[int],
-    condition_column: str,
-    n_inits: int = 3,
-    n_iter_max: int = 100,
-    tol: float = 1e-6,
-) -> pd.DataFrame:
-    """Cheap, resampling-free diagnostics collected from single fits at each rank.
-
-    Also runs `n_inits` random initializations per rank to report init-dependence
-    of both the fitted subspace (via principal angles) and the final R2X --
-    init-dependence appearing at rank r is a hard usability ceiling.
-    """
-    adata = add_cond_idxs(adata, condition_column)
-    rows = []
-    for rank in ranks:
-        init_factors = []
-        init_r2x = []
-        for seed in range(n_inits):
-            factors, _, r2x = _fit_rank(
-                adata, rank, n_iter_max=n_iter_max, tol=tol, random_state=seed
-            )
-            init_factors.append(factors)
-            init_r2x.append(r2x)
-
-        C0 = init_factors[0][2]
-        B0 = init_factors[0][1]
-
-        n1 = np.linalg.norm(C0, axis=0, keepdims=True)
-        n1 = np.where(n1 > 1e-12, n1, 1.0)
-        C0_norm = C0 / n1
-        cos_mat = np.abs(C0_norm.T @ C0_norm)
-        np.fill_diagonal(cos_mat, 0.0)
-        max_pairwise_cos = float(np.max(cos_mat)) if rank > 1 else float("nan")
-
-        cond_B = float(np.linalg.cond(B0))
-        cond_C = float(np.linalg.cond(C0))
-
-        weight_norms = np.linalg.norm(C0, axis=0) * np.linalg.norm(B0, axis=0)
-        weight_norms_sorted = np.sort(weight_norms)[::-1]
-        weight_spread = (
-            float(weight_norms_sorted[0] / weight_norms_sorted[-1])
-            if weight_norms_sorted[-1] > 1e-12
-            else float("inf")
-        )
-
-        init_cosines = []
-        for i in range(1, n_inits):
-            sim = subspace_similarity(C0, init_factors[i][2])
-            init_cosines.append(sim["mean_cos_principal_angle"])
-
-        rows.append(
-            {
-                "Rank": rank,
-                "R2X_mean": float(np.mean(init_r2x)),
-                "R2X_std": float(np.std(init_r2x)),
-                "MaxPairwiseAbsCos_C": max_pairwise_cos,
-                "CondNumber_B": cond_B,
-                "CondNumber_C": cond_C,
-                "WeightSpread": weight_spread,
-                "InitSubspaceAgreement_mean": (
-                    float(np.mean(init_cosines)) if init_cosines else float("nan")
-                ),
-                "InitSubspaceAgreement_min": (
-                    float(np.min(init_cosines)) if init_cosines else float("nan")
-                ),
-            }
-        )
-
+            res["Fold"] = fold
+            rows.append(res)
     return pd.DataFrame(rows)
 
 
 # =============================================================================
-# CPD rank-selection criteria for the interaction tensor (PLAN_INTERACTION.md)
+# CPD rank-selection criteria for the interaction tensor
 # =============================================================================
-#
-# The interaction tensor is (condition x sender-state x receiver-state x
-# LR-pair): small, dense, and fully in memory, so unlike RISE there is no
-# per-row projection that must be refit from a held-out cell -- masking
-# entries directly is a safe, non-leaking holdout here (contrast with
-# PLAN_RISE.md's approach-1a caveat). CP components carry the same sign/order
-# ambiguity as PARAFAC2; matching always uses `match_components_by_gene_factor`
-# / `component_replication_counts` on |cos|, applied to the LR-pair factor
-# `D` (index 3), which is the interpretable, cross-fit-comparable mode for
-# this tensor (the analogue of RISE's gene factor `C`).
-
-
-# ---------------------------------------------------------------------------
-# Approach A - missing-entry cross-validation (primary recommendation)
-# ---------------------------------------------------------------------------
 
 
 def cp_masked_reconstruction_error(
@@ -728,36 +311,41 @@ def cp_masked_reconstruction_error(
     A random `mask_frac` of tensor entries are held out (mask=0), CP is fit
     with `tensorly`'s built-in EM-style masked ALS, and R2X is scored on the
     held-out entries only using the same normalization as `calculate_r2x`
-    (sum-of-squares ratio) so held-out and in-sample numbers are comparable.
+    (denominator is the sum of squares of the held-out raw values).
     """
     rng = np.random.default_rng(random_state)
-    observed = rng.random(tensor.shape) >= mask_frac  # True/1 = observed
-    mask = observed.astype(float)
+    mask = rng.uniform(size=tensor.shape) >= mask_frac
+    if not np.any(~mask):
+        mask[tuple(rng.integers(0, s) for s in tensor.shape)] = False
 
-    cp_weights, cp_factors = parafac(
+    w, f = parafac(
         tensor=tensor,
         rank=rank,
-        mask=mask,
         n_iter_max=n_iter_max,
         init=init,
+        mask=mask.astype(float),
         normalize_factors=True,
         linesearch=True,
         random_state=random_state,
     )
-    recon = cp_to_tensor((cp_weights, cp_factors))
 
-    held = ~observed
-    sse = float(np.sum((tensor[held] - recon[held]) ** 2))
-    sst = float(np.sum(tensor[held] ** 2))
+    pred = cp_to_tensor((w, f))
+    held_out_mask = ~mask
+    actual = tensor[held_out_mask]
+    predicted = pred[held_out_mask]
+
+    sse = float(np.sum((actual - predicted) ** 2))
+    sst = float(np.sum(actual**2))
     held_out_r2x = 1.0 - sse / sst if sst > 0 else np.nan
-    in_sample_r2x = calculate_r2x(cp_weights, cp_factors, tensor)
+
+    in_sample_r2x = calculate_r2x(w, f, tensor)
 
     return {
         "Rank": rank,
         "HeldOutR2X": held_out_r2x,
         "InSampleR2X": in_sample_r2x,
-        "MaskFrac": mask_frac,
-        "NHeldOut": int(held.sum()),
+        "NHeldOut": int(np.sum(held_out_mask)),
+        "NTrain": int(np.sum(mask)),
     }
 
 
@@ -770,14 +358,14 @@ def cp_masked_reconstruction_sweep(
     init: str = "random",
     random_state: int | None = None,
 ) -> pd.DataFrame:
-    """Approach A across a rank grid, averaged over `n_masks` independent masks."""
+    """Entry-masked cross-validation swept across ranks and mask replicates."""
     rows = []
     for rank in ranks:
         for m in range(n_masks):
             seed = None if random_state is None else random_state * 1000 + m
             res = cp_masked_reconstruction_error(
                 tensor,
-                rank,
+                rank=rank,
                 mask_frac=mask_frac,
                 n_iter_max=n_iter_max,
                 init=init,
@@ -791,88 +379,95 @@ def cp_masked_reconstruction_sweep(
 def cp_condition_holdout_error(
     tensor: np.ndarray,
     rank: int,
+    conditions: np.ndarray | list[int] | None = None,
     n_iter_max: int = 1000,
     init: str = "random",
     random_state: int | None = None,
-    conditions: np.ndarray | None = None,
 ) -> pd.DataFrame:
-    """Structured holdout variant of Approach A: hold out whole conditions.
+    """Leave-one-condition-slice-out CP cross-validation.
 
-    For each held-out condition, CP is fit with that condition's entire slab
-    masked out (shared sender/receiver/LR factors B, C, D never see it), then
-    only that condition's own loading is re-estimated by closed-form least
-    squares against the frozen factors, and reconstruction is scored on the
-    real (unmasked) held-out slab. This speaks directly to generalization
-    across patients, unlike entry-masking.
+    Holds out the entire slice `tensor[c, :, :, :]`, fits CP on the
+    remaining conditions to learn B, C, D, and fits a_c for the held-out
+    condition via linear regression against the Khatri-Rao product of
+    (B (x) C (x) D).
     """
-    from tensorly.tenalg.core_tenalg._khatri_rao import khatri_rao
+    from tensorly.tenalg import khatri_rao
 
     n_cond = tensor.shape[0]
-    which = conditions if conditions is not None else np.arange(n_cond)
+    cond_indices = range(n_cond) if conditions is None else [int(c) for c in conditions]
 
     rows = []
-    for held in which:
-        mask = np.ones(tensor.shape, dtype=float)
-        mask[held] = 0.0
-        cp_weights, cp_factors = parafac(
-            tensor=tensor,
+    for held_out in cond_indices:
+        train_idx = [i for i in range(n_cond) if i != held_out]
+        sub_tensor = tensor[train_idx]
+
+        w, f = parafac(
+            tensor=sub_tensor,
             rank=rank,
-            mask=mask,
             n_iter_max=n_iter_max,
             init=init,
             normalize_factors=True,
             linesearch=True,
             random_state=random_state,
         )
-        B, C, D = cp_factors[1], cp_factors[2], cp_factors[3]
-        design = khatri_rao([B, C, D]) * cp_weights  # fold weights in once
-        y = tensor[held].reshape(-1)
-        a_held, *_ = np.linalg.lstsq(design, y, rcond=None)
-        recon_held = (design @ a_held).reshape(tensor.shape[1:])
+        _, B, C, D = f
 
-        sse = float(np.sum((tensor[held] - recon_held) ** 2))
-        sst = float(np.sum(tensor[held] ** 2))
-        r2x = 1.0 - sse / sst if sst > 0 else np.nan
+        # Form the design matrix: (B (x) C (x) D) has shape (n_send * n_rec * n_lr, rank)
+        design = khatri_rao([B, C, D])  # (I1*I2*I3, rank)
+        design = design * w[np.newaxis, :]
+
+        # Flatten the held-out condition slice to match Khatri-Rao column-major mode ordering
+        y = tensor[held_out].reshape(-1)
+
+        a_c, *_ = np.linalg.lstsq(design, y, rcond=None)
+        pred_flat = design @ a_c
+
+        sse = float(np.sum((y - pred_flat) ** 2))
+        sst = float(np.sum(y**2))
+        held_out_r2x = 1.0 - sse / sst if sst > 0 else np.nan
+
         rows.append(
-            {"Rank": rank, "HeldOutCondition": int(held), "HeldOutConditionR2X": r2x}
+            {
+                "Rank": rank,
+                "HeldOutCondition": held_out,
+                "HeldOutConditionR2X": held_out_r2x,
+                "TrainR2X": calculate_r2x(w, f, sub_tensor),
+            }
         )
 
     return pd.DataFrame(rows)
 
 
-# ---------------------------------------------------------------------------
-# Approach B - permutation null / parallel analysis, and per-component
-# significance (doubles as Reviewer #1 comment 6's requested null model)
-# ---------------------------------------------------------------------------
-
-
 def permute_lr_within_fiber(
     tensor: np.ndarray, random_state: int | None = None
 ) -> np.ndarray:
-    """Independently permute the LR-pair mode within each (cond, sender, recv)
-    fiber. Preserves each fiber's marginal, destroys which LR pair carries
-    which score -- the weaker of the two nulls implemented here."""
+    """Permute LR-pair values within each (condition, sender, receiver) fiber.
+
+    Destroys the low-rank structure of the LR mode while preserving both the
+    marginal distribution of LR values per fiber and the non-negativity /
+    sparsity geometry.
+    """
     rng = np.random.default_rng(random_state)
-    shp = tensor.shape
-    flat = tensor.reshape(-1, shp[-1]).copy()
-    for i in range(flat.shape[0]):
-        flat[i] = flat[i, rng.permutation(shp[-1])]
-    return flat.reshape(shp)
+    out = tensor.copy()
+    orig_shape = out.shape
+    flat = out.reshape(-1, orig_shape[-1])
+    rand = rng.random(flat.shape)
+    order = np.argsort(rand, axis=-1)
+    flat = np.take_along_axis(flat, order, axis=-1)
+    return flat.reshape(orig_shape)
 
 
 def permute_eigenstate_labels(
     tensor: np.ndarray, random_state: int | None = None
 ) -> np.ndarray:
-    """Independently permute sender and receiver eigen-state labels, per
-    condition. Stronger null than the LR-fiber permutation: it also destroys
-    which sender/receiver pair talks to which."""
+    """Independently permute sender and receiver eigen-state indices per condition."""
     rng = np.random.default_rng(random_state)
-    n_cond = tensor.shape[0]
-    out = np.empty_like(tensor)
-    for i in range(n_cond):
-        send_perm = rng.permutation(tensor.shape[1])
-        recv_perm = rng.permutation(tensor.shape[2])
-        out[i] = tensor[i][send_perm][:, recv_perm]
+    out = tensor.copy()
+    n_cond, n_send, n_rec, _ = out.shape
+    for c in range(n_cond):
+        p_send = rng.permutation(n_send)
+        p_rec = rng.permutation(n_rec)
+        out[c] = out[c][p_send][:, p_rec]
     return out
 
 
@@ -884,7 +479,7 @@ def cpd_permutation_null_sweep(
     init: str = "random",
     random_state: int | None = None,
 ) -> pd.DataFrame:
-    """Observed vs. null R2X across CPD ranks (Approach B), for both null types."""
+    """Observed vs null R2X across ranks for both permutation nulls."""
     rows = []
     for rank in ranks:
         w, f = parafac(
@@ -896,21 +491,17 @@ def cpd_permutation_null_sweep(
             linesearch=True,
             random_state=random_state,
         )
+        obs_r2x = calculate_r2x(w, f, tensor)
         rows.append(
-            {
-                "Rank": rank,
-                "NullType": "observed",
-                "Replicate": 0,
-                "R2X": calculate_r2x(w, f, tensor),
-            }
+            {"Rank": rank, "NullType": "observed", "Replicate": 0, "R2X": obs_r2x}
         )
 
         for rep in range(n_null_replicates):
             seed = None if random_state is None else random_state * 1000 + rep
 
-            lr_null = permute_lr_within_fiber(tensor, random_state=seed)
-            w2, f2 = parafac(
-                tensor=lr_null,
+            null_lr = permute_lr_within_fiber(tensor, random_state=seed)
+            w_n, f_n = parafac(
+                tensor=null_lr,
                 rank=rank,
                 n_iter_max=n_iter_max,
                 init=init,
@@ -923,13 +514,13 @@ def cpd_permutation_null_sweep(
                     "Rank": rank,
                     "NullType": "lr_within_fiber",
                     "Replicate": rep,
-                    "R2X": calculate_r2x(w2, f2, lr_null),
+                    "R2X": calculate_r2x(w_n, f_n, null_lr),
                 }
             )
 
-            es_null = permute_eigenstate_labels(tensor, random_state=seed)
-            w3, f3 = parafac(
-                tensor=es_null,
+            null_states = permute_eigenstate_labels(tensor, random_state=seed)
+            w_s, f_s = parafac(
+                tensor=null_states,
                 rank=rank,
                 n_iter_max=n_iter_max,
                 init=init,
@@ -940,11 +531,73 @@ def cpd_permutation_null_sweep(
             rows.append(
                 {
                     "Rank": rank,
-                    "NullType": "eigenstate_labels",
+                    "NullType": "eigenstate_permutation",
                     "Replicate": rep,
-                    "R2X": calculate_r2x(w3, f3, es_null),
+                    "R2X": calculate_r2x(w_s, f_s, null_states),
                 }
             )
+
+    return pd.DataFrame(rows)
+
+
+def corcondia_sweep(
+    tensor: np.ndarray,
+    ranks: list[int],
+    n_iter_max: int = 1000,
+    init: str = "random",
+    random_state: int | None = None,
+) -> pd.DataFrame:
+    """Core consistency diagnostic (CORCONDIA; Bro & Kiers 2003) across ranks."""
+
+    rows = []
+    float(np.sum(tensor**2))
+    for rank in ranks:
+        w, f = parafac(
+            tensor=tensor,
+            rank=rank,
+            n_iter_max=n_iter_max,
+            init=init,
+            normalize_factors=True,
+            linesearch=True,
+            random_state=random_state,
+        )
+        r2x = calculate_r2x(w, f, tensor)
+
+        # Scale factor 0 with the component weights so factors multiply to the CP tensor
+        A, B, C, D = f[0] * w[np.newaxis, :], f[1], f[2], f[3]
+
+        # Orthonormalize each factor matrix via pseudo-inverse for the projection
+        A_pinv = np.linalg.pinv(A)
+        B_pinv = np.linalg.pinv(B)
+        C_pinv = np.linalg.pinv(C)
+        D_pinv = np.linalg.pinv(D)
+
+        # Core tensor G = tensor x_1 A+ x_2 B+ x_3 C+ x_4 D+
+        # Using mode-by-mode matrix products:
+        G = np.tensordot(tensor, A_pinv.T, axes=([0], [0]))  # (I2, I3, I4, R)
+        G = np.tensordot(G, B_pinv.T, axes=([0], [0]))  # (I3, I4, R, R)
+        G = np.tensordot(G, C_pinv.T, axes=([0], [0]))  # (I4, R, R, R)
+        G = np.tensordot(G, D_pinv.T, axes=([0], [0]))  # (R, R, R, R)
+
+        # G has indices corresponding to the order: (D_mode, C_mode, B_mode, A_mode) -> transpose to (A, B, C, D)
+        G = np.moveaxis(G, [0, 1, 2, 3], [3, 2, 1, 0])
+
+        # Target super-diagonal identity core T where T_{r,r,r,r} = 1
+        T = np.zeros((rank, rank, rank, rank))
+        for r in range(rank):
+            T[r, r, r, r] = 1.0
+
+        sse_core = float(np.sum((G - T) ** 2))
+        corcondia = 100.0 * (1.0 - sse_core / rank)
+
+        rows.append(
+            {
+                "Rank": rank,
+                "CORCONDIA": corcondia,
+                "R2X": r2x,
+                "SSE_Core": sse_core,
+            }
+        )
 
     return pd.DataFrame(rows)
 
@@ -955,23 +608,15 @@ def cpd_component_significance(
     n_null: int = 20,
     n_iter_max: int = 1000,
     init: str = "random",
-    random_state: int | None = None,
+    random_state: int = 0,
 ) -> pd.DataFrame:
-    """Sketch of a per-component empirical significance test (Reviewer #1
-    major comment 6): reuses the Approach-B permutation machinery.
+    """Per-component permutation test against the fiber-permuted null.
 
-    For each observed component, its explained-variance fraction
-    (weight^2 / total sum-of-squares, valid since `normalize_factors=True`
-    gives unit-norm factor columns) is compared to the distribution of the
-    *best* component's explained-variance fraction across `n_null`
-    LR-within-fiber null fits at the same rank. Using the null's best
-    component (rather than a positionally-matched one, which is meaningless
-    under permutation) as the comparison baseline is what makes this
-    calibrated: it asks "could a component this strong have arisen with no
-    real communication structure at all," for every observed component
-    independently.
+    At a fixed rank, compares each component's raw singular value / weight
+    w_r to the distribution of max(w) under the LR-within-fiber null,
+    yielding a familywise-error-rate-controlled empirical p-value per component.
     """
-    w, _f = parafac(
+    w_obs, _f_obs = parafac(
         tensor=tensor,
         rank=rank,
         n_iter_max=n_iter_max,
@@ -980,15 +625,16 @@ def cpd_component_significance(
         linesearch=True,
         random_state=random_state,
     )
-    total_var = float(np.sum(tensor**2))
-    obs_ev = (w**2) / total_var if total_var > 0 else np.full(rank, np.nan)
+    # Sort observed components descending by weight
+    order = np.argsort(w_obs)[::-1]
+    w_sorted = w_obs[order]
 
-    null_best_ev = np.empty(n_null)
-    for i in range(n_null):
-        seed = None if random_state is None else random_state * 1000 + i
-        null_tensor = permute_lr_within_fiber(tensor, random_state=seed)
-        wn, _fn = parafac(
-            tensor=null_tensor,
+    null_max_weights = []
+    null_weights_all = []
+    for b in range(n_null):
+        null_t = permute_lr_within_fiber(tensor, random_state=random_state * 1000 + b)
+        w_null, _ = parafac(
+            null_t,
             rank=rank,
             n_iter_max=n_iter_max,
             init=init,
@@ -996,180 +642,81 @@ def cpd_component_significance(
             linesearch=True,
             random_state=random_state,
         )
-        null_total_var = float(np.sum(null_tensor**2))
-        null_ev = (
-            (wn**2) / null_total_var if null_total_var > 0 else np.full(rank, np.nan)
+        null_max_weights.append(np.max(w_null))
+        null_weights_all.append(np.sort(w_null)[::-1])
+
+    null_max_weights = np.array(null_max_weights)
+    null_weights_all = np.array(null_weights_all)
+
+    rows = []
+    total_var = np.sum(w_sorted**2)
+    for r in range(rank):
+        w_r = w_sorted[r]
+        p_val = float((np.sum(null_max_weights >= w_r) + 1) / (n_null + 1))
+        p_marginal = float((np.sum(null_weights_all[:, r] >= w_r) + 1) / (n_null + 1))
+        rows.append(
+            {
+                "Rank": rank,
+                "Component": r,
+                "Weight": float(w_r),
+                "ExplainedVarFrac": float(w_r**2 / total_var) if total_var > 0 else 0.0,
+                "EmpiricalP": p_val,
+                "EmpiricalP_marginal": p_marginal,
+            }
         )
-        null_best_ev[i] = float(np.max(null_ev))
 
-    pvals = [float(np.mean(null_best_ev >= ev)) for ev in obs_ev]
-    return pd.DataFrame(
-        {
-            "Rank": rank,
-            "Component": np.arange(1, rank + 1),
-            "ExplainedVarFrac": obs_ev,
-            "NullBestEV_mean": float(np.mean(null_best_ev)),
-            "EmpiricalP": pvals,
-        }
-    )
-
-
-# ---------------------------------------------------------------------------
-# Approach C - core consistency diagnostic (CORCONDIA)
-# ---------------------------------------------------------------------------
-
-
-def corcondia(
-    tensor: np.ndarray,
-    rank: int,
-    n_iter_max: int = 1000,
-    init: str = "random",
-    random_state: int | None = None,
-) -> float:
-    """Core consistency diagnostic (Bro & Kiers 2003).
-
-    Fits CP at `rank`, projects the tensor onto the pseudo-inverted factor
-    matrices to obtain the implied Tucker core, and scores how close that
-    core is to the superdiagonal identity: 100 while the model is genuinely
-    multilinear, falling off a cliff once over-factored. Known to be
-    pessimistic under high noise -- use as corroboration, not a sole
-    criterion (see PLAN_INTERACTION.md Approach C).
-    """
-    w, f = parafac(
-        tensor=tensor,
-        rank=rank,
-        n_iter_max=n_iter_max,
-        init=init,
-        normalize_factors=True,
-        linesearch=True,
-        random_state=random_state,
-    )
-    factors = [f[0] * w] + list(f[1:])  # fold weights into mode 0
-    pinvs = [np.linalg.pinv(mat) for mat in factors]
-    core = multi_mode_dot(tensor, pinvs, modes=list(range(len(factors))))
-
-    ideal = np.zeros((rank,) * len(factors))
-    idx = np.arange(rank)
-    ideal[(idx,) * len(factors)] = 1.0
-    return float(100.0 * (1.0 - np.sum((core - ideal) ** 2) / rank))
-
-
-def corcondia_sweep(
-    tensor: np.ndarray,
-    ranks: list[int],
-    n_iter_max: int = 1000,
-    init: str = "random",
-    random_state: int | None = None,
-) -> pd.DataFrame:
-    rows = [
-        {
-            "Rank": rank,
-            "CORCONDIA": corcondia(
-                tensor,
-                rank,
-                n_iter_max=n_iter_max,
-                init=init,
-                random_state=random_state,
-            ),
-        }
-        for rank in ranks
-    ]
     return pd.DataFrame(rows)
-
-
-# ---------------------------------------------------------------------------
-# Approach D - replicable component counts, multiple resampling axes
-# ---------------------------------------------------------------------------
 
 
 def resample_tensor_conditions(
     tensor: np.ndarray, random_state: int | None = None
 ) -> np.ndarray:
-    """Bootstrap over conditions/patients (mode 0), with replacement.
-
-    Companion to `tensor.resample_tensor` (which bootstraps the LR-pair mode
-    and tests robustness to the LR database): this tests whether a program
-    replicates across people, which is the claim the biology rests on.
-    """
+    """Bootstrap conditions (patients) with replacement."""
     rng = np.random.default_rng(random_state)
-    idx = rng.integers(0, tensor.shape[0], size=tensor.shape[0])
-    return tensor[idx]
+    n_cond = tensor.shape[0]
+    idx = rng.choice(n_cond, size=n_cond, replace=True)
+    return tensor[idx].copy()
 
 
 def split_half_conditions(
     tensor: np.ndarray, random_state: int | None = None
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Split conditions/patients into two independent halves."""
+    """Split conditions (patients) into two disjoint halves."""
     rng = np.random.default_rng(random_state)
     n_cond = tensor.shape[0]
     perm = rng.permutation(n_cond)
     half = n_cond // 2
-    return tensor[perm[:half]], tensor[perm[half:]]
+    return tensor[perm[:half]].copy(), tensor[perm[half:]].copy()
 
 
 def cpd_replication_sweep(
     tensor: np.ndarray,
     ranks: list[int],
     resample_axis: str = "lr",
-    n_boot: int = 5,
+    n_boot: int = 3,
     n_iter_max: int = 1000,
     init: str = "random",
     random_state: int | None = None,
     thresholds: tuple[float, ...] = (0.6, 0.7, 0.8),
 ) -> pd.DataFrame:
-    """Per-component replicable-count sweep (Approach D), matched on the
-    LR-pair factor D. `resample_axis` selects what is resampled:
-      - "lr": bootstrap the LR-pair mode (robustness to the LR database).
-      - "conditions": bootstrap conditions/patients with replacement.
-      - "splithalf_conditions": split conditions into two independent halves.
-    Different axes answer different questions and are reported separately,
-    per the plan's explicit instruction not to conflate them.
+    """Replicable-component counts under resampling of different tensor axes.
+
+    `resample_axis` options:
+      - 'lr': bootstrap LR pairs with replacement (tests robustness to LR panel)
+      - 'conditions': bootstrap patients with replacement
+      - 'splithalf_conditions': split patients into disjoint halves (tests cross-patient generalizability)
     """
-    from .tensor import resample_tensor
-
-    rng = np.random.default_rng(random_state)
     rows = []
+    rng = np.random.default_rng(random_state)
     for rank in ranks:
-        _w_full, f_full = parafac(
-            tensor=tensor,
-            rank=rank,
-            n_iter_max=n_iter_max,
-            init=init,
-            normalize_factors=True,
-            linesearch=True,
-            random_state=random_state,
-        )
         for b in range(n_boot):
-            seed = int(rng.integers(0, 2**31 - 1))
-
+            seed = None if random_state is None else random_state * 1000 + b
             if resample_axis == "lr":
-                t_boot = resample_tensor(tensor)
-                _w_boot, f_boot = parafac(
-                    tensor=t_boot,
-                    rank=rank,
-                    n_iter_max=n_iter_max,
-                    init=init,
-                    normalize_factors=True,
-                    linesearch=True,
-                    random_state=random_state,
-                )
-                counts = component_replication_counts(f_full[3], f_boot[3], thresholds)
-            elif resample_axis == "conditions":
-                t_boot = resample_tensor_conditions(tensor, random_state=seed)
-                _w_boot, f_boot = parafac(
-                    tensor=t_boot,
-                    rank=rank,
-                    n_iter_max=n_iter_max,
-                    init=init,
-                    normalize_factors=True,
-                    linesearch=True,
-                    random_state=random_state,
-                )
-                counts = component_replication_counts(f_full[3], f_boot[3], thresholds)
-            elif resample_axis == "splithalf_conditions":
-                t_a, t_b = split_half_conditions(tensor, random_state=seed)
-                _w_a, f_a = parafac(
-                    tensor=t_a,
+                n_lr = tensor.shape[-1]
+                idx = rng.choice(n_lr, size=n_lr, replace=True)
+                boot_t = tensor[:, :, :, idx]
+                _w_full, f_full = parafac(
+                    tensor=tensor,
                     rank=rank,
                     n_iter_max=n_iter_max,
                     init=init,
@@ -1178,13 +725,60 @@ def cpd_replication_sweep(
                     random_state=random_state,
                 )
                 _w_b, f_b = parafac(
-                    tensor=t_b,
+                    tensor=boot_t,
+                    rank=rank,
+                    n_iter_max=n_iter_max,
+                    init=init,
+                    normalize_factors=True,
+                    linesearch=True,
+                    random_state=seed,
+                )
+                D_boot_reindexed = np.zeros_like(f_full[3])
+                for col_i, orig_i in enumerate(idx):
+                    D_boot_reindexed[orig_i] += f_b[3][col_i]
+                counts = component_replication_counts(
+                    f_full[3], D_boot_reindexed, thresholds
+                )
+            elif resample_axis == "conditions":
+                boot_t = resample_tensor_conditions(tensor, random_state=seed)
+                _w_full, f_full = parafac(
+                    tensor=tensor,
                     rank=rank,
                     n_iter_max=n_iter_max,
                     init=init,
                     normalize_factors=True,
                     linesearch=True,
                     random_state=random_state,
+                )
+                _w_b, f_b = parafac(
+                    tensor=boot_t,
+                    rank=rank,
+                    n_iter_max=n_iter_max,
+                    init=init,
+                    normalize_factors=True,
+                    linesearch=True,
+                    random_state=seed,
+                )
+                counts = component_replication_counts(f_full[3], f_b[3], thresholds)
+            elif resample_axis == "splithalf_conditions":
+                half_a, half_b = split_half_conditions(tensor, random_state=seed)
+                _, f_a = parafac(
+                    tensor=half_a,
+                    rank=rank,
+                    n_iter_max=n_iter_max,
+                    init=init,
+                    normalize_factors=True,
+                    linesearch=True,
+                    random_state=seed,
+                )
+                _, f_b = parafac(
+                    tensor=half_b,
+                    rank=rank,
+                    n_iter_max=n_iter_max,
+                    init=init,
+                    normalize_factors=True,
+                    linesearch=True,
+                    random_state=seed,
                 )
                 counts = component_replication_counts(f_a[3], f_b[3], thresholds)
             else:
@@ -1195,11 +789,6 @@ def cpd_replication_sweep(
             )
 
     return pd.DataFrame(rows)
-
-
-# ---------------------------------------------------------------------------
-# Approach E - degeneracy and multi-start diagnostics
-# ---------------------------------------------------------------------------
 
 
 def cpd_degeneracy_diagnostics(
@@ -1215,9 +804,7 @@ def cpd_degeneracy_diagnostics(
     Reports the classic two-factor-degeneracy signature (signed, not
     absolute, pairwise triple congruence across B, C, D approaching -1),
     condition numbers per factor, weight spread, and init-to-init agreement
-    of both R2X and the D-factor subspace. `init="random"` by default to
-    match `figureS1c_d.py`'s COVID setting -- pass `init="svd"` to check
-    whether ALAD's deterministic init masks the same sensitivity.
+    of both R2X and the D-factor subspace.
     """
     rows = []
     for rank in ranks:
@@ -1288,11 +875,6 @@ def cpd_degeneracy_diagnostics(
     return pd.DataFrame(rows)
 
 
-# ---------------------------------------------------------------------------
-# Section 4 - joint (RISE x CPD) rank selection
-# ---------------------------------------------------------------------------
-
-
 def rise_cpd_joint_heatmap(
     adata_raw: anndata.AnnData,
     lr_pairs: pd.DataFrame,
@@ -1307,13 +889,7 @@ def rise_cpd_joint_heatmap(
     cp_init: str = "random",
     random_state: int = 0,
 ) -> pd.DataFrame:
-    """2-D grid of held-out imputation error (Approach A) over (RISE rank x
-    CPD rank). For each RISE rank, RISE is fit once and the interaction
-    tensor built from it; CPD ranks are then swept with masked
-    cross-validation on that one tensor, so the expensive step (RISE
-    refitting) is not repeated per CPD rank. Budget this last, at coarse
-    resolution -- it is the most expensive item in the plan.
-    """
+    """2-D grid of held-out imputation error over (RISE rank x CPD rank)."""
     from .tensor import calculate_interaction_tensor
 
     rows = []
@@ -1357,11 +933,6 @@ def rise_cpd_joint_heatmap(
     return pd.DataFrame(rows)
 
 
-# ---------------------------------------------------------------------------
-# Section 5 - consequence for the ALAD predictive analysis
-# ---------------------------------------------------------------------------
-
-
 def cpd_rank_auc_sweep(
     tensor: np.ndarray,
     sample_to_group_bin: np.ndarray,
@@ -1372,16 +943,7 @@ def cpd_rank_auc_sweep(
     n_splits: int = 5,
     n_repeats: int = 5,
 ) -> pd.DataFrame:
-    """Cross-validated AUC of the condition factor A at each CPD rank.
-
-    For *reporting only*, alongside the unsupervised criterion (Approach A),
-    to quantify how much AUC changes at an unsupervised-selected rank versus
-    the predictive-performance-optimized published rank (PLAN_INTERACTION.md
-    Sec 5). The unsupervised criterion must be computed, and its selected
-    rank recorded, before this function's results are ever inspected --
-    calling it does not itself violate that ordering, but consuming its
-    output to choose a rank would.
-    """
+    """Cross-validated AUC of the condition factor A at each CPD rank."""
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import RepeatedStratifiedKFold, cross_val_score
 

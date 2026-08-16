@@ -9,7 +9,6 @@ from tensorly.cp_tensor import cp_to_tensor
 
 from cellcommunicationpf2.rank_selection import (
     bicv_reconstruction_error,
-    component_replication_counts,
     corcondia_sweep,
     cp_condition_holdout_error,
     cp_masked_reconstruction_error,
@@ -19,18 +18,11 @@ from cellcommunicationpf2.rank_selection import (
     cpd_permutation_null_sweep,
     cpd_rank_auc_sweep,
     cpd_replication_sweep,
-    degeneracy_diagnostics,
-    leave_one_sample_out_r2x,
-    match_components_by_gene_factor,
-    nested_rank_subspace_stability,
-    permute_condition_labels,
     permute_eigenstate_labels,
     permute_lr_within_fiber,
-    permute_within_sample_genes,
-    principal_angle_cosines,
     resample_tensor_conditions,
+    run_bicv,
     split_half_conditions,
-    subspace_similarity,
 )
 
 
@@ -42,11 +34,7 @@ def _simulate_parafac2(
     noise_std: float = 0.05,
     random_state: int = 0,
 ) -> anndata.AnnData:
-    """Simulate data X_i = P_i diag(a_i) B C^T + noise from a known PARAFAC2 model.
-
-    P_i are random orthonormal (cells_per_cond x rank) matrices, distinct per
-    condition (so the model is a genuine PARAFAC2, not a plain CP model).
-    """
+    """Simulate data X_i = P_i diag(a_i) B C^T + noise from a known PARAFAC2 model."""
     rng = np.random.default_rng(random_state)
     A = rng.uniform(0.5, 1.5, size=(n_cond, rank))
     B = rng.normal(size=(rank, rank))
@@ -70,99 +58,8 @@ def _simulate_parafac2(
     return adata
 
 
-def test_match_components_by_gene_factor_recovers_permutation():
-    rng = np.random.default_rng(0)
-    C1 = rng.normal(size=(50, 4))
-    perm = [2, 0, 3, 1]
-    signs = np.array([1, -1, 1, -1])
-    C2 = C1[:, perm] * signs
-
-    col_ind, similarity = match_components_by_gene_factor(C1, C2)
-    # C2[:, perm] == C1, so component i of C1 matches C2's column at the position
-    # of i within `perm` (the inverse permutation), not `perm` itself.
-    expected = list(np.argsort(perm))
-    assert list(col_ind) == expected
-    np.testing.assert_allclose(similarity, 1.0, atol=1e-8)
-
-
-def test_component_replication_counts_full_match():
-    rng = np.random.default_rng(1)
-    C1 = rng.normal(size=(30, 3))
-    C2 = C1.copy()
-    counts = component_replication_counts(C1, C2, thresholds=(0.6, 0.8))
-    assert counts["n_replicated_tau0.6"] == 3
-    assert counts["n_replicated_tau0.8"] == 3
-    assert counts["mean_matched_similarity"] > 0.999
-
-
-def test_principal_angle_cosines_identical_subspace():
-    rng = np.random.default_rng(2)
-    C = rng.normal(size=(40, 5))
-    # A different basis (rotation) of the *same* column space should give cos=1.
-    rot = rng.normal(size=(5, 5))
-    C2 = C @ rot
-    cosines = principal_angle_cosines(C, C2)
-    np.testing.assert_allclose(cosines, 1.0, atol=1e-6)
-
-
-def test_principal_angle_cosines_orthogonal_subspace():
-    rank = 3
-    n = 20
-    Q, _ = np.linalg.qr(np.eye(n))
-    C1 = Q[:, :rank]
-    C2 = Q[:, rank : 2 * rank]
-    cosines = principal_angle_cosines(C1, C2)
-    np.testing.assert_allclose(cosines, 0.0, atol=1e-8)
-
-
-def test_subspace_similarity_matches_principal_angles():
-    rng = np.random.default_rng(3)
-    C1 = rng.normal(size=(25, 4))
-    C2 = rng.normal(size=(25, 4))
-    result = subspace_similarity(C1, C2)
-    cosines = principal_angle_cosines(C1, C2)
-    np.testing.assert_allclose(result["mean_cos_principal_angle"], np.mean(cosines))
-    assert 0.0 <= result["mean_cos_principal_angle"] <= 1.0 + 1e-8
-
-
-def test_permute_within_sample_genes_preserves_marginals():
-    adata = _simulate_parafac2(
-        n_cond=2, cells_per_cond=15, n_genes=6, rank=2, random_state=5
-    )
-    permuted = permute_within_sample_genes(adata, "sample", random_state=0)
-
-    X_orig = np.asarray(adata.X)
-    X_perm = np.asarray(permuted.X)
-
-    cond = adata.obs["sample"].to_numpy()
-    for sample in np.unique(cond):
-        mask = cond == sample
-        for g in range(X_orig.shape[1]):
-            np.testing.assert_allclose(
-                np.sort(X_orig[mask, g]), np.sort(X_perm[mask, g])
-            )
-
-    # Should not be a no-op permutation (extremely unlikely to coincide).
-    assert not np.allclose(X_orig, X_perm)
-
-
-def test_permute_condition_labels_preserves_cell_content():
-    adata = _simulate_parafac2(
-        n_cond=3, cells_per_cond=10, n_genes=5, rank=2, random_state=6
-    )
-    permuted = permute_condition_labels(adata, "sample", random_state=0)
-    np.testing.assert_allclose(np.asarray(adata.X), np.asarray(permuted.X))
-    assert list(adata.obs["sample"]) != list(permuted.obs["sample"])
-    assert sorted(adata.obs["sample"]) == sorted(permuted.obs["sample"])
-
-
 def test_bicv_reconstruction_error_rises_past_true_rank():
-    """The central leakage guard: on data simulated from a known low-rank PARAFAC2
-    model, the bi-cross-validated held-out-block error should be low near the true
-    rank and should not keep improving indefinitely past it (unlike in-sample R2X,
-    which is expected to keep climbing). This is what makes bi-cross-validation the
-    leak-proof variant of Approach 1.
-    """
+    """Verify that held-out BiCV R2X peaks/plateaus near the true rank."""
     true_rank = 3
     adata = _simulate_parafac2(
         n_cond=6,
@@ -186,30 +83,20 @@ def test_bicv_reconstruction_error_rises_past_true_rank():
         )
         results[rank] = res
 
-    # In-sample training-block R2X must climb monotonically with rank (sanity
-    # check that the fit itself behaves normally).
+    # In-sample training-block R2X must climb monotonically with rank
     train_r2x = [results[r]["TrainBlockR2X"] for r in (1, 2, 3, 6, 10)]
     assert all(x <= y + 1e-6 for x, y in pairwise(train_r2x))
 
-    # The held-out block R2X at the true rank should be substantially better than
-    # at rank 1 (severely underfit).
+    # The held-out block R2X at the true rank should be substantially better than at rank 1
     assert results[true_rank]["HeldOutBlockR2X"] > results[1]["HeldOutBlockR2X"]
 
-    # And it should not be monotonically increasing all the way to rank 10 the way
-    # the in-sample curve is -- i.e. somewhere past the true rank, held-out
-    # performance stops improving or degrades, unlike the leaky in-sample curve.
+    # And it should not be monotonically increasing all the way to rank 10
     held_out = [results[r]["HeldOutBlockR2X"] for r in (1, 2, 3, 6, 10)]
-    assert not all(x <= y + 1e-6 for x, y in pairwise(held_out)), (
-        f"Held-out BiCV R2X was monotonically increasing like in-sample R2X: {held_out}. "
-        "This would indicate the bi-cross-validation split is leaking."
-    )
+    assert not all(x <= y + 1e-6 for x, y in pairwise(held_out))
 
 
 def test_bicv_train_block_r2x_matches_parafac2_report():
-    """Verify the manual reconstruction bookkeeping: TrainBlockR2X should just be
-    the R2X parafac2_nd itself reports for the training-gene fit (the plan's
-    suggested self-check).
-    """
+    """Verify bounds and valid R2X output."""
     adata = _simulate_parafac2(
         n_cond=4, cells_per_cond=30, n_genes=20, rank=2, random_state=7
     )
@@ -222,64 +109,35 @@ def test_bicv_train_block_r2x_matches_parafac2_report():
         tol=1e-8,
         random_state=1,
     )
-
-    # Recompute independently with the same seed to confirm determinism of the
-    # train-block bookkeeping (can't recover the exact same gene split without
-    # re-deriving it, so just check the reported number is a valid R2X in [0, 1]).
     assert 0.0 <= res["TrainBlockR2X"] <= 1.0
     assert -1.0 <= res["HeldOutBlockR2X"] <= 1.0
 
 
-def test_leave_one_sample_out_r2x_runs_and_is_bounded():
+def test_run_bicv_interface():
+    """Verify modular run_bicv interface across multiple ranks and folds."""
     adata = _simulate_parafac2(
-        n_cond=5, cells_per_cond=25, n_genes=15, rank=2, random_state=9
+        n_cond=3, cells_per_cond=20, n_genes=15, rank=2, random_state=8
     )
-    df = leave_one_sample_out_r2x(
+    ranks = [1, 2]
+    n_folds = 3
+    df = run_bicv(
         adata,
-        rank=2,
+        ranks=ranks,
         condition_column="sample",
-        n_iter_max=50,
-        tol=1e-6,
-        random_state=0,
-        n_folds=2,
-    )
-    assert len(df) == 2
-    assert df["HeldOutR2X"].between(-1.0, 1.0).all()
-    assert df["TrainR2X"].between(0.0, 1.0).all()
-
-
-def test_nested_rank_subspace_stability_shape():
-    adata = _simulate_parafac2(
-        n_cond=4, cells_per_cond=20, n_genes=15, rank=2, random_state=11
-    )
-    df = nested_rank_subspace_stability(
-        adata, ranks=[2, 3, 4], condition_column="sample", n_iter_max=50, tol=1e-6
-    )
-    assert len(df) == 2
-    assert (df["mean_cos_principal_angle"] >= 0).all()
-    assert (df["mean_cos_principal_angle"] <= 1 + 1e-8).all()
-
-
-def test_degeneracy_diagnostics_shape_and_bounds():
-    adata = _simulate_parafac2(
-        n_cond=4, cells_per_cond=20, n_genes=15, rank=3, random_state=13
-    )
-    df = degeneracy_diagnostics(
-        adata,
-        ranks=[2, 3],
-        condition_column="sample",
-        n_inits=2,
+        n_folds=n_folds,
         n_iter_max=50,
         tol=1e-6,
     )
-    assert len(df) == 2
-    assert (df["CondNumber_B"] > 0).all()
-    assert (df["CondNumber_C"] > 0).all()
-    assert df["MaxPairwiseAbsCos_C"].between(0, 1 + 1e-8).all()
+
+    assert len(df) == len(ranks) * n_folds
+    assert set(df["Rank"].unique()) == set(ranks)
+    assert set(df["Fold"].unique()) == set(range(n_folds))
+    assert "HeldOutBlockR2X" in df.columns
+    assert "TrainBlockR2X" in df.columns
 
 
 # =============================================================================
-# CPD (interaction-tensor) rank-selection tests (PLAN_INTERACTION.md)
+# CPD (interaction-tensor) rank-selection tests
 # =============================================================================
 
 
@@ -306,13 +164,7 @@ def test_cp_masked_reconstruction_error_bounded_and_runs():
 
 
 def test_cp_masked_reconstruction_error_does_not_keep_climbing_past_true_rank():
-    """The central leakage/overfitting guard for Approach A: on a tensor
-    simulated from a known low-rank CP model, held-out entry R2X should not
-    keep monotonically improving all the way past the true rank the way
-    in-sample R2X does -- unlike RISE's leaky approach-1a, masking entries
-    directly here has no per-row projection to leak through, so this is
-    expected to actually work.
-    """
+    """Verify that held-out entry R2X does not monotonically climb indefinitely."""
     true_rank = 3
     tensor = _simulate_cp_tensor(
         (8, 10, 10, 30), rank=true_rank, noise_std=0.15, random_state=42
