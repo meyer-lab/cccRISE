@@ -2,13 +2,12 @@
 Figure A6d: Logistic regression weights for ALAD vs Control classification based on CCC-RISE components.
 """
 
-import anndata
 import numpy as np
 
 from ..import_data import add_cond_idxs
 from ..logreg import ccc_rise_logreg_weights
 from ..utils import correct_conditions
-from .common import ALAD_STABLE_PATH, getSetup, subplotLabel
+from .common import get_alad_data, getSetup, subplotLabel
 from .commonFuncs.plotGeneral import binarize_group, get_sample_to_group
 
 
@@ -17,7 +16,7 @@ def makeFigure():
     subplotLabel(ax)
 
     # Import and prepare data
-    X = anndata.read_h5ad(ALAD_STABLE_PATH)
+    X = get_alad_data(project_cells=True)
 
     # Add numerical indices for each patient sample, which is the primary condition
     condition_column = "dsco_id"

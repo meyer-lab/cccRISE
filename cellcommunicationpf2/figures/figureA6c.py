@@ -4,12 +4,11 @@ Figure A6c: CCC-RISE on BAL ALAD data with
 
 from typing import cast
 
-import anndata
 import pandas as pd
 
 from ..utils import correct_conditions
 from .common import (
-    ALAD_STABLE_PATH,
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
@@ -25,37 +24,7 @@ def makeFigure():
     ax, f = getSetup((20, 8), (1, 4))
     subplotLabel(ax)
 
-    # # Import and prepare data
-    # X = import_alad(gene_threshold=0.01, normalize=True)
-    # lr_pairs = import_ligand_receptor_pairs()
-
-    # # Add numerical indices for each patient sample, which is the primary condition
-    # condition_column = "dsco_id"
-    # X = add_cond_idxs(X, condition_column)
-
-    # # Parameters for CCC-RISE
-    # rise_rank = 30
-    # cp_rank = 14
-    # n_iter_max = 10000
-    # tol = 1e-11
-
-    # print(f"Running CCC-RISE with rank={rise_rank} and cp_rank={cp_rank}...")
-    # X, _ = run_ccc_rise_workflow(
-    #     X,
-    #     rise_rank=rise_rank,
-    #     lr_pairs=lr_pairs,
-    #     condition_column=condition_column,
-    #     cp_rank=cp_rank,
-    #     n_iter_max=n_iter_max,
-    #     tol=tol,
-    #     complex_sep="&",
-    #     random_state=0,
-    #     svd_init="random",
-    # )
-    # # Save anndata object with results
-    # X.write_h5ad("cellcommunicationpf2/alad_stable.h5ad")
-
-    X = anndata.read_h5ad(ALAD_STABLE_PATH)
+    X = get_alad_data(project_cells=True)
     condition_column = "dsco_id"
     X.uns["A"] = correct_conditions(X)
 

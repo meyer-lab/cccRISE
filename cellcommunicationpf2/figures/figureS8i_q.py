@@ -2,120 +2,25 @@
 Figure S8i-q: Box plots of condition and ALAD status comparisons for specific components in CCC-RISE on BALF alad data.
 """
 
-from typing import cast
-
-import anndata
 import matplotlib.pyplot as plt
-import pandas as pd
 import seaborn as sns
 from scipy.stats import f_oneway, ttest_ind
 
 from .common import (
-    ALAD_PATH,
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
+from .commonFuncs.plotGeneral import get_alad_patient_factors_df
 
 
 def makeFigure():
     ax, f = getSetup((6, 6), (3, 3))  # 3 rows x 4 columns for 12 plots total
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(ALAD_PATH)
-    X.obs["alad_status"] = (
-        X.obs["ALADstatus"]
-        .astype(str)
-        .replace({"recovered": "ALAD", "declined": "ALAD"})
-    )
-
-    # Convert d2b_index to continuous/numeric variable
-    X.obs["d2b_index"] = pd.to_numeric(X.obs["d2b_index"], errors="coerce")
-    print(f"d2b_index data type after conversion: {X.obs['d2b_index'].dtype}")
-    print(f"d2b_index unique values: {X.obs['d2b_index'].unique()}")
-
-    # Define patient categorical information
-    patient_info = [
-        "diagnosisgroup",
-        "sex",
-        "transplanttype",
-        "cmvstatus",
-        "cmv_status",
-        "cmvstatus2",
-        "ethnicity",
-        "6monthcondition",
-        "1yearcondition",
-    ]
-
-    # Get unique samples with their information
-    obs = cast(pd.DataFrame, X.obs)
-    patient_info_df = (
-        obs[["dsco_id", "alad_status"] + patient_info]
-        .drop_duplicates(subset=["dsco_id"])
-        .reset_index(drop=True)
-    )
-
-    print(patient_info_df["6monthcondition"].unique())
-    print(patient_info_df["1yearcondition"].unique())
-
-    # Create simplified outcome categories
-    def categorize_outcome(condition):
-        condition_str = str(condition)
-
-        # Handle exact category matches
-        if condition_str == "Died":
-            return "Died"
-        elif condition_str in ["CLAD", "CLAD/Stable", "CLAD/Declined"]:
-            return "CLAD"
-        elif condition_str in [
-            "No CLAD/Stable",
-            "No CLAD/Recovered",
-            "No CLAD/Declined",
-            "Recovered",
-        ]:
-            return "No CLAD"
-
-    # Apply outcome categorization to both 6-month and 1-year conditions
-    patient_info_df["6monthcondition"] = patient_info_df["6monthcondition"].apply(
-        categorize_outcome
-    )
-    patient_info_df["1yearcondition"] = patient_info_df["1yearcondition"].apply(
-        categorize_outcome
-    )
-
-    # Get the tensor decomposition factor matrix A (condition/sample factors)
-    factor_A = X.uns["A"]  # Shape: (n_samples, n_components)
-
-    # Create a mapping from sample to factor values
-    sample_to_idx = {
-        sample: idx for idx, sample in enumerate(X.obs["dsco_id"].cat.categories)
-    }
-
-    # Analyze all components
+    X = get_alad_data(project_cells=True)
     target_components = [5, 13, 17]  # Specific components of interest
-    target_indices = [comp - 1 for comp in target_components]  # Convert to 0-indexed
-
-    # Create DataFrame with factor values and sample metadata
-    factor_df_list = []
-    for _, sample_row in patient_info_df.iterrows():
-        sample = sample_row["dsco_id"]
-        if sample in sample_to_idx:
-            sample_idx = sample_to_idx[sample]
-
-            # Add factor values for target components only
-            for comp_idx in target_indices:
-                row_data = {
-                    "sample": sample,
-                    "alad_status": sample_row["alad_status"],
-                    "component": f"Component_{comp_idx + 1}",
-                    "factor_value": factor_A[sample_idx, comp_idx],
-                    "component_idx": comp_idx,
-                }
-                # Add all patient info variables
-                for info_var in patient_info:
-                    row_data[info_var] = sample_row[info_var]
-                factor_df_list.append(row_data)
-
-    factor_df = pd.DataFrame(factor_df_list)
+    _, factor_df = get_alad_patient_factors_df(X, target_components=target_components)
 
     # Perform ANOVA tests for each component and condition
     anova_results = {}

@@ -1,69 +1,63 @@
-# """
-# Figure 5: RISE Rank Selection Analysis
+"""
+Figure 5: RISE Rank Selection Analysis
 
-# This figure demonstrates how R²X changes with increasing PARAFAC2 (RISE) rank
-# to identify the optimal rank where R²X begins to flatline.
-# """
+This figure demonstrates how R²X changes with increasing PARAFAC2 (RISE) rank
+to identify the optimal rank where R²X begins to flatline.
+"""
 
-# import numpy as np
-# from parafac2.parafac2 import parafac2_nd
+import numpy as np
+import pandas as pd
+from parafac2.parafac2 import parafac2_nd
 
-# from ..import_data import (
-#     add_cond_idxs,
-#     import_balf_covid,
-# )
-# from .common import getSetup
+from ..import_data import add_cond_idxs, import_balf_covid
+from .common import getSetup, load_or_compute_dataframe
 
 
-# def makeFigure():
-#     """Generate Figure 5 showing RISE rank selection analysis."""
-#     ax, f = getSetup((6, 3), (1, 1))
+def compute_rise_rank_sweep(ranks: list[int] | None = None) -> pd.DataFrame:
+    """Compute R2X across RISE ranks."""
+    if ranks is None:
+        ranks = list(range(1, 41, 5))
 
-#     print("Importing and preparing data for Figure 5...")
-#     adata = import_balf_covid()
-#     adata_filtered = add_cond_idxs(adata, "sample")
-#     print(f"Data shape: {adata_filtered.shape}")
+    adata = import_balf_covid()
+    adata_filtered = add_cond_idxs(adata, "sample")
 
-#     ranks = list(range(1, 41, 5))
-#     print(f"Testing ranks {ranks[0]}-{ranks[-1]} in steps of 5...")
+    r2x_results = []
+    for rank in ranks:
+        try:
+            _, r2x = parafac2_nd(
+                adata_filtered,
+                rank=rank,
+                n_iter_max=100,
+                tol=1e-6,
+                random_state=42,
+            )
+            r2x_results.append({"rank": rank, "r2x": r2x})
+        except Exception:
+            r2x_results.append({"rank": rank, "r2x": np.nan})
 
-#     n_iter_max = 100
-#     tol = 1e-6
-#     random_state = 42
+    return pd.DataFrame(r2x_results)
 
-#     r2x_results = {}
 
-#     for i, rank in enumerate(ranks):
-#         print(f"Testing rank {rank} ({i+1}/{len(ranks)})...")
-#         try:
-#             _, r2x = parafac2_nd(
-#                 adata_filtered,
-#                 rank=rank,
-#                 n_iter_max=n_iter_max,
-#                 tol=tol,
-#                 random_state=random_state,
-#             )
-#             r2x_results[rank] = r2x
-#             print(f"  Rank {rank}: R²X = {r2x:.6f}")
+def makeFigure():
+    """Generate Figure 5 showing RISE rank selection analysis."""
+    ax, f = getSetup((6, 3), (1, 1))
 
-#         except Exception as e:
-#             print(f"  Rank {rank}: Failed - {e}")
-#             r2x_results[rank] = np.nan
+    df = load_or_compute_dataframe("fig5_rise_ranks.csv", compute_rise_rank_sweep)
+    df = df.dropna().sort_values("rank")
 
-#     # Filter valid results and plot
-#     valid_results = {k: v for k, v in r2x_results.items() if not np.isnan(v)}
-#     ranks = sorted(valid_results.keys())
-#     r2x_values = [valid_results[r] for r in ranks]
+    # Plot R²X curve
+    ax[0].plot(
+        df["rank"],
+        df["r2x"],
+        "o-",
+        linewidth=2,
+        markersize=6,
+        color="steelblue",
+    )
+    ax[0].set_xlabel("RISE Rank", fontsize=14)
+    ax[0].set_ylabel("R²X", fontsize=14)
+    ax[0].set_title("PARAFAC2 (RISE) Rank Selection Analysis", fontsize=16)
+    ax[0].grid(True, alpha=0.3)
+    ax[0].set_ylim(0, 0.2)
 
-#     # Plot R²X curve
-#     ax[0].plot(ranks, r2x_values, "o-", linewidth=2, markersize=6, color="steelblue")
-#     ax[0].set_xlabel("RISE Rank", fontsize=14)
-#     ax[0].set_ylabel("R²X", fontsize=14)
-#     ax[0].set_title("PARAFAC2 (RISE) Rank Selection Analysis", fontsize=16)
-#     ax[0].grid(True, alpha=0.3)
-
-#     # Set y min and max to 0 - 0.2
-#     ax[0].set_ylim(0, 0.2)
-
-#     print("Figure 5 generation complete.")
-#     return f
+    return f

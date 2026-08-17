@@ -2,46 +2,26 @@
 Figure S1e_g: Cell type proportions across conditions in BALF COVID-19 data.
 """
 
-from typing import cast
-
-import anndata
-import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy.stats import spearmanr
 
 from .common import (
-    COVID19_PATH,
+    get_covid_data,
     getSetup,
     subplotLabel,
 )
+from .commonFuncs.plotGeneral import compute_cell_type_proportions
 
 
 def makeFigure():
     ax, f = getSetup((4, 4), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(COVID19_PATH)
-    obs = cast(pd.DataFrame, X.obs)
-
-    celltype_counts = cast(pd.Series, obs.groupby(["celltype", "sample"]).size())
-    df = celltype_counts.reset_index(name="count")
-
-    # Add condition information back by merging with sample-condition mapping
-    sample_condition_map = obs[["sample", "condition"]].drop_duplicates()
-    df = df.merge(sample_condition_map, on="sample", how="left")
-
-    df["celltype"] = pd.Categorical(
-        df["celltype"], categories=np.unique(df["celltype"]), ordered=True
+    X = get_covid_data(project_cells=True)
+    df = compute_cell_type_proportions(
+        X, celltype_col="celltype", sample_col="sample", condition_col="condition"
     )
-    df["sample"] = pd.Categorical(
-        df["sample"], categories=np.unique(df["sample"]), ordered=True
-    )
-    df["condition"] = pd.Categorical(
-        df["condition"], categories=np.unique(df["condition"]), ordered=True
-    )
-    df = df.sort_values(["condition", "sample", "celltype"])
-    df["proportion"] = df.groupby("sample")["count"].transform(lambda x: x / x.sum())
     print(df)
 
     sns.boxplot(
@@ -86,9 +66,11 @@ def makeFigure():
     ax[1].set_yscale("log")
     ax[1].set_xlim(-1, 1)
 
-    sample_totals = df.groupby(["sample"])["count"].sum().reset_index()
-    sample_totals.columns = ["sample", "total_cells"]
-    sample_totals = sample_totals.merge(sample_condition_map, on="sample", how="left")
+    sample_totals = (
+        df.groupby(["sample", "condition"], observed=False)["count"]
+        .sum()
+        .reset_index(name="total_cells")
+    )
     pal = sns.color_palette("Set2")
     pal = [pal[0], pal[1], pal[2]]
     sns.scatterplot(

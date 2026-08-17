@@ -11,8 +11,16 @@ from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score as fms
 
 from .ccc import calculate_r2x
-from .ccc_rise import calc_communication_score, ccc_rise, standardize_cc_pf2
-from .import_data import add_cond_idxs
+from .ccc_rise import (
+    calc_communication_score,
+    calc_communication_score_pseudobulk,
+    ccc_rise,
+    pseudobulk_cp_decomposition,
+    save_ccc_rise_results,
+    standardize_cc_pf2,
+)
+from .import_data import add_cond_idxs, import_ligand_receptor_pairs
+from .utils import pseudobulk_X
 
 
 def resample_tensor(interaction_tensors):
@@ -26,8 +34,8 @@ def resample_tensor(interaction_tensors):
 def rise_store_r2x(
     X: anndata.AnnData,
     rank: int,
-    n_iter_max: int,
-    tolerance: float,
+    n_iter_max: int = 100,
+    tolerance: float = 1e-6,
     random_state: int | None = None,
 ):
     """Runs RISE and stores the results."""
@@ -162,18 +170,112 @@ def run_ccc_rise_workflow(
     return adata, r2x
 
 
+def run_pseudobulk_workflow(
+    adata: anndata.AnnData,
+    cp_rank: int = 8,
+    lr_pairs: pd.DataFrame | None = None,
+    condition_column: str = "sample",
+    groupby: str = "celltype",
+    type: str = "mean",
+    n_iter_max: int = 1000,
+    tol: float = 1e-11,
+    random_state: int | None = None,
+    complex_sep: str | None = "&",
+) -> tuple[anndata.AnnData, float]:
+    """
+    Executes the complete pseudobulk CP decomposition workflow:
+    aggregates single cells into pseudobulk matrices per (condition, groupby),
+    computes the 4D cell-cell communication tensor, fits CP decomposition,
+    and stores factors, weights, and LR pairs in the AnnData object's `.uns`.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        The AnnData object with single-cell expression data.
+    cp_rank : int, default=8
+        The rank for the CP decomposition.
+    lr_pairs : pd.DataFrame | None, optional
+        The ligand-receptor pairs used in the decomposition. If None, loaded automatically.
+    condition_column : str, default="sample"
+        The column in `adata.obs` that defines the conditions/samples.
+    groupby : str, default="celltype"
+        The column in `adata.obs` that defines the cell types.
+    type : str, default="mean"
+        The aggregation method for pseudobulking ('mean' or 'sum').
+    n_iter_max : int, default=1000
+        Maximum number of iterations for CP decomposition.
+    tol : float, default=1e-11
+        Convergence tolerance for CP decomposition.
+    random_state : int | None, optional
+        Random seed for reproducibility.
+    complex_sep : str | None, default="&"
+        Symbol that separates protein subunits in multimeric complexes.
+
+    Returns
+    -------
+    tuple[anndata.AnnData, float]
+        A tuple containing the updated AnnData object with stored pseudobulk results
+        in `.uns` and the R2X value.
+    """
+    if lr_pairs is None:
+        lr_pairs = import_ligand_receptor_pairs()
+
+    adata = add_cond_idxs(adata, condition_column)
+    appended_pseudobulk = pseudobulk_X(
+        adata, condition_name=condition_column, groupby=groupby, type=type
+    )
+    interaction_tensor, filtered_lr_pairs = calc_communication_score_pseudobulk(
+        appended_pseudobulk, lr_pairs=lr_pairs, complex_sep=complex_sep
+    )
+    cpd_weights, cpd_factors, r2x = pseudobulk_cp_decomposition(
+        interaction_tensor,
+        cp_rank=cp_rank,
+        n_iter_max=n_iter_max,
+        tol=tol,
+        random_state=random_state,
+    )
+    adata = save_ccc_rise_results(adata, cpd_factors, cpd_weights, filtered_lr_pairs)
+    adata.uns["r2x"] = r2x
+    return adata, r2x
+
+
 def calculate_interaction_tensor(
-    X_filtered: anndata.AnnData, lr_pairs: pd.DataFrame, rise_rank: int
-):
-    """Calculate interaction tensor from AnnData object using PARAFAC2 and communication scores."""
-    pf2_out, _ = parafac2_nd(X_filtered, rank=rise_rank, n_iter_max=1000, tol=1e-9)
-    _, _, projections = pf2_out
+    adata: anndata.AnnData,
+    lr_pairs: pd.DataFrame,
+    complex_sep: str | None = "&",
+) -> np.ndarray:
+    """
+    Calculate interaction tensor from an AnnData object that has already been processed with RISE.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        AnnData object with single-cell expression and RISE projections in `adata.obsm["projections"]`.
+    lr_pairs : pd.DataFrame
+        DataFrame of ligand-receptor pairs.
+    complex_sep : str, optional, default="&"
+        Separator for multimeric complexes.
+
+    Returns
+    -------
+    np.ndarray
+        4D cell-cell communication interaction tensor.
+    """
+    assert "projections" in adata.obsm, (
+        "AnnData object must have 'projections' in obsm (processed with RISE)."
+    )
+
+    sgIndex = (
+        adata.obs["condition_unique_idxs"].to_numpy(dtype=int)
+        if "condition_unique_idxs" in adata.obs
+        else np.zeros(adata.n_obs, dtype=int)
+    )
 
     # Project matrices
-    X_list = anndata_to_list(X_filtered)
+    X_list = anndata_to_list(adata)
     projected_matrices = []
     for i, tensor in enumerate(X_list):
-        proj = projections[i]
+        proj = adata.obsm["projections"][sgIndex == i]
         # Convert tensor to NumPy
         tensor_np = (
             cast(Any, tensor).toarray() if isinstance(tensor, spmatrix) else tensor
@@ -181,9 +283,12 @@ def calculate_interaction_tensor(
         projected_matrices.append(proj.T @ tensor_np)
 
     # Calculate cell-cell communication scores
-    gene_names = list(X_filtered.var_names)
+    gene_names = list(adata.var_names)
     interaction_tensor, _ = calc_communication_score(
-        projected_matrices, gene_names=gene_names, lr_pairs=lr_pairs, complex_sep="&"
+        projected_matrices,
+        gene_names=gene_names,
+        lr_pairs=lr_pairs,
+        complex_sep=complex_sep,
     )
 
     return interaction_tensor
@@ -197,32 +302,34 @@ def run_fms_r2x_analysis(
 ) -> pd.DataFrame:
     """Run FMS and R2X analysis across different CP ranks and bootstrap runs."""
     if rank_list is None:
-        rank_list = list(range(1, 4, 2))
+        rank_list = list(range(1, 4))
 
     rows = []
-    for i in range(runs):
-        for j in rank_list:
-            print(f"Run {i + 1}, Rank {j}")
-            boot_tensor = resample_tensor(interaction_tensor)
-            cp_weights, cp_factors = parafac(
-                tensor=interaction_tensor,
-                rank=j,
-                n_iter_max=1000,
-                init=svd_init,
-                normalize_factors=True,
-            )
+    for j in rank_list:
+        cp_weights, cp_factors = parafac(
+            tensor=interaction_tensor,
+            rank=j,
+            n_iter_max=1000,
+            init=svd_init,
+            normalize_factors=True,
+            linesearch=True,
+        )
+
+        for i in range(runs):
             r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
             cp_boot_weights, cp_boot_factors = parafac(
-                tensor=boot_tensor,
+                tensor=resample_tensor(interaction_tensor),
                 rank=j,
                 n_iter_max=1000,
                 init=svd_init,
                 normalize_factors=True,
+                linesearch=True,
             )
             fms_score = calculate_fms_cpd(
                 cp_weights, cp_factors, cp_boot_weights, cp_boot_factors
             )
             rows.append({"Run": i, "Component": j, "FMS": fms_score, "R2X": r2x})
+            print(f"Run {i}, Component {j}, FMS: {fms_score}, R2X: {r2x}")
 
     return pd.DataFrame(rows)
 
@@ -239,10 +346,13 @@ def run_fms_r2x_data_percentage_analysis(
     if percentage_list is None:
         percentage_list = list(range(100, 45, -5))
 
+    if "projections" not in X_filtered.obsm:
+        X_filtered, _ = rise_store_r2x(
+            X_filtered, rank=rise_rank, n_iter_max=1000, tolerance=1e-9
+        )
+
     # 0) Reference on FULL data (no bootstrapping here)
-    full_tensor = calculate_interaction_tensor(
-        X_filtered, lr_pairs, rise_rank=rise_rank
-    )
+    full_tensor = calculate_interaction_tensor(X_filtered, lr_pairs)
     w_full, f_full = parafac(
         tensor=full_tensor,
         rank=cp_rank,
@@ -264,9 +374,7 @@ def run_fms_r2x_data_percentage_analysis(
                 X_sub = X_filtered
 
             # 2) Tensor on subsample
-            sub_tensor = calculate_interaction_tensor(
-                X_sub, lr_pairs, rise_rank=rise_rank
-            )
+            sub_tensor = calculate_interaction_tensor(X_sub, lr_pairs)
 
             # 3) CP on subsample
             w_sub, f_sub = parafac(

@@ -72,7 +72,7 @@ Import your dataset as an AnnData object with preprocessed data::
     X = anndata.read_h5ad("your_data.h5ad")
     
     # Prepare the dataset
-    X = prepare_dataset(X, condition_name="condition", geneThreshold=0.01)
+    X = prepare_dataset(X, condition_name="condition", geneThreshold=0.001)
     
     # Load ligand-receptor pairs
     lr_pairs = import_ligand_receptor_pairs()
@@ -147,13 +147,16 @@ After RISE, an interaction tensor is computed from cell-cell communication score
 
 First, calculate the interaction tensor using a selected RISE rank, then test different CPD ranks::
 
-    from cellcommunicationpf2.tensor import calculate_interaction_tensor, run_fms_r2x_analysis
+    from cellcommunicationpf2.tensor import calculate_interaction_tensor, rise_store_r2x, run_fms_r2x_analysis
     import seaborn as sns
     import matplotlib.pyplot as plt
     
-    # Calculate interaction tensor with chosen RISE rank
+    # Process dataset with chosen RISE rank
     rise_rank = 35  # Based on RISE analysis above
-    interaction_tensor = calculate_interaction_tensor(X, lr_pairs, rise_rank=rise_rank)
+    X, _ = rise_store_r2x(X, rank=rise_rank, n_iter_max=1000, tolerance=1e-9)
+    
+    # Calculate interaction tensor
+    interaction_tensor = calculate_interaction_tensor(X, lr_pairs)
     
     # Test CPD ranks
     rank_list = list(range(1, 11, 2))
@@ -252,6 +255,30 @@ The function returns the AnnData object with added results and the final R²X va
 - ``X.obsm["sc_B"]`` - Sender cell loadings (n_cells × ``cp_rank``)
 - ``X.obsm["rc_C"]`` - Receiver cell loadings (n_cells × ``cp_rank``)
 - ``X.obsm["PaCMAP"]`` - PaCMAP embedding for visualization (n_cells × 2, if ``doEmbedding=True``)
+
+Saving and Loading Factor Models with NetCDF
+--------------------------------------------
+
+Rather than saving entire multi-gigabyte AnnData files containing full single-cell matrices, you can export the decomposition factor matrices and metadata to a compact NetCDF file (< 100 KB - 2 MB)::
+
+    from cellcommunicationpf2.factors import factors_to_xarray, save_factors_netcdf, load_factors_to_anndata
+
+    # 1. Export factors to an annotated xarray Dataset
+    factors_ds = factors_to_xarray(
+        cpd_factors=[X.uns["A"], X.uns["B"], X.uns["C"], X.uns["D"]],
+        cpd_weights=X.uns["weights"],
+        filtered_lr_pairs=X.uns["lr_pairs"],
+        condition_names=X.obs["sample"].unique(),
+        gene_names=list(X.var_names),
+        r2x_cp=r2x,
+    )
+
+    # 2. Save lightweight NetCDF file
+    save_factors_netcdf(factors_ds, "study_factors.nc")
+
+    # 3. Load on-demand and project single cells instantaneously
+    X_projected = load_factors_to_anndata("study_factors.nc", adata=X_raw, do_embedding=True)
+
 
 **Additional Information**:
 

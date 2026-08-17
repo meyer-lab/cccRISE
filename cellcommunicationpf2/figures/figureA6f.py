@@ -2,7 +2,6 @@
 Figure A5k_l: Heatmaps of ligand-receptor expression products for NK cell to Dendritic Cell interactions.
 """
 
-import anndata
 import numpy as np
 import seaborn as sns
 
@@ -10,7 +9,7 @@ from ..utils import (
     expression_product_matrix,
 )
 from .common import (
-    ALAD_STABLE_PATH,
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
@@ -20,7 +19,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(ALAD_STABLE_PATH)
+    X = get_alad_data(project_cells=True)
     ccc_rise_cmp = 5
 
     X_mdc_sender = X[X.obs["broad_cell_type"] == "CD8 T cells"]

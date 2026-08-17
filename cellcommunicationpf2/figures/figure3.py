@@ -6,7 +6,6 @@ Panel letters follow the manuscript figure. All panels are generated from
 data already computed and stored on the COVID-19 BALF AnnData object.
 """
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -19,10 +18,9 @@ from ..utils import (
     add_obs_cmp_unique_one,
     add_obs_cmp_unique_two,
     aggregate_communication_scores_by_group,
-    binned_expression_product_matrix,
 )
-from .common import COVID19_PATH
-from .commonFuncs.plotFactors import plot_pair_lr_factors
+from .common import get_covid_data
+from .commonFuncs.plotFactors import plot_interaction_heatmap, plot_pair_lr_factors
 from .commonFuncs.plotGeneral import get_sample_to_group, symmetrize_axes
 from .commonFuncs.plotPaCMAP import plot_wc_pacmap
 
@@ -84,7 +82,7 @@ def _epithelial_weight_violin(X, cmp, ax_sender, ax_receiver):
 
 
 def makeFigure():
-    X = anndata.read_h5ad(COVID19_PATH)
+    X = get_covid_data(project_cells=True, do_embedding=True)
     condition_column = "sample"
     group_col = "condition"
 
@@ -237,23 +235,17 @@ def makeFigure():
     row3 = subfigs[2].subplots(1, 3)
     ax_k, ax_l, ax_m = row3
 
-    X_epi_sender_5 = X[X.obs["celltype"] == "Epithelial"]
-    X_epi_sender_5 = X_epi_sender_5[
-        np.argsort(-X_epi_sender_5.obsm["sc_B"][:, CMP2 - 1])
-    ]
-    X_epi_receiver_5 = X[X.obs["celltype"] == "Epithelial"]
-    X_epi_receiver_5 = X_epi_receiver_5[
-        np.argsort(X_epi_receiver_5.obsm["rc_C"][:, CMP2 - 1])
-    ]
-    df = binned_expression_product_matrix(
-        X_epi_sender_5, X_epi_receiver_5, "CDH1", "CDH1"
+    plot_interaction_heatmap(
+        X,
+        cmp=CMP2,
+        ligand="CDH1",
+        receptor="CDH1",
+        ax=ax_k,
+        sender_celltype="Epithelial",
+        receiver_celltype="Epithelial",
+        sender_label="Sender Epithelial Cells",
+        receiver_label="Receiver Epithelial Cells",
     )
-    sns.heatmap(df, ax=ax_k, cmap="viridis")
-    ax_k.set_xlabel("Receiver Epithelial Cells")
-    ax_k.set_ylabel("Sender Epithelial Cells")
-    ax_k.set_title("CDH1-CDH1 Interaction")
-    ax_k.set_xticks([])
-    ax_k.set_yticks([])
     label_panel(ax_k, "k")
 
     _, colors = _condition_colors(X, condition_column, group_col)

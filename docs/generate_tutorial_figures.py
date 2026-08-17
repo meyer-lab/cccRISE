@@ -7,7 +7,6 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend
 from pathlib import Path
 
-import anndata
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -36,6 +35,7 @@ from cellcommunicationpf2.import_data import (
 )
 from cellcommunicationpf2.tensor import (
     calculate_interaction_tensor,
+    rise_store_r2x,
     run_fms_r2x_analysis,
 )
 from cellcommunicationpf2.utils import (
@@ -43,7 +43,7 @@ from cellcommunicationpf2.utils import (
 )
 
 print("Loading dataset...")
-X = import_balf_covid(gene_threshold=0.01, normalize=True)
+X = import_balf_covid(gene_threshold=0.001, normalize=True)
 lr_pairs = import_ligand_receptor_pairs()
 
 # Add numerical indices for each sample (condition)
@@ -81,11 +81,10 @@ print("\n=== CPD Rank Selection ===")
 print("Calculating interaction tensor for CPD rank selection...")
 rise_rank_for_cpd = 35
 
-# Calculate interaction tensor
-print(f"Building interaction tensor with RISE rank={rise_rank_for_cpd}...")
-interaction_tensor = calculate_interaction_tensor(
-    X, lr_pairs, rise_rank=rise_rank_for_cpd
-)
+# Process with RISE and calculate interaction tensor
+print(f"Fitting RISE with rank={rise_rank_for_cpd} and building interaction tensor...")
+X, _ = rise_store_r2x(X, rank=rise_rank_for_cpd, n_iter_max=1000, tolerance=1e-9)
+interaction_tensor = calculate_interaction_tensor(X, lr_pairs)
 print(f"Interaction tensor shape: {interaction_tensor.shape}")
 
 # Run actual CPD FMS/R2X analysis
@@ -112,9 +111,11 @@ plt.tight_layout()
 plt.savefig(output_dir / "step2_cpd_fms_r2x.png", dpi=150, bbox_inches="tight")
 plt.close()
 
+from cellcommunicationpf2.figures.common import get_covid_data
+
 print("\n=== Running CCC-RISE Factorization ===")
 
-X = anndata.read_h5ad("/opt/andrew/ccc/bal_covid19.h5ad")
+X = get_covid_data(project_cells=True, do_embedding=True)
 
 # Figure 3: Individual Factor Visualizations
 print("Generating Figure 3: Individual factor visualizations...")

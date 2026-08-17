@@ -1,0 +1,139 @@
+## REFERENCES
+
+1\. Wang, X., Almet, A. A. & Nie, Q. The promising application of cell-cell interaction analysis in cancer from single-cell and spatial transcriptomics. _Seminars in Cancer Biology_ **95**, 42--51 (2023).
+
+2\. Su, J. _et al._ Cell--cell communication: new insights and clinical implications. _Sig Transduct Target Ther_ **9**, 196 (2024).
+
+3\. Armingol, E., Officer, A., Harismendy, O. & Lewis, N. E. Deciphering cell--cell interactions and communication from gene expression. _Nat Rev Genet_ **22**, 71--88 (2021).
+
+4\. Dimitrov, D. _et al._ Comparison of methods and resources for cell-cell communication inference from single-cell RNA-Seq data. _Nat Commun_ **13**, 3224 (2022).
+
+5\. Jin, S. _et al._ Inference and analysis of cell-cell communication using CellChat. _Nat Commun_ **12**, 1088 (2021).
+
+6\. Zhang, Y. _et al._ Cellinker: a platform of ligand--receptor interactions for intercellular communication analysis. _Bioinformatics_ **37**, 2025--2032 (2021).
+
+7\. Jin, S., Plikus, M. V. & Nie, Q. CellChat for systematic analysis of cell--cell communication from single-cell transcriptomics. _Nat Protoc_ **20**, 180--219 (2025).
+
+8\. Cesaro, G. _et al._ Advances and challenges in cell--cell communication inference: a comprehensive review of tools, resources, and future directions. _Briefings in Bioinformatics_ **26**, bbaf280 (2025).
+
+9\. Efremova, M., Vento-Tormo, M., Teichmann, S. A. & Vento-Tormo, R. CellPhoneDB: inferring cell--cell communication from combined expression of multi-subunit ligand--receptor complexes. _Nat Protoc_ **15**, 1484--1506 (2020).
+
+10\. Armingol, E., Baghdassarian, H. M. & Lewis, N. E. The diversification of methods for studying cell--cell interactions and communication. _Nat Rev Genet_ **25**, 381--400 (2024).
+
+11\. Armingol, E. _et al._ Context-aware deconvolution of cell--cell communication with Tensor-cell2cell. _Nat Commun_ **13**, 3665 (2022).
+
+12\. Schubert, M. _et al._ Perturbation-response genes reveal signaling footprints in cancer gene expression. _Nat Commun_ **9**, 20 (2018).
+
+13\. Griffiths, J. I. _et al._ Circulating immune cell phenotype dynamics reflect the strength of tumor--immune cell interactions in patients during immunotherapy. _Proc. Natl. Acad. Sci. U.S.A._ **117**, 16072--16082 (2020).
+
+14\. Hwang, S., Kim, S., Shin, H. & Lee, D. Context-dependent transcriptional regulations between signal transduction pathways. _BMC Bioinformatics_ **12**, 19 (2011).
+
+15\. Jerby-Arnon, L. & Regev, A. DIALOGUE maps multicellular programs in tissue from single-cell or spatial transcriptomics data. _Nat Biotechnol_ **40**, 1467--1477 (2022).
+
+16\. Ramirez Flores, R. O., Lanzer, J. D., Dimitrov, D., Velten, B. & Saez-Rodriguez, J. Multicellular factor analysis of single-cell data for a tissue-centric understanding of disease. _eLife_ **12**, e93161 (2023).
+
+17\. Browaeys, R. _et al._ MultiNicheNet: a flexible framework for differential cell-cell communication analysis from multi-sample multi-condition single-cell transcriptomics data. Preprint at https://doi.org/10.1101/2023.06.13.544751 (2023).
+
+18\. Dai, Q., Yang, J. & Epstein, M. P. Identifying condition-related cell-cell communication events using supervised tensor analysis.
+
+19\. Mitchel, J. _et al._ Coordinated, multicellular patterns of transcriptional variation that stratify patient cohorts are revealed by tensor decomposition. _Nat Biotechnol_ **43**, 1192--1201 (2025).
+
+20\. Tsuyuzaki, K., Ishii, M. & Nikaido, I. Sctensor detects many-to-many cell--cell interactions from single cell RNA-sequencing data. _BMC Bioinformatics_ **24**, 420 (2023).
+
+21\. Kolda, T. G. & Bader, B. W. Tensor Decompositions and Applications. _SIAM Rev._ **51**, 455--500 (2009).
+
+22\. Tan, Z. C. & Meyer, A. S. The structure is the message: Preserving experimental context through tensor decomposition. _Cell Systems_ **15**, 679--693 (2024).
+
+23\. Cembrowski, M. S. & Spruston, N. Heterogeneity within classical cell types is the rule: lessons from hippocampal pyramidal neurons. _Nat Rev Neurosci_ **20**, 193--204 (2019).
+
+24\. Sparta, B., Hamilton, T., Hughes, S., Natesan, G. & Deeds, E. J. A lack of distinct cell identities in single-cell measurements: revisiting Waddington's landscape. Preprint at https://doi.org/10.1101/2022.06.03.494765 (2022).
+
+25\. Qi, L. & Teschendorff, A. E. Cell-type heterogeneity: Why we should adjust for it in epigenome and biomarker studies. _Clin Epigenet_ **14**, 31 (2022).
+
+26\. Wilk, A. J., Shalek, A. K., Holmes, S. & Blish, C. A. Comparative analysis of cell--cell communication at single-cell resolution. _Nat Biotechnol_ **42**, 470--483 (2024).
+
+27\. Kojima, Y. _et al._ Single-cell colocalization analysis using a deep generative model. _Cell Systems_ **15**, 180-192.e7 (2024).
+
+28\. Raredon, M. S. B. _et al._ Comprehensive visualization of cell--cell interactions in single-cell and spatial transcriptomics with NICHES. _Bioinformatics_ **39**, btac775 (2023).
+
+29\. Subedi, S. & Park, Y. P. Single-cell pair-wise relationships untangled by composite embedding model. _iScience_ **26**, 106025 (2023).
+
+30\. Yang, W. _et al._ Deciphering cell--cell communication at single-cell resolution for spatial transcriptomics with subgraph-based graph attention network. _Nat Commun_ **15**, 7101 (2024).
+
+31\. Ramirez, A. _et al._ Integrative, high-resolution analysis of single-cell gene expression across experimental conditions with PARAFAC2-RISE. _Cell Systems_ **16**, 101294 (2025).
+
+32\. Wall, M. E., Rechtsteiner, A. & Rocha, L. M. Singular Value Decomposition and Principal Component Analysis. in _A Practical Approach to Microarray Data Analysis_ (eds Berrar, D. P., Dubitzky, W. & Granzow, M.) 91--109 (Springer US, Boston, MA, 2003). doi:10.1007/0-306-47815-3_5.
+
+33\. Liao, M. _et al._ Single-cell landscape of bronchoalveolar immune cells in patients with COVID-19. _Nat Med_ **26**, 842--844 (2020).
+
+34\. Alanko, J. _et al._ CCR7 acts as both a sensor and a sink for CCL19 to coordinate collective leukocyte migration. _Sci. Immunol._ **8**, eadc9584 (2023).
+
+35\. Tveita, A. _et al._ High Circulating Levels of the Homeostatic Chemokines CCL19 and CCL21 Predict Mortality and Disease Severity in COVID-19. _The Journal of Infectious Diseases_ **226**, 2150--2160 (2022).
+
+36\. Wimmers, F. _et al._ Multi-omics analysis of mucosal and systemic immunity to SARS-CoV-2 after birth. _Cell_ **186**, 4632-4651.e23 (2023).
+
+37\. Mothes, R. _et al._ Distinct tissue niches direct lung immunopathology via CCL18 and CCL21 in severe COVID-19. _Nat Commun_ **14**, 791 (2023).
+
+38\. Cong, Y. & Ren, X. Coronavirus entry and release in polarized epithelial cells: a review. _Reviews in Medical Virology_ **24**, 308--315 (2014).
+
+39\. Maddaloni, L. _et al._ Pattern Recognition Receptors (PRRs) Expression and Activation in COVID-19 and Long COVID: From SARS-CoV-2 Escape Mechanisms to Emerging PRR-Targeted Immunotherapies. _Microorganisms_ **13**, 2176 (2025).
+
+40\. Kam, N.-W., Lau, C.-Y., Che, C.-M. & Lee, V. H.-F. Nasopharynx Battlefield: Cellular Immune Responses Mediated by Midkine in Nasopharyngeal Carcinoma and COVID-19. _Cancers_ **15**, 4850 (2023).
+
+41\. Calabrese, D. R. _et al._ Macrophage and CD8 T cell discordance are associated with acute lung allograft dysfunction progression. _The Journal of Heart and Lung Transplantation_ **43**, 1074--1086 (2024).
+
+42\. Van Der Ploeg, E. A., Melgert, B. N., Burgess, J. K. & Gan, C. T. The potential of biomarkers of fibrosis in chronic lung allograft dysfunction. _Transplantation Reviews_ **35**, 100626 (2021).
+
+43\. Moshkelgosha, S. _et al._ Interferon-stimulated and metallothionein-expressing macrophages are associated with acute and chronic allograft dysfunction after lung transplantation. _The Journal of Heart and Lung Transplantation_ **41**, 1556--1569 (2022).
+
+44\. Brunet-Ratnasingham, E. _et al._ Persistent and progressive acute lung allograft dysfunction is linked to cell compositional and transcriptional changes in small airways. _The Journal of Heart and Lung Transplantation_ **44**, 1482--1492 (2025).
+
+45\. Lin, W. _et al._ scRNA-Seq Analysis Revealed CAFs Regulating HCC Cells via PTN Signaling. _JHC_ **Volume 11**, 2269--2281 (2024).
+
+46\. Poimenidi, E. _et al._ Regulation of Pleiotrophin and PTPRZ1 Expression by Hypoxia to Restrict Hypoxia-Induced Cell Migration. _Cancers_ **17**, 1516 (2025).
+
+47\. Mourkogianni, E. _et al._ Pleiotrophin Activates cMet- and mTORC1-Dependent Protein Synthesis through PTPRZ1---The Role of ανβ3 Integrin. _IJMS_ **25**, 10839 (2024).
+
+48\. Teoh, K.-T. _et al._ The SARS Coronavirus E Protein Interacts with PALS1 and Alters Tight Junction Formation and Epithelial Morphogenesis. _MBoC_ **21**, 3838--3852 (2010).
+
+49\. Zhang, J. _et al._ Tight junction protein occludin is an internalization factor for SARS-CoV-2 infection and mediates virus cell-to-cell transmission. _Proc. Natl. Acad. Sci. U.S.A._ **120**, e2218623120 (2023).
+
+50\. Weigt, S. S. _et al._ Development and validation of a bronchoalveolar lavage genomic classifier for acute cellular rejection. _eBioMedicine_ **122**, 106046 (2025).
+
+51\. Kotwica-Mojzych, K., Jodłowska-Jędrych, B. & Mojzych, M. CD200:CD200R Interactions and Their Importance in Immunoregulation. _IJMS_ **22**, 1602 (2021).
+
+52\. Patoine, D., Bouchard, K., Lemay, A.-M., Bissonnette, E. Y. & Lauzon-Joset, J.-F. Specificity of CD200/CD200R pathway in LPS-induced lung inflammation. _Front. Immunol._ **13**, 1092126 (2022).
+
+53\. Oweira, H. _et al._ Pre-transplant CD200 and CD200R1 concentrations are associated with post-transplant events in kidney transplant recipients. _Medicine_ **98**, e17006 (2019).
+
+54\. Verma, K. _et al._ CD70 identifies alloreactive T cells and represents a potential target for prevention and treatment of acute GVHD. _Blood Advances_ **8**, 4900--4912 (2024).
+
+55\. Lee, W.-W., Yang, Z.-Z., Li, G., Weyand, C. M. & Goronzy, J. J. Unchecked CD70 Expression on T Cells Lowers Threshold for T Cell Activation in Rheumatoid Arthritis. _The Journal of Immunology_ **179**, 2609--2615 (2007).
+
+56\. Lutfi, F., Wu, L., Sunshine, S. & Cao, X. Targeting the CD27-CD70 Pathway to Improve Outcomes in Both Checkpoint Immunotherapy and Allogeneic Hematopoietic Cell Transplantation. _Front. Immunol._ **12**, 715909 (2021).
+
+57\. Valujskikh, A. The Challenge of Inhibiting Alloreactive T-Cell Memory. _American Journal of Transplantation_ **6**, 647--651 (2006).
+
+58\. Kim, H. _et al._ scICE: enhancing clustering reliability and efficiency of scRNA-seq data with multi-cluster label consistency evaluation. _Nat Commun_ **16**, 6031 (2025).
+
+59\. Su, K., Wu, Z. & Wu, H. Simulation, power evaluation and sample size recommendation for single-cell RNA-seq. _Bioinformatics_ **36**, 4860--4868 (2020).
+
+60\. Davis, A., Gao, R. & Navin, N. E. SCOPIT: sample size calculations for single-cell sequencing experiments. _BMC Bioinformatics_ **20**, 566 (2019).
+
+61\. Jeon, H. _et al._ Statistical Power Analysis for Designing Bulk, Single-Cell, and Spatial Transcriptomics Experiments: Review, Tutorial, and Perspectives. _Biomolecules_ **13**, 221 (2023).
+
+62\. Zanzoni, A., Spinelli, L., Ribeiro, D. M., Tartaglia, G. G. & Brun, C. Post-transcriptional regulatory patterns revealed by protein-RNA interactions. _Sci Rep_ **9**, 4302 (2019).
+
+63\. Sinn, L. R. & Demichev, V. Entering the era of deep single-cell proteomics. _Nat Methods_ **22**, 459--460 (2025).
+
+64\. Momenzadeh, A. & Meyer, J. G. Single-cell proteomics using mass spectrometry. _Cell Genomics_ **5**, 100973 (2025).
+
+65\. Kiers, H. A. L., ten Berge, J. M. F. & Bro, R. PARAFAC2---Part I. A direct fitting algorithm for the PARAFAC2 model. _J. Chemometrics_ **13**, 275--294 (1999).
+
+66\. Yu, H., Augustijn, D. & Bro, R. Accelerating PARAFAC2 algorithms for non-negative complex tensor decomposition. _Chemometrics and Intelligent Laboratory Systems_ **214**, 104312 (2021).
+
+67\. Wang, Y., Huang, H., Rudin, C. & Shaposhnik, Y. Understanding How Dimension Reduction Tools Work: An Empirical Approach to Deciphering t-SNE, UMAP, TriMap, and PaCMAP for Data Visualization.
+
+68\. Roald, M. _et al._ An AO-ADMM Approach to Constraining PARAFAC2 on All Modes. _SIAM Journal on Mathematics of Data Science_ **4**, 1191--1222 (2022).
+
+69\. Defazio, A., Bach, F. & Lacoste-Julien, S. SAGA: A Fast Incremental Gradient Method With Support for Non-Strongly Convex Composite Objectives.

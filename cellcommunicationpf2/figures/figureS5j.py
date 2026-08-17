@@ -4,7 +4,6 @@ Figure A4d: Logistic regression weights for ALAD vs Control classification based
 
 import itertools
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -13,7 +12,7 @@ from sklearn.linear_model import LogisticRegression
 
 from ..import_data import add_cond_idxs
 from ..utils import correct_conditions
-from .common import ALAD_PATH, getSetup, subplotLabel
+from .common import get_alad_data, getSetup, subplotLabel
 from .commonFuncs.plotGeneral import (
     binarize_group,
     get_sample_to_group,
@@ -27,7 +26,7 @@ def makeFigure():
     subplotLabel(ax)
 
     # Import and prepare data
-    X = anndata.read_h5ad(ALAD_PATH)
+    X = get_alad_data(project_cells=True)
 
     # Add numerical indices for each patient sample, which is the primary condition
     condition_column = "dsco_id"
@@ -48,7 +47,7 @@ def makeFigure():
 
 def pair_logistic_regression(X: np.ndarray, status_df: pd.DataFrame, ax: Axes):
     """Plot factor weights for donor SLE prediction"""
-    lrmodel = LogisticRegression(penalty=None)
+    lrmodel = LogisticRegression(C=np.inf)
     all_comps = np.arange(X.shape[1])
     acc = np.zeros((X.shape[1], X.shape[1]))
 

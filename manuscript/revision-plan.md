@@ -17,13 +17,13 @@ The RISE step — `parafac2_nd` from the `meyer-lab/parafac2` package (pinned in
 `pyproject.toml`) — is the **GPU/CUDA-dependent** bottleneck and must run on the
 cluster. Everything downstream of a cached RISE factorization is CPU-friendly: CPD
 (`tensorly.parafac`), logistic regression, permutation nulls, GO enrichment,
-simulation *scoring*, and figure generation. Each item below is tagged:
+simulation _scoring_, and figure generation. Each item below is tagged:
 
 - **[GPU]** — requires the CUDA cluster (RISE fits / large sweeps).
 - **[CPU]** — runnable on any workstation once RISE outputs are cached.
 
 **Critical path:** the communication-score sign fix (Part 3) changes the tensor and can
-shift downstream results, so it must be resolved *before* re-running the simulation
+shift downstream results, so it must be resolved _before_ re-running the simulation
 benchmark, competitor comparisons, classifiers, and all figures.
 
 ---
@@ -31,6 +31,7 @@ benchmark, competitor comparisons, classifiers, and all figures.
 ## Triage: what decides the paper vs. what is goodwill
 
 **CORE (decides acceptance):**
+
 - Ground-truth simulation with precision/recall — R1#2, R2#1 (Part 1)
 - Head-to-head competitor benchmarking incl. ALAD AUC — R1#1, R2#1 (Part 2)
 - Communication-score sign fix + scoring robustness — R1#3, R2#3, R2-minor#3/#1 (Part 3)
@@ -38,6 +39,7 @@ benchmark, competitor comparisons, classifiers, and all figures.
 - Permutation null for component significance — R1#6, R2#3 (Part 4)
 
 **SUBSTANTIVE (strengthens):**
+
 - GO enrichment of components & logreg genes — R2#2 (Part 5)
 - Unify condition-component selection across datasets — R2#5 (Part 6)
 - Rank/seed sensitivity via FMS — R2#4 (Part 6)
@@ -50,7 +52,8 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
 
 ---
 
-## Part 1 — Ground-truth simulation framework  **[GPU for RISE; CPU for scoring]**
+## Part 1 — Ground-truth simulation framework **[GPU for RISE; CPU for scoring]**
+
 **Answers: R1#2, R2#1 (the crux). Highest impact.**
 
 - Adopt a **SERGIO-based** simulator producing multi-condition scRNA-seq with **known**
@@ -64,11 +67,12 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
 - Sweep a biologically plausible range — effect size, driver-subpopulation fraction,
   number of conditions, dropout/noise — as R1 requested in cross-commenting.
 - **New code:** `cellcommunicationpf2/simulation.py` (generator + ground-truth registry
-  + scoring metrics); `figures/figureSimX.py`.
+    - scoring metrics); `figures/figureSimX.py`.
 - **New figure:** "Quantitative validation on simulated ground truth" — ROC/PR curves
   plus a recall-vs-subpopulation-fraction sweep heatmap.
 
-## Part 2 — Competitor benchmarking  **[GPU for RISE; separate envs for competitors]**
+## Part 2 — Competitor benchmarking **[GPU for RISE; separate envs for competitors]**
+
 **Answers: R1#1, R2#1. Highest impact.**
 
 - **Tensor-cell2cell:** run on COVID + ALAD; compare condition factors and **report
@@ -79,7 +83,7 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
   CCC-RISE degrades vs. Scriabin when the multi-condition advantage is removed (R1#1).
 - **STACCato:** ALAD-status AUC comparison (R1#1).
 - **NICHES / DeepCOLOR:** additional single-cell-resolution concordance.
-- **Pseudobulk-overlap concern (R2#1):** quantify overlap between *all* CCC-RISE and
+- **Pseudobulk-overlap concern (R2#1):** quantify overlap between _all_ CCC-RISE and
   pseudobulk-CPD components (not just the two highlighted), and classify each
   non-recovered pseudobulk component as recovered-but-reordered vs. genuinely absent —
   with data, not assertion.
@@ -88,7 +92,8 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
 - **Deliverable:** benchmark table (AUC/accuracy × method × dataset) + concordance
   figure.
 
-## Part 3 — Communication-score sign fix & robustness  **[CPU once RISE cached]**
+## Part 3 — Communication-score sign fix & robustness **[CPU once RISE cached]**
+
 **Answers: R1#3, R2#3, R2-minor#3/#1. Fundamental — do early.**
 
 - **Root cause:** `compute_ccc_matrix` (`cellcommunicationpf2/ccc.py:92`) takes
@@ -109,14 +114,11 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
   CellChat-style thresholded/Hill score) and show headline components are stable across
   scoring choices.
 
-## Part 4 — Statistical rigor: nested CV + permutation null  **[CPU once RISE cached]**
+## Part 4 — Statistical rigor: nested CV + permutation null **[CPU once RISE cached]**
+
 **Answers: R1#4, R1#5, R1#6, R2#3.**
 
-- **Nested CV (R1#4):** current `cpd_ranks_logreg` / `rise_ranks_logreg`
-  (`cellcommunicationpf2/logreg.py`) select rank via
-  `np.max(np.mean(lr_fit.scores_[1], axis=0))` on the full dataset — selection and
-  reporting use the same CV, biasing AUC upward. Refactor so rank/eigen-state selection
-  happens **inside an outer CV loop**; report honest outer-fold AUC.
+- **Nested CV (R1#4):** Select rank of decomposition on reconstruction, not prediction.
 - **Small-sample honesty (R1#5):** state plainly that COVID n=12 and the ALAD classifier
   lack an external validation cohort; foreground the existing negative result
   (components do not predict CLAD/death). Lean on the independent CD70/airway-brush
@@ -127,7 +129,8 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
   observed vs. null. Supplies the CellPhoneDB/CellChat-style significance the reviewers
   ask for.
 
-## Part 5 — Biological validation: GO enrichment  **[CPU]**
+## Part 5 — Biological validation: GO enrichment **[CPU]**
+
 **Answers: R2#2.**
 
 - GO/pathway enrichment (`gseapy` or `decoupler`) on (a) top-weighted LR pairs per
@@ -137,7 +140,8 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
   biology, not decomposition artifacts.
 - **Deliverable:** enrichment EV figure + supplementary tables.
 
-## Part 6 — Consistency, sensitivity & Methods rewrite  **[CPU; RISE sweeps GPU]**
+## Part 6 — Consistency, sensitivity & Methods rewrite **[CPU; RISE sweeps GPU]**
+
 **Answers: R2#4, R2#5, R2#6, R1#7, R1#8.**
 
 - **Unify component selection (R2#5):** apply one selection procedure to both datasets
@@ -152,13 +156,14 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
   (2) 4D communication-tensor construction, (3) CPD — with one **consistent symbol
   table** (current text reuses/collides symbols, e.g. $B$) and a biological gloss for
   every symbol.
-- **Label-free framing (R1#8):** soften "beyond cell-type boundaries" *or* demonstrate
+- **Label-free framing (R1#8):** soften "beyond cell-type boundaries" _or_ demonstrate
   for ≥1 program that identity was established **without** reusing prior annotations
   (de novo marker enrichment on the driver subpopulation).
 - **Differential-CCC methods (R1#7):** add scDiffCom and CrossTalkeR to intro/discussion
   and references; connect to the Part 4 permutation null.
 
-## Part 7 — Minor comments & EMBO editorial  **[CPU / non-code]**
+## Part 7 — Minor comments & EMBO editorial **[CPU / non-code]**
+
 **Answers: R2-minor#2/#4/#5/#6/#7 + editor's list.**
 
 - **Batch effects (R2-minor#2):** explain whether/how RISE+CPD absorb per-patient /

@@ -1,4 +1,3 @@
-import io
 import os
 import urllib.request
 from functools import lru_cache
@@ -8,16 +7,16 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
-import zstandard as zstd
 from scipy.sparse import csr_array, issparse
 
-DATA_DIR = Path("/opt/andrew/ccc")
+DATA_DIR = Path(__file__).parent / "data"
+LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
-    filename=str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
-    gene_threshold: float = 0.01,
+    filename: str = str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
+    gene_threshold: float = 0.001,
     normalize: bool = True,
 ) -> anndata.AnnData:
     """BALF samples from COVID-19 patients
@@ -46,8 +45,14 @@ def import_balf_covid(
     url = "https://zenodo.org/record/7535867/files/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     if not os.path.exists(filename):
-        print("Downloading data from Zenodo...")
-        urllib.request.urlretrieve(url, filename)
+        local_file = Path("./BALF-COVID19-Liao_et_al-NatMed-2020.h5ad")
+        if local_file.exists():
+            import shutil
+
+            shutil.copyfile(local_file, filename)
+        else:
+            print("Downloading data from Zenodo...")
+            urllib.request.urlretrieve(url, filename)
 
     print("Loading BALF COVID data (preserving sparse format)...")
     adata = anndata.read_h5ad(filename)
@@ -64,32 +69,31 @@ def import_balf_covid(
 
 @lru_cache(maxsize=1)
 def import_ligand_receptor_pairs(
-    filename=str(DATA_DIR / "Human-2020-Jin-LR-pairs.csv.zst"),
+    filename: str | Path = LR_PAIRS_PATH,
     update_interaction_names: bool = True,
 ) -> pd.DataFrame:
-    """Import ligand-receptor pairs from a zstd-compressed CSV with caching."""
-    print("Loading ligand-receptor pairs data (zstd compressed)...")
-    with open(filename, "rb") as f:
-        dctx = zstd.ZstdDecompressor()
-        with dctx.stream_reader(f) as reader:
-            text_stream = io.TextIOWrapper(reader, encoding="utf-8")
-            df = pd.read_csv(text_stream)
-
-    print(f"Cached {len(df)} ligand-receptor pairs")
+    """Import ligand-receptor pairs from a parquet file with caching."""
+    df = pd.read_parquet(filename)
 
     if update_interaction_names:
         if "interaction_name_2" in df.columns:
-            df["ligand"] = df["interaction_name_2"].apply(
-                lambda x: x.split(" - ")[0].upper()
+            df["ligand"] = (
+                df["interaction_name_2"]
+                .apply(lambda x: x.split(" - ")[0].upper())
+                .astype("category")
             )
-            df["receptor"] = df["interaction_name_2"].apply(
-                lambda x: (
-                    x.split(" - ")[1]
-                    .upper()
-                    .replace("(", "")
-                    .replace(")", "")
-                    .replace("+", "&")
+            df["receptor"] = (
+                df["interaction_name_2"]
+                .apply(
+                    lambda x: (
+                        x.split(" - ")[1]
+                        .upper()
+                        .replace("(", "")
+                        .replace(")", "")
+                        .replace("+", "&")
+                    )
                 )
+                .astype("category")
             )
         # Also update interaction_symbol if present
         if "interaction_symbol" in df.columns:
@@ -100,12 +104,81 @@ def import_ligand_receptor_pairs(
     return df
 
 
-def import_alad(gene_threshold: float = 0.1, normalize: bool = True):
+def import_alad(
+    filename: str | Path = "./BAL-scRNAseq-raw.h5ad",
+    gene_threshold: float = 0.001,
+    normalize: bool = True,
+):
     """Generate data for ALAD analysis, filtering and scaling as needed.
     patient ids: dsco_id
     """
     # Load data without backing to avoid issues with sparse conversion
-    data = anndata.read_h5ad("/opt/BAL-scRNAseq-raw.h5ad")
+    data = anndata.read_h5ad(filename)
+
+    # Map cell types directly from the metadata column revised_annotations_10_5
+    if "revised_annotations_10_5" in data.obs:
+        celltype_map = {
+            0: "Macrophage 1",
+            1: "Macrophage 2",
+            2: "Monocyte",
+            3: "Macrophage 3",
+            4: "Macrophage 4",
+            5: "Macrophage 5",
+            7: "Macrophage 6",
+            8: "Macrophage 7",
+            9: "Macrophage",
+            10: "Macrophage 8",
+            11: "Macrophage Ribo-high",
+            12: "CD8 T cells",
+            13: "Cytokine prod.macrophage",
+            15: "Cytokine prod.macrophage 2",
+            16: "CD4 T cells",
+            17: "Tissue resident Macrophage",
+            18: "Activated Mono/Mac",
+            19: "Proliferating cells",
+            20: "cDC2",
+            21: "NK cells",
+            22: "Treg",
+            23: "Lung epithelium",
+            24: "Activated CD8",
+            25: "Activated DCs",
+            26: "Anti-Inflammatory Macrophages",
+            27: "cDC1",
+        }
+        broad_map = {
+            0: "Macrophages",
+            1: "Macrophages",
+            2: "Monocytes",
+            3: "Macrophages",
+            4: "Macrophages",
+            5: "Macrophages",
+            7: "Macrophages",
+            8: "Macrophages",
+            9: "Macrophages",
+            10: "Macrophages",
+            11: "Macrophages",
+            12: "CD8 T cells",
+            13: "Macrophages",
+            15: "Macrophages",
+            16: "CD4 T cells",
+            17: "Macrophages",
+            18: "Macrophages",
+            19: "Proliferating cells",
+            20: "Dendritic Cells",
+            21: "NK cells",
+            22: "CD4 T cells",
+            23: "Epithelial cells",
+            24: "CD8 T cells",
+            25: "Dendritic Cells",
+            26: "Macrophages",
+            27: "Dendritic Cells",
+        }
+        data.obs["celltype"] = (
+            data.obs["revised_annotations_10_5"].map(celltype_map).values
+        )
+        data.obs["broad_cell_type"] = (
+            data.obs["revised_annotations_10_5"].map(broad_map).values
+        )
 
     # Convert to sparse format if not already sparse
     if not issparse(data.X):

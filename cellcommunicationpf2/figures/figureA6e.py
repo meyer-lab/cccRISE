@@ -2,10 +2,8 @@
 Figure A63: Scatter plot of factor values for CCC-RISE
 """
 
-import anndata
-
 from .common import (
-    ALAD_STABLE_PATH,
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
@@ -17,7 +15,7 @@ def makeFigure():
     ax, f = getSetup((8, 8), (3, 3))  # 1 row, 3 columns for 3 L-R  pairs
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(ALAD_STABLE_PATH)
+    X = get_alad_data(project_cells=False)
     ccc_rise_cmp1 = 5
     ccc_rise_cmp2 = 9
 

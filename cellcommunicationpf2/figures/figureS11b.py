@@ -12,6 +12,7 @@ from ..utils import (
     add_obs_cmp_unique_one,
 )
 from .common import (
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
@@ -21,11 +22,8 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad("/opt/andrew/ccc/bal_alad.h5ad")
-    cmp5 = [5, "CD4 T cells"]
-    cmp7 = [7, "CD4 T cells"]
+    X = get_alad_data(project_cells=True)
     cmp13 = [13, "Dendritic Cells"]
-    cmp17 = [17, "NK cells"]
     ccc_rise_cmp = cmp13[0]
 
     X_epi_sender = X[X.obs["broad_cell_type"] == cmp13[1]]
@@ -35,7 +33,7 @@ def makeFigure():
     X_epi_sender_top = add_obs_cmp_unique_one(X_epi_sender_top, cmp=ccc_rise_cmp)
     X_epi_sender_top = X_epi_sender_top[
         X_epi_sender_top.obs["Label"].isin([f"Cmp{ccc_rise_cmp}"])
-    ]
+    ].copy()
     X_epi_sender_top.obs["Label"] = f"Cmp{ccc_rise_cmp}_Top"
 
     X_epi_sender_bottom = add_obs_cmp_label(
@@ -44,7 +42,7 @@ def makeFigure():
     X_epi_sender_bottom = add_obs_cmp_unique_one(X_epi_sender_bottom, cmp=ccc_rise_cmp)
     X_epi_sender_bottom = X_epi_sender_bottom[
         X_epi_sender_bottom.obs["Label"].isin([f"Cmp{ccc_rise_cmp}"])
-    ]
+    ].copy()
     X_epi_sender_bottom.obs["Label"] = "NoLabel"
 
     combined_X = anndata.concat([X_epi_sender_top, X_epi_sender_bottom])

@@ -2,13 +2,12 @@
 Figure S4a_c: Heatmaps of ligand-receptor expression products for selected cell types and components in CCC-RISE on BALF COVID-19 data.
 """
 
-import anndata
 import pandas as pd
 import seaborn as sns
 
 from ..utils import aggregate_communication_scores_by_group
 from .common import (
-    COVID19_PATH,
+    get_covid_data,
     getSetup,
     subplotLabel,
 )
@@ -18,7 +17,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(COVID19_PATH)
+    X = get_covid_data(project_cells=True)
 
     # Create barplot of percent of cell-cell interactions that are non-zero for each sample
     pal = sns.color_palette("Set2")

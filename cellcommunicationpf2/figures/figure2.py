@@ -6,7 +6,6 @@ Panel (a) is a hand-drawn schematic with no corresponding plotting script
 and is left as a placeholder.
 """
 
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -14,11 +13,12 @@ from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from scipy.stats import pearsonr
 
-from ..utils import binned_expression_product_matrix
-from .common import COVID19_PATH, COVID19_PSEUDOBULK_PATH
+from ..tensor import run_pseudobulk_workflow
+from .common import get_covid_data
 from .commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
+    plot_interaction_heatmap,
     plot_lr_factors,
 )
 from .commonFuncs.plotGeneral import get_sample_to_group, rotate_yaxis
@@ -41,8 +41,8 @@ def label_panel(ax, letter):
 
 
 def makeFigure():
-    X = anndata.read_h5ad(COVID19_PATH)
-    X_pseudo = anndata.read_h5ad(COVID19_PSEUDOBULK_PATH)
+    X = get_covid_data(project_cells=True, do_embedding=True)
+    X_pseudo, _ = run_pseudobulk_workflow(X.copy(), cp_rank=PSEUDOBULK_CMP)
 
     condition_column = "sample"
     group_col = "condition"
@@ -140,10 +140,16 @@ def makeFigure():
     ax_e.set_ylabel("CCC-RISE Condition Component")
     label_panel(ax_e, "e")
 
+    _, idx_sc, idx_pseudo = np.intersect1d(
+        X.uns["lr_pairs"], X_pseudo.uns["lr_pairs"], return_indices=True
+    )
+    lr_sc_aligned = lr_factor[idx_sc, :]
+    lr_pseudo_aligned = lr_factor_pseudo[idx_pseudo, :]
+
     r_mat = np.zeros((cmp, cmp))
     for i in range(cmp):
         for j in range(cmp):
-            r_mat[i, j] = pearsonr(lr_factor[:, i], lr_factor_pseudo[:, j])[0]
+            r_mat[i, j] = pearsonr(lr_sc_aligned[:, i], lr_pseudo_aligned[:, j])[0]
     r_df = pd.DataFrame(
         r_mat,
         index=pd.Index([f"{i + 1}" for i in range(cmp)]),
@@ -177,13 +183,13 @@ def makeFigure():
     label_panel(ax_g, "g")
 
     sns.scatterplot(
-        x=lr_factor[:, CCC_RISE_CMP - 1],
-        y=lr_factor_pseudo[:, PSEUDOBULK_CMP - 1],
+        x=lr_sc_aligned[:, CCC_RISE_CMP - 1],
+        y=lr_pseudo_aligned[:, PSEUDOBULK_CMP - 1],
         ax=ax_h,
         color="black",
     )
     r = np.corrcoef(
-        lr_factor[:, CCC_RISE_CMP - 1], lr_factor_pseudo[:, PSEUDOBULK_CMP - 1]
+        lr_sc_aligned[:, CCC_RISE_CMP - 1], lr_pseudo_aligned[:, PSEUDOBULK_CMP - 1]
     )[0, 1]
     ax_h.set_xlabel(f"CCC-RISE LR Component {CCC_RISE_CMP}")
     ax_h.set_ylabel(f"Pseudobulk CPD LR Component {PSEUDOBULK_CMP}")
@@ -222,35 +228,32 @@ def makeFigure():
     ax_k.set_title(f"Cmp. {CCC_RISE_CMP} Receiver Cells")
     label_panel(ax_k, "k")
 
-    X_mdc_sender = X[X.obs["celltype"] == "mDC"]
-    X_mdc_sender = X_mdc_sender[
-        np.argsort(-X_mdc_sender.obsm["sc_B"][:, CCC_RISE_CMP - 1])
-    ]
-
-    X_mdc_receiver = X[X.obs["celltype"] == "mDC"]
-    X_mdc_receiver = X_mdc_receiver[
-        np.argsort(X_mdc_receiver.obsm["rc_C"][:, CCC_RISE_CMP - 1])
-    ]
-    df = binned_expression_product_matrix(X_mdc_sender, X_mdc_receiver, "CCL19", "CCR7")
-    sns.heatmap(df, ax=ax_l, cmap="viridis", vmax=0.12)
-    ax_l.set_xlabel("Receiver mDCs")
-    ax_l.set_ylabel("Sender mDCs")
-    ax_l.set_xticks([])
-    ax_l.set_yticks([])
-    ax_l.set_title("CCL19-CCR7 Interaction")
+    plot_interaction_heatmap(
+        X,
+        cmp=CCC_RISE_CMP,
+        ligand="CCL19",
+        receptor="CCR7",
+        ax=ax_l,
+        sender_celltype="mDC",
+        receiver_celltype="mDC",
+        vmax=0.12,
+        sender_label="Sender mDCs",
+        receiver_label="Receiver mDCs",
+    )
     label_panel(ax_l, "l")
 
-    X_b_receiver = X[X.obs["celltype"] == "B"]
-    X_b_receiver = X_b_receiver[
-        np.argsort(X_b_receiver.obsm["rc_C"][:, CCC_RISE_CMP - 1])
-    ]
-    df = binned_expression_product_matrix(X_mdc_sender, X_b_receiver, "CCL19", "CCR7")
-    sns.heatmap(df, ax=ax_m, cmap="viridis", vmax=0.12)
-    ax_m.set_xlabel("Receiver B Cells")
-    ax_m.set_ylabel("Sender mDCs")
-    ax_m.set_xticks([])
-    ax_m.set_yticks([])
-    ax_m.set_title("CCL19-CCR7 Interaction")
+    plot_interaction_heatmap(
+        X,
+        cmp=CCC_RISE_CMP,
+        ligand="CCL19",
+        receptor="CCR7",
+        ax=ax_m,
+        sender_celltype="mDC",
+        receiver_celltype="B",
+        vmax=0.12,
+        sender_label="Sender mDCs",
+        receiver_label="Receiver B Cells",
+    )
     label_panel(ax_m, "m")
 
     return f

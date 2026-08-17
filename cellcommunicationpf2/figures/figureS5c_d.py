@@ -2,9 +2,6 @@
 Figure S5c_d: Correlation analysis of patient continuous variables in ALAD lung transplant dataset.
 """
 
-from typing import cast
-
-import anndata
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -12,102 +9,50 @@ from matplotlib.axes import Axes
 from scipy.stats import pearsonr
 
 from .common import (
-    ALAD_PATH,
+    get_alad_data,
     getSetup,
     subplotLabel,
 )
-
-# from ..utils import rotate_xaxis, rotate_yaxis
+from .commonFuncs.plotGeneral import (
+    prepare_alad_clinical_metadata,
+)
 
 
 def makeFigure():
     ax, f = getSetup((12, 12), (2, 2))
     subplotLabel(ax)
 
-    X = anndata.read_h5ad(ALAD_PATH)
-    X.obs["alad_status"] = (
-        X.obs["ALADstatus"]
-        .astype(str)
-        .replace({"recovered": "ALAD", "declined": "ALAD"})
-    )
-
-    # Convert d2b_index to continuous/numeric variable
-    X.obs["d2b_index"] = pd.to_numeric(X.obs["d2b_index"], errors="coerce")
-    print(f"d2b_index data type after conversion: {X.obs['d2b_index'].dtype}")
-    print(f"d2b_index unique values: {X.obs['d2b_index'].unique()}")
-    print(f"d2b_index value counts:\n{X.obs['d2b_index'].value_counts()}")
-
-    # Define patient categorical information
-    patient_info = [
-        "diagnosisgroup",
-        "sex",
-        "transplanttype",
-        "cmvstatus",
-        "cmv_status",
-        "cmvstatus2",
-        "ethnicity",
-        "6monthcondition",
-        "1yearcondition",
-    ]
-
-    # Define patient continuous variables
-    patient_continuous = [
-        "percent.mt",
-        "percent.ribo",
-        "isotype_ctl_max",
-        "doubletFinderScore",
-        "S.Score",
-        "G2M.Score",
-        "age",
-        "timeaftertx",
-        "Cells (M)",
-        "baselineFEV1",
-        "FEV16monthsb4",
-        "FEV16monthsb4p",
-        "FEV1alad",
-        "FEV1aladp",
-        "FEV16monthsafter",
-        "FEV16monthsafterp",
-        "FEV11yearafter",
-        "FEV1pyearafter",
-        "d2b_index",
-    ]
-
-    # Get unique samples with their information
-    obs = cast(pd.DataFrame, X.obs)
-    samples_df = (
-        obs[["dsco_id", "alad_status"] + patient_info]
-        .drop_duplicates(subset=["dsco_id"])
-        .reset_index(drop=True)
-    )
-
-    print(X.obs["d2b_index"].unique)
-    print(f"Sample dataframe shape: {samples_df.shape}")
-    print(samples_df)
-
-    for i in patient_continuous:
-        print(f"Processing continuous variable: {i}")
-        print(X.obs[i].dtype)
-
-    patient_continuous_df = (
-        obs[["dsco_id", "alad_status"] + patient_continuous]
-        .drop_duplicates(subset=["dsco_id"])
-        .reset_index(drop=True)
-    )
+    X = get_alad_data(project_cells=True)
+    patient_df = prepare_alad_clinical_metadata(X)
 
     # Calculate correlation between continuous variables by alad status from patient_continuous_df
-    alad_statuses = X.obs["alad_status"].unique()
+    alad_statuses = patient_df["alad_status"].unique()
 
     for i, status in enumerate(alad_statuses):
-        status_df = patient_continuous_df[
-            patient_continuous_df["alad_status"] == status
-        ]
+        status_df = patient_df[patient_df["alad_status"] == status]
         print(f"\nProcessing {status} status:")
         print(f"Shape: {status_df.shape}")
         print("Columns:", list(status_df.columns))
 
         # Drop non-numeric columns for correlation analysis
-        numeric_df = status_df.drop(columns=["dsco_id", "alad_status"])
+        cols_to_drop = [
+            c
+            for c in [
+                "dsco_id",
+                "alad_status",
+                "diagnosisgroup",
+                "sex",
+                "transplanttype",
+                "cmvstatus",
+                "cmv_status",
+                "cmvstatus2",
+                "ethnicity",
+                "6monthcondition",
+                "1yearcondition",
+            ]
+            if c in status_df.columns
+        ]
+        numeric_df = status_df.drop(columns=cols_to_drop)
 
         corr_df = correlation_df(numeric_df)
         plot_correlation_heatmap(
