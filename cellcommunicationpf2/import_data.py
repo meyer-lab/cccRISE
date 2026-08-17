@@ -194,6 +194,27 @@ def import_alad(
     return data
 
 
+def import_alad_brush(
+    filename="/opt/alad.brush.sc.h5ad",
+    gene_threshold: float = 0.01,
+    normalize: bool = True,
+) -> anndata.AnnData:
+    """Independent ALAD airway brushing dataset for validation.
+    patient ids: subj
+    """
+    print("Loading ALAD brushing data...")
+    data = anndata.read_h5ad(filename)
+
+    if not issparse(data.X):
+        from scipy.sparse import csr_matrix
+
+        data.X = csr_matrix(data.X)
+
+    return prepare_dataset(
+        data, "subj", geneThreshold=gene_threshold, normalize=normalize
+    )
+
+
 def add_cond_idxs(X, condition_key):
     """Add unique condition indices to an AnnData object."""
     # Create a copy to avoid modifying a view
