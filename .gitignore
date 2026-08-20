@@ -177,3 +177,6 @@ manuscript/_output/
 manuscript/.quarto/
 manuscript/_site/
 manuscript/*_files/
+
+# R/ (uvr-managed environment for reviewer-requested R methods)
+R/.uvr/
