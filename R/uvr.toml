@@ -1,0 +1,40 @@
+[project]
+name = "cellcommunication-pf2-R-methods"
+r_version = ">=4.5.0"
+
+[dependencies]
+CJIVE = "*"
+Matrix = "*"
+Rtsne = "*"
+Seurat = "*"
+arrow = "*"
+dplyr = "*"
+jsonlite = "*"
+rTensor = "*"
+scDiffCom = "*"
+tensorregress = "*"
+
+[dependencies.BisRNA]
+git = "cran/BisRNA"
+rev = "master"
+
+[dependencies.CellChat]
+git = "jinworks/CellChat"
+
+[dependencies.CrossTalkeR]
+git = "CostaLab/CrossTalkeR"
+
+[dependencies.DelayedArray]
+bioc = true
+
+[dependencies.NICHES]
+git = "msraredon/NICHES"
+
+[dependencies.STACCato]
+git = "daiqile96/STACCato"
+
+[dependencies.presto]
+git = "immunogenomics/presto"
+
+[dependencies.scriabin]
+git = "BlishLab/scriabin"
