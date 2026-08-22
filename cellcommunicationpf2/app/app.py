@@ -8,20 +8,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 from shiny import App, reactive, render, ui
 
-from ..figures.commonFuncs.plotFactors import (
+from cellcommunicationpf2.figures.commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_interaction_heatmap,
     plot_lr_factors,
     plot_lr_factors_partial,
 )
-from ..figures.commonFuncs.plotPaCMAP import (
+from cellcommunicationpf2.figures.commonFuncs.plotPaCMAP import (
     plot_labels_pacmap,
     plot_wc_pacmap,
     plot_wc_per_celltype,
 )
-from .data import DATASETS, load_dataset, load_raw_dataset
-from .lr_pairs import parse_lr_pairs
+from cellcommunicationpf2.app.data import DATASETS, load_dataset, load_raw_dataset
+from cellcommunicationpf2.app.lr_pairs import parse_lr_pairs
 
 DATASET_CHOICES = {key: spec.label for key, spec in DATASETS.items()}
 
@@ -104,7 +104,7 @@ def server(input, output, session):
     def factor_heatmaps():
         ds = dataset()
         X = ds.adata
-        fig, axes = plt.subplots(1, 4, figsize=(20, 8), constrained_layout=True)
+        fig, axes = plt.subplots(1, 4, figsize=(20, 8))
 
         plot_condition_factors(X, axes[0], cond=ds.spec.condition_col)
         axes[0].set_title("Condition Factor (A)")
@@ -139,7 +139,7 @@ def server(input, output, session):
         cmp = input.component()
         factor_matrix = "B" if input.weight_source() == "sender" else "C"
 
-        fig, axes = plt.subplots(1, 3, figsize=(20, 6.5), constrained_layout=True)
+        fig, axes = plt.subplots(1, 3, figsize=(20, 6.5))
 
         plot_wc_pacmap(X, cmp, axes[0], cbarMax=0.3, factor_matrix=factor_matrix)
         axes[0].set_title(f"Cmp. {cmp} {input.weight_source().capitalize()} Weight")
@@ -173,7 +173,7 @@ def server(input, output, session):
         X = ds.adata
         cmp = input.component()
 
-        fig, axes = plt.subplots(1, 2, figsize=(16, 8), constrained_layout=True)
+        fig, axes = plt.subplots(1, 2, figsize=(16, 8))
         plot_wc_per_celltype(
             X, cmp, axes[0], cellType=ds.spec.celltype_col, factor_matrix="B"
         )
@@ -237,7 +237,7 @@ def server(input, output, session):
     def lr_top_bottom_plot():
         ds = dataset()
         cmp = input.component()
-        fig, axes = plt.subplots(1, 2, figsize=(16, 4.5), constrained_layout=True)
+        fig, axes = plt.subplots(1, 2, figsize=(16, 4.5))
         plot_lr_factors_partial(ds.adata, cmp, axes[0], geneAmount=10, top=True)
         axes[0].set_title(f"Cmp. {cmp}: Top LR Pairs")
         plot_lr_factors_partial(ds.adata, cmp, axes[1], geneAmount=10, top=False)
@@ -261,7 +261,7 @@ def server(input, output, session):
         ligand_arg = pair.ligand
         receptor_arg = pair.receptor_subunits[0]
 
-        fig, ax = plt.subplots(figsize=(6, 6), constrained_layout=True)
+        fig, ax = plt.subplots(figsize=(6, 6))
         try:
             plot_interaction_heatmap(
                 X,
