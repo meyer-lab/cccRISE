@@ -157,7 +157,7 @@ def test_receiver_de_ranking_vs_rest():
 def test_receiver_de_ranking_invalid_mode_raises():
     adata = _make_synthetic_adata()
     with pytest.raises(ValueError, match="Unknown receiver_mode"):
-        receiver_de_ranking(adata, cmp=1, receiver_mode="bogus")  # type: ignore[arg-type]
+        receiver_de_ranking(adata, cmp=1, receiver_mode="bogus")  # ty: ignore[invalid-argument-type]
 
 
 def test_receiver_de_ranking_within_celltype_requires_celltype():
