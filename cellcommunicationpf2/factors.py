@@ -4,7 +4,7 @@ using xarray NetCDF objects.
 """
 
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import anndata
 import numpy as np
@@ -205,12 +205,12 @@ def load_factors_to_anndata(
 
     cond_key = condition_column or factors_ds.attrs.get("condition_key", "sample")
 
-    A_cp = cast(np.ndarray, factors_ds["cp_A"].values)
-    B_cp = cast(np.ndarray, factors_ds["cp_B"].values)
-    C_cp = cast(np.ndarray, factors_ds["cp_C"].values)
-    D_cp = cast(np.ndarray, factors_ds["cp_D"].values)
-    weights_cp = cast(np.ndarray, factors_ds["cp_weights"].values)
-    lr_pairs = cast(np.ndarray, factors_ds.coords["lr_pair"].values)
+    A_cp = factors_ds["cp_A"].values
+    B_cp = factors_ds["cp_B"].values
+    C_cp = factors_ds["cp_C"].values
+    D_cp = factors_ds["cp_D"].values
+    weights_cp = factors_ds["cp_weights"].values
+    lr_pairs = factors_ds.coords["lr_pair"].values
     r2x_cp = float(factors_ds.attrs.get("r2x_cp", 0.0))
 
     if adata is None:
@@ -281,10 +281,11 @@ def load_factors_to_anndata(
 def clean_memory() -> None:
     """Explicitly garbage collect and release CuPy device and pinned host memory pools."""
     import gc
+    import importlib
 
     gc.collect()
     try:
-        import cupy as cp
+        cp = importlib.import_module("cupy")
 
         cp.get_default_memory_pool().free_all_blocks()
         cp.get_default_pinned_memory_pool().free_all_blocks()
