@@ -165,7 +165,11 @@ def bicv_reconstruction_error(
     train_genes = _subset_genes_with_recomputed_means(adata, tr_gene_mask)
 
     (_, factors, projections), train_r2x_reported = parafac2_nd(
-        train_genes, rank=rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
+        train_genes,
+        rank=rank,
+        n_iter_max=n_iter_max,
+        tol=tol,
+        random_state=random_state,
     )
     A, B, _C_tr = factors
     P = _projections_to_matrix(train_genes, projections)

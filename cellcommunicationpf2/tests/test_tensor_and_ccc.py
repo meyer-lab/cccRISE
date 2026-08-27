@@ -25,7 +25,9 @@ def test_calc_communication_score_exact_values():
 
     # Construct deterministic projected matrices (n_rank, n_genes) for each condition
     rng = np.random.default_rng(42)
-    matrices = [rng.uniform(1.0, 5.0, size=(n_rank, len(gene_names))) for _ in range(n_cond)]
+    matrices = [
+        rng.uniform(1.0, 5.0, size=(n_rank, len(gene_names))) for _ in range(n_cond)
+    ]
 
     lr_pairs = pd.DataFrame(
         {
@@ -86,8 +88,8 @@ def test_pseudobulk_aggregation_mean_and_fraction():
         [
             [10.0, 0.0],  # s0, ct_A
             [20.0, 4.0],  # s0, ct_B
-            [0.0, 0.0],   # s1, ct_A
-            [6.0, 8.0],   # s1, ct_B
+            [0.0, 0.0],  # s1, ct_A
+            [6.0, 8.0],  # s1, ct_B
         ],
         dtype=np.float32,
     )
@@ -102,7 +104,9 @@ def test_pseudobulk_aggregation_mean_and_fraction():
     adata = anndata.AnnData(X=csr_array(X_counts), obs=obs, var=var)
 
     # Test mean aggregation
-    dfs_mean = pseudobulk_X(adata, condition_name="sample", groupby="celltype", type="mean")
+    dfs_mean = pseudobulk_X(
+        adata, condition_name="sample", groupby="celltype", type="mean"
+    )
     assert len(dfs_mean) == 2  # 2 samples
     # dfs_mean[0] is for s0 (genes x celltypes)
     np.testing.assert_allclose(dfs_mean[0].loc["gene1", "ct_A"], 10.0)
@@ -111,7 +115,9 @@ def test_pseudobulk_aggregation_mean_and_fraction():
     np.testing.assert_allclose(dfs_mean[0].loc["gene2", "ct_B"], 4.0)
 
     # Test fraction aggregation
-    dfs_frac = pseudobulk_X(adata, condition_name="sample", groupby="celltype", type="fraction")
+    dfs_frac = pseudobulk_X(
+        adata, condition_name="sample", groupby="celltype", type="fraction"
+    )
     np.testing.assert_allclose(dfs_frac[0].loc["gene1", "ct_A"], 1.0)
     np.testing.assert_allclose(dfs_frac[0].loc["gene2", "ct_A"], 0.0)
 
