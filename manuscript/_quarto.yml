@@ -6,6 +6,10 @@ project:
     - review-response.qmd
   output-dir: _output
 
+citeproc: true
+filters:
+  - pandoc-cite
+
 format:
   html:
     toc: true
