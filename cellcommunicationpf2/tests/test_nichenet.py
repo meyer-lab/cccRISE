@@ -1,6 +1,5 @@
 """Unit tests for cellcommunicationpf2.nichenet (no network access)."""
 
-
 import anndata
 import numpy as np
 import pandas as pd
@@ -188,9 +187,7 @@ def test_component_accuracy_scores_end_to_end():
     adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
     adata.uns["D"] = np.array([[1.0], [0.1]])  # LIGA loads high, LIGB loads low
 
-    lr_pairs = pd.DataFrame(
-        {"ligand": ["LIGA", "LIGB"], "receptor": ["RECA", "RECB"]}
-    )
+    lr_pairs = pd.DataFrame({"ligand": ["LIGA", "LIGB"], "receptor": ["RECA", "RECB"]})
     lt_df = pd.DataFrame(
         {
             "ligand": ["LIGA"] * 3 + ["LIGB"] * 3,

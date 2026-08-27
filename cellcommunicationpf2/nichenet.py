@@ -178,7 +178,9 @@ def receiver_de_ranking(
     celltype_col: str = "broad_cell_type",
     celltype: str | None = None,
     top_perc: float = 10,
-    method: Literal["logreg", "t-test", "wilcoxon", "t-test_overestim_var"] = "wilcoxon",
+    method: Literal[
+        "logreg", "t-test", "wilcoxon", "t-test_overestim_var"
+    ] = "wilcoxon",
 ) -> pd.Series:
     """
     Rank genes by a differential-expression statistic between receiver cells
@@ -222,7 +224,9 @@ def receiver_de_ranking(
 
     if receiver_mode == "within_celltype":
         if celltype is None:
-            raise ValueError("`celltype` is required when receiver_mode='within_celltype'")
+            raise ValueError(
+                "`celltype` is required when receiver_mode='within_celltype'"
+            )
         X = adata[adata.obs[celltype_col] == celltype].copy()
     elif receiver_mode == "vs_rest":
         X = adata.copy()
@@ -298,9 +302,11 @@ def top_receiver_celltype(
 ) -> str:
     """Return the `celltype_col` group with the highest mean receiver-eigenstate loading for `cmp`."""
     loadings = np.asarray(adata.obsm["rc_C"])[:, cmp - 1]
-    means = pd.Series(loadings, index=adata.obs.index).groupby(
-        adata.obs[celltype_col]
-    ).mean()
+    means = (
+        pd.Series(loadings, index=adata.obs.index)
+        .groupby(adata.obs[celltype_col])
+        .mean()
+    )
     return cast(str, means.idxmax())
 
 
@@ -313,7 +319,9 @@ def component_accuracy_scores(
     receiver_mode: ReceiverMode = "within_celltype",
     celltype_col: str = "broad_cell_type",
     top_perc: float = 10,
-    de_method: Literal["logreg", "t-test", "wilcoxon", "t-test_overestim_var"] = "wilcoxon",
+    de_method: Literal[
+        "logreg", "t-test", "wilcoxon", "t-test_overestim_var"
+    ] = "wilcoxon",
 ) -> pd.DataFrame:
     """
     Compute per-ligand NicheNet-style AUROCs for each of `components`.
