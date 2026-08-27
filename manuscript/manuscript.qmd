@@ -40,4 +40,4 @@ Cell-cell communication (CCC) coordinates cellular activities that vary dynamica
 
 {{< include _methods.qmd >}}
 
-{{< include _references.qmd >}}
+# References
