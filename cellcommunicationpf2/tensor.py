@@ -243,6 +243,8 @@ def calculate_interaction_tensor(
     adata: anndata.AnnData,
     lr_pairs: pd.DataFrame,
     complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
 ) -> np.ndarray:
     """
     Calculate interaction tensor from an AnnData object that has already been processed with RISE.
@@ -255,6 +257,17 @@ def calculate_interaction_tensor(
         DataFrame of ligand-receptor pairs.
     complex_sep : str, optional, default="&"
         Separator for multimeric complexes.
+    communication_score : str, default='expression_product'
+        Scoring function combining ligand/receptor eigen-state expression
+        into a communication score; see
+        `cellcommunicationpf2.ccc.combine_communication_score` for the
+        available options ('expression_product', 'expression_mean',
+        'expression_gmean', 'expression_hill'). Useful for checking that
+        reported components are robust to the choice of scoring strategy
+        (issue #139).
+    hill_k : float, default=0.5
+        Half-saturation constant, used only when
+        `communication_score='expression_hill'`.
 
     Returns
     -------
@@ -284,11 +297,19 @@ def calculate_interaction_tensor(
 
     # Calculate cell-cell communication scores
     gene_names = list(adata.var_names)
+    gene_means = (
+        adata.var["means"].to_numpy()
+        if "means" in adata.var
+        else np.zeros(len(gene_names))
+    )
     interaction_tensor, _ = calc_communication_score(
         projected_matrices,
         gene_names=gene_names,
         lr_pairs=lr_pairs,
         complex_sep=complex_sep,
+        gene_means=gene_means,
+        communication_score=communication_score,
+        hill_k=hill_k,
     )
 
     return interaction_tensor
