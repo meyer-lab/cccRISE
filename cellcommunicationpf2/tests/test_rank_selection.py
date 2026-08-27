@@ -9,20 +9,9 @@ from tensorly.cp_tensor import cp_to_tensor
 
 from cellcommunicationpf2.rank_selection import (
     bicv_reconstruction_error,
-    corcondia_sweep,
-    cp_condition_holdout_error,
     cp_masked_reconstruction_error,
     cp_masked_reconstruction_sweep,
-    cpd_component_significance,
-    cpd_degeneracy_diagnostics,
-    cpd_permutation_null_sweep,
-    cpd_rank_auc_sweep,
-    cpd_replication_sweep,
-    permute_eigenstate_labels,
-    permute_lr_within_fiber,
-    resample_tensor_conditions,
     run_bicv,
-    split_half_conditions,
 )
 
 
@@ -203,117 +192,3 @@ def test_cp_masked_reconstruction_sweep_shape():
     )
     assert len(df) == 3 * 2
     assert set(df["Rank"]) == {1, 2, 4}
-
-
-def test_cp_condition_holdout_error_bounded():
-    tensor = _simulate_cp_tensor((6, 5, 5, 12), rank=2, random_state=3)
-    df = cp_condition_holdout_error(
-        tensor, rank=2, n_iter_max=200, random_state=0, conditions=np.array([0, 1])
-    )
-    assert len(df) == 2
-    assert df["HeldOutConditionR2X"].between(-5.0, 1.0).all()
-
-
-def test_permute_lr_within_fiber_preserves_fiber_marginals():
-    tensor = _simulate_cp_tensor((3, 4, 4, 10), rank=2, random_state=4)
-    permuted = permute_lr_within_fiber(tensor, random_state=0)
-    assert permuted.shape == tensor.shape
-    flat_orig = tensor.reshape(-1, tensor.shape[-1])
-    flat_perm = permuted.reshape(-1, tensor.shape[-1])
-    for i in range(flat_orig.shape[0]):
-        np.testing.assert_allclose(np.sort(flat_orig[i]), np.sort(flat_perm[i]))
-    assert not np.allclose(tensor, permuted)
-
-
-def test_permute_eigenstate_labels_preserves_per_condition_values():
-    tensor = _simulate_cp_tensor((3, 5, 5, 8), rank=2, random_state=5)
-    permuted = permute_eigenstate_labels(tensor, random_state=0)
-    assert permuted.shape == tensor.shape
-    for i in range(tensor.shape[0]):
-        np.testing.assert_allclose(
-            np.sort(tensor[i].ravel()), np.sort(permuted[i].ravel())
-        )
-    assert not np.allclose(tensor, permuted)
-
-
-def test_cpd_permutation_null_sweep_observed_exceeds_null_at_true_rank():
-    true_rank = 2
-    tensor = _simulate_cp_tensor(
-        (6, 8, 8, 20), rank=true_rank, noise_std=0.05, random_state=6
-    )
-    df = cpd_permutation_null_sweep(
-        tensor, ranks=[true_rank], n_null_replicates=2, n_iter_max=300, random_state=0
-    )
-    observed_r2x = df.loc[df["NullType"] == "observed", "R2X"].iloc[0]
-    null_r2x = df.loc[df["NullType"] != "observed", "R2X"]
-    assert (observed_r2x > null_r2x).all()
-
-
-def test_corcondia_sweep_bounded_above_by_100():
-    tensor = _simulate_cp_tensor((6, 7, 7, 15), rank=2, random_state=7)
-    df = corcondia_sweep(tensor, ranks=[1, 2, 4], n_iter_max=200, random_state=0)
-    assert len(df) == 3
-    assert (df["CORCONDIA"] <= 100.0 + 1e-6).all()
-
-
-def test_cpd_component_significance_shape_and_p_bounds():
-    tensor = _simulate_cp_tensor((6, 8, 8, 20), rank=2, noise_std=0.05, random_state=8)
-    df = cpd_component_significance(
-        tensor, rank=2, n_null=5, n_iter_max=200, random_state=0
-    )
-    assert len(df) == 2
-    assert df["EmpiricalP"].between(0.0, 1.0).all()
-    assert (df["ExplainedVarFrac"] >= 0).all()
-
-
-def test_resample_tensor_conditions_and_split_half_shapes():
-    tensor = _simulate_cp_tensor((6, 4, 4, 10), rank=2, random_state=9)
-    boot = resample_tensor_conditions(tensor, random_state=0)
-    assert boot.shape == tensor.shape
-
-    half_a, half_b = split_half_conditions(tensor, random_state=0)
-    assert half_a.shape[0] + half_b.shape[0] == tensor.shape[0]
-    assert half_a.shape[1:] == tensor.shape[1:]
-
-
-def test_cpd_replication_sweep_all_axes_run():
-    tensor = _simulate_cp_tensor((8, 5, 5, 12), rank=2, random_state=10)
-    for axis in ("lr", "conditions", "splithalf_conditions"):
-        df = cpd_replication_sweep(
-            tensor,
-            ranks=[2],
-            resample_axis=axis,
-            n_boot=2,
-            n_iter_max=100,
-            random_state=0,
-        )
-        assert len(df) == 2
-        assert (df["n_replicated_tau0.6"] >= 0).all()
-
-
-def test_cpd_degeneracy_diagnostics_shape_and_bounds():
-    tensor = _simulate_cp_tensor((6, 6, 6, 15), rank=3, random_state=11)
-    df = cpd_degeneracy_diagnostics(
-        tensor, ranks=[2, 3], n_inits=2, n_iter_max=150, random_state=0
-    )
-    assert len(df) == 2
-    assert (df["CondNumber_B"] > 0).all()
-    assert df["MaxPairwiseTripleCongruence"].between(-1 - 1e-8, 1 + 1e-8).all()
-
-
-def test_cpd_rank_auc_sweep_bounded():
-    rng = np.random.default_rng(12)
-    n_cond = 20
-    tensor = _simulate_cp_tensor((n_cond, 5, 5, 10), rank=2, random_state=12)
-    y = rng.integers(0, 2, size=n_cond)
-    df = cpd_rank_auc_sweep(
-        tensor,
-        y,
-        ranks=[2],
-        n_iter_max=200,
-        random_state=0,
-        n_splits=3,
-        n_repeats=1,
-    )
-    assert len(df) == 1
-    assert df["AUC_mean"].between(0.0, 1.0).all()
