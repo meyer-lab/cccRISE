@@ -19,9 +19,11 @@ import argparse
 import gzip
 import shutil
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
+import scipy.sparse
 from scipy.io import mmwrite
 
 from cellcommunicationpf2.import_data import (
@@ -94,7 +96,7 @@ def main() -> None:
     print(
         f"Writing MatrixMarket matrix ({adata.n_obs} cells x {adata.n_vars} genes)..."
     )
-    X = adata.X.tocoo() if hasattr(adata.X, "tocoo") else adata.X
+    X = scipy.sparse.csr_matrix(adata.X)
     mm_path = args.out / "matrix.mtx"
     mmwrite(mm_path, X.T.tocsr())  # genes x cells, matching 10x convention
     gzip_file(mm_path)
@@ -110,7 +112,7 @@ def main() -> None:
     gzip_file(barcodes_path)
 
     meta_path = args.out / "metadata.csv"
-    adata.obs.to_csv(meta_path)
+    cast(pd.DataFrame, adata.obs).to_csv(meta_path)
 
     lr = import_ligand_receptor_pairs()
     lr_cols = [

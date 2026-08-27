@@ -141,7 +141,7 @@ def add_obs_cmp_label(
 
 def _gene_vector(X: anndata.AnnData, gene: str) -> np.ndarray:
     """Extract a gene's expression as a dense 1D array, whether X.X is sparse or dense."""
-    expr = X[:, gene].X
+    expr: Any = X[:, gene].X
     if hasattr(expr, "toarray"):
         return np.ravel(expr.toarray())
     if hasattr(expr, "to_memory"):

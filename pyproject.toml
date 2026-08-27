@@ -22,7 +22,6 @@ dependencies = [
     "xarray>=2024.1.0",
     "netcdf4>=1.6.5",
     "scanpy>=1.12.3",
-    "cupy-cuda12x>=14.1.1; sys_platform != 'darwin'",
 ]
 
 readme = "README.md"

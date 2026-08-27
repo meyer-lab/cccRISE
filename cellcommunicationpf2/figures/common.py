@@ -85,7 +85,7 @@ def get_alad_data(
 
 
 def getSetup(
-    figsize: tuple[int, int], gridd: tuple[int, int]
+    figsize: tuple[float, float] | tuple[int, int], gridd: tuple[int, int]
 ) -> tuple[list[plt.Axes], Figure]:
     """Establish figure set-up with subplots."""
     sns.set(

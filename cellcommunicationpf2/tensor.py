@@ -266,7 +266,7 @@ def calculate_interaction_tensor(
     )
 
     sgIndex = (
-        adata.obs["condition_unique_idxs"].to_numpy(dtype=int)
+        np.asarray(adata.obs["condition_unique_idxs"], dtype=int)
         if "condition_unique_idxs" in adata.obs
         else np.zeros(adata.n_obs, dtype=int)
     )

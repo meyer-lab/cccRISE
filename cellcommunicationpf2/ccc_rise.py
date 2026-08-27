@@ -233,7 +233,7 @@ def calc_communication_score_pseudobulk(
     pseudobulk_matrices_df: list[pd.DataFrame],
     gene_names: list[str] | None = None,
     lr_pairs: pd.DataFrame | None = None,
-    complex_sep: str = "&",
+    complex_sep: str | None = "&",
     complex_agg_method: str = "min",
     verbose: bool = False,
 ) -> tuple[np.ndarray, pd.DataFrame]:

@@ -31,7 +31,7 @@ def makeFigure():
         data = [projections[celltype_labels == ct, r] for ct in unique_celltypes]
         ax[r].boxplot(
             data,
-            tick_labels=unique_celltypes,
+            tick_labels=list(unique_celltypes),
             orientation="horizontal",
             showfliers=False,
         )
