@@ -8,7 +8,12 @@ from scipy.sparse import spmatrix
 from tensorly.cp_tensor import cp_flip_sign, cp_normalize
 from tensorly.decomposition import parafac
 
-from .ccc import build_context_ccc_tensor, calculate_r2x, get_genes_from_complexes
+from .ccc import (
+    build_context_ccc_tensor,
+    calculate_r2x,
+    combine_communication_score,
+    get_genes_from_complexes,
+)
 from .import_data import import_ligand_receptor_pairs
 
 
@@ -18,6 +23,9 @@ def calc_communication_score(
     lr_pairs: pd.DataFrame | None = None,
     complex_sep: str | None = None,
     complex_agg_method: str = "min",
+    gene_means: np.ndarray | None = None,
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
     verbose: bool = False,
 ) -> tuple[np.ndarray, pd.DataFrame]:
     """
@@ -33,6 +41,31 @@ def calc_communication_score(
         List of gene names corresponding to columns in the matrices
     lr_pairs : pd.DataFrame, optional
         DataFrame with 'ligand' and 'receptor' columns
+    gene_means : np.ndarray, optional
+        Per-gene mean expression over the full dataset, i.e. the same vector
+        that was subtracted from every condition slice before fitting
+        RISE/PARAFAC2 (`adata.var["means"]`). `projected_matrices` holds
+        eigen-state loadings relative to that mean, so entries can be
+        negative even though real expression cannot. When `gene_means` is
+        given, it is added back to each matrix before scoring, turning
+        `prot_a_exp`/`prot_b_exp` into an approximation of actual
+        non-negative expression rather than a mean-centered loading: this is
+        the fix for the communication-score sign ambiguity in issue #139 (a
+        product of two centered loadings collapses to only the interaction
+        term of `(mean + deviation) x (mean + deviation)`, which lets two
+        negative deviations produce a spurious positive score with no
+        relationship to actual signaling strength). Small negative residuals
+        left by the linear reconstruction are clipped to 0. If None
+        (default), matrices are used unchanged, preserving prior behavior.
+    communication_score : str, default='expression_product'
+        Scoring function combining each ligand/receptor pair's eigen-state
+        expression into a communication score; see
+        `cellcommunicationpf2.ccc.combine_communication_score` for the
+        available options ('expression_product', 'expression_mean',
+        'expression_gmean', 'expression_hill').
+    hill_k : float, default=0.5
+        Half-saturation constant, used only when
+        `communication_score='expression_hill'`.
 
     Returns:
     --------
@@ -46,6 +79,12 @@ def calc_communication_score(
 
     if gene_names is None:
         gene_names = [f"gene_{i}" for i in range(projected_matrices[0].shape[1])]
+
+    if gene_means is not None:
+        means_row = np.asarray(gene_means).reshape(1, -1)
+        projected_matrices = [
+            np.clip(matrix + means_row, 0.0, None) for matrix in projected_matrices
+        ]
 
     # Convert matrices to DataFrames (genes as rows, cells as columns)
     rnaseq_matrices = []
@@ -86,7 +125,8 @@ def calc_communication_score(
         rnaseq_matrices=mod_rnaseq_matrices,
         ppi_data=lr_pairs_renamed,
         how="inner",
-        communication_score="expression_product",
+        communication_score=communication_score,
+        hill_k=hill_k,
         complex_sep=complex_sep,
         upper_letter_comparison=False,
         interaction_columns=("A", "B"),
@@ -196,8 +236,12 @@ def _fast_interaction_tensor(
     rec_mask: np.ndarray,
     rec_valid: np.ndarray,
     complex_agg_method: str,
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
 ) -> np.ndarray:
-    """Vectorized `expression_product` communication tensor for a fixed LR pair set."""
+    """Vectorized communication tensor for a fixed LR pair set, for any of
+    the scoring strategies in `combine_communication_score` (product, mean,
+    gmean, or the CellChat-style Hill function)."""
     tensors = []
     for matrix in projected_matrices:
         lig = _aggregate_subunit_expression(
@@ -206,7 +250,16 @@ def _fast_interaction_tensor(
         rec = _aggregate_subunit_expression(
             matrix, rec_idx, rec_mask, rec_valid, complex_agg_method
         )
-        tensors.append(np.einsum("rl,sl->rsl", lig, rec))
+        raw_product = np.einsum("rl,sl->rsl", lig, rec)
+        raw_sum = lig[:, np.newaxis, :] + rec[np.newaxis, :, :]
+        tensors.append(
+            combine_communication_score(
+                raw_product,
+                raw_sum,
+                communication_score=communication_score,
+                hill_k=hill_k,
+            )
+        )
 
     return np.stack(tensors, axis=0)
 
@@ -220,6 +273,9 @@ def compute_communication_significance(
     random_state: int | None = None,
     complex_sep: str | None = "&",
     complex_agg_method: str = "min",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    gene_means: np.ndarray | None = None,
     validate: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, pd.DataFrame]:
     """
@@ -238,15 +294,16 @@ def compute_communication_significance(
     distribution, and the LR biology, exactly mirroring what a cluster-label
     permutation tests in the discrete case.
 
-    For efficiency, the communication score (`expression_product`, with
-    complexes aggregated via `complex_agg_method`) is recomputed for every
-    permutation using a vectorized NumPy implementation rather than by
-    rebuilding the tensor through `calc_communication_score`/Tensor Cell2Cell
-    each time, which dominates runtime for `n_perms` in the hundreds to
-    thousands. The LR pair set and gene lookups are resolved once up front;
-    only the cheap eigen-state/gene outer products are repeated per
-    permutation. `validate=True` checks the vectorized path against the
-    reference implementation once, on the observed (unpermuted) tensor.
+    For efficiency, the communication score (any of the strategies in
+    `combine_communication_score`, with complexes aggregated via
+    `complex_agg_method`) is recomputed for every permutation using a
+    vectorized NumPy implementation rather than by rebuilding the tensor
+    through `calc_communication_score`/Tensor Cell2Cell each time, which
+    dominates runtime for `n_perms` in the hundreds to thousands. The LR
+    pair set and gene lookups are resolved once up front; only the cheap
+    eigen-state/gene outer products are repeated per permutation.
+    `validate=True` checks the vectorized path against the reference
+    implementation once, on the observed (unpermuted) tensor.
 
     Parameters
     ----------
@@ -266,6 +323,27 @@ def compute_communication_significance(
         Separator for multimeric complexes.
     complex_agg_method : str, default="min"
         Method to aggregate subunit expression for complexes.
+    communication_score : str, default='expression_product'
+        Scoring function combining ligand/receptor eigen-state expression
+        into a communication score; see
+        `cellcommunicationpf2.ccc.combine_communication_score` for the
+        available options ('expression_product', 'expression_mean',
+        'expression_gmean', 'expression_hill'). Every entry of the null
+        distribution and the observed tensor uses the same scoring function,
+        so p-values/effect sizes are directly comparable across strategies.
+    hill_k : float, default=0.5
+        Half-saturation constant, used only when
+        `communication_score='expression_hill'`.
+    gene_means : np.ndarray, optional
+        Per-gene mean expression over the full dataset (`adata.var["means"]`).
+        `X_list` here is raw (uncentered) expression, so `P.T @ X` is already
+        a projection of non-negative values -- but its entries can still be
+        negative, since `P`'s columns are signed contrast axes (see #139).
+        When given, `gene_means` is added to each (observed and permuted)
+        projected matrix and clipped at 0, exactly as in
+        `calc_communication_score`, keeping this null model consistent with
+        the sign-safe scoring used by the main pipeline. If None (default),
+        matrices are used unchanged, preserving prior behavior.
     validate : bool, default=True
         Cross-check the vectorized observed tensor against
         `calc_communication_score` and raise if they disagree.
@@ -296,7 +374,19 @@ def compute_communication_significance(
         cast(Any, x).toarray() if isinstance(x, spmatrix) else x for x in X_list
     ]
     dense_P = [np.asarray(p) for p in projections]
-    projected_matrices = [P.T @ X for P, X in zip(dense_P, X_arrays)]
+    means_row = (
+        np.asarray(gene_means).reshape(1, -1) if gene_means is not None else None
+    )
+
+    def _project_and_recenter(P: np.ndarray, X: np.ndarray) -> np.ndarray:
+        matrix = P.T @ X
+        if means_row is not None:
+            matrix = np.clip(matrix + means_row, 0.0, None)
+        return matrix
+
+    projected_matrices = [
+        _project_and_recenter(P, X) for P, X in zip(dense_P, X_arrays)
+    ]
 
     interaction_tensor, filtered_lr_pairs = calc_communication_score(
         projected_matrices=projected_matrices,
@@ -304,6 +394,8 @@ def compute_communication_significance(
         lr_pairs=lr_pairs,
         complex_sep=complex_sep,
         complex_agg_method=complex_agg_method,
+        communication_score=communication_score,
+        hill_k=hill_k,
     )
 
     gene_index = {g: i for i, g in enumerate(gene_names)}
@@ -324,6 +416,8 @@ def compute_communication_significance(
             rec_mask,
             rec_valid,
             complex_agg_method,
+            communication_score=communication_score,
+            hill_k=hill_k,
         )
         if not np.allclose(fast_observed, interaction_tensor, rtol=1e-5, atol=1e-8):
             raise RuntimeError(
@@ -338,7 +432,8 @@ def compute_communication_significance(
 
     for _ in range(n_perms):
         permuted_matrices = [
-            P[rng.permutation(P.shape[0]), :].T @ X for P, X in zip(dense_P, X_arrays)
+            _project_and_recenter(P[rng.permutation(P.shape[0]), :], X)
+            for P, X in zip(dense_P, X_arrays)
         ]
         null_tensor = _fast_interaction_tensor(
             permuted_matrices,
@@ -349,6 +444,8 @@ def compute_communication_significance(
             rec_mask,
             rec_valid,
             complex_agg_method,
+            communication_score=communication_score,
+            hill_k=hill_k,
         )
         ge_count += null_tensor >= interaction_tensor
         null_sum += null_tensor
@@ -426,12 +523,21 @@ def ccc_rise(
 
         projected_matrices.append(proj.T @ tensor_np)
 
+    # Per-gene mean subtracted before fitting RISE (see `prepare_dataset`); added
+    # back during scoring to keep communication scores non-negative (issue #139).
+    gene_means = (
+        adata.var["means"].to_numpy()
+        if "means" in adata.var
+        else np.zeros(len(gene_names))
+    )
+
     # Calculate cell-cell communication scores
     interaction_tensors, filtered_lr_pairs = calc_communication_score(
         projected_matrices,
         gene_names=gene_names,
         complex_sep=complex_sep,
         lr_pairs=lr_pairs,
+        gene_means=gene_means,
     )
 
     cp_rank = cp_rank if cp_rank is not None else rise_rank

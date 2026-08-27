@@ -51,8 +51,67 @@ def aggregate_ccc_matrices(ccc_matrices, method="gmean"):
     return aggregated_ccc_matrix
 
 
+def combine_communication_score(
+    raw_product, raw_sum, communication_score="expression_product", hill_k=0.5
+):
+    """Combine a ligand/receptor pair's raw elementwise product and sum into
+    a communication score. Shared by `compute_ccc_matrix` (a single LR pair,
+    combined via an outer product over cells/eigen-states) and
+    `_fast_interaction_tensor` (many LR pairs combined at once, vectorized).
+    `raw_product`/`raw_sum` must already be broadcast to the same target
+    shape (e.g. via `np.outer`/`np.add.outer` for a single pair, or the
+    matching einsum/broadcast for a batch of pairs).
+
+    Parameters
+    ----------
+    raw_product : numpy.array
+        Elementwise ligand x receptor product, already broadcast to the
+        target shape.
+    raw_sum : numpy.array
+        Elementwise ligand + receptor sum, already broadcast to the same
+        shape as `raw_product`.
+    communication_score : str, default='expression_product'
+        Scoring function for computing the communication score. Options are:
+
+        - 'expression_product' : Multiplication between the expression
+            of the interacting proteins.
+        - 'expression_mean' : Average between the expression of the
+            interacting proteins, as used by CellPhoneDB.
+        - 'expression_gmean' : Geometric mean between the expression of the
+            interacting proteins.
+        - 'expression_hill' : CellChat-style saturating Hill function,
+            `product / (hill_k + product)`.
+
+        Every option other than 'expression_product' clips the raw product
+        at 0 before use, since they assume non-negative expression (as
+        CellChat/CellPhoneDB do) -- inputs derived from signed PARAFAC2/RISE
+        eigen-state loadings should be re-centered on real expression first
+        (see issue #139) rather than relying on this clip to fix them up.
+    hill_k : float, default=0.5
+        Half-saturation constant for 'expression_hill'. CellChat's default
+        of 0.5 assumes expression normalized to roughly [0, 1]; tune to the
+        scale of the input expression values otherwise.
+
+    Returns
+    -------
+    numpy.array
+        Combined communication score, same shape as `raw_product`.
+    """
+    if communication_score == "expression_product":
+        return raw_product
+    elif communication_score == "expression_mean":
+        return raw_sum / 2.0
+    elif communication_score == "expression_gmean":
+        return np.sqrt(np.clip(raw_product, 0.0, None))
+    elif communication_score == "expression_hill":
+        product = np.clip(raw_product, 0.0, None)
+        return product / (hill_k + product)
+    else:
+        raise ValueError(f"Not a valid communication_score: {communication_score!r}")
+
+
 def compute_ccc_matrix(
-    prot_a_exp, prot_b_exp, communication_score="expression_product"
+    prot_a_exp, prot_b_exp, communication_score="expression_product", hill_k=0.5
 ):
     """Computes communication scores for an specific
     protein-protein interaction using vectors of gene expression
@@ -70,15 +129,13 @@ def compute_ccc_matrix(
         in a given PPI. Coordinates are different cell-types/tissues/samples.
 
     communication_score : str, default='expression_product'
-        Scoring function for computing the communication score.
-        Options are:
+        Scoring function for computing the communication score. See
+        `combine_communication_score` for the available options.
 
-        - 'expression_product' : Multiplication between the expression
-            of the interacting proteins.
-        - 'expression_mean' : Average between the expression
-            of the interacting proteins.
-        - 'expression_gmean' : Geometric mean between the expression
-            of the interacting proteins.
+    hill_k : float, default=0.5
+        Half-saturation constant, used only when
+        `communication_score='expression_hill'`. See
+        `combine_communication_score`.
 
     Returns
     -------
@@ -89,18 +146,11 @@ def compute_ccc_matrix(
         vertical axis (axis 0) represents the senders, while the
         horizontal axis (axis 1) represents the receivers.
     """
-    if communication_score == "expression_product":
-        communication_scores = np.outer(prot_a_exp, prot_b_exp)
-    elif communication_score == "expression_mean":
-        communication_scores = (
-            np.outer(prot_a_exp, np.ones(prot_b_exp.shape))
-            + np.outer(np.ones(prot_a_exp.shape), prot_b_exp)
-        ) / 2.0
-    elif communication_score == "expression_gmean":
-        communication_scores = np.sqrt(np.outer(prot_a_exp, prot_b_exp))
-    else:
-        raise ValueError("Not a valid communication_score")
-    return communication_scores
+    raw_product = np.outer(prot_a_exp, prot_b_exp)
+    raw_sum = np.add.outer(prot_a_exp, prot_b_exp)
+    return combine_communication_score(
+        raw_product, raw_sum, communication_score=communication_score, hill_k=hill_k
+    )
 
 
 def get_genes_from_complexes(ppi_data, complex_sep="&", interaction_columns=("A", "B")):
@@ -399,6 +449,7 @@ def build_context_ccc_tensor(
     group_ppi_by=None,
     group_ppi_method="gmean",
     verbose=True,
+    hill_k=0.5,
 ):
     """Builds a 4D-Communication tensor.
     Takes the gene expression matrices and the list of PPIs to compute
@@ -451,6 +502,12 @@ def build_context_ccc_tensor(
         - 'expression_gmean' : Computes the geometric mean between the expression
                                of a ligand from a sender cell and the
                                expression of a receptor on a receiver cell.
+        - 'expression_hill' : Computes a CellChat-style saturating Hill function
+                              of the product, `product / (hill_k + product)`.
+
+    hill_k : float, default=0.5
+        Half-saturation constant, used only when
+        `communication_score='expression_hill'`.
 
     complex_sep : str, default=None
         Symbol that separates the protein subunits in a multimeric complex.
@@ -570,6 +627,7 @@ def build_context_ccc_tensor(
             ppi_data=ppi_data_,
             communication_score=communication_score,
             interaction_columns=interaction_columns,
+            hill_k=hill_k,
         )
         for rnaseq in rnaseq_matrices
     ]
@@ -605,6 +663,7 @@ def generate_ccc_tensor(
     ppi_data,
     communication_score="expression_product",
     interaction_columns=("A", "B"),
+    hill_k=0.5,
 ):
     """Computes a 3D-Communication tensor for a given context based on the gene
     expression matrix and the list of PPIS
@@ -634,6 +693,12 @@ def generate_ccc_tensor(
         - 'expression_gmean' : Computes the geometric mean between the expression
                                of a ligand from a sender cell and the
                                expression of a receptor on a receiver cell.
+        - 'expression_hill' : Computes a CellChat-style saturating Hill function
+                              of the product, `product / (hill_k + product)`.
+
+    hill_k : float, default=0.5
+        Half-saturation constant, used only when
+        `communication_score='expression_hill'`.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a dataframe of
@@ -666,7 +731,10 @@ def generate_ccc_tensor(
 
         ccc_tensor.append(
             compute_ccc_matrix(
-                prot_a_exp=v, prot_b_exp=w, communication_score=communication_score
+                prot_a_exp=v,
+                prot_b_exp=w,
+                communication_score=communication_score,
+                hill_k=hill_k,
             ).tolist()
         )
     return ccc_tensor
