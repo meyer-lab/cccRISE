@@ -4,11 +4,13 @@ brushing dataset. CD70 expression across cell types and CD70+ T cell
 abundance by ALAD group.
 """
 
-import numpy as np
+from typing import cast
+
 import pandas as pd
 import seaborn as sns
 
 from ..import_data import import_alad_brush
+from ..utils import _gene_vector
 from .common import getSetup, subplotLabel
 
 
@@ -27,9 +29,7 @@ def makeFigure():
     # (a) CD70 expression by cell type
     ct_stats = []
     for ct in X.obs["cell_type_inintegrated"].unique():
-        expr = np.asarray(
-            X[X.obs["cell_type_inintegrated"] == ct, "CD70"].X.todense()
-        ).ravel()
+        expr = _gene_vector(X[X.obs["cell_type_inintegrated"] == ct], "CD70")
         ct_stats.append(
             {
                 "cell_type": ct,
@@ -49,14 +49,15 @@ def makeFigure():
     # (b) Per-patient % CD70+ T cells by ALAD
     X_t = X[X.obs["cell_type_inintegrated"] == "Tcell"]
     records = []
-    for pid in X_t.obs["subj"].unique():
-        mask = (X_t.obs["subj"] == pid).values
-        expr = np.asarray(X_t[mask, "CD70"].X.todense()).ravel()
+    obs_t = cast(pd.DataFrame, X_t.obs)
+    for pid in obs_t["subj"].unique():
+        mask = (obs_t["subj"] == pid).values
+        expr = _gene_vector(X_t[mask], "CD70")
         records.append(
             {
                 "patient": pid,
                 "pct_CD70_pos": (expr > 0).mean() * 100,
-                "ALAD": X_t.obs.loc[mask, "ALAD"].iloc[0],
+                "ALAD": obs_t.loc[mask, "ALAD"].iloc[0],
                 "n_cells": mask.sum(),
             }
         )

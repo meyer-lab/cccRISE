@@ -23,7 +23,7 @@ from cellcommunicationpf2.figures.commonFuncs.plotFactors import (
     plot_lr_factors,
     plot_lr_factors_partial,
 )
-from cellcommunicationpf2.figures.commonFuncs.plotGeneral import plot_fms_r2x_diff_ranks
+from cellcommunicationpf2.figures.commonFuncs.plotGeneral import plot_fms_r2x_stability
 from cellcommunicationpf2.figures.commonFuncs.plotPaCMAP import (
     plot_labels_pacmap,
     plot_wc_pacmap,
@@ -34,12 +34,14 @@ from cellcommunicationpf2.import_data import (
     import_ligand_receptor_pairs,
 )
 from cellcommunicationpf2.tensor import (
+    calculate_fms_rise,
     calculate_interaction_tensor,
     rise_store_r2x,
     run_fms_r2x_analysis,
 )
 from cellcommunicationpf2.utils import (
     binned_expression_product_matrix,
+    resample,
 )
 
 print("Loading dataset...")
@@ -52,26 +54,25 @@ X = add_cond_idxs(X, condition_column)
 
 print("\n=== RISE Rank Selection ===")
 print("Running RISE FMS/R2X analysis...")
-# Use actual RISE rank selection with plot_fms_r2x_diff_ranks
 rise_ranks = list(range(5, 41, 5))
 runs = 3
 
 fig, ax = plt.subplots(1, 2, figsize=(12, 4))
 
 print(f"Testing RISE ranks: {rise_ranks[0]}-{rise_ranks[-1]}, {runs} runs...")
-plot_fms_r2x_diff_ranks(
-    X,
-    condition_name=condition_column,
-    ax1=ax[0],
-    ax2=ax[1],
-    ranksList=rise_ranks,
-    runs=runs,
-)
+rows = []
+for i in rise_ranks:
+    dataX, r2x = rise_store_r2x(X, rank=i)
+    for j in range(runs):
+        sampledX, _ = rise_store_r2x(
+            resample(X, condition_name=condition_column),
+            rank=i,
+        )
+        fms_score = calculate_fms_rise(dataX, sampledX)
+        rows.append({"Run": j, "Component": i, "FMS": fms_score, "R2X": r2x})
 
-ax[0].set_title("RISE: Factor Match Score (FMS)")
-ax[0].set_xlabel("RISE Rank")
-ax[1].set_title("RISE: Variance Explained (R²X)")
-ax[1].set_xlabel("RISE Rank")
+df_rise = pd.DataFrame(rows)
+plot_fms_r2x_stability(df_rise, ax, title_prefix="RISE", x_label="RISE Rank")
 
 plt.tight_layout()
 plt.savefig(output_dir / "step1_rise_fms_r2x.png", dpi=150, bbox_inches="tight")

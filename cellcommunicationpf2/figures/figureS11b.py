@@ -2,6 +2,8 @@
 Figure A3zb: XXX
 """
 
+from typing import Literal
+
 import anndata
 import numpy as np
 import scanpy as sc
@@ -23,7 +25,7 @@ def makeFigure():
     subplotLabel(ax)
 
     X = get_alad_data(project_cells=True)
-    cmp13 = [13, "Dendritic Cells"]
+    cmp13: tuple[int, str] = (13, "Dendritic Cells")
     ccc_rise_cmp = cmp13[0]
 
     X_epi_sender = X[X.obs["broad_cell_type"] == cmp13[1]]
@@ -47,7 +49,7 @@ def makeFigure():
 
     combined_X = anndata.concat([X_epi_sender_top, X_epi_sender_bottom])
 
-    method_test = ["logreg", "wilcoxon"]
+    method_test: list[Literal["logreg", "wilcoxon"]] = ["logreg", "wilcoxon"]
     axs = 0
     for method in method_test:
         sc.tl.rank_genes_groups(combined_X, "Label", method=method)

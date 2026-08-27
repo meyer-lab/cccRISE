@@ -2,6 +2,8 @@
 Figure A3za: XXX
 """
 
+from typing import Literal
+
 import numpy as np
 import scanpy as sc
 import seaborn as sns
@@ -24,16 +26,16 @@ def makeFigure():
     X = get_alad_data(project_cells=True)
     # Change type to sender or receiver as needed
     # Sender cell type comparisons
-    # cmp = [5, "CD4 T cells"] # cmp5
-    # cmp = [7, "CD4 T cells"] # cmp7
-    # cmp = [13, "Dendritic Cells"] # cmp13
-    # cmp = [17, "NK cells"] # cmp17
+    # cmp = (5, "CD4 T cells") # cmp5
+    # cmp = (7, "CD4 T cells") # cmp7
+    # cmp = (13, "Dendritic Cells") # cmp13
+    # cmp = (17, "NK cells") # cmp17
     # type = "sender"
     # Receiver cell type comparisons
-    # cmp = [5, "Dendritic Cells"] # cmp5
-    # cmp = [7, "CD4 T cells"] # cmp7
-    # cmp = [13, "Epithelial cells"] # cmp13
-    cmp = [17, "CD8 T cells"]  # cmp17
+    # cmp = (5, "Dendritic Cells") # cmp5
+    # cmp = (7, "CD4 T cells") # cmp7
+    # cmp = (13, "Epithelial cells") # cmp13
+    cmp: tuple[int, str] = (17, "CD8 T cells")  # cmp17
     type = "receiver"
 
     ccc_rise_cmp = cmp[0]
@@ -47,7 +49,7 @@ def makeFigure():
         )
         X_epi_sender = add_obs_cmp_unique_one(X_epi_sender, cmp=ccc_rise_cmp)
 
-        method_test = ["logreg", "wilcoxon"]
+        method_test: list[Literal["logreg", "wilcoxon"]] = ["logreg", "wilcoxon"]
 
         for method in method_test:
             sc.tl.rank_genes_groups(X_epi_sender, "Label", method=method)
