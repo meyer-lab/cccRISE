@@ -54,6 +54,44 @@ def test_calc_communication_score_exact_values():
             np.testing.assert_allclose(tensor[c, :, :, p], expected, rtol=1e-5)
 
 
+def test_calc_communication_score_gene_means_recenters_and_clips():
+    # A single condition, single eigen-state, two LR genes. Loadings are
+    # centered (signed) deviations from a per-gene mean, as produced by RISE.
+    gene_names = ["L1", "R1"]
+    lr_pairs = pd.DataFrame(
+        {
+            "ligand": ["L1"],
+            "receptor": ["R1"],
+            "interaction_symbol": ["L1^R1"],
+        }
+    )
+
+    # Both loadings negative: naive product on centered values is spuriously
+    # positive and unrelated to actual (non-negative) expression.
+    matrix = np.array([[-1.0, -2.0]])
+    gene_means = np.array([0.5, 1.0])
+
+    tensor, _ = calc_communication_score(
+        [matrix], gene_names=gene_names, lr_pairs=lr_pairs, gene_means=gene_means
+    )
+    # actual_L = max(0.5 - 1.0, 0) = 0, actual_R = max(1.0 - 2.0, 0) = 0
+    np.testing.assert_allclose(tensor[0, 0, 0, 0], 0.0)
+
+    # Without gene_means, the sign-ambiguous artifact remains: (-1)*(-2) = 2.
+    tensor_uncentered, _ = calc_communication_score(
+        [matrix], gene_names=gene_names, lr_pairs=lr_pairs
+    )
+    np.testing.assert_allclose(tensor_uncentered[0, 0, 0, 0], 2.0)
+
+    # A genuinely above-mean pairing recovers a proportional, non-negative score.
+    matrix_pos = np.array([[2.0, 3.0]])
+    tensor_pos, _ = calc_communication_score(
+        [matrix_pos], gene_names=gene_names, lr_pairs=lr_pairs, gene_means=gene_means
+    )
+    # actual_L = 0.5 + 2.0 = 2.5, actual_R = 1.0 + 3.0 = 4.0
+    np.testing.assert_allclose(tensor_pos[0, 0, 0, 0], 2.5 * 4.0)
+
+
 def test_calc_communication_score_pseudobulk():
     # 2 conditions, 2 cell types, 4 genes (genes as rows, cell types as columns)
     gene_names = ["L1", "R1", "L2", "R2"]

@@ -284,11 +284,17 @@ def calculate_interaction_tensor(
 
     # Calculate cell-cell communication scores
     gene_names = list(adata.var_names)
+    gene_means = (
+        adata.var["means"].to_numpy()
+        if "means" in adata.var
+        else np.zeros(len(gene_names))
+    )
     interaction_tensor, _ = calc_communication_score(
         projected_matrices,
         gene_names=gene_names,
         lr_pairs=lr_pairs,
         complex_sep=complex_sep,
+        gene_means=gene_means,
     )
 
     return interaction_tensor

@@ -18,6 +18,7 @@ def calc_communication_score(
     lr_pairs: pd.DataFrame | None = None,
     complex_sep: str | None = None,
     complex_agg_method: str = "min",
+    gene_means: np.ndarray | None = None,
     verbose: bool = False,
 ) -> tuple[np.ndarray, pd.DataFrame]:
     """
@@ -33,6 +34,22 @@ def calc_communication_score(
         List of gene names corresponding to columns in the matrices
     lr_pairs : pd.DataFrame, optional
         DataFrame with 'ligand' and 'receptor' columns
+    gene_means : np.ndarray, optional
+        Per-gene mean expression over the full dataset, i.e. the same vector
+        that was subtracted from every condition slice before fitting
+        RISE/PARAFAC2 (`adata.var["means"]`). `projected_matrices` holds
+        eigen-state loadings relative to that mean, so entries can be
+        negative even though real expression cannot. When `gene_means` is
+        given, it is added back to each matrix before scoring, turning
+        `prot_a_exp`/`prot_b_exp` into an approximation of actual
+        non-negative expression rather than a mean-centered loading: this is
+        the fix for the communication-score sign ambiguity in issue #139 (a
+        product of two centered loadings collapses to only the interaction
+        term of `(mean + deviation) x (mean + deviation)`, which lets two
+        negative deviations produce a spurious positive score with no
+        relationship to actual signaling strength). Small negative residuals
+        left by the linear reconstruction are clipped to 0. If None
+        (default), matrices are used unchanged, preserving prior behavior.
 
     Returns:
     --------
@@ -46,6 +63,12 @@ def calc_communication_score(
 
     if gene_names is None:
         gene_names = [f"gene_{i}" for i in range(projected_matrices[0].shape[1])]
+
+    if gene_means is not None:
+        means_row = np.asarray(gene_means).reshape(1, -1)
+        projected_matrices = [
+            np.clip(matrix + means_row, 0.0, None) for matrix in projected_matrices
+        ]
 
     # Convert matrices to DataFrames (genes as rows, cells as columns)
     rnaseq_matrices = []
@@ -426,12 +449,21 @@ def ccc_rise(
 
         projected_matrices.append(proj.T @ tensor_np)
 
+    # Per-gene mean subtracted before fitting RISE (see `prepare_dataset`); added
+    # back during scoring to keep communication scores non-negative (issue #139).
+    gene_means = (
+        adata.var["means"].to_numpy()
+        if "means" in adata.var
+        else np.zeros(len(gene_names))
+    )
+
     # Calculate cell-cell communication scores
     interaction_tensors, filtered_lr_pairs = calc_communication_score(
         projected_matrices,
         gene_names=gene_names,
         complex_sep=complex_sep,
         lr_pairs=lr_pairs,
+        gene_means=gene_means,
     )
 
     cp_rank = cp_rank if cp_rank is not None else rise_rank
