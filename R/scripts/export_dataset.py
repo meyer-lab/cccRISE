@@ -36,12 +36,10 @@ DATASETS = {
 }
 
 
-def downsample_per_sample(
-    adata, condition_name: str, n_per_sample: int, seed: int
-):
+def downsample_per_sample(adata, condition_name: str, n_per_sample: int, seed: int):
     rng = np.random.default_rng(seed)
     keep = []
-    for _, idx in adata.obs.groupby(condition_name, observed=True).indices.items():
+    for idx in adata.obs.groupby(condition_name, observed=True).indices.values():
         idx = np.asarray(idx)
         if len(idx) > n_per_sample:
             idx = rng.choice(idx, size=n_per_sample, replace=False)
@@ -86,12 +84,16 @@ def main() -> None:
         adata = downsample_per_sample(
             adata, condition_col, args.cells_per_sample, args.seed
         )
-        print(f"Downsampled {n_before} -> {adata.n_obs} cells "
-              f"(<= {args.cells_per_sample} per '{condition_col}')")
+        print(
+            f"Downsampled {n_before} -> {adata.n_obs} cells "
+            f"(<= {args.cells_per_sample} per '{condition_col}')"
+        )
 
     args.out.mkdir(parents=True, exist_ok=True)
 
-    print(f"Writing MatrixMarket matrix ({adata.n_obs} cells x {adata.n_vars} genes)...")
+    print(
+        f"Writing MatrixMarket matrix ({adata.n_obs} cells x {adata.n_vars} genes)..."
+    )
     X = adata.X.tocoo() if hasattr(adata.X, "tocoo") else adata.X
     mm_path = args.out / "matrix.mtx"
     mmwrite(mm_path, X.T.tocsr())  # genes x cells, matching 10x convention
@@ -112,15 +114,25 @@ def main() -> None:
 
     lr = import_ligand_receptor_pairs()
     lr_cols = [
-        "interaction_name", "pathway_name", "ligand", "receptor",
-        "ligand_symbol", "receptor_symbol", "annotation", "evidence",
+        "interaction_name",
+        "pathway_name",
+        "ligand",
+        "receptor",
+        "ligand_symbol",
+        "receptor_symbol",
+        "annotation",
+        "evidence",
     ]
     lr[lr_cols].to_csv(args.out / "lr_pairs.csv", index=False)
 
     print(f"Done. Exported dataset to {args.out}/")
-    print(f"  matrix.mtx.gz, genes.tsv.gz, barcodes.tsv.gz : counts (genes x cells)")
-    print(f"  metadata.csv                                 : per-cell obs, condition column = '{condition_col}'")
-    print(f"  lr_pairs.csv                                 : CellChat Human-2020-Jin ligand-receptor database")
+    print("  matrix.mtx.gz, genes.tsv.gz, barcodes.tsv.gz : counts (genes x cells)")
+    print(
+        f"  metadata.csv                                 : per-cell obs, condition column = '{condition_col}'"
+    )
+    print(
+        "  lr_pairs.csv                                 : CellChat Human-2020-Jin ligand-receptor database"
+    )
 
 
 if __name__ == "__main__":

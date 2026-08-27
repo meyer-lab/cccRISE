@@ -2,7 +2,7 @@ name: Test
 on: [push]
 jobs:
   test:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -13,6 +13,12 @@ jobs:
         uses: astral-sh/setup-uv@v6
       - name: Setup environment
         run: make .venv
+      - name: Run ruff format
+        run: uv run ruff format --check .
+      - name: Run ruff check
+        run: uv run ruff check .
+      - name: Run ty check
+        run: make ty
       - name: Run tests
         run: make coverage.xml
       - name: Upload coverage to Codecov
