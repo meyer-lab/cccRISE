@@ -110,6 +110,264 @@ def calc_communication_score(
     return interaction_tensor, filtered_lr_pairs
 
 
+def _resolve_subunit_indices(
+    names: pd.Series, gene_index: dict[str, int], complex_sep: str | None
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Map each ligand/receptor entry (possibly a `complex_sep`-joined multimeric
+    complex) to indices into the gene axis, for vectorized expression lookups.
+
+    Returns
+    -------
+    idx : np.ndarray of shape (n_entries, max_subunits)
+        Gene indices for each subunit (padded with 0 where invalid).
+    mask : np.ndarray of shape (n_entries, max_subunits)
+        True where `idx` holds a real subunit.
+    valid : np.ndarray of shape (n_entries,)
+        True where every subunit of the entry was found in `gene_index`
+        (mirrors `add_complexes_to_expression`, which zeroes out the whole
+        complex if any subunit is missing).
+    """
+    split_names = [
+        n.split(complex_sep) if complex_sep is not None else [n] for n in names
+    ]
+    max_subunits = max(len(s) for s in split_names)
+    n = len(split_names)
+
+    idx = np.zeros((n, max_subunits), dtype=np.int64)
+    mask = np.zeros((n, max_subunits), dtype=bool)
+    valid = np.zeros(n, dtype=bool)
+
+    for i, subunits in enumerate(split_names):
+        found = [gene_index.get(s) for s in subunits]
+        if all(f is not None for f in found):
+            valid[i] = True
+            for j, f in enumerate(found):
+                idx[i, j] = cast(int, f)
+                mask[i, j] = True
+
+    return idx, mask, valid
+
+
+def _aggregate_subunit_expression(
+    matrix: np.ndarray,
+    idx: np.ndarray,
+    mask: np.ndarray,
+    valid: np.ndarray,
+    agg_method: str,
+) -> np.ndarray:
+    """
+    Reduce subunit expression to a single value per ligand/receptor entry,
+    for every rank, reproducing `add_complexes_to_expression` without pandas.
+
+    Parameters
+    ----------
+    matrix : np.ndarray of shape (rank, genes)
+    idx, mask, valid : as returned by `_resolve_subunit_indices`
+
+    Returns
+    -------
+    np.ndarray of shape (rank, n_entries)
+    """
+    vals = matrix[:, idx]  # (rank, n_entries, max_subunits)
+    counts = np.maximum(mask.sum(axis=1), 1)
+
+    if agg_method == "min":
+        out = np.where(mask, vals, np.inf).min(axis=2)
+    elif agg_method == "mean":
+        out = np.where(mask, vals, 0.0).sum(axis=2) / counts
+    elif agg_method == "gmean":
+        with np.errstate(divide="ignore"):
+            log_vals = np.where(mask, np.log(vals), 0.0)
+        out = np.exp(log_vals.sum(axis=2) / counts)
+    else:
+        raise ValueError(f"{agg_method} is not a valid agg_method")
+
+    out[:, ~valid] = 0.0
+    return out
+
+
+def _fast_interaction_tensor(
+    projected_matrices: list[np.ndarray],
+    lig_idx: np.ndarray,
+    lig_mask: np.ndarray,
+    lig_valid: np.ndarray,
+    rec_idx: np.ndarray,
+    rec_mask: np.ndarray,
+    rec_valid: np.ndarray,
+    complex_agg_method: str,
+) -> np.ndarray:
+    """Vectorized `expression_product` communication tensor for a fixed LR pair set."""
+    tensors = []
+    for matrix in projected_matrices:
+        lig = _aggregate_subunit_expression(
+            matrix, lig_idx, lig_mask, lig_valid, complex_agg_method
+        )
+        rec = _aggregate_subunit_expression(
+            matrix, rec_idx, rec_mask, rec_valid, complex_agg_method
+        )
+        tensors.append(np.einsum("rl,sl->rsl", lig, rec))
+
+    return np.stack(tensors, axis=0)
+
+
+def compute_communication_significance(
+    X_list: list[np.ndarray],
+    projections: list[np.ndarray],
+    gene_names: list[str],
+    lr_pairs: pd.DataFrame | None = None,
+    n_perms: int = 1000,
+    random_state: int | None = None,
+    complex_sep: str | None = "&",
+    complex_agg_method: str = "min",
+    validate: bool = True,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, pd.DataFrame]:
+    """
+    Assess the significance of every entry of the CCC-RISE communication
+    tensor against a CellChat-style permutation null.
+
+    CellChat/CellPhoneDB build their null by randomly reassigning cells to
+    cluster labels and recomputing per-cluster mean expression. RISE has no
+    discrete clusters, only a continuous, per-cell loading onto each
+    eigen-state (a row of the PARAFAC2 projection matrix `P_i`). The direct
+    generalization is therefore to permute which cell's expression each
+    loading row is paired with -- i.e. shuffle the rows of `P_i` per
+    condition, holding the raw expression `X_i` and the LR annotation fixed
+    -- and recompute the communication tensor. This breaks the real
+    cell/eigen-state association while preserving cell counts, the loading
+    distribution, and the LR biology, exactly mirroring what a cluster-label
+    permutation tests in the discrete case.
+
+    For efficiency, the communication score (`expression_product`, with
+    complexes aggregated via `complex_agg_method`) is recomputed for every
+    permutation using a vectorized NumPy implementation rather than by
+    rebuilding the tensor through `calc_communication_score`/Tensor Cell2Cell
+    each time, which dominates runtime for `n_perms` in the hundreds to
+    thousands. The LR pair set and gene lookups are resolved once up front;
+    only the cheap eigen-state/gene outer products are repeated per
+    permutation. `validate=True` checks the vectorized path against the
+    reference implementation once, on the observed (unpermuted) tensor.
+
+    Parameters
+    ----------
+    X_list : list[np.ndarray]
+        Per-condition raw expression matrices, shape (cells, genes).
+    projections : list[np.ndarray]
+        Per-condition RISE/PARAFAC2 projection matrices, shape (cells, rank).
+    gene_names : list[str]
+        Gene names corresponding to the columns of each `X_list` entry.
+    lr_pairs : pd.DataFrame, optional
+        DataFrame with 'ligand' and 'receptor' columns.
+    n_perms : int, default=1000
+        Number of eigen-state/cell permutations forming the null distribution.
+    random_state : int, optional
+        Random seed for reproducibility.
+    complex_sep : str, optional, default="&"
+        Separator for multimeric complexes.
+    complex_agg_method : str, default="min"
+        Method to aggregate subunit expression for complexes.
+    validate : bool, default=True
+        Cross-check the vectorized observed tensor against
+        `calc_communication_score` and raise if they disagree.
+
+    Returns
+    -------
+    interaction_tensor : np.ndarray
+        Observed 4D communication tensor, shape (conditions, rank, rank, n_lr_pairs).
+    pvalue_tensor : np.ndarray
+        Empirical p-value per entry, same shape as `interaction_tensor`.
+    null_mean_tensor : np.ndarray
+        Per-entry mean of the null distribution, same shape.
+    null_std_tensor : np.ndarray
+        Per-entry standard deviation of the null distribution, same shape;
+        together with `null_mean_tensor` this gives an effect-size/z-score
+        (`(interaction_tensor - null_mean_tensor) / null_std_tensor`) alongside
+        the p-value.
+    filtered_lr_pairs : pd.DataFrame
+        LR pairs corresponding to the tensor's last axis.
+    """
+    if lr_pairs is None:
+        lr_pairs = import_ligand_receptor_pairs()
+
+    # Only densify legacy scipy sparse matrices; leave other array-likes
+    # (e.g. parafac2's mean-centering `SampleArray`) to handle `@` themselves,
+    # matching the convention used elsewhere in this module (see `ccc_rise`).
+    X_arrays = [
+        cast(Any, x).toarray() if isinstance(x, spmatrix) else x for x in X_list
+    ]
+    dense_P = [np.asarray(p) for p in projections]
+    projected_matrices = [P.T @ X for P, X in zip(dense_P, X_arrays)]
+
+    interaction_tensor, filtered_lr_pairs = calc_communication_score(
+        projected_matrices=projected_matrices,
+        gene_names=gene_names,
+        lr_pairs=lr_pairs,
+        complex_sep=complex_sep,
+        complex_agg_method=complex_agg_method,
+    )
+
+    gene_index = {g: i for i, g in enumerate(gene_names)}
+    lig_idx, lig_mask, lig_valid = _resolve_subunit_indices(
+        filtered_lr_pairs["ligand"], gene_index, complex_sep
+    )
+    rec_idx, rec_mask, rec_valid = _resolve_subunit_indices(
+        filtered_lr_pairs["receptor"], gene_index, complex_sep
+    )
+
+    if validate:
+        fast_observed = _fast_interaction_tensor(
+            projected_matrices,
+            lig_idx,
+            lig_mask,
+            lig_valid,
+            rec_idx,
+            rec_mask,
+            rec_valid,
+            complex_agg_method,
+        )
+        if not np.allclose(fast_observed, interaction_tensor, rtol=1e-5, atol=1e-8):
+            raise RuntimeError(
+                "Vectorized communication score does not match "
+                "calc_communication_score on the observed tensor."
+            )
+
+    rng = np.random.default_rng(random_state)
+    ge_count = np.zeros_like(interaction_tensor, dtype=np.int64)
+    null_sum = np.zeros_like(interaction_tensor, dtype=np.float64)
+    null_sumsq = np.zeros_like(interaction_tensor, dtype=np.float64)
+
+    for _ in range(n_perms):
+        permuted_matrices = [
+            P[rng.permutation(P.shape[0]), :].T @ X for P, X in zip(dense_P, X_arrays)
+        ]
+        null_tensor = _fast_interaction_tensor(
+            permuted_matrices,
+            lig_idx,
+            lig_mask,
+            lig_valid,
+            rec_idx,
+            rec_mask,
+            rec_valid,
+            complex_agg_method,
+        )
+        ge_count += null_tensor >= interaction_tensor
+        null_sum += null_tensor
+        null_sumsq += null_tensor**2
+
+    pvalue_tensor = (ge_count + 1.0) / (n_perms + 1.0)
+    null_mean_tensor = null_sum / n_perms
+    null_var_tensor = np.maximum(null_sumsq / n_perms - null_mean_tensor**2, 0.0)
+    null_std_tensor = np.sqrt(null_var_tensor)
+
+    return (
+        interaction_tensor,
+        pvalue_tensor,
+        null_mean_tensor,
+        null_std_tensor,
+        filtered_lr_pairs,
+    )
+
+
 def ccc_rise(
     adata: anndata.AnnData,
     rise_rank: int,
