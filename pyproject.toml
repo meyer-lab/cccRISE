@@ -22,6 +22,7 @@ dependencies = [
     "xarray>=2024.1.0",
     "netcdf4>=1.6.5",
     "scanpy>=1.12.3",
+    "vcsc",
     "pyreadr>=0.5.6",
 ]
 
@@ -43,7 +44,13 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-root = ""
 
+[tool.uv.sources]
+vcsc = { git = "https://github.com/meyer-lab/anndata-VCSC.git" }
+
 [dependency-groups]
+analysis = [
+    "vcsc",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=6.0",
