@@ -7,6 +7,7 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from parafac2.parafac2 import parafac2_nd
 from scipy.sparse import issparse
 from tensorly.cp_tensor import cp_to_tensor
@@ -269,13 +270,25 @@ def run_bicv(
 # =============================================================================
 
 
+def _has_cuda() -> bool:
+    """Check if PyTorch is installed and CUDA is available."""
+    try:
+        import torch
+
+        return bool(torch.cuda.is_available())
+    except ImportError:
+        return False
+
+
 def cp_masked_reconstruction_error(
-    tensor: np.ndarray,
+    tensor: np.ndarray | Any,
     rank: int,
     mask_frac: float = 0.1,
     n_iter_max: int = 1000,
+    tol: float = 1e-8,
     init: str = "random",
     random_state: int | None = None,
+    device: str | None = None,
 ) -> dict[str, float]:
     """Calculate one fold of entry-masked CP cross-validation reconstruction error.
 
@@ -286,7 +299,7 @@ def cp_masked_reconstruction_error(
 
     Parameters
     ----------
-    tensor : np.ndarray
+    tensor : np.ndarray or torch.Tensor
         Input tensor to decompose.
     rank : int
         Decomposition rank to evaluate.
@@ -294,10 +307,16 @@ def cp_masked_reconstruction_error(
         Fraction of tensor entries randomly held out for testing.
     n_iter_max : int, default=1000
         Maximum number of iterations for CP decomposition.
+    tol : float, default=1e-8
+        Tolerance threshold for CP convergence; matches `tensorly.parafac`'s
+        own default, so CPU and GPU runs stop on the same criterion.
     init : str, default="random"
         Initialization method for CP decomposition (e.g., 'random', 'svd').
     random_state : int | None, default=None
         Random seed for mask generation and CP initialization.
+    device : str, optional
+        Compute device ('cuda', 'cpu', or None for auto-detection). If None,
+        automatically uses 'cuda' when PyTorch CUDA is available.
 
     Returns
     -------
@@ -309,6 +328,69 @@ def cp_masked_reconstruction_error(
         - 'NHeldOut': Total count of held-out entries.
         - 'NTrain': Total count of training entries.
     """
+    if device is None:
+        device = "cuda" if _has_cuda() else "cpu"
+
+    use_cuda = device.startswith("cuda") and _has_cuda()
+
+    if use_cuda:
+        import torch
+
+        prev_backend = tl.get_backend()
+        try:
+            tl.set_backend("pytorch")
+            with torch.inference_mode():
+                if isinstance(tensor, torch.Tensor):
+                    t_tensor = tensor.to(device="cuda", dtype=torch.float32)
+                else:
+                    t_tensor = torch.as_tensor(
+                        tensor, dtype=torch.float32, device="cuda"
+                    )
+
+                rng = np.random.default_rng(random_state)
+                mask_np = rng.uniform(size=tuple(t_tensor.shape)) >= mask_frac
+                if not np.any(~mask_np):
+                    mask_np[tuple(rng.integers(0, s) for s in t_tensor.shape)] = False
+
+                m_tensor = torch.as_tensor(mask_np, dtype=torch.float32, device="cuda")
+
+                w, f = parafac(
+                    tensor=t_tensor,
+                    rank=rank,
+                    n_iter_max=n_iter_max,
+                    tol=tol,
+                    init=init,
+                    mask=m_tensor,
+                    normalize_factors=True,
+                    linesearch=True,
+                    random_state=random_state,
+                )
+
+                pred = cp_to_tensor((w, f))
+                held_out = ~torch.as_tensor(mask_np, dtype=torch.bool, device="cuda")
+                actual = t_tensor[held_out]
+                predicted = pred[held_out]
+
+                sse = float(torch.sum((actual - predicted) ** 2).item())
+                sst = float(torch.sum(actual**2).item())
+                held_out_r2x = 1.0 - sse / sst if sst > 0 else float("nan")
+
+                in_sse = float(torch.sum((t_tensor - pred) ** 2).item())
+                in_sst = float(torch.sum(t_tensor**2).item())
+                in_sample_r2x = 1.0 - in_sse / in_sst if in_sst > 0 else float("nan")
+
+                del pred, w, f, m_tensor
+
+                return {
+                    "Rank": rank,
+                    "HeldOutR2X": held_out_r2x,
+                    "InSampleR2X": in_sample_r2x,
+                    "NHeldOut": int(np.sum(~mask_np)),
+                    "NTrain": int(np.sum(mask_np)),
+                }
+        finally:
+            tl.set_backend(prev_backend)
+
     rng = np.random.default_rng(random_state)
     mask = rng.uniform(size=tensor.shape) >= mask_frac
     if not np.any(~mask):
@@ -318,6 +400,7 @@ def cp_masked_reconstruction_error(
         tensor=tensor,
         rank=rank,
         n_iter_max=n_iter_max,
+        tol=tol,
         init=init,
         mask=mask.astype(float),
         normalize_factors=True,
@@ -332,7 +415,7 @@ def cp_masked_reconstruction_error(
 
     sse = float(np.sum((actual - predicted) ** 2))
     sst = float(np.sum(actual**2))
-    held_out_r2x = 1.0 - sse / sst if sst > 0 else np.nan
+    held_out_r2x = 1.0 - sse / sst if sst > 0 else float("nan")
 
     in_sample_r2x = calculate_r2x(w, f, tensor)
 
@@ -351,8 +434,10 @@ def cp_masked_reconstruction_sweep(
     n_masks: int = 5,
     mask_frac: float = 0.1,
     n_iter_max: int = 1000,
+    tol: float = 1e-8,
     init: str = "random",
     random_state: int | None = None,
+    device: str | None = None,
 ) -> pd.DataFrame:
     """Entry-masked cross-validation swept across ranks and mask replicates.
 
@@ -368,10 +453,15 @@ def cp_masked_reconstruction_sweep(
         Fraction of tensor entries held out in each mask.
     n_iter_max : int, default=1000
         Maximum number of iterations for CP decomposition.
+    tol : float, default=1e-8
+        Tolerance threshold for CP convergence; matches `tensorly.parafac`'s
+        own default, so CPU and GPU runs stop on the same criterion.
     init : str, default="random"
         Initialization method for CP decomposition.
     random_state : int | None, default=None
         Base random seed for reproducibility across replicates.
+    device : str, optional
+        Compute device ('cuda', 'cpu', or None for auto-detection).
 
     Returns
     -------
@@ -379,17 +469,35 @@ def cp_masked_reconstruction_sweep(
         DataFrame containing results for each rank and replicate with columns:
         'Rank', 'Mask', 'HeldOutR2X', 'InSampleR2X', 'NHeldOut', 'NTrain'.
     """
+    if device is None:
+        device = "cuda" if _has_cuda() else "cpu"
+
+    tensor_input: Any = tensor
+    if device.startswith("cuda") and _has_cuda():
+        import torch
+
+        tensor_input = torch.as_tensor(tensor, dtype=torch.float32, device="cuda")
+
     rows = [
         cp_masked_reconstruction_error(
-            tensor,
+            tensor_input,
             rank=rank,
             mask_frac=mask_frac,
             n_iter_max=n_iter_max,
+            tol=tol,
             init=init,
             random_state=None if random_state is None else random_state * 1000 + m,
+            device=device,
         )
         | {"Mask": m}
         for rank in ranks
         for m in range(n_masks)
     ]
+
+    if device.startswith("cuda") and _has_cuda():
+        import torch
+
+        del tensor_input
+        torch.cuda.empty_cache()
+
     return pd.DataFrame(rows)

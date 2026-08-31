@@ -23,6 +23,7 @@ dependencies = [
     "netcdf4>=1.6.5",
     "scanpy>=1.12.3",
     "vcsc",
+    "torch>=2.13.0",
     "pyreadr>=0.5.6",
 ]
 
