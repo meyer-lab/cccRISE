@@ -127,4 +127,3 @@ def test_import_alad_brush():
         assert adata.n_vars > 0
         assert "condition_unique_idxs" in adata.obs.columns
         assert "means" in adata.var.columns
-

@@ -18,6 +18,7 @@ IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
 IBD_TI_PATH = IBD_DATA_DIR / "ti_only.h5ad"
 IBD_TI_IVCSC = IBD_DATA_DIR / "ti_only.ivcsc.h5ad"
 
+
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
     filename: str = str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
@@ -229,6 +230,7 @@ def import_alad_brush(
     return prepare_dataset(
         data, "subj", geneThreshold=gene_threshold, normalize=normalize
     )
+
 
 def import_ibdverse(
     filename: str | Path = IBD_TI_IVCSC,
