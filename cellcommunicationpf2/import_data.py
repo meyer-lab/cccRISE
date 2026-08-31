@@ -13,6 +13,10 @@ from scipy.sparse import csr_array, issparse
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
+# IBDverse reference paths
+IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
+IBD_TI_PATH = IBD_DATA_DIR / "ti_only.h5ad"
+IBD_TI_IVCSC = IBD_DATA_DIR / "ti_only.ivcsc.h5ad"
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
@@ -226,6 +230,33 @@ def import_alad_brush(
         data, "subj", geneThreshold=gene_threshold, normalize=normalize
     )
 
+def import_ibdverse(
+    filename: str | Path = IBD_TI_IVCSC,
+    gene_threshold: float = 0.001,
+    normalize: bool = True,
+    condition_name: str = "sanger_sample_id",
+) -> anndata.AnnData:
+    """IBDverse intestinal biopsies and blood.
+
+    References:
+    [1] Alegbe, Harris et al. Nature (2026). https://doi.org/10.1038/s41586-026-10627-z
+    [2] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
+        https://doi.org/10.1038/s41588-026-02634-7
+    """
+    print("Loading IBDverse data...")
+    if normalize:
+        data = vcsc.load_and_normalize(
+            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
+        )
+        data = add_cond_idxs(data, condition_name)
+        data.var["means"] = data.X.mean(axis=0)
+        return data
+
+    data = vcsc.load_packed(filename).to_anndata()
+    return prepare_dataset(
+        data, condition_name, geneThreshold=gene_threshold, normalize=normalize
+    )
+
 
 def add_cond_idxs(X, condition_key):
     """Add unique condition indices to an AnnData object."""
@@ -293,51 +324,3 @@ def prepare_dataset(
     X.var["means"] = data.mean(axis=0)
 
     return X
-
-
-# --- IBDverse -----------------------------------------------------------------
-# Alegbe, Harris et al. Nature 2026 (multi-tissue release) and Krzak, Alegbe,
-# Taylor, Jones et al. Nat Genet 2026 (terminal ileum). See
-# https://www.ibdverse.info/#data.
-
-IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
-# The distributed files are plain Blosc-CSR; `vcsc.load_and_normalize` needs the
-# IVCSC on-disk format, so they are converted once (as `/opt/IVCSC/*` already was).
-IBD_TI_PATH = IBD_DATA_DIR / "ti_only.h5ad"
-IBD_TI_IVCSC = IBD_DATA_DIR / "ti_only.ivcsc.h5ad"
-
-
-def import_ibdverse(
-    filename: str | Path = IBD_TI_IVCSC,
-    gene_threshold: float = 0.001,
-    normalize: bool = True,
-    condition_name: str = "sanger_sample_id",
-) -> anndata.AnnData:
-    """IBDverse intestinal biopsies and blood.
-
-    Sample phenotype (`disease_status`, `ti_ses_inflamed`, the derived
-    `inflammation_status` and `lineage`) is baked into the file's `obs`.
-
-    Beware that outside the terminal ileum, tissue is completely separated from
-    disease status in this release: every blood sample comes from a CD donor and
-    every rectal sample from a healthy one, so pooling tissues as conditions
-    makes the leading components uninterpretable.
-
-    References:
-    [1] Alegbe, Harris et al. Nature (2026). https://doi.org/10.1038/s41586-026-10627-z
-    [2] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
-        https://doi.org/10.1038/s41588-026-02634-7
-    """
-    print("Loading IBDverse data...")
-    if normalize:
-        data = vcsc.load_and_normalize(
-            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
-        )
-        data = add_cond_idxs(data, condition_name)
-        data.var["means"] = data.X.mean(axis=0)
-        return data
-
-    data = vcsc.load_packed(filename).to_anndata()
-    return prepare_dataset(
-        data, condition_name, geneThreshold=gene_threshold, normalize=normalize
-    )
