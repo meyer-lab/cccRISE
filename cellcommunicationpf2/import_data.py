@@ -293,3 +293,234 @@ def prepare_dataset(
     X.var["means"] = data.mean(axis=0)
 
     return X
+
+
+# --- IBDverse -----------------------------------------------------------------
+# Alegbe, Harris et al. Nature 2026 (multi-tissue release). See
+# https://www.ibdverse.info/#data. The distributed h5ad files are written with a
+# Blosc/Zstd filter, so `hdf5plugin` must be imported before h5py opens them.
+
+IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
+IBD_TI_PATH = IBD_DATA_DIR / "ti_only.h5ad"
+
+
+def load_ibdverse_sample_metadata(
+    metadata_dir: str | Path = IBD_DATA_DIR,
+) -> pd.DataFrame:
+    """Join the three IBDverse metadata TSVs into one per-sample table.
+
+    Returns a frame indexed by ``sanger_sample_id`` carrying ``individual_id``,
+    ``biopsy_type``, ``disease_status``, ``sex``, ``age_binned_10``,
+    ``ti_ses_inflamed`` and a derived three-level ``inflammation_status``
+    (``Healthy`` / ``CD_uninflamed`` / ``CD_inflamed``).
+
+    Note that ``ti_ses_inflamed`` is an *individual*-level SES-CD score for the
+    terminal ileum, so a blood sample labelled ``inflamed`` means the donor's
+    ileum was inflamed, not the blood.
+    """
+    metadata_dir = Path(metadata_dir)
+    samples = pd.read_csv(metadata_dir / "sample_metadata.tsv", sep="\t")
+    mapping = pd.read_csv(metadata_dir / "sample_individual_mapping.tsv", sep="\t")
+    individuals = pd.read_csv(metadata_dir / "individual_metadata.tsv", sep="\t")
+
+    meta = samples.merge(mapping, on="sanger_sample_id", how="left").merge(
+        individuals, on="individual_id", how="left"
+    )
+
+    status = pd.Series("Healthy", index=meta.index, dtype=object)
+    is_cd = meta["disease_status"] == "CD"
+    status[is_cd & (meta["ti_ses_inflamed"] == "uninflamed")] = "CD_uninflamed"
+    status[is_cd & (meta["ti_ses_inflamed"] == "inflamed")] = "CD_inflamed"
+    meta["inflammation_status"] = status
+
+    return meta.drop_duplicates("sanger_sample_id").set_index("sanger_sample_id")
+
+
+def _read_h5ad_obs(path: str | Path) -> pd.DataFrame:
+    """Read only ``obs`` from an h5ad, without touching X."""
+    import h5py
+    import hdf5plugin  # noqa: F401  (registers the Blosc/Zstd filters)
+
+    with h5py.File(path, "r") as handle:
+        return anndata.io.read_elem(handle["obs"])
+
+
+def _coalesce_ranges(
+    starts: np.ndarray, stops: np.ndarray, max_gap: int = 1_000_000
+) -> list[tuple[int, int, list[tuple[int, int]]]]:
+    """Group sorted [start, stop) ranges into slabs separated by more than `max_gap`.
+
+    Returns ``(slab_start, slab_stop, member_ranges)`` per slab.
+    """
+    slabs: list[tuple[int, int, list[tuple[int, int]]]] = []
+    slab_start, slab_stop = int(starts[0]), int(stops[0])
+    members = [(int(starts[0]), int(stops[0]))]
+    for start, stop in zip(starts[1:], stops[1:]):
+        start, stop = int(start), int(stop)
+        if start - slab_stop > max_gap:
+            slabs.append((slab_start, slab_stop, members))
+            slab_start, slab_stop, members = start, stop, []
+        slab_stop = max(slab_stop, stop)
+        members.append((start, stop))
+    slabs.append((slab_start, slab_stop, members))
+    return slabs
+
+
+def _read_h5ad_rows(path: str | Path, rows: np.ndarray) -> anndata.AnnData:
+    """Read a subset of cells from a CSR-backed h5ad without loading all of X.
+
+    `anndata`'s backed mode still round-trips through its own indexing machinery;
+    for a file with billions of stored values it is much cheaper to gather the
+    requested rows straight out of the CSR arrays.
+    """
+    import h5py
+    import hdf5plugin  # noqa: F401
+
+    rows = np.sort(np.asarray(rows, dtype=np.int64))
+
+    with h5py.File(path, "r") as handle:
+        obs = anndata.io.read_elem(handle["obs"]).iloc[rows]
+        var = anndata.io.read_elem(handle["var"])
+
+        group = handle["X"]
+        indptr = group["indptr"][:]
+        starts, stops = indptr[rows], indptr[rows + 1]
+        counts = stops - starts
+
+        data = np.empty(int(counts.sum()), dtype=group["data"].dtype)
+        indices = np.empty(data.size, dtype=np.int32)
+        at = 0
+        # One h5py read per requested row would mean tens of thousands of
+        # round-trips through the decompression filter. Coalesce rows that land
+        # close together into a single slab read and slice locally instead; the
+        # gap tolerance bounds how much extra we pull off disk per slab.
+        for slab_start, slab_stop, members in _coalesce_ranges(starts, stops):
+            slab_data = group["data"][slab_start:slab_stop]
+            slab_indices = group["indices"][slab_start:slab_stop]
+            for start, stop in members:
+                width = int(stop - start)
+                if width == 0:
+                    continue
+                lo = int(start - slab_start)
+                data[at : at + width] = slab_data[lo : lo + width]
+                indices[at : at + width] = slab_indices[lo : lo + width]
+                at += width
+
+    matrix = csr_array(
+        (data, indices, np.concatenate([[0], np.cumsum(counts)]).astype(np.int64)),
+        shape=(rows.size, var.shape[0]),
+    )
+    return anndata.AnnData(X=matrix, obs=obs, var=var)
+
+
+def _select_ibdverse_cells(
+    obs: pd.DataFrame,
+    condition_name: str,
+    n_conditions: int | None,
+    max_cells_per_condition: int | None,
+    min_conf_score: float | None,
+    stratify_by: str | None,
+    random_state: int,
+) -> np.ndarray:
+    """Pick the cell indices for a (possibly downsampled) IBDverse run."""
+    rng = np.random.default_rng(random_state)
+    keep = np.ones(len(obs), dtype=bool)
+    if min_conf_score is not None:
+        keep &= obs["conf_score"].to_numpy() >= min_conf_score
+
+    conditions = obs.loc[keep, condition_name].astype(str)
+
+    if n_conditions is not None and n_conditions < conditions.nunique():
+        per_condition = obs.loc[keep].drop_duplicates(condition_name)
+        if stratify_by is not None and stratify_by in per_condition:
+            groups = per_condition.groupby(stratify_by, observed=True)[condition_name]
+            # Round-robin across strata so small strata are not squeezed out.
+            pools = [
+                list(rng.permutation(np.asarray(names, dtype=object)))
+                for _, names in groups
+            ]
+            chosen: list[str] = []
+            while len(chosen) < n_conditions and any(pools):
+                for pool in pools:
+                    if pool and len(chosen) < n_conditions:
+                        chosen.append(str(pool.pop()))
+        else:
+            names = per_condition[condition_name].astype(str).to_numpy()
+            chosen = list(rng.choice(names, size=n_conditions, replace=False))
+        keep &= obs[condition_name].astype(str).isin(set(chosen)).to_numpy()
+
+    rows = np.flatnonzero(keep)
+    if max_cells_per_condition is not None:
+        codes = obs[condition_name].astype(str).to_numpy()[rows]
+        selected = []
+        for name in pd.unique(codes):
+            block = rows[codes == name]
+            if block.size > max_cells_per_condition:
+                block = rng.choice(block, size=max_cells_per_condition, replace=False)
+            selected.append(block)
+        rows = np.sort(np.concatenate(selected))
+
+    return rows
+
+
+def import_ibdverse(
+    filename: str | Path = IBD_TI_PATH,
+    metadata_dir: str | Path = IBD_DATA_DIR,
+    gene_threshold: float = 0.001,
+    normalize: bool = True,
+    condition_name: str = "sanger_sample_id",
+    n_conditions: int | None = None,
+    max_cells_per_condition: int | None = None,
+    min_conf_score: float | None = None,
+    stratify_by: str | None = "inflammation_status",
+    random_state: int = 0,
+) -> anndata.AnnData:
+    """IBDverse intestinal biopsies, optionally downsampled.
+
+    The full terminal-ileum object is 2.17M cells x 33,538 genes with 4.19e9
+    stored values, roughly 30x more conditions and 34x more cells than any
+    dataset CCC-RISE has been fit on, so `n_conditions` / `max_cells_per_condition`
+    exist to draw a tractable subset without materializing all of X.
+
+    Sample-level phenotype is not in the distributed `obs`; it is joined here
+    from the metadata TSVs (see `load_ibdverse_sample_metadata`). `obs` also
+    carries only unnamed prediction clusters (`Epithelial_17`, `T_20`, ...), so
+    a coarse `lineage` column is derived from their prefix.
+
+    Beware that outside the terminal ileum, tissue is completely separated from
+    disease status in this release: every blood sample is from a CD donor and
+    every rectal sample from a healthy one. Pool tissues as conditions and the
+    leading components are uninterpretable.
+
+    References:
+    [1] Alegbe, Harris et al. Nature (2026). https://doi.org/10.1038/s41586-026-10627-z
+    """
+    obs = _read_h5ad_obs(filename)
+    meta = load_ibdverse_sample_metadata(metadata_dir)
+    obs = obs.join(meta, on=condition_name)
+
+    rows = _select_ibdverse_cells(
+        obs,
+        condition_name=condition_name,
+        n_conditions=n_conditions,
+        max_cells_per_condition=max_cells_per_condition,
+        min_conf_score=min_conf_score,
+        stratify_by=stratify_by,
+        random_state=random_state,
+    )
+    print(
+        f"Loading IBDverse: {rows.size:,} cells across "
+        f"{obs.iloc[rows][condition_name].nunique():,} samples..."
+    )
+
+    data = _read_h5ad_rows(filename, rows)
+    data.obs = obs.iloc[rows]
+
+    if "predicted_labels" in data.obs:
+        data.obs["lineage"] = (
+            data.obs["predicted_labels"].astype(str).str.split("_").str[0]
+        ).astype("category")
+
+    return prepare_dataset(
+        data, condition_name, geneThreshold=gene_threshold, normalize=normalize
+    )
