@@ -7,14 +7,13 @@ from pacmap import PaCMAP
 from parafac2.parafac2 import anndata_to_list, parafac2_nd, store_pf2
 from scipy.sparse import spmatrix
 from tensorly.cp_tensor import CPTensor
-from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score as fms
 
-from .ccc import calculate_r2x
 from .ccc_rise import (
     calc_communication_score,
     calc_communication_score_pseudobulk,
     ccc_rise,
+    cp_decomposition,
     pseudobulk_cp_decomposition,
     save_ccc_rise_results,
     standardize_cc_pf2,
@@ -96,6 +95,7 @@ def run_ccc_rise_workflow(
     complex_sep: str | None = None,
     doEmbedding: bool = True,
     svd_init: str = "svd",
+    device: str | None = None,
 ) -> tuple[anndata.AnnData, float]:
     """
     Executes the complete CCC-RISE workflow: decomposition, standardization,
@@ -119,6 +119,8 @@ def run_ccc_rise_workflow(
         Convergence tolerance for the decomposition.
     random_state : int | None
         Random seed for reproducibility.
+    device : str, optional
+        Compute device for the CP decomposition; see `cp_decomposition`.
 
     Returns
     -------
@@ -140,6 +142,7 @@ def run_ccc_rise_workflow(
         complex_sep=complex_sep,
         lr_pairs=lr_pairs,
         svd_init=svd_init,
+        device=device,
     )
     (cp_weights, factors), projections = results
 
@@ -181,6 +184,7 @@ def run_pseudobulk_workflow(
     tol: float = 1e-11,
     random_state: int | None = None,
     complex_sep: str | None = "&",
+    device: str | None = None,
 ) -> tuple[anndata.AnnData, float]:
     """
     Executes the complete pseudobulk CP decomposition workflow:
@@ -210,6 +214,8 @@ def run_pseudobulk_workflow(
         Random seed for reproducibility.
     complex_sep : str | None, default="&"
         Symbol that separates protein subunits in multimeric complexes.
+    device : str, optional
+        Compute device for the CP decomposition; see `cp_decomposition`.
 
     Returns
     -------
@@ -233,6 +239,7 @@ def run_pseudobulk_workflow(
         n_iter_max=n_iter_max,
         tol=tol,
         random_state=random_state,
+        device=device,
     )
     adata = save_ccc_rise_results(adata, cpd_factors, cpd_weights, filtered_lr_pairs)
     adata.uns["r2x"] = r2x
@@ -320,31 +327,35 @@ def run_fms_r2x_analysis(
     rank_list: list[int] | None = None,
     runs: int = 1,
     svd_init: str = "svd",
+    device: str | None = None,
 ) -> pd.DataFrame:
-    """Run FMS and R2X analysis across different CP ranks and bootstrap runs."""
+    """Run FMS and R2X analysis across different CP ranks and bootstrap runs.
+
+    `device` selects the compute device for every CP decomposition; see
+    `cp_decomposition`.
+    """
     if rank_list is None:
         rank_list = list(range(1, 4))
 
     rows = []
     for j in rank_list:
-        cp_weights, cp_factors = parafac(
-            tensor=interaction_tensor,
-            rank=j,
+        cp_weights, cp_factors, r2x = cp_decomposition(
+            interaction_tensor,
+            cp_rank=j,
             n_iter_max=1000,
             init=svd_init,
-            normalize_factors=True,
             linesearch=True,
+            device=device,
         )
 
         for i in range(runs):
-            r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
-            cp_boot_weights, cp_boot_factors = parafac(
-                tensor=resample_tensor(interaction_tensor),
-                rank=j,
+            cp_boot_weights, cp_boot_factors, _ = cp_decomposition(
+                resample_tensor(interaction_tensor),
+                cp_rank=j,
                 n_iter_max=1000,
                 init=svd_init,
-                normalize_factors=True,
                 linesearch=True,
+                device=device,
             )
             fms_score = calculate_fms_cpd(
                 cp_weights, cp_factors, cp_boot_weights, cp_boot_factors
@@ -363,7 +374,13 @@ def run_fms_r2x_data_percentage_analysis(
     percentage_list: list[int] | None = None,
     runs: int = 1,
     svd_init: str = "svd",
+    device: str | None = None,
 ) -> pd.DataFrame:
+    """Run FMS and R2X analysis across decreasing fractions of the cells.
+
+    `device` selects the compute device for every CP decomposition; see
+    `cp_decomposition`.
+    """
     if percentage_list is None:
         percentage_list = list(range(100, 45, -5))
 
@@ -374,12 +391,12 @@ def run_fms_r2x_data_percentage_analysis(
 
     # 0) Reference on FULL data (no bootstrapping here)
     full_tensor = calculate_interaction_tensor(X_filtered, lr_pairs)
-    w_full, f_full = parafac(
-        tensor=full_tensor,
-        rank=cp_rank,
+    w_full, f_full, _ = cp_decomposition(
+        full_tensor,
+        cp_rank=cp_rank,
         n_iter_max=1000,
         init=svd_init,
-        normalize_factors=True,
+        device=device,
     )
 
     rows = []
@@ -397,17 +414,14 @@ def run_fms_r2x_data_percentage_analysis(
             # 2) Tensor on subsample
             sub_tensor = calculate_interaction_tensor(X_sub, lr_pairs)
 
-            # 3) CP on subsample
-            w_sub, f_sub = parafac(
-                tensor=sub_tensor,
-                rank=cp_rank,
+            # 3) CP on subsample, with 4) R2X on that subsample
+            w_sub, f_sub, r2x_sub = cp_decomposition(
+                sub_tensor,
+                cp_rank=cp_rank,
                 n_iter_max=1000,
                 init=svd_init,
-                normalize_factors=True,
+                device=device,
             )
-
-            # 4) R²X on subsample
-            r2x_sub = calculate_r2x(w_sub, f_sub, sub_tensor)
 
             # 5) FMS vs FULL reference (NOT vs bootstrap)
             fms_vs_full = calculate_fms_cpd(w_full, f_full, w_sub, f_sub)

@@ -3,9 +3,10 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from parafac2.parafac2 import anndata_to_list, parafac2_nd
 from scipy.sparse import spmatrix
-from tensorly.cp_tensor import cp_flip_sign, cp_normalize
+from tensorly.cp_tensor import cp_flip_sign, cp_normalize, cp_to_tensor
 from tensorly.decomposition import parafac
 
 from .ccc import (
@@ -15,6 +16,106 @@ from .ccc import (
     get_genes_from_complexes,
 )
 from .import_data import import_ligand_receptor_pairs
+
+
+def _has_cuda() -> bool:
+    """Check if PyTorch is installed and CUDA is available."""
+    try:
+        import torch
+
+        return bool(torch.cuda.is_available())
+    except ImportError:
+        return False
+
+
+def cp_decomposition(
+    interaction_tensors: np.ndarray,
+    cp_rank: int,
+    n_iter_max: int,
+    tol: float | None = None,
+    init: str = "svd",
+    linesearch: bool = False,
+    random_state: int | None = None,
+    device: str | None = None,
+) -> tuple[np.ndarray, list[np.ndarray], float]:
+    """Fit CP to an interaction tensor, on the GPU when one is available.
+
+    The GPU path runs CP-ALS through tensorly's PyTorch backend in float64
+    and computes R2X on-device. Weights and factors are always returned as
+    host NumPy arrays, so downstream consumers are unaffected by the device.
+
+    Parameters
+    ----------
+    interaction_tensors : np.ndarray
+        4D communication tensor, shape (conditions, sender, receiver, lr_pairs).
+    cp_rank : int
+        Rank for the CP decomposition.
+    n_iter_max : int
+        Maximum number of ALS iterations.
+    tol : float, optional
+        Convergence tolerance; None uses tensorly's default.
+    init : str, default="svd"
+        Initialization method for CP decomposition.
+    linesearch : bool, default=False
+        Whether to use line search to accelerate ALS convergence.
+    random_state : int, optional
+        Seed for reproducibility.
+    device : str, optional
+        Compute device ('cuda', 'cpu', or None for auto-detection). If None,
+        uses 'cuda' when PyTorch CUDA is available. Requesting 'cuda' without
+        it falls back to CPU rather than raising.
+
+    Returns
+    -------
+    tuple[np.ndarray, list[np.ndarray], float]
+        CP weights, CP factor matrices, and R2X.
+    """
+    parafac_kwargs: dict[str, Any] = {
+        "rank": cp_rank,
+        "n_iter_max": n_iter_max,
+        "init": init,
+        "linesearch": linesearch,
+        "normalize_factors": True,
+        "random_state": random_state,
+    }
+    if tol is not None:
+        parafac_kwargs["tol"] = tol
+
+    if device is None:
+        device = "cuda" if _has_cuda() else "cpu"
+
+    if not (device.startswith("cuda") and _has_cuda()):
+        cp_weights, cp_factors = parafac(interaction_tensors, **parafac_kwargs)
+        r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
+        return cp_weights, cp_factors, r2x
+
+    import torch
+
+    previous_backend = tl.get_backend()
+    tl.set_backend("pytorch")
+    try:
+        with torch.no_grad():
+            device_tensor = torch.as_tensor(
+                interaction_tensors, dtype=torch.float64, device="cuda"
+            )
+            cp_weights, cp_factors = parafac(device_tensor, **parafac_kwargs)
+
+            reconstructed = cp_to_tensor((cp_weights, cp_factors))
+            total_variance = torch.sum(device_tensor**2)
+            error = torch.sum((device_tensor - reconstructed) ** 2)
+            r2x = (
+                float(1.0 - (error / total_variance).item())
+                if total_variance.item() > 0
+                else 0.0
+            )
+
+            return (
+                cp_weights.detach().cpu().numpy(),
+                [f.detach().cpu().numpy() for f in cp_factors],
+                r2x,
+            )
+    finally:
+        tl.set_backend(previous_backend)
 
 
 def calc_communication_score(
@@ -475,6 +576,7 @@ def ccc_rise(
     complex_sep: str | None = None,
     lr_pairs: pd.DataFrame | None = None,
     svd_init: str = "svd",
+    device: str | None = None,
 ) -> tuple[tuple, float, pd.DataFrame]:
     """
     Perform RISE on an AnnData object, followed by
@@ -494,6 +596,8 @@ def ccc_rise(
         Rank for the CP decomposition. If None, defaults to `rise_rank`.
     random_state : int, optional
         Seed for reproducibility
+    device : str, optional
+        Compute device for the CP decomposition; see `cp_decomposition`.
 
     Returns:
     --------
@@ -545,19 +649,16 @@ def ccc_rise(
     # Print shape of interaction tensors
     print(f"Interaction tensors shape: {interaction_tensors.shape}")
 
-    # CP decomposition with explicit random initialization
-    cp_weights, cp_factors = parafac(
+    # CP decomposition, on the GPU when one is available
+    cp_weights, cp_factors, final_R2X = cp_decomposition(
         interaction_tensors,
         cp_rank,
         n_iter_max=n_iter_max,
         tol=tol,
-        init=svd_init,  # Use random initialization
-        normalize_factors=True,
+        init=svd_init,
         random_state=random_state,
+        device=device,
     )
-
-    # Calculate R2X for the CP decomposition of the interaction tensor
-    final_R2X = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
 
     return ((cp_weights, cp_factors), projections), final_R2X, filtered_lr_pairs
 
@@ -690,6 +791,7 @@ def pseudobulk_cp_decomposition(
     n_iter_max: int,
     tol: float | None = None,
     random_state: int | None = None,
+    device: str | None = None,
 ) -> tuple[np.ndarray, list[np.ndarray], float]:
     """
     Perform non-negative CP decomposition on the pseudobulk interaction tensors.
@@ -705,26 +807,22 @@ def pseudobulk_cp_decomposition(
         Tolerance for convergence.
     random_state : int | None
         Random seed for reproducibility.
+    device : str, optional
+        Compute device; see `cp_decomposition`.
     Returns
     -------
     tuple[np.ndarray, list[np.ndarray], float]
         A tuple containing the CP weights, CP factors, and the R2X value.
     """
-    # CP decomposition
-    cp_weights, cp_factors = parafac(
+    return cp_decomposition(
         interaction_tensors,
         cp_rank,
         n_iter_max=n_iter_max,
         tol=tol,
-        init="svd",  # Use SVD initialization
-        normalize_factors=True,
+        init="svd",
         random_state=random_state,
+        device=device,
     )
-
-    # Calculate R2X for the CP decomposition of the interaction tensor
-    r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
-
-    return cp_weights, cp_factors, r2x
 
 
 def save_ccc_rise_results(
