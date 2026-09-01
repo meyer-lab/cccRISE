@@ -273,7 +273,7 @@ def run_bicv(
 def _has_cuda() -> bool:
     """Check if CuPy is installed and a CUDA device is available."""
     try:
-        import cupy
+        import cupy  # ty: ignore[unresolved-import]
 
         return cupy.cuda.runtime.getDeviceCount() > 0
     except Exception:
@@ -334,7 +334,7 @@ def cp_masked_reconstruction_error(
     use_cuda = device.startswith("cuda") and _has_cuda()
 
     if use_cuda:
-        import cupy as cp
+        import cupy as cp  # ty: ignore[unresolved-import]
 
         prev_backend = tl.get_backend()
         tl.set_backend("cupy")
@@ -464,7 +464,7 @@ def cp_masked_reconstruction_sweep(
 
     tensor_input: Any = tensor
     if device.startswith("cuda") and _has_cuda():
-        import cupy as cp
+        import cupy as cp  # ty: ignore[unresolved-import]
 
         tensor_input = cp.asarray(tensor, dtype=cp.float64)
 
@@ -485,7 +485,7 @@ def cp_masked_reconstruction_sweep(
     ]
 
     if device.startswith("cuda") and _has_cuda():
-        import cupy as cp
+        import cupy as cp  # ty: ignore[unresolved-import]
 
         del tensor_input
         cp.get_default_memory_pool().free_all_blocks()

@@ -21,7 +21,7 @@ from .import_data import import_ligand_receptor_pairs
 def _has_cuda() -> bool:
     """Check if CuPy is installed and a CUDA device is available."""
     try:
-        import cupy
+        import cupy  # ty: ignore[unresolved-import]
 
         return cupy.cuda.runtime.getDeviceCount() > 0
     except Exception:
@@ -89,7 +89,7 @@ def cp_decomposition(
         r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
         return cp_weights, cp_factors, r2x
 
-    import cupy as cp
+    import cupy as cp  # ty: ignore[unresolved-import]
 
     previous_backend = tl.get_backend()
     tl.set_backend("cupy")
