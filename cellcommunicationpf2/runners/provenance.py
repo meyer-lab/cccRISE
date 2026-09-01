@@ -36,6 +36,7 @@ import subprocess
 import sys
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -78,6 +79,7 @@ def _git(*args: str) -> str | None:
     return out.stdout.strip()
 
 
+@cache
 def git_sha() -> str | None:
     """Commit of the code that produced a result.
 
@@ -85,6 +87,13 @@ def git_sha() -> str | None:
     alone would otherwise imply a reproducibility those edits do not have.
     Untracked files are excluded -- they are not part of the tree the commit
     names, so a stray scratch file should not flag every run as unreproducible.
+
+    Memoized, and each runner pins it before writing anything. A runner
+    overwrites tracked artifacts (`bal_alad_factors.nc`, the sweep CSVs), so
+    reading the tree state afterwards would see the run's own output and report
+    ``-dirty`` for every run -- which reads as "the code was modified" and is
+    exactly the wrong signal. Runners are one-shot scripts, so a
+    process-lifetime value is the tree as it was when the runner started.
     """
     commit = _git("rev-parse", "HEAD")
     if commit is None:

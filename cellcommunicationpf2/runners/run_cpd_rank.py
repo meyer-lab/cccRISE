@@ -45,7 +45,7 @@ from ._cli import (
     resulting_dims,
 )
 from .datasets import DATA_DIR, DatasetSpec
-from .provenance import build_metadata, file_info, write_metadata
+from .provenance import build_metadata, file_info, git_sha, write_metadata
 
 RUNNER_NAME = "cpd_rank_masked_imputation"
 
@@ -243,6 +243,9 @@ def run_cpd_rank_selection(
     """
     output_path = output_path or (DATA_DIR / spec.cpd_rank_filename(rise_rank))
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Pin the code version before writing anything: see `provenance.git_sha`.
+    git_sha()
 
     print(
         f"=== CPD imputation rank selection: {spec.label} (RISE rank {rise_rank}) ==="

@@ -43,7 +43,7 @@ uv run ccc-rise-riserank --dataset alad --ranks 5:51:5 --n-folds 5 \
 ```
 
 Writes `data/rise_rank_bicv_alad.csv` (read by `figureRISErank`) and
-`data/rise_rank_bicv_alad.yaml`.
+`data/rise_rank_bicv_alad.provenance.yaml`.
 
 ### 2. CPD rank selection — `run_cpd_rank.py`
 

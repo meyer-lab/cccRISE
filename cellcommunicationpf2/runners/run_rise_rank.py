@@ -30,7 +30,7 @@ from ._cli import (
     resulting_dims,
 )
 from .datasets import DATA_DIR, DatasetSpec
-from .provenance import build_metadata, file_info, write_metadata
+from .provenance import build_metadata, file_info, git_sha, write_metadata
 
 RUNNER_NAME = "rise_rank_bicv"
 DEFAULT_RANKS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
@@ -106,6 +106,9 @@ def run_rise_rank_selection(
     """
     output_path = output_path or (DATA_DIR / spec.rise_rank_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Pin the code version before writing anything: see `provenance.git_sha`.
+    git_sha()
 
     print(f"=== RISE BiCV rank selection: {spec.label} ===")
     print(f"    ranks={ranks}  n_folds={n_folds}")

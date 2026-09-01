@@ -43,6 +43,7 @@ from .datasets import DATA_DIR, DatasetSpec
 from .provenance import (
     build_metadata,
     file_info,
+    git_sha,
     read_metadata,
     relpath,
     sidecar_path,
@@ -206,6 +207,9 @@ def run_pipeline(
     """
     output_path = output_path or spec.factors_path()
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Pin the code version before writing anything: see `provenance.git_sha`.
+    git_sha()
 
     print(f"=== CCC-RISE pipeline: {spec.label} ===")
     print(f"    RISE rank={rise_rank}  CP rank={cp_rank}  seed={random_state}")
