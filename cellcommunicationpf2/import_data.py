@@ -7,10 +7,16 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
+import vcsc
 from scipy.sparse import csr_array, issparse
 
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
+
+# IBDverse reference paths
+IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
+IBD_TI_PATH = IBD_DATA_DIR / "ti_only.h5ad"
+IBD_TI_IVCSC = IBD_DATA_DIR / "ti_only.ivcsc.h5ad"
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
@@ -42,7 +48,7 @@ def import_balf_covid(
     -------
         Annotated data matrix with sparse X matrix preserved.
     """
-    url = "https://zenodo.org/record/7535867/files/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"
+    url = "https://ucla.box.com/shared/static/lnirh5vmas4r1fc7xnr7z6ndk2s6tkhq.h5ad"
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     if not os.path.exists(filename):
         local_file = Path("./BALF-COVID19-Liao_et_al-NatMed-2020.h5ad")
@@ -51,14 +57,23 @@ def import_balf_covid(
 
             shutil.copyfile(local_file, filename)
         else:
-            print("Downloading data from Zenodo...")
-            urllib.request.urlretrieve(url, filename)
+            print("Downloading data from Box...")
+            import shutil
+
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req) as resp, open(filename, "wb") as out_file:
+                shutil.copyfileobj(resp, out_file)
 
     print("Loading BALF COVID data (preserving sparse format)...")
-    adata = anndata.read_h5ad(filename)
+    if normalize:
+        adata = vcsc.load_and_normalize(
+            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
+        )
+        adata = add_cond_idxs(adata, "sample")
+        adata.var["means"] = adata.X.mean(axis=0)
+        return adata
 
-    assert hasattr(adata.X, "nnz"), "adata.X should be a sparse matrix"
-
+    adata = vcsc.load_packed(filename).to_anndata()
     return prepare_dataset(
         adata,
         condition_name="sample",
@@ -105,15 +120,19 @@ def import_ligand_receptor_pairs(
 
 
 def import_alad(
-    filename: str | Path = "./BAL-scRNAseq-raw.h5ad",
+    filename: str | Path = "/opt/IVCSC/BAL-scRNAseq.raw.h5ad",
     gene_threshold: float = 0.001,
     normalize: bool = True,
 ):
     """Generate data for ALAD analysis, filtering and scaling as needed.
     patient ids: dsco_id
     """
-    # Load data without backing to avoid issues with sparse conversion
-    data = anndata.read_h5ad(filename)
+    if normalize:
+        data = vcsc.load_and_normalize(
+            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
+        )
+    else:
+        data = vcsc.load_packed(filename).to_anndata()
 
     # Map cell types directly from the metadata column revised_annotations_10_5
     if "revised_annotations_10_5" in data.obs:
@@ -180,22 +199,18 @@ def import_alad(
             data.obs["revised_annotations_10_5"].map(broad_map).values
         )
 
-    # Convert to sparse format if not already sparse
-    if not issparse(data.X):
-        # Convert dense matrix to sparse CSR format
-        from scipy.sparse import csr_matrix
+    if normalize:
+        data = add_cond_idxs(data, "dsco_id")
+        data.var["means"] = data.X.mean(axis=0)
+        return data
 
-        data.X = csr_matrix(data.X)
-
-    data = prepare_dataset(
+    return prepare_dataset(
         data, "dsco_id", geneThreshold=gene_threshold, normalize=normalize
     )
 
-    return data
-
 
 def import_alad_brush(
-    filename="/opt/alad.brush.sc.h5ad",
+    filename: str | Path = "/opt/IVCSC/alad.brush.sc.h5ad",
     gene_threshold: float = 0.01,
     normalize: bool = True,
 ) -> anndata.AnnData:
@@ -203,15 +218,45 @@ def import_alad_brush(
     patient ids: subj
     """
     print("Loading ALAD brushing data...")
-    data = anndata.read_h5ad(filename)
+    if normalize:
+        data = vcsc.load_and_normalize(
+            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
+        )
+        data = add_cond_idxs(data, "subj")
+        data.var["means"] = data.X.mean(axis=0)
+        return data
 
-    if not issparse(data.X):
-        from scipy.sparse import csr_matrix
-
-        data.X = csr_matrix(data.X)
-
+    data = vcsc.load_packed(filename).to_anndata()
     return prepare_dataset(
         data, "subj", geneThreshold=gene_threshold, normalize=normalize
+    )
+
+
+def import_ibdverse(
+    filename: str | Path = IBD_TI_IVCSC,
+    gene_threshold: float = 0.001,
+    normalize: bool = True,
+    condition_name: str = "sanger_sample_id",
+) -> anndata.AnnData:
+    """IBDverse intestinal biopsies and blood.
+
+    References:
+    [1] Alegbe, Harris et al. Nature (2026). https://doi.org/10.1038/s41586-026-10627-z
+    [2] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
+        https://doi.org/10.1038/s41588-026-02634-7
+    """
+    print("Loading IBDverse data...")
+    if normalize:
+        data = vcsc.load_and_normalize(
+            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
+        )
+        data = add_cond_idxs(data, condition_name)
+        data.var["means"] = data.X.mean(axis=0)
+        return data
+
+    data = vcsc.load_packed(filename).to_anndata()
+    return prepare_dataset(
+        data, condition_name, geneThreshold=gene_threshold, normalize=normalize
     )
 
 

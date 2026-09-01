@@ -87,3 +87,43 @@ def test_import_ligand_receptor_pairs_structure():
     receptors = df["receptor"].astype(str)
     assert not ligands.str.contains(" ").any()
     assert not receptors.str.contains(" ").any()
+
+
+def test_import_balf_covid():
+    from cellcommunicationpf2.import_data import import_balf_covid
+
+    adata = import_balf_covid(gene_threshold=0.001, normalize=True)
+    assert isinstance(adata, anndata.AnnData)
+    assert adata.n_obs > 0
+    assert adata.n_vars > 0
+    assert "condition_unique_idxs" in adata.obs.columns
+    assert "means" in adata.var.columns
+
+
+def test_import_alad():
+    import os
+
+    from cellcommunicationpf2.import_data import import_alad
+
+    if os.path.exists("/opt/IVCSC/BAL-scRNAseq.raw.h5ad"):
+        adata = import_alad(gene_threshold=0.001, normalize=True)
+        assert isinstance(adata, anndata.AnnData)
+        assert adata.n_obs > 0
+        assert adata.n_vars > 0
+        assert "condition_unique_idxs" in adata.obs.columns
+        assert "celltype" in adata.obs.columns
+        assert "means" in adata.var.columns
+
+
+def test_import_alad_brush():
+    import os
+
+    from cellcommunicationpf2.import_data import import_alad_brush
+
+    if os.path.exists("/opt/IVCSC/alad.brush.sc.h5ad"):
+        adata = import_alad_brush(gene_threshold=0.01, normalize=True)
+        assert isinstance(adata, anndata.AnnData)
+        assert adata.n_obs > 0
+        assert adata.n_vars > 0
+        assert "condition_unique_idxs" in adata.obs.columns
+        assert "means" in adata.var.columns
