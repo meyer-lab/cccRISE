@@ -1,5 +1,3 @@
-"""Argument parsing and sidecar-field helpers shared by the runner CLIs."""
-
 import argparse
 from pathlib import Path
 
@@ -28,7 +26,6 @@ def parse_ranks(spec: str) -> list[int]:
 
 
 def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
-    """Add the shared ``--dataset`` option."""
     parser.add_argument(
         "--dataset",
         required=True,
@@ -38,7 +35,7 @@ def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
 
 
 def dataset_metadata(spec: DatasetSpec) -> dict:
-    """The dataset-identity head of a sidecar: what data, read how."""
+    """The dataset-identity head of a sidecar."""
     meta: dict = {
         "dataset": spec.key,
         "dataset_label": spec.label,
@@ -58,11 +55,7 @@ def dataset_metadata(spec: DatasetSpec) -> dict:
 
 
 def resulting_dims(spec: DatasetSpec, adata, n_lr_pairs: int | None = None) -> dict:
-    """Dimensions of the data a run actually saw.
-
-    Recorded explicitly so a change in the source data or the gene filter shows
-    up in the sidecar rather than having to be inferred from a tensor shape.
-    """
+    """Dimensions of the data a run actually saw."""
     dims: dict = {
         "conditions": int(adata.obs[spec.condition_column].nunique()),
         "genes": int(adata.n_vars),
