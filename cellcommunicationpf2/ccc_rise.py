@@ -507,10 +507,16 @@ def ccc_rise(
     X_list = anndata_to_list(adata)
 
     # PARAFAC2 decomposition
-    pf2_output, _ = parafac2_nd(
+    pf2_output, r2x_pf2 = parafac2_nd(
         adata, rank=rise_rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
     )
-    _, _, projections = pf2_output
+    pf2_weights, pf2_factors, projections = pf2_output
+
+    adata.uns["Pf2_weights"] = pf2_weights
+    adata.uns["Pf2_A"] = pf2_factors[0]
+    adata.uns["Pf2_B"] = pf2_factors[1]
+    adata.uns["Pf2_C"] = pf2_factors[2]
+    adata.uns["r2x_pf2"] = r2x_pf2
 
     # Project matrices
     projected_matrices = []
