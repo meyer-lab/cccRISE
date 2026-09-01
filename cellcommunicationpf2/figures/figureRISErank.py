@@ -1,24 +1,17 @@
 """
 Figure for RISE BiCV (bi-cross-validation) rank selection.
 
-Plot-only: the sweep itself lives in
-`cellcommunicationpf2.runners.run_rise_rank`, which writes
-``rise_rank_bicv_<dataset>.csv`` (plus a YAML sidecar documenting the
-parameters) into ``cellcommunicationpf2/data``. This module reads that CSV;
-if it is missing, it invokes the runner to produce it, so `make` still works
-from a clean checkout.
+Plots the sweep produced by ``uv run ccc-rise-riserank``; run that first.
 """
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from ..runners.datasets import get_dataset
-from ..runners.run_rise_rank import DEFAULT_RANKS, run_rise_rank_selection
-from .common import getSetup, load_or_compute_dataframe, subplotLabel
+from .common import getSetup, load_runner_csv, subplotLabel
 
-# Change this variable to switch dataset ("alad", "ibd").
+# Change these to switch dataset; must match the runner's --dataset.
 SELECTED_DATASET = "alad"
-DEFAULT_N_FOLDS = 5
+SWEEP_CSV = f"rise_rank_{SELECTED_DATASET}.csv"
 
 
 def plot_bicv_rank_selection(
@@ -55,15 +48,9 @@ def makeFigure():
     ax, f = getSetup((4, 3.5), (1, 1))
     subplotLabel(ax)
 
-    spec = get_dataset(SELECTED_DATASET)
-    df = load_or_compute_dataframe(
-        spec.rise_rank_filename(),
-        lambda: run_rise_rank_selection(
-            spec, ranks=DEFAULT_RANKS, n_folds=DEFAULT_N_FOLDS
-        )[0],
-    )
-
     plot_bicv_rank_selection(
-        df, ax[0], title=f"BiCV Held-out $R^2X$ ({SELECTED_DATASET.upper()})"
+        load_runner_csv(SWEEP_CSV),
+        ax[0],
+        title=f"BiCV Held-out $R^2X$ ({SELECTED_DATASET.upper()})",
     )
     return f

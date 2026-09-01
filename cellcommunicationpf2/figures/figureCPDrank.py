@@ -1,31 +1,18 @@
 """
 Figure for CPD entry-masked imputation cross-validation rank selection.
 
-Plot-only: the sweep (RISE fit, interaction-tensor construction, masked CP
-cross-validation) lives in `cellcommunicationpf2.runners.run_cpd_rank`, which
-writes ``cpd_rank_imputation_<dataset>_rise<rise_rank>.csv`` plus a YAML
-sidecar into ``cellcommunicationpf2/data``. This module reads that CSV; if it
-is missing, it invokes the runner to produce it.
+Plots the sweep produced by ``uv run ccc-rise-cpdrank``; run that first.
 """
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from ..runners.datasets import get_dataset
-from ..runners.run_cpd_rank import DEFAULT_RANKS, run_cpd_rank_selection
-from .common import getSetup, load_or_compute_dataframe, subplotLabel
+from .common import getSetup, load_runner_csv, subplotLabel
 
-# Change this variable to switch dataset ("alad", "ibd").
+# Change this to switch dataset; must match the runner's --dataset. The RISE
+# rank the sweep was conditioned on is recorded in the sweep's sidecar.
 SELECTED_DATASET = "alad"
-
-# RISE rank the interaction tensor is built at, per dataset. CP rank selection
-# is conditional on the already-selected RISE rank, so this must match the rank
-# recorded in that dataset's RISE rank-selection sidecar.
-DATASET_RISE_RANKS: dict[str, int] = {
-    "alad": 25,
-    "ibd": 25,
-}
-DEFAULT_N_MASKS = 5
+SWEEP_CSV = f"cpd_rank_{SELECTED_DATASET}.csv"
 
 
 def plot_cp_rank_selection(
@@ -86,20 +73,9 @@ def makeFigure():
     ax, f = getSetup((4, 3.5), (1, 1))
     subplotLabel(ax)
 
-    spec = get_dataset(SELECTED_DATASET)
-    rise_rank = DATASET_RISE_RANKS[SELECTED_DATASET]
-
-    df = load_or_compute_dataframe(
-        spec.cpd_rank_filename(rise_rank),
-        lambda: run_cpd_rank_selection(
-            spec,
-            rise_rank=rise_rank,
-            ranks=DEFAULT_RANKS,
-            n_masks=DEFAULT_N_MASKS,
-        )[0],
-    )
-
     plot_cp_rank_selection(
-        df, ax[0], title=f"CPD Imputation $R^2X$ ({SELECTED_DATASET.upper()})"
+        load_runner_csv(SWEEP_CSV),
+        ax[0],
+        title=f"CPD Imputation $R^2X$ ({SELECTED_DATASET.upper()})",
     )
     return f
