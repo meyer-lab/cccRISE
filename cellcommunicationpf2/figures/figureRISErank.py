@@ -1,54 +1,24 @@
 """
 Figure for RISE BiCV (bi-cross-validation) rank selection.
+
+Plot-only: the sweep itself lives in
+`cellcommunicationpf2.runners.run_rise_rank`, which writes
+``rise_rank_bicv_<dataset>.csv`` (plus a YAML sidecar documenting the
+parameters) into ``cellcommunicationpf2/data``. This module reads that CSV;
+if it is missing, it invokes the runner to produce it, so `make` still works
+from a clean checkout.
 """
 
-from collections.abc import Callable
-
-import anndata
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from ..import_data import import_alad, import_balf_covid
-from ..rank_selection import run_bicv
+from ..runners.datasets import get_dataset
+from ..runners.run_rise_rank import DEFAULT_RANKS, run_rise_rank_selection
 from .common import getSetup, load_or_compute_dataframe, subplotLabel
 
-# Easily selectable dataset registry: (loader_func, condition_column)
-DATASET_LOADERS: dict[str, tuple[Callable[[], anndata.AnnData], str]] = {
-    "covid": (import_balf_covid, "sample"),
-    "alad": (import_alad, "dsco_id"),
-}
-
-# Change this variable to switch dataset
-SELECTED_DATASET = "covid"
-DEFAULT_RANKS = [30, 35, 40]
-
-
-def compute_bicv_dataset(
-    dataset_name: str = SELECTED_DATASET,
-    ranks: list[int] | None = None,
-    n_folds: int = 3,
-) -> pd.DataFrame:
-    """Compute BiCV reconstruction metrics for a given dataset across ranks.
-
-    Parameters
-    ----------
-    dataset_name : str, default=SELECTED_DATASET
-        Name of the dataset in `DATASET_LOADERS`.
-    ranks : list[int] | None
-        List of ranks to evaluate. Defaults to DEFAULT_RANKS.
-    n_folds : int, default=3
-        Number of cross-validation folds.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with BiCV reconstruction metrics across ranks and folds.
-    """
-    if ranks is None:
-        ranks = DEFAULT_RANKS
-    loader, cond_col = DATASET_LOADERS[dataset_name]
-    adata = loader()
-    return run_bicv(adata, ranks=ranks, condition_column=cond_col, n_folds=n_folds)
+# Change this variable to switch dataset ("alad", "ibd").
+SELECTED_DATASET = "alad"
+DEFAULT_N_FOLDS = 5
 
 
 def plot_bicv_rank_selection(
@@ -85,9 +55,12 @@ def makeFigure():
     ax, f = getSetup((4, 3.5), (1, 1))
     subplotLabel(ax)
 
+    spec = get_dataset(SELECTED_DATASET)
     df = load_or_compute_dataframe(
-        f"rise_rank_bicv_{SELECTED_DATASET}.csv",
-        lambda: compute_bicv_dataset(dataset_name=SELECTED_DATASET, n_folds=3),
+        spec.rise_rank_filename(),
+        lambda: run_rise_rank_selection(
+            spec, ranks=DEFAULT_RANKS, n_folds=DEFAULT_N_FOLDS
+        )[0],
     )
 
     plot_bicv_rank_selection(
