@@ -279,19 +279,11 @@ def load_factors_to_anndata(
 
 
 def clean_memory() -> None:
-    """Garbage collect and release PyTorch and CuPy device memory pools."""
+    """Explicitly garbage collect and release CuPy device and pinned host memory pools."""
     import gc
     import importlib
 
     gc.collect()
-
-    try:
-        torch = importlib.import_module("torch")
-
-        torch.cuda.empty_cache()
-    except (ImportError, AttributeError):
-        pass
-
     try:
         cp = importlib.import_module("cupy")
 

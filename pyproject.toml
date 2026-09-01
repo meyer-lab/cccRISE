@@ -23,11 +23,15 @@ dependencies = [
     "netcdf4>=1.6.5",
     "scanpy>=1.12.3",
     "vcsc",
-    "torch>=2.13.0",
     "pyreadr>=0.5.6",
 ]
 
 readme = "README.md"
+
+[project.optional-dependencies]
+gpu = [
+    "cupy-cuda12x>=13.0; sys_platform != 'darwin'",
+]
 
 [project.urls]
 Homepage = "https://github.com/meyer-lab/cellcommunication-Pf2"

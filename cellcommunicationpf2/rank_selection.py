@@ -271,12 +271,12 @@ def run_bicv(
 
 
 def _has_cuda() -> bool:
-    """Check if PyTorch is installed and CUDA is available."""
+    """Check if CuPy is installed and a CUDA device is available."""
     try:
-        import torch
+        import cupy
 
-        return bool(torch.cuda.is_available())
-    except ImportError:
+        return cupy.cuda.runtime.getDeviceCount() > 0
+    except Exception:
         return False
 
 
@@ -299,7 +299,7 @@ def cp_masked_reconstruction_error(
 
     Parameters
     ----------
-    tensor : np.ndarray or torch.Tensor
+    tensor : np.ndarray or cupy.ndarray
         Input tensor to decompose.
     rank : int
         Decomposition rank to evaluate.
@@ -316,7 +316,7 @@ def cp_masked_reconstruction_error(
         Random seed for mask generation and CP initialization.
     device : str, optional
         Compute device ('cuda', 'cpu', or None for auto-detection). If None,
-        automatically uses 'cuda' when PyTorch CUDA is available.
+        automatically uses 'cuda' when CuPy and a CUDA device are available.
 
     Returns
     -------
@@ -334,60 +334,50 @@ def cp_masked_reconstruction_error(
     use_cuda = device.startswith("cuda") and _has_cuda()
 
     if use_cuda:
-        import torch
+        import cupy as cp
 
         prev_backend = tl.get_backend()
+        tl.set_backend("cupy")
         try:
-            tl.set_backend("pytorch")
-            with torch.inference_mode():
-                if isinstance(tensor, torch.Tensor):
-                    t_tensor = tensor.to(device="cuda", dtype=torch.float32)
-                else:
-                    t_tensor = torch.as_tensor(
-                        tensor, dtype=torch.float32, device="cuda"
-                    )
+            device_tensor = cp.asarray(tensor, dtype=cp.float64)
 
-                rng = np.random.default_rng(random_state)
-                mask_np = rng.uniform(size=tuple(t_tensor.shape)) >= mask_frac
-                if not np.any(~mask_np):
-                    mask_np[tuple(rng.integers(0, s) for s in t_tensor.shape)] = False
+            rng = np.random.default_rng(random_state)
+            mask_np = rng.uniform(size=device_tensor.shape) >= mask_frac
+            if not np.any(~mask_np):
+                mask_np[tuple(rng.integers(0, s) for s in device_tensor.shape)] = False
 
-                m_tensor = torch.as_tensor(mask_np, dtype=torch.float32, device="cuda")
+            w, f = parafac(
+                tensor=device_tensor,
+                rank=rank,
+                n_iter_max=n_iter_max,
+                tol=tol,
+                init=init,
+                mask=cp.asarray(mask_np, dtype=cp.float64),
+                normalize_factors=True,
+                linesearch=True,
+                random_state=random_state,
+            )
 
-                w, f = parafac(
-                    tensor=t_tensor,
-                    rank=rank,
-                    n_iter_max=n_iter_max,
-                    tol=tol,
-                    init=init,
-                    mask=m_tensor,
-                    normalize_factors=True,
-                    linesearch=True,
-                    random_state=random_state,
-                )
+            pred = cp_to_tensor((w, f))
+            held_out = cp.asarray(~mask_np)
+            actual = device_tensor[held_out]
+            predicted = pred[held_out]
 
-                pred = cp_to_tensor((w, f))
-                held_out = ~torch.as_tensor(mask_np, dtype=torch.bool, device="cuda")
-                actual = t_tensor[held_out]
-                predicted = pred[held_out]
+            sse = float(cp.sum((actual - predicted) ** 2))
+            sst = float(cp.sum(actual**2))
+            held_out_r2x = 1.0 - sse / sst if sst > 0 else float("nan")
 
-                sse = float(torch.sum((actual - predicted) ** 2).item())
-                sst = float(torch.sum(actual**2).item())
-                held_out_r2x = 1.0 - sse / sst if sst > 0 else float("nan")
+            in_sse = float(cp.sum((device_tensor - pred) ** 2))
+            in_sst = float(cp.sum(device_tensor**2))
+            in_sample_r2x = 1.0 - in_sse / in_sst if in_sst > 0 else float("nan")
 
-                in_sse = float(torch.sum((t_tensor - pred) ** 2).item())
-                in_sst = float(torch.sum(t_tensor**2).item())
-                in_sample_r2x = 1.0 - in_sse / in_sst if in_sst > 0 else float("nan")
-
-                del pred, w, f, m_tensor
-
-                return {
-                    "Rank": rank,
-                    "HeldOutR2X": held_out_r2x,
-                    "InSampleR2X": in_sample_r2x,
-                    "NHeldOut": int(np.sum(~mask_np)),
-                    "NTrain": int(np.sum(mask_np)),
-                }
+            return {
+                "Rank": rank,
+                "HeldOutR2X": held_out_r2x,
+                "InSampleR2X": in_sample_r2x,
+                "NHeldOut": int(np.sum(~mask_np)),
+                "NTrain": int(np.sum(mask_np)),
+            }
         finally:
             tl.set_backend(prev_backend)
 
@@ -474,9 +464,9 @@ def cp_masked_reconstruction_sweep(
 
     tensor_input: Any = tensor
     if device.startswith("cuda") and _has_cuda():
-        import torch
+        import cupy as cp
 
-        tensor_input = torch.as_tensor(tensor, dtype=torch.float32, device="cuda")
+        tensor_input = cp.asarray(tensor, dtype=cp.float64)
 
     rows = [
         cp_masked_reconstruction_error(
@@ -495,9 +485,9 @@ def cp_masked_reconstruction_sweep(
     ]
 
     if device.startswith("cuda") and _has_cuda():
-        import torch
+        import cupy as cp
 
         del tensor_input
-        torch.cuda.empty_cache()
+        cp.get_default_memory_pool().free_all_blocks()
 
     return pd.DataFrame(rows)

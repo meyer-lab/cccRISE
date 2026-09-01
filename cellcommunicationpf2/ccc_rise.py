@@ -19,12 +19,12 @@ from .import_data import import_ligand_receptor_pairs
 
 
 def _has_cuda() -> bool:
-    """Check if PyTorch is installed and CUDA is available."""
+    """Check if CuPy is installed and a CUDA device is available."""
     try:
-        import torch
+        import cupy
 
-        return bool(torch.cuda.is_available())
-    except ImportError:
+        return cupy.cuda.runtime.getDeviceCount() > 0
+    except Exception:
         return False
 
 
@@ -40,9 +40,9 @@ def cp_decomposition(
 ) -> tuple[np.ndarray, list[np.ndarray], float]:
     """Fit CP to an interaction tensor, on the GPU when one is available.
 
-    The GPU path runs CP-ALS through tensorly's PyTorch backend in float64
-    and computes R2X on-device. Weights and factors are always returned as
-    host NumPy arrays, so downstream consumers are unaffected by the device.
+    The GPU path runs CP-ALS through tensorly's CuPy backend in float64 and
+    computes R2X on-device. Weights and factors are always returned as host
+    NumPy arrays, so downstream consumers are unaffected by the device.
 
     Parameters
     ----------
@@ -62,8 +62,8 @@ def cp_decomposition(
         Seed for reproducibility.
     device : str, optional
         Compute device ('cuda', 'cpu', or None for auto-detection). If None,
-        uses 'cuda' when PyTorch CUDA is available. Requesting 'cuda' without
-        it falls back to CPU rather than raising.
+        uses 'cuda' when CuPy and a CUDA device are available. Requesting
+        'cuda' without them falls back to CPU rather than raising.
 
     Returns
     -------
@@ -89,31 +89,24 @@ def cp_decomposition(
         r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
         return cp_weights, cp_factors, r2x
 
-    import torch
+    import cupy as cp
 
     previous_backend = tl.get_backend()
-    tl.set_backend("pytorch")
+    tl.set_backend("cupy")
     try:
-        with torch.no_grad():
-            device_tensor = torch.as_tensor(
-                interaction_tensors, dtype=torch.float64, device="cuda"
-            )
-            cp_weights, cp_factors = parafac(device_tensor, **parafac_kwargs)
+        device_tensor = cp.asarray(interaction_tensors, dtype=cp.float64)
+        cp_weights, cp_factors = parafac(device_tensor, **parafac_kwargs)
 
-            reconstructed = cp_to_tensor((cp_weights, cp_factors))
-            total_variance = torch.sum(device_tensor**2)
-            error = torch.sum((device_tensor - reconstructed) ** 2)
-            r2x = (
-                float(1.0 - (error / total_variance).item())
-                if total_variance.item() > 0
-                else 0.0
-            )
+        reconstructed = cp_to_tensor((cp_weights, cp_factors))
+        total_variance = float(cp.sum(device_tensor**2))
+        error = float(cp.sum((device_tensor - reconstructed) ** 2))
+        r2x = 1.0 - error / total_variance if total_variance > 0 else 0.0
 
-            return (
-                cp_weights.detach().cpu().numpy(),
-                [f.detach().cpu().numpy() for f in cp_factors],
-                r2x,
-            )
+        return (
+            cp.asnumpy(cp_weights),
+            [cp.asnumpy(f) for f in cp_factors],
+            r2x,
+        )
     finally:
         tl.set_backend(previous_backend)
 
