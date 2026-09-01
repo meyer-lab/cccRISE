@@ -1,10 +1,10 @@
-"""Small argument-parsing helpers shared by the runner CLIs."""
+"""Argument parsing and sidecar-field helpers shared by the runner CLIs."""
 
 import argparse
 from pathlib import Path
 
-from .datasets import DATASET_KEYS, DatasetSpec, get_dataset
-from .provenance import source_info
+from .datasets import DATASET_KEYS, DatasetSpec
+from .provenance import sha256_file
 
 
 def parse_ranks(spec: str) -> list[int]:
@@ -20,88 +20,30 @@ def parse_ranks(spec: str) -> list[int]:
     """
     ranks: set[int] = set()
     for chunk in spec.split(","):
-        chunk = chunk.strip()
-        if not chunk:
-            continue
         if ":" in chunk:
-            parts = [int(p) for p in chunk.split(":")]
-            if len(parts) == 2:
-                ranks.update(range(parts[0], parts[1]))
-            elif len(parts) == 3:
-                ranks.update(range(parts[0], parts[1], parts[2]))
-            else:
-                raise argparse.ArgumentTypeError(
-                    f"Bad rank slice {chunk!r}; expected start:stop[:step]."
-                )
+            ranks.update(range(*(int(p) for p in chunk.split(":"))))
         else:
             ranks.add(int(chunk))
-    if not ranks:
-        raise argparse.ArgumentTypeError(f"No ranks parsed from {spec!r}.")
-    if min(ranks) < 1:
-        raise argparse.ArgumentTypeError(f"Ranks must be >= 1; got {sorted(ranks)}.")
     return sorted(ranks)
 
 
 def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
-    """Add the shared ``--dataset`` / ``--gene-threshold`` options."""
+    """Add the shared ``--dataset`` option."""
     parser.add_argument(
         "--dataset",
         required=True,
         choices=DATASET_KEYS,
         help="Dataset label from the runner registry.",
     )
-    parser.add_argument(
-        "--gene-threshold",
-        type=float,
-        default=None,
-        help="Mean-expression gene filter; defaults to the dataset's registry value.",
-    )
-    parser.add_argument(
-        "--condition-column",
-        type=str,
-        default=None,
-        help="Override the dataset's condition/sample column in adata.obs.",
-    )
-    parser.add_argument(
-        "--source-file",
-        type=str,
-        default=None,
-        help="Override the raw .h5ad the loader reads. Recorded, with its "
-        "sha256, in the provenance sidecar.",
-    )
-    parser.add_argument(
-        "--skip-source-checksum",
-        action="store_true",
-        help="Skip hashing the source .h5ad. Faster, but drops the field that "
-        "detects source-data drift (issue #164).",
-    )
 
 
-def resolve_dataset(args: argparse.Namespace) -> DatasetSpec:
-    """Apply ``--condition-column`` / ``--gene-threshold`` overrides to the spec."""
-    from dataclasses import replace
-
-    spec = get_dataset(args.dataset)
-    overrides: dict = {}
-    if getattr(args, "condition_column", None):
-        overrides["condition_column"] = args.condition_column
-    if getattr(args, "gene_threshold", None) is not None:
-        overrides["gene_threshold"] = args.gene_threshold
-    if getattr(args, "source_file", None):
-        overrides["source_file"] = Path(args.source_file)
-    return replace(spec, **overrides) if overrides else spec
-
-
-def dataset_metadata(spec: DatasetSpec, checksum_source: bool = True) -> dict:
-    """The dataset-identity head of a sidecar, in the key order issue #164 documents.
-
-    Together these answer "what data, read how?" -- the question the stored
-    ``.nc`` files could not answer, which is how the ALAD artifact drifted from
-    445 to 513 LR pairs without anyone noticing.
-    """
-    meta: dict = {"dataset": spec.key, "dataset_label": spec.label}
-    meta |= source_info(spec.source_file, checksum=checksum_source)
-    meta |= {
+def dataset_metadata(spec: DatasetSpec) -> dict:
+    """The dataset-identity head of a sidecar: what data, read how."""
+    meta: dict = {
+        "dataset": spec.key,
+        "dataset_label": spec.label,
+        "source_file": str(spec.source_file),
+        "source_sha256": sha256_file(spec.source_file),
         "loader": spec.loader_path,
         "loader_args": spec.loader_args,
         "condition_key": spec.condition_column,
@@ -116,18 +58,13 @@ def dataset_metadata(spec: DatasetSpec, checksum_source: bool = True) -> dict:
 
 
 def resulting_dims(spec: DatasetSpec, adata, n_lr_pairs: int | None = None) -> dict:
-    """``resulting_dims`` per issue #164: the dimensions that expose source drift.
+    """Dimensions of the data a run actually saw.
 
-    Conditions, genes and LR pairs are exactly the axes on which the stored
-    ALAD factors failed to reproduce, so they are recorded explicitly rather
-    than left to be inferred from the tensor shape.
+    Recorded explicitly so a change in the source data or the gene filter shows
+    up in the sidecar rather than having to be inferred from a tensor shape.
     """
     dims: dict = {
-        "conditions": (
-            int(adata.obs[spec.condition_column].nunique())
-            if spec.condition_column in adata.obs
-            else None
-        ),
+        "conditions": int(adata.obs[spec.condition_column].nunique()),
         "genes": int(adata.n_vars),
         "cells": int(adata.n_obs),
     }

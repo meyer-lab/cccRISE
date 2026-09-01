@@ -466,26 +466,17 @@ def compute_communication_significance(
 
 
 def validate_cp_rank(cp_rank: int, tensor_shape: tuple[int, ...]) -> None:
-    """Reject a CP rank larger than the communication tensor's smallest mode.
+    """Reject a CP rank larger than the tensor's smallest mode.
 
-    tensorly's `initialize_cp` with `init="svd"` calls `truncated_svd` on each
-    mode unfolding. When `n_eigenvecs > min(matrix.shape)` that switches to
-    `full_matrices=True` and materializes the full right-singular matrix of the
-    unfolding -- for a (47, 15, 15, 513) tensor at `cp_rank=18` that is a
-    361665 x 361665 array, i.e. a 975 GiB allocation (issue #164). Even where it
-    does fit, `initialize_cp` pads the shortfall with uniform random columns, so
-    the excess components start from noise rather than from the data.
+    Above that, tensorly's SVD initialization falls back to a full SVD of a
+    mode unfolding -- an allocation quadratic in the unfolding's long axis, so
+    hundreds of GiB for a realistic communication tensor -- and pads the excess
+    components with uniform random columns, starting them from noise rather
+    than from the data.
 
-    The communication tensor's modes are
-    ``(n_conditions, rise_rank, rise_rank, n_lr_pairs)``, so in practice the
-    binding constraint is ``min(n_conditions, rise_rank)``.
-
-    Parameters
-    ----------
-    cp_rank : int
-        Requested CP decomposition rank.
-    tensor_shape : tuple[int, ...]
-        Shape of the tensor being decomposed.
+    The communication tensor's modes are ``(n_conditions, rise_rank,
+    rise_rank, n_lr_pairs)``, so in practice the constraint is
+    ``min(n_conditions, rise_rank)``.
 
     Raises
     ------
@@ -497,8 +488,6 @@ def validate_cp_rank(cp_rank: int, tensor_shape: tuple[int, ...]) -> None:
         raise ValueError(
             f"cp_rank={cp_rank} exceeds the smallest mode of the communication "
             f"tensor (shape {tuple(tensor_shape)}, smallest mode {smallest_mode}). "
-            "CP initialization would fall back to a full SVD of a mode unfolding "
-            "and pad the excess components with uniform noise (issue #164). "
             f"Use cp_rank <= {smallest_mode}, or raise the binding mode -- for "
             "the communication tensor that means more conditions or a larger "
             "rise_rank."

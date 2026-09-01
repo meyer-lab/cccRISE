@@ -1,32 +1,11 @@
 """
 YAML provenance sidecars for runner outputs.
 
-Issue #164: the committed ``.nc`` factor files had no generator and no record
-of how they were made, and the ALAD artifact turned out to be irreproducible
-(445 vs 513 LR pairs, 15,899 vs 16,675 genes against the same loader today) --
-a drift that was invisible because nothing recorded the source file, the
-package versions, or the ranks' justification. Every runner therefore writes
-its result alongside a ``<stem>.provenance.yaml`` following the schema
-documented in that issue:
-
-``dataset``, ``source_file``, ``source_sha256``, ``loader``, ``loader_args``,
-``condition_key``, the ranks and fitting parameters, ``rank_selection_evidence``,
-``resulting_dims``, ``r2x_pf2`` / ``r2x_cp``, ``git_sha``, ``package_versions``
-and ``generated``.
-
-Two additions beyond that schema:
-
-``rank_selection``
-    Per-stage record of *why* each rank was chosen -- method, the sweep files,
-    the sweep's own argmax rank, and a free-text ``notes`` rationale. The
-    ``notes`` fields are the only ones meant to be hand-edited, and a re-run
-    overwrites them, so keep the reasoning in the PR too.
-``outputs``
-    Path, size and sha256 of each file written, so a stale artifact is
-    detectable rather than silently re-plotted.
-
-The rank-selection runners write the same-shaped sidecar for their sweep CSVs,
-with a ``selection`` block in place of ``rank_selection``.
+Each runner writes its result alongside a ``<stem>.provenance.yaml`` recording
+what produced it: the source data and its checksum, the loader and its
+arguments, every parameter, the resulting dimensions, summary metrics, the code
+version, and the versions of the packages that affect the numbers. A result can
+then be traced to an exact invocation, and a stale one is detectable.
 """
 
 import hashlib
@@ -44,12 +23,10 @@ import yaml
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
-#: Suffix appended to an output file's stem, per the schema in issue #164.
+#: Suffix appended to an output file's stem to name its sidecar.
 PROVENANCE_SUFFIX = ".provenance.yaml"
 
-#: Packages whose version can change a numerical result. Issue #164 names
-#: tensorly, parafac2, vcsc and numpy specifically; the rest are here because
-#: they too sit on the path from raw counts to factors. Missing ones are omitted.
+#: Packages whose version can change a numerical result. Missing ones are omitted.
 TRACKED_PACKAGES = (
     "tensorly",
     "parafac2",
@@ -64,7 +41,7 @@ TRACKED_PACKAGES = (
 
 
 def _git(*args: str) -> str | None:
-    """Run a git command in the repo, returning None if git/the repo is unavailable."""
+    """Run a git command in the repo, returning None if it fails."""
     try:
         out = subprocess.run(
             ["git", *args],
@@ -83,23 +60,15 @@ def _git(*args: str) -> str | None:
 def git_sha() -> str | None:
     """Commit of the code that produced a result.
 
-    A trailing ``-dirty`` marks uncommitted edits to tracked files: the commit
-    alone would otherwise imply a reproducibility those edits do not have.
-    Untracked files are excluded -- they are not part of the tree the commit
-    names, so a stray scratch file should not flag every run as unreproducible.
-
-    Memoized, and each runner pins it before writing anything. A runner
-    overwrites tracked artifacts (`bal_alad_factors.nc`, the sweep CSVs), so
-    reading the tree state afterwards would see the run's own output and report
-    ``-dirty`` for every run -- which reads as "the code was modified" and is
-    exactly the wrong signal. Runners are one-shot scripts, so a
-    process-lifetime value is the tree as it was when the runner started.
+    A trailing ``-dirty`` marks uncommitted edits to tracked files; untracked
+    files are ignored. Memoized, and each runner calls it before writing
+    anything -- a runner overwrites tracked artifacts, so reading the tree
+    afterwards would see the run's own output and report ``-dirty`` every time.
     """
     commit = _git("rev-parse", "HEAD")
     if commit is None:
         return None
-    status = _git("status", "--porcelain", "--untracked-files=no")
-    return f"{commit}-dirty" if status else commit
+    return f"{commit}-dirty" if _git("status", "--porcelain", "-uno") else commit
 
 
 def package_versions() -> dict[str, str]:
@@ -114,7 +83,7 @@ def package_versions() -> dict[str, str]:
 
 
 def sha256_file(path: str | Path, chunk_size: int = 1 << 22) -> str:
-    """Streaming sha256 of a file, so multi-GB ``.h5ad`` inputs don't load into RAM."""
+    """Streaming sha256, so multi-GB source files don't load into memory."""
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
         for chunk in iter(lambda: handle.read(chunk_size), b""):
@@ -125,10 +94,8 @@ def sha256_file(path: str | Path, chunk_size: int = 1 << 22) -> str:
 def relpath(path: str | Path) -> str:
     """Render a path relative to the repo root when it lives inside it.
 
-    Keeps sidecars portable between checkouts, and keeps cross-referenced paths
-    (a sweep CSV cited by the pipeline's provenance) in the same form whichever
-    runner wrote them. Paths outside the repo -- ``/opt/IVCSC/...`` source data,
-    say -- stay absolute, which is what makes them useful.
+    Keeps sidecars portable between checkouts. Source data outside the repo
+    stays absolute, which is what makes it identifiable.
     """
     resolved = Path(path).resolve()
     try:
@@ -137,28 +104,8 @@ def relpath(path: str | Path) -> str:
         return str(resolved)
 
 
-def source_info(
-    source_file: str | Path | None, checksum: bool = True
-) -> dict[str, Any]:
-    """``source_file`` / ``source_sha256`` for the raw input the run consumed.
-
-    Checksumming a multi-GB ``.h5ad`` takes a minute or two -- negligible beside
-    the fit it accompanies, and it is the field that would have caught the ALAD
-    drift in issue #164. `checksum=False` skips it and says so in the sidecar.
-    """
-    if source_file is None:
-        return {"source_file": None, "source_sha256": None}
-
-    path = Path(source_file)
-    if not path.exists():
-        return {"source_file": relpath(path), "source_sha256": "file not found"}
-    if not checksum:
-        return {"source_file": relpath(path), "source_sha256": "skipped"}
-    return {"source_file": relpath(path), "source_sha256": sha256_file(path)}
-
-
 def file_info(path: Path) -> dict[str, Any]:
-    """Path (relative to the repo when possible), byte size, and sha256 of a file."""
+    """Path, byte size, and sha256 of a file written by a runner."""
     path = Path(path)
     return {
         "path": relpath(path),
@@ -183,11 +130,10 @@ def _to_plain(obj: Any) -> Any:
 
 
 def build_metadata(runner: str, fields: Mapping[str, Any]) -> dict[str, Any]:
-    """Wrap a runner's own fields with the common provenance trailer.
+    """Wrap a runner's own fields with the trailer every sidecar carries.
 
-    `fields` is emitted verbatim, in the order given -- each runner owns the
-    shape of its own sidecar -- followed by ``git_sha``, ``package_versions``
-    and ``generated``, which every sidecar carries.
+    `fields` is emitted verbatim in the order given -- each runner owns the
+    shape of its own sidecar.
     """
     return _to_plain(dict(fields)) | {
         "git_sha": git_sha(),
@@ -200,7 +146,7 @@ def build_metadata(runner: str, fields: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def sidecar_path(output_path: str | Path) -> Path:
-    """The ``<stem>.provenance.yaml`` sidecar that belongs to an output file."""
+    """The sidecar that belongs to an output file."""
     path = Path(output_path)
     return path.with_name(path.stem + PROVENANCE_SUFFIX)
 
@@ -227,9 +173,3 @@ def write_metadata(
             allow_unicode=True,
         )
     return path
-
-
-def read_metadata(path: str | Path) -> dict[str, Any]:
-    """Read a sidecar written by `write_metadata`."""
-    with open(path) as handle:
-        return yaml.safe_load(handle) or {}
