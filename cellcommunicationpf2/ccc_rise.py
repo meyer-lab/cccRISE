@@ -465,6 +465,46 @@ def compute_communication_significance(
     )
 
 
+def validate_cp_rank(cp_rank: int, tensor_shape: tuple[int, ...]) -> None:
+    """Reject a CP rank larger than the communication tensor's smallest mode.
+
+    tensorly's `initialize_cp` with `init="svd"` calls `truncated_svd` on each
+    mode unfolding. When `n_eigenvecs > min(matrix.shape)` that switches to
+    `full_matrices=True` and materializes the full right-singular matrix of the
+    unfolding -- for a (47, 15, 15, 513) tensor at `cp_rank=18` that is a
+    361665 x 361665 array, i.e. a 975 GiB allocation (issue #164). Even where it
+    does fit, `initialize_cp` pads the shortfall with uniform random columns, so
+    the excess components start from noise rather than from the data.
+
+    The communication tensor's modes are
+    ``(n_conditions, rise_rank, rise_rank, n_lr_pairs)``, so in practice the
+    binding constraint is ``min(n_conditions, rise_rank)``.
+
+    Parameters
+    ----------
+    cp_rank : int
+        Requested CP decomposition rank.
+    tensor_shape : tuple[int, ...]
+        Shape of the tensor being decomposed.
+
+    Raises
+    ------
+    ValueError
+        If `cp_rank` exceeds the smallest mode of `tensor_shape`.
+    """
+    smallest_mode = min(tensor_shape)
+    if cp_rank > smallest_mode:
+        raise ValueError(
+            f"cp_rank={cp_rank} exceeds the smallest mode of the communication "
+            f"tensor (shape {tuple(tensor_shape)}, smallest mode {smallest_mode}). "
+            "CP initialization would fall back to a full SVD of a mode unfolding "
+            "and pad the excess components with uniform noise (issue #164). "
+            f"Use cp_rank <= {smallest_mode}, or raise the binding mode -- for "
+            "the communication tensor that means more conditions or a larger "
+            "rise_rank."
+        )
+
+
 def ccc_rise(
     adata: anndata.AnnData,
     rise_rank: int,
@@ -550,6 +590,8 @@ def ccc_rise(
 
     # Print shape of interaction tensors
     print(f"Interaction tensors shape: {interaction_tensors.shape}")
+
+    validate_cp_rank(cp_rank, interaction_tensors.shape)
 
     # CP decomposition with explicit random initialization
     cp_weights, cp_factors = parafac(
