@@ -116,7 +116,6 @@ source = { editable = "." }
 dependencies = [
     { name = "anndata" },
     { name = "datashader" },
-    { name = "hdf5plugin" },
     { name = "matplotlib" },
     { name = "netcdf4" },
     { name = "numpy" },
@@ -124,6 +123,7 @@ dependencies = [
     { name = "parafac2" },
     { name = "pyarrow" },
     { name = "pyreadr" },
+    { name = "pyyaml" },
     { name = "scanpy" },
     { name = "scikit-learn" },
     { name = "scipy" },
@@ -155,7 +155,6 @@ docs = [
 requires-dist = [
     { name = "anndata", specifier = ">=0.11.3" },
     { name = "datashader", specifier = ">=0.17.0" },
-    { name = "hdf5plugin", specifier = ">=5.0.0" },
     { name = "matplotlib", specifier = "~=3.10.1" },
     { name = "netcdf4", specifier = ">=1.6.5" },
     { name = "numpy", specifier = ">=2.2" },
@@ -163,6 +162,7 @@ requires-dist = [
     { name = "parafac2", git = "https://github.com/meyer-lab/parafac2.git?rev=0bddf71aaa906d5f7133993f1797953031873c0e" },
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pyreadr", specifier = ">=0.5.6" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "scanpy", specifier = ">=1.12.3" },
     { name = "scikit-learn", specifier = ">=1.4.2" },
     { name = "scipy", specifier = ">=1.16.0" },
