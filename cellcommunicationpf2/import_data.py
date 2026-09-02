@@ -13,10 +13,8 @@ from scipy.sparse import csr_array, issparse
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
-# IBDverse reference paths
 IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
-IBD_TI_PATH = IBD_DATA_DIR / "ti_only.h5ad"
-IBD_TI_IVCSC = IBD_DATA_DIR / "ti_only.ivcsc.h5ad"
+IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "Full_cohort.ivcsc.h5ad"
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
@@ -233,16 +231,15 @@ def import_alad_brush(
 
 
 def import_ibdverse(
-    filename: str | Path = IBD_TI_IVCSC,
+    filename: str | Path = IBD_FULL_COHORT_IVCSC,
     gene_threshold: float = 0.001,
     normalize: bool = True,
     condition_name: str = "sanger_sample_id",
 ) -> anndata.AnnData:
-    """IBDverse intestinal biopsies and blood.
+    """IBDverse terminal-ileum biopsies: 343 samples, 232 healthy and 111 Crohn's.
 
     References:
-    [1] Alegbe, Harris et al. Nature (2026). https://doi.org/10.1038/s41586-026-10627-z
-    [2] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
+    [1] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
         https://doi.org/10.1038/s41588-026-02634-7
     """
     print("Loading IBDverse data...")
