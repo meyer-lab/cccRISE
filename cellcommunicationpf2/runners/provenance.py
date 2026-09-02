@@ -2,17 +2,12 @@
 YAML provenance sidecars for runner outputs.
 
 Each runner writes its result alongside a ``<stem>.provenance.yaml`` recording
-what produced it: the source data and its checksum, the loader and its
-arguments, every parameter, the resulting dimensions, summary metrics, the code
-version, and the versions of the packages that affect the numbers. A result can
-then be traced to an exact invocation, and a stale one is detectable.
+what produced it: the source data and its checksum, the loader arguments, every
+parameter, the resulting dimensions, the headline metrics, and the code version.
 """
 
 import hashlib
-import importlib.metadata
-import platform
 import subprocess
-import sys
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from functools import cache
@@ -25,19 +20,6 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 
 #: Suffix appended to an output file's stem to name its sidecar.
 PROVENANCE_SUFFIX = ".provenance.yaml"
-
-#: Packages whose version can change a numerical result. Missing ones are omitted.
-TRACKED_PACKAGES = (
-    "tensorly",
-    "parafac2",
-    "vcsc",
-    "numpy",
-    "scipy",
-    "pandas",
-    "anndata",
-    "xarray",
-    "scikit-learn",
-)
 
 
 def _git(*args: str) -> str | None:
@@ -61,25 +43,12 @@ def git_sha() -> str | None:
     """Commit of the code that produced a result.
 
     A trailing ``-dirty`` marks uncommitted edits to tracked files; untracked
-    files are ignored. Memoized, and each runner calls it before writing
-    anything -- a runner overwrites tracked artifacts, so reading the tree
-    afterwards would see the run's own output and report ``-dirty`` every time.
+    files are ignored.
     """
     commit = _git("rev-parse", "HEAD")
     if commit is None:
         return None
     return f"{commit}-dirty" if _git("status", "--porcelain", "-uno") else commit
-
-
-def package_versions() -> dict[str, str]:
-    """Versions of the packages that can change a numerical result."""
-    versions: dict[str, str] = {}
-    for name in TRACKED_PACKAGES:
-        try:
-            versions[name] = importlib.metadata.version(name)
-        except importlib.metadata.PackageNotFoundError:
-            continue
-    return versions
 
 
 def sha256_file(path: str | Path, chunk_size: int = 1 << 22) -> str:
@@ -93,25 +62,13 @@ def sha256_file(path: str | Path, chunk_size: int = 1 << 22) -> str:
 
 def relpath(path: str | Path) -> str:
     """Render a path relative to the repo root when it lives inside it.
-
-    Keeps sidecars portable between checkouts. Source data outside the repo
-    stays absolute, which is what makes it identifiable.
+    Keeps sidecars portable between checkouts.
     """
     resolved = Path(path).resolve()
     try:
         return str(resolved.relative_to(REPO_ROOT))
     except ValueError:
         return str(resolved)
-
-
-def file_info(path: Path) -> dict[str, Any]:
-    """Path, byte size, and sha256 of a file written by a runner."""
-    path = Path(path)
-    return {
-        "path": relpath(path),
-        "bytes": path.stat().st_size,
-        "sha256": sha256_file(path),
-    }
 
 
 def _to_plain(obj: Any) -> Any:
@@ -129,7 +86,7 @@ def _to_plain(obj: Any) -> Any:
     return obj
 
 
-def build_metadata(runner: str, fields: Mapping[str, Any]) -> dict[str, Any]:
+def build_metadata(fields: Mapping[str, Any]) -> dict[str, Any]:
     """Wrap a runner's own fields with the trailer every sidecar carries.
 
     `fields` is emitted verbatim in the order given -- each runner owns the
@@ -137,11 +94,7 @@ def build_metadata(runner: str, fields: Mapping[str, Any]) -> dict[str, Any]:
     """
     return _to_plain(dict(fields)) | {
         "git_sha": git_sha(),
-        "package_versions": package_versions(),
-        "python": sys.version.split()[0],
-        "platform": platform.platform(),
         "generated": datetime.now(UTC).isoformat(timespec="seconds"),
-        "runner": runner,
     }
 
 

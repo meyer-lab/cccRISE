@@ -3,8 +3,7 @@ Dataset registry shared by every runner.
 
 A runner is told which dataset to work on by a short label (``alad``, ``ibd``);
 the loader, the source file, the condition column and the canonical output
-filenames are looked up here. That keeps "which dataset?" a single CLI argument
-and keeps result files named consistently across runners and figures.
+filenames are looked up here.
 """
 
 from collections.abc import Callable
@@ -21,7 +20,6 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 
 @dataclass(frozen=True)
 class DatasetSpec:
-
     key: str
     label: str
     loader: Callable[..., anndata.AnnData]
@@ -33,13 +31,6 @@ class DatasetSpec:
     celltype_column: str | None = None
     group_column: str | None = None
     notes: str = ""
-
-    @property
-    def loader_path(self) -> str:
-        """``module:function`` name of the loader."""
-        module = getattr(self.loader, "__module__", "?")
-        name = getattr(self.loader, "__qualname__", repr(self.loader))
-        return f"{module}:{name}"
 
     @property
     def loader_args(self) -> dict[str, Any]:

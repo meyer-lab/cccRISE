@@ -41,7 +41,6 @@ def dataset_metadata(spec: DatasetSpec) -> dict:
         "dataset_label": spec.label,
         "source_file": str(spec.source_file),
         "source_sha256": sha256_file(spec.source_file),
-        "loader": spec.loader_path,
         "loader_args": spec.loader_args,
         "condition_key": spec.condition_column,
     }
