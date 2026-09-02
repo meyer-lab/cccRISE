@@ -19,20 +19,21 @@ import numpy as np
 import pandas as pd
 
 from ..ccc_rise import cp_decomposition
-from ..import_data import import_alad, import_balf_covid, import_ligand_receptor_pairs
+from ..import_data import import_alad, import_ibdverse, import_ligand_receptor_pairs
 from ..rank_selection import cp_core_consistency_sweep, cpd_component_collinearity
 from ..tensor import run_rise_and_score
 from .common import getSetup, load_or_compute_dataframe, subplotLabel
 
 # Easily selectable dataset registry: (loader_func, condition_column)
 DATASET_LOADERS: dict[str, tuple[Callable[[], anndata.AnnData], str]] = {
-    "covid": (import_balf_covid, "sample"),
+    "ibd": (import_ibdverse, "sanger_sample_id"),
     "alad": (import_alad, "dsco_id"),
 }
 
-# Pre-selected RISE ranks per dataset
+# Pre-selected RISE ranks per dataset. IBD's is not yet pinned (#166); 25 is a
+# placeholder matching ALAD's, not a settled value.
 DATASET_RISE_RANKS: dict[str, int] = {
-    "covid": 25,
+    "ibd": 25,
     "alad": 25,
 }
 
