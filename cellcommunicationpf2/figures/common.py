@@ -10,6 +10,7 @@ from string import ascii_letters
 
 import anndata
 import matplotlib
+import pandas as pd
 import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
@@ -37,6 +38,7 @@ LIGHT_DIVERGING = sns.diverging_palette(240, 10, as_cmap=True)
 from ..factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
+    DATA_DIR,
     clean_memory,
     load_factors_to_anndata,
     load_or_compute_dataframe,
@@ -46,6 +48,7 @@ from ..import_data import import_alad, import_balf_covid
 __all__ = [
     "ALAD_FACTORS_PATH",
     "COVID19_FACTORS_PATH",
+    "DATA_DIR",
     "DEFAULT_CMAP",
     "DIVERGING_CMAP",
     "LIGHT_DIVERGING",
@@ -56,6 +59,7 @@ __all__ = [
     "get_covid_data",
     "load_factors_to_anndata",
     "load_or_compute_dataframe",
+    "load_runner_csv",
     "subplotLabel",
 ]
 
@@ -82,6 +86,22 @@ def get_alad_data(
     return load_factors_to_anndata(
         ALAD_FACTORS_PATH, adata=raw, do_embedding=do_embedding
     )
+
+
+def load_runner_csv(filename: str) -> pd.DataFrame:
+    """Read a sweep result written by one of the runner scripts.
+
+    Figures plot what a runner already produced; they never compute a sweep
+    themselves, so a missing file is an error naming the command to run.
+    """
+    path = DATA_DIR / filename
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} not found. Produce it with the matching runner, e.g.\n"
+            "    uv run ccc-rise-riserank --dataset <dataset> --ranks 5:51:5\n"
+            "    uv run ccc-rise-cpdrank  --dataset <dataset> --rise-rank <N>"
+        )
+    return pd.read_csv(path)
 
 
 def getSetup(

@@ -13,6 +13,9 @@ from scipy.sparse import csr_array, issparse
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
+IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
+IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "Full_cohort.ivcsc.h5ad"
+
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
 def import_balf_covid(
@@ -224,6 +227,33 @@ def import_alad_brush(
     data = vcsc.load_packed(filename).to_anndata()
     return prepare_dataset(
         data, "subj", geneThreshold=gene_threshold, normalize=normalize
+    )
+
+
+def import_ibdverse(
+    filename: str | Path = IBD_FULL_COHORT_IVCSC,
+    gene_threshold: float = 0.001,
+    normalize: bool = True,
+    condition_name: str = "sanger_sample_id",
+) -> anndata.AnnData:
+    """IBDverse terminal-ileum biopsies: 343 samples, 232 healthy and 111 Crohn's.
+
+    References:
+    [1] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
+        https://doi.org/10.1038/s41588-026-02634-7
+    """
+    print("Loading IBDverse data...")
+    if normalize:
+        data = vcsc.load_and_normalize(
+            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
+        )
+        data = add_cond_idxs(data, condition_name)
+        data.var["means"] = data.X.mean(axis=0)
+        return data
+
+    data = vcsc.load_packed(filename).to_anndata()
+    return prepare_dataset(
+        data, condition_name, geneThreshold=gene_threshold, normalize=normalize
     )
 
 

@@ -18,6 +18,7 @@ from .import_data import add_cond_idxs
 DATA_DIR = Path(__file__).parent / "data"
 COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
 ALAD_FACTORS_PATH = DATA_DIR / "bal_alad_factors.nc"
+IBD_FACTORS_PATH = DATA_DIR / "ibd_ti_factors.nc"
 
 
 def factors_to_xarray(

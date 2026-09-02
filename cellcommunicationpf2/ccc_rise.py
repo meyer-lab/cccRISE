@@ -559,6 +559,35 @@ def compute_communication_significance(
     )
 
 
+def validate_cp_rank(cp_rank: int, tensor_shape: tuple[int, ...]) -> None:
+    """Reject a CP rank larger than the tensor's smallest mode.
+
+    Above that, tensorly's SVD initialization falls back to a full SVD of a
+    mode unfolding -- an allocation quadratic in the unfolding's long axis, so
+    hundreds of GiB for a realistic communication tensor -- and pads the excess
+    components with uniform random columns, starting them from noise rather
+    than from the data.
+
+    The communication tensor's modes are ``(n_conditions, rise_rank,
+    rise_rank, n_lr_pairs)``, so in practice the constraint is
+    ``min(n_conditions, rise_rank)``.
+
+    Raises
+    ------
+    ValueError
+        If `cp_rank` exceeds the smallest mode of `tensor_shape`.
+    """
+    smallest_mode = min(tensor_shape)
+    if cp_rank > smallest_mode:
+        raise ValueError(
+            f"cp_rank={cp_rank} exceeds the smallest mode of the communication "
+            f"tensor (shape {tuple(tensor_shape)}, smallest mode {smallest_mode}). "
+            f"Use cp_rank <= {smallest_mode}, or raise the binding mode -- for "
+            "the communication tensor that means more conditions or a larger "
+            "rise_rank."
+        )
+
+
 def ccc_rise(
     adata: anndata.AnnData,
     rise_rank: int,
@@ -604,10 +633,16 @@ def ccc_rise(
     X_list = anndata_to_list(adata)
 
     # PARAFAC2 decomposition
-    pf2_output, _ = parafac2_nd(
+    pf2_output, r2x_pf2 = parafac2_nd(
         adata, rank=rise_rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
     )
-    _, _, projections = pf2_output
+    pf2_weights, pf2_factors, projections = pf2_output
+
+    adata.uns["Pf2_weights"] = pf2_weights
+    adata.uns["Pf2_A"] = pf2_factors[0]
+    adata.uns["Pf2_B"] = pf2_factors[1]
+    adata.uns["Pf2_C"] = pf2_factors[2]
+    adata.uns["r2x_pf2"] = r2x_pf2
 
     # Project matrices
     projected_matrices = []
@@ -641,6 +676,8 @@ def ccc_rise(
 
     # Print shape of interaction tensors
     print(f"Interaction tensors shape: {interaction_tensors.shape}")
+
+    validate_cp_rank(cp_rank, interaction_tensors.shape)
 
     # CP decomposition, on the GPU when one is available
     cp_weights, cp_factors, final_R2X = cp_decomposition(
