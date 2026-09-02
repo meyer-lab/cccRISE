@@ -7,11 +7,10 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
-import tensorly as tl
 from parafac2.parafac2 import parafac2_nd
 from scipy.sparse import issparse
 from tensorly.cp_tensor import cp_to_tensor
-from tensorly.decomposition import parafac
+from tensorly.tenalg import mode_dot  # ty: ignore[unresolved-import]
 
 from .ccc_rise import cp_decomposition
 from .import_data import add_cond_idxs
@@ -271,132 +270,6 @@ def run_bicv(
 # =============================================================================
 
 
-def cp_masked_reconstruction_error(
-    tensor: np.ndarray,
-    rank: int,
-    mask_frac: float = 0.1,
-    n_iter_max: int = 1000,
-    init: str = "random",
-    random_state: int | None = None,
-) -> dict[str, float]:
-    """Calculate one fold of entry-masked CP cross-validation reconstruction error.
-
-    A random `mask_frac` of tensor entries are held out (mask=0), CP is fit
-    with `tensorly`'s built-in EM-style masked ALS, and R2X is scored on the
-    held-out entries only using the same normalization as `calculate_r2x`
-    (denominator is the sum of squares of the held-out raw values).
-
-    Parameters
-    ----------
-    tensor : np.ndarray
-        Input tensor to decompose.
-    rank : int
-        Decomposition rank to evaluate.
-    mask_frac : float, default=0.1
-        Fraction of tensor entries randomly held out for testing.
-    n_iter_max : int, default=1000
-        Maximum number of iterations for CP decomposition.
-    init : str, default="random"
-        Initialization method for CP decomposition (e.g., 'random', 'svd').
-    random_state : int | None, default=None
-        Random seed for mask generation and CP initialization.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary with evaluation results containing:
-        - 'Rank': Evaluated rank.
-        - 'HeldOutR2X': Reconstruction R2X on held-out tensor entries.
-        - 'InSampleR2X': Reconstruction R2X on the full tensor.
-        - 'NHeldOut': Total count of held-out entries.
-        - 'NTrain': Total count of training entries.
-    """
-    rng = np.random.default_rng(random_state)
-    mask = rng.uniform(size=tensor.shape) >= mask_frac
-    if not np.any(~mask):
-        mask[tuple(rng.integers(0, s) for s in tensor.shape)] = False
-
-    w, f = parafac(
-        tensor=tensor,
-        rank=rank,
-        n_iter_max=n_iter_max,
-        init=init,
-        mask=mask.astype(float),
-        normalize_factors=True,
-        linesearch=True,
-        random_state=random_state,
-    )
-
-    pred = cp_to_tensor((w, f))
-    held_out_mask = ~mask
-    actual = tensor[held_out_mask]
-    predicted = pred[held_out_mask]
-
-    sse = float(np.sum((actual - predicted) ** 2))
-    sst = float(np.sum(actual**2))
-    held_out_r2x = 1.0 - sse / sst if sst > 0 else np.nan
-
-    in_sample_r2x = calculate_r2x(w, f, tensor)
-
-    return {
-        "Rank": rank,
-        "HeldOutR2X": held_out_r2x,
-        "InSampleR2X": in_sample_r2x,
-        "NHeldOut": int(np.sum(held_out_mask)),
-        "NTrain": int(np.sum(mask)),
-    }
-
-
-def cp_masked_reconstruction_sweep(
-    tensor: np.ndarray,
-    ranks: list[int],
-    n_masks: int = 5,
-    mask_frac: float = 0.1,
-    n_iter_max: int = 1000,
-    init: str = "random",
-    random_state: int | None = None,
-) -> pd.DataFrame:
-    """Entry-masked cross-validation swept across ranks and mask replicates.
-
-    Parameters
-    ----------
-    tensor : np.ndarray
-        Input tensor to decompose.
-    ranks : list[int]
-        List of ranks to evaluate.
-    n_masks : int, default=5
-        Number of random mask replicates per rank.
-    mask_frac : float, default=0.1
-        Fraction of tensor entries held out in each mask.
-    n_iter_max : int, default=1000
-        Maximum number of iterations for CP decomposition.
-    init : str, default="random"
-        Initialization method for CP decomposition.
-    random_state : int | None, default=None
-        Base random seed for reproducibility across replicates.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing results for each rank and replicate with columns:
-        'Rank', 'Mask', 'HeldOutR2X', 'InSampleR2X', 'NHeldOut', 'NTrain'.
-    """
-    rows = [
-        cp_masked_reconstruction_error(
-            tensor,
-            rank=rank,
-            mask_frac=mask_frac,
-            n_iter_max=n_iter_max,
-            init=init,
-            random_state=None if random_state is None else random_state * 1000 + m,
-        )
-        | {"Mask": m}
-        for rank in ranks
-        for m in range(n_masks)
-    ]
-    return pd.DataFrame(rows)
-
-
 def cp_fit_r2x_sweep(
     tensor: np.ndarray,
     ranks: list[int],
@@ -407,9 +280,8 @@ def cp_fit_r2x_sweep(
 ) -> pd.DataFrame:
     """Full-tensor CP fit R2X swept across ranks.
 
-    Unlike `cp_masked_reconstruction_sweep`, nothing is held out: every rank is
-    fit against all entries, so R2X rises monotonically and measures how much
-    structure a rank can absorb rather than how much it generalizes.
+    Nothing is held out: every rank is fit against all entries, so R2X rises
+    monotonically and measures how much structure a rank can absorb.
 
     Parameters
     ----------
@@ -579,7 +451,7 @@ def cp_core_consistency(
 
     core = tensor
     for mode, pinv in enumerate(pinvs):
-        core = tl.tenalg.mode_dot(core, pinv, mode)
+        core = mode_dot(core, pinv, mode)
 
     ideal = np.zeros((rank,) * 4)
     diag_idx = np.arange(rank)

@@ -13,8 +13,6 @@ from cellcommunicationpf2.rank_selection import (
     cp_core_consistency,
     cp_core_consistency_sweep,
     cp_fit_r2x_sweep,
-    cp_masked_reconstruction_error,
-    cp_masked_reconstruction_sweep,
     cpd_component_collinearity,
     run_bicv,
 )
@@ -145,58 +143,6 @@ def _simulate_cp_tensor(
     tensor = cp_to_tensor((weights, factors))
     tensor += rng.normal(scale=noise_std, size=tensor.shape)
     return tensor
-
-
-def test_cp_masked_reconstruction_error_bounded_and_runs():
-    tensor = _simulate_cp_tensor((6, 8, 8, 20), rank=3, random_state=0)
-    res = cp_masked_reconstruction_error(
-        tensor, rank=3, mask_frac=0.15, n_iter_max=200, random_state=1
-    )
-    assert -5.0 <= res["HeldOutR2X"] <= 1.0
-    assert 0.0 <= res["InSampleR2X"] <= 1.0
-    assert res["NHeldOut"] > 0
-
-
-def test_cp_masked_reconstruction_error_does_not_keep_climbing_past_true_rank():
-    """Verify that held-out entry R2X does not monotonically climb indefinitely."""
-    true_rank = 3
-    tensor = _simulate_cp_tensor(
-        (8, 10, 10, 30), rank=true_rank, noise_std=0.15, random_state=42
-    )
-
-    ranks = (1, 2, 3, 6, 10)
-    mean_held_out = {}
-    mean_in_sample = {}
-    for rank in ranks:
-        held = []
-        in_sample = []
-        for m in range(3):
-            res = cp_masked_reconstruction_error(
-                tensor, rank=rank, mask_frac=0.2, n_iter_max=300, random_state=m
-            )
-            held.append(res["HeldOutR2X"])
-            in_sample.append(res["InSampleR2X"])
-        mean_held_out[rank] = float(np.mean(held))
-        mean_in_sample[rank] = float(np.mean(in_sample))
-
-    in_sample_seq = [mean_in_sample[r] for r in ranks]
-    assert all(x <= y + 1e-6 for x, y in pairwise(in_sample_seq))
-
-    held_out_seq = [mean_held_out[r] for r in ranks]
-    assert mean_held_out[true_rank] > mean_held_out[1]
-    assert not all(x <= y + 1e-6 for x, y in pairwise(held_out_seq)), (
-        f"Held-out masked-CV R2X was monotonically increasing like in-sample "
-        f"R2X: {held_out_seq}. This would indicate the masking is leaking."
-    )
-
-
-def test_cp_masked_reconstruction_sweep_shape():
-    tensor = _simulate_cp_tensor((5, 6, 6, 15), rank=2, random_state=2)
-    df = cp_masked_reconstruction_sweep(
-        tensor, ranks=[1, 2, 4], n_masks=2, n_iter_max=100, random_state=0
-    )
-    assert len(df) == 3 * 2
-    assert set(df["Rank"]) == {1, 2, 4}
 
 
 def test_cp_fit_r2x_sweep_monotonic_and_bounded():
