@@ -1,54 +1,17 @@
 """
 Figure for RISE BiCV (bi-cross-validation) rank selection.
+
+Plots the sweep produced by ``uv run ccc-rise-riserank``; run that first.
 """
 
-from collections.abc import Callable
-
-import anndata
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from ..import_data import import_alad, import_balf_covid
-from ..rank_selection import run_bicv
-from .common import getSetup, load_or_compute_dataframe, subplotLabel
+from .common import getSetup, load_runner_csv, subplotLabel
 
-# Easily selectable dataset registry: (loader_func, condition_column)
-DATASET_LOADERS: dict[str, tuple[Callable[[], anndata.AnnData], str]] = {
-    "covid": (import_balf_covid, "sample"),
-    "alad": (import_alad, "dsco_id"),
-}
-
-# Change this variable to switch dataset
-SELECTED_DATASET = "covid"
-DEFAULT_RANKS = [30, 35, 40]
-
-
-def compute_bicv_dataset(
-    dataset_name: str = SELECTED_DATASET,
-    ranks: list[int] | None = None,
-    n_folds: int = 3,
-) -> pd.DataFrame:
-    """Compute BiCV reconstruction metrics for a given dataset across ranks.
-
-    Parameters
-    ----------
-    dataset_name : str, default=SELECTED_DATASET
-        Name of the dataset in `DATASET_LOADERS`.
-    ranks : list[int] | None
-        List of ranks to evaluate. Defaults to DEFAULT_RANKS.
-    n_folds : int, default=3
-        Number of cross-validation folds.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with BiCV reconstruction metrics across ranks and folds.
-    """
-    if ranks is None:
-        ranks = DEFAULT_RANKS
-    loader, cond_col = DATASET_LOADERS[dataset_name]
-    adata = loader()
-    return run_bicv(adata, ranks=ranks, condition_column=cond_col, n_folds=n_folds)
+# Change these to switch dataset; must match the runner's --dataset.
+SELECTED_DATASET = "alad"
+SWEEP_CSV = f"rise_rank_{SELECTED_DATASET}.csv"
 
 
 def plot_bicv_rank_selection(
@@ -85,12 +48,9 @@ def makeFigure():
     ax, f = getSetup((4, 3.5), (1, 1))
     subplotLabel(ax)
 
-    df = load_or_compute_dataframe(
-        f"rise_rank_bicv_{SELECTED_DATASET}.csv",
-        lambda: compute_bicv_dataset(dataset_name=SELECTED_DATASET, n_folds=3),
-    )
-
     plot_bicv_rank_selection(
-        df, ax[0], title=f"BiCV Held-out $R^2X$ ({SELECTED_DATASET.upper()})"
+        load_runner_csv(SWEEP_CSV),
+        ax[0],
+        title=f"BiCV Held-out $R^2X$ ({SELECTED_DATASET.upper()})",
     )
     return f
