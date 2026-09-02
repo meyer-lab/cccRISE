@@ -7,7 +7,7 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
-import vcsc
+import vsparse
 from scipy.sparse import csr_array, issparse
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -64,14 +64,14 @@ def import_balf_covid(
 
     print("Loading BALF COVID data (preserving sparse format)...")
     if normalize:
-        adata = vcsc.load_and_normalize(
+        adata = vsparse.load_and_normalize(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
         adata = add_cond_idxs(adata, "sample")
         adata.var["means"] = adata.X.mean(axis=0)
         return adata
 
-    adata = vcsc.load_packed(filename).to_anndata()
+    adata = vsparse.load_packed(filename).to_anndata()
     return prepare_dataset(
         adata,
         condition_name="sample",
@@ -126,11 +126,11 @@ def import_alad(
     patient ids: dsco_id
     """
     if normalize:
-        data = vcsc.load_and_normalize(
+        data = vsparse.load_and_normalize(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
     else:
-        data = vcsc.load_packed(filename).to_anndata()
+        data = vsparse.load_packed(filename).to_anndata()
 
     # Map cell types directly from the metadata column revised_annotations_10_5
     if "revised_annotations_10_5" in data.obs:
@@ -217,14 +217,14 @@ def import_alad_brush(
     """
     print("Loading ALAD brushing data...")
     if normalize:
-        data = vcsc.load_and_normalize(
+        data = vsparse.load_and_normalize(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
         data = add_cond_idxs(data, "subj")
         data.var["means"] = data.X.mean(axis=0)
         return data
 
-    data = vcsc.load_packed(filename).to_anndata()
+    data = vsparse.load_packed(filename).to_anndata()
     return prepare_dataset(
         data, "subj", geneThreshold=gene_threshold, normalize=normalize
     )
@@ -244,14 +244,14 @@ def import_ibdverse(
     """
     print("Loading IBDverse data...")
     if normalize:
-        data = vcsc.load_and_normalize(
+        data = vsparse.load_and_normalize(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
         data = add_cond_idxs(data, condition_name)
         data.var["means"] = data.X.mean(axis=0)
         return data
 
-    data = vcsc.load_packed(filename).to_anndata()
+    data = vsparse.load_packed(filename).to_anndata()
     return prepare_dataset(
         data, condition_name, geneThreshold=gene_threshold, normalize=normalize
     )
