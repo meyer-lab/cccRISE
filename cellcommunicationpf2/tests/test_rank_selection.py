@@ -6,11 +6,16 @@ import anndata
 import numpy as np
 import pandas as pd
 from tensorly.cp_tensor import cp_to_tensor
+from tensorly.decomposition import parafac
 
 from cellcommunicationpf2.rank_selection import (
     bicv_reconstruction_error,
+    cp_core_consistency,
+    cp_core_consistency_sweep,
+    cp_fit_r2x_sweep,
     cp_masked_reconstruction_error,
     cp_masked_reconstruction_sweep,
+    cpd_component_collinearity,
     run_bicv,
 )
 
@@ -192,3 +197,88 @@ def test_cp_masked_reconstruction_sweep_shape():
     )
     assert len(df) == 3 * 2
     assert set(df["Rank"]) == {1, 2, 4}
+
+
+def test_cp_fit_r2x_sweep_monotonic_and_bounded():
+    """Full-tensor fit R2X (nothing held out) must rise monotonically with rank."""
+    tensor = _simulate_cp_tensor((6, 8, 8, 20), rank=3, random_state=3)
+    ranks = [1, 2, 3, 6]
+    df = cp_fit_r2x_sweep(tensor, ranks=ranks, n_iter_max=200, random_state=0)
+
+    assert list(df["Rank"]) == ranks
+    assert df["FitR2X"].between(0.0, 1.0).all()
+    assert all(x <= y + 1e-6 for x, y in pairwise(df["FitR2X"]))
+
+
+def _factors_with_pair(
+    dims: tuple[int, ...], flip_mode: int | None
+) -> list[np.ndarray]:
+    """Rank-3 factor matrices where components 0 and 1 are near-duplicates in
+    every mode, negated in `flip_mode` if given (the canceling-pair signature).
+    Component 2 is independent random noise."""
+    rng = np.random.default_rng(0)
+    factors = []
+    for mode, dim in enumerate(dims):
+        base = rng.normal(size=dim)
+        col1 = -base if mode == flip_mode else base
+        other = rng.normal(size=(dim, 1))
+        factors.append(np.column_stack([base, col1, other.ravel()]))
+    return factors
+
+
+def test_cpd_component_collinearity_flags_duplicate_and_canceling_pairs():
+    weights = np.ones(3)
+    dims = (5, 6, 6, 8)
+
+    duplicate = {3: (weights, _factors_with_pair(dims, flip_mode=None))}
+    df = cpd_component_collinearity(duplicate)
+    assert df.loc[df["Rank"] == 3, "MaxModesCollinear"].item() == 4
+    assert df.loc[df["Rank"] == 3, "WorstPairCanceling"].item() == False
+
+    canceling = {3: (weights, _factors_with_pair(dims, flip_mode=1))}
+    df = cpd_component_collinearity(canceling)
+    assert df.loc[df["Rank"] == 3, "WorstPairCanceling"].item() == True
+
+
+def test_cpd_component_collinearity_rank_below_two_is_trivial():
+    df = cpd_component_collinearity({1: (np.ones(1), [np.ones((4, 1))] * 4)})
+    row = df.iloc[0]
+    assert row["MaxModesCollinear"] == 0
+    assert pd.isna(row["WorstPairCanceling"])
+
+
+def test_cp_core_consistency_drops_past_true_rank():
+    """CORCONDIA should be high at the true rank and lower once overfit."""
+    true_rank = 3
+    tensor = _simulate_cp_tensor(
+        (10, 12, 12, 30), rank=true_rank, noise_std=0.02, random_state=5
+    )
+
+    def _consistency(rank: int) -> float:
+        weights, factors = parafac(
+            tensor,
+            rank=rank,
+            n_iter_max=300,
+            init="svd",
+            normalize_factors=True,
+            random_state=0,
+        )
+        return cp_core_consistency(tensor, weights, factors)
+
+    at_true_rank = _consistency(true_rank)
+    overfit = _consistency(true_rank + 5)
+    assert at_true_rank > 50.0
+    assert overfit < at_true_rank
+
+
+def test_cp_core_consistency_sweep_shape():
+    tensor = _simulate_cp_tensor((6, 7, 7, 15), rank=2, random_state=6)
+    factors_by_rank = {
+        rank: parafac(
+            tensor, rank=rank, n_iter_max=100, normalize_factors=True, random_state=0
+        )
+        for rank in (1, 2, 4)
+    }
+    df = cp_core_consistency_sweep(tensor, factors_by_rank)
+    assert set(df["Rank"]) == {1, 2, 4}
+    assert "CoreConsistency" in df.columns

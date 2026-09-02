@@ -170,6 +170,86 @@ def run_ccc_rise_workflow(
     return adata, r2x
 
 
+def run_rise_and_score(
+    adata: anndata.AnnData,
+    rise_rank: int,
+    lr_pairs: pd.DataFrame,
+    condition_column: str = "sample",
+    complex_sep: str | None = "&",
+    n_iter_max: int = 100,
+    tol: float = 1e-3,
+    random_state: int | None = None,
+) -> tuple[anndata.AnnData, np.ndarray, np.ndarray]:
+    """
+    Run RISE once and build the communication tensor from its projections.
+
+    Splits the first half of `ccc_rise` away from the CP fit, so a single RISE
+    solution and its interaction tensor can be reused across many CP ranks.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        The AnnData object with expression data.
+    rise_rank : int
+        Rank for the RISE / PARAFAC2 decomposition.
+    lr_pairs : pd.DataFrame
+        Ligand-receptor pairs used for communication scoring.
+    condition_column : str, default="sample"
+        The column in `adata.obs` that defines the conditions.
+    complex_sep : str, optional, default="&"
+        Separator for multimeric complexes in ligand-receptor pairs.
+    n_iter_max : int, default=100
+        Maximum number of iterations for PARAFAC2.
+    tol : float, default=1e-3
+        Convergence tolerance for PARAFAC2.
+    random_state : int, optional
+        Seed for reproducibility.
+
+    Returns
+    -------
+    tuple[anndata.AnnData, np.ndarray, np.ndarray]
+        The AnnData with RISE factors in `.uns` and projections in `.obsm`,
+        the 4D interaction tensor, and the retained LR pair symbols.
+    """
+    adata = add_cond_idxs(adata, condition_column)
+    X_list = anndata_to_list(adata)
+
+    pf2_output, r2x_pf2 = parafac2_nd(
+        adata, rank=rise_rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
+    )
+    pf2_weights, pf2_factors, projections = pf2_output
+
+    adata.uns["Pf2_weights"] = pf2_weights
+    adata.uns["Pf2_A"] = pf2_factors[0]
+    adata.uns["Pf2_B"] = pf2_factors[1]
+    adata.uns["Pf2_C"] = pf2_factors[2]
+    adata.uns["r2x_pf2"] = r2x_pf2
+
+    sg_index = np.asarray(adata.obs["condition_unique_idxs"], dtype=int)
+    adata.obsm["projections"] = np.zeros((adata.shape[0], rise_rank))
+    projected_matrices = []
+    for i, mat in enumerate(X_list):
+        adata.obsm["projections"][sg_index == i, :] = projections[i]
+        mat_np = cast(Any, mat).toarray() if isinstance(mat, spmatrix) else mat
+        projected_matrices.append(projections[i].T @ mat_np)
+
+    gene_names = list(adata.var_names)
+    gene_means = (
+        adata.var["means"].to_numpy()
+        if "means" in adata.var
+        else np.zeros(len(gene_names))
+    )
+    interaction_tensor, filtered_lr_pairs = calc_communication_score(
+        projected_matrices,
+        gene_names=gene_names,
+        complex_sep=complex_sep,
+        lr_pairs=lr_pairs,
+        gene_means=gene_means,
+    )
+
+    return adata, interaction_tensor, filtered_lr_pairs["interaction_symbol"].values
+
+
 def run_pseudobulk_workflow(
     adata: anndata.AnnData,
     cp_rank: int = 8,

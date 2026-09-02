@@ -465,6 +465,59 @@ def compute_communication_significance(
     )
 
 
+def cp_decomposition(
+    interaction_tensors: np.ndarray,
+    cp_rank: int,
+    n_iter_max: int,
+    tol: float | None = None,
+    init: str = "svd",
+    linesearch: bool = False,
+    random_state: int | None = None,
+) -> tuple[np.ndarray, list[np.ndarray], float]:
+    """Fit CP to an interaction tensor and score reconstruction R2X.
+
+    Split out of `ccc_rise` so rank-selection sweeps can fit CP directly at a
+    given rank without re-running RISE, and without duplicating the R2X
+    calculation.
+
+    Parameters
+    ----------
+    interaction_tensors : np.ndarray
+        4D communication tensor, shape (conditions, sender, receiver, lr_pairs).
+    cp_rank : int
+        Rank for the CP decomposition.
+    n_iter_max : int
+        Maximum number of ALS iterations.
+    tol : float, optional
+        Convergence tolerance; None uses tensorly's default.
+    init : str, default="svd"
+        Initialization method for CP decomposition.
+    linesearch : bool, default=False
+        Whether to use line search to accelerate ALS convergence.
+    random_state : int, optional
+        Seed for reproducibility.
+
+    Returns
+    -------
+    tuple[np.ndarray, list[np.ndarray], float]
+        CP weights, CP factor matrices, and R2X.
+    """
+    parafac_kwargs: dict[str, Any] = {
+        "rank": cp_rank,
+        "n_iter_max": n_iter_max,
+        "init": init,
+        "linesearch": linesearch,
+        "normalize_factors": True,
+        "random_state": random_state,
+    }
+    if tol is not None:
+        parafac_kwargs["tol"] = tol
+
+    cp_weights, cp_factors = parafac(interaction_tensors, **parafac_kwargs)
+    r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
+    return cp_weights, cp_factors, r2x
+
+
 def ccc_rise(
     adata: anndata.AnnData,
     rise_rank: int,

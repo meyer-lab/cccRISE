@@ -7,11 +7,13 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from parafac2.parafac2 import parafac2_nd
 from scipy.sparse import issparse
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
 
+from .ccc_rise import cp_decomposition
 from .import_data import add_cond_idxs
 
 Factors = list[np.ndarray]
@@ -391,5 +393,223 @@ def cp_masked_reconstruction_sweep(
         | {"Mask": m}
         for rank in ranks
         for m in range(n_masks)
+    ]
+    return pd.DataFrame(rows)
+
+
+def cp_fit_r2x_sweep(
+    tensor: np.ndarray,
+    ranks: list[int],
+    n_iter_max: int = 100,
+    tol: float = 1e-3,
+    init: str = "svd",
+    random_state: int | None = None,
+) -> pd.DataFrame:
+    """Full-tensor CP fit R2X swept across ranks.
+
+    Unlike `cp_masked_reconstruction_sweep`, nothing is held out: every rank is
+    fit against all entries, so R2X rises monotonically and measures how much
+    structure a rank can absorb rather than how much it generalizes.
+
+    Parameters
+    ----------
+    tensor : np.ndarray
+        Input tensor to decompose.
+    ranks : list[int]
+        List of ranks to evaluate.
+    n_iter_max : int, default=100
+        Maximum number of ALS iterations.
+    tol : float, default=1e-3
+        Convergence tolerance.
+    init : str, default="svd"
+        Initialization method for CP decomposition.
+    random_state : int | None, default=None
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with columns 'Rank' and 'FitR2X'.
+    """
+    rows = []
+    for rank in ranks:
+        _weights, _factors, r2x = cp_decomposition(
+            tensor,
+            rank,
+            n_iter_max=n_iter_max,
+            tol=tol,
+            init=init,
+            random_state=random_state,
+        )
+        rows.append({"Rank": rank, "FitR2X": r2x})
+
+    return pd.DataFrame(rows)
+
+
+# =============================================================================
+# Heuristic: component-collinearity / degeneracy screen
+# =============================================================================
+
+
+def cpd_component_collinearity(
+    factors_by_rank: dict[int, tuple[np.ndarray, Factors]],
+    threshold: float = 0.9,
+) -> pd.DataFrame:
+    """Screen CPD factor models across ranks for degenerate ("canceling") pairs.
+
+    For every rank, computes the signed cosine similarity between every pair
+    of components within each of the 4 factor modes (condition, sender,
+    receiver, LR pair). A pair that is highly collinear (|cosine| >
+    `threshold`) in several modes at once, with an odd number of those modes
+    negatively signed, is the classic CPD degeneracy signature: two rank-1
+    terms that are nearly identical in most modes but flip sign in one,
+    nearly canceling in the sum despite each carrying substantial weight.
+    A pair collinear across modes with no sign flip is a near-duplicate
+    (redundant) rather than canceling pair.
+
+    Parameters
+    ----------
+    factors_by_rank : dict[int, tuple[np.ndarray, Factors]]
+        Maps CP rank to (weights, [A, B, C, D]).
+    threshold : float, default=0.9
+        Absolute cosine similarity above which two components are
+        considered collinear in a given mode.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per rank with columns:
+        - 'Rank'
+        - 'MaxModesCollinear': largest number of modes (0-4) in which any
+          component pair exceeds `threshold`.
+        - 'WorstPairCanceling': whether the worst pair's collinear modes
+          have a net-negative sign product (canceling) rather than
+          net-positive (near-duplicate). NaN when 'MaxModesCollinear' is 0.
+        - 'WorstPairI', 'WorstPairJ': 1-based component indices of the worst
+          pair; -1 when rank < 2.
+    """
+    rows = []
+    for rank in sorted(factors_by_rank):
+        _weights, factors = factors_by_rank[rank]
+        if rank < 2:
+            rows.append(
+                {
+                    "Rank": rank,
+                    "MaxModesCollinear": 0,
+                    "WorstPairCanceling": np.nan,
+                    "WorstPairI": -1,
+                    "WorstPairJ": -1,
+                }
+            )
+            continue
+
+        cos_by_mode = []
+        for f in factors:
+            norm = f / np.linalg.norm(f, axis=0, keepdims=True)
+            cos_by_mode.append(norm.T @ norm)
+
+        best_count = -1
+        best_pair = (-1, -1)
+        best_signs: list[float] = []
+        for i in range(rank):
+            for j in range(i + 1, rank):
+                signs = [cos_by_mode[m][i, j] for m in range(4)]
+                count = int(sum(abs(s) > threshold for s in signs))
+                if count > best_count:
+                    best_count = count
+                    best_pair = (i + 1, j + 1)
+                    best_signs = signs
+
+        canceling = np.nan
+        if best_count > 0:
+            collinear_signs = [s for s in best_signs if abs(s) > threshold]
+            canceling = bool(np.prod(np.sign(collinear_signs)) < 0)
+
+        rows.append(
+            {
+                "Rank": rank,
+                "MaxModesCollinear": best_count,
+                "WorstPairCanceling": canceling,
+                "WorstPairI": best_pair[0],
+                "WorstPairJ": best_pair[1],
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+# =============================================================================
+# Heuristic: core consistency diagnostic (CORCONDIA, generalized to 4 modes)
+# =============================================================================
+
+
+def cp_core_consistency(
+    tensor: np.ndarray, weights: np.ndarray, factors: Factors
+) -> float:
+    """Core consistency diagnostic (CORCONDIA), generalized to 4 modes.
+
+    Projects the tensor onto each factor matrix's pseudoinverse to obtain
+    the best-fit core in the CP factors' own basis, then compares that core
+    to the ideal super-diagonal core a valid quadrilinear CP model implies.
+    Consistency near 100 means the rank-R CP model is an appropriate,
+    essentially unique decomposition; it typically drops sharply once rank
+    exceeds the tensor's true multilinear rank, since additional components
+    start trading off against each other (the pseudoinverse projection
+    picks up large off-diagonal core entries) rather than each explaining
+    independent structure.
+
+    Parameters
+    ----------
+    tensor : np.ndarray
+        4D communication tensor the factors were fit to.
+    weights : np.ndarray
+        Component weights, shape (rank,).
+    factors : list[np.ndarray]
+        The 4 CP factor matrices, each shape (dim_n, rank).
+
+    Returns
+    -------
+    float
+        Core consistency, in percent (100 = perfectly super-diagonal core;
+        can go negative for a badly-fitting rank).
+    """
+    rank = factors[0].shape[1]
+    scaled_factors = [factors[0] * weights[np.newaxis, :], *factors[1:]]
+    pinvs = [np.linalg.pinv(f) for f in scaled_factors]
+
+    core = tensor
+    for mode, pinv in enumerate(pinvs):
+        core = tl.tenalg.mode_dot(core, pinv, mode)
+
+    ideal = np.zeros((rank,) * 4)
+    diag_idx = np.arange(rank)
+    ideal[diag_idx, diag_idx, diag_idx, diag_idx] = 1.0
+
+    return float(100.0 * (1.0 - np.sum((core - ideal) ** 2) / np.sum(ideal**2)))
+
+
+def cp_core_consistency_sweep(
+    tensor: np.ndarray, factors_by_rank: dict[int, tuple[np.ndarray, Factors]]
+) -> pd.DataFrame:
+    """Core consistency across every rank in a set of CP fits.
+
+    Parameters
+    ----------
+    tensor : np.ndarray
+        4D communication tensor the fits' factors were fit to.
+    factors_by_rank : dict[int, tuple[np.ndarray, Factors]]
+        Maps CP rank to (weights, [A, B, C, D]).
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns 'Rank' and 'CoreConsistency'.
+    """
+    rows = [
+        {
+            "Rank": rank,
+            "CoreConsistency": cp_core_consistency(tensor, weights, factors),
+        }
+        for rank, (weights, factors) in sorted(factors_by_rank.items())
     ]
     return pd.DataFrame(rows)
