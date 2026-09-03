@@ -182,3 +182,6 @@ manuscript/.citation-cache/
 
 # R/ (uvr-managed environment for reviewer-requested R methods)
 R/.uvr/
+
+# Ad-hoc analysis scratchpads
+scratch/
