@@ -11,9 +11,10 @@ diagnostic.
 
 By default the tensor is CANDELINC-compressed once for the whole sweep and
 every fit and metric runs on the resulting core, which both metrics are
-provably invariant to (see `rank_selection.candelinc_compress`). This turns a
-cohort-scale sweep from hours into minutes; `--no-compress` recovers the
-original behaviour.
+provably invariant to (see `rank_selection.candelinc_compress`). CP-ALS also
+runs on the GPU when CuPy and a CUDA device are available. Together these turn
+a cohort-scale sweep from hours into minutes; `--no-compress` and
+`--device cpu` recover the original behaviour.
 
 The CSV lands at the filename `figureCPDrank` reads, and the pipeline runner
 cites it as evidence for the CP rank it was given.
@@ -101,6 +102,7 @@ def cp_fits_by_rank(
     tol: float,
     init: str,
     random_state: int | None,
+    device: str | None = None,
 ) -> dict[int, tuple[np.ndarray, list[np.ndarray], float]]:
     """Fit CP once per rank; every metric below reads from this shared fit
     rather than re-fitting CP itself.
@@ -121,6 +123,7 @@ def cp_fits_by_rank(
             tol=tol,
             init=init,
             random_state=random_state,
+            device=device,
         )
         for rank in ranks
     }
@@ -137,6 +140,7 @@ def run_cpd_rank_selection(
     init: str = "svd",
     compress: bool = True,
     oversample: int = 5,
+    device: str | None = None,
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
@@ -172,6 +176,8 @@ def run_cpd_rank_selection(
         against the original tensor, so the CSV is unchanged; only the cost is.
     oversample : int, default=5
         Basis columns each mode keeps beyond `max(ranks)` when compressing.
+    device : str, optional
+        'cuda', 'cpu', or None to use a GPU when CuPy and CUDA are available.
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, optional
@@ -216,7 +222,7 @@ def run_cpd_rank_selection(
     if compress:
         print("2. Compressing the interaction tensor (CANDELINC)...")
         fit_target, _bases, lost_sq = candelinc_compress(
-            tensor, max_rank=max(ranks), oversample=oversample
+            tensor, max_rank=max(ranks), oversample=oversample, device=device
         )
         retained = 1.0 - lost_sq / float(np.sum(tensor**2))
         print(
@@ -239,6 +245,7 @@ def run_cpd_rank_selection(
         tol=cp_tol,
         init=init,
         random_state=random_state,
+        device=device,
     )
     # `candelinc_r2x` is the identity when nothing was discarded, so the
     # uncompressed path reports exactly the R2X the fit returned.
@@ -271,6 +278,7 @@ def run_cpd_rank_selection(
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "init": init,
+            "device": device or "auto",
             "complex_sep": complex_sep,
             "communication_score": communication_score,
             "hill_k": hill_k,
@@ -326,6 +334,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=5,
         help="Basis columns kept beyond the largest rank when compressing.",
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        choices=["cuda", "cpu"],
+        help="Compute device for CP-ALS (default: cuda when available).",
+    )
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument(
         "--communication-score",
@@ -363,6 +378,7 @@ def main(argv: list[str] | None = None) -> None:
         init=args.init,
         compress=args.compress,
         oversample=args.oversample,
+        device=args.device,
         complex_sep=args.complex_sep,
         communication_score=args.communication_score,
         hill_k=args.hill_k,

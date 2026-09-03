@@ -29,6 +29,14 @@ dependencies = [
 
 readme = "README.md"
 
+[project.optional-dependencies]
+# The `[ctk]` extra ships the CUDA toolkit headers CuPy JIT-compiles against.
+# Without them the host-SVD-init retry in `ccc_rise.cp_decomposition` fails with
+# "Failed to find CUDA headers" and the fit drops all the way back to the CPU.
+gpu = [
+    "cupy-cuda12x[ctk]>=13.0; sys_platform != 'darwin'",
+]
+
 [project.urls]
 Homepage = "https://github.com/meyer-lab/cellcommunication-Pf2"
 Repository = "https://github.com/meyer-lab/cellcommunication-Pf2"
@@ -74,6 +82,13 @@ ignore = [
     "N999",   # figure modules are intentionally named figureXX.py
     "BLE001", # figure scripts deliberately catch broad exceptions to keep batch analyses running
 ]
+
+[tool.ty.rules]
+# `cupy` is an optional GPU dependency: its imports are unresolved in a
+# CPU-only environment and resolved where the `gpu` extra is installed. The
+# per-import `ty: ignore[unresolved-import]` comments cover the former; this
+# keeps them from being reported as unused in the latter.
+unused-ignore-comment = "ignore"
 
 [tool.pytest.ini_options]
 addopts = "-n auto"

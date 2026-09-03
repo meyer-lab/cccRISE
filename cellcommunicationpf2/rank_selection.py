@@ -7,13 +7,14 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from parafac2.parafac2 import parafac2_nd
 from scipy.sparse import issparse
 from tensorly.base import unfold
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.tenalg import mode_dot  # ty: ignore[unresolved-import]
 
-from .ccc_rise import cp_decomposition
+from .ccc_rise import _has_cuda, cp_decomposition
 from .import_data import add_cond_idxs
 
 Factors = list[np.ndarray]
@@ -502,7 +503,10 @@ def cp_core_consistency_sweep(
 
 
 def candelinc_compress(
-    tensor: np.ndarray, max_rank: int, oversample: int = 5
+    tensor: np.ndarray,
+    max_rank: int,
+    oversample: int = 5,
+    device: str | None = None,
 ) -> tuple[np.ndarray, Factors, float]:
     """Compress a tensor to a CANDELINC core sized for ranks up to `max_rank`.
 
@@ -539,6 +543,10 @@ def candelinc_compress(
         Extra basis columns beyond `max_rank`, giving CP-ALS room to rotate
         within the subspace instead of pinning it to exactly `max_rank`
         directions.
+    device : str, optional
+        Compute device ('cuda', 'cpu', or None for auto-detection), matching
+        `ccc_rise.cp_decomposition`. The Gram matrices dominate the cost, so
+        this is where the GPU pays off on a cohort-scale tensor.
 
     Returns
     -------
@@ -565,25 +573,44 @@ def candelinc_compress(
     # then formed from an already smaller tensor.
     order = sorted(range(tensor.ndim), key=lambda m: keep[m] / tensor.shape[m])
 
-    norm_sq = float(np.sum(tensor**2))
-    bases: Factors = [np.empty(0)] * tensor.ndim
-    core = tensor
-    for mode in order:
-        if keep[mode] == core.shape[mode]:
-            bases[mode] = np.eye(core.shape[mode])
-            continue
-        unfolded = unfold(core, mode)
-        gram = unfolded @ unfolded.T
-        # `eigh` returns ascending eigenvalues, so the leading singular
-        # directions are the trailing columns. Their order within the basis
-        # is irrelevant: CANDELINC only depends on the span.
-        _eigvals, eigvecs = np.linalg.eigh(gram)
-        basis = eigvecs[:, -keep[mode] :]
-        bases[mode] = basis
-        core = mode_dot(core, basis.T, mode)
+    if device is None:
+        device = "cuda" if _has_cuda() else "cpu"
+    use_gpu = device.startswith("cuda") and _has_cuda()
 
-    lost_sq = max(0.0, norm_sq - float(np.sum(core**2)))
-    return core, bases, lost_sq
+    previous_backend = tl.get_backend()
+    if use_gpu:
+        import cupy  # ty: ignore[unresolved-import]
+
+        tl.set_backend("cupy")
+        xp, to_host = cupy, cupy.asnumpy
+        core = xp.asarray(tensor, dtype=xp.float64)
+    else:
+        # `np.asarray` is the no-op host transfer, so the tail of this function
+        # is device-agnostic.
+        xp, to_host = np, np.asarray
+        core = tensor
+
+    try:
+        norm_sq = float(xp.sum(core**2))
+        bases: Factors = [np.empty(0)] * tensor.ndim
+        for mode in order:
+            if keep[mode] == core.shape[mode]:
+                bases[mode] = xp.eye(core.shape[mode])
+                continue
+            unfolded = unfold(core, mode)
+            gram = unfolded @ unfolded.T
+            # `eigh` returns ascending eigenvalues, so the leading singular
+            # directions are the trailing columns. Their order within the
+            # basis is irrelevant: CANDELINC only depends on the span.
+            _eigvals, eigvecs = xp.linalg.eigh(gram)
+            basis = eigvecs[:, -keep[mode] :]
+            bases[mode] = basis
+            core = mode_dot(core, basis.T, mode)
+
+        lost_sq = max(0.0, norm_sq - float(xp.sum(core**2)))
+        return to_host(core), [to_host(b) for b in bases], lost_sq
+    finally:
+        tl.set_backend(previous_backend)
 
 
 def candelinc_r2x(core_r2x: float, core: np.ndarray, lost_sq: float) -> float:

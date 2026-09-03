@@ -241,9 +241,9 @@ def test_cp_core_consistency_sweep_shape():
 
 def _fit_compressed_and_full(tensor: np.ndarray, rank: int, max_rank: int):
     """Fit CP inside the CANDELINC core and return both spaces' views of it."""
-    core, bases, lost_sq = candelinc_compress(tensor, max_rank=max_rank)
+    core, bases, lost_sq = candelinc_compress(tensor, max_rank=max_rank, device="cpu")
     weights, core_factors, core_r2x = cp_decomposition(
-        core, rank, n_iter_max=2000, tol=1e-12, init="svd"
+        core, rank, n_iter_max=2000, tol=1e-12, init="svd", device="cpu"
     )
     decompressed = [b @ f for b, f in zip(bases, core_factors, strict=True)]
     return core, bases, lost_sq, weights, core_factors, decompressed, core_r2x
@@ -251,7 +251,9 @@ def _fit_compressed_and_full(tensor: np.ndarray, rank: int, max_rank: int):
 
 def test_candelinc_bases_are_orthonormal_and_sized_for_the_rank():
     tensor = _simulate_cp_tensor((20, 9, 9, 30), rank=3, random_state=11)
-    core, bases, lost_sq = candelinc_compress(tensor, max_rank=5, oversample=2)
+    core, bases, lost_sq = candelinc_compress(
+        tensor, max_rank=5, oversample=2, device="cpu"
+    )
 
     for basis, dim in zip(bases, tensor.shape, strict=True):
         assert basis.shape == (dim, min(dim, 7))
@@ -304,7 +306,7 @@ def test_candelinc_r2x_recovers_the_uncompressed_fit():
             tensor, rank, max_rank=6
         )
         _fw, _ff, full_r2x = cp_decomposition(
-            tensor, rank, n_iter_max=2000, tol=1e-12, init="svd"
+            tensor, rank, n_iter_max=2000, tol=1e-12, init="svd", device="cpu"
         )
         assert candelinc_r2x(core_r2x, core, lost_sq) == pytest.approx(
             full_r2x, abs=1e-4
@@ -320,7 +322,7 @@ def test_candelinc_r2x_is_the_identity_without_compression():
 def test_candelinc_rejects_a_rank_the_tensor_cannot_support():
     tensor = _simulate_cp_tensor((20, 5, 5, 30), rank=2, random_state=16)
     with pytest.raises(ValueError, match="exceeds the smallest mode"):
-        candelinc_compress(tensor, max_rank=6)
+        candelinc_compress(tensor, max_rank=6, device="cpu")
 
 
 def test_candelinc_finds_the_true_rank_cliff():
@@ -328,12 +330,12 @@ def test_candelinc_finds_the_true_rank_cliff():
     tensor's true rank."""
     true_rank = 4
     tensor = _simulate_cp_tensor((25, 10, 10, 40), rank=true_rank, random_state=17)
-    core, _bases, _lost = candelinc_compress(tensor, max_rank=7)
+    core, _bases, _lost = candelinc_compress(tensor, max_rank=7, device="cpu")
 
     consistency = {}
     for rank in range(1, 8):
         weights, factors, _r2x = cp_decomposition(
-            core, rank, n_iter_max=4000, tol=1e-12, init="svd"
+            core, rank, n_iter_max=4000, tol=1e-12, init="svd", device="cpu"
         )
         consistency[rank] = cp_core_consistency(core, weights, factors)
 
@@ -379,6 +381,7 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
                 tol=1e-12,
                 compress=compress,
                 oversample=3,
+                device="cpu",
                 output_path=tmp_path / f"cpd_{compress}.csv",
             )
         assert csv_path.exists() and sidecar.exists()
@@ -411,3 +414,52 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     assert list(compressed.loc[identifiable, "MaxModesCollinear"]) == list(
         full.loc[identifiable, "MaxModesCollinear"]
     )
+
+
+def test_gpu_svd_init_failure_retries_on_host_before_giving_up():
+    """A failed GPU SVD init must not cost the whole fit to the CPU.
+
+    cuSOLVER rejects a very wide unfolding (a cohort interaction tensor's mode-0
+    unfolding is 343 x 858,125), but only the initialisation needs an SVD. The
+    retry builds it on the host and keeps ALS on the device. Simulated here by
+    making the first `parafac` call raise, so the test does not need a tensor
+    large enough to actually break cuSOLVER.
+    """
+    import warnings
+    from unittest.mock import patch
+
+    from cellcommunicationpf2 import ccc_rise
+
+    if not ccc_rise._has_cuda():
+        pytest.skip("no CUDA device available")
+
+    tensor = _simulate_cp_tensor((24, 8, 8, 30), rank=3, random_state=31)
+
+    def fit_on_gpu() -> float:
+        return ccc_rise.cp_decomposition(
+            tensor, 3, n_iter_max=500, tol=1e-12, init="svd", device="cuda"
+        )[2]
+
+    reference_r2x = fit_on_gpu()
+
+    real_parafac, calls = ccc_rise.parafac, []
+
+    def fail_once(target, **kwargs):
+        calls.append(kwargs.get("init"))
+        if len(calls) == 1:
+            raise RuntimeError("CUSOLVER_STATUS_INVALID_VALUE")
+        return real_parafac(target, **kwargs)
+
+    with (
+        patch.object(ccc_rise, "parafac", side_effect=fail_once),
+        warnings.catch_warnings(record=True) as caught,
+    ):
+        warnings.simplefilter("always")
+        retry_r2x = fit_on_gpu()
+
+    messages = [str(w.message) for w in caught]
+    assert len(calls) == 2, "should retry once on the GPU, not fall through to CPU"
+    assert calls[0] == "svd" and calls[1] != "svd", "retry must supply a built init"
+    assert any("host-computed" in m for m in messages)
+    assert not any("falling back to the CPU" in m for m in messages)
+    assert retry_r2x == pytest.approx(reference_r2x, abs=1e-6)

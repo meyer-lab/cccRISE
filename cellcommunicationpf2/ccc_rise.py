@@ -1,11 +1,13 @@
+import warnings
 from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from parafac2.parafac2 import anndata_to_list, parafac2_nd
 from scipy.sparse import spmatrix
-from tensorly.cp_tensor import cp_flip_sign, cp_normalize
+from tensorly.cp_tensor import cp_flip_sign, cp_normalize, cp_to_tensor
 from tensorly.decomposition import parafac
 
 from .ccc import (
@@ -475,6 +477,47 @@ def compute_communication_significance(
     )
 
 
+def _has_cuda() -> bool:
+    """Check if CuPy is installed and a CUDA device is available."""
+    try:
+        import cupy  # ty: ignore[unresolved-import]
+
+        return cupy.cuda.runtime.getDeviceCount() > 0
+    except Exception:
+        return False
+
+
+def _host_svd_init(tensor: np.ndarray, cp_rank: int, random_state: int | None) -> Any:
+    """Build a deterministic SVD initialisation on the host, as device arrays.
+
+    cuSOLVER's dense SVD rejects a very wide unfolding -- a cohort interaction
+    tensor's mode-0 unfolding is 343 x 858,125, which fails outright -- but only
+    CP's *initialisation* needs an SVD. Computing it with NumPy, where the same
+    decomposition is fine, and copying the result to the device keeps every ALS
+    iteration on the GPU. That is the difference between an uncompressed
+    cohort-scale fit costing ~10 minutes and costing hours on the CPU.
+
+    Returns
+    -------
+    tensorly.cp_tensor.CPTensor
+        The initialisation, with factors already on the device.
+    """
+    import cupy as cp  # ty: ignore[unresolved-import]
+    from tensorly.cp_tensor import CPTensor
+    from tensorly.decomposition._cp import initialize_cp
+
+    previous_backend = tl.get_backend()
+    tl.set_backend("numpy")
+    try:
+        weights, factors = initialize_cp(
+            tensor, cp_rank, init="svd", svd="truncated_svd", random_state=random_state
+        )
+    finally:
+        tl.set_backend(previous_backend)
+
+    return CPTensor((cp.asarray(weights), [cp.asarray(f) for f in factors]))
+
+
 def cp_decomposition(
     interaction_tensors: np.ndarray,
     cp_rank: int,
@@ -483,12 +526,17 @@ def cp_decomposition(
     init: str = "svd",
     linesearch: bool = False,
     random_state: int | None = None,
+    device: str | None = None,
 ) -> tuple[np.ndarray, list[np.ndarray], float]:
     """Fit CP to an interaction tensor and score reconstruction R2X.
 
     Split out of `ccc_rise` so rank-selection sweeps can fit CP directly at a
     given rank without re-running RISE, and without duplicating the R2X
     calculation.
+
+    The GPU path runs CP-ALS through tensorly's CuPy backend in float64 and
+    computes R2X on-device. Weights and factors are always returned as host
+    NumPy arrays, so downstream consumers are unaffected by the device.
 
     Parameters
     ----------
@@ -506,6 +554,10 @@ def cp_decomposition(
         Whether to use line search to accelerate ALS convergence.
     random_state : int, optional
         Seed for reproducibility.
+    device : str, optional
+        Compute device ('cuda', 'cpu', or None for auto-detection). If None,
+        uses 'cuda' when CuPy and a CUDA device are available. Requesting
+        'cuda' without them falls back to CPU rather than raising.
 
     Returns
     -------
@@ -523,9 +575,73 @@ def cp_decomposition(
     if tol is not None:
         parafac_kwargs["tol"] = tol
 
-    cp_weights, cp_factors = parafac(interaction_tensors, **parafac_kwargs)
-    r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
-    return cp_weights, cp_factors, r2x
+    if device is None:
+        device = "cuda" if _has_cuda() else "cpu"
+
+    def fit_on_cpu() -> tuple[np.ndarray, list[np.ndarray], float]:
+        cp_weights, cp_factors = parafac(interaction_tensors, **parafac_kwargs)
+        return (
+            cp_weights,
+            cp_factors,
+            calculate_r2x(cp_weights, cp_factors, interaction_tensors),
+        )
+
+    if not (device.startswith("cuda") and _has_cuda()):
+        return fit_on_cpu()
+
+    import cupy as cp  # ty: ignore[unresolved-import]
+
+    previous_backend = tl.get_backend()
+    tl.set_backend("cupy")
+    try:
+        device_tensor = cp.asarray(interaction_tensors, dtype=cp.float64)
+        try:
+            cp_weights, cp_factors = parafac(device_tensor, **parafac_kwargs)
+        except Exception as exc:
+            # Only the SVD initialisation is out of cuSOLVER's reach; the ALS
+            # iterations are ordinary matmuls. Retry with the init built on the
+            # host rather than giving the whole fit back to the CPU.
+            if parafac_kwargs.get("init") != "svd":
+                raise
+            warnings.warn(
+                f"GPU SVD initialisation failed ({type(exc).__name__}: {exc}); "
+                "retrying with a host-computed SVD initialisation and ALS still "
+                "on the GPU.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            cp_weights, cp_factors = parafac(
+                device_tensor,
+                **parafac_kwargs
+                | {"init": _host_svd_init(interaction_tensors, cp_rank, random_state)},
+            )
+
+        reconstructed = cp_to_tensor((cp_weights, cp_factors))
+        total_variance = float(cp.sum(device_tensor**2))
+        error = float(cp.sum((device_tensor - reconstructed) ** 2))
+        r2x = 1.0 - error / total_variance if total_variance > 0 else 0.0
+
+        return (
+            cp.asnumpy(cp_weights),
+            [cp.asnumpy(f) for f in cp_factors],
+            r2x,
+        )
+    except Exception as exc:
+        # Last resort. The GPU can still run out of memory at high rank, and the
+        # host-init retry above can itself fail. Neither is a reason to lose the
+        # sweep: fall back to the CPU and say so. Fitting the CANDELINC core
+        # instead avoids all of it, which is why the sweep compresses by default.
+        warnings.warn(
+            f"GPU CP-ALS failed ({type(exc).__name__}: {exc}); "
+            "falling back to the CPU. Compressing the tensor first "
+            "(`rank_selection.candelinc_compress`) usually avoids this.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    finally:
+        tl.set_backend(previous_backend)
+
+    return fit_on_cpu()
 
 
 def validate_cp_rank(cp_rank: int, tensor_shape: tuple[int, ...]) -> None:
