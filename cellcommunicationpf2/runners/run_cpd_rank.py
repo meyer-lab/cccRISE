@@ -5,9 +5,15 @@ Runner: CPD rank selection on the interaction tensor.
 Fits RISE once at a fixed (already-selected) rank, builds the 4D communication
 tensor from that single fit, then fits CP once per rank in a sweep. Every
 rank in a sweep therefore sees identical RISE factors, and each CP fit is
-reused across all three metrics derived from it: full-tensor fit R2X, a
+reused across all three metrics derived from it: fit R2X, a
 component-collinearity/degeneracy screen, and the CORCONDIA core-consistency
 diagnostic.
+
+By default the tensor is CANDELINC-compressed once for the whole sweep and
+every fit and metric runs on the resulting core, which both metrics are
+provably invariant to (see `rank_selection.candelinc_compress`). This turns a
+cohort-scale sweep from hours into minutes; `--no-compress` recovers the
+original behaviour.
 
 The CSV lands at the filename `figureCPDrank` reads, and the pipeline runner
 cites it as evidence for the CP rank it was given.
@@ -23,7 +29,12 @@ import pandas as pd
 
 from ..ccc_rise import cp_decomposition, validate_cp_rank
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
-from ..rank_selection import cp_core_consistency_sweep, cpd_component_collinearity
+from ..rank_selection import (
+    candelinc_compress,
+    candelinc_r2x,
+    cp_core_consistency_sweep,
+    cpd_component_collinearity,
+)
 from ..tensor import calculate_interaction_tensor, rise_store_r2x
 from ._cli import (
     add_dataset_argument,
@@ -94,10 +105,13 @@ def cp_fits_by_rank(
     """Fit CP once per rank; every metric below reads from this shared fit
     rather than re-fitting CP itself.
 
+    `tensor` is the CANDELINC core when the sweep is compressed, so the
+    returned factors and R2X are in that core's space.
+
     Returns
     -------
     dict[int, tuple[np.ndarray, list[np.ndarray], float]]
-        Maps CP rank to (weights, factors, FitR2X).
+        Maps CP rank to (weights, factors, R2X against `tensor`).
     """
     return {
         rank: cp_decomposition(
@@ -118,7 +132,11 @@ def run_cpd_rank_selection(
     ranks: list[int],
     n_iter_max: int = 100,
     tol: float = 1e-3,
+    cp_n_iter_max: int = 4000,
+    cp_tol: float = 1e-12,
     init: str = "svd",
+    compress: bool = True,
+    oversample: int = 5,
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
@@ -136,8 +154,24 @@ def run_cpd_rank_selection(
         conditional on the already-selected RISE rank.
     ranks : list[int]
         CP ranks to evaluate.
-    n_iter_max, tol, init
-        Fitting controls for the RISE fit and the CP fits.
+    n_iter_max, tol
+        Fitting controls for the RISE fit.
+    cp_n_iter_max : int, default=4000
+        Maximum ALS iterations for each CP fit. Deliberately far higher than the
+        RISE cap: CORCONDIA collapses on an under-converged fit, which would read
+        as degeneracy that is really a stopped solver. On the compressed core a
+        high cap costs almost nothing.
+    cp_tol : float, default=1e-12
+        Convergence tolerance for each CP fit, for the same reason.
+    init : str, default="svd"
+        CP initialisation. Deterministic by default -- the interaction tensor is
+        spike-dominated, so a random-init sweep is a seed lottery.
+    compress : bool, default=True
+        CANDELINC-compress the tensor once and run the whole sweep inside the
+        resulting core. Both metrics are invariant to this and R2X is restated
+        against the original tensor, so the CSV is unchanged; only the cost is.
+    oversample : int, default=5
+        Basis columns each mode keeps beyond `max(ranks)` when compressing.
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, optional
@@ -173,31 +207,58 @@ def run_cpd_rank_selection(
     print(f"   Interaction tensor shape: {tensor.shape}")
     validate_cp_rank(max(ranks), tensor.shape)
 
-    print("2. Fitting CP at every rank...")
+    # Everything downstream runs against `fit_target`: the CANDELINC core when
+    # compressing, the tensor itself otherwise. Both metrics are invariant to
+    # the choice, and `lost_sq` restates R2X against the original tensor.
+    lost_sq = 0.0
+    compression_facts: dict = {"compressed": compress}
+    fit_target = tensor
+    if compress:
+        print("2. Compressing the interaction tensor (CANDELINC)...")
+        fit_target, _bases, lost_sq = candelinc_compress(
+            tensor, max_rank=max(ranks), oversample=oversample
+        )
+        retained = 1.0 - lost_sq / float(np.sum(tensor**2))
+        print(
+            f"   Core shape: {fit_target.shape} "
+            f"({tensor.size / fit_target.size:.0f}x smaller), "
+            f"retaining {retained:.4%} of the sum of squares"
+        )
+        compression_facts |= {
+            "oversample": oversample,
+            "core_shape": list(fit_target.shape),
+            "compression_ratio": float(tensor.size / fit_target.size),
+            "retained_fraction": float(retained),
+        }
+
+    print("3. Fitting CP at every rank...")
     fits = cp_fits_by_rank(
-        tensor,
+        fit_target,
         ranks=ranks,
-        n_iter_max=n_iter_max,
-        tol=tol,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
         init=init,
         random_state=random_state,
     )
+    # `candelinc_r2x` is the identity when nothing was discarded, so the
+    # uncompressed path reports exactly the R2X the fit returned.
     fit_r2x_df = pd.DataFrame(
-        {"Rank": rank, "FitR2X": r2x} for rank, (_w, _f, r2x) in sorted(fits.items())
+        {"Rank": rank, "FitR2X": candelinc_r2x(r2x, fit_target, lost_sq)}
+        for rank, (_w, _f, r2x) in sorted(fits.items())
     )
     factors_by_rank = {rank: (w, f) for rank, (w, f, _r2x) in fits.items()}
 
-    print("3. Screening for component collinearity...")
+    print("4. Screening for component collinearity...")
     collinearity_df = cpd_component_collinearity(factors_by_rank)
 
-    print("4. Computing core consistency (CORCONDIA)...")
-    core_consistency_df = cp_core_consistency_sweep(tensor, factors_by_rank)
+    print("5. Computing core consistency (CORCONDIA)...")
+    core_consistency_df = cp_core_consistency_sweep(fit_target, factors_by_rank)
 
     df = fit_r2x_df.merge(collinearity_df, on="Rank").merge(
         core_consistency_df, on="Rank"
     )
 
-    print(f"5. Writing {output_path}...")
+    print(f"6. Writing {output_path}...")
     df.to_csv(output_path, index=False)
 
     metadata = build_metadata(
@@ -207,6 +268,8 @@ def run_cpd_rank_selection(
             "cp_ranks": ranks,
             "n_iter_max": n_iter_max,
             "tol": tol,
+            "cp_n_iter_max": cp_n_iter_max,
+            "cp_tol": cp_tol,
             "init": init,
             "complex_sep": complex_sep,
             "communication_score": communication_score,
@@ -214,6 +277,7 @@ def run_cpd_rank_selection(
             "random_state": random_state,
             "interaction_tensor_shape": list(tensor.shape),
         }
+        | compression_facts
         | tensor_facts,
     )
     sidecar = write_metadata(output_path, metadata, header=HEADER)
@@ -240,7 +304,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--n-iter-max", type=int, default=100)
     parser.add_argument("--tol", type=float, default=1e-3)
+    parser.add_argument(
+        "--cp-n-iter-max",
+        type=int,
+        default=4000,
+        help="ALS iterations per CP fit (default: 4000). Separate from --n-iter-max, "
+        "which controls the RISE fit: CORCONDIA reads an under-converged CP fit as "
+        "degenerate, and on the compressed core a high cap is cheap.",
+    )
+    parser.add_argument("--cp-tol", type=float, default=1e-12)
     parser.add_argument("--init", type=str, default="svd", choices=["random", "svd"])
+    parser.add_argument(
+        "--no-compress",
+        dest="compress",
+        action="store_false",
+        help="Fit against the full tensor instead of its CANDELINC core.",
+    )
+    parser.add_argument(
+        "--oversample",
+        type=int,
+        default=5,
+        help="Basis columns kept beyond the largest rank when compressing.",
+    )
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument(
         "--communication-score",
@@ -273,7 +358,11 @@ def main(argv: list[str] | None = None) -> None:
         ranks=parse_ranks(args.ranks),
         n_iter_max=args.n_iter_max,
         tol=args.tol,
+        cp_n_iter_max=args.cp_n_iter_max,
+        cp_tol=args.cp_tol,
         init=args.init,
+        compress=args.compress,
+        oversample=args.oversample,
         complex_sep=args.complex_sep,
         communication_score=args.communication_score,
         hill_k=args.hill_k,

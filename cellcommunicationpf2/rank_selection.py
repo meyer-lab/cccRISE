@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from parafac2.parafac2 import parafac2_nd
 from scipy.sparse import issparse
+from tensorly.base import unfold
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.tenalg import mode_dot  # ty: ignore[unresolved-import]
 
@@ -430,10 +431,18 @@ def cp_core_consistency(
     picks up large off-diagonal core entries) rather than each explaining
     independent structure.
 
+    `tensor` may equally be a CANDELINC core with `factors` in that core's
+    own space: the bases are orthonormal, so ``pinv(U_n F_n) = pinv(F_n)
+    U_n^T`` and the projected core comes out identical either way. On a
+    cohort-scale tensor that is the difference between projecting ~300M
+    entries and ~600k, so `cp_core_consistency_sweep` is normally handed the
+    compressed core.
+
     Parameters
     ----------
     tensor : np.ndarray
-        4D communication tensor the factors were fit to.
+        4D communication tensor the factors were fit to, or the CANDELINC
+        core of it when `factors` are core-space factors.
     weights : np.ndarray
         Component weights, shape (rank,).
     factors : list[np.ndarray]
@@ -485,3 +494,121 @@ def cp_core_consistency_sweep(
         for rank, (weights, factors) in sorted(factors_by_rank.items())
     ]
     return pd.DataFrame(rows)
+
+
+# =============================================================================
+# CANDELINC compression: fit CP inside a small orthonormal subspace
+# =============================================================================
+
+
+def candelinc_compress(
+    tensor: np.ndarray, max_rank: int, oversample: int = 5
+) -> tuple[np.ndarray, Factors, float]:
+    """Compress a tensor to a CANDELINC core sized for ranks up to `max_rank`.
+
+    CANDELINC (Carroll, Pruzansky & Kruskal 1980) fits CP under the constraint
+    that each factor matrix lies in the column space of a fixed basis. Taking
+    those bases from a truncated HOSVD turns CP-ALS on the full tensor into
+    CP-ALS on a core small enough to sweep many ranks over, then maps the
+    solution back with ``A_n = U_n F_n``.
+
+    Both rank-selection metrics are invariant to the compression as long as
+    each basis keeps at least `max_rank` columns. The bases are orthonormal,
+    so within-mode cosines between decompressed components equal those between
+    core components (`cpd_component_collinearity`), and ``pinv(U_n F_n) =
+    pinv(F_n) U_n^T`` makes the projected core identical whether it is taken
+    from the original tensor or from `core` (`cp_core_consistency`). Only fit
+    error changes, and only by the fixed amount that lies outside the retained
+    subspaces -- which `candelinc_r2x` adds back.
+
+    Modes are compressed in order of how much they shrink, so every mode after
+    the first works on an already smaller tensor. Each mode keeps
+    ``min(dim_n, max_rank + oversample)`` leading left singular vectors of its
+    unfolding, computed through the mode's Gram matrix (cheap here -- the
+    sender, receiver and LR modes of a communication tensor are at most a few
+    thousand wide).
+
+    Parameters
+    ----------
+    tensor : np.ndarray
+        Tensor to compress; any number of modes.
+    max_rank : int
+        Largest CP rank the core must support. Each basis keeps at least this
+        many columns, which is what makes the metrics compression-invariant.
+    oversample : int, default=5
+        Extra basis columns beyond `max_rank`, giving CP-ALS room to rotate
+        within the subspace instead of pinning it to exactly `max_rank`
+        directions.
+
+    Returns
+    -------
+    tuple[np.ndarray, list[np.ndarray], float]
+        The core, the per-mode orthonormal bases, and `lost_sq` -- the squared
+        norm the projection discarded, which any CP model of the core carries
+        as an irreducible error floor against the original tensor.
+
+    Raises
+    ------
+    ValueError
+        If `max_rank` exceeds the smallest mode of `tensor`, which would make
+        the core unable to represent a rank-`max_rank` model.
+    """
+    if max_rank > min(tensor.shape):
+        raise ValueError(
+            f"max_rank={max_rank} exceeds the smallest mode of the tensor "
+            f"(shape {tuple(tensor.shape)}). Compression cannot support a rank "
+            f"the tensor itself cannot."
+        )
+
+    keep = [min(dim, max_rank + oversample) for dim in tensor.shape]
+    # Compress the most-compressible modes first: every later Gram matrix is
+    # then formed from an already smaller tensor.
+    order = sorted(range(tensor.ndim), key=lambda m: keep[m] / tensor.shape[m])
+
+    norm_sq = float(np.sum(tensor**2))
+    bases: Factors = [np.empty(0)] * tensor.ndim
+    core = tensor
+    for mode in order:
+        if keep[mode] == core.shape[mode]:
+            bases[mode] = np.eye(core.shape[mode])
+            continue
+        unfolded = unfold(core, mode)
+        gram = unfolded @ unfolded.T
+        # `eigh` returns ascending eigenvalues, so the leading singular
+        # directions are the trailing columns. Their order within the basis
+        # is irrelevant: CANDELINC only depends on the span.
+        _eigvals, eigvecs = np.linalg.eigh(gram)
+        basis = eigvecs[:, -keep[mode] :]
+        bases[mode] = basis
+        core = mode_dot(core, basis.T, mode)
+
+    lost_sq = max(0.0, norm_sq - float(np.sum(core**2)))
+    return core, bases, lost_sq
+
+
+def candelinc_r2x(core_r2x: float, core: np.ndarray, lost_sq: float) -> float:
+    """Restate a core-space R2X as R2X against the original tensor.
+
+    A CP model fit inside a CANDELINC core reports its error against the core,
+    which omits everything the projection discarded. Against the original
+    tensor the error is ``lost_sq + ||core - CP(core)||^2``.
+
+    Parameters
+    ----------
+    core_r2x : float
+        R2X the fit reported against `core`.
+    core : np.ndarray
+        The CANDELINC core the fit was run on.
+    lost_sq : float
+        Squared norm discarded by the compression, from `candelinc_compress`.
+
+    Returns
+    -------
+    float
+        R2X against the uncompressed tensor.
+    """
+    core_sq = float(np.sum(core**2))
+    norm_sq = core_sq + lost_sq
+    if norm_sq == 0:
+        return 0.0
+    return float(1.0 - (lost_sq + (1.0 - core_r2x) * core_sq) / norm_sq)

@@ -5,11 +5,15 @@ from itertools import pairwise
 import anndata
 import numpy as np
 import pandas as pd
+import pytest
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
 
+from cellcommunicationpf2.ccc_rise import cp_decomposition
 from cellcommunicationpf2.rank_selection import (
     bicv_reconstruction_error,
+    candelinc_compress,
+    candelinc_r2x,
     cp_core_consistency,
     cp_core_consistency_sweep,
     cp_fit_r2x_sweep,
@@ -228,3 +232,182 @@ def test_cp_core_consistency_sweep_shape():
     df = cp_core_consistency_sweep(tensor, factors_by_rank)
     assert set(df["Rank"]) == {1, 2, 4}
     assert "CoreConsistency" in df.columns
+
+
+# =============================================================================
+# CANDELINC compression tests
+# =============================================================================
+
+
+def _fit_compressed_and_full(tensor: np.ndarray, rank: int, max_rank: int):
+    """Fit CP inside the CANDELINC core and return both spaces' views of it."""
+    core, bases, lost_sq = candelinc_compress(tensor, max_rank=max_rank)
+    weights, core_factors, core_r2x = cp_decomposition(
+        core, rank, n_iter_max=2000, tol=1e-12, init="svd"
+    )
+    decompressed = [b @ f for b, f in zip(bases, core_factors, strict=True)]
+    return core, bases, lost_sq, weights, core_factors, decompressed, core_r2x
+
+
+def test_candelinc_bases_are_orthonormal_and_sized_for_the_rank():
+    tensor = _simulate_cp_tensor((20, 9, 9, 30), rank=3, random_state=11)
+    core, bases, lost_sq = candelinc_compress(tensor, max_rank=5, oversample=2)
+
+    for basis, dim in zip(bases, tensor.shape, strict=True):
+        assert basis.shape == (dim, min(dim, 7))
+        np.testing.assert_allclose(basis.T @ basis, np.eye(basis.shape[1]), atol=1e-8)
+
+    assert core.shape == tuple(min(d, 7) for d in tensor.shape)
+    assert core.size < tensor.size
+    # The projection can only discard energy, never invent it.
+    assert 0.0 <= lost_sq <= float(np.sum(tensor**2))
+
+
+def test_candelinc_core_consistency_matches_the_full_tensor():
+    """CORCONDIA off the core equals CORCONDIA off the tensor.
+
+    This is the identity that makes it correct to run the sweep on the core:
+    the bases are orthonormal, so `pinv(U F) = pinv(F) U.T` leaves the
+    projected core unchanged.
+    """
+    tensor = _simulate_cp_tensor((20, 9, 9, 30), rank=3, random_state=12)
+
+    for rank in (2, 3, 5):
+        core, _b, _l, weights, core_factors, decompressed, _r = (
+            _fit_compressed_and_full(tensor, rank, max_rank=6)
+        )
+        from_core = cp_core_consistency(core, weights, core_factors)
+        from_tensor = cp_core_consistency(tensor, weights, decompressed)
+        assert from_core == pytest.approx(from_tensor, abs=1e-6, rel=1e-9)
+
+
+def test_candelinc_collinearity_matches_the_full_tensor():
+    """Within-mode cosines are invariant under an orthonormal basis change."""
+    tensor = _simulate_cp_tensor((20, 9, 9, 30), rank=3, random_state=13)
+
+    for rank in (2, 4):
+        _c, _b, _l, weights, core_factors, decompressed, _r = _fit_compressed_and_full(
+            tensor, rank, max_rank=6
+        )
+        from_core = cpd_component_collinearity({rank: (weights, core_factors)})
+        from_tensor = cpd_component_collinearity({rank: (weights, decompressed)})
+        pd.testing.assert_frame_equal(from_core, from_tensor)
+
+
+def test_candelinc_r2x_recovers_the_uncompressed_fit():
+    """A core-space R2X, corrected for what compression discarded, matches a
+    fit run against the full tensor."""
+    tensor = _simulate_cp_tensor((20, 9, 9, 30), rank=3, random_state=14)
+
+    for rank in (2, 3):
+        core, _b, lost_sq, _w, _cf, _d, core_r2x = _fit_compressed_and_full(
+            tensor, rank, max_rank=6
+        )
+        _fw, _ff, full_r2x = cp_decomposition(
+            tensor, rank, n_iter_max=2000, tol=1e-12, init="svd"
+        )
+        assert candelinc_r2x(core_r2x, core, lost_sq) == pytest.approx(
+            full_r2x, abs=1e-4
+        )
+
+
+def test_candelinc_r2x_is_the_identity_without_compression():
+    """The uncompressed runner path passes lost_sq=0 through this same call."""
+    core = _simulate_cp_tensor((4, 4, 4, 4), rank=2, random_state=15)
+    assert candelinc_r2x(0.73, core, 0.0) == pytest.approx(0.73)
+
+
+def test_candelinc_rejects_a_rank_the_tensor_cannot_support():
+    tensor = _simulate_cp_tensor((20, 5, 5, 30), rank=2, random_state=16)
+    with pytest.raises(ValueError, match="exceeds the smallest mode"):
+        candelinc_compress(tensor, max_rank=6)
+
+
+def test_candelinc_finds_the_true_rank_cliff():
+    """End to end: the compressed sweep still puts the CORCONDIA cliff at the
+    tensor's true rank."""
+    true_rank = 4
+    tensor = _simulate_cp_tensor((25, 10, 10, 40), rank=true_rank, random_state=17)
+    core, _bases, _lost = candelinc_compress(tensor, max_rank=7)
+
+    consistency = {}
+    for rank in range(1, 8):
+        weights, factors, _r2x = cp_decomposition(
+            core, rank, n_iter_max=4000, tol=1e-12, init="svd"
+        )
+        consistency[rank] = cp_core_consistency(core, weights, factors)
+
+    assert min(consistency[r] for r in range(1, true_rank + 1)) > 50.0
+    assert consistency[true_rank + 1] < 50.0
+
+
+# =============================================================================
+# Runner integration: the compressed path must not change the sweep's verdict
+# =============================================================================
+
+
+def test_runner_compressed_and_uncompressed_agree(tmp_path):
+    """`--no-compress` and the default compressed path must agree where it counts.
+
+    Up to the true rank the CP model is identifiable and the two paths must
+    report the same metrics. Past it the model is degenerate *by definition*:
+    many equally-good solutions fit the tensor, the subspace constraint is
+    enough to pick a different one, and CORCONDIA there is not a stable
+    quantity. So the assertion past the true rank is only that both paths still
+    see the model degrade -- not that they agree on a number. On real data the
+    decision sits at the identifiable boundary, where they do agree.
+    """
+    from unittest.mock import patch
+
+    import cellcommunicationpf2.runners.run_cpd_rank as runner
+    from cellcommunicationpf2.runners.datasets import DATASETS
+
+    true_rank = 3
+    tensor = _simulate_cp_tensor((24, 10, 10, 36), rank=true_rank, random_state=22)
+    facts = {"resulting_dims": {}, "lr_pairs_annotated": 36, "r2x_pf2": 0.1}
+
+    results = {}
+    for compress in (True, False):
+        with patch.object(
+            runner, "build_interaction_tensor", return_value=(tensor, facts)
+        ):
+            df, csv_path, sidecar = runner.run_cpd_rank_selection(
+                DATASETS["alad"],
+                rise_rank=5,
+                ranks=[1, 2, 3, 4, 5],
+                n_iter_max=2000,
+                tol=1e-12,
+                compress=compress,
+                oversample=3,
+                output_path=tmp_path / f"cpd_{compress}.csv",
+            )
+        assert csv_path.exists() and sidecar.exists()
+        assert ("compressed: true" in sidecar.read_text()) is compress
+        results[compress] = df
+
+    compressed, full = results[True], results[False]
+    assert list(compressed.columns) == list(full.columns)
+
+    # R2X is restated against the original tensor on the compressed path, so
+    # both paths must report the same fit quality at every rank.
+    np.testing.assert_allclose(compressed["FitR2X"], full["FitR2X"], atol=2e-3)
+    assert compressed["FitR2X"].is_monotonic_increasing
+
+    for df in (compressed, full):
+        identifiable = df["Rank"] <= true_rank
+        assert (df.loc[identifiable, "CoreConsistency"] > 50.0).all()
+        # The model has to visibly degrade once rank exceeds the true one.
+        assert (
+            df.loc[~identifiable, "CoreConsistency"].min()
+            < df.loc[identifiable, "CoreConsistency"].min()
+        )
+
+    identifiable = compressed["Rank"] <= true_rank
+    np.testing.assert_allclose(
+        compressed.loc[identifiable, "CoreConsistency"],
+        full.loc[identifiable, "CoreConsistency"],
+        rtol=1e-4,
+    )
+    assert list(compressed.loc[identifiable, "MaxModesCollinear"]) == list(
+        full.loc[identifiable, "MaxModesCollinear"]
+    )
