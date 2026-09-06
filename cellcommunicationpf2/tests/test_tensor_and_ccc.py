@@ -12,6 +12,7 @@ from cellcommunicationpf2.ccc_rise import (
     calc_communication_score,
     calc_communication_score_pseudobulk,
     compute_communication_significance,
+    compute_differential_significance,
     standardize_cc_pf2,
 )
 from cellcommunicationpf2.tensor import (
@@ -264,6 +265,69 @@ def test_compute_communication_significance_gene_means_keeps_tensor_nonnegative(
 
     assert np.all(interaction_tensor >= 0.0)
     assert np.all(pvalue_tensor >= 0.0) and np.all(pvalue_tensor <= 1.0)
+
+
+def test_compute_differential_significance_exact_null_shapes_and_bounds():
+    rng = np.random.default_rng(0)
+    n_conditions, rank, n_lr = 8, 2, 3
+    tensor = rng.normal(size=(n_conditions, rank, rank, n_lr))
+    group = np.array([True, True, True, True, False, False, False, False])
+
+    observed_diff, pvalue, null_mean, null_std = compute_differential_significance(
+        tensor, group
+    )
+
+    expected_shape = (rank, rank, n_lr)
+    assert observed_diff.shape == expected_shape
+    assert pvalue.shape == expected_shape
+    assert null_mean.shape == expected_shape
+    assert null_std.shape == expected_shape
+    assert np.all(pvalue >= 0.0) and np.all(pvalue <= 1.0)
+    assert np.all(null_std >= 0.0)
+    np.testing.assert_allclose(
+        observed_diff, tensor[group].mean(axis=0) - tensor[~group].mean(axis=0)
+    )
+
+
+def test_compute_differential_significance_detects_real_group_shift():
+    rng = np.random.default_rng(2)
+    n_conditions, rank, n_lr = 8, 2, 3
+    tensor = rng.normal(size=(n_conditions, rank, rank, n_lr))
+    group = np.array([True, True, True, True, False, False, False, False])
+    tensor[group] += 10.0  # unambiguous group effect
+
+    _, pvalue, _, _ = compute_differential_significance(tensor, group)
+
+    # comb(8, 4) == 70 possible splits; a clean, maximal group shift should
+    # land at (or near) the smallest achievable exact p-value.
+    assert np.all(pvalue <= 2.0 / 70.0)
+
+
+def test_compute_differential_significance_monte_carlo_fallback():
+    rng = np.random.default_rng(3)
+    n_conditions, rank, n_lr = 12, 2, 2
+    tensor = rng.normal(size=(n_conditions, rank, rank, n_lr))
+    group = np.array([True] * 6 + [False] * 6)
+
+    _, pvalue, null_mean, null_std = compute_differential_significance(
+        tensor, group, n_perms=200, random_state=0, max_exact_perms=5
+    )
+
+    assert np.all(pvalue >= 0.0) and np.all(pvalue <= 1.0)
+    assert np.all(null_std >= 0.0)
+    assert np.all(np.isfinite(null_mean))
+
+
+def test_compute_differential_significance_requires_both_groups():
+    tensor = np.zeros((4, 2, 2, 2))
+    with pytest.raises(ValueError, match="both groups"):
+        compute_differential_significance(tensor, np.array([True] * 4))
+
+
+def test_compute_differential_significance_validates_group_length():
+    tensor = np.zeros((4, 2, 2, 2))
+    with pytest.raises(ValueError, match="one entry per condition"):
+        compute_differential_significance(tensor, np.array([True, False, True]))
 
 
 def test_calc_communication_score_pseudobulk():

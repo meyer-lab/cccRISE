@@ -179,6 +179,3 @@ manuscript/.quarto/
 manuscript/_site/
 manuscript/*_files/
 manuscript/.citation-cache/
-
-# R/ (uvr-managed environment for reviewer-requested R methods)
-R/.uvr/

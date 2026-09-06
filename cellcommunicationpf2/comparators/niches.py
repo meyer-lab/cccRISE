@@ -40,11 +40,11 @@ def niches(
     reconstructed by reading that function's decompiled body -- it is not a
     wrapper around the R package, and NICHES is not a dependency of this
     project. It is meant to let CCC-RISE be benchmarked against NICHES'
-    single-cell-resolution approach without an R runtime (see
-    ``R/README.md`` for the R comparator harness this replaces). Only the
-    ``CellToCell`` mode is reproduced -- ``CellToSystem``/``SystemToCell``/
-    spatial-neighborhood modes upstream also offers aren't used by this
-    project's R harness either.
+    single-cell-resolution approach without an R runtime (this project
+    previously ran the actual R package via an `R/` comparator harness,
+    since removed in favor of this module). Only the ``CellToCell`` mode is
+    reproduced -- ``CellToSystem``/``SystemToCell``/spatial-neighborhood
+    modes upstream also offers weren't used by that harness either.
 
     Upstream algorithm: for every pair of cell groups (sender type, receiver
     type -- including a type paired with itself), it builds a per-cell

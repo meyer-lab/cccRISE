@@ -16,8 +16,8 @@ progress · ☑ done.
 | 3 | Sign ambiguity in communication score (neg×neg → spurious positive) | Diagnose sign composition; enforce non-negativity + non-negative CPD; document sign convention; show components not sign artifacts | New audit panel | Methods (scoring), Results | 3 | ☐ |
 | 4 | Overfitting risk — rank selection not nested in CV | Refactor to nested CV; report honest outer-fold AUC | Updated Fig 4b–d | Methods (logreg), Results | 4 | ☐ |
 | 5 | Small samples, no independent classifier validation | State n=12 / no external cohort prominently; foreground negative CLAD/death result; use Fig S9 independent cohort | Text; Fig S9 | Results, Discussion | 4 | ☐ |
-| 6 | No significance testing for communication programs | Add permutation null; empirical per-component significance | New observed-vs-null panel | Methods, Results | 4 | ☐ |
-| 7 | Missing differential-CCC baselines (scDiffCom, CrossTalkeR) | Add to intro/discussion + references; link to permutation null | — | Intro, Discussion, Refs | 6 | ☐ |
+| 6 | No significance testing for communication programs | Add permutation null (within-condition, `compute_communication_significance`) + cross-condition differential null (`compute_differential_significance`, scDiffCom-analogous); empirical per-component significance | New observed-vs-null panel | Methods, Results | 4 | ◐ |
+| 7 | Missing differential-CCC baselines (scDiffCom, CrossTalkeR) | Add to intro/discussion + references; link both permutation nulls (within-condition and cross-condition) to scDiffCom/CrossTalkeR's own significance schemes | — | Intro, Discussion, Refs | 6 | ◐ |
 | 8 | "Label-free" premise vs label-dependent interpretation | Soften framing OR demonstrate ≥1 program identified de novo (marker enrichment, no prior labels) | New/updated panel | Abstract, Results, Discussion | 6 | ☐ |
 
 ## Reviewer #2 — Major

@@ -72,7 +72,8 @@ def staccato(
     reading that function's decompiled body -- it is not a wrapper around the
     R package, and STACCato is not a dependency of this project. It is meant
     to let CCC-RISE be benchmarked against STACCato's method without an R
-    runtime (see ``R/README.md`` for the R comparator harness this replaces).
+    runtime (this project previously ran the actual R package via an `R/`
+    comparator harness, since removed in favor of this module).
 
     The upstream algorithm fits a Tucker decomposition where each mode may be
     restricted to the column space of a user-supplied covariate/design

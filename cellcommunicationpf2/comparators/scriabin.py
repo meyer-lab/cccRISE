@@ -40,8 +40,9 @@ def scriabin(
     reconstructed by reading that function's decompiled body -- it is not a
     wrapper around the R package, and scriabin is not a dependency of this
     project. It is meant to let CCC-RISE be benchmarked against Scriabin's
-    single-cell-resolution approach without an R runtime (see
-    ``R/README.md`` for the R comparator harness this replaces).
+    single-cell-resolution approach without an R runtime (this project
+    previously ran the actual R package via an `R/` comparator harness,
+    since removed in favor of this module).
 
     Upstream computes, for every (sender cell, receiver cell, LR-pair)
     triple, ``edgeweight = log1p(ligand_expr) * log1p(receptor_expr)``,
@@ -68,9 +69,9 @@ def scriabin(
       ligand/receptor was among a cell's top variable genes
       (``lig_geneset``/``rec_geneset``, driven by an externally-supplied
       ``ranked_genes`` argument used by downstream prioritization steps).
-      This project's own R harness (``run_scriabin.R``) already supplied an
-      inert placeholder for that argument since it isn't used downstream
-      there either, so it's omitted here too.
+      This project's now-removed R harness (``run_scriabin.R``) already
+      supplied an inert placeholder for that argument since it wasn't used
+      downstream there either, so it's omitted here too.
     - Downstream steps upstream also ships (binning, ``PrioritizeInteractome``,
       alluvial plots, etc.) aren't reproduced -- only the raw per-cell-pair
       edge score, which is all this project's R harness ever consumed.

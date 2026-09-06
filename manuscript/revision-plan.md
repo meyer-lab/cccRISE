@@ -123,11 +123,21 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
   lack an external validation cohort; foreground the existing negative result
   (components do not predict CLAD/death). Lean on the independent CD70/airway-brush
   cohort already in Fig S9 where possible.
-- **Permutation null (R1#6, R2#3):** add a principled null — permute cell/condition
-  labels (and/or LR identities) and recompute the communication statistic to assign
-  empirical per-component significance. **New code:** `null_model.py`; **new panel:**
-  observed vs. null. Supplies the CellPhoneDB/CellChat-style significance the reviewers
-  ask for.
+- **Permutation null (R1#6, R2#3) — done:** implemented as two complementary tests in
+  `cellcommunicationpf2/ccc_rise.py`, rather than a single null:
+  - `compute_communication_significance` — within-condition test, generalizing
+    CellPhoneDB/CellChat's cluster-label permutation to RISE's continuous eigen-states
+    (shuffles which cell's expression each eigen-state loading row is paired with,
+    within each condition).
+  - `compute_differential_significance` — cross-condition differential test,
+    analogous to scDiffCom's own condition-permutation DE test (see Part 6). Adapted to
+    CCC-RISE's structure: since the communication tensor already has one slice per
+    sample, this permutes group labels *over samples* directly (no cell resampling or
+    tensor rebuilding needed), and enumerates the null **exactly** when the number of
+    possible group splits is small enough (the common case for our small cohorts),
+    giving an exact rather than Monte Carlo p-value.
+  **New panel (still TBD):** observed vs. null for both tests. Supplies the
+  CellPhoneDB/CellChat/scDiffCom-style significance the reviewers ask for.
 
 ## Part 5 — Biological validation: GO enrichment **[CPU]**
 
@@ -160,7 +170,14 @@ spec, colorbars/PaCMAP text, Fig 1d relabel, plus all EMBO production items (Par
   for ≥1 program that identity was established **without** reusing prior annotations
   (de novo marker enrichment on the driver subpopulation).
 - **Differential-CCC methods (R1#7):** add scDiffCom and CrossTalkeR to intro/discussion
-  and references; connect to the Part 4 permutation null.
+  and references; connect to the Part 4 permutation null — done at the code level:
+  inspecting each method's actual significance test showed scDiffCom runs two separate
+  permutations (within-condition cell-type-label shuffle + a sample-aware
+  cross-condition label shuffle for its DE test) while CrossTalkeR's core differential
+  network isn't permutation-based at all (Fisher's exact / Mann-Whitney on
+  already-computed scores). This motivated implementing the cross-condition
+  differential test (`compute_differential_significance`, Part 4) as the scDiffCom-
+  analogous piece we were previously missing. Prose for intro/discussion still TBD.
 
 ## Part 7 — Minor comments & EMBO editorial **[CPU / non-code]**
 
