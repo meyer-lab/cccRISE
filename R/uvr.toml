@@ -10,7 +10,6 @@ Seurat = "*"
 arrow = "*"
 dplyr = "*"
 jsonlite = "*"
-rTensor = "*"
 scDiffCom = "*"
 tensorregress = "*"
 
@@ -29,9 +28,6 @@ bioc = true
 
 [dependencies.NICHES]
 git = "msraredon/NICHES"
-
-[dependencies.STACCato]
-git = "daiqile96/STACCato"
 
 [dependencies.presto]
 git = "immunogenomics/presto"

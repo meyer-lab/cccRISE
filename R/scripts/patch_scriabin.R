@@ -1,10 +1,10 @@
 #' Runtime patch for scriabin::GenerateInteractome (BlishLab/scriabin@HEAD).
 #'
 #' Source this after `library(scriabin)` and before calling
-#' GenerateInteractome(). Unlike the STACCato patch (apply_patches.R), this
-#' one is applied in-memory per-session via assignInNamespace rather than to
-#' the installed package files on disk, because the fix is a function-body
-#' change rather than a metadata/NAMESPACE edit.
+#' GenerateInteractome(). This patch is applied in-memory per-session via
+#' assignInNamespace rather than to the installed package files on disk,
+#' because the fix is a function-body change rather than a metadata/NAMESPACE
+#' edit.
 #'
 #' Two independent upstream bugs are fixed, both confirmed by inspecting the
 #' installed package with `dump("GenerateInteractome", ...)`:
