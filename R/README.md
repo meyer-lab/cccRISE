@@ -3,8 +3,8 @@
 This folder is an [`uvr`](https://github.com/nbafrank/uvr)-managed R project
 (the R equivalent of `uv`) that installs and runs every R-implemented method
 the reviewers named in `manuscript/review-response.qmd` (see below), so
-their output can be compared against the Python CCC-RISE analysis in
-`cellcommunicationpf2/`.
+their output can be compared against the Python cccRISE analysis in
+`cccrise/`.
 
 Of the methods reviewers asked us to compare against, these are implemented
 in R:
@@ -88,7 +88,7 @@ overwrite):
 The R packages read a Seurat object built from a plain 10x-style
 MatrixMarket export, not the project's `.h5ad` file directly (avoids adding
 an HDF5/AnnData R dependency). `scripts/export_dataset.py` builds this
-export using the repo's own Python loaders (`cellcommunicationpf2.import_data`),
+export using the repo's own Python loaders (`cccrise.import_data`),
 so both sides of the comparison start from identical QC-filtered raw counts:
 
 ```bash
@@ -98,10 +98,10 @@ python3 R/scripts/export_dataset.py --dataset balf_covid --out R/data/balf_covid
 ```
 
 `--dataset` currently supports `balf_covid` (the COVID-19 BAL cohort,
-bundled in the repo at `cellcommunicationpf2/data/`) and `alad` (the lung
+bundled in the repo at `cccrise/data/`) and `alad` (the lung
 transplant cohort — requires your own copy of `BAL-scRNAseq-raw.h5ad`,
 which isn't distributed with the repo; pass `--dataset alad` after placing
-that file where `cellcommunicationpf2.import_data.import_alad` expects it).
+that file where `cccrise.import_data.import_alad` expects it).
 
 Scriabin's per-cell-pair computation is O(n_send × n_rec); for a full-scale
 run (63k cells for `balf_covid`) most other tools are fine, but Scriabin
@@ -155,8 +155,8 @@ Individual scripts and what they need beyond the shared arguments:
 Every script writes plain CSV (and one `.rds` copy of the full R object, for
 follow-up work in R) to its `out_dir`. CSVs are directly importable in
 Python with `pandas.read_csv`, so e.g. `cellchat/lr_communication.csv` or
-`staccato/lr_factor_W2.csv` can be loaded next to the CCC-RISE factors in
-`cellcommunicationpf2/data/*.nc` for comparison.
+`staccato/lr_factor_W2.csv` can be loaded next to the cccRISE factors in
+`cccrise/data/*.nc` for comparison.
 
 ## Adding a package
 

@@ -26,7 +26,7 @@ import pandas as pd
 import scipy.sparse
 from scipy.io import mmwrite
 
-from cellcommunicationpf2.import_data import (
+from cccrise.import_data import (
     import_alad,
     import_balf_covid,
     import_ligand_receptor_pairs,

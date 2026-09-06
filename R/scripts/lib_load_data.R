@@ -32,7 +32,7 @@ load_exported_seurat <- function(data_dir, min_cells = 3, min_features = 1) {
 
 #' Load the shared CellChat "Human-2020-Jin" ligand-receptor table exported
 #' alongside the dataset. Multi-subunit complexes use "&" as a separator
-#' (matching the Python-side convention in cellcommunicationpf2/import_data.py).
+#' (matching the Python-side convention in cccrise/import_data.py).
 load_lr_pairs <- function(data_dir) {
   read.csv(file.path(data_dir, "lr_pairs.csv"), stringsAsFactors = FALSE)
 }
