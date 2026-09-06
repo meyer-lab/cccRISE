@@ -1,4 +1,4 @@
-#' Run all five R-based CCC methods on one exported dataset.
+#' Run all three R-based CCC methods on one exported dataset.
 #'
 #' Usage: Rscript run_all.R <data_dir> <out_root> [group_by] [condition_col] [cond1] [cond2]
 #' Example:
@@ -34,21 +34,10 @@ run_rscript <- function(name, script, script_args) {
 run_rscript("CellChat", "run_cellchat.R",
   c(data_dir, group_by, file.path(out_root, "cellchat")))
 
-run_rscript("NICHES", "run_niches.R",
-  c(data_dir, group_by, file.path(out_root, "niches")))
-
 run_rscript("scDiffCom", "run_scdiffcom.R",
   c(data_dir, group_by, condition_col, cond1, cond2, file.path(out_root, "scdiffcom")))
 
 run_rscript("CrossTalkeR", "run_crosstalker.R",
   c(data_dir, group_by, condition_col, cond1, cond2, file.path(out_root, "crosstalker")))
-
-run_rscript("Scriabin", "run_scriabin.R", {
-  meta <- read.csv(file.path(data_dir, "metadata.csv"))
-  celltypes <- sort(unique(meta[[group_by]]))
-  send_group <- celltypes[[1]]
-  rec_group <- celltypes[[min(2, length(celltypes))]]
-  c(data_dir, group_by, send_group, rec_group, file.path(out_root, "scriabin"), "25", "25", "0")
-})
 
 cat("\nAll methods attempted. See ", out_root, " for output.\n", sep = "")

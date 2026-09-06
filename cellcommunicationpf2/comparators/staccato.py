@@ -1,11 +1,8 @@
-"""Python re-implementations of comparator methods used to benchmark CCC-RISE.
+"""Python/TensorLy re-implementation of STACCato (daiqile96/STACCato, R).
 
-These are independent re-implementations, built to reproduce a method's
-published algorithm closely enough for a fair comparison against CCC-RISE
-without needing that method's original runtime (e.g. an R installation).
-They are NOT wrappers around the original packages, and are not guaranteed
-to be numerically identical to them -- see each function's docstring for the
-specific source it was reimplemented from and any known differences.
+See :func:`staccato`'s docstring for what algorithm this reproduces, how it
+differs from the original R package, and how to compare its output against
+CCC-RISE.
 """
 
 from collections.abc import Sequence

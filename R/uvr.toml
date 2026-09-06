@@ -13,10 +13,6 @@ jsonlite = "*"
 scDiffCom = "*"
 tensorregress = "*"
 
-[dependencies.BisRNA]
-git = "cran/BisRNA"
-rev = "master"
-
 [dependencies.CellChat]
 git = "jinworks/CellChat"
 
@@ -25,12 +21,3 @@ git = "CostaLab/CrossTalkeR"
 
 [dependencies.DelayedArray]
 bioc = true
-
-[dependencies.NICHES]
-git = "msraredon/NICHES"
-
-[dependencies.presto]
-git = "immunogenomics/presto"
-
-[dependencies.scriabin]
-git = "BlishLab/scriabin"

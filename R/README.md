@@ -12,19 +12,30 @@ in R:
 | Method | Source | Reviewer ask |
 |---|---|---|
 | [CellChat](https://github.com/jinworks/CellChat) | `jinworks/CellChat` | R1#1 (tensor/multi-condition baseline), R2#1, R2#3 |
-| [NICHES](https://github.com/msraredon/NICHES) | `msraredon/NICHES` | R1#1 (single-cell-resolution baseline) |
-| [Scriabin](https://github.com/BlishLab/scriabin) | `BlishLab/scriabin` | R1#1, R1#2 (single-cell-resolution concordance) |
 | [scDiffCom](https://cran.r-project.org/package=scDiffCom) | CRAN | R1#6, R1#7 (permutation-based differential CCC) |
 | [CrossTalkeR](https://github.com/CostaLab/CrossTalkeR) | `CostaLab/CrossTalkeR` | R1#7 (differential LR-network analysis) |
 
 Tensor-cell2cell, CellPhoneDB, and DeepCOLOR (the other named tools) are
 Python packages and are out of scope for this folder.
 
-STACCato (`daiqile96/STACCato`, R1#1) is no longer run from here -- its
-supervised Tucker decomposition is re-implemented in Python/TensorLy as
-`cellcommunicationpf2.comparators.staccato`, which avoids the R runtime and
-the upstream NAMESPACE bug documented below. See that function's docstring
-for what it reproduces and how it differs from the original package.
+Three other reviewer-requested methods are no longer run from here -- each
+is re-implemented in Python instead, under
+`cellcommunicationpf2/comparators/` (one file per method), which avoids an R
+runtime and, for STACCato and Scriabin, upstream bugs their R packages had
+(each module's docstring documents the specific bug it sidesteps). See each
+module's docstring for what it reproduces, how it differs from the original
+package, and how to compare its output against CCC-RISE:
+
+| Method | Source | Reviewer ask | Python re-implementation |
+|---|---|---|---|
+| STACCato | `daiqile96/STACCato` | R1#1 (tensor/multi-condition baseline) | `cellcommunicationpf2.comparators.staccato` |
+| Scriabin | `BlishLab/scriabin` | R1#1, R1#2 (single-cell-resolution concordance) | `cellcommunicationpf2.comparators.scriabin` |
+| NICHES | `msraredon/NICHES` | R1#1 (single-cell-resolution baseline) | `cellcommunicationpf2.comparators.niches` |
+
+Scriabin and NICHES are re-implemented against this project's own shared,
+complex-aware LR table (the same one CCC-RISE uses) rather than either
+method's bundled LR database, so the comparison isolates the algorithmic
+approach rather than database choice.
 
 ## Setup
 
@@ -36,8 +47,8 @@ cd R
 uvr sync                    # installs everything from uvr.lock into .uvr/library/
 ```
 
-`uvr sync` builds ~450 packages (CellChat, Seurat, NICHES, scriabin and
-their transitive Bioconductor/CRAN dependencies). Expect ~15-20 minutes on
+`uvr sync` builds ~300 packages (CellChat, Seurat, scDiffCom, CrossTalkeR and
+their transitive Bioconductor/CRAN dependencies). Expect ~10-15 minutes on
 a clean cache. It needs a handful of system libraries beyond a bare R
 install:
 
@@ -47,17 +58,6 @@ sudo apt-get install -y libglpk-dev libfontconfig1-dev libfreetype6-dev libharfb
     libmpfr-dev libopenmpi-dev libproj-dev
 ```
 
-Some packages (CelliD, a scriabin dependency) require C++14/17; if your
-system R defaults to C++11 for packages that request it explicitly (visible
-as `#error "*** C++14 compiler required"` during `uvr sync`), add to
-`~/.R/Makevars`:
-
-```
-CXX_STD = CXX17
-CXX11STD = -std=gnu++17
-CXX14STD = -std=gnu++17
-```
-
 To run any script, activate the project library first:
 
 ```bash
@@ -65,22 +65,6 @@ cd R
 source .uvr/activate    # sets R_LIBS_USER for this shell
 cd scripts               # scripts assume this working directory
 ```
-
-## Upstream bugs patched here
-
-One of the five packages has a bug in its current GitHub `HEAD` that blocks
-a stock run. It's documented and fixed by code committed in this folder
-rather than by hand-editing installed files (which `uvr sync` would
-overwrite):
-
-- **Scriabin**: `GenerateInteractome()` (a) passes the removed `slot=`
-  argument to `SeuratObject::GetAssayData()` (Seurat >=5 requires `layer=`),
-  and (b) indexes its bundled LR resource one level too shallow (it's
-  actually nested by species: `lr_resources.rds$human$<database>`).
-  `scripts/patch_scriabin.R` defines a corrected copy of the function and
-  installs it into the `scriabin` namespace at runtime via
-  `assignInNamespace()`. `scripts/run_scriabin.R` sources this before calling
-  `GenerateInteractome()`; nothing to run manually.
 
 ## Exporting a dataset
 
@@ -102,11 +86,8 @@ transplant cohort — requires your own copy of `BAL-scRNAseq-raw.h5ad`,
 which isn't distributed with the repo; pass `--dataset alad` after placing
 that file where `cellcommunicationpf2.import_data.import_alad` expects it).
 
-Scriabin's per-cell-pair computation is O(n_send × n_rec); for a full-scale
-run (63k cells for `balf_covid`) most other tools are fine, but Scriabin
-itself is only invoked on a small sampled subset (see below) regardless of
-export size. If you also want the *other* four methods to run fast for a
-smoke test, downsample the export itself:
+For a full-scale run (63k cells for `balf_covid`) these three tools are
+fine, but if you want a faster smoke test, downsample the export itself:
 
 ```bash
 python3 R/scripts/export_dataset.py --dataset balf_covid \
@@ -117,10 +98,11 @@ This writes, into `--out`:
 - `matrix.mtx.gz`, `genes.tsv.gz`, `barcodes.tsv.gz` — counts, genes x cells
 - `metadata.csv` — per-cell obs (`sample`, `condition`, `celltype`, ...)
 - `lr_pairs.csv` — the project's own CellChat "Human-2020-Jin" LR database,
-  reused by CellChat, scDiffCom (via its own bundled database instead, see
-  below), CrossTalkeR, and Scriabin (multi-subunit complexes, joined with
-  `&`, are dropped for the tools that only accept single-gene
-  ligands/receptors)
+  exported for reference (none of the three remaining R scripts read it
+  directly: CellChat/CrossTalkeR use `CellChatDB.human`, scDiffCom uses its
+  own bundled database). The Python comparators in
+  `cellcommunicationpf2/comparators/` load this same table directly via
+  `import_ligand_receptor_pairs()` instead of from this file.
 
 ## Running the methods
 
@@ -143,10 +125,8 @@ Individual scripts and what they need beyond the shared arguments:
 | Script | Extra behavior |
 |---|---|
 | `run_cellchat.R` | Standard CellChat pipeline; LR-level + pathway-level communication tables |
-| `run_niches.R` | Per-cell-pair signal matrix (NICHES' own bundled fantom5 LR database) |
 | `run_scdiffcom.R` | Two-condition permutation test; needs `iterations` (default 1000, pass a smaller value for a quick smoke test) |
 | `run_crosstalker.R` | Runs CellChat separately per condition, then feeds both into CrossTalkeR's differential network builder. Downloads KEGG pathway annotations on first run — needs internet access. |
-| `run_scriabin.R` | Samples `n_send`/`n_rec` cells (default 25 each) from two named groups — keep small, this is O(n_send × n_rec) |
 
 ## Output format
 

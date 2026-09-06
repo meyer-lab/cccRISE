@@ -1,10 +1,10 @@
-"""Unit tests for cellcommunicationpf2.comparators."""
+"""Unit tests for cellcommunicationpf2.comparators.staccato."""
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from cellcommunicationpf2.comparators import staccato
+from cellcommunicationpf2.comparators.staccato import staccato
 
 
 def test_staccato_unsupervised_shapes_and_reconstruction():
