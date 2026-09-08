@@ -14,7 +14,7 @@ loader_args:
 condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
-n_iter_max: 5
+n_iter_max: 100
 tol: 0.001
 random_state: 42
 complex_sep: '&'
@@ -27,19 +27,19 @@ resulting_dims:
   lr_pairs: 513
 interaction_tensor_shape:
 - 47
-- 4
-- 4
+- 25
+- 25
 - 513
-r2x_pf2: 0.022748827259849502
-r2x_cp: 0.5534244432645141
+r2x_pf2: 0.037987743603962065
+r2x_cp: 0.4353438418112393
 rank_selection:
   rise:
-    rank: 4
-    sweep_csv: cellcommunicationpf2/data/rise_rank_alad.csv
-    notes: Placeholder run at deliberately small settings
+    rank: 25
+    sweep_csv: null
+    notes: null
   cpd:
-    rank: 3
-    sweep_csv: cellcommunicationpf2/data/cpd_rank_alad.csv
-    notes: Placeholder run at deliberately small settings
-git_sha: 10f768228554e3397f3405fb7bd8b68e225280c5-dirty
-generated: '2026-09-02T01:10:53+00:00'
+    rank: 4
+    sweep_csv: null
+    notes: null
+git_sha: c8b81c0bf0e0da20056f4167613101ccc52904b7
+generated: '2026-09-08T18:14:03+00:00'
