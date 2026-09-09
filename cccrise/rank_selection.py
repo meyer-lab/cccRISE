@@ -412,27 +412,19 @@ def _projections_to_matrix(
 class RiseCore(NamedTuple):
     """A CANDELINC-compressed RISE problem, fittable at any rank up to its size.
 
-    Attributes
-    ----------
-    core : anndata.AnnData
-        The compressed slabs stacked into one small AnnData, carrying the
-        `condition_unique_idxs` and all-zero `var['means']` that
-        `parafac2.parafac2_nd` expects. Already centered, hence the zero means.
-    cell_basis : np.ndarray
-        Shape (n_obs, n_basis); condition ``i``'s rows hold the orthonormal
-        basis ``Q_i`` that maps its core-space projections back to its cells.
-        Columns past `basis_widths[i]` are zero.
-    condition_idx : np.ndarray
-        Shape (n_obs,); which condition each row of `cell_basis` belongs to.
-    basis_widths : np.ndarray
-        Columns of `cell_basis` each condition actually uses -- ``n_basis``
-        except for a condition with fewer cells than that.
-    gene_basis : np.ndarray
-        Shape (n_genes, n_basis); the retained gene subspace, with zero rows
-        for genes excluded from the fit.
-    lost_sq : float
-        Squared norm the gene-mode projection discarded, in the units of the
-        original (centered) matrix.
+    core          the compressed slabs as one small AnnData, carrying the
+                  `condition_unique_idxs` and all-zero `var['means']` that
+                  `parafac2_nd` expects (already centered, hence zero means)
+    cell_basis    (n_obs, n_basis); condition i's rows hold the orthonormal
+                  Q_i mapping its core-space projections back to its cells.
+                  Columns past `basis_widths[i]` are zero
+    condition_idx (n_obs,); which condition each `cell_basis` row belongs to
+    basis_widths  columns each condition actually uses -- n_basis, except for
+                  a condition with fewer cells than that
+    gene_basis    (n_genes, n_basis); the retained gene subspace, zero rows
+                  for genes excluded from the fit
+    lost_sq       squared norm the gene-mode projection discarded, in the
+                  units of the original centered matrix
     """
 
     core: anndata.AnnData
@@ -479,40 +471,14 @@ def rise_candelinc_compress(
 
     Neither step looks at anything outside `gene_mask`, so a compression built
     from a BiCV fold's training genes stays disjoint from that fold's held-out
-    genes, exactly as the RISE fit it replaces does.
+    genes, exactly as the RISE fit it replaces does. That is what makes this
+    legitimate inside BiCV at all.
 
-    Parameters
-    ----------
-    adata : anndata.AnnData
-        Single-cell expression data. ``var['means']`` supplies the centering.
-    condition_column : str
-        Column in `adata.obs` identifying the sample or condition.
-    max_rank : int
-        Largest RISE rank the core must support.
-    gene_mask : np.ndarray, optional
-        Boolean mask of genes to fit on; None uses every gene.
-    oversample : int, default=10
-        Basis columns beyond `max_rank`, giving the fit room to rotate inside
-        the subspace rather than pinning it to exactly `max_rank` directions.
-    n_power_iter : int, default=2
-        Power iterations in the randomized range finder that builds `W`. Each
-        one is two streaming passes and sharpens the retained subspace toward
-        the leading singular directions.
-    device : str, optional
-        'cuda', 'cpu', or None to use a GPU when CuPy and CUDA are available.
-    random_state : int, optional
-        Seed for the range finder's test matrix.
-    column_squares : np.ndarray, optional
-        Precomputed per-gene sums of squares from `_column_moments`. Depends on
-        neither the rank nor the gene mask, so a sweep computes it once and
-        hands it to every fold.
-    chunk_nnz : int
-        Nonzeros per streaming row chunk.
-
-    Returns
-    -------
-    RiseCore
-        The compressed problem.
+    `oversample` gives the fit room to rotate inside the subspace rather than
+    pinning it to exactly `max_rank` directions; each `n_power_iter` is two
+    streaming passes that sharpen the retained subspace toward the leading
+    singular directions. `column_squares` depends on neither the rank nor the
+    gene mask, so a sweep computes it once and hands it to every fold.
     """
     use_gpu = _use_gpu(device)
     adata = add_cond_idxs(adata, condition_column)
@@ -588,23 +554,9 @@ def rise_candelinc_fit(
 ) -> tuple[np.ndarray, Factors, np.ndarray, float]:
     """Fit RISE at `rank` inside a `RiseCore`, decompressed back to full size.
 
-    Parameters
-    ----------
-    compressed : RiseCore
-        Output of `rise_candelinc_compress`.
-    rank : int
-        RISE rank; must not exceed the core's basis size.
-    n_iter_max, tol
-        PARAFAC2 fitting controls.
-    random_state : int, optional
-        Seed for the fit.
-
-    Returns
-    -------
-    tuple[np.ndarray, list[np.ndarray], np.ndarray, float]
-        Weights, factors ``[A, B, C]`` with ``C`` mapped back to gene space,
-        the per-cell projection matrix ``(n_obs, rank)``, and R2X restated
-        against the original uncompressed matrix.
+    Returns the weights, factors ``[A, B, C]`` with ``C`` mapped back to gene
+    space, the per-cell projections ``(n_obs, rank)``, and R2X restated against
+    the original uncompressed matrix.
     """
     (weights, factors, core_projections), core_r2x = parafac2_nd(
         compressed.core,
@@ -679,27 +631,10 @@ def _held_out_block_r2x(
     Restricting a product to N_a or N_b is done by zeroing the other half's
     rows of `loadings` rather than by slicing the block.
 
-    Parameters
-    ----------
-    test_block : Any
-        The held-out genes' raw (uncentered) expression, shape (n_obs, n_test).
-    na_mask, nb_mask : np.ndarray
-        Complementary boolean cell masks: N_a fits ``C_te``, N_b scores it.
-    loadings : np.ndarray
-        Per-cell loadings from `_cell_loadings`, shape (n_obs, rank).
-    moments : tuple[np.ndarray, np.ndarray, np.ndarray]
-        ``(sums over N_a, sums over N_b, squares over N_b)`` from
-        `_column_moments`. Rank-independent, so a sweep computes them once
-        per fold.
-    use_gpu : bool
-        Whether to stream through the GPU.
-    chunk_nnz : int
-        Nonzeros per streaming row chunk.
-
-    Returns
-    -------
-    float
-        R2X on the G_te x N_b block.
+    `test_block` is the held-out genes' raw, uncentered expression; N_a fits
+    ``C_te`` and N_b scores it. `moments` is ``(sums over N_a, sums over N_b,
+    squares over N_b)`` from `_column_moments` -- rank-independent, so a sweep
+    computes them once per fold.
     """
     rank = loadings.shape[1]
     sums_a, sums_b, squares_b = moments
@@ -860,42 +795,9 @@ def bicv_reconstruction_error(
     noise -- widening the basis is what `oversample` does, and the criterion is
     insensitive to it -- but they are not bit-identical.
 
-    Parameters
-    ----------
-    adata : anndata.AnnData
-        Single-cell expression data.
-    rank : int
-        Decomposition rank to evaluate.
-    condition_column : str
-        Column name in `adata.obs` specifying sample or condition.
-    gene_test_frac : float, default=0.1
-        Fraction of genes held out for testing.
-    n_iter_max : int, default=100
-        Maximum number of iterations for PARAFAC2 fitting.
-    tol : float, default=1e-6
-        Tolerance threshold for PARAFAC2 convergence.
-    random_state : int | None, default=None
-        Random seed for gene and cell splitting and model initialization.
-    compress : bool, default=True
-        Fit inside a CANDELINC core instead of on the full training block.
-    oversample : int, default=10
-        Basis columns beyond `rank` the core keeps when compressing.
-    n_power_iter : int, default=2
-        Power iterations in the compression's randomized range finder.
-    device : str, optional
-        'cuda', 'cpu', or None to use a GPU when CuPy and CUDA are available.
-    chunk_nnz : int
-        Nonzeros per streaming row chunk.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary with fold results containing:
-        - 'Rank': Evaluated rank.
-        - 'HeldOutBlockR2X': Reconstruction R2X on the held-out test block (G_te x N_b).
-        - 'TrainBlockR2X': In-sample R2X on the training block (G_tr, all cells).
-        - 'NTestGenes': Number of test genes in G_te.
-        - 'NTrainGenes': Number of training genes in G_tr.
+    Returns one row: 'Rank', 'HeldOutBlockR2X' (on the G_te x N_b block),
+    'TrainBlockR2X' (in-sample, G_tr over all cells), 'NTestGenes',
+    'NTrainGenes'.
     """
     return _bicv_fold(
         adata,
@@ -926,52 +828,16 @@ def run_bicv(
     n_power_iter: int = 2,
     device: str | None = None,
     chunk_nnz: int = DEFAULT_CHUNK_NNZ,
-    fold_seed_offset: int = 0,
 ) -> pd.DataFrame:
     """Run bi-cross-validation rank selection across specified ranks and folds.
 
     Folds are the outer loop and ranks the inner one, so each fold's split,
     compression and held-out block are built once and reused by every rank.
+    Each fold is seeded by its index, so two sweeps of the same data draw
+    identical blocks.
 
-    Parameters
-    ----------
-    adata : anndata.AnnData
-        Single-cell expression data.
-    ranks : list[int] | range
-        Collection of ranks to evaluate.
-    condition_column : str
-        Column name in `adata.obs` specifying sample or condition.
-    n_folds : int, default=3
-        Number of cross-validation folds per rank.
-    gene_test_frac : float, default=0.1
-        Fraction of genes held out for testing in each fold.
-    n_iter_max : int, default=100
-        Maximum number of iterations for PARAFAC2 fitting.
-    tol : float, default=1e-6
-        Tolerance threshold for PARAFAC2 fitting convergence.
-    compress : bool, default=True
-        CANDELINC-compress each fold once and fit every rank inside the
-        resulting core. `False` refits the full training block per rank.
-    oversample : int, default=10
-        Basis columns beyond ``max(ranks)`` each core keeps.
-    n_power_iter : int, default=2
-        Power iterations in the compression's randomized range finder.
-    device : str, optional
-        'cuda', 'cpu', or None to use a GPU when CuPy and CUDA are available.
-    chunk_nnz : int
-        Nonzeros per streaming row chunk.
-    fold_seed_offset : int, default=0
-        Added to each fold's seed. Folds are otherwise seeded by index, so two
-        sweeps of the same data draw identical blocks; shifting the offset draws
-        a different fold structure instead, which is how the criterion's
-        sensitivity to fold assignment is measured (a noise-floor question, not
-        a resampling one).
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing results for each rank and fold with columns:
-        'Rank', 'Fold', 'HeldOutBlockR2X', 'TrainBlockR2X', 'NTestGenes', 'NTrainGenes'.
+    Returns one row per (rank, fold): the columns of
+    `bicv_reconstruction_error`, plus 'Fold'.
     """
     ranks = list(ranks)
 
@@ -993,7 +859,7 @@ def run_bicv(
             gene_test_frac=gene_test_frac,
             n_iter_max=n_iter_max,
             tol=tol,
-            random_state=fold + fold_seed_offset,
+            random_state=fold,
             compress=compress,
             oversample=oversample,
             n_power_iter=n_power_iter,

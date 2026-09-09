@@ -59,40 +59,14 @@ def run_rise_rank_selection(
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Run the BiCV sweep and persist the CSV plus its sidecar.
 
-    Parameters
-    ----------
-    spec : DatasetSpec
-        Dataset registry entry.
-    ranks : list[int]
-        RISE ranks to evaluate.
-    n_folds : int, default=5
-        BiCV folds per rank.
-    gene_test_frac : float, default=0.1
-        Fraction of genes held out per fold.
-    n_iter_max : int, default=300
-        Maximum PARAFAC2 iterations per fit. Above the single-fit default of
-        100 because an under-converged fit reads as a worse rank, but not
-        higher: these fits reach the cap rather than the tolerance, so cost is
-        linear in the cap, and on ALAD the selected rank is unchanged anywhere
-        from 25 to 1000 iterations.
-    tol : float, default=1e-8
-        Convergence tolerance per fit.
-    compress : bool, default=True
-        CANDELINC-compress each fold once and fit every rank inside the
-        resulting core. `False` refits the full training block per rank.
-    oversample : int, default=10
-        Basis columns beyond ``max(ranks)`` each core keeps.
-    n_power_iter : int, default=2
-        Power iterations in the compression's randomized range finder.
-    device : str, optional
-        'cuda', 'cpu', or None to use a GPU when CuPy and CUDA are available.
-    output_path : Path, optional
-        CSV destination. Defaults to the canonical name the figure reads.
+    `n_iter_max` sits above the single-fit default of 100 because an
+    under-converged fit reads as a worse rank -- but not higher, because these
+    fits reach the cap rather than the tolerance, so cost is linear in it and
+    on ALAD the selected rank is unchanged anywhere from 25 to 1000 iterations.
 
-    Returns
-    -------
-    tuple[pd.DataFrame, Path, Path]
-        The sweep results, the CSV path, and the sidecar path.
+    `output_path` defaults to the canonical name the figure reads.
+
+    Returns the sweep results, the CSV path, and the sidecar path.
     """
     output_path = output_path or (DATA_DIR / spec.rise_rank_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
