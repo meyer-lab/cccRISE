@@ -26,7 +26,7 @@ jobs:
         steps:
             - uses: actions/checkout@v6
             - name: Install uv
-              uses: astral-sh/setup-uv@v10
+              uses: astral-sh/setup-uv@v10.0.1
             - name: Sphinx build
               run: |
                   export ANNDATA_CUPY=0
