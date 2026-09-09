@@ -1,11 +1,8 @@
-from typing import Any, cast
-
 import anndata
 import numpy as np
 import pandas as pd
 from pacmap import PaCMAP
-from parafac2.parafac2 import anndata_to_list, parafac2_nd, store_pf2
-from scipy.sparse import spmatrix
+from parafac2.parafac2 import parafac2_nd, store_pf2
 from tensorly.cp_tensor import CPTensor
 from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score as fms
@@ -19,7 +16,7 @@ from .ccc_rise import (
     save_ccc_rise_results,
     standardize_cc_pf2,
 )
-from .import_data import add_cond_idxs, import_ligand_receptor_pairs
+from .import_data import add_cond_idxs, condition_matrices, import_ligand_receptor_pairs
 from .utils import pseudobulk_X
 
 
@@ -285,15 +282,11 @@ def calculate_interaction_tensor(
     )
 
     # Project matrices
-    X_list = anndata_to_list(adata)
-    projected_matrices = []
-    for i, tensor in enumerate(X_list):
-        proj = adata.obsm["projections"][sgIndex == i]
-        # Convert tensor to NumPy
-        tensor_np = (
-            cast(Any, tensor).toarray() if isinstance(tensor, spmatrix) else tensor
-        )
-        projected_matrices.append(proj.T @ tensor_np)
+    X_list = condition_matrices(adata)
+    projected_matrices = [
+        adata.obsm["projections"][sgIndex == i].T @ tensor
+        for i, tensor in enumerate(X_list)
+    ]
 
     # Calculate cell-cell communication scores
     gene_names = list(adata.var_names)

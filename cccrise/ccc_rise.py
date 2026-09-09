@@ -6,7 +6,7 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
-from parafac2.parafac2 import anndata_to_list, parafac2_nd
+from parafac2.parafac2 import parafac2_nd
 from scipy.sparse import spmatrix
 from tensorly.cp_tensor import cp_flip_sign, cp_normalize
 from tensorly.decomposition import parafac
@@ -17,7 +17,7 @@ from .ccc import (
     combine_communication_score,
     get_genes_from_complexes,
 )
-from .import_data import import_ligand_receptor_pairs
+from .import_data import condition_matrices, import_ligand_receptor_pairs
 
 
 def calc_communication_score(
@@ -679,7 +679,7 @@ def ccc_rise(
         - The filtered ligand-receptor pairs DataFrame used in the analysis.
     """
     gene_names = list(adata.var_names)
-    X_list = anndata_to_list(adata)
+    X_list = condition_matrices(adata)
 
     # PARAFAC2 decomposition
     pf2_output, r2x_pf2 = parafac2_nd(
@@ -694,15 +694,9 @@ def ccc_rise(
     adata.uns["r2x_pf2"] = r2x_pf2
 
     # Project matrices
-    projected_matrices = []
-    for i, tensor in enumerate(X_list):
-        proj = projections[i]
-        # Convert tensor to NumPy
-        tensor_np = (
-            cast(Any, tensor).toarray() if isinstance(tensor, spmatrix) else tensor
-        )
-
-        projected_matrices.append(proj.T @ tensor_np)
+    projected_matrices = [
+        proj.T @ tensor for proj, tensor in zip(projections, X_list, strict=True)
+    ]
 
     # Per-gene mean subtracted before fitting RISE (see `prepare_dataset`); added
     # back during scoring to keep communication scores non-negative (issue #139).

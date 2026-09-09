@@ -57,9 +57,9 @@ def _subset_genes_with_recomputed_means(
 ) -> anndata.AnnData:
     """Slice an AnnData object to a gene subset and recompute var['means'] for the slice.
 
-    `anndata_to_list` centers each condition's data using `var["means"]`; if genes
-    are dropped without recomputing this column, centering becomes inconsistent
-    with the sliced data.
+    `parafac2_nd` centers the data using `var["means"]`; if genes are dropped
+    without recomputing this column, centering becomes inconsistent with the
+    sliced data.
 
     Parameters
     ----------

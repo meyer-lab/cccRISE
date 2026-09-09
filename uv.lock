@@ -159,7 +159,7 @@ requires-dist = [
     { name = "netcdf4", specifier = ">=1.6.5" },
     { name = "numpy", specifier = ">=2.2" },
     { name = "pacmap", specifier = ">=0.8.0" },
-    { name = "parafac2", git = "https://github.com/meyer-lab/parafac2.git?rev=0bddf71aaa906d5f7133993f1797953031873c0e" },
+    { name = "parafac2", specifier = ">=1.6.0" },
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pyreadr", specifier = ">=0.5.6" },
     { name = "pyyaml", specifier = ">=6.0" },
@@ -169,12 +169,12 @@ requires-dist = [
     { name = "seaborn", specifier = "~=0.13.2" },
     { name = "tensorly", specifier = ">=0.9.0" },
     { name = "tensorly-viz", specifier = ">=0.1.7" },
-    { name = "vsparse", git = "https://github.com/meyer-lab/vsparse.git" },
+    { name = "vsparse", specifier = ">=0.2.0" },
     { name = "xarray", specifier = ">=2024.1.0" },
 ]
 
 [package.metadata.requires-dev]
-analysis = [{ name = "vsparse", git = "https://github.com/meyer-lab/vsparse.git" }]
+analysis = [{ name = "vsparse", specifier = ">=0.2.0" }]
 dev = [
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", specifier = ">=6.0" },
@@ -1350,14 +1350,18 @@ wheels = [
 
 [[package]]
 name = "parafac2"
-version = "1.2.0"
-source = { git = "https://github.com/meyer-lab/parafac2.git?rev=0bddf71aaa906d5f7133993f1797953031873c0e#0bddf71aaa906d5f7133993f1797953031873c0e" }
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata" },
     { name = "numpy" },
     { name = "scipy" },
     { name = "tensorly" },
     { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/11/f69fc560bf17fbdcf269fdb63d9106724ded27dee395e74afb40e061e93f/parafac2-1.6.0.tar.gz", hash = "sha256:b7e7817a28fc59ba1f1d80469c65d74d4a6044bf9f383364eb07cef1f4d3516e", size = 28064, upload-time = "2026-09-02T01:02:14.823Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/06/58/654144ff025927b36895e515b7b01083959afa7ada96909acf49d364a08f/parafac2-1.6.0-py3-none-any.whl", hash = "sha256:dd5b1575bc7c1a779f794ec1c0d2e9c5dc0c32feb8ad6e46e60b0c592b57223a", size = 33469, upload-time = "2026-09-02T01:02:13.391Z" },
 ]
 
 [[package]]
@@ -2430,14 +2434,18 @@ wheels = [
 
 [[package]]
 name = "vsparse"
-version = "0.1.0"
-source = { git = "https://github.com/meyer-lab/vsparse.git#76db17a5adc10aed478d77abe226fe5f918c8966" }
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata" },
     { name = "hdf5plugin" },
     { name = "numba" },
     { name = "numpy" },
     { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3d/a5/78db8f12cb1dfe2e0a2f7d637efef572ffb75578d01e34f2c1d2a4327747/vsparse-0.2.0.tar.gz", hash = "sha256:aba6221ec50ce3cbe6bc149d69216202c66b2361c9b7a7ba09e3f3bc21a52cff", size = 37836, upload-time = "2026-09-04T12:50:17.51Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/28/14/f2a51a5aa3a3d131429ed7d238d9a13d32dd10493b3019e69e9fd4399420/vsparse-0.2.0-py3-none-any.whl", hash = "sha256:567035afa9a51c5edfc3103a9f98f95568f4ba5e2a9477f73031b703a376d277", size = 45084, upload-time = "2026-09-04T12:50:16.137Z" },
 ]
 
 [[package]]
