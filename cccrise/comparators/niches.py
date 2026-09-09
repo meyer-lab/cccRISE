@@ -17,7 +17,9 @@ from ..ccc_rise import add_complexes_to_expression
 from ..import_data import import_ligand_receptor_pairs
 
 
-def _dense_gene_by_cell(adata: anndata.AnnData, cell_ids: Sequence[str]) -> pd.DataFrame:
+def _dense_gene_by_cell(
+    adata: anndata.AnnData, cell_ids: Sequence[str]
+) -> pd.DataFrame:
     """Densify ``adata[cell_ids]`` into a ``(genes x cells)`` DataFrame."""
     sub = adata[list(cell_ids), :]
     X = sub.X
@@ -165,8 +167,7 @@ def niches(
         for g in groups
     }
     ligand_mat_by_group = {
-        g: expr_by_group[g].reindex(ligand_names).fillna(0.0).to_numpy()
-        for g in groups
+        g: expr_by_group[g].reindex(ligand_names).fillna(0.0).to_numpy() for g in groups
     }
     receptor_mat_by_group = {
         g: expr_by_group[g].reindex(receptor_names).fillna(0.0).to_numpy()
@@ -197,7 +198,9 @@ def niches(
             receiver_cells = receiver_pool[receiver_idx]
             edge_ids = [f"{s}—{r}" for s, r in zip(sender_cells, receiver_cells)]
 
-            signal_blocks.append(pd.DataFrame(signal, index=pair_labels, columns=edge_ids))
+            signal_blocks.append(
+                pd.DataFrame(signal, index=pair_labels, columns=edge_ids)
+            )
             meta_blocks.append(
                 pd.DataFrame(
                     {

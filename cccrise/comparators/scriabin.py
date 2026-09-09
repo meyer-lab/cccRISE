@@ -17,7 +17,9 @@ from ..ccc_rise import add_complexes_to_expression
 from ..import_data import import_ligand_receptor_pairs
 
 
-def _dense_gene_by_cell(adata: anndata.AnnData, cell_ids: Sequence[str]) -> pd.DataFrame:
+def _dense_gene_by_cell(
+    adata: anndata.AnnData, cell_ids: Sequence[str]
+) -> pd.DataFrame:
     """Densify ``adata[cell_ids]`` into a ``(genes x cells)`` DataFrame."""
     sub = adata[list(cell_ids), :]
     X = sub.X
@@ -153,8 +155,12 @@ def scriabin(
         else np.array([f"{lg}^{rc}" for lg, rc in zip(ligand_names, receptor_names)])
     )
 
-    lig_mat = send_expr.reindex(ligand_names).fillna(0.0).to_numpy()  # (n_pairs, n_send)
-    rec_mat = rec_expr.reindex(receptor_names).fillna(0.0).to_numpy()  # (n_pairs, n_rec)
+    lig_mat = (
+        send_expr.reindex(ligand_names).fillna(0.0).to_numpy()
+    )  # (n_pairs, n_send)
+    rec_mat = (
+        rec_expr.reindex(receptor_names).fillna(0.0).to_numpy()
+    )  # (n_pairs, n_rec)
 
     lig_log = np.log1p(np.clip(lig_mat, 0, None))
     rec_log = np.log1p(np.clip(rec_mat, 0, None))

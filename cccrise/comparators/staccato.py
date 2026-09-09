@@ -163,7 +163,12 @@ def staccato(
 
     if covariate is None:
         covariate = np.eye(tensor.shape[0])
-    covariates = [covariate, np.eye(tensor.shape[1]), np.eye(tensor.shape[2]), np.eye(tensor.shape[3])]
+    covariates = [
+        covariate,
+        np.eye(tensor.shape[1]),
+        np.eye(tensor.shape[2]),
+        np.eye(tensor.shape[3]),
+    ]
 
     Qs: list[np.ndarray] = []
     Rs: list[np.ndarray] = []
@@ -193,7 +198,9 @@ def staccato(
         np.sum(-0.5 * np.log(2 * np.pi * sigma2) - residual**2 / (2 * sigma2))
     )
 
-    def _label(factor: np.ndarray, names: Sequence[str] | None) -> np.ndarray | pd.DataFrame:
+    def _label(
+        factor: np.ndarray, names: Sequence[str] | None
+    ) -> np.ndarray | pd.DataFrame:
         if names is None:
             return factor
         return pd.DataFrame(factor, index=list(names))

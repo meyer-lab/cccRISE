@@ -573,9 +573,9 @@ def compute_differential_significance(
         raise ValueError("sample_to_group must contain both groups")
 
     def _group_diff(mask: np.ndarray) -> np.ndarray:
-        return interaction_tensor[mask].mean(axis=0) - interaction_tensor[
-            ~mask
-        ].mean(axis=0)
+        return interaction_tensor[mask].mean(axis=0) - interaction_tensor[~mask].mean(
+            axis=0
+        )
 
     observed_diff = _group_diff(group)
     ge_count = np.zeros_like(observed_diff, dtype=np.int64)

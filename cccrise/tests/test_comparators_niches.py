@@ -42,7 +42,9 @@ def _lr_pairs() -> pd.DataFrame:
 
 def test_niches_covers_all_celltype_combinations():
     adata = _small_adata()
-    signal, meta = niches(adata, groupby="celltype", lr_pairs=_lr_pairs(), random_state=0)
+    signal, meta = niches(
+        adata, groupby="celltype", lr_pairs=_lr_pairs(), random_state=0
+    )
 
     combos = set(zip(meta["sending_type"], meta["receiving_type"]))
     assert combos == {
@@ -57,8 +59,12 @@ def test_niches_covers_all_celltype_combinations():
 
 def test_niches_is_reproducible_with_fixed_seed():
     adata = _small_adata()
-    signal1, meta1 = niches(adata, groupby="celltype", lr_pairs=_lr_pairs(), random_state=0)
-    signal2, meta2 = niches(adata, groupby="celltype", lr_pairs=_lr_pairs(), random_state=0)
+    signal1, meta1 = niches(
+        adata, groupby="celltype", lr_pairs=_lr_pairs(), random_state=0
+    )
+    signal2, meta2 = niches(
+        adata, groupby="celltype", lr_pairs=_lr_pairs(), random_state=0
+    )
 
     pd.testing.assert_frame_equal(signal1, signal2)
     pd.testing.assert_frame_equal(meta1, meta2)
@@ -66,7 +72,9 @@ def test_niches_is_reproducible_with_fixed_seed():
 
 def test_niches_signal_is_elementwise_ligand_receptor_product():
     adata = _small_adata()
-    signal, meta = niches(adata, groupby="celltype", lr_pairs=_lr_pairs(), random_state=1)
+    signal, meta = niches(
+        adata, groupby="celltype", lr_pairs=_lr_pairs(), random_state=1
+    )
 
     for edge_id in signal.columns:
         row = meta.loc[edge_id]
