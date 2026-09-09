@@ -144,6 +144,16 @@ def calc_communication_score(
     )
     filtered_lr_pairs = lr_pairs[lr_pair_names.isin(ppi_names)].reset_index(drop=True)
 
+    if not ppi_names:
+        raise ValueError(
+            "No ligand-receptor pair matched the expression data, so the "
+            "interaction tensor would have a zero-length LR mode. The usual "
+            "cause is a gene-naming mismatch: the LR table is keyed by HGNC "
+            "symbol, so a dataset indexed by Ensembl ID matches nothing. See "
+            "`import_data.use_gene_symbols`. "
+            f"First few gene names seen: {list(rnaseq_matrices[0].index[:5])}"
+        )
+
     # Transpose to the expected format
     # From: (context, ppi_idx, rank, rank)
     # To:   (context, rank, rank, ppi_idx)
