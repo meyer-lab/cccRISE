@@ -5,12 +5,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Get dependencies cache key
         id: dependencies-cache-key
         run: echo "hash=$(md5sum pyproject.toml | awk '{print $1}')" >> $GITHUB_OUTPUT
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10
       - name: Setup environment
         run: make .venv
       - name: Run ruff format
