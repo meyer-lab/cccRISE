@@ -1,8 +1,11 @@
+from typing import Any, cast
+
 import anndata
 import numpy as np
 import pandas as pd
 from pacmap import PaCMAP
 from parafac2.parafac2 import parafac2_nd, store_pf2
+from scipy.sparse import issparse
 from tensorly.cp_tensor import CPTensor
 from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score as fms
@@ -16,7 +19,7 @@ from .ccc_rise import (
     save_ccc_rise_results,
     standardize_cc_pf2,
 )
-from .import_data import add_cond_idxs, condition_matrices, import_ligand_receptor_pairs
+from .import_data import add_cond_idxs, import_ligand_receptor_pairs
 from .utils import pseudobulk_X
 
 
@@ -281,20 +284,30 @@ def calculate_interaction_tensor(
         else np.zeros(adata.n_obs, dtype=int)
     )
 
-    # Project matrices
-    X_list = condition_matrices(adata)
-    projected_matrices = [
-        adata.obsm["projections"][sgIndex == i].T @ tensor
-        for i, tensor in enumerate(X_list)
-    ]
-
-    # Calculate cell-cell communication scores
-    gene_names = list(adata.var_names)
+    # Project one condition at a time. `condition_matrices` densifies and
+    # centers every slab up front, which is a second full copy of the
+    # expression matrix -- ~44 GB on the IBDverse cohort, held alive right
+    # through the (also large) communication-tensor build below. Slicing per
+    # condition is the same arithmetic on one ~130 MB slab at a time, and the
+    # projected result is four orders of magnitude smaller than the slab it
+    # came from.
     gene_means = (
         adata.var["means"].to_numpy()
         if "means" in adata.var
-        else np.zeros(len(gene_names))
+        else np.zeros(adata.n_vars)
     )
+    X_mat = cast(Any, adata.X)
+    projected_matrices = []
+    for i in range(int(sgIndex.max()) + 1):
+        rows = sgIndex == i
+        slab = X_mat[rows]
+        dense = slab.toarray() if issparse(slab) else np.asarray(slab)
+        projected_matrices.append(
+            adata.obsm["projections"][rows].T @ (dense - gene_means)
+        )
+
+    # Calculate cell-cell communication scores
+    gene_names = list(adata.var_names)
     interaction_tensor, _ = calc_communication_score(
         projected_matrices,
         gene_names=gene_names,

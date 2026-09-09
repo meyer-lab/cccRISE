@@ -621,40 +621,60 @@ def build_context_ccc_tensor(
     if verbose:
         print("Building tensor for the provided context")
 
-    tensors = [
-        generate_ccc_tensor(
+    def context_tensor(rnaseq):
+        return generate_ccc_tensor(
             rnaseq_data=rnaseq.reindex(genes).reindex(cells, axis="columns"),
             ppi_data=ppi_data_,
             communication_score=communication_score,
             interaction_columns=interaction_columns,
             hill_k=hill_k,
         )
-        for rnaseq in rnaseq_matrices
-    ]
 
     if group_ppi_by is not None:
         ppi_names = [group for group, _ in ppi_data_.groupby(group_ppi_by)]
-        tensors = [
-            aggregate_ccc_tensor(
-                ccc_tensor=t,
-                ppi_data=ppi_data_,
-                group_ppi_by=group_ppi_by,
-                group_ppi_method=group_ppi_method,
-            )
-            for t in tensors
-        ]
+        tensors = np.asarray(
+            [
+                aggregate_ccc_tensor(
+                    ccc_tensor=context_tensor(rnaseq),
+                    ppi_data=ppi_data_,
+                    group_ppi_by=group_ppi_by,
+                    group_ppi_method=group_ppi_method,
+                )
+                for rnaseq in rnaseq_matrices
+            ]
+        )
     else:
         ppi_names = [
             row[interaction_columns[0]] + "^" + row[interaction_columns[1]]
             for idx, row in ppi_data_.iterrows()
         ]
+        # `generate_ccc_tensor` returns nested Python lists, where every scalar
+        # is a boxed float -- roughly 4x what the equivalent float64 array
+        # costs. Collecting one per context and converting at the end holds the
+        # whole tensor in its most expensive possible form: 3.8e9 boxed floats,
+        # over 100 GB, on the IBDverse cohort at RISE rank 90, against 30 GB
+        # for the array. Converting each context as it is produced, into a
+        # preallocated output, keeps one such list alive instead of 343.
+        tensors = None
+        for i, rnaseq in enumerate(rnaseq_matrices):
+            slab = np.asarray(context_tensor(rnaseq), dtype=float)
+            if tensors is None:
+                tensors = np.empty(
+                    (len(rnaseq_matrices), *slab.shape), dtype=slab.dtype
+                )
+            tensors[i] = slab
+
+    if tensors is None:
+        raise ValueError("No contexts to build a communication tensor from.")
 
     # Generate mask:
     if how != "inner":
-        mask_tensor = (~np.isnan(np.asarray(tensors))).astype(int)
+        mask_tensor = (~np.isnan(tensors)).astype(int)
     else:
         mask_tensor = None
-    tensors = np.nan_to_num(tensors)
+    # In place: `tensors` is this function's own array, so the default copy
+    # would duplicate the whole thing.
+    tensors = np.nan_to_num(tensors, copy=False)
     return tensors, genes, cells, ppi_names, mask_tensor
 
 
