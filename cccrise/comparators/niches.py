@@ -6,6 +6,7 @@ cccRISE.
 """
 
 from collections.abc import Sequence
+from typing import Any, cast
 
 import anndata
 import numpy as np
@@ -23,7 +24,7 @@ def _dense_gene_by_cell(
     """Densify ``adata[cell_ids]`` into a ``(genes x cells)`` DataFrame."""
     sub = adata[list(cell_ids), :]
     X = sub.X
-    X = X.toarray() if issparse(X) else np.asarray(X)
+    X = cast(Any, X).toarray() if issparse(X) else np.asarray(X)
     return pd.DataFrame(np.asarray(X).T, index=sub.var_names, columns=sub.obs_names)
 
 

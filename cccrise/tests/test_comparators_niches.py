@@ -1,5 +1,7 @@
 """Unit tests for cccrise.comparators.niches."""
 
+from typing import Any, cast
+
 import anndata
 import numpy as np
 import pandas as pd
@@ -78,6 +80,6 @@ def test_niches_signal_is_elementwise_ligand_receptor_product():
 
     for edge_id in signal.columns:
         row = meta.loc[edge_id]
-        lig = adata[row["sender_cell"], "L1"].X.toarray().item()
-        rec = adata[row["receiver_cell"], "R1"].X.toarray().item()
+        lig = cast(Any, adata[row["sender_cell"], "L1"].X).toarray().item()
+        rec = cast(Any, adata[row["receiver_cell"], "R1"].X).toarray().item()
         np.testing.assert_allclose(signal.loc["L1^R1", edge_id], lig * rec)

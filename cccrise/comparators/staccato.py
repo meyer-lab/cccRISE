@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from tensorly.decomposition import tucker
-from tensorly.tenalg import multi_mode_dot
+from tensorly.tenalg import multi_mode_dot  # ty: ignore[unresolved-import]
 from tensorly.tucker_tensor import tucker_to_tensor
 
 
