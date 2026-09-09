@@ -1,12 +1,15 @@
 """Tests for cccrise.rank_selection."""
 
+from functools import partial
 from itertools import pairwise
+from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
 import pytest
 from parafac2.parafac2 import parafac2_nd
+from scipy.sparse import csr_array, issparse
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
 
@@ -20,6 +23,8 @@ from cccrise.rank_selection import (
     cp_core_consistency,
     cp_core_consistency_sweep,
     cpd_component_collinearity,
+    rise_candelinc_compress,
+    rise_candelinc_fit,
     run_bicv,
 )
 
@@ -163,6 +168,129 @@ def test_run_bicv_interface():
 # =============================================================================
 # CPD (interaction-tensor) rank-selection tests
 # =============================================================================
+
+
+def _sparsify(adata: anndata.AnnData) -> anndata.AnnData:
+    """Same data, stored sparse and shifted non-negative like real counts."""
+    X = np.asarray(adata.X)
+    X = np.where(np.abs(X) > 0.5 * np.abs(X).mean(), X - X.min(), 0.0)
+    out = anndata.AnnData(
+        X=csr_array(X.astype(np.float32)),
+        obs=pd.DataFrame(adata.obs),
+    )
+    out.var["means"] = np.asarray(X.mean(axis=0))
+    return out
+
+
+def test_rise_candelinc_compress_is_lossless_at_full_basis():
+    """A basis as wide as the gene count discards nothing and refits identically."""
+    adata = add_cond_idxs(
+        _simulate_parafac2(5, 50, 30, 3, noise_std=0.05, random_state=3), "sample"
+    )
+    centered = np.asarray(adata.X, dtype=np.float64) - adata.var["means"].to_numpy()
+
+    compressed = rise_candelinc_compress(
+        adata, "sample", max_rank=30, oversample=0, device="cpu", random_state=0
+    )
+    assert compressed.lost_sq / np.sum(centered**2) < 1e-8
+
+    for rank in (2, 3, 5):
+        _w, _f, _p, r2x = rise_candelinc_fit(
+            compressed, rank, n_iter_max=500, tol=1e-12, random_state=0
+        )
+        _out, reference = parafac2_nd(
+            adata, rank=rank, n_iter_max=500, tol=1e-12, random_state=0
+        )
+        assert r2x == pytest.approx(reference, abs=1e-5)
+
+
+def test_rise_candelinc_fit_decompresses_to_the_reported_r2x():
+    """Decompressed factors reconstruct the original matrix at the reported R2X."""
+    adata = add_cond_idxs(
+        _simulate_parafac2(5, 50, 30, 3, noise_std=0.05, random_state=3), "sample"
+    )
+    centered = np.asarray(adata.X, dtype=np.float64) - adata.var["means"].to_numpy()
+    condition_idx = adata.obs["condition_unique_idxs"].to_numpy(dtype=int)
+
+    compressed = rise_candelinc_compress(
+        adata, "sample", max_rank=3, oversample=5, device="cpu", random_state=0
+    )
+    weights, factors, projections, r2x = rise_candelinc_fit(
+        compressed, 3, n_iter_max=500, tol=1e-12, random_state=0
+    )
+    loadings = _cell_loadings(weights, factors, projections, condition_idx)
+    residual = centered - loadings @ factors[2].T
+    manual = 1.0 - np.sum(residual**2) / np.sum(centered**2)
+    assert manual == pytest.approx(r2x, abs=1e-6)
+
+
+def test_bicv_compressed_matches_uncompressed_and_finds_the_true_rank():
+    """Compression must not move the criterion's optimum off the simulated rank."""
+    true_rank = 4
+    adata = _simulate_parafac2(8, 120, 200, true_rank, noise_std=0.4, random_state=11)
+    sweep = partial(
+        run_bicv,
+        adata,
+        ranks=[1, 2, 3, 4, 5, 8],
+        condition_column="sample",
+        n_folds=2,
+        gene_test_frac=0.2,
+        n_iter_max=300,
+        tol=1e-10,
+        device="cpu",
+    )
+    compressed = sweep(compress=True, oversample=10)
+    uncompressed = sweep(compress=False)
+
+    both = pd.DataFrame(
+        {
+            "compressed": compressed.groupby("Rank")["HeldOutBlockR2X"].mean(),
+            "uncompressed": uncompressed.groupby("Rank")["HeldOutBlockR2X"].mean(),
+        }
+    )
+    assert np.max(np.abs(both["compressed"] - both["uncompressed"])) < 5e-3
+    assert both["compressed"].idxmax() == true_rank
+    assert both["uncompressed"].idxmax() == true_rank
+
+
+def test_bicv_streams_sparse_input_without_densifying():
+    """A sparse matrix must score the same as its dense equivalent."""
+    sparse = _sparsify(_simulate_parafac2(5, 60, 40, 3, noise_std=0.2, random_state=5))
+    assert issparse(sparse.X)
+
+    dense_equivalent = anndata.AnnData(
+        X=np.asarray(cast(Any, sparse.X).todense()),
+        obs=pd.DataFrame(sparse.obs),
+    )
+    dense_equivalent.var["means"] = sparse.var["means"].to_numpy()
+
+    score = partial(
+        bicv_reconstruction_error,
+        rank=3,
+        condition_column="sample",
+        gene_test_frac=0.2,
+        n_iter_max=200,
+        tol=1e-10,
+        random_state=0,
+        device="cpu",
+        compress=False,
+    )
+    from_sparse = score(sparse)
+    from_dense = score(dense_equivalent)
+    assert from_sparse["HeldOutBlockR2X"] == pytest.approx(
+        from_dense["HeldOutBlockR2X"], abs=1e-6
+    )
+    assert from_sparse["TrainBlockR2X"] == pytest.approx(
+        from_dense["TrainBlockR2X"], abs=1e-6
+    )
+
+
+def test_rise_candelinc_compress_rejects_a_rank_it_cannot_represent():
+    adata = _simulate_parafac2(3, 20, 15, 2, random_state=8)
+    with pytest.raises(ValueError, match="exceeds"):
+        rise_candelinc_compress(
+            adata, "sample", max_rank=20, oversample=0, device="cpu"
+        )
 
 
 def _simulate_cp_tensor(

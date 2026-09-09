@@ -6,6 +6,14 @@ Sweeps `rank_selection.run_bicv` over a set of RISE ranks, writes the
 per-rank/per-fold table to CSV, and writes a provenance sidecar recording the
 parameters and a per-rank summary of held-out block R2X.
 
+By default each fold is CANDELINC-compressed once and every rank is fit inside
+the resulting core, with the streaming passes that build it running on the GPU
+when one is available (see `rank_selection.rise_candelinc_compress`). That is
+what makes a cohort-scale sweep affordable: the fold's data traversal is paid
+once instead of once per (rank, fold) pair, and the fits themselves land on
+per-condition slabs of at most `max(ranks) + oversample` on a side.
+`--no-compress` and `--device cpu` recover the original behaviour.
+
 The CSV lands at the filename `figureRISErank` reads, and the pipeline runner
 cites it as evidence for the RISE rank it was given.
 
@@ -41,8 +49,12 @@ def run_rise_rank_selection(
     ranks: list[int],
     n_folds: int = 5,
     gene_test_frac: float = 0.1,
-    n_iter_max: int = 100,
-    tol: float = 1e-6,
+    n_iter_max: int = 300,
+    tol: float = 1e-8,
+    compress: bool = True,
+    oversample: int = 10,
+    n_power_iter: int = 2,
+    device: str | None = None,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Run the BiCV sweep and persist the CSV plus its sidecar.
@@ -57,8 +69,23 @@ def run_rise_rank_selection(
         BiCV folds per rank.
     gene_test_frac : float, default=0.1
         Fraction of genes held out per fold.
-    n_iter_max, tol
-        PARAFAC2 fitting controls, passed to `run_bicv`.
+    n_iter_max : int, default=300
+        Maximum PARAFAC2 iterations per fit. Above the single-fit default of
+        100 because an under-converged fit reads as a worse rank, but not
+        higher: these fits reach the cap rather than the tolerance, so cost is
+        linear in the cap, and on ALAD the selected rank is unchanged anywhere
+        from 25 to 1000 iterations.
+    tol : float, default=1e-8
+        Convergence tolerance per fit.
+    compress : bool, default=True
+        CANDELINC-compress each fold once and fit every rank inside the
+        resulting core. `False` refits the full training block per rank.
+    oversample : int, default=10
+        Basis columns beyond ``max(ranks)`` each core keeps.
+    n_power_iter : int, default=2
+        Power iterations in the compression's randomized range finder.
+    device : str, optional
+        'cuda', 'cpu', or None to use a GPU when CuPy and CUDA are available.
     output_path : Path, optional
         CSV destination. Defaults to the canonical name the figure reads.
 
@@ -74,7 +101,7 @@ def run_rise_rank_selection(
     git_sha()
 
     print(f"=== RISE BiCV rank selection: {spec.label} ===")
-    print(f"    ranks={ranks}  n_folds={n_folds}")
+    print(f"    ranks={ranks}  n_folds={n_folds}  compress={compress}")
 
     print("1. Loading data...")
     adata = spec.load()
@@ -89,6 +116,10 @@ def run_rise_rank_selection(
         gene_test_frac=gene_test_frac,
         n_iter_max=n_iter_max,
         tol=tol,
+        compress=compress,
+        oversample=oversample,
+        n_power_iter=n_power_iter,
+        device=device,
     )
 
     print(f"3. Writing {output_path}...")
@@ -102,6 +133,9 @@ def run_rise_rank_selection(
             "gene_test_frac": gene_test_frac,
             "n_iter_max": n_iter_max,
             "tol": tol,
+            "compressed": compress,
+            "oversample": oversample if compress else None,
+            "n_power_iter": n_power_iter if compress else None,
             # `run_bicv` seeds each fold with its fold index, so the sweep is
             # reproducible without a separate seed argument.
             "random_state": "fold index (see rank_selection.run_bicv)",
@@ -127,8 +161,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--n-folds", type=int, default=5, help="BiCV folds per rank.")
     parser.add_argument("--gene-test-frac", type=float, default=0.1)
-    parser.add_argument("--n-iter-max", type=int, default=100)
-    parser.add_argument("--tol", type=float, default=1e-6)
+    parser.add_argument("--n-iter-max", type=int, default=300)
+    parser.add_argument("--tol", type=float, default=1e-8)
+    parser.add_argument(
+        "--no-compress",
+        dest="compress",
+        action="store_false",
+        help="Refit the full training block at every rank instead of "
+        "CANDELINC-compressing each fold once.",
+    )
+    parser.add_argument(
+        "--oversample",
+        type=int,
+        default=10,
+        help="Basis columns each fold's core keeps beyond max(ranks).",
+    )
+    parser.add_argument(
+        "--n-power-iter",
+        type=int,
+        default=2,
+        help="Power iterations in the compression's randomized range finder.",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        help="'cuda' or 'cpu' (default: GPU when CuPy and CUDA are available).",
+    )
     parser.add_argument(
         "--output",
         type=str,
@@ -148,6 +207,10 @@ def main(argv: list[str] | None = None) -> None:
         gene_test_frac=args.gene_test_frac,
         n_iter_max=args.n_iter_max,
         tol=args.tol,
+        compress=args.compress,
+        oversample=args.oversample,
+        n_power_iter=args.n_power_iter,
+        device=args.device,
         output_path=resolve_output(args.output, DATA_DIR, spec.rise_rank_filename()),
     )
 
