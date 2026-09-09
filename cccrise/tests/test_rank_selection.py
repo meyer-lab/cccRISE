@@ -5,9 +5,13 @@ from itertools import pairwise
 import anndata
 import numpy as np
 import pandas as pd
+import pytest
+from parafac2.parafac2 import parafac2_nd
 from tensorly.cp_tensor import cp_to_tensor
 
+from cccrise.import_data import add_cond_idxs
 from cccrise.rank_selection import (
+    _cell_loadings,
     bicv_reconstruction_error,
     cp_masked_reconstruction_error,
     cp_masked_reconstruction_sweep,
@@ -45,6 +49,32 @@ def _simulate_parafac2(
     adata = anndata.AnnData(X=X, obs=obs, var=var)
     adata.var["means"] = X.mean(axis=0)
     return adata
+
+
+def test_cell_loadings_reproduce_the_parafac2_model():
+    """Pin the held-out design to X_i = P_i B diag(w a_i) C^T against the fit's own R2X.
+
+    Scaling `P_i` by `a_i` before rather than after multiplying by `B` is a
+    different model whenever `a_i` varies across conditions, and produces a
+    systematically depressed held-out score rather than an obvious failure.
+    """
+    adata = add_cond_idxs(
+        _simulate_parafac2(5, 50, 30, 3, noise_std=0.05, random_state=3), "sample"
+    )
+    centered = np.asarray(adata.X, dtype=np.float64) - adata.var["means"].to_numpy()
+    condition_idx = adata.obs["condition_unique_idxs"].to_numpy(dtype=int)
+
+    (weights, factors, projection_list), reported = parafac2_nd(
+        adata, rank=3, n_iter_max=800, tol=1e-14, random_state=0
+    )
+    projections = np.zeros((adata.n_obs, 3))
+    for i, p in enumerate(projection_list):
+        projections[condition_idx == i] = p
+
+    loadings = _cell_loadings(weights, factors, projections, condition_idx)
+    residual = centered - loadings @ factors[2].T
+    r2x = 1.0 - np.sum(residual**2) / np.sum(centered**2)
+    assert r2x == pytest.approx(reported, abs=1e-6)
 
 
 def test_bicv_reconstruction_error_rises_past_true_rank():

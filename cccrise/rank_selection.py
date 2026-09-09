@@ -104,6 +104,24 @@ def _projections_to_matrix(
     return out
 
 
+def _cell_loadings(
+    weights: np.ndarray,
+    factors: Factors,
+    projections: np.ndarray,
+    condition_idx: np.ndarray,
+) -> np.ndarray:
+    """Per-cell RISE loadings -- the design a held-out gene block is predicted from.
+
+    The PARAFAC2 model is ``X_i = P_i B diag(w * a_i) C^T``, so a cell's loading
+    is its row of ``P_i B`` scaled by its condition's ``w * a_i``. The order is
+    load-bearing: ``B`` is a dense rank x rank matrix, so scaling ``P_i`` before
+    multiplying by ``B`` is a different model whenever ``a_i`` varies across
+    conditions -- which is the entire point of the ``A`` factor.
+    """
+    A, B, _C = factors
+    return (projections @ B) * (A[condition_idx] * weights)
+
+
 def bicv_reconstruction_error(
     adata: anndata.AnnData,
     rank: int,
@@ -164,25 +182,21 @@ def bicv_reconstruction_error(
     adata = add_cond_idxs(adata, condition_column)
     train_genes = _subset_genes_with_recomputed_means(adata, tr_gene_mask)
 
-    (_, factors, projections), train_r2x_reported = parafac2_nd(
+    (weights, factors, projections), train_r2x_reported = parafac2_nd(
         train_genes,
         rank=rank,
         n_iter_max=n_iter_max,
         tol=tol,
         random_state=random_state,
     )
-    A, B, _C_tr = factors
     P = _projections_to_matrix(train_genes, projections)
 
     sg_index = adata.obs["condition_unique_idxs"].to_numpy(dtype=int)
     n_cells = adata.n_obs
     cell_half = rng.integers(0, 2, size=n_cells).astype(bool)  # True -> N_b
 
-    # Scaled per-cell rank vectors: (P .* A[cond]) @ B, shared by both LS fit and
-    # prediction steps.
-    a_per_cell = A[sg_index]
-    P_scaled = P * a_per_cell
-    L = P_scaled @ B  # (n_cells, rank)
+    # Shared by the least-squares fit of C_te and the prediction step.
+    L = _cell_loadings(weights, factors, P, sg_index)  # (n_cells, rank)
 
     X_te = adata.X[:, te_gene_idx]
     X_te_genes = X_te.toarray() if issparse(X_te) else np.asarray(X_te)
