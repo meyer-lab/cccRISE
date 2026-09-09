@@ -1,5 +1,8 @@
-"""
-Rank-selection criteria for RISE (PARAFAC2) and interaction-tensor (CPD) stages.
+"""Rank-selection criteria for the RISE (PARAFAC2) and CPD stages.
+
+RISE ranks are chosen by bi-cross-validation (`run_bicv`); CPD ranks by core
+consistency (`cp_core_consistency_sweep`) and a component-collinearity screen
+(`cpd_component_collinearity`), both read off one CP fit per rank.
 """
 
 from typing import Any, cast
@@ -9,8 +12,9 @@ import numpy as np
 import pandas as pd
 from parafac2.parafac2 import parafac2_nd
 from scipy.sparse import issparse
+from tensorly.base import unfold
 from tensorly.cp_tensor import cp_to_tensor
-from tensorly.decomposition import parafac
+from tensorly.tenalg import mode_dot  # ty: ignore[unresolved-import]
 
 from .import_data import add_cond_idxs
 
@@ -283,127 +287,205 @@ def run_bicv(
 # =============================================================================
 
 
-def cp_masked_reconstruction_error(
-    tensor: np.ndarray,
-    rank: int,
-    mask_frac: float = 0.1,
-    n_iter_max: int = 1000,
-    init: str = "random",
-    random_state: int | None = None,
-) -> dict[str, float]:
-    """Calculate one fold of entry-masked CP cross-validation reconstruction error.
-
-    A random `mask_frac` of tensor entries are held out (mask=0), CP is fit
-    with `tensorly`'s built-in EM-style masked ALS, and R2X is scored on the
-    held-out entries only using the same normalization as `calculate_r2x`
-    (denominator is the sum of squares of the held-out raw values).
-
-    Parameters
-    ----------
-    tensor : np.ndarray
-        Input tensor to decompose.
-    rank : int
-        Decomposition rank to evaluate.
-    mask_frac : float, default=0.1
-        Fraction of tensor entries randomly held out for testing.
-    n_iter_max : int, default=1000
-        Maximum number of iterations for CP decomposition.
-    init : str, default="random"
-        Initialization method for CP decomposition (e.g., 'random', 'svd').
-    random_state : int | None, default=None
-        Random seed for mask generation and CP initialization.
-
-    Returns
-    -------
-    dict[str, float]
-        Dictionary with evaluation results containing:
-        - 'Rank': Evaluated rank.
-        - 'HeldOutR2X': Reconstruction R2X on held-out tensor entries.
-        - 'InSampleR2X': Reconstruction R2X on the full tensor.
-        - 'NHeldOut': Total count of held-out entries.
-        - 'NTrain': Total count of training entries.
-    """
-    rng = np.random.default_rng(random_state)
-    mask = rng.uniform(size=tensor.shape) >= mask_frac
-    if not np.any(~mask):
-        mask[tuple(rng.integers(0, s) for s in tensor.shape)] = False
-
-    w, f = parafac(
-        tensor=tensor,
-        rank=rank,
-        n_iter_max=n_iter_max,
-        init=init,
-        mask=mask.astype(float),
-        normalize_factors=True,
-        linesearch=True,
-        random_state=random_state,
-    )
-
-    pred = cp_to_tensor((w, f))
-    held_out_mask = ~mask
-    actual = tensor[held_out_mask]
-    predicted = pred[held_out_mask]
-
-    sse = float(np.sum((actual - predicted) ** 2))
-    sst = float(np.sum(actual**2))
-    held_out_r2x = 1.0 - sse / sst if sst > 0 else np.nan
-
-    in_sample_r2x = calculate_r2x(w, f, tensor)
-
-    return {
-        "Rank": rank,
-        "HeldOutR2X": held_out_r2x,
-        "InSampleR2X": in_sample_r2x,
-        "NHeldOut": int(np.sum(held_out_mask)),
-        "NTrain": int(np.sum(mask)),
-    }
-
-
-def cp_masked_reconstruction_sweep(
-    tensor: np.ndarray,
-    ranks: list[int],
-    n_masks: int = 5,
-    mask_frac: float = 0.1,
-    n_iter_max: int = 1000,
-    init: str = "random",
-    random_state: int | None = None,
+def cpd_component_collinearity(
+    factors_by_rank: dict[int, tuple[np.ndarray, Factors]],
+    threshold: float = 0.9,
 ) -> pd.DataFrame:
-    """Entry-masked cross-validation swept across ranks and mask replicates.
+    """Screen CPD factor models across ranks for degenerate ("canceling") pairs.
 
-    Parameters
-    ----------
-    tensor : np.ndarray
-        Input tensor to decompose.
-    ranks : list[int]
-        List of ranks to evaluate.
-    n_masks : int, default=5
-        Number of random mask replicates per rank.
-    mask_frac : float, default=0.1
-        Fraction of tensor entries held out in each mask.
-    n_iter_max : int, default=1000
-        Maximum number of iterations for CP decomposition.
-    init : str, default="random"
-        Initialization method for CP decomposition.
-    random_state : int | None, default=None
-        Base random seed for reproducibility across replicates.
+    Two rank-1 terms that are nearly identical in most modes but flip sign in
+    one nearly cancel in the sum, despite each carrying substantial weight.
+    That is the classic CPD degeneracy signature, and it says the rank is too
+    high more reliably than fit error does. A pair collinear across modes with
+    *no* sign flip is a near-duplicate rather than a canceling pair, so the
+    sign is reported separately from the count.
 
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing results for each rank and replicate with columns:
-        'Rank', 'Mask', 'HeldOutR2X', 'InSampleR2X', 'NHeldOut', 'NTrain'.
+    Returns one row per rank:
+    ``MaxModesCollinear`` (0-4, how many modes the worst pair exceeds
+    `threshold` in), ``WorstPairCanceling`` (whether that pair's collinear
+    modes have a net-negative sign product; NaN when the count is 0), and
+    ``WorstPairI`` / ``WorstPairJ`` (1-based component indices, -1 when
+    rank < 2).
+    """
+    rows = []
+    for rank in sorted(factors_by_rank):
+        _weights, factors = factors_by_rank[rank]
+        if rank < 2:
+            rows.append(
+                {
+                    "Rank": rank,
+                    "MaxModesCollinear": 0,
+                    "WorstPairCanceling": np.nan,
+                    "WorstPairI": -1,
+                    "WorstPairJ": -1,
+                }
+            )
+            continue
+
+        # Signed cosine between every component pair, within each mode.
+        cos_by_mode = []
+        for f in factors:
+            norm = f / np.linalg.norm(f, axis=0, keepdims=True)
+            cos_by_mode.append(norm.T @ norm)
+
+        best_count = -1
+        best_pair = (-1, -1)
+        best_signs: list[float] = []
+        for i in range(rank):
+            for j in range(i + 1, rank):
+                signs = [cos_by_mode[m][i, j] for m in range(4)]
+                count = int(sum(abs(s) > threshold for s in signs))
+                if count > best_count:
+                    best_count = count
+                    best_pair = (i + 1, j + 1)
+                    best_signs = signs
+
+        canceling = np.nan
+        if best_count > 0:
+            collinear_signs = [s for s in best_signs if abs(s) > threshold]
+            canceling = bool(np.prod(np.sign(collinear_signs)) < 0)
+
+        rows.append(
+            {
+                "Rank": rank,
+                "MaxModesCollinear": best_count,
+                "WorstPairCanceling": canceling,
+                "WorstPairI": best_pair[0],
+                "WorstPairJ": best_pair[1],
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+def cp_core_consistency(
+    tensor: np.ndarray, weights: np.ndarray, factors: Factors
+) -> float:
+    """Core consistency diagnostic (CORCONDIA), generalized to 4 modes.
+
+    Projects `tensor` onto each factor matrix's pseudoinverse to get the
+    best-fit core in the CP factors' own basis, then compares that core to the
+    super-diagonal core a valid quadrilinear model implies. Near 100 means the
+    rank-R model is appropriate and essentially unique; it drops sharply once
+    rank exceeds the tensor's true multilinear rank, because the extra
+    components start trading off against one another and the projection picks
+    up large off-diagonal entries.
+
+    `tensor` may equally be a CANDELINC core with `factors` in that core's own
+    space: the bases are orthonormal, so ``pinv(U_n F_n) = pinv(F_n) U_n^T``
+    and the projected core is identical either way. On a cohort-scale tensor
+    that is the difference between projecting ~300M entries and ~600k, so the
+    sweep normally passes the compressed core.
+
+    Returned in percent; can go negative for a badly-fitting rank.
+    """
+    rank = factors[0].shape[1]
+    scaled_factors = [factors[0] * weights[np.newaxis, :], *factors[1:]]
+    pinvs = [np.linalg.pinv(f) for f in scaled_factors]
+
+    core = tensor
+    for mode, pinv in enumerate(pinvs):
+        core = mode_dot(core, pinv, mode)
+
+    ideal = np.zeros((rank,) * 4)
+    diag_idx = np.arange(rank)
+    ideal[diag_idx, diag_idx, diag_idx, diag_idx] = 1.0
+
+    return float(100.0 * (1.0 - np.sum((core - ideal) ** 2) / np.sum(ideal**2)))
+
+
+def cp_core_consistency_sweep(
+    tensor: np.ndarray, factors_by_rank: dict[int, tuple[np.ndarray, Factors]]
+) -> pd.DataFrame:
+    """Core consistency across every rank in a set of CP fits.
+
+    Columns: 'Rank', 'CoreConsistency'.
     """
     rows = [
-        cp_masked_reconstruction_error(
-            tensor,
-            rank=rank,
-            mask_frac=mask_frac,
-            n_iter_max=n_iter_max,
-            init=init,
-            random_state=None if random_state is None else random_state * 1000 + m,
-        )
-        | {"Mask": m}
-        for rank in ranks
-        for m in range(n_masks)
+        {
+            "Rank": rank,
+            "CoreConsistency": cp_core_consistency(tensor, weights, factors),
+        }
+        for rank, (weights, factors) in sorted(factors_by_rank.items())
     ]
     return pd.DataFrame(rows)
+
+
+# =============================================================================
+# CANDELINC compression: fit CP inside a small orthonormal subspace
+# =============================================================================
+
+
+def candelinc_compress(
+    tensor: np.ndarray, max_rank: int, oversample: int = 5
+) -> tuple[np.ndarray, Factors, float]:
+    """Compress a tensor to a CANDELINC core sized for ranks up to `max_rank`.
+
+    CANDELINC (Carroll, Pruzansky & Kruskal 1980) fits CP under the constraint
+    that each factor matrix lies in the column space of a fixed basis. Taking
+    those bases from a truncated HOSVD turns CP-ALS on the full tensor into
+    CP-ALS on a core small enough to sweep many ranks over, then maps the
+    solution back with ``A_n = U_n F_n``.
+
+    Both rank-selection metrics are invariant to this, as long as each basis
+    keeps at least `max_rank` columns. The bases are orthonormal, so
+    within-mode cosines between decompressed components equal those between
+    core components (`cpd_component_collinearity`), and
+    ``pinv(U_n F_n) = pinv(F_n) U_n^T`` makes the projected core identical
+    whether taken from the original tensor or the core
+    (`cp_core_consistency`). Only fit error changes, and only by the fixed
+    amount lying outside the retained subspaces -- which `candelinc_r2x` adds
+    back.
+
+    Returns the core, the per-mode bases, and the squared norm discarded.
+
+    Raises
+    ------
+    ValueError
+        If `max_rank` exceeds the smallest mode of `tensor`, which would leave
+        the core unable to represent a rank-`max_rank` model.
+    """
+    if max_rank > min(tensor.shape):
+        raise ValueError(
+            f"max_rank={max_rank} exceeds the smallest mode of the tensor "
+            f"(shape {tuple(tensor.shape)}). Compression cannot support a rank "
+            f"the tensor itself cannot."
+        )
+
+    keep = [min(dim, max_rank + oversample) for dim in tensor.shape]
+    # Compress the most-compressible modes first: every later Gram matrix is
+    # then formed from an already smaller tensor.
+    order = sorted(range(tensor.ndim), key=lambda m: keep[m] / tensor.shape[m])
+
+    norm_sq = float(np.sum(tensor**2))
+    core = tensor
+    bases: Factors = [np.empty(0)] * tensor.ndim
+    for mode in order:
+        if keep[mode] == core.shape[mode]:
+            bases[mode] = np.eye(core.shape[mode])
+            continue
+        unfolded = unfold(core, mode)
+        gram = unfolded @ unfolded.T
+        # `eigh` returns ascending eigenvalues, so the leading singular
+        # directions are the trailing columns. Their order within the basis is
+        # irrelevant: CANDELINC depends only on the span.
+        _eigvals, eigvecs = np.linalg.eigh(gram)
+        bases[mode] = eigvecs[:, -keep[mode] :]
+        core = mode_dot(core, bases[mode].T, mode)
+
+    lost_sq = max(0.0, norm_sq - float(np.sum(core**2)))
+    return core, bases, lost_sq
+
+
+def candelinc_r2x(core_r2x: float, core: np.ndarray, lost_sq: float) -> float:
+    """Restate a core-space R2X as R2X against the original tensor.
+
+    A CP model fit inside a CANDELINC core reports error against the core,
+    which omits everything the projection discarded. Against the original
+    tensor the error is ``lost_sq + ||core - CP(core)||^2``.
+    """
+    core_sq = float(np.sum(core**2))
+    norm_sq = core_sq + lost_sq
+    if norm_sq == 0:
+        return 0.0
+    return float(1.0 - (lost_sq + (1.0 - core_r2x) * core_sq) / norm_sq)
