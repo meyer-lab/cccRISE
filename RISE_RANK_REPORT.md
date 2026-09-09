@@ -1,5 +1,13 @@
 # RISE rank selection: findings and recommendation
 
+> **Superseded — do not cite the numbers below.** Approach 1b
+> (bi-cross-validation) was computed through a held-out design matrix that did
+> not match the model this repo fits, so every `HeldOutBlockR2X` figure in this
+> document is wrong; see `rank_selection._cell_loadings`. The other nine
+> approaches do not use that code path, but they were all run on a reduced
+> 3-point rank grid and against an older `parafac2`. The current ALAD sweep is
+> `cccrise/data/rise_rank_alad.csv` and its provenance sidecar.
+
 **Scope note up front:** the plan's suggested rank grid was `{5,10,...,50}` (10
 points) with several replicates per approach on both datasets. A single fit at
 rank 10 on COVID takes ~20s, but cost grows with rank (rank 50 ≈ 116s/fit at
