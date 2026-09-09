@@ -1,12 +1,12 @@
-Tutorial for CCC-RISE: Cell-Cell Communication Analysis
+Tutorial for cccRISE: Cell-Cell Communication Analysis
 ========================================================
 
-This tutorial demonstrates the complete CCC-RISE workflow for analyzing cell-cell communication in single-cell RNA-seq data across experimental conditions.
+This tutorial demonstrates the complete cccRISE workflow for analyzing cell-cell communication in single-cell RNA-seq data across experimental conditions.
 
 Installation
 ------------
 
-To add CCC-RISE to your Python package, add the following line to your ``requirements.txt`` and remake your virtual environment::
+To add cccRISE to your Python package, add the following line to your ``requirements.txt`` and remake your virtual environment::
 
     git+https://github.com/meyer-lab/cellcommunication-Pf2.git@main
 
@@ -20,12 +20,12 @@ Your AnnData object must meet the following requirements:
 
 1. **Condition Index**: Include an observations column ``condition_unique_idxs`` that is a 0-indexed array indicating which condition each cell is derived from, along with the cell barcode. Condition 1 cells are indexed as 0, Condition 2 as 1, and so on.
 
-2. **Preprocessing**: Your AnnData object must be preprocessed (doublets removed, genes filtered, normalized, and log-transformed) before running CCC-RISE. Standard preprocessing functions can assist with gene filtering, normalization, and assigning ``condition_unique_idxs``.
+2. **Preprocessing**: Your AnnData object must be preprocessed (doublets removed, genes filtered, normalized, and log-transformed) before running cccRISE. Standard preprocessing functions can assist with gene filtering, normalization, and assigning ``condition_unique_idxs``.
 
 Ligand-Receptor Pairs
 ^^^^^^^^^^^^^^^^^^^^^
 
-CCC-RISE requires a DataFrame of ligand-receptor pairs to analyze cell-cell communication. This can be obtained from resources like CellChat or other ligand-receptor databases.
+cccRISE requires a DataFrame of ligand-receptor pairs to analyze cell-cell communication. This can be obtained from resources like CellChat or other ligand-receptor databases.
 
 **Required DataFrame Format**:
 
@@ -65,7 +65,7 @@ The function performs the following steps:
 
 Import your dataset as an AnnData object with preprocessed data::
 
-    from cellcommunicationpf2.import_data import prepare_dataset, import_ligand_receptor_pairs
+    from cccrise.import_data import prepare_dataset, import_ligand_receptor_pairs
     import anndata
     
     # Load your data
@@ -80,7 +80,7 @@ Import your dataset as an AnnData object with preprocessed data::
 Choosing the Rank
 ------------------
 
-CCC-RISE involves two sequential factorization steps, each requiring rank selection:
+cccRISE involves two sequential factorization steps, each requiring rank selection:
 
 1. **RISE Rank Selection**: Determines how many components to extract from the raw scRNA-seq data
 2. **CPD Rank Selection**: Determines how many components to use when factorizing the interaction tensor
@@ -101,7 +101,7 @@ RISE (Reduction and Insight in Single-cell Exploration) is an unsupervised, tens
 
 Test different RISE ranks to find the optimal balance between model complexity and stability::
 
-    from cellcommunicationpf2.figures.commonFuncs.plotGeneral import plot_fms_r2x_diff_ranks
+    from cccrise.figures.commonFuncs.plotGeneral import plot_fms_r2x_diff_ranks
     import matplotlib.pyplot as plt
     
     # Create figure with two subplots
@@ -147,7 +147,7 @@ After RISE, an interaction tensor is computed from cell-cell communication score
 
 First, calculate the interaction tensor using a selected RISE rank, then test different CPD ranks::
 
-    from cellcommunicationpf2.tensor import calculate_interaction_tensor, rise_store_r2x, run_fms_r2x_analysis
+    from cccrise.tensor import calculate_interaction_tensor, rise_store_r2x, run_fms_r2x_analysis
     import seaborn as sns
     import matplotlib.pyplot as plt
     
@@ -195,11 +195,11 @@ First, calculate the interaction tensor using a selected RISE rank, then test di
 Running the Factorization
 --------------------------
 
-**Perform CCC-RISE Factorization**
+**Perform cccRISE Factorization**
 
-Based on the rank selection analysis above, choose appropriate RISE and CPD ranks and run the complete CCC-RISE workflow. This performs the two-step factorization: first extracting latent communication modes from expression data (RISE), then factorizing the resulting interaction tensor (CPD)::
+Based on the rank selection analysis above, choose appropriate RISE and CPD ranks and run the complete cccRISE workflow. This performs the two-step factorization: first extracting latent communication modes from expression data (RISE), then factorizing the resulting interaction tensor (CPD)::
 
-    from cellcommunicationpf2.tensor import run_ccc_rise_workflow
+    from cccrise.tensor import run_ccc_rise_workflow
     
     # Select ranks based on FMS/R2X analysis
     rise_rank = 35  # Selected from RISE rank analysis
@@ -223,7 +223,7 @@ Based on the rank selection analysis above, choose appropriate RISE and CPD rank
 
 **Function Parameters**
 
-The ``run_ccc_rise_workflow`` function executes the complete CCC-RISE pipeline:
+The ``run_ccc_rise_workflow`` function executes the complete cccRISE pipeline:
 
 - ``adata``: AnnData object with preprocessed scRNA-seq data
 - ``rise_rank``: Number of PARAFAC2 components to extract from expression data
@@ -261,7 +261,7 @@ Saving and Loading Factor Models with NetCDF
 
 Rather than saving entire multi-gigabyte AnnData files containing full single-cell matrices, you can export the decomposition factor matrices and metadata to a compact NetCDF file (< 100 KB - 2 MB)::
 
-    from cellcommunicationpf2.factors import factors_to_xarray, save_factors_netcdf, load_factors_to_anndata
+    from cccrise.factors import factors_to_xarray, save_factors_netcdf, load_factors_to_anndata
 
     # 1. Export factors to an annotated xarray Dataset
     factors_ds = factors_to_xarray(
@@ -288,7 +288,7 @@ Rather than saving entire multi-gigabyte AnnData files containing full single-ce
 Visualizing the Factors
 ------------------------
 
-CCC-RISE decomposes cell-cell communication into four factor matrices, each revealing different aspects of the communication patterns. The package provides specialized plotting functions to visualize each factor type.
+cccRISE decomposes cell-cell communication into four factor matrices, each revealing different aspects of the communication patterns. The package provides specialized plotting functions to visualize each factor type.
 
 **Overview of the Four Factors**
 
@@ -303,7 +303,7 @@ The factorization produces four interpretable factor matrices:
 
 Create visualizations for each of the four factor types::
 
-    from cellcommunicationpf2.figures.commonFuncs.plotFactors import (
+    from cccrise.figures.commonFuncs.plotFactors import (
         plot_condition_factors,
         plot_eigenstate_factors,
         plot_lr_factors
@@ -388,7 +388,7 @@ Create visualizations for each of the four factor types::
 
 Explore how individual cells are positioned in the latent communication space::
 
-    from cellcommunicationpf2.figures.commonFuncs.plotPaCMAP import plot_labels_pacmap
+    from cccrise.figures.commonFuncs.plotPaCMAP import plot_labels_pacmap
     import matplotlib.pyplot as plt
     import seaborn as sns
     
@@ -428,7 +428,7 @@ Once you've identified components of interest, dig deeper into the specific cell
 
 Use specialized plotting functions to visualize component weightings for a specific component::
 
-    from cellcommunicationpf2.figures.commonFuncs.plotPaCMAP import plot_wc_pacmap
+    from cccrise.figures.commonFuncs.plotPaCMAP import plot_wc_pacmap
     import matplotlib.pyplot as plt
     
     # Select component to visualize
@@ -491,7 +491,7 @@ This visualization reveals whether a component is broadly active across all cell
 
 Visualize the most important ligand-receptor pairs for a specific component::
 
-    from cellcommunicationpf2.figures.commonFuncs.plotFactors import plot_lr_factors_partial
+    from cccrise.figures.commonFuncs.plotFactors import plot_lr_factors_partial
     import matplotlib.pyplot as plt
     
     cmp = 6
@@ -517,7 +517,7 @@ Visualize the most important ligand-receptor pairs for a specific component::
 
 Visualize the ligand-receptor expression products between sender and receiver cell populations to validate predicted interactions::
 
-    from cellcommunicationpf2.utils import binned_expression_product_matrix
+    from cccrise.utils import binned_expression_product_matrix
     import numpy as np
     import seaborn as sns
     import matplotlib.pyplot as plt

@@ -1,11 +1,11 @@
 .PHONY: clean test ty profile_cpu manuscript
 
-flist = $(wildcard cellcommunicationpf2/figures/figure*.py)
-allOutput = $(patsubst cellcommunicationpf2/figures/figure%.py, output/figure%.svg, $(flist))
+flist = $(wildcard cccrise/figures/figure*.py)
+allOutput = $(patsubst cccrise/figures/figure%.py, output/figure%.svg, $(flist))
 
 all: $(allOutput)
 
-output/figure%.svg: cellcommunicationpf2/figures/figure%.py
+output/figure%.svg: cccrise/figures/figure%.py
 	@ mkdir -p ./output
 	uv run fbuild $*
 
@@ -24,10 +24,10 @@ test: .venv
 	uv sync
 
 coverage.xml: .venv
-	uv run pytest --junitxml=junit.xml --cov=cellcommunicationpf2 --cov-report xml:coverage.xml
+	uv run pytest --junitxml=junit.xml --cov=cccrise --cov-report xml:coverage.xml
 
 ty: .venv
-	uv run ty check cellcommunicationpf2
+	uv run ty check cccrise
 
 manuscript:
 	quarto render manuscript
