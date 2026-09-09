@@ -1,5 +1,5 @@
 [project]
-name = "cellcommunicationpf2"
+name = "cccrise"
 version = "0.1.0"
 description = "Cell cell communication implementation of PARAFAC2"
 authors = [{name = "Andrew Ramirez", email = "andramirez@ucla.edu" }]
@@ -35,12 +35,12 @@ Repository = "https://github.com/meyer-lab/cellcommunication-Pf2"
 Documentation = "https://meyer-lab.github.io/cellcommunication-Pf2/"
 
 [project.scripts]
-fbuild = "cellcommunicationpf2.figures.common:genFigure"
-factor = "cellcommunicationpf2.imports:factorSave"
+fbuild = "cccrise.figures.common:genFigure"
+factor = "cccrise.imports:factorSave"
 # Runners: produce the result files that figures and the Shiny app consume.
-ccc-rise-run = "cellcommunicationpf2.runners.run_ccc_rise:main"
-ccc-rise-riserank = "cellcommunicationpf2.runners.run_rise_rank:main"
-ccc-rise-cpdrank = "cellcommunicationpf2.runners.run_cpd_rank:main"
+cccrise-run = "cccrise.runners.run_ccc_rise:main"
+cccrise-riserank = "cccrise.runners.run_rise_rank:main"
+cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
