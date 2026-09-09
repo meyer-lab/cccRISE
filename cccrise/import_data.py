@@ -272,6 +272,28 @@ def add_cond_idxs(X, condition_key):
     return X
 
 
+def condition_matrices(X: anndata.AnnData) -> list[np.ndarray]:
+    """Split `X.X` into per-condition, mean-centered dense matrices.
+
+    Centers by `X.var["means"]` (as set by `prepare_dataset`) if present,
+    matching the centering `parafac2_nd` applies internally, so that
+    projecting these matrices with RISE/PARAFAC2 factors is consistent with
+    the fit.
+    """
+    assert X.X is not None
+    X_mat = cast(Any, X.X)
+    sg_index = X.obs["condition_unique_idxs"].to_numpy().astype(int)
+    means = X.var["means"].to_numpy() if "means" in X.var else np.zeros(X_mat.shape[1])
+
+    matrices = []
+    for i in range(int(np.amax(sg_index)) + 1):
+        slice_mat = X_mat[sg_index == i]
+        dense = slice_mat.toarray() if issparse(slice_mat) else np.asarray(slice_mat)
+        matrices.append(dense - means)
+
+    return matrices
+
+
 def prepare_dataset(
     X: anndata.AnnData, condition_name: str, geneThreshold: float, normalize=False
 ) -> anndata.AnnData:

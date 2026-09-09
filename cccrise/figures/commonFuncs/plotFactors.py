@@ -29,7 +29,7 @@ def plot_condition_factors(
     normalize=False,
 ):
     """Plots condition factors"""
-    # Get sample names in the order of condition_unique_idxs (as used by anndata_to_list)
+    # Get sample names in the order of condition_unique_idxs
     idxs = np.argsort(np.unique(data.obs["condition_unique_idxs"]))
     yt = pd.Series(np.unique(data.obs[cond]))[idxs]
 

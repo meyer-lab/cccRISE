@@ -11,9 +11,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from pacmap import PaCMAP
-from parafac2.parafac2 import anndata_to_list
 
-from .import_data import add_cond_idxs
+from .import_data import add_cond_idxs, condition_matrices
 
 DATA_DIR = Path(__file__).parent / "data"
 COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
@@ -253,7 +252,7 @@ def load_factors_to_anndata(
         C_pf2 = factors_ds["pf2_C"].values
 
         # Project matrices per condition
-        X_list = anndata_to_list(out)
+        X_list = condition_matrices(out)
         lhs_all = np.einsum("ik,gk,rk->igr", A_pf2, C_pf2, B_pf2, optimize=True)
 
         sg_index = out.obs["condition_unique_idxs"].values
