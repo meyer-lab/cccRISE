@@ -41,6 +41,7 @@ factor = "cccrise.imports:factorSave"
 cccrise-run = "cccrise.runners.run_ccc_rise:main"
 cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
+cccrise-logregboot = "cccrise.runners.run_logreg_bootstrap:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
