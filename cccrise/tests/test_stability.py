@@ -10,7 +10,7 @@ from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score
 
 from cccrise.ccc import calculate_r2x
-from cccrise.stability import (
+from cccrise.stability.component_stability import (
     CPD_SKIP_MODES,
     PERMUTED_AXIS,
     RISE_SKIP_MODES,

@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from ..stability import (
+from ..stability.component_stability import (
     PERMUTED_AXIS,
     STAGE_CPD,
     STAGE_RISE,

@@ -41,7 +41,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..import_data import import_ligand_receptor_pairs
-from ..stability import (
+from ..stability.component_stability import (
     DEFAULT_AXES,
     PERMUTED_AXIS,
     RISE_REFIT_AXES,

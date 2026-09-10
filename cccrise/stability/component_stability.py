@@ -63,15 +63,15 @@ import pandas as pd
 from scipy.optimize import linear_sum_assignment
 from tensorly.decomposition import parafac
 
-from .ccc import calculate_r2x
-from .ccc_rise import standardize_cc_pf2, validate_cp_rank
-from .import_data import add_cond_idxs
-from .rank_selection import cp_core_consistency, cpd_component_collinearity
-from .tensor import (
+from ..ccc import calculate_r2x
+from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
+from ..import_data import add_cond_idxs
+from ..rank_selection import cp_core_consistency, cpd_component_collinearity
+from ..tensor import (
     calculate_interaction_tensor,
     rise_store_r2x,
 )
-from .utils import resample_cells, resample_conditions, resample_tensor
+from ..utils import resample_cells, resample_conditions, resample_tensor
 
 Factors = list[np.ndarray]
 
