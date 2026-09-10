@@ -171,6 +171,21 @@ def resample_conditions(
     return resampled
 
 
+def resample_tensor(
+    interaction_tensors: np.ndarray,
+    random_seed: int | None = None,
+    return_indices: bool = False,
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+    """Bootstrap the communication tensor's ligand-receptor mode."""
+    rng = np.random.default_rng(random_seed)
+    n_lr = interaction_tensors.shape[-1]
+    indices = rng.choice(n_lr, size=n_lr, replace=True)
+    resampled = interaction_tensors[..., indices]
+    if return_indices:
+        return resampled, indices
+    return resampled
+
+
 def correct_conditions(X: anndata.AnnData) -> np.ndarray:
     """Correct the conditions factors by overall read depth."""
     sgIndex = X.obs["condition_unique_idxs"]

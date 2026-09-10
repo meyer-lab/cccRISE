@@ -146,7 +146,7 @@ Factorization
    :returns: Tuple containing the updated AnnData object with stored results and the R²X value (variance explained).
    :rtype: tuple[anndata.AnnData, float]
 
-.. py:function:: calculate_interaction_tensor(adata: anndata.AnnData, lr_pairs: pd.DataFrame, complex_sep: str = "&")
+.. py:function:: calculate_interaction_tensor(adata: anndata.AnnData, lr_pairs: pd.DataFrame, complex_sep: str | None = "&", communication_score: str = "expression_product", hill_k: float = 0.5)
    :module: cccrise.tensor
 
    Calculate the interaction tensor from an AnnData object that has already been processed with RISE.
@@ -161,6 +161,10 @@ Factorization
    :type lr_pairs: pd.DataFrame
    :param complex_sep: Symbol that separates protein subunits in multimeric complexes (default: "&").
    :type complex_sep: str, optional
+   :param communication_score: Scoring strategy for communication ('expression_product', 'expression_mean', 'expression_gmean', or 'expression_hill').
+   :type communication_score: str, optional
+   :param hill_k: Half-maximal constant when using Hill kinetics scoring (default: 0.5).
+   :type hill_k: float, optional
    :returns: Tuple containing the interaction tensor with dimensions (n_conditions × rise_rank × rise_rank × n_lr_pairs) and the filtered ligand-receptor pairs DataFrame.
    :rtype: tuple[np.ndarray, pd.DataFrame]
 

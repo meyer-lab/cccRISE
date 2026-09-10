@@ -1,4 +1,4 @@
-"""Tests for cellcommunicationpf2.stability."""
+"""Tests for cccrise.stability."""
 
 import anndata
 import numpy as np
@@ -6,23 +6,24 @@ import pandas as pd
 import pytest
 from scipy.sparse import csr_array
 from tensorly.cp_tensor import CPTensor
+from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score
 
-from cccrise.ccc_rise import cp_decomposition
+from cccrise.ccc import calculate_r2x
 from cccrise.stability import (
     CPD_SKIP_MODES,
     PERMUTED_AXIS,
     RISE_SKIP_MODES,
     STAGE_CPD,
     STAGE_RISE,
-    StabilitySpec,
     component_stability,
+    fit_stability_pipeline,
     metric_interval,
     per_component_fms,
     reference_condition_rows,
     summarize_component_stability,
 )
-from cccrise.utils import resample_cells, resample_conditions
+from cccrise.utils import resample_cells, resample_conditions, resample_tensor
 
 RISE_RANK = 3
 CP_RANK = 2
@@ -76,7 +77,7 @@ def _lr_pairs() -> pd.DataFrame:
 from typing import Any
 
 
-def _spec(**overrides: Any) -> StabilitySpec:
+def _pipeline_kwargs(**overrides: Any) -> dict[str, Any]:
     defaults: dict[str, Any] = {
         "condition_column": "sample",
         "rise_rank": RISE_RANK,
@@ -87,24 +88,7 @@ def _spec(**overrides: Any) -> StabilitySpec:
         "init": "random",
         "svd": "randomized_svd",
     }
-    kwargs = {**defaults, **overrides}
-    return StabilitySpec(
-        condition_column=str(kwargs["condition_column"]),
-        rise_rank=int(kwargs["rise_rank"]),
-        cp_rank=int(kwargs["cp_rank"]),
-        group_column=kwargs.get("group_column"),
-        rise_n_iter_max=int(kwargs.get("rise_n_iter_max", 10)),
-        rise_tol=float(kwargs.get("rise_tol", 1e-6)),
-        cp_n_iter_max=int(kwargs.get("cp_n_iter_max", 20)),
-        cp_tol=float(kwargs.get("cp_tol", 1e-3)),
-        init=str(kwargs.get("init", "random")),
-        svd=str(kwargs.get("svd", "randomized_svd")),
-        complex_sep=kwargs.get("complex_sep", "&"),
-        communication_score=str(
-            kwargs.get("communication_score", "expression_product")
-        ),
-        hill_k=float(kwargs.get("hill_k", 0.5)),
-    )
+    return {**defaults, **overrides}
 
 
 # =============================================================================
@@ -300,14 +284,16 @@ def test_resample_conditions_keeps_each_stratum_at_its_original_size():
 def test_component_stability_emits_one_row_per_axis_stage_and_component():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=True)
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
 
     df = component_stability(
-        spec,
         adata,
         reference,
         lr_pairs,
+        **kwargs,
         axes=("cells", "conditions", "lr_pairs", PERMUTED_AXIS),
         n_replicates=2,
         random_state=0,
@@ -329,11 +315,13 @@ def test_component_stability_gives_the_lr_pairs_axis_no_rise_rows():
     so there is nothing to say about RISE components on that axis."""
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=True)
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
 
     df = component_stability(
-        spec, adata, reference, lr_pairs, axes=("lr_pairs",), n_replicates=1
+        adata, reference, lr_pairs, **kwargs, axes=("lr_pairs",), n_replicates=1
     )
 
     assert set(df["Stage"]) == {STAGE_CPD}
@@ -344,14 +332,16 @@ def test_component_stability_shares_one_seed_between_a_replicates_two_stages():
     describe the same resampled dataset, not two independent draws."""
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=True)
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
 
     df = component_stability(
-        spec,
         adata,
         reference,
         lr_pairs,
+        **kwargs,
         axes=("cells",),
         n_replicates=2,
         random_state=7,
@@ -365,12 +355,14 @@ def test_component_stability_shares_one_seed_between_a_replicates_two_stages():
 def test_component_stability_is_reproducible_from_its_random_state():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=True)
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
 
-    kwargs = {"axes": ("cells",), "n_replicates": 1, "random_state": 0}
-    a = component_stability(spec, adata, reference, lr_pairs, **kwargs)
-    b = component_stability(spec, adata, reference, lr_pairs, **kwargs)
+    run_kwargs = {"axes": ("cells",), "n_replicates": 1, "random_state": 0}
+    a = component_stability(adata, reference, lr_pairs, **kwargs, **run_kwargs)
+    b = component_stability(adata, reference, lr_pairs, **kwargs, **run_kwargs)
 
     pd.testing.assert_frame_equal(a, b)
 
@@ -380,11 +372,13 @@ def test_component_stability_carries_the_per_replicate_fit_diagnostics():
     distinguishable from genuine component instability."""
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=True)
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
 
     df = component_stability(
-        spec, adata, reference, lr_pairs, axes=("cells",), n_replicates=1
+        adata, reference, lr_pairs, **kwargs, axes=("cells",), n_replicates=1
     )
 
     cpd = df[df["Stage"] == STAGE_CPD]
@@ -402,24 +396,28 @@ def test_component_stability_carries_the_per_replicate_fit_diagnostics():
 def test_component_stability_rejects_an_unknown_axis():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=True)
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
 
     with pytest.raises(ValueError, match="Unknown stability axes"):
         component_stability(
-            spec, adata, reference, lr_pairs, axes=("genes",), n_replicates=1
+            adata, reference, lr_pairs, **kwargs, axes=("genes",), n_replicates=1
         )
 
 
 def test_component_stability_requires_a_retained_tensor_for_tensor_only_axes():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=False)
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=False
+    )
 
     with pytest.raises(ValueError, match="keep_tensor=True"):
         component_stability(
-            spec, adata, reference, lr_pairs, axes=("lr_pairs",), n_replicates=1
+            adata, reference, lr_pairs, **kwargs, axes=("lr_pairs",), n_replicates=1
         )
 
 
@@ -428,26 +426,30 @@ def test_component_stability_rejects_a_replicate_with_a_different_lr_roster():
     up different interactions row by row and return a plausible number."""
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=True)
-    shortened = reference._replace(lr_symbols=reference.lr_symbols[:-1])
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
+    shortened = {**reference, "lr_symbols": reference["lr_symbols"][:-1]}
 
     with pytest.raises(ValueError, match="different ligand-receptor"):
         component_stability(
-            spec, adata, shortened, lr_pairs, axes=("cells",), n_replicates=1
+            adata, shortened, lr_pairs, **kwargs, axes=("cells",), n_replicates=1
         )
 
 
 def test_component_stability_rejects_a_replicate_with_a_different_gene_roster():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=True)
-    shortened = reference._replace(gene_names=reference.gene_names[:-1])
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
+    shortened = {**reference, "gene_names": reference["gene_names"][:-1]}
 
     with pytest.raises(ValueError, match="different genes"):
         component_stability(
-            spec, adata, shortened, lr_pairs, axes=("cells",), n_replicates=1
+            adata, shortened, lr_pairs, **kwargs, axes=("cells",), n_replicates=1
         )
 
 
@@ -458,11 +460,13 @@ def test_component_stability_holds_out_expected_modes():
 
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
-    spec = _spec()
-    reference = spec.fit(adata.copy(), lr_pairs, random_state=0, keep_tensor=True)
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
 
     df = component_stability(
-        spec, adata, reference, lr_pairs, axes=("cells",), n_replicates=1
+        adata, reference, lr_pairs, **kwargs, axes=("cells",), n_replicates=1
     )
 
     rise = df[df["Stage"] == STAGE_RISE]
@@ -482,21 +486,31 @@ def test_component_stability_holds_out_expected_modes():
 # =============================================================================
 
 
-def test_cp_decomposition_supports_randomized_svd():
+def test_parafac_supports_randomized_svd():
     rng = np.random.default_rng(4)
     tensor = np.abs(rng.random((6, 5, 5, 20)))
-    w, f, r2x = cp_decomposition(
+    w, f = parafac(
         tensor,
-        cp_rank=2,
+        rank=2,
         n_iter_max=50,
         tol=1e-6,
         init="svd",
         svd="randomized_svd",
         random_state=42,
     )
+    r2x = calculate_r2x(w, f, tensor)
     assert w.shape == (2,)
     assert len(f) == 4
     assert 0.0 <= r2x <= 1.0
+
+
+def test_resample_tensor():
+    rng = np.random.default_rng(0)
+    tensor = rng.random((3, 4, 4, 10))
+    resampled, indices = resample_tensor(tensor, random_seed=42, return_indices=True)
+    assert resampled.shape == tensor.shape
+    assert len(indices) == 10
+    np.testing.assert_allclose(resampled, tensor[..., indices])
 
 
 def test_metric_interval_averages_replicate_rows_before_taking_the_band():

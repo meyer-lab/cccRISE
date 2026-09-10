@@ -55,23 +55,23 @@ Row Alignment
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any, NamedTuple, cast
+from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
 from scipy.optimize import linear_sum_assignment
+from tensorly.decomposition import parafac
 
-from .ccc_rise import cp_decomposition, standardize_cc_pf2, validate_cp_rank
+from .ccc import calculate_r2x
+from .ccc_rise import standardize_cc_pf2, validate_cp_rank
 from .import_data import add_cond_idxs
 from .rank_selection import cp_core_consistency, cpd_component_collinearity
 from .tensor import (
     calculate_interaction_tensor,
-    resample_tensor,
     rise_store_r2x,
 )
-from .utils import resample_cells, resample_conditions
+from .utils import resample_cells, resample_conditions, resample_tensor
 
 Factors = list[np.ndarray]
 
@@ -196,7 +196,7 @@ def per_component_fms(
             "RunnerUpFMS": runner_up_fms,
         }
     )
-    for mode in range(n_modes):
+    for mode in range(max(n_modes, 4)):
         out[f"SignedCosMode{mode}"] = (
             signed[mode][row_ind, col_ind] if mode in signed else np.nan
         )
@@ -265,165 +265,107 @@ def _expand_reference_mode(factors: Factors, mode: int, rows: np.ndarray) -> Fac
 # =============================================================================
 
 
-class StabilityFit(NamedTuple):
-    """One pass of the pipeline: the RISE fit, the tensor, and the CP fit.
+def fit_stability_pipeline(
+    adata: anndata.AnnData,
+    lr_pairs: pd.DataFrame,
+    condition_column: str,
+    rise_rank: int,
+    cp_rank: int,
+    group_column: str | None = None,
+    rise_n_iter_max: int = 100,
+    rise_tol: float = 1e-6,
+    cp_n_iter_max: int = 100,
+    cp_tol: float = 1e-3,
+    init: str = "svd",
+    svd: str = "randomized_svd",
+    complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    random_state: int = 0,
+    keep_tensor: bool = False,
+) -> dict[str, Any]:
+    """Run RISE, build the communication tensor, and fit CP over `adata`.
 
-    Attributes
+    `adata` is written into by `parafac2.store_pf2`, so callers must hand
+    over a copy they do not need pristine -- which is what the resamplers
+    return.
+
+    Parameters
     ----------
-    rise_factors : list[np.ndarray]
-        ``[A, B, C]`` from `tensor.rise_store_r2x`.
-    cp_weights, cp_factors
-        CP fit after `ccc_rise.standardize_cc_pf2`, so the reference's
-        component numbering is the one the manuscript figures cite.
-    condition_labels : np.ndarray
-        Sorted unique condition labels, aligned to the rows of `A` and `G`.
-    gene_names : np.ndarray
-        Aligned to the rows of `C`.
-    lr_symbols : np.ndarray
-        Aligned to the rows of `F`.
-    tensor : np.ndarray | None
-        The communication tensor, retained only where a later step needs it
-        (the reference pass, for the tensor-only axes). Replicates drop it
-        immediately -- it is the largest object in the loop.
-    r2x_rise, r2x_cp : float
-        Reconstruction quality of the two fits.
-    cpd_diagnostics : dict[str, Any]
-        Core consistency and the collinearity screen at `cp_rank`, computed
-        while the tensor is still in hand so it need not be retained; see
-        `_cpd_diagnostics`.
-    """
-
-    rise_factors: Factors
-    cp_weights: np.ndarray
-    cp_factors: Factors
-    condition_labels: np.ndarray
-    gene_names: np.ndarray
-    lr_symbols: np.ndarray
-    tensor: np.ndarray | None
-    r2x_rise: float
-    r2x_cp: float
-    cpd_diagnostics: dict[str, Any]
-
-
-@dataclass(frozen=True)
-class StabilitySpec:
-    """The pipeline configuration a stability run holds fixed across replicates.
-
-    Bundled rather than threaded through call by call because the reference
-    fit and every replicate have to agree on all of it: differing ranks or a
-    differing communication score would make their components incomparable,
-    which is the one thing this analysis cannot tolerate.
-
-    Attributes
-    ----------
+    adata : anndata.AnnData
+        Data to fit: the full cohort for the reference pass, a resampled
+        copy for a replicate.
+    lr_pairs : pd.DataFrame
+        Ligand-receptor pairs to score.
     condition_column : str
         Column in `obs` holding the condition (patient) identity.
     rise_rank, cp_rank : int
-        The already-selected ranks this analysis is conditional on.
-    group_column : str | None
-        Condition-level phenotype column the condition draw is stratified
-        within; see `utils.resample_conditions`.
-    rise_n_iter_max, rise_tol, cp_n_iter_max, cp_tol, init, svd
-        Fitting controls for the two stages.
+        Ranks for the RISE and CP stages.
+    rise_n_iter_max, rise_tol : int, float
+        Fitting controls for RISE.
+    cp_n_iter_max, cp_tol, init, svd
+        Fitting controls for CP.
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
+    random_state : int, default=0
+        Seed for the RISE fit and the CP fit.
+    keep_tensor : bool, default=False
+        Retain the communication tensor on the returned fit. Only the
+        reference pass needs it.
+
+    Returns
+    -------
+    dict[str, Any]
+        Fitted factors, diagnostics, and metadata.
     """
+    adata = add_cond_idxs(adata, condition_column)
+    adata, r2x_rise = rise_store_r2x(
+        adata,
+        rank=rise_rank,
+        n_iter_max=rise_n_iter_max,
+        tolerance=rise_tol,
+        random_state=random_state,
+    )
+    tensor, filtered_lr_pairs = calculate_interaction_tensor(
+        adata,
+        lr_pairs,
+        complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
+    )
+    validate_cp_rank(cp_rank, tensor.shape)
 
-    condition_column: str
-    rise_rank: int
-    cp_rank: int
-    group_column: str | None = None
-    rise_n_iter_max: int = 100
-    rise_tol: float = 1e-6
-    cp_n_iter_max: int = 100
-    cp_tol: float = 1e-3
-    init: str = "svd"
-    svd: str = "randomized_svd"
-    complex_sep: str | None = "&"
-    communication_score: str = "expression_product"
-    hill_k: float = 0.5
+    cp_weights, cp_factors = parafac(
+        tensor,
+        cp_rank,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
+        init=init,
+        svd=svd,
+        normalize_factors=True,
+        random_state=random_state,
+    )
+    r2x_cp = calculate_r2x(cp_weights, cp_factors, tensor)
+    cp_weights, cp_factors = standardize_cc_pf2(cp_weights, cp_factors)
 
-    def fit(
-        self,
-        adata: anndata.AnnData,
-        lr_pairs: pd.DataFrame,
-        random_state: int = 0,
-        keep_tensor: bool = False,
-    ) -> StabilityFit:
-        """Run RISE, build the communication tensor, and fit CP over `adata`.
-
-        `adata` is written into by `parafac2.store_pf2`, so callers must hand
-        over a copy they do not need pristine -- which is what the resamplers
-        return.
-
-        Parameters
-        ----------
-        adata : anndata.AnnData
-            Data to fit: the full cohort for the reference pass, a resampled
-            copy for a replicate.
-        lr_pairs : pd.DataFrame
-            Ligand-receptor pairs to score.
-        random_state : int, default=0
-            Seed for the RISE fit and the CP fit.
-        keep_tensor : bool, default=False
-            Retain the communication tensor on the returned fit. Only the
-            reference pass needs it.
-
-        Returns
-        -------
-        StabilityFit
-        """
-        adata = add_cond_idxs(adata, self.condition_column)
-        adata, r2x_rise = rise_store_r2x(
-            adata,
-            rank=self.rise_rank,
-            n_iter_max=self.rise_n_iter_max,
-            tolerance=self.rise_tol,
-            random_state=random_state,
-        )
-        tensor, filtered_lr_pairs = calculate_interaction_tensor(
-            adata,
-            lr_pairs,
-            complex_sep=self.complex_sep,
-            communication_score=self.communication_score,
-            hill_k=self.hill_k,
-        )
-        # Checked on every replicate, not just the reference: a shrunken
-        # condition mode would otherwise drop tensorly into a full-unfolding
-        # SVD rather than failing.
-        validate_cp_rank(self.cp_rank, tensor.shape)
-
-        cp_weights, cp_factors, r2x_cp = cp_decomposition(
-            tensor,
-            self.cp_rank,
-            n_iter_max=self.cp_n_iter_max,
-            tol=self.cp_tol,
-            init=self.init,
-            svd=self.svd,
-            random_state=random_state,
-        )
-        cp_weights, cp_factors = standardize_cc_pf2(cp_weights, cp_factors)
-
-        return StabilityFit(
-            rise_factors=[
-                adata.uns["Pf2_A"],
-                adata.uns["Pf2_B"],
-                np.asarray(adata.varm["Pf2_C"]),
-            ],
-            cp_weights=cp_weights,
-            cp_factors=cp_factors,
-            condition_labels=np.unique(
-                np.asarray(adata.obs[self.condition_column]).astype(str)
-            ),
-            gene_names=np.asarray(adata.var_names),
-            lr_symbols=filtered_lr_pairs["interaction_symbol"].to_numpy(),
-            tensor=tensor if keep_tensor else None,
-            r2x_rise=r2x_rise,
-            r2x_cp=r2x_cp,
-            cpd_diagnostics=_cpd_diagnostics(
-                tensor, cp_weights, cp_factors, self.cp_rank
-            ),
-        )
+    return {
+        "rise_factors": [
+            adata.uns["Pf2_A"],
+            adata.uns["Pf2_B"],
+            np.asarray(adata.varm["Pf2_C"]),
+        ],
+        "cp_weights": cp_weights,
+        "cp_factors": cp_factors,
+        "condition_labels": np.unique(
+            np.asarray(adata.obs[condition_column]).astype(str)
+        ),
+        "gene_names": np.asarray(adata.var_names),
+        "lr_symbols": filtered_lr_pairs["interaction_symbol"].to_numpy(),
+        "tensor": tensor if keep_tensor else None,
+        "r2x_rise": r2x_rise,
+        "r2x_cp": r2x_cp,
+        "cpd_diagnostics": _cpd_diagnostics(tensor, cp_weights, cp_factors, cp_rank),
+    }
 
 
 # =============================================================================
@@ -490,21 +432,33 @@ def _tag(
 
 
 def component_stability(
-    spec: StabilitySpec,
     adata: anndata.AnnData,
-    reference: StabilityFit,
+    reference: dict[str, Any],
     lr_pairs: pd.DataFrame,
+    condition_column: str,
+    rise_rank: int,
+    cp_rank: int,
+    group_column: str | None = None,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
+    rise_n_iter_max: int = 100,
+    rise_tol: float = 1e-6,
+    cp_n_iter_max: int = 100,
+    cp_tol: float = 1e-3,
+    init: str = "svd",
+    svd: str = "randomized_svd",
+    complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
     random_state: int = 0,
 ) -> pd.DataFrame:
     """Per-component stability of both stages under resampling, in long form.
 
     For each cohort axis ('cells', 'conditions') a replicate resamples the
-    data, refits RISE at `spec.rise_rank`, and matches the resulting components
+    data, refits RISE at `rise_rank`, and matches the resulting components
     onto the reference's with Mode 1 held out (`RISE_SKIP_MODES`); the
     communication tensor built from that same fit is then decomposed at
-    `spec.cp_rank` and matched in turn with Modes 1 and 2 held out
+    `cp_rank` and matched in turn with Modes 1 and 2 held out
     (`CPD_SKIP_MODES`).
 
     Two axes act on the reference tensor instead:
@@ -517,18 +471,28 @@ def component_stability(
 
     Parameters
     ----------
-    spec : StabilitySpec
-        Configuration shared with the reference pass.
     adata : anndata.AnnData
         Full-cohort data to resample from.
-    reference : StabilityFit
-        The full-cohort fit, produced by ``spec.fit(..., keep_tensor=True)``.
+    reference : dict[str, Any]
+        The full-cohort fit, produced by ``fit_stability_pipeline(..., keep_tensor=True)``.
     lr_pairs : pd.DataFrame
         Ligand-receptor pairs to score.
+    condition_column : str
+        Column in `obs` holding the condition (patient) identity.
+    rise_rank, cp_rank : int
+        Ranks for the RISE and CP stages.
+    group_column : str | None, default=None
+        Condition-level phenotype column the condition draw is stratified within.
     axes : tuple[str, ...], default=DEFAULT_AXES
         Which axes to run.
     n_replicates : int, default=20
         Replicates per axis.
+    rise_n_iter_max, rise_tol : int, float
+        Fitting controls for RISE.
+    cp_n_iter_max, cp_tol, init, svd
+        Fitting controls for CP.
+    complex_sep, communication_score, hill_k
+        Communication-tensor options.
     random_state : int, default=0
         Base seed.
 
@@ -541,7 +505,7 @@ def component_stability(
     unknown = set(axes) - set(RISE_REFIT_AXES) - {"lr_pairs", PERMUTED_AXIS}
     if unknown:
         raise ValueError(f"Unknown stability axes: {sorted(unknown)}")
-    if reference.tensor is None and ({"lr_pairs", PERMUTED_AXIS} & set(axes)):
+    if reference.get("tensor") is None and ({"lr_pairs", PERMUTED_AXIS} & set(axes)):
         raise ValueError(
             "The 'lr_pairs' and 'permuted' axes resample the reference "
             "tensor, so the reference fit must be built with keep_tensor=True."
@@ -554,42 +518,58 @@ def component_stability(
 
             if axis in RISE_REFIT_AXES:
                 resampled = RESAMPLERS[axis](
-                    adata, spec.condition_column, spec.group_column, seed
+                    adata, condition_column, group_column, seed
                 )
                 print(
                     f"   {axis} replicate {replicate + 1}/{n_replicates}: "
                     f"{resampled.n_obs:,} cells, "
-                    f"{resampled.obs[spec.condition_column].nunique()} conditions"
+                    f"{resampled.obs[condition_column].nunique()} conditions"
                 )
-                fit = spec.fit(resampled, lr_pairs, random_state=seed)
+                fit = fit_stability_pipeline(
+                    resampled,
+                    lr_pairs,
+                    condition_column=condition_column,
+                    rise_rank=rise_rank,
+                    cp_rank=cp_rank,
+                    rise_n_iter_max=rise_n_iter_max,
+                    rise_tol=rise_tol,
+                    cp_n_iter_max=cp_n_iter_max,
+                    cp_tol=cp_tol,
+                    init=init,
+                    svd=svd,
+                    complex_sep=complex_sep,
+                    communication_score=communication_score,
+                    hill_k=hill_k,
+                    random_state=seed,
+                )
                 _check_rosters(reference, fit)
 
                 if axis == "conditions":
                     rows = reference_condition_rows(
-                        reference.condition_labels, fit.condition_labels
+                        reference["condition_labels"], fit["condition_labels"]
                     )
                     ref_rise = _expand_reference_mode(
-                        reference.rise_factors, mode=0, rows=rows
+                        reference["rise_factors"], mode=0, rows=rows
                     )
                     ref_cp = _expand_reference_mode(
-                        reference.cp_factors, mode=0, rows=rows
+                        reference["cp_factors"], mode=0, rows=rows
                     )
                 else:
-                    ref_rise = reference.rise_factors
-                    ref_cp = reference.cp_factors
+                    ref_rise = reference["rise_factors"]
+                    ref_cp = reference["cp_factors"]
 
                 n_cells = float(resampled.n_obs)
-                n_conditions = float(len(fit.condition_labels))
+                n_conditions = float(len(fit["condition_labels"]))
                 frames.append(
                     _tag(
                         per_component_fms(
-                            ref_rise, fit.rise_factors, skip_modes=RISE_SKIP_MODES
+                            ref_rise, fit["rise_factors"], skip_modes=RISE_SKIP_MODES
                         ),
                         axis=axis,
                         replicate=replicate,
                         seed=seed,
                         stage=STAGE_RISE,
-                        r2x=fit.r2x_rise,
+                        r2x=fit["r2x_rise"],
                         n_cells=n_cells,
                         n_conditions=n_conditions,
                     )
@@ -597,45 +577,47 @@ def component_stability(
                 frames.append(
                     _tag(
                         per_component_fms(
-                            ref_cp, fit.cp_factors, skip_modes=CPD_SKIP_MODES
+                            ref_cp, fit["cp_factors"], skip_modes=CPD_SKIP_MODES
                         ),
                         axis=axis,
                         replicate=replicate,
                         seed=seed,
                         stage=STAGE_CPD,
-                        r2x=fit.r2x_cp,
+                        r2x=fit["r2x_cp"],
                         n_cells=n_cells,
                         n_conditions=n_conditions,
-                        diagnostics=fit.cpd_diagnostics,
+                        diagnostics=fit["cpd_diagnostics"],
                     )
                 )
                 continue
 
-            tensor = cast(np.ndarray, reference.tensor)
+            tensor = cast(np.ndarray, reference["tensor"])
             if axis == "lr_pairs":
                 perturbed, lr_indices = resample_tensor(
                     tensor, random_seed=seed, return_indices=True
                 )
                 ref_cp = _expand_reference_mode(
-                    reference.cp_factors, mode=3, rows=lr_indices
+                    reference["cp_factors"], mode=3, rows=lr_indices
                 )
             else:
                 rng = np.random.default_rng(seed)
                 perturbed = rng.permutation(tensor.ravel()).reshape(tensor.shape)
-                ref_cp = reference.cp_factors
+                ref_cp = reference["cp_factors"]
             print(f"   {axis} replicate {replicate + 1}/{n_replicates}")
 
-            weights, factors, r2x = cp_decomposition(
+            weights, factors = parafac(
                 perturbed,
-                spec.cp_rank,
-                n_iter_max=spec.cp_n_iter_max,
-                tol=spec.cp_tol,
-                init=spec.init,
-                svd=spec.svd,
+                cp_rank,
+                n_iter_max=cp_n_iter_max,
+                tol=cp_tol,
+                init=init,
+                svd=svd,
+                normalize_factors=True,
                 random_state=seed,
             )
+            r2x = calculate_r2x(weights, factors, perturbed)
             weights, factors = standardize_cc_pf2(weights, factors)
-            diagnostics = _cpd_diagnostics(perturbed, weights, factors, spec.cp_rank)
+            diagnostics = _cpd_diagnostics(perturbed, weights, factors, cp_rank)
             frames.append(
                 _tag(
                     per_component_fms(ref_cp, factors, skip_modes=CPD_SKIP_MODES),
@@ -653,7 +635,7 @@ def component_stability(
     return pd.concat(frames, ignore_index=True)
 
 
-def _check_rosters(reference: StabilityFit, fit: StabilityFit) -> None:
+def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
     """Refuse to compare two fits whose gene or LR-pair modes differ.
 
     Both rosters are fixed in practice -- gene filtering happens in the loader
@@ -665,12 +647,12 @@ def _check_rosters(reference: StabilityFit, fit: StabilityFit) -> None:
     and intersecting would change the mode length and so the FMS scale
     invisibly.
     """
-    if not np.array_equal(fit.gene_names, reference.gene_names):
+    if not np.array_equal(fit["gene_names"], reference["gene_names"]):
         raise ValueError(
             "Replicate and reference fits retained different genes, so their "
             "RISE gene-factor rows are not comparable."
         )
-    if not np.array_equal(fit.lr_symbols, reference.lr_symbols):
+    if not np.array_equal(fit["lr_symbols"], reference["lr_symbols"]):
         raise ValueError(
             "Replicate and reference fits retained different ligand-receptor "
             "pairs, so their CP ligand-receptor factor rows are not "

@@ -1,13 +1,13 @@
 """
 Figure for per-component RISE and CPD stability at fixed ranks.
 
-Plots the resampling replicates produced by ``uv run ccc-rise-stability``; run
+Plots the resampling replicates produced by ``uv run cccrise-stability``; run
 that first. Panels a and b are the primary reading -- the manuscript's
 conclusions rest on a handful of named components, not on a mean -- with the
 aggregate FMS the Methods define in panel c and the match-ambiguity diagnostic
 in panel d.
 
-    uv run ccc-rise-stability --dataset alad --rise-rank 25 --cp-rank 4 \
+    uv run cccrise-stability --dataset alad --rise-rank 25 --cp-rank 4 \
         --n-replicates 20 --axes cells,conditions,lr_pairs,permuted
 """
 
@@ -55,7 +55,7 @@ def plot_per_component_fms(
     Parameters
     ----------
     df : pd.DataFrame
-        Long stability table from `ccc-rise-stability`.
+        Long stability table from `cccrise-stability`.
     ax : plt.Axes
         Matplotlib axis to plot onto.
     stage : str
@@ -153,8 +153,7 @@ def plot_match_ambiguity(
     apart from another component, so its FMS says more about CP
     identifiability than about the data.
     """
-    observed = df[df["Axis"] != PERMUTED_AXIS]
-    summary = summarize_component_stability(observed)
+    summary = summarize_component_stability(df)
 
     ax.plot([0, 1], [0, 1], color="grey", linestyle="--", linewidth=0.8)
     for stage, marker in ((STAGE_RISE, "o"), (STAGE_CPD, "s")):

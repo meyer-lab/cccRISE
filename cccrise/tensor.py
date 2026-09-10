@@ -19,22 +19,7 @@ from .ccc_rise import (
     standardize_cc_pf2,
 )
 from .import_data import add_cond_idxs, condition_matrices, import_ligand_receptor_pairs
-from .utils import pseudobulk_X
-
-
-def resample_tensor(
-    interaction_tensors: np.ndarray,
-    random_seed: int | None = None,
-    return_indices: bool = False,
-) -> Any:
-    """Bootstrap the communication tensor's ligand-receptor mode."""
-    rng = np.random.default_rng(random_seed)
-    n_lr = interaction_tensors.shape[-1]
-    indices = rng.choice(n_lr, size=n_lr, replace=True)
-    resampled = interaction_tensors[..., indices]
-    if return_indices:
-        return resampled, indices
-    return resampled
+from .utils import pseudobulk_X, resample_tensor
 
 
 def rise_store_r2x(
