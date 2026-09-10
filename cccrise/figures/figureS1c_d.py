@@ -15,7 +15,7 @@ def makeFigure():
     X = get_covid_data(project_cells=True)
     lr_pairs = import_ligand_receptor_pairs()
 
-    interaction_tensor = calculate_interaction_tensor(X, lr_pairs)
+    interaction_tensor, _ = calculate_interaction_tensor(X, lr_pairs)
     df = run_fms_r2x_analysis(
         interaction_tensor, rank_list=list(range(1, 11)), runs=3, svd_init="random"
     )

@@ -728,7 +728,8 @@ def ccc_rise(
         cp_rank,
         n_iter_max=n_iter_max,
         tol=tol,
-        init=svd_init,  # Use random initialization
+        init=svd_init,  # Use initialization
+        svd="randomized_svd",
         normalize_factors=True,
         random_state=random_state,
     )
@@ -861,6 +862,31 @@ def calc_communication_score_pseudobulk(
     return interaction_tensor, filtered_lr_pairs
 
 
+def cp_decomposition(
+    interaction_tensors: np.ndarray,
+    cp_rank: int,
+    n_iter_max: int = 1000,
+    tol: float = 1e-9,
+    init: str = "svd",
+    svd: str = "randomized_svd",
+    random_state: int | None = None,
+) -> tuple[np.ndarray, list[np.ndarray], float]:
+    """Perform CP decomposition on the interaction tensor."""
+    validate_cp_rank(cp_rank, interaction_tensors.shape)
+    cp_weights, cp_factors = parafac(
+        interaction_tensors,
+        cp_rank,
+        n_iter_max=n_iter_max,
+        tol=tol,
+        init=init,
+        svd=svd,
+        normalize_factors=True,
+        random_state=random_state,
+    )
+    r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensors)
+    return cp_weights, cp_factors, r2x
+
+
 def pseudobulk_cp_decomposition(
     interaction_tensors: np.ndarray,
     cp_rank: int,
@@ -894,6 +920,7 @@ def pseudobulk_cp_decomposition(
         n_iter_max=n_iter_max,
         tol=tol,
         init="svd",  # Use SVD initialization
+        svd="randomized_svd",
         normalize_factors=True,
         random_state=random_state,
     )

@@ -161,8 +161,8 @@ Factorization
    :type lr_pairs: pd.DataFrame
    :param complex_sep: Symbol that separates protein subunits in multimeric complexes (default: "&").
    :type complex_sep: str, optional
-   :returns: Interaction tensor with dimensions (n_conditions × rise_rank × rise_rank × n_lr_pairs).
-   :rtype: np.ndarray
+   :returns: Tuple containing the interaction tensor with dimensions (n_conditions × rise_rank × rise_rank × n_lr_pairs) and the filtered ligand-receptor pairs DataFrame.
+   :rtype: tuple[np.ndarray, pd.DataFrame]
 
 .. py:function:: run_fms_r2x_analysis(interaction_tensor: np.ndarray, rank_list: list[int] = None, runs: int = 1, svd_init: str = "svd")
    :module: cccrise.tensor

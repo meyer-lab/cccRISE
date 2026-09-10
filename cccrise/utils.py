@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, cast
 
 import anndata
@@ -31,6 +32,143 @@ def resample(
     resampled_data = data[resampled_indices].copy()
     resampled_data.obs_names_make_unique()
     return resampled_data
+
+
+def resample_cells(
+    data: anndata.AnnData,
+    condition_name: str,
+    random_seed: int | None = None,
+) -> anndata.AnnData:
+    """Bootstrap cells with replacement within each condition.
+
+    Probes robustness to which cells were captured and to sequencing depth,
+    holding the cohort itself fixed. Use `resample_conditions` for the
+    complementary question of robustness to cohort composition.
+
+    Supersedes `resample`, which draws the same way but seeds the global
+    `np.random` state -- perturbing every other draw in the process -- and
+    leaves `var["means"]` describing the original cells. That column is
+    load-bearing twice over: `parafac2.anndata_to_list` centers each condition
+    slice with it before the RISE fit, and `ccc_rise.calc_communication_score`
+    adds it back to un-center the projected matrices before scoring. A stale
+    column therefore biases both stages of the pipeline in correlated
+    directions, which would surface as instability that is really just
+    mis-centering. `resample` is kept for the existing FMS figures that cite
+    its numbers.
+
+    Parameters
+    ----------
+    data : anndata.AnnData
+        Single-cell expression data to resample.
+    condition_name : str
+        Column in `data.obs` identifying the condition (patient) to draw
+        within. Each condition keeps its original cell count.
+    random_seed : int | None, optional
+        Seed for the draw. None leaves it unseeded.
+
+    Returns
+    -------
+    anndata.AnnData
+        A copy holding the drawn cells, with `var["means"]` recomputed over
+        them.
+    """
+    rng = np.random.default_rng(random_seed)
+
+    drawn = []
+    for sample in data.obs[condition_name].unique():
+        cell_indices = np.where(data.obs[condition_name] == sample)[0]
+        drawn.append(rng.choice(cell_indices, size=cell_indices.size, replace=True))
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Observation names are not unique")
+        resampled = data[np.concatenate(drawn)].copy()
+    resampled.obs_names_make_unique()
+    resampled.var["means"] = np.asarray(cast(Any, resampled.X).mean(axis=0)).ravel()
+    return resampled
+
+
+def resample_conditions(
+    data: anndata.AnnData,
+    condition_name: str,
+    stratify_by: str | None = None,
+    random_seed: int | None = None,
+) -> anndata.AnnData:
+    """Bootstrap whole conditions (patients) with replacement, keeping every
+    cell of a drawn condition.
+
+    Complements `resample_cells`, which resamples cells *within* each condition
+    and so holds the patient roster fixed. Here the roster itself is the
+    resampled unit, which is what a bootstrap of a condition-mode result -- a
+    per-patient factor, or a model fit on one -- requires: the sampling
+    variability being estimated is variability in which patients were enrolled.
+
+    A condition drawn more than once is relabeled (``<label>__rep2``, ...) so
+    stages keying on `condition_name` -- `import_data.add_cond_idxs`, and
+    through it RISE's per-condition slicing -- treat repeat draws as separate
+    conditions instead of merging their cells into one oversized slice.
+
+    Parameters
+    ----------
+    data : anndata.AnnData
+        Single-cell expression data to resample.
+    condition_name : str
+        Column in `data.obs` identifying the condition (patient) to draw.
+    stratify_by : str | None, optional
+        Column in `data.obs` that is constant within a condition, typically a
+        group or outcome label. When given, conditions are drawn with
+        replacement *within* each stratum, so every stratum keeps exactly its
+        original condition count. Without it, a uniform draw on a small cohort
+        can return a replicate whose groups are badly imbalanced, or that has
+        lost a group entirely -- which changes what the condition factor can
+        express, and would register as instability caused by the draw rather
+        than by the cohort.
+    random_seed : int | None, optional
+        Seed for the draw. None leaves it unseeded.
+
+    Returns
+    -------
+    anndata.AnnData
+        A copy holding the drawn conditions' cells, with `condition_name`
+        relabeled per draw and `var["means"]` recomputed over the resampled
+        cells -- see `resample_cells` for why that column has to be refreshed.
+    """
+    rng = np.random.default_rng(random_seed)
+    obs = cast(pd.DataFrame, data.obs)
+    labels = obs[condition_name].to_numpy().astype(str)
+
+    if stratify_by is None:
+        conditions = np.unique(labels)
+        drawn = rng.choice(conditions, size=conditions.size, replace=True)
+    else:
+        strata = (
+            pd.DataFrame({condition_name: labels, stratify_by: obs[stratify_by].values})
+            .drop_duplicates(condition_name)
+            .set_index(condition_name)[stratify_by]
+        )
+        drawn = np.concatenate(
+            [
+                rng.choice(members.index.to_numpy(), size=len(members), replace=True)
+                for _, members in strata.groupby(strata, observed=True)
+            ]
+        )
+
+    cells_of = {cond: np.flatnonzero(labels == cond) for cond in np.unique(labels)}
+    draws_so_far: dict[str, int] = {}
+    cell_indices, new_labels = [], []
+    for cond in drawn:
+        draws_so_far[cond] = draws_so_far.get(cond, 0) + 1
+        cells = cells_of[cond]
+        suffix = "" if draws_so_far[cond] == 1 else f"__rep{draws_so_far[cond]}"
+        cell_indices.append(cells)
+        new_labels.append(np.full(cells.size, f"{cond}{suffix}"))
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Observation names are not unique")
+        resampled = data[np.concatenate(cell_indices)].copy()
+    resampled.obs[condition_name] = np.concatenate(new_labels)
+    resampled.obs_names_make_unique()
+    resampled.var["means"] = np.asarray(cast(Any, resampled.X).mean(axis=0)).ravel()
+    return resampled
 
 
 def correct_conditions(X: anndata.AnnData) -> np.ndarray:

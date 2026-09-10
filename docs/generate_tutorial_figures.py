@@ -85,7 +85,7 @@ rise_rank_for_cpd = 35
 # Process with RISE and calculate interaction tensor
 print(f"Fitting RISE with rank={rise_rank_for_cpd} and building interaction tensor...")
 X, _ = rise_store_r2x(X, rank=rise_rank_for_cpd, n_iter_max=1000, tolerance=1e-9)
-interaction_tensor = calculate_interaction_tensor(X, lr_pairs)
+interaction_tensor, _ = calculate_interaction_tensor(X, lr_pairs)
 print(f"Interaction tensor shape: {interaction_tensor.shape}")
 
 # Run actual CPD FMS/R2X analysis
