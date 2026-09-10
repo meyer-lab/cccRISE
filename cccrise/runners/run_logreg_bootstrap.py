@@ -26,9 +26,9 @@ from pathlib import Path
 import pandas as pd
 
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
-from ..logreg_stability import (
-    LogRegStabilitySpec,
+from ..stability.logreg_stability import (
     bootstrap_logreg_weights,
+    fit_logreg_pipeline,
     summarize_bootstrap_weights,
     top_lr_pairs,
 )
@@ -141,44 +141,56 @@ def run_logreg_bootstrap(
     adata = add_cond_idxs(adata, spec.condition_column)
     lr_pairs = import_ligand_receptor_pairs()
 
-    pipeline = LogRegStabilitySpec(
+    print("2. Fitting the full-cohort reference pipeline...")
+    reference = fit_logreg_pipeline(
+        adata,
         condition_column=spec.condition_column,
         group_column=group_column,
         control_label=control_label,
         other_label=other_label,
         rise_rank=rise_rank,
         cp_rank=cp_rank,
+        lr_pairs=lr_pairs,
         rise_n_iter_max=n_iter_max,
         rise_tol=tol,
         cp_n_iter_max=n_iter_max,
         cp_tol=tol,
         complex_sep=complex_sep,
         scoring=scoring,
+        random_state=random_state,
     )
-
-    print("2. Fitting the full-cohort reference pipeline...")
-    reference = pipeline.fit(adata, lr_pairs=lr_pairs, random_state=random_state)
-    print(f"   Reference CP R2X: {reference.r2x_cp:.4f}")
+    print(f"   Reference CP R2X: {reference['r2x_cp']:.4f}")
 
     print(f"3. Running {n_boot} patient-resampled replicates...")
     bootstrap_weights = bootstrap_logreg_weights(
-        pipeline,
         adata,
-        reference,
+        reference=reference,
+        condition_column=spec.condition_column,
+        group_column=group_column,
+        control_label=control_label,
+        other_label=other_label,
+        rise_rank=rise_rank,
+        cp_rank=cp_rank,
         n_boot=n_boot,
         lr_pairs=lr_pairs,
+        rise_n_iter_max=n_iter_max,
+        rise_tol=tol,
+        cp_n_iter_max=n_iter_max,
+        cp_tol=tol,
+        complex_sep=complex_sep,
+        scoring=scoring,
         stratify=stratify,
         random_state=random_state,
     )
 
     print("4. Summarizing each component's weight distribution...")
     bootstrap_summary = summarize_bootstrap_weights(
-        bootstrap_weights, reference.logreg_weights, ci_level=ci_level
+        bootstrap_weights, reference["logreg_weights"], ci_level=ci_level
     )
     # Label each component by the LR pair it loads onto hardest in the
     # reference fit, so the figure can name components without re-reading the
     # factors.
-    labels = top_lr_pairs(reference.factors[3], reference.lr_symbols, top_n=1)
+    labels = top_lr_pairs(reference["factors"][3], reference["lr_symbols"], top_n=1)
     bootstrap_summary = bootstrap_summary.merge(
         labels[["Component", "LRPair", "DLoading"]].rename(
             columns={"LRPair": "TopLRPair", "DLoading": "TopLRLoading"}
@@ -213,8 +225,8 @@ def run_logreg_bootstrap(
             "complex_sep": complex_sep,
             "random_state": random_state,
             "match_mode_weights": {"3": 1.0},
-            "reference_r2x_cp": float(reference.r2x_cp),
-            "reference_logreg_weights": reference.logreg_weights,
+            "reference_r2x_cp": float(reference["r2x_cp"]),
+            "reference_logreg_weights": reference["logreg_weights"],
             "n_components_ci_excludes_zero": int(
                 bootstrap_summary["CIExcludesZero"].sum()
             ),
@@ -222,7 +234,7 @@ def run_logreg_bootstrap(
                 bootstrap_summary["MinMatchScore"].min()
             ),
             "resulting_dims": resulting_dims(
-                spec, adata, n_lr_pairs=len(reference.lr_symbols)
+                spec, adata, n_lr_pairs=len(reference["lr_symbols"])
             ),
             "outputs": [relpath(p) for p in paths.values()],
         },

@@ -9,7 +9,7 @@ The pipeline is re-run end to end -- RISE, the interaction tensor, CP at the
 same fixed ranks, then the logistic regression -- on bootstrap resamples of
 the patient roster, and each replicate's components are matched back onto the
 full-cohort fit before its weights are recorded (see
-`logreg_stability.bootstrap_logreg_weights`). Every component's weight therefore
+`stability.logreg_stability.bootstrap_logreg_weights`). Every component's weight therefore
 comes with a distribution over rosters, which is what separates a weight that
 would survive a different cohort from one that describes the patients who
 happened to be enrolled.

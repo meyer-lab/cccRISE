@@ -1,20 +1,17 @@
-from dataclasses import FrozenInstanceError
-
 import anndata
 import numpy as np
 import pandas as pd
 import pytest
 
-from cccrise.logreg_stability import (
-    LogRegFit,
-    LogRegStabilitySpec,
+from cccrise.stability.logreg_stability import (
     align_to_reference_components,
     bootstrap_logreg_weights,
     bootstrap_replicate_weights,
-    replicate_seed,
+    fit_logreg_pipeline,
     summarize_bootstrap_weights,
     top_lr_pairs,
 )
+from cccrise.utils import replicate_seed
 
 
 def _synthetic_factors(
@@ -28,23 +25,73 @@ def _synthetic_factors(
     return [A, B, C, D]
 
 
+def _synthetic_cohort(
+    n_conditions: int = 20, cells_per_cond: int = 10, n_genes: int = 8, seed: int = 123
+) -> anndata.AnnData:
+    rng = np.random.default_rng(seed)
+    X = rng.exponential(scale=1.0, size=(n_conditions * cells_per_cond, n_genes))
+    samples = [
+        f"Sample_{i}" for i in range(n_conditions) for _ in range(cells_per_cond)
+    ]
+    groups = [
+        "Ctrl" if i < n_conditions // 2 else "Treat"
+        for i in range(n_conditions)
+        for _ in range(cells_per_cond)
+    ]
+    gene_names = [f"Gene_{i}" for i in range(n_genes)]
+    adata = anndata.AnnData(
+        X=X,
+        obs=pd.DataFrame({"Sample": samples, "Group": groups}),
+        var=pd.DataFrame(index=gene_names),
+    )
+    adata.var["means"] = np.asarray(X.mean(axis=0)).ravel()
+    return adata
+
+
 def test_replicate_seed_determinism():
     assert replicate_seed(0, 0) == 1
     assert replicate_seed(0, 5) == 6
     assert replicate_seed(42, 3) == 42004
 
 
-def test_logreg_stability_spec_is_frozen():
-    spec = LogRegStabilitySpec(
+def test_fit_logreg_pipeline_output_structure():
+    adata = _synthetic_cohort()
+    lr_pairs = pd.DataFrame(
+        {
+            "ligand": ["Gene_0", "Gene_2", "Gene_4"],
+            "receptor": ["Gene_1", "Gene_3", "Gene_5"],
+            "interaction_symbol": ["Gene_0_Gene_1", "Gene_2_Gene_3", "Gene_4_Gene_5"],
+        }
+    )
+    fit = fit_logreg_pipeline(
+        adata,
         condition_column="Sample",
         group_column="Group",
         control_label="Ctrl",
         other_label="Treat",
-        rise_rank=5,
-        cp_rank=3,
+        rise_rank=2,
+        cp_rank=2,
+        lr_pairs=lr_pairs,
+        rise_n_iter_max=10,
+        cp_n_iter_max=10,
+        random_state=0,
     )
-    with pytest.raises(FrozenInstanceError):
-        setattr(spec, "rise_rank", 10)  # noqa: B010
+
+    assert isinstance(fit, dict)
+    expected_keys = {
+        "factors",
+        "cp_weights",
+        "lr_symbols",
+        "logreg_weights",
+        "r2x_cp",
+        "sample_to_group",
+    }
+    assert expected_keys.issubset(fit.keys())
+    assert len(fit["factors"]) == 4
+    assert len(fit["logreg_weights"]) == 2
+    assert len(fit["lr_symbols"]) == 3
+    assert isinstance(fit["r2x_cp"], float)
+    assert len(fit["sample_to_group"]) == 20
 
 
 def test_align_to_reference_components_exact_match():
@@ -189,48 +236,15 @@ def test_summarize_bootstrap_weights_metrics():
     assert s3["CIHigh"] < 0
 
 
-def _synthetic_cohort(
-    n_conditions: int = 20, cells_per_cond: int = 10, n_genes: int = 8, seed: int = 123
-) -> anndata.AnnData:
-    rng = np.random.default_rng(seed)
-    X = rng.exponential(scale=1.0, size=(n_conditions * cells_per_cond, n_genes))
-    samples = [
-        f"Sample_{i}" for i in range(n_conditions) for _ in range(cells_per_cond)
-    ]
-    groups = [
-        "Ctrl" if i < n_conditions // 2 else "Treat"
-        for i in range(n_conditions)
-        for _ in range(cells_per_cond)
-    ]
-    gene_names = [f"Gene_{i}" for i in range(n_genes)]
-    adata = anndata.AnnData(
-        X=X,
-        obs=pd.DataFrame({"Sample": samples, "Group": groups}),
-        var=pd.DataFrame(index=gene_names),
-    )
-    adata.var["means"] = np.asarray(X.mean(axis=0)).ravel()
-    return adata
-
-
 def test_bootstrap_replicate_weights_mismatched_lr_roster():
-    spec = LogRegStabilitySpec(
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-        rise_rank=2,
-        cp_rank=2,
-        rise_n_iter_max=10,
-        cp_n_iter_max=10,
-    )
     factors = _synthetic_factors(n_lr=5, rank=2)
-    ref = LogRegFit(
-        factors=factors,
-        cp_weights=np.array([1.0, 1.0]),
-        lr_symbols=np.array(["L1_R1", "L2_R2"]),
-        logreg_weights=np.array([1.0, -1.0]),
-        r2x_cp=0.8,
-    )
+    ref = {
+        "factors": factors,
+        "cp_weights": np.array([1.0, 1.0]),
+        "lr_symbols": np.array(["L1_R1", "L2_R2"]),
+        "logreg_weights": np.array([1.0, -1.0]),
+        "r2x_cp": 0.8,
+    }
 
     adata = _synthetic_cohort()
 
@@ -244,11 +258,23 @@ def test_bootstrap_replicate_weights_mismatched_lr_roster():
     )
 
     with pytest.raises(ValueError, match="different ligand-receptor"):
-        bootstrap_replicate_weights(spec, adata, ref, lr_pairs=lr_pairs)
+        bootstrap_replicate_weights(
+            adata,
+            reference=ref,
+            condition_column="Sample",
+            group_column="Group",
+            control_label="Ctrl",
+            other_label="Treat",
+            rise_rank=2,
+            cp_rank=2,
+            lr_pairs=lr_pairs,
+            rise_n_iter_max=10,
+            cp_n_iter_max=10,
+        )
 
 
 def test_end_to_end_synthetic_bootstrap():
-    """Verify synthetic AnnData runs through spec.fit, bootstrap_logreg_weights,
+    """Verify synthetic AnnData runs through fit_logreg_pipeline, bootstrap_logreg_weights,
     and summarize_bootstrap_weights without error."""
     adata = _synthetic_cohort()
 
@@ -260,23 +286,36 @@ def test_end_to_end_synthetic_bootstrap():
         }
     )
 
-    spec = LogRegStabilitySpec(
+    reference = fit_logreg_pipeline(
+        adata,
         condition_column="Sample",
         group_column="Group",
         control_label="Ctrl",
         other_label="Treat",
         rise_rank=2,
         cp_rank=2,
+        lr_pairs=lr_pairs,
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        random_state=0,
     )
-
-    reference = spec.fit(adata, lr_pairs=lr_pairs, random_state=0)
-    assert len(reference.logreg_weights) == 2
-    assert len(reference.lr_symbols) == 3
+    assert len(reference["logreg_weights"]) == 2
+    assert len(reference["lr_symbols"]) == 3
 
     boot_df = bootstrap_logreg_weights(
-        spec, adata, reference, n_boot=2, lr_pairs=lr_pairs, random_state=0
+        adata,
+        reference=reference,
+        condition_column="Sample",
+        group_column="Group",
+        control_label="Ctrl",
+        other_label="Treat",
+        rise_rank=2,
+        cp_rank=2,
+        n_boot=2,
+        lr_pairs=lr_pairs,
+        rise_n_iter_max=10,
+        cp_n_iter_max=10,
+        random_state=0,
     )
     assert len(boot_df) == 4  # 2 replicates * 2 components
     assert set(boot_df.columns) == {
@@ -290,7 +329,7 @@ def test_end_to_end_synthetic_bootstrap():
         "R2XCP",
     }
 
-    summary = summarize_bootstrap_weights(boot_df, reference.logreg_weights)
+    summary = summarize_bootstrap_weights(boot_df, reference["logreg_weights"])
     assert len(summary) == 2
     assert list(summary["Component"]) == [1, 2]
     assert (summary["NReplicates"] == 2).all()

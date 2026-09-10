@@ -20,19 +20,20 @@ produces a wide weight distribution for a reason that has nothing to do with
 the logistic regression, and the two explanations have to stay separable.
 """
 
-from dataclasses import dataclass
-from typing import NamedTuple, cast
+from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
 from scipy.optimize import linear_sum_assignment
+from tensorly.decomposition import parafac
 
-from .ccc_rise import cp_decomposition, standardize_cc_pf2, validate_cp_rank
-from .import_data import add_cond_idxs
-from .logreg import fit_logreg_weights, prepare_logreg_inputs
-from .tensor import calculate_interaction_tensor, rise_store_r2x
-from .utils import resample_conditions
+from ..ccc import calculate_r2x
+from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
+from ..import_data import add_cond_idxs
+from ..logreg import fit_logreg_weights, prepare_logreg_inputs
+from ..tensor import calculate_interaction_tensor, rise_store_r2x
+from ..utils import replicate_seed, resample_conditions
 
 Factors = list[np.ndarray]
 
@@ -42,11 +43,6 @@ Factors = list[np.ndarray]
 #: roster, and the sender/receiver modes are expressed in that replicate's own
 #: RISE eigen-states.
 BOOTSTRAP_MATCH_MODE_WEIGHTS: dict[int, float] = {3: 1.0}
-
-
-def replicate_seed(random_state: int, replicate: int) -> int:
-    """Seed for one replicate: ``random_state * 1000 + replicate + 1``."""
-    return random_state * 1000 + replicate + 1
 
 
 def _signed_mode_cosine(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -183,27 +179,35 @@ def top_lr_pairs(
     return pd.DataFrame(rows)
 
 
-class LogRegFit(NamedTuple):
-    """One pass of the pipeline: the CP fit and the logistic regression on it."""
+def fit_logreg_pipeline(
+    adata: anndata.AnnData,
+    condition_column: str,
+    group_column: str,
+    control_label: str,
+    other_label: str,
+    rise_rank: int,
+    cp_rank: int,
+    lr_pairs: pd.DataFrame | None = None,
+    rise_n_iter_max: int = 100,
+    rise_tol: float = 1e-6,
+    cp_n_iter_max: int = 100,
+    cp_tol: float = 1e-3,
+    init: str = "svd",
+    svd: str = "randomized_svd",
+    complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    scoring: str = "roc_auc",
+    random_state: int | None = None,
+) -> dict[str, Any]:
+    """Run RISE, the interaction tensor and CP over `adata`, then fit the
+    logistic regression on the resulting condition factors.
 
-    factors: Factors
-    cp_weights: np.ndarray
-    lr_symbols: np.ndarray
-    logreg_weights: np.ndarray
-    r2x_cp: float
-
-
-@dataclass(frozen=True)
-class LogRegStabilitySpec:
-    """The pipeline configuration a bootstrap holds fixed across replicates.
-
-    Bundled rather than passed replicate by replicate because the reference
-    fit and every resampled fit have to agree on all of it -- differing ranks
-    or a differing group encoding would make their weights incomparable, which
-    is the one thing a bootstrap distribution cannot tolerate.
-
-    Attributes
+    Parameters
     ----------
+    adata : anndata.AnnData
+        Data to fit -- the full cohort for the reference fit, a resampled
+        roster for a replicate.
     condition_column, group_column : str
         Columns in `obs` holding the patient identity and its group label.
     control_label : str
@@ -212,119 +216,106 @@ class LogRegStabilitySpec:
         Label applied to every other value of `group_column`.
     rise_rank, cp_rank : int
         The already-selected ranks the bootstrap is conditional on.
+    lr_pairs : pd.DataFrame | None, optional
+        Ligand-receptor pairs; loaded from the packaged database if None.
     rise_n_iter_max, rise_tol : int, float
         Fitting controls for the RISE fit.
     cp_n_iter_max, cp_tol, init, svd : int, float, str, str
         Fitting controls for the CP fit.
     complex_sep, communication_score, hill_k : str | None, str, float
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
-    scoring : str
+    scoring : str, default="roc_auc"
         Scikit-learn scoring the logistic regression selects its
         regularization strength by; see `logreg.fit_logreg_weights`.
+    random_state : int | None, optional
+        Seed for the RISE fit, the CP fit and the logistic regression's
+        cross-validation.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary with keys 'factors', 'cp_weights', 'lr_symbols',
+        'logreg_weights', 'r2x_cp', 'sample_to_group'.
     """
+    if lr_pairs is None:
+        from ..import_data import import_ligand_receptor_pairs
 
-    condition_column: str
-    group_column: str
-    control_label: str
-    other_label: str
-    rise_rank: int
-    cp_rank: int
-    rise_n_iter_max: int = 100
-    rise_tol: float = 1e-6
-    cp_n_iter_max: int = 100
-    cp_tol: float = 1e-3
-    init: str = "svd"
-    svd: str = "randomized_svd"
-    complex_sep: str | None = "&"
-    communication_score: str = "expression_product"
-    hill_k: float = 0.5
-    scoring: str = "roc_auc"
+        lr_pairs = import_ligand_receptor_pairs()
 
-    def fit(
-        self,
-        adata: anndata.AnnData,
-        lr_pairs: pd.DataFrame | None = None,
-        random_state: int | None = None,
-    ) -> LogRegFit:
-        """Run RISE, the interaction tensor and CP over `adata`, then fit the
-        logistic regression on the resulting condition factors.
+    adata = add_cond_idxs(adata, condition_column)
+    adata, _r2x_rise = rise_store_r2x(
+        adata,
+        rank=rise_rank,
+        n_iter_max=rise_n_iter_max,
+        tolerance=rise_tol,
+        random_state=random_state,
+    )
+    tensor, filtered_lr_pairs = calculate_interaction_tensor(
+        adata,
+        lr_pairs,
+        complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
+    )
+    validate_cp_rank(cp_rank, tensor.shape)
 
-        Parameters
-        ----------
-        adata : anndata.AnnData
-            Data to fit -- the full cohort for the reference fit, a resampled
-            roster for a replicate.
-        lr_pairs : pd.DataFrame | None, optional
-            Ligand-receptor pairs; loaded from the packaged database if None.
-        random_state : int | None, optional
-            Seed for the RISE fit, the CP fit and the logistic regression's
-            cross-validation.
+    cp_weights, cp_factors = parafac(
+        tensor,
+        cp_rank,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
+        init=init,
+        svd=svd,
+        normalize_factors=True,
+        random_state=random_state,
+    )
+    r2x_cp = calculate_r2x(cp_weights, cp_factors, tensor)
+    cp_weights, factors = standardize_cc_pf2(cp_weights, cp_factors)
 
-        Returns
-        -------
-        LogRegFit
-        """
-        if lr_pairs is None:
-            from .import_data import import_ligand_receptor_pairs
-
-            lr_pairs = import_ligand_receptor_pairs()
-
-        adata = add_cond_idxs(adata, self.condition_column)
-        adata, _r2x_rise = rise_store_r2x(
-            adata,
-            rank=self.rise_rank,
-            n_iter_max=self.rise_n_iter_max,
-            tolerance=self.rise_tol,
-            random_state=random_state,
-        )
-        tensor, filtered_lr_pairs = calculate_interaction_tensor(
-            adata,
-            lr_pairs,
-            complex_sep=self.complex_sep,
-            communication_score=self.communication_score,
-            hill_k=self.hill_k,
-        )
-        validate_cp_rank(self.cp_rank, tensor.shape)
-
-        cp_weights, cp_factors, r2x_cp = cp_decomposition(
-            tensor,
-            self.cp_rank,
-            n_iter_max=self.cp_n_iter_max,
-            tol=self.cp_tol,
-            init=self.init,
-            svd=self.svd,
-            random_state=random_state,
-        )
-        cp_weights, factors = standardize_cc_pf2(cp_weights, cp_factors)
-
-        X, sample_to_group = prepare_logreg_inputs(
-            adata,
-            factors,
-            self.condition_column,
-            self.group_column,
-            self.control_label,
-            self.other_label,
-        )
-        logreg_weights = fit_logreg_weights(
-            X,
-            sample_to_group,
-            scoring=self.scoring,
-            random_state=random_state,
-        )
-        return LogRegFit(
-            factors=factors,
-            cp_weights=cp_weights,
-            lr_symbols=filtered_lr_pairs["interaction_symbol"].to_numpy(),
-            logreg_weights=logreg_weights,
-            r2x_cp=r2x_cp,
-        )
+    X, sample_to_group = prepare_logreg_inputs(
+        adata,
+        factors,
+        condition_column,
+        group_column,
+        control_label,
+        other_label,
+    )
+    logreg_weights = fit_logreg_weights(
+        X,
+        sample_to_group,
+        scoring=scoring,
+        random_state=random_state,
+    )
+    return {
+        "factors": factors,
+        "cp_weights": cp_weights,
+        "lr_symbols": filtered_lr_pairs["interaction_symbol"].to_numpy(),
+        "logreg_weights": logreg_weights,
+        "r2x_cp": r2x_cp,
+        "sample_to_group": sample_to_group,
+    }
 
 
 def bootstrap_replicate_weights(
-    spec: LogRegStabilitySpec,
     adata: anndata.AnnData,
-    reference: LogRegFit,
+    reference: dict[str, Any],
+    condition_column: str,
+    group_column: str,
+    control_label: str,
+    other_label: str,
+    rise_rank: int,
+    cp_rank: int,
     lr_pairs: pd.DataFrame | None = None,
+    rise_n_iter_max: int = 100,
+    rise_tol: float = 1e-6,
+    cp_n_iter_max: int = 100,
+    cp_tol: float = 1e-3,
+    init: str = "svd",
+    svd: str = "randomized_svd",
+    complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    scoring: str = "roc_auc",
     stratify: bool = True,
     random_state: int | None = None,
 ) -> pd.DataFrame:
@@ -334,15 +325,30 @@ def bootstrap_replicate_weights(
 
     Parameters
     ----------
-    spec : LogRegStabilitySpec
-        Configuration shared with the reference fit.
     adata : anndata.AnnData
         Full-cohort data to resample patients from.
-    reference : LogRegFit
+    reference : dict[str, Any]
         The full-cohort fit whose component numbering and orientation the
         replicate's weights are expressed in.
+    condition_column, group_column : str
+        Columns in `obs` holding the patient identity and its group label.
+    control_label : str
+        Value of `group_column` mapped to the reference class.
+    other_label : str
+        Label applied to every other value of `group_column`.
+    rise_rank, cp_rank : int
+        The already-selected ranks the bootstrap is conditional on.
     lr_pairs : pd.DataFrame | None, optional
         Ligand-receptor pairs; loaded from the packaged database if None.
+    rise_n_iter_max, rise_tol : int, float
+        Fitting controls for the RISE fit.
+    cp_n_iter_max, cp_tol, init, svd : int, float, str, str
+        Fitting controls for the CP fit.
+    complex_sep, communication_score, hill_k : str | None, str, float
+        Communication-tensor options; see `ccc_rise.calc_communication_score`.
+    scoring : str, default="roc_auc"
+        Scikit-learn scoring the logistic regression selects its
+        regularization strength by; see `logreg.fit_logreg_weights`.
     stratify : bool, default=True
         Draw patients within each `group_column` stratum, keeping the class
         balance fixed; see `utils.resample_conditions`.
@@ -359,13 +365,33 @@ def bootstrap_replicate_weights(
     """
     resampled = resample_conditions(
         adata,
-        spec.condition_column,
-        stratify_by=spec.group_column if stratify else None,
+        condition_column,
+        stratify_by=group_column if stratify else None,
         random_seed=random_state,
     )
-    fit = spec.fit(resampled, lr_pairs=lr_pairs, random_state=random_state)
+    fit = fit_logreg_pipeline(
+        resampled,
+        lr_pairs=lr_pairs,
+        condition_column=condition_column,
+        group_column=group_column,
+        control_label=control_label,
+        other_label=other_label,
+        rise_rank=rise_rank,
+        cp_rank=cp_rank,
+        rise_n_iter_max=rise_n_iter_max,
+        rise_tol=rise_tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
+        init=init,
+        svd=svd,
+        complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
+        scoring=scoring,
+        random_state=random_state,
+    )
 
-    if not np.array_equal(fit.lr_symbols, reference.lr_symbols):
+    if not np.array_equal(fit["lr_symbols"], reference["lr_symbols"]):
         raise ValueError(
             "Replicate and reference fits retained different ligand-receptor "
             "pairs, so their LR-pair factor rows are not comparable and "
@@ -373,21 +399,36 @@ def bootstrap_replicate_weights(
         )
 
     aligned = align_to_reference_components(
-        reference.factors,
-        fit.factors,
-        fit.logreg_weights,
+        reference["factors"],
+        fit["factors"],
+        fit["logreg_weights"],
         mode_weights=BOOTSTRAP_MATCH_MODE_WEIGHTS,
     ).rename(columns={"Value": "Weight"})
-    aligned["R2XCP"] = fit.r2x_cp
+    aligned["R2XCP"] = fit["r2x_cp"]
     return aligned
 
 
 def bootstrap_logreg_weights(
-    spec: LogRegStabilitySpec,
     adata: anndata.AnnData,
-    reference: LogRegFit,
+    reference: dict[str, Any],
+    condition_column: str,
+    group_column: str,
+    control_label: str,
+    other_label: str,
+    rise_rank: int,
+    cp_rank: int,
     n_boot: int = 100,
     lr_pairs: pd.DataFrame | None = None,
+    rise_n_iter_max: int = 100,
+    rise_tol: float = 1e-6,
+    cp_n_iter_max: int = 100,
+    cp_tol: float = 1e-3,
+    init: str = "svd",
+    svd: str = "randomized_svd",
+    complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    scoring: str = "roc_auc",
     stratify: bool = True,
     random_state: int = 0,
 ) -> pd.DataFrame:
@@ -395,10 +436,36 @@ def bootstrap_logreg_weights(
 
     Parameters
     ----------
-    spec, adata, reference, lr_pairs, stratify
-        See `bootstrap_replicate_weights`.
+    adata : anndata.AnnData
+        Full-cohort data to resample patients from.
+    reference : dict[str, Any]
+        The full-cohort fit dictionary returned by `fit_logreg_pipeline`, whose
+        component numbering and orientation the replicate's weights are
+        expressed in.
+    condition_column, group_column : str
+        Columns in `obs` holding the patient identity and its group label.
+    control_label : str
+        Value of `group_column` mapped to the reference class.
+    other_label : str
+        Label applied to every other value of `group_column`.
+    rise_rank, cp_rank : int
+        The already-selected ranks the bootstrap is conditional on.
     n_boot : int, default=100
         Number of replicates.
+    lr_pairs : pd.DataFrame | None, optional
+        Ligand-receptor pairs; loaded from the packaged database if None.
+    rise_n_iter_max, rise_tol : int, float
+        Fitting controls for RISE.
+    cp_n_iter_max, cp_tol, init, svd : int, float, str, str
+        Fitting controls for CP.
+    complex_sep, communication_score, hill_k : str | None, str, float
+        Communication-tensor options; see `ccc_rise.calc_communication_score`.
+    scoring : str, default="roc_auc"
+        Scikit-learn scoring the logistic regression selects its
+        regularization strength by; see `logreg.fit_logreg_weights`.
+    stratify : bool, default=True
+        Draw patients within each `group_column` stratum, keeping the class
+        balance fixed; see `utils.resample_conditions`.
     random_state : int, default=0
         Base seed; replicate ``b`` uses `replicate_seed(random_state, b)`.
 
@@ -411,13 +478,29 @@ def bootstrap_logreg_weights(
     frames = []
     for b in range(n_boot):
         print(f"   replicate {b + 1}/{n_boot}")
+        seed = replicate_seed(random_state, b)
         replicate = bootstrap_replicate_weights(
-            spec,
             adata,
-            reference,
+            reference=reference,
+            condition_column=condition_column,
+            group_column=group_column,
+            control_label=control_label,
+            other_label=other_label,
+            rise_rank=rise_rank,
+            cp_rank=cp_rank,
             lr_pairs=lr_pairs,
+            rise_n_iter_max=rise_n_iter_max,
+            rise_tol=rise_tol,
+            cp_n_iter_max=cp_n_iter_max,
+            cp_tol=cp_tol,
+            init=init,
+            svd=svd,
+            complex_sep=complex_sep,
+            communication_score=communication_score,
+            hill_k=hill_k,
+            scoring=scoring,
             stratify=stratify,
-            random_state=replicate_seed(random_state, b),
+            random_state=seed,
         )
         replicate.insert(0, "Replicate", b)
         frames.append(replicate)
