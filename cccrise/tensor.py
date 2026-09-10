@@ -37,10 +37,24 @@ def rise_store_r2x(
     n_iter_max: int = 100,
     tolerance: float = 1e-6,
     random_state: int | None = None,
+    backend: str | None = None,
 ):
-    """Runs RISE and stores the results."""
+    """Runs RISE and stores the results.
+
+    `backend` is passed straight to `parafac2_nd` ('cpu', 'cupy', 'mlx', or
+    None to auto-detect). It has to be reachable from here because
+    `parafac2.backend.get_backend` selects CuPy whenever the module merely
+    imports, without checking that a device exists or that the data fits: a
+    cohort-scale matrix then dies uploading its CSR indices, and there is no
+    environment variable to opt out.
+    """
     pf2_out, r2x = parafac2_nd(
-        X, rank=rank, random_state=random_state, tol=tolerance, n_iter_max=n_iter_max
+        X,
+        rank=rank,
+        random_state=random_state,
+        tol=tolerance,
+        n_iter_max=n_iter_max,
+        backend=backend,
     )
     X = store_pf2(X, pf2_out)
 

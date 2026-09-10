@@ -59,6 +59,7 @@ def build_interaction_tensor(
     random_state: int | None,
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
+    backend: str | None = None,
 ) -> tuple[np.ndarray, dict]:
     """Fit RISE at `rise_rank`; return the 4D tensor and sidecar fields."""
     adata = spec.load()
@@ -71,6 +72,7 @@ def build_interaction_tensor(
         n_iter_max=n_iter_max,
         tolerance=tol,
         random_state=random_state,
+        backend=backend,
     )
     tensor = calculate_interaction_tensor(
         adata,
@@ -133,6 +135,7 @@ def run_cpd_rank_selection(
     init: str = "svd",
     compress: bool = True,
     oversample: int = 5,
+    backend: str | None = None,
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
@@ -141,14 +144,20 @@ def run_cpd_rank_selection(
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Sweep CP ranks over one interaction tensor and persist CSV plus sidecar.
 
-    CP rank selection is conditional on the already-selected `rise_rank`.
+        CP rank selection is conditional on the already-selected `rise_rank`.
 
-    `n_iter_max` / `tol` control the RISE fit; `cp_n_iter_max` / `cp_tol` the
-    CP fits. They are separate because the two stages want very different
-    budgets: CORCONDIA is read off a converged fit, so the CP side is run far
-    tighter than the RISE side that produced the tensor.
+    `backend` selects where the *RISE* fit runs ('cpu', 'cupy', 'mlx', or None to
+        auto-detect); the CP stage is CPU-only. Pass 'cpu' for a cohort-scale
+        dataset: `parafac2` uploads the whole sparse matrix to the device in one
+        allocation, so IBDverse (3.6e9 nonzeros) exhausts a 24 GB card before the
+        fit starts.
 
-    Returns the sweep results, the CSV path, and the sidecar path.
+        `n_iter_max` / `tol` control the RISE fit; `cp_n_iter_max` / `cp_tol` the
+        CP fits. They are separate because the two stages want very different
+        budgets: CORCONDIA is read off a converged fit, so the CP side is run far
+        tighter than the RISE side that produced the tensor.
+
+        Returns the sweep results, the CSV path, and the sidecar path.
     """
     output_path = output_path or (DATA_DIR / spec.cpd_rank_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -169,6 +178,7 @@ def run_cpd_rank_selection(
         random_state=random_state,
         communication_score=communication_score,
         hill_k=hill_k,
+        backend=backend,
     )
     print(f"   Interaction tensor shape: {tensor.shape}")
     validate_cp_rank(max(ranks), tensor.shape)
@@ -237,6 +247,7 @@ def run_cpd_rank_selection(
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "init": init,
+            "backend": backend or "auto",
             "complex_sep": complex_sep,
             "communication_score": communication_score,
             "hill_k": hill_k,
@@ -289,6 +300,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=5,
         help="Extra basis columns per mode beyond the largest rank swept.",
     )
+    parser.add_argument(
+        "--backend",
+        type=str,
+        default=None,
+        choices=["cpu", "cupy", "mlx"],
+        help="Backend for the RISE fit (default: parafac2 auto-detect). Use "
+        "'cpu' for cohort-scale data, which does not fit on a GPU.",
+    )
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument(
         "--communication-score",
@@ -326,6 +345,7 @@ def main(argv: list[str] | None = None) -> None:
         init=args.init,
         compress=args.compress,
         oversample=args.oversample,
+        backend=args.backend,
         complex_sep=args.complex_sep,
         communication_score=args.communication_score,
         hill_k=args.hill_k,
