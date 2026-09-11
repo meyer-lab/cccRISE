@@ -17,15 +17,7 @@ from .ccc_rise import (
     standardize_cc_pf2,
 )
 from .import_data import add_cond_idxs, condition_matrices, import_ligand_receptor_pairs
-from .utils import pseudobulk_X
-
-
-def resample_tensor(interaction_tensors):
-    """Bootstrap tensor by resampling last dimension"""
-    indices = np.random.randint(
-        0, interaction_tensors.shape[-1], size=interaction_tensors.shape[-1]
-    )
-    return interaction_tensors[..., indices]
+from .utils import pseudobulk_X, resample_tensor
 
 
 def rise_store_r2x(
@@ -242,7 +234,7 @@ def calculate_interaction_tensor(
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
-) -> np.ndarray:
+) -> tuple[np.ndarray, pd.DataFrame]:
     """
     Calculate interaction tensor from an AnnData object that has already been processed with RISE.
 
@@ -268,8 +260,12 @@ def calculate_interaction_tensor(
 
     Returns
     -------
-    np.ndarray
-        4D cell-cell communication interaction tensor.
+    tuple[np.ndarray, pd.DataFrame]
+        A tuple of (interaction_tensor, filtered_lr_pairs) where:
+        - interaction_tensor is the 4D cell-cell communication interaction tensor
+          of shape (n_conditions, rise_rank, rise_rank, n_lr_pairs).
+        - filtered_lr_pairs is the DataFrame of ligand-receptor pairs retained
+          in the tensor, matching the order of the last tensor dimension.
     """
     assert "projections" in adata.obsm, (
         "AnnData object must have 'projections' in obsm (processed with RISE)."
@@ -295,7 +291,7 @@ def calculate_interaction_tensor(
         if "means" in adata.var
         else np.zeros(len(gene_names))
     )
-    interaction_tensor, _ = calc_communication_score(
+    interaction_tensor, filtered_lr_pairs = calc_communication_score(
         projected_matrices,
         gene_names=gene_names,
         lr_pairs=lr_pairs,
@@ -305,7 +301,7 @@ def calculate_interaction_tensor(
         hill_k=hill_k,
     )
 
-    return interaction_tensor
+    return interaction_tensor, filtered_lr_pairs
 
 
 def run_fms_r2x_analysis(
@@ -366,7 +362,7 @@ def run_fms_r2x_data_percentage_analysis(
         )
 
     # 0) Reference on FULL data (no bootstrapping here)
-    full_tensor = calculate_interaction_tensor(X_filtered, lr_pairs)
+    full_tensor, _ = calculate_interaction_tensor(X_filtered, lr_pairs)
     w_full, f_full = parafac(
         tensor=full_tensor,
         rank=cp_rank,
@@ -388,7 +384,7 @@ def run_fms_r2x_data_percentage_analysis(
                 X_sub = X_filtered
 
             # 2) Tensor on subsample
-            sub_tensor = calculate_interaction_tensor(X_sub, lr_pairs)
+            sub_tensor, _ = calculate_interaction_tensor(X_sub, lr_pairs)
 
             # 3) CP on subsample
             w_sub, f_sub = parafac(

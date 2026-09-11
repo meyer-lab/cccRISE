@@ -157,8 +157,9 @@ def test_calculate_interaction_tensor():
         }
     )
 
-    tensor = calculate_interaction_tensor(adata, lr_pairs)
+    tensor, filtered_lr = calculate_interaction_tensor(adata, lr_pairs)
     assert tensor.shape == (n_cond, rise_rank, rise_rank, len(lr_pairs))
+    assert len(filtered_lr) == len(lr_pairs)
 
 
 def test_import_ligand_receptor_pairs():
