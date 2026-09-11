@@ -7,13 +7,13 @@ from pathlib import Path
 # Disable cupy in anndata to avoid import errors during doc build
 os.environ["ANNDATA_CUPY"] = "0"
 
-# Add the parent directory to the path so we can import cellcommunicationpf2
-# This allows Sphinx to find the cellcommunicationpf2 package
+# Add the parent directory to the path so we can import cccrise
+# This allows Sphinx to find the cccrise package
 project_root = Path(__file__).parent.parent.resolve()
 sys.path.insert(0, str(project_root))
 
 # Project information
-project = "CCC-RISE"
+project = "cccRISE"
 copyright = "2025, Andrew Ramirez, Aaron Meyer"
 author = "Andrew Ramirez, Aaron Meyer"
 

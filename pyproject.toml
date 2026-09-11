@@ -1,5 +1,5 @@
 [project]
-name = "cellcommunicationpf2"
+name = "cccrise"
 version = "0.1.0"
 description = "Cell cell communication implementation of PARAFAC2"
 authors = [{name = "Andrew Ramirez", email = "andramirez@ucla.edu" }]
@@ -17,12 +17,12 @@ dependencies = [
     "datashader>=0.17.0",
     "pacmap>=0.8.0",
     "tensorly-viz>=0.1.7",
-    "parafac2 @ git+https://github.com/meyer-lab/parafac2.git@0bddf71aaa906d5f7133993f1797953031873c0e",
+    "parafac2>=1.6.0",
     "pyarrow>=15.0.0",
     "xarray>=2024.1.0",
     "netcdf4>=1.6.5",
     "scanpy>=1.12.3",
-    "vsparse",
+    "vsparse>=0.2.0",
     "pyreadr>=0.5.6",
     "pyyaml>=6.0",
 ]
@@ -35,12 +35,14 @@ Repository = "https://github.com/meyer-lab/cellcommunication-Pf2"
 Documentation = "https://meyer-lab.github.io/cellcommunication-Pf2/"
 
 [project.scripts]
-fbuild = "cellcommunicationpf2.figures.common:genFigure"
-factor = "cellcommunicationpf2.imports:factorSave"
+fbuild = "cccrise.figures.common:genFigure"
+factor = "cccrise.imports:factorSave"
 # Runners: produce the result files that figures and the Shiny app consume.
-ccc-rise-run = "cellcommunicationpf2.runners.run_ccc_rise:main"
-ccc-rise-riserank = "cellcommunicationpf2.runners.run_rise_rank:main"
-ccc-rise-cpdrank = "cellcommunicationpf2.runners.run_cpd_rank:main"
+cccrise-run = "cccrise.runners.run_ccc_rise:main"
+cccrise-riserank = "cccrise.runners.run_rise_rank:main"
+cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
+cccrise-logregboot = "cccrise.runners.run_logreg_bootstrap:main"
+cccrise-stability = "cccrise.runners.run_component_stability:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
@@ -49,12 +51,9 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-root = ""
 
-[tool.uv.sources]
-vsparse = { git = "https://github.com/meyer-lab/vsparse.git" }
-
 [dependency-groups]
 analysis = [
-    "vsparse",
+    "vsparse>=0.2.0",
 ]
 dev = [
     "pytest>=8.0",
@@ -77,4 +76,3 @@ ignore = [
 
 [tool.pytest.ini_options]
 addopts = "-n auto"
-

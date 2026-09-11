@@ -8,13 +8,13 @@ Preprocessing
 ~~~~~~~~~~~~~
 
 .. py:function:: prepare_dataset(X: anndata.AnnData, condition_name: str, geneThreshold: float, normalize: bool = False)
-   :module: cellcommunicationpf2.import_data
+   :module: cccrise.import_data
 
-   Preprocess single-cell RNA-seq data for CCC-RISE analysis.
+   Preprocess single-cell RNA-seq data for cccRISE analysis.
    
    This function performs essential preprocessing steps including cell and gene filtering, 
    normalization, log transformation, and creation of condition indices required for 
-   CCC-RISE decomposition.
+   cccRISE decomposition.
    
    :param X: AnnData object containing raw count data in sparse matrix format.
    :type X: anndata.AnnData
@@ -27,8 +27,8 @@ Preprocessing
    :returns: Preprocessed AnnData object with filtered cells/genes, added condition_unique_idxs column, and gene means in X.var["means"].
    :rtype: anndata.AnnData
 
-.. py:function:: import_ligand_receptor_pairs(filename: str | Path = "cellcommunicationpf2/data/Human-2020-Jin-LR-pairs.parquet", update_interaction_names: bool = True)
-   :module: cellcommunicationpf2.import_data
+.. py:function:: import_ligand_receptor_pairs(filename: str | Path = "cccrise/data/Human-2020-Jin-LR-pairs.parquet", update_interaction_names: bool = True)
+   :module: cccrise.import_data
 
    Import ligand-receptor pairs from a compressed parquet file with caching.
    
@@ -44,7 +44,7 @@ Preprocessing
    :rtype: pd.DataFrame
 
 .. py:function:: add_cond_idxs(X: anndata.AnnData, condition_key: str)
-   :module: cellcommunicationpf2.import_data
+   :module: cccrise.import_data
 
    Add unique 0-indexed condition identifiers to an AnnData object.
    
@@ -63,7 +63,7 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. py:function:: factors_to_xarray(cpd_factors: list[np.ndarray], cpd_weights: np.ndarray, filtered_lr_pairs: pd.DataFrame | list[str] | np.ndarray, condition_names: list[str] | np.ndarray, gene_names: list[str] | np.ndarray | None = None, pf2_factors: list[np.ndarray] | None = None, pf2_weights: np.ndarray | None = None, r2x_cp: float | None = None, r2x_pf2: float | None = None, attrs: dict | None = None)
-   :module: cellcommunicationpf2.factors
+   :module: cccrise.factors
 
    Convert PARAFAC2 and CP decomposition factor matrices into a compact, coordinate-annotated xarray Dataset.
 
@@ -81,17 +81,17 @@ Factor Storage & Reconstruction (xarray / NetCDF)
    :rtype: xr.Dataset
 
 .. py:function:: save_factors_netcdf(ds: xr.Dataset, filepath: str | Path)
-   :module: cellcommunicationpf2.factors
+   :module: cccrise.factors
 
    Save an xarray Dataset of factors to a compact NetCDF file (< 100 KB - 2 MB).
 
 .. py:function:: load_factors_netcdf(filepath: str | Path)
-   :module: cellcommunicationpf2.factors
+   :module: cccrise.factors
 
    Load an xarray Dataset of factors from a NetCDF file.
 
 .. py:function:: load_factors_to_anndata(factors_ds: xr.Dataset | str | Path, adata: anndata.AnnData | None = None, condition_column: str | None = None, do_embedding: bool = False, random_state: int | None = 0)
-   :module: cellcommunicationpf2.factors
+   :module: cccrise.factors
 
    Populate or construct an AnnData object with decomposition factors from an xarray Dataset.
    
@@ -112,11 +112,11 @@ Factorization
 ~~~~~~~~~~~~~
 
 .. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", n_iter_max: int = 100, tol: float = 1e-3, random_state: int = None, complex_sep: str = None, doEmbedding: bool = True, svd_init: str = "svd")
-   :module: cellcommunicationpf2.tensor
+   :module: cccrise.tensor
 
-   Execute the complete CCC-RISE workflow including RISE decomposition, CPD factorization, and result storage.
+   Execute the complete cccRISE workflow including RISE decomposition, CPD factorization, and result storage.
    
-   This is the main function for performing CCC-RISE analysis. It executes both the RISE 
+   This is the main function for performing cccRISE analysis. It executes both the RISE 
    (PARAFAC2) decomposition of expression data and the CPD decomposition of the resulting 
    interaction tensor. The function decomposes cell-cell communication into four interpretable 
    factor matrices representing conditions, sender cells, receiver cells, and ligand-receptor pairs.
@@ -146,8 +146,8 @@ Factorization
    :returns: Tuple containing the updated AnnData object with stored results and the R²X value (variance explained).
    :rtype: tuple[anndata.AnnData, float]
 
-.. py:function:: calculate_interaction_tensor(adata: anndata.AnnData, lr_pairs: pd.DataFrame, complex_sep: str = "&")
-   :module: cellcommunicationpf2.tensor
+.. py:function:: calculate_interaction_tensor(adata: anndata.AnnData, lr_pairs: pd.DataFrame, complex_sep: str | None = "&", communication_score: str = "expression_product", hill_k: float = 0.5)
+   :module: cccrise.tensor
 
    Calculate the interaction tensor from an AnnData object that has already been processed with RISE.
    
@@ -161,11 +161,15 @@ Factorization
    :type lr_pairs: pd.DataFrame
    :param complex_sep: Symbol that separates protein subunits in multimeric complexes (default: "&").
    :type complex_sep: str, optional
-   :returns: Interaction tensor with dimensions (n_conditions × rise_rank × rise_rank × n_lr_pairs).
-   :rtype: np.ndarray
+   :param communication_score: Scoring strategy for communication ('expression_product', 'expression_mean', 'expression_gmean', or 'expression_hill').
+   :type communication_score: str, optional
+   :param hill_k: Half-maximal constant when using Hill kinetics scoring (default: 0.5).
+   :type hill_k: float, optional
+   :returns: Tuple containing the interaction tensor with dimensions (n_conditions × rise_rank × rise_rank × n_lr_pairs) and the filtered ligand-receptor pairs DataFrame.
+   :rtype: tuple[np.ndarray, pd.DataFrame]
 
 .. py:function:: run_fms_r2x_analysis(interaction_tensor: np.ndarray, rank_list: list[int] = None, runs: int = 1, svd_init: str = "svd")
-   :module: cellcommunicationpf2.tensor
+   :module: cccrise.tensor
 
    Run Factor Match Score (FMS) and R²X analysis across different CPD ranks to assess stability and fit.
    
@@ -192,14 +196,14 @@ Rank Selection
 ~~~~~~~~~~~~~~
 
 .. py:function:: plot_fms_r2x_diff_ranks(X: anndata.AnnData, condition_name: str, ax1: matplotlib.axes.Axes, ax2: matplotlib.axes.Axes, ranksList: list[int], runs: int)
-   :module: cellcommunicationpf2.figures.commonFuncs.plotGeneral
+   :module: cccrise.figures.commonFuncs.plotGeneral
 
    Plot Factor Match Score (FMS) and R²X across different RISE ranks for rank selection.
    
    This function evaluates multiple RISE ranks by computing FMS (stability) and R²X 
    (variance explained) metrics. It performs bootstrap resampling to assess component 
    reproducibility. Use this to determine the optimal RISE rank before running the full 
-   CCC-RISE workflow.
+   cccRISE workflow.
    
    :param X: AnnData object with preprocessed data. Must have condition_unique_idxs in X.obs.
    :type X: anndata.AnnData
@@ -219,15 +223,15 @@ Factor Plotting
 ~~~~~~~~~~~~~~~
 
 .. py:function:: plot_condition_factors(data: anndata.AnnData, ax: matplotlib.axes.Axes, cond: str = "Condition", cond_group_labels: pd.Series = None, color_key: list = None, group_cond: bool = False, normalize: bool = False)
-   :module: cellcommunicationpf2.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.commonFuncs.plotFactors
 
    Plot Factor A (condition factors) as a heatmap showing how conditions contribute to components.
    
-   This visualization shows how each experimental condition (rows) contributes to each CCC-RISE 
+   This visualization shows how each experimental condition (rows) contributes to each cccRISE 
    component (columns). High values indicate strong association between a condition and a 
    component's communication pattern.
 
-   :param data: AnnData object with stored CCC-RISE results. Must contain data.uns["A"] and data.obs[cond].
+   :param data: AnnData object with stored cccRISE results. Must contain data.uns["A"] and data.obs[cond].
    :type data: anndata.AnnData
    :param ax: Matplotlib axes object to plot on.
    :type ax: matplotlib.axes.Axes
@@ -243,15 +247,15 @@ Factor Plotting
    :type normalize: bool, optional
 
 .. py:function:: plot_eigenstate_factors(data: anndata.AnnData, ax: matplotlib.axes.Axes, factor_type: str)
-   :module: cellcommunicationpf2.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.commonFuncs.plotFactors
 
    Plot Factor B (sender eigenstates) or Factor C (receiver eigenstates) as a heatmap.
    
    Eigenstate factors represent the underlying cell state patterns across components in the 
    latent RISE space. Each row represents a latent dimension from RISE and each column 
-   represents a CCC-RISE component.
+   represents a cccRISE component.
    
-   :param data: AnnData object with stored CCC-RISE results. Must contain data.uns["B"] or data.uns["C"].
+   :param data: AnnData object with stored cccRISE results. Must contain data.uns["B"] or data.uns["C"].
    :type data: anndata.AnnData
    :param ax: Matplotlib axes object to plot on.
    :type ax: matplotlib.axes.Axes
@@ -259,7 +263,7 @@ Factor Plotting
    :type factor_type: str
 
 .. py:function:: plot_lr_factors(data: anndata.AnnData, ax: matplotlib.axes.Axes, trim: bool = True, weight: float = 0.08)
-   :module: cellcommunicationpf2.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.commonFuncs.plotFactors
 
    Plot Factor D (ligand-receptor pairs) as a heatmap showing which L-R pairs drive each component.
    
@@ -267,7 +271,7 @@ Factor Plotting
    pairs (rows) are highly weighted in each component (columns). Only L-R pairs with maximum 
    absolute weight above the threshold are displayed.
    
-   :param data: AnnData object with stored CCC-RISE results. Must contain data.uns["D"] and data.uns["lr_pairs"].
+   :param data: AnnData object with stored cccRISE results. Must contain data.uns["D"] and data.uns["lr_pairs"].
    :type data: anndata.AnnData
    :param ax: Matplotlib axes object to plot on.
    :type ax: matplotlib.axes.Axes
@@ -277,7 +281,7 @@ Factor Plotting
    :type weight: float, optional
 
 .. py:function:: plot_lr_factors_partial(X: anndata.AnnData, cmp: int, ax: matplotlib.axes.Axes, geneAmount: int = 5, top: bool = True)
-   :module: cellcommunicationpf2.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.commonFuncs.plotFactors
 
    Plot the top or bottom weighted ligand-receptor pairs for a specific component as a bar plot.
    
@@ -285,7 +289,7 @@ Factor Plotting
    single component, revealing which specific interactions are most associated with that 
    communication pattern.
    
-   :param X: AnnData object with stored CCC-RISE results. Must contain X.uns["D"] and X.uns["lr_pairs"].
+   :param X: AnnData object with stored cccRISE results. Must contain X.uns["D"] and X.uns["lr_pairs"].
    :type X: anndata.AnnData
    :param cmp: Component number to visualize (1-indexed).
    :type cmp: int
@@ -301,7 +305,7 @@ PaCMAP Visualization
 ~~~~~~~~~~~~~~~~~~~~
 
 .. py:function:: plot_labels_pacmap(X: anndata.AnnData, labelType: str, ax: matplotlib.axes.Axes, condition: list = None, cmap: str = "tab20", color_key: list = None)
-   :module: cellcommunicationpf2.figures.commonFuncs.plotPaCMAP
+   :module: cccrise.figures.commonFuncs.plotPaCMAP
 
    Plot PaCMAP embedding colored by categorical labels (cell type or condition).
    
@@ -323,7 +327,7 @@ PaCMAP Visualization
    :type color_key: list, optional
 
 .. py:function:: plot_wc_pacmap(X: anndata.AnnData, cmp: int, ax: matplotlib.axes.Axes, cbarMax: float = 1.0, factor_matrix: str = None)
-   :module: cellcommunicationpf2.figures.commonFuncs.plotPaCMAP
+   :module: cccrise.figures.commonFuncs.plotPaCMAP
 
    Plot PaCMAP embedding colored by weighted projections for a specific component.
    
@@ -347,7 +351,7 @@ Analysis Functions
 ~~~~~~~~~~~~~~~~~~
 
 .. py:function:: expression_product_matrix(X1: anndata.AnnData, X2: anndata.AnnData, ligand: str, receptor: str)
-   :module: cellcommunicationpf2.utils
+   :module: cccrise.utils
 
    Calculate the expression product matrix for a specific ligand-receptor pair between cell populations.
    
@@ -367,7 +371,7 @@ Analysis Functions
    :rtype: pd.DataFrame
 
 .. py:function:: binned_expression_product_matrix(X1: anndata.AnnData, X2: anndata.AnnData, ligand: str, receptor: str, n_bins: int = 10)
-   :module: cellcommunicationpf2.utils
+   :module: cccrise.utils
 
    Compute the expression product matrix for a ligand-receptor pair, binned into an
    n_bins x n_bins matrix of block means.

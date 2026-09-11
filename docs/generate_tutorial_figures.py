@@ -1,4 +1,4 @@
-"""Generate figures for the CCC-RISE tutorial documentation."""
+"""Generate figures for the cccRISE tutorial documentation."""
 
 from typing import cast
 
@@ -16,30 +16,30 @@ import seaborn as sns
 output_dir = Path(__file__).parent / "_static" / "tutorial_images"
 output_dir.mkdir(parents=True, exist_ok=True)
 
-# Import CCC-RISE modules
-from cellcommunicationpf2.figures.commonFuncs.plotFactors import (
+# Import cccRISE modules
+from cccrise.figures.commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_lr_factors,
     plot_lr_factors_partial,
 )
-from cellcommunicationpf2.figures.commonFuncs.plotGeneral import plot_fms_r2x_stability
-from cellcommunicationpf2.figures.commonFuncs.plotPaCMAP import (
+from cccrise.figures.commonFuncs.plotGeneral import plot_fms_r2x_stability
+from cccrise.figures.commonFuncs.plotPaCMAP import (
     plot_labels_pacmap,
     plot_wc_pacmap,
 )
-from cellcommunicationpf2.import_data import (
+from cccrise.import_data import (
     add_cond_idxs,
     import_balf_covid,
     import_ligand_receptor_pairs,
 )
-from cellcommunicationpf2.tensor import (
+from cccrise.tensor import (
     calculate_fms_rise,
     calculate_interaction_tensor,
     rise_store_r2x,
     run_fms_r2x_analysis,
 )
-from cellcommunicationpf2.utils import (
+from cccrise.utils import (
     binned_expression_product_matrix,
     resample,
 )
@@ -85,7 +85,7 @@ rise_rank_for_cpd = 35
 # Process with RISE and calculate interaction tensor
 print(f"Fitting RISE with rank={rise_rank_for_cpd} and building interaction tensor...")
 X, _ = rise_store_r2x(X, rank=rise_rank_for_cpd, n_iter_max=1000, tolerance=1e-9)
-interaction_tensor = calculate_interaction_tensor(X, lr_pairs)
+interaction_tensor, _ = calculate_interaction_tensor(X, lr_pairs)
 print(f"Interaction tensor shape: {interaction_tensor.shape}")
 
 # Run actual CPD FMS/R2X analysis
@@ -112,9 +112,9 @@ plt.tight_layout()
 plt.savefig(output_dir / "step2_cpd_fms_r2x.png", dpi=150, bbox_inches="tight")
 plt.close()
 
-from cellcommunicationpf2.figures.common import get_covid_data
+from cccrise.figures.common import get_covid_data
 
-print("\n=== Running CCC-RISE Factorization ===")
+print("\n=== Running cccRISE Factorization ===")
 
 X = get_covid_data(project_cells=True, do_embedding=True)
 
