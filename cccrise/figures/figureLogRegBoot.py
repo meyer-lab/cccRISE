@@ -306,9 +306,7 @@ def makeFigure():
 
     factors_path = DATASETS[SELECTED_DATASET].factors_path()
     factors_ds = load_factors_to_anndata(factors_path)
-    labels = top_lr_pairs(
-        factors_ds.uns["D"], factors_ds.uns["lr_pairs"], top_n=1
-    )
+    labels = top_lr_pairs(factors_ds.uns["D"], factors_ds.uns["lr_pairs"], top_n=1)
     bootstrap_summary = bootstrap_summary.merge(
         labels[["Component", "LRPair", "DLoading"]].rename(
             columns={"LRPair": "TopLRPair", "DLoading": "TopLRLoading"}

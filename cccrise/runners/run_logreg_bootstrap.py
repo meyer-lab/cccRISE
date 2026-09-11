@@ -213,12 +213,8 @@ def run_logreg_bootstrap(
             "match_mode_weights": {"3": 1.0},
             "reference_r2x_cp": float(reference["r2x_cp"]),
             "reference_logreg_weights": reference["logreg_weights"],
-            "n_components_ci_excludes_zero": int(
-                summary["CIExcludesZero"].sum()
-            ),
-            "min_component_match_score": float(
-                summary["MinMatchScore"].min()
-            ),
+            "n_components_ci_excludes_zero": int(summary["CIExcludesZero"].sum()),
+            "min_component_match_score": float(summary["MinMatchScore"].min()),
             "resulting_dims": resulting_dims(
                 spec, adata, n_lr_pairs=len(reference["lr_symbols"])
             ),
