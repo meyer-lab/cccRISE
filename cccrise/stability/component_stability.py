@@ -71,7 +71,12 @@ from ..tensor import (
     calculate_interaction_tensor,
     rise_store_r2x,
 )
-from ..utils import resample_cells, resample_conditions, resample_tensor
+from ..utils import (
+    replicate_seed,
+    resample_cells,
+    resample_conditions,
+    resample_tensor,
+)
 
 Factors = list[np.ndarray]
 
@@ -371,18 +376,6 @@ def fit_stability_pipeline(
 # =============================================================================
 # The shared replicate loop
 # =============================================================================
-
-
-def replicate_seed(random_state: int, replicate: int) -> int:
-    """Seed for one replicate: ``random_state * 1000 + replicate + 1``.
-
-    One integer per (axis, replicate) drives the resample, the RISE refit and
-    the CP restarts, so a replicate's RISE and CPD rows describe the same
-    resampled dataset by construction rather than by coincidence. The ``+ 1``
-    leaves `random_state` itself to the reference pass, so no replicate reuses
-    the reference's starting point.
-    """
-    return random_state * 1000 + replicate + 1
 
 
 def _skip_label(skip_modes: tuple[int, ...]) -> str:

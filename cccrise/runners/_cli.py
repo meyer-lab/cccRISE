@@ -4,6 +4,14 @@ from pathlib import Path
 from .datasets import DATASET_KEYS, DatasetSpec
 from .provenance import sha256_file
 
+# (control label, other label) for `figures.commonFuncs.plotGeneral.binarize_group`,
+# per dataset. Only datasets with a confirmed binary encoding of `group_column`
+# are listed; an unlisted dataset requires --control-label/--other-label
+# explicitly.
+DEFAULT_GROUP_LABELS: dict[str, tuple[str, str]] = {
+    "alad": ("control", "alad"),
+}
+
 
 def parse_ranks(spec: str) -> list[int]:
     """Parse a rank specification into a sorted list of unique ranks.
@@ -32,6 +40,67 @@ def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
         choices=DATASET_KEYS,
         help="Dataset label from the runner registry.",
     )
+
+
+def add_group_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the binary-outcome arguments every group-comparison runner takes."""
+    parser.add_argument(
+        "--group-column",
+        type=str,
+        default=None,
+        help="Column in adata.obs carrying the binary group label "
+        "(default: the dataset registry's group_column).",
+    )
+    parser.add_argument(
+        "--control-label",
+        type=str,
+        default=None,
+        help="Value of --group-column mapped to the reference class "
+        "(default: dataset-specific, see DEFAULT_GROUP_LABELS).",
+    )
+    parser.add_argument(
+        "--other-label",
+        type=str,
+        default=None,
+        help="Label applied to every other value of --group-column "
+        "(default: dataset-specific, see DEFAULT_GROUP_LABELS).",
+    )
+
+
+def resolve_group_labels(
+    spec: DatasetSpec,
+    group_column: str | None,
+    control_label: str | None,
+    other_label: str | None,
+) -> tuple[str, str, str]:
+    """Fill a runner's binary-outcome encoding in from the dataset registry.
+
+    Refuses to guess: a dataset with no registered `group_column`, or no
+    entry in `DEFAULT_GROUP_LABELS`, has to be told its encoding explicitly
+    rather than silently comparing the wrong two classes.
+
+    Returns
+    -------
+    tuple[str, str, str]
+        The group column, the control label, and the other label.
+    """
+    group_column = group_column or spec.group_column
+    if group_column is None:
+        raise ValueError(
+            f"Dataset {spec.key!r} has no group_column in the registry; "
+            "pass --group-column explicitly."
+        )
+    if control_label is None or other_label is None:
+        defaults = DEFAULT_GROUP_LABELS.get(spec.key)
+        if defaults is None:
+            raise ValueError(
+                f"No default (control, other) label pair for dataset "
+                f"{spec.key!r}; pass --control-label and --other-label "
+                "explicitly."
+            )
+        control_label = control_label or defaults[0]
+        other_label = other_label or defaults[1]
+    return group_column, control_label, other_label
 
 
 def dataset_metadata(spec: DatasetSpec) -> dict:

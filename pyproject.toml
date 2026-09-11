@@ -41,6 +41,7 @@ factor = "cccrise.imports:factorSave"
 cccrise-run = "cccrise.runners.run_ccc_rise:main"
 cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
+cccrise-logregboot = "cccrise.runners.run_logreg_bootstrap:main"
 cccrise-stability = "cccrise.runners.run_component_stability:main"
 
 [build-system]
@@ -75,4 +76,3 @@ ignore = [
 
 [tool.pytest.ini_options]
 addopts = "-n auto"
-
