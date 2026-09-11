@@ -33,6 +33,7 @@ def resample(
     resampled_data.obs_names_make_unique()
     return resampled_data
 
+
 def resample_cells(
     data: anndata.AnnData,
     condition_name: str,
