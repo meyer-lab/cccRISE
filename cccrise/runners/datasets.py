@@ -60,9 +60,6 @@ class DatasetSpec:
     def logreg_bootstrap_weights_filename(self) -> str:
         return f"logreg_bootstrap_weights_{self.key}.csv"
 
-    def logreg_bootstrap_summary_filename(self) -> str:
-        return f"logreg_bootstrap_summary_{self.key}.csv"
-
 
 DATASETS: dict[str, DatasetSpec] = {
     "alad": DatasetSpec(

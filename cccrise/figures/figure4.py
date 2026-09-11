@@ -19,9 +19,9 @@ from .commonFuncs.plotFactors import plot_interaction_heatmap, plot_lr_factors
 from .commonFuncs.plotGeneral import binarize_group, get_sample_to_group
 from .commonFuncs.plotPaCMAP import plot_labels_pacmap, plot_wc_pacmap
 
-CMP_ALAD = 5
-CMP_DC = 13
-CMP_NK = 17
+CMP_ALAD = 2
+CMP_DC = 1
+CMP_NK = 0
 N_TOP_GENES = 20
 
 

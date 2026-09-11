@@ -40,14 +40,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import yaml
 
+from ..factors import DATA_DIR, load_factors_to_anndata
+from ..runners.datasets import DATASETS
+from ..runners.provenance import sidecar_path
+from ..stability.logreg_stability import summarize_bootstrap_weights, top_lr_pairs
 from .common import getSetup, load_runner_csv, subplotLabel
 
 # Change this to switch dataset; must match the runner's --dataset. The ranks
 # the bootstrap was conditioned on are recorded in its sidecar.
 SELECTED_DATASET = "alad"
 BOOTSTRAP_WEIGHTS_CSV = f"logreg_bootstrap_weights_{SELECTED_DATASET}.csv"
-BOOTSTRAP_SUMMARY_CSV = f"logreg_bootstrap_summary_{SELECTED_DATASET}.csv"
 
 # Match score below which a replicate's component is not the reference
 # component in any useful sense.
@@ -290,7 +294,28 @@ def plot_match_scores(
 
 def makeFigure():
     bootstrap_weights = load_runner_csv(BOOTSTRAP_WEIGHTS_CSV)
-    bootstrap_summary = load_runner_csv(BOOTSTRAP_SUMMARY_CSV)
+
+    sidecar = sidecar_path(DATA_DIR / BOOTSTRAP_WEIGHTS_CSV)
+    with open(sidecar) as handle:
+        metadata = yaml.safe_load(handle)
+    reference_weights = np.asarray(metadata["reference_logreg_weights"], dtype=float)
+
+    bootstrap_summary = summarize_bootstrap_weights(
+        bootstrap_weights, reference_weights
+    )
+
+    factors_path = DATASETS[SELECTED_DATASET].factors_path()
+    factors_ds = load_factors_to_anndata(factors_path)
+    labels = top_lr_pairs(
+        factors_ds.uns["D"], factors_ds.uns["lr_pairs"], top_n=1
+    )
+    bootstrap_summary = bootstrap_summary.merge(
+        labels[["Component", "LRPair", "DLoading"]].rename(
+            columns={"LRPair": "TopLRPair", "DLoading": "TopLRLoading"}
+        ),
+        on="Component",
+        how="left",
+    )
 
     n_components = len(bootstrap_summary)
     panels = [
@@ -342,4 +367,5 @@ def makeFigure():
     for axis in ax[len(panels) :]:
         axis.set_visible(False)
 
+    print(bootstrap_summary.to_string(index=False))
     return f
