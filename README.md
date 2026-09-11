@@ -28,7 +28,7 @@ git+https://github.com/meyer-lab/cellcommunication-Pf2.git@main
 cccRISE works with preprocessed AnnData objects containing single-cell RNA-seq data:
 
 ```python
-from cccrise.ccc_rise import run_ccc_rise_workflow
+from cccrise import run_ccc_rise_workflow
 import pandas as pd
 
 # Load your ligand-receptor pairs database
