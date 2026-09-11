@@ -17,15 +17,7 @@ from .ccc_rise import (
     standardize_cc_pf2,
 )
 from .import_data import add_cond_idxs, condition_matrices, import_ligand_receptor_pairs
-from .utils import pseudobulk_X
-
-
-def resample_tensor(interaction_tensors):
-    """Bootstrap tensor by resampling last dimension"""
-    indices = np.random.randint(
-        0, interaction_tensors.shape[-1], size=interaction_tensors.shape[-1]
-    )
-    return interaction_tensors[..., indices]
+from .utils import pseudobulk_X, resample_tensor
 
 
 def rise_store_r2x(

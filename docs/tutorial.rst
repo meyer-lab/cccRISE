@@ -156,7 +156,7 @@ First, calculate the interaction tensor using a selected RISE rank, then test di
     X, _ = rise_store_r2x(X, rank=rise_rank, n_iter_max=1000, tolerance=1e-9)
     
     # Calculate interaction tensor
-    interaction_tensor = calculate_interaction_tensor(X, lr_pairs)
+    interaction_tensor, _ = calculate_interaction_tensor(X, lr_pairs)
     
     # Test CPD ranks
     rank_list = list(range(1, 11, 2))

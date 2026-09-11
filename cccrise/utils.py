@@ -33,6 +33,58 @@ def resample(
     resampled_data.obs_names_make_unique()
     return resampled_data
 
+def resample_cells(
+    data: anndata.AnnData,
+    condition_name: str,
+    random_seed: int | None = None,
+) -> anndata.AnnData:
+    """Bootstrap cells with replacement within each condition.
+
+    Probes robustness to which cells were captured and to sequencing depth,
+    holding the cohort itself fixed. Use `resample_conditions` for the
+    complementary question of robustness to cohort composition.
+
+    Supersedes `resample`, which draws the same way but seeds the global
+    `np.random` state -- perturbing every other draw in the process -- and
+    leaves `var["means"]` describing the original cells. That column is
+    load-bearing twice over: `parafac2.anndata_to_list` centers each condition
+    slice with it before the RISE fit, and `ccc_rise.calc_communication_score`
+    adds it back to un-center the projected matrices before scoring. A stale
+    column therefore biases both stages of the pipeline in correlated
+    directions, which would surface as instability that is really just
+    mis-centering. `resample` is kept for the existing FMS figures that cite
+    its numbers.
+
+    Parameters
+    ----------
+    data : anndata.AnnData
+        Single-cell expression data to resample.
+    condition_name : str
+        Column in `data.obs` identifying the condition (patient) to draw
+        within. Each condition keeps its original cell count.
+    random_seed : int | None, optional
+        Seed for the draw. None leaves it unseeded.
+
+    Returns
+    -------
+    anndata.AnnData
+        A copy holding the drawn cells, with `var["means"]` recomputed over
+        them.
+    """
+    rng = np.random.default_rng(random_seed)
+
+    drawn = []
+    for sample in data.obs[condition_name].unique():
+        cell_indices = np.where(data.obs[condition_name] == sample)[0]
+        drawn.append(rng.choice(cell_indices, size=cell_indices.size, replace=True))
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Observation names are not unique")
+        resampled = data[np.concatenate(drawn)].copy()
+    resampled.obs_names_make_unique()
+    resampled.var["means"] = np.asarray(cast(Any, resampled.X).mean(axis=0)).ravel()
+    return resampled
+
 
 def resample_conditions(
     data: anndata.AnnData,
@@ -43,8 +95,8 @@ def resample_conditions(
     """Bootstrap whole conditions (patients) with replacement, keeping every
     cell of a drawn condition.
 
-    Where `resample` draws cells *within* each condition, holding the patient
-    roster fixed, here the roster itself is the
+    Complements `resample_cells`, which resamples cells *within* each condition
+    and so holds the patient roster fixed. Here the roster itself is the
     resampled unit, which is what a bootstrap of a condition-mode result -- a
     per-patient factor, or a model fit on one -- requires: the sampling
     variability being estimated is variability in which patients were enrolled.
@@ -77,8 +129,7 @@ def resample_conditions(
     anndata.AnnData
         A copy holding the drawn conditions' cells, with `condition_name`
         relabeled per draw and `var["means"]` recomputed over the resampled
-        cells, since that column centers each condition slice before the RISE
-        fit and un-centers the projected matrices during scoring.
+        cells -- see `resample_cells` for why that column has to be refreshed.
     """
     rng = np.random.default_rng(random_seed)
     obs = cast(pd.DataFrame, data.obs)
@@ -129,6 +180,21 @@ def replicate_seed(random_state: int, replicate: int) -> int:
     the reference's starting point.
     """
     return random_state * 1000 + replicate + 1
+
+
+def resample_tensor(
+    interaction_tensors: np.ndarray,
+    random_seed: int | None = None,
+    return_indices: bool = False,
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+    """Bootstrap the communication tensor's ligand-receptor mode."""
+    rng = np.random.default_rng(random_seed)
+    n_lr = interaction_tensors.shape[-1]
+    indices = rng.choice(n_lr, size=n_lr, replace=True)
+    resampled = interaction_tensors[..., indices]
+    if return_indices:
+        return resampled, indices
+    return resampled
 
 
 def correct_conditions(X: anndata.AnnData) -> np.ndarray:
