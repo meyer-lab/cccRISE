@@ -18,6 +18,13 @@ in two fits with separately-fit RISE factors, and its score is kept alongside
 every weight: a component that could not be re-identified in a replicate
 produces a wide weight distribution for a reason that has nothing to do with
 the logistic regression, and the two explanations have to stay separable.
+
+The regularization strength is selected patient-grouped: a bootstrapped roster
+holds several copies of the same source patient, and the cross-validation that
+picks lambda keeps all copies of one patient inside a single fold. Scoring a
+held-out fold that contained a copy of a training patient would overstate the
+fit, select lambda too weakly, and report both more nonzero components and
+narrower intervals than the data support.
 """
 
 from typing import Any, cast
@@ -280,11 +287,21 @@ def fit_logreg_pipeline(
         control_label,
         other_label,
     )
+    # `resample_conditions` relabels a repeat draw ``<label>__rep2``, so the
+    # source patient is what the CV folds have to be grouped by: without it,
+    # copies of one patient sit on both sides of a split and the strength
+    # selected off that leaked score is too weak. The reference roster carries
+    # no suffix and so puts every patient in its own group, but it is passed
+    # through the same splitter deliberately -- the reference weight is read
+    # against the replicate distribution, and the two have to have had their
+    # strength selected the same way.
+    groups = [label.split("__rep")[0] for label in sample_to_group.index]
     logreg_weights = fit_logreg_weights(
         X,
         sample_to_group,
         scoring=scoring,
         random_state=random_state,
+        groups=groups,
     )
     return {
         "factors": factors,
