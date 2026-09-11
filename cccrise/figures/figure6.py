@@ -30,7 +30,7 @@ def compute_cp_rank_sweep(
     lr_pairs = import_ligand_receptor_pairs()
 
     # Calculate interaction tensor ONCE for the cached RISE dataset
-    interaction_tensor = calculate_interaction_tensor(adata, lr_pairs)
+    interaction_tensor, _ = calculate_interaction_tensor(adata, lr_pairs)
 
     r2x_results = []
     for cp_rank in cp_ranks:
