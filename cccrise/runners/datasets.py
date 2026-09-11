@@ -63,6 +63,15 @@ class DatasetSpec:
     def logreg_bootstrap_summary_filename(self) -> str:
         return f"logreg_bootstrap_summary_{self.key}.csv"
 
+    def significance_lr_filename(self) -> str:
+        return f"significance_lr_{self.key}.csv"
+
+    def significance_differential_filename(self) -> str:
+        return f"significance_differential_{self.key}.csv"
+
+    def significance_tensor_filename(self) -> str:
+        return f"significance_tensor_{self.key}.nc"
+
 
 DATASETS: dict[str, DatasetSpec] = {
     "alad": DatasetSpec(

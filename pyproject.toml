@@ -43,6 +43,7 @@ cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
 cccrise-logregboot = "cccrise.runners.run_logreg_bootstrap:main"
 cccrise-stability = "cccrise.runners.run_component_stability:main"
+cccrise-significance = "cccrise.runners.run_significance:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
