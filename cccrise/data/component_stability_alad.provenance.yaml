@@ -17,9 +17,10 @@ rise_rank: 25
 cp_rank: 4
 axes:
 - cells
+- conditions
 - lr_pairs
 - permuted
-n_replicates: 3
+n_replicates: 50
 rise_n_iter_max: 100
 rise_tol: 1.0e-06
 n_iter_max: 100
@@ -43,8 +44,9 @@ resampling:
 condition_mode_alignment: reference condition-mode rows expanded onto the replicate's
   roster by draw (see stability.reference_condition_rows)
 lr_mode_alignment: reference ligand-receptor mode rows expanded by the drawn LR indices
-fms_definition: congruence product across unskipped modes (RISE skips mode 1,
-  CPD skips modes 1 and 2), weights ignored (see stability.per_component_fms)
+fms_definition: congruence product across compared modes (Modes 0 and 2 for RISE,
+  with Mode 1 held out; Modes 0 and 3 for CPD, with Modes 1 and 2 held out), weights
+  ignored (see stability.per_component_fms)
 component_numbering: reference fit after ccc_rise.standardize_cc_pf2
 lr_roster_stable: true
 interaction_tensor_shape:
@@ -52,8 +54,8 @@ interaction_tensor_shape:
 - 25
 - 25
 - 513
-r2x_pf2: 0.0404382309026593
-r2x_cp: 0.41878544591847366
+r2x_pf2: 0.04042545714941059
+r2x_cp: 0.4317105581709313
 reference_seed: 0
 first_replicate_seed: 1
 resulting_dims:
@@ -61,5 +63,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 756b9551f6ba18ee646369f986c77191b785b0c0
-generated: '2026-09-10T01:43:48+00:00'
+git_sha: 4a8650c0ef60e85ac63e1555fe284a9f8b472b4e
+generated: '2026-09-11T07:27:54+00:00'
