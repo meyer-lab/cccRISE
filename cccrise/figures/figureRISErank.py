@@ -2,10 +2,13 @@
 Figure for RISE BiCV (bi-cross-validation) rank selection.
 
 Plots the sweep produced by ``uv run cccrise-riserank``; run that first.
+
+The sweep is `scrise.rank_selection.bicv`'s own long-form table, so the plot is
+upstream's too: the held-out curve turning over while the in-sample fit keeps
+climbing is the whole reading, and `plot_bicv_r2x` draws both.
 """
 
-import matplotlib.pyplot as plt
-import pandas as pd
+from scrise.plotting import plot_bicv_r2x
 
 from .common import getSetup, load_runner_csv, subplotLabel
 
@@ -14,43 +17,10 @@ SELECTED_DATASET = "alad"
 SWEEP_CSV = f"rise_rank_{SELECTED_DATASET}.csv"
 
 
-def plot_bicv_rank_selection(
-    df: pd.DataFrame,
-    ax: plt.Axes,
-    title: str | None = None,
-) -> None:
-    """Plot mean +/- SEM of held-out block R2X across ranks.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing 'Rank' and 'HeldOutBlockR2X' columns.
-    ax : plt.Axes
-        Matplotlib axis to plot onto.
-    title : str | None
-        Optional title for the subplot.
-    """
-    stats = df.groupby("Rank")["HeldOutBlockR2X"].agg(["mean", "sem"])
-    ax.errorbar(
-        stats.index,
-        stats["mean"],
-        yerr=stats["sem"],
-        marker="o",
-        capsize=3,
-    )
-    ax.set_xlabel("RISE Rank")
-    ax.set_ylabel("Held-out block $R^2X$")
-    if title:
-        ax.set_title(title)
-
-
 def makeFigure():
-    ax, f = getSetup((4, 3.5), (1, 1))
+    ax, f = getSetup((5, 4), (1, 1))
     subplotLabel(ax)
 
-    plot_bicv_rank_selection(
-        load_runner_csv(SWEEP_CSV),
-        ax[0],
-        title=f"BiCV Held-out $R^2X$ ({SELECTED_DATASET.upper()})",
-    )
+    plot_bicv_r2x(load_runner_csv(SWEEP_CSV), ax[0])
+    ax[0].set_title(f"BiCV rank selection ({SELECTED_DATASET.upper()})")
     return f
