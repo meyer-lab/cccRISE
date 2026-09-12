@@ -54,6 +54,15 @@ class DatasetSpec:
     def cpd_rank_filename(self) -> str:
         return f"cpd_rank_{self.key}.csv"
 
+    def stability_filename(self) -> str:
+        return f"component_stability_{self.key}.csv"
+
+    def logreg_bootstrap_weights_filename(self) -> str:
+        return f"logreg_bootstrap_weights_{self.key}.csv"
+
+    def logreg_bootstrap_summary_filename(self) -> str:
+        return f"logreg_bootstrap_summary_{self.key}.csv"
+
 
 DATASETS: dict[str, DatasetSpec] = {
     "alad": DatasetSpec(

@@ -74,7 +74,7 @@ def build_interaction_tensor(
         random_state=random_state,
         backend=backend,
     )
-    tensor = calculate_interaction_tensor(
+    tensor, _ = calculate_interaction_tensor(
         adata,
         lr_pairs=lr_pairs,
         complex_sep=complex_sep,

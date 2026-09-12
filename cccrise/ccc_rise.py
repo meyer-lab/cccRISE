@@ -747,7 +747,8 @@ def ccc_rise(
         cp_rank,
         n_iter_max=n_iter_max,
         tol=tol,
-        init=svd_init,  # Use random initialization
+        init=svd_init,  # Use initialization
+        svd="randomized_svd",
         normalize_factors=True,
         random_state=random_state,
     )
@@ -913,6 +914,7 @@ def pseudobulk_cp_decomposition(
         n_iter_max=n_iter_max,
         tol=tol,
         init="svd",  # Use SVD initialization
+        svd="randomized_svd",
         normalize_factors=True,
         random_state=random_state,
     )
