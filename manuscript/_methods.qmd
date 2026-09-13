@@ -35,7 +35,7 @@ The solution is given by $Q = UV^{T}$, where $U\Sigma V^{T}$is the singular valu
 For a low-rank decomposition, we update each $\mathbf{P}_{\mathbf{i}}\mathbf{\in}\mathbf{P}$ as the product of the first $r$ left and right singular vectors from the SVD of $Bdiag\left( a_{i} \right)C^{T}X_{sc,i}^{T}$.
 This process of updating the factor matrices using PARAFAC and the projections via Orthogonal Procrustes is repeated until a specific number of iterations elapses or the difference in R2X between iterations reaches a threshold.
 This cycle of aligning the tensor and then factoring it is repeated until either 100 iterations elapse or the difference in R²X between iterations falls below 1×10⁻⁶.
-RISE enhances the core PARAFAC2 algorithm with several key optimizations including a parameter initialization scheme via SVD, the implementation of Nesterov acceleration to improve convergence, and post-factorization alignment procedures to ensure consistent, interpretable results.\ [@doi:10/cxfskg; @doi:10.1016/j.chemolab.2021.104312]
+RISE enhances the core PARAFAC2 algorithm with key optimizations including a parameter initialization scheme via SVD, the implementation of Nesterov acceleration to improve convergence, and post-factorization alignment procedures to ensure consistent, interpretable results.\ [@doi:10/cxfskg; @doi:10.1016/j.chemolab.2021.104312]
 
 #### Construction of the Aligned 4D Communication Tensor
 

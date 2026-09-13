@@ -5,7 +5,7 @@ This communication is mediated by a diverse molecular toolkit, including ligands
 CCC is initiated when extracellular signals trigger intracellular cascades, often altering gene expression to regulate cellular behavior and function.
 By mapping how diseases disrupt these pathways, we can characterize the specific cellular responses that drive and define pathological states.
 
-To better understand how cells interact, researchers have developed various computational techniques to infer cell-cell communication (CCC) from transcriptomic data\ [@doi:10.1038/s41576-020-00292-x; @doi:10.1038/s41467-022-30755-0].
+To better understand how cells interact, researchers have developed computational techniques to infer cell-cell communication (CCC) from transcriptomic data\ [@doi:10.1038/s41576-020-00292-x; @doi:10.1038/s41467-022-30755-0].
 These methods typically leverage single-cell RNA sequencing (scRNA-seq) to identify the co-expression of ligand-receptor (LR) gene pairs documented in curated databases\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1093/bioinformatics/btab036].
 This approach hinges on the central assumption that transcript levels accurately reflect functional protein abundance, which in turn determines the probability of interaction.
 While this is a significant simplification of biological complexity, it allows for the high-throughput screening of thousands of interactions, providing a data-driven way to prioritize specific communication events for experimental validation\ [@doi:10.1038/s41596-024-01045-4; @doi:10.1093/bib/bbaf280].

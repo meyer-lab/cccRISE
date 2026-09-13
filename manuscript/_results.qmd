@@ -146,7 +146,7 @@ Communication programs distinguish stable outcomes from chronic decline in lung 
 Having defined the cellular communication networks associated with ALAD, we sought to contextualize their broader clinical significance by comparing the identified CCC-RISE components against patient demographic and physiological variables.
 We found no significant correlations between the components and variables such as sex, age, or FEV~1~ measured at 6 months and 1-year post-transplant (Supplementary Fig. 8a-b).
 Beyond the initial ALAD diagnosis, we investigated whether these components could predict progression to CLAD or mortality, outcomes marked by continued functional decline\ [@doi:10.1016/j.healun.2024.02.015].
-Our analysis revealed that the sample associations for these components did not clearly associate with either CLAD or deceased status at 6 months and 1-year post-ALAD diagnosis as separate outcomes (Supplementary Fig. 8c-h).
+Our analysis revealed that the sample associations for these components showed no significant association with either CLAD or deceased status at 6 months and 1-year post-ALAD diagnosis as separate outcomes (Supplementary Fig. 8c-h).
 
 Given these findings, we expanded our analysis to determine if other signatures from CCC-RISE could stratify patients based on their clinical trajectories, specifically distinguishing those who remained stable from those who experienced clinical decline leading to CLAD or death in aggregate.
 Using the original factorization, we applied logistic regression to identify components predictive of these outcomes.
