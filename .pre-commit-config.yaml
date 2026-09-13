@@ -5,3 +5,16 @@ repos:
       - id: ruff-check
         args: [--fix]
       - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: panache-format
+        name: panache format (manuscript)
+        entry: uv run panache --config manuscript/panache.toml format --force-exclude
+        language: system
+        files: ^manuscript/.*\.(qmd|md)$
+      - id: panache-lint
+        name: panache lint (manuscript)
+        entry: uv run panache --config manuscript/panache.toml lint --force-exclude
+        language: system
+        files: ^manuscript/.*\.(qmd|md)$
