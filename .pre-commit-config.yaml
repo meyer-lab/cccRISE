@@ -18,3 +18,9 @@ repos:
         entry: uv run panache --config manuscript/panache.toml lint --force-exclude
         language: system
         files: ^manuscript/.*\.(qmd|md)$
+      - id: vale
+        name: vale (manuscript)
+        entry: >-
+          bash -c 'cd manuscript && rel=(); for f in "$@"; do rel+=("${f#manuscript/}"); done; uv run vale "${rel[@]}"' --
+        language: system
+        files: ^manuscript/.*\.(qmd|md)$

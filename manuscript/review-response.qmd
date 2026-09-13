@@ -74,7 +74,7 @@ We note the bidirectional-loading evidence in the Discussion as a data point for
 >    Please clarify the CV scheme and, if selection was not nested, re-estimate performance with nested CV.
 
 We have substantially revised our approach to rank selection to address the overfitting concern and to improve the interpretability of the results.
-In addition to the concerns the revewers raised, selecting the rank of our decompositions based on the an external predition limited the use of our approach to applications where such a prediction was available.
+In addition to the concerns the reviewers raised, selecting the rank of our decompositions based on an external prediction limited the use of our approach to applications where such a prediction was available.
 Instead, we now consistently select the rank of our decompositions based on an internal cross-validation scheme, wherein the decomposition is benchmarked in its ability to predict a left-out portion of the tensor.
 In addition to providing a benchmark for the rank selection, this internal cross-validation scheme also provides a more reliable estimate of the classifier's performance, and a more internally consistent framing of the model, since the decomposition is meant to be a reliable representation of the molecular data.
 
@@ -226,7 +226,7 @@ In the course of this we also caught and corrected a mislabeling in the original
 In fact, at a high level, a similar approach could indeed be taken using other methods that project single cell RNA-seq data into a lower-dimensional space.
 As described in our previous work (CITE), PARAFAC2 is uniquely suited for multi-condition single-cell analysis because it provides a unique solution for decomposing the data into a low-dimensional representation that captures both cell type heterogeneity and quantitation of the variation across conditions.
 By contrast, PCA is rotationally invariant and so it and VAE models will not provide a unique solution to provide a reliable basis for interpretable communication scoring.
-CCA provides a unqiue solution, but cannot be easily broken into a description of the differences between conditions, separated form the single-cell variation.
+CCA provides a unique solution, but cannot be easily broken into a description of the differences between conditions, separated from the single-cell variation.
 NMF does provide a unique solution, and it is possible to quantitate the abundance of a pattern within each condition, but non-negativity splits counter-balanced regulatory patterns, such as differentiation programs, into multiple non-negative components.
 We have expanded our introduction to the manuscript to include a more detailed comparison of these methods and the relative advantage of PARAFAC2.
 

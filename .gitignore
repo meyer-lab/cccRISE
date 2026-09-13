@@ -179,3 +179,5 @@ manuscript/.quarto/
 manuscript/_site/
 manuscript/*_files/
 manuscript/.citation-cache/
+manuscript/.vale/styles/*
+!manuscript/.vale/styles/config/

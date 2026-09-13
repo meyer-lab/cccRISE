@@ -32,7 +32,7 @@ CCC-RISE captures biologically relevant cell-cell communication associated with 
 ![](media/placeholder.svg){width="6.5in"}
 
 **Figure S5.
-Validation of the CCC-RISE model and characterization of the ALAD patient cohort.** (a) Cell type proportion (CD4 T cells, CD8 T cells, dendritic cells, epithelial cells, macrophages, monocytes, NK cels, and proliferating cells) across the patient categories. (b) FMS when comparing the RISE gene and condition factors of the full scRNA-seq COVID-19 dataset to a bootstrapped dataset at various ranks.
+Validation of the CCC-RISE model and characterization of the ALAD patient cohort.** (a) Cell type proportion (CD4 T cells, CD8 T cells, dendritic cells, epithelial cells, macrophages, monocytes, NK cells, and proliferating cells) across the patient categories. (b) FMS when comparing the RISE gene and condition factors of the full scRNA-seq COVID-19 dataset to a bootstrapped dataset at various ranks.
 (c, e) Fraction of the variance explained by (g) RISE and (i) CPD for each number of components. (d) FMS when comparing the CPD condition and sender/receiver eigen-state factors of the 4D communication eigen-state tensor (15-component RISE model) to a bootstrapped tensor at various ranks. (f) PaCMAP of the RISE projections with cells colored by their cell-type annotations. (g) ALAD prediction accuracy of an unpenalized logistic regression model trained on pairs of components. (h) The condition, sender eigen-state, and receiver eigen-state factors. (i) Correlation between CCC-RISE component 13 and component 17 LR pairs with the most highly weighted LR pairs annotated.
 
 ![](media/placeholder.svg){width="6.5in"}

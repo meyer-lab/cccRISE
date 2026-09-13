@@ -146,6 +146,7 @@ dev = [
     { name = "pytest-xdist" },
     { name = "ruff" },
     { name = "ty" },
+    { name = "vale" },
 ]
 docs = [
     { name = "nbsphinx" },
@@ -185,6 +186,7 @@ dev = [
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "ruff", specifier = ">=0.16.1" },
     { name = "ty", specifier = ">=0.0.1" },
+    { name = "vale", specifier = ">=3.21.0" },
 ]
 docs = [
     { name = "nbsphinx", specifier = ">=0.9" },
@@ -2523,6 +2525,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
+]
+
+[[package]]
+name = "vale"
+version = "3.21.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/b1/8aab734733e8659fcd37469cb1bee576a8419b9cc428483ad5738f576d68/vale-3.21.0.0.tar.gz", hash = "sha256:c8757c37408d4de77a340ac3396d8a743da13d1bf13434ee8b869917a358e038", size = 5368, upload-time = "2026-09-10T07:50:21.51Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/84/65954c3769f4103f945c332db40386fea44d7c657397dbca6a46181f70ee/vale-3.21.0.0-py3-none-any.whl", hash = "sha256:1a152f930dc9b44b024cfef90f98838204d6cfb6d1aaaba5b62e4744d52b2048", size = 5943, upload-time = "2026-09-10T07:50:20.386Z" },
 ]
 
 [[package]]
