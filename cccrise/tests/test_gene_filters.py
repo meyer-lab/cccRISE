@@ -59,19 +59,15 @@ def test_ribosomal_protein_s6_kinases_are_kept():
     assert _excluded(var) == set()
 
 
-def test_mito_ribosomal_proteins_are_kept_by_default_and_optional():
-    """`gene_group__ribo_protein` conflates the two ribosomes; we split them."""
+def test_mito_ribosomal_proteins_are_excluded_by_default_and_separable():
+    """Both ribosomes go by default, but they stay independently addressable."""
     var = _var(
         ["MRPL20", "MRPS21", "DAP3", "RPS18"],
         ribo=["MRPL20", "MRPS21", "DAP3", "RPS18"],
     )
-    assert _excluded(var) == {"RPS18"}
-    assert _excluded(var, exclude_mito_ribosomal=True) == {
-        "MRPL20",
-        "MRPS21",
-        "DAP3",
-        "RPS18",
-    }
+    assert _excluded(var) == {"MRPL20", "MRPS21", "DAP3", "RPS18"}
+    # `gene_group__ribo_protein` conflates the two; we can still split them.
+    assert _excluded(var, exclude_mito_ribosomal=False) == {"RPS18"}
 
 
 def test_mtrnr2l_pseudogenes_are_excluded_by_default_and_optional():

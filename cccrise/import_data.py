@@ -269,10 +269,10 @@ def import_ibdverse(
 ) -> anndata.AnnData:
     """IBDverse terminal-ileum biopsies: 343 samples, 232 healthy and 111 Crohn's.
 
-    `filter_mito_ribo` drops the mitochondrial and cytosolic-ribosomal genes --
-    112 of 33,538, carrying 27.9% of the cohort's counts -- before
-    normalization, so the per-cell depth divisor no longer includes them. It
-    must happen at load time for that reason: see `cccrise.gene_filters` and
+    `filter_mito_ribo` drops the mitochondrial and ribosomal genes -- 191 of
+    33,538, carrying 28.6% of the cohort's counts -- before normalization, so
+    the per-cell depth divisor no longer includes them. It must happen at load
+    time for that reason: see `cccrise.gene_filters` and
     `IBD_GENE_FILTER_AUDIT.md`. None of the dropped genes is a ligand or
     receptor, so no communication signal is lost.
 

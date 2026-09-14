@@ -223,30 +223,37 @@ applying the exclusion at step 2 gives exactly the right answer.
 | B | `gene_group__ribo_protein` minus `MRP*`/`DAP3` (cytosolic) | 85 | 9.388% |
 | C | `RPL13`, `RPL18`, `RPSA` — cytosolic RPs the flag misses | 3 | 0.433% |
 | D | `MTRNR2L*` nuclear MT-RNR2 pseudogenes | 11 | 0.239% |
-| | **recommended total (A+B+C+D)** | **112** | **28.285%** |
 | E | `MRPS*`/`MRPL*`/`DAP3` — mito ribosomal proteins | 79 | 0.282% |
-| | if E is also excluded | 191 | 28.568% |
+| | **adopted set (A+B+C+D+E)** | **191** | **28.568%** |
 | | shipped flags used unmodified, for comparison | 177 | 27.896% |
 
-33,426 of 33,538 genes survive the recommended filter. After the loader's own
-`gene_threshold=0.001` is also applied, the working gene set goes from 23,729
-genes to **23,622** — only 107 fewer, because five of the 112 would have failed
-the count threshold anyway. Verified end to end on the full cohort: 116 s,
-80.5 GB peak RSS, 3,550,747,821 nonzeros, all 343 conditions intact, no `MT-`,
-`MTRNR2L*` or cytosolic ribosomal gene remaining, and all 79 `MRP*` retained.
+33,347 of 33,538 genes survive the filter.
 
-**Two judgement calls are embedded here, both cheap to reverse:**
+**Decided 2026-09-14: A+B+C+D+E, applied before normalization.** Two calls were
+open when this was drafted and are now settled:
 
-- **`MRP*` are kept (E excluded from the filter).** They are nuclear-encoded
-  housekeeping genes, not a technical artifact, and carry 0.28% of counts. The
-  shipped `ribo_protein` flag disagrees. Excluding them too changes the removed
-  fraction by 0.28 percentage points, so the choice is nearly free either way —
-  it is a question of what the filter is *for*, not of magnitude.
-- **`MTRNR2L*` are removed (D included).** They are a recognized ambient-RNA
-  artifact and no `MT-` rule catches them, but they are nuclear genes and a
-  strict "mitochondrially encoded" reading would keep them.
+- **`MRP*` are excluded (E in).** They are nuclear-encoded housekeeping genes
+  rather than a technical artifact, and carry 0.28% of counts, so the choice is
+  close to free either way. They remain separable via
+  `mito_ribo_mask(exclude_mito_ribosomal=False)` because they are a different
+  kind of gene, not because the magnitude is in doubt.
+- **`MTRNR2L*` are excluded (D in).** A recognized ambient-RNA artifact that no
+  `MT-` rule catches, since they are nuclear-encoded.
 
-Both are single-constant edits in the implementation.
+The comparison against the consortium's post-normalization ordering (§6a) was
+considered and deliberately not pursued; the confound in §3 is the whole basis
+for this filter, and normalizing first would leave it in place.
+
+**Verified residuals.** After the filter the only `RP*`/`MRP*`-prefixed genes
+left are the eleven ribosomal protein S6 kinases, three antisense transcripts
+(`RPL34-AS1`, `RPS6KA2-AS1`, `RPS6KB2-AS1`), three readthrough loci
+(`RPL17-C18orf32`, `RPL36A-HNRNPH2`, `RPS10-NUDT3`), `RPS19BP1` (AROS, a SIRT1
+regulator and not a ribosomal protein), the two `MRP*` divergent transcripts —
+and `RPL22L1`. That last one is a genuine ribosomal protein paralog that the
+Sanger flag does not mark, even though it does mark the comparable paralogs
+`RPL3L`, `RPL10L`, `RPL39L`, `RPL26L1`, `RPL7L1` and `RPS27L`. It carries 0.006%
+of counts. Left in, since it was not part of the agreed set; noted here so the
+inconsistency is on the record.
 
 ---
 
