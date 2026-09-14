@@ -1,0 +1,19 @@
+flavor = "quarto"
+
+extend-exclude = [
+    "MSB-review.md",
+    "_extensions/**",
+    "media/**",
+]
+
+[format]
+wrap = "sentence"
+math = "preserve"
+no-break-abbreviations = [
+    "A.", "B.", "C.", "D.", "E.", "F.", "G.", "H.", "I.", "J.",
+    "K.", "L.", "M.", "N.", "O.", "P.", "Q.", "R.", "S.", "T.",
+    "U.", "V.", "W.", "X.", "Y.", "Z.",
+]
+
+[compat]
+quarto = "1.10"
