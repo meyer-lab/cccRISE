@@ -2,7 +2,11 @@ import anndata
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.model_selection import StratifiedGroupKFold
 
+import cccrise.logreg
+from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
+from cccrise.import_data import add_cond_idxs
 from cccrise.stability.logreg_stability import (
     align_to_reference_components,
     bootstrap_logreg_weights,
@@ -11,7 +15,7 @@ from cccrise.stability.logreg_stability import (
     summarize_bootstrap_weights,
     top_lr_pairs,
 )
-from cccrise.utils import replicate_seed
+from cccrise.utils import replicate_seed, resample_conditions
 
 
 def _synthetic_factors(
@@ -333,3 +337,63 @@ def test_end_to_end_synthetic_bootstrap():
     assert len(summary) == 2
     assert list(summary["Component"]) == [1, 2]
     assert (summary["NReplicates"] == 2).all()
+
+
+def test_get_sample_to_group_is_ordered_by_condition_unique_idxs():
+    """`fit_logreg_weights` reads `sample_to_group` as aligned to `uns["A"]`'s
+    rows, which are in `condition_unique_idxs` order. The ``__rep2`` suffix a
+    repeat draw carries sorts next to its source label, but the alignment must
+    not rest on that -- it rests on both orderings being the same sort."""
+    adata = _synthetic_cohort(n_conditions=6)
+    resampled = add_cond_idxs(
+        resample_conditions(adata, "Sample", stratify_by="Group", random_seed=0),
+        "Sample",
+    )
+
+    sample_to_group = get_sample_to_group(resampled, "Sample", "Group")
+
+    rows = resampled.obs["condition_unique_idxs"].to_numpy()
+    labels = resampled.obs["Sample"].to_numpy().astype(str)
+    for row, label in zip(rows, labels, strict=True):
+        assert sample_to_group.index[row] == label
+
+
+def test_fit_logreg_weights_hands_the_splitter_its_groups(monkeypatch):
+    """No copy of a bootstrapped patient may straddle a split.
+
+    Ungrouped folds score a held-out half against rows the fit has already
+    seen, and select the L1 strength off that optimistic score. `groups`
+    reaches the splitter only through scikit-learn's metadata routing, so the
+    check is on the folds the fit actually drew: a routing failure would fall
+    back to ungrouped folds silently.
+    """
+    n_source = 20
+    labels = [f"Sample_{i}" for i in range(n_source)]
+    # Four patients drawn twice, as a bootstrapped roster would have them.
+    labels += [f"Sample_{i}__rep2" for i in (0, 1, 10, 11)]
+    sources = np.array([label.split("__rep")[0] for label in labels])
+    y = pd.Series(
+        [0 if int(source.split("_")[1]) < n_source // 2 else 1 for source in sources],
+        index=labels,
+    )
+    rng = np.random.default_rng(0)
+    X = anndata.AnnData(
+        X=np.zeros((len(labels), 1)),
+        uns={"A": rng.standard_normal((len(labels), 3))},
+    )
+
+    drawn: list[tuple[np.ndarray, np.ndarray]] = []
+
+    class RecordingSplitter(StratifiedGroupKFold):
+        def split(self, X, y=None, groups=None):
+            groups = np.asarray(groups)
+            for train, test in super().split(X, y, groups):
+                drawn.append((groups[train], groups[test]))
+                yield train, test
+
+    monkeypatch.setattr(cccrise.logreg, "StratifiedGroupKFold", RecordingSplitter)
+    cccrise.logreg.fit_logreg_weights(X, y, groups=list(sources))
+
+    assert drawn
+    for train_sources, test_sources in drawn:
+        assert not (set(train_sources) & set(test_sources))
