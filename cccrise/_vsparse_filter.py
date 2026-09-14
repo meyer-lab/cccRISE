@@ -1,29 +1,7 @@
-"""`vsparse.load_and_normalize` with a caller-supplied gene exclusion.
-
-`vsparse.load_and_normalize` decides its gene set from `gene_threshold` and
-`min_cells` alone, and there is no hook for excluding named genes. That matters
-here because a mito/ribo filter has to be applied *before* normalization: the
-per-cell depth divisor is a sum over the retained genes, and on IBDverse the
-excluded genes are 27.9% of counts with a fraction that varies from 14% to 39%
-across samples. Dropping the columns from the returned AnnData instead would
-leave that variation in every other gene's scale -- the same failure mode as
-normalizing a full cohort and subsetting conditions afterwards.
-
-Doing it the other cheap way -- `load_packed` into raw counts, drop columns,
-then `prepare_dataset` -- is correct but materializes all 3.6 billion IBDverse
-nonzeros as a plain CSR, which is the ~100 GB path `vsparse` exists to avoid.
-
-So this module mirrors `load_and_normalize`, adding one line: the exclusion is
-ANDed into the gene mask that upstream already computes, at the point where
-that mask is built and before `_normalize_and_transform` runs.
-
-This depends on `vsparse` internals and will break loudly if they move.
-`test_gene_filters.py` pins it: with nothing excluded, the output must match
-`vsparse.load_and_normalize` exactly. The proper home for this is a
-`gene_mask=` parameter on `load_and_normalize` upstream; see
-`IBD_GENE_FILTER_AUDIT.md` section 3.
 """
-
+Temporary supplied gene exclusion filter for vsparse.load_and_normalize. Eventually the API
+will support a `gene_mask=` parameter, but this is a temporary workaround for now.
+"""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -58,21 +36,8 @@ def load_and_normalize_excluding(
     exclude_genes: Callable[[pd.DataFrame], np.ndarray] | None = None,
     x_key: str = "X",
 ) -> ad.AnnData:
-    """As `vsparse.load_and_normalize`, minus the genes `exclude_genes` picks.
-
-    Parameters
-    ----------
-    exclude_genes
-        Callable receiving the file's `var` table and returning a boolean mask
-        over its rows, True for genes to drop. Applied alongside the
-        `gene_threshold` / `min_cells` filters, so normalization sees only the
-        retained genes. `None` reproduces `load_and_normalize` exactly.
-
-    Every other parameter behaves as it does upstream.
-    """
     import h5py
-    import hdf5plugin  # noqa: F401  -- registers the Blosc2 HDF5 filter
-
+    import hdf5plugin  # noqa: F401
     if min_cells is not None:
         if isinstance(min_cells, bool) or not isinstance(min_cells, int):
             raise TypeError("min_cells must be an integer or None")
@@ -144,7 +109,7 @@ def load_and_normalize_excluding(
         )
         gene_mask &= gene_detection_counts >= min_cells
 
-    # The one addition to upstream: drop the excluded genes here, so the
+    # Drop the excluded genes here, so the
     # normalization below never sees their counts.
     gene_mask &= ~excluded
     if not gene_mask.any():

@@ -10,6 +10,7 @@ import pandas as pd
 import vsparse
 from scipy.sparse import csr_array, issparse
 
+# Temporary imports until upstream APIs support gene exclusion
 from ._vsparse_filter import load_and_normalize_excluding
 from .gene_filters import describe_mask, mito_ribo_mask
 
@@ -232,23 +233,11 @@ def import_alad_brush(
         data, "subj", geneThreshold=gene_threshold, normalize=normalize
     )
 
-
+# Necessary fix for IBDverse genes
 def use_gene_symbols(
     data: anndata.AnnData, symbol_column: str = "gene_symbols"
 ) -> anndata.AnnData:
-    """Re-index an AnnData's genes by HGNC symbol, in place.
-
-    Some cohorts ship Ensembl gene IDs as `var_names` and keep the symbols in a
-    `var` column. The ligand-receptor table is keyed by symbol, so leaving the
-    Ensembl IDs in place makes *every* LR pair fail to match -- the interaction
-    tensor then comes out with a zero-length ligand-receptor mode, which
-    surfaces far downstream as a reshape error rather than as a naming problem.
-
-    Duplicate symbols are suffixed rather than merged, so the first occurrence
-    keeps the bare symbol and stays matchable; genes with no symbol keep their
-    original identifier. A no-op when `symbol_column` is absent, so datasets
-    already keyed by symbol pass through untouched.
-    """
+    """Re-index an AnnData's genes by HGNC symbol, in place."""
     if symbol_column not in data.var:
         return data
 
@@ -268,13 +257,6 @@ def import_ibdverse(
     filter_mito_ribo: bool = True,
 ) -> anndata.AnnData:
     """IBDverse terminal-ileum biopsies: 343 samples, 232 healthy and 111 Crohn's.
-
-    `filter_mito_ribo` drops the mitochondrial and ribosomal genes -- 191 of
-    33,538, carrying 28.6% of the cohort's counts -- before normalization, so
-    the per-cell depth divisor no longer includes them. It must happen at load
-    time for that reason: see `cccrise.gene_filters` and
-    `IBD_GENE_FILTER_AUDIT.md`. None of the dropped genes is a ligand or
-    receptor, so no communication signal is lost.
 
     References:
     [1] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
