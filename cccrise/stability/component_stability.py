@@ -270,6 +270,31 @@ def _expand_reference_mode(factors: Factors, mode: int, rows: np.ndarray) -> Fac
 # =============================================================================
 
 
+def _condition_labels(adata: anndata.AnnData, condition_column: str) -> np.ndarray:
+    """Condition labels aligned to the fit's mode-0 rows.
+
+    Read back out of the `condition_unique_idxs` column `add_cond_idxs` wrote,
+    rather than re-derived with an independent `np.unique`, so the labels
+    cannot disagree with the rows they name. The two orderings differ whenever
+    the condition column is not already a string: `add_cond_idxs` sorts in the
+    column's native dtype, so an integer column gives rows in `[1, 2, 10]`
+    order while a string sort of the same labels gives `['1', '10', '2']`.
+    Consumers -- `reference_condition_rows` above all -- treat this array as
+    positionally aligned to mode 0, and a silent disagreement would have
+    `per_component_fms` compare the wrong patients and still return a
+    plausible number.
+    """
+    cond_idx = np.asarray(adata.obs["condition_unique_idxs"]).astype(int)
+    labels = np.asarray(adata.obs[condition_column]).astype(str)
+    order = np.empty(cond_idx.max() + 1, dtype=object)
+    order[cond_idx] = labels
+    assert len(order) == adata.uns["Pf2_A"].shape[0], (
+        f"{len(order)} condition labels for "
+        f"{adata.uns['Pf2_A'].shape[0]} rows of Pf2_A."
+    )
+    return order
+
+
 def fit_stability_pipeline(
     adata: anndata.AnnData,
     lr_pairs: pd.DataFrame,
@@ -361,9 +386,7 @@ def fit_stability_pipeline(
         ],
         "cp_weights": cp_weights,
         "cp_factors": cp_factors,
-        "condition_labels": np.unique(
-            np.asarray(adata.obs[condition_column]).astype(str)
-        ),
+        "condition_labels": _condition_labels(adata, condition_column),
         "gene_names": np.asarray(adata.var_names),
         "lr_symbols": filtered_lr_pairs["interaction_symbol"].to_numpy(),
         "tensor": tensor if keep_tensor else None,
@@ -629,7 +652,7 @@ def component_stability(
 
 
 def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
-    """Refuse to compare two fits whose gene or LR-pair modes differ.
+    """Refuse to compare two fits whose gene, LR-pair or condition modes differ.
 
     Both rosters are fixed in practice -- gene filtering happens in the loader
     before any resampling, and `ccc.build_context_ccc_tensor` intersects over
@@ -639,6 +662,13 @@ def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
     different interactions row by row and return a perfectly plausible number,
     and intersecting would change the mode length and so the FMS scale
     invisibly.
+
+    The condition mode is checked by length rather than membership: the
+    replicate's roster is *meant* to differ from the reference's on the
+    condition axis. What must hold is that `condition_labels` still names
+    mode-0 row for row, since that is what `reference_condition_rows` matches
+    on. A length mismatch is the loud symptom of the labels having drifted out
+    of step with the rows.
     """
     if not np.array_equal(fit["gene_names"], reference["gene_names"]):
         raise ValueError(
@@ -651,6 +681,18 @@ def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
             "pairs, so their CP ligand-receptor factor rows are not "
             "comparable and component matching would be meaningless."
         )
+    for fit_or_reference in (fit, reference):
+        n_labels = len(fit_or_reference["condition_labels"])
+        for key in ("rise_factors", "cp_factors"):
+            n_rows = fit_or_reference[key][0].shape[0]
+            if n_labels != n_rows:
+                raise ValueError(
+                    f"{n_labels} condition labels for {n_rows} rows of "
+                    f"{key}'s condition mode. The labels are what "
+                    "`reference_condition_rows` matches on, so a length "
+                    "mismatch means they no longer name the rows they are "
+                    "read as naming."
+                )
 
 
 # =============================================================================
