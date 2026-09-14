@@ -183,3 +183,21 @@ def test_exclusion_is_validated(ivcsc_file):
         load_and_normalize_excluding(
             ivcsc_file, exclude_genes=lambda var: np.ones(len(var), dtype=bool)
         )
+
+
+def test_mask_is_applied_before_symbol_reindexing(ivcsc_file):
+    """The filter reads the file's own `var`, so it runs on Ensembl-keyed input.
+
+    `use_gene_symbols` re-indexes afterwards; the two must not fight -- the
+    excluded genes stay gone and the survivors come back keyed by symbol.
+    """
+    from cccrise.import_data import use_gene_symbols
+
+    filtered = load_and_normalize_excluding(
+        ivcsc_file, min_cell_counts=10.0, exclude_genes=mito_ribo_mask
+    )
+    named = use_gene_symbols(filtered)
+
+    assert set(named.var_names) == {"ACTB", "IL7R", "CD4", "CD8A", "CCL5", "CXCL13"}
+    assert "MT-CO1" not in set(named.var_names)
+    assert "RPS18" not in set(named.var_names)
