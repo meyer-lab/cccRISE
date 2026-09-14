@@ -10,11 +10,14 @@ import pandas as pd
 import vsparse
 from scipy.sparse import csr_array, issparse
 
+from ._vsparse_filter import load_and_normalize_excluding
+from .gene_filters import describe_mask, mito_ribo_mask
+
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
-IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
-IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "Full_cohort.ivcsc.h5ad"
+IBD_DATA_DIR = Path("/opt/IVCSC")
+IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "full_IBD_cohort.ivcsc.h5ad"
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
@@ -235,8 +238,16 @@ def import_ibdverse(
     gene_threshold: float = 0.001,
     normalize: bool = True,
     condition_name: str = "sanger_sample_id",
+    filter_mito_ribo: bool = True,
 ) -> anndata.AnnData:
     """IBDverse terminal-ileum biopsies: 343 samples, 232 healthy and 111 Crohn's.
+
+    `filter_mito_ribo` drops the mitochondrial and cytosolic-ribosomal genes --
+    112 of 33,538, carrying 27.9% of the cohort's counts -- before
+    normalization, so the per-cell depth divisor no longer includes them. It
+    must happen at load time for that reason: see `cccrise.gene_filters` and
+    `IBD_GENE_FILTER_AUDIT.md`. None of the dropped genes is a ligand or
+    receptor, so no communication signal is lost.
 
     References:
     [1] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
@@ -244,17 +255,37 @@ def import_ibdverse(
     """
     print("Loading IBDverse data...")
     if normalize:
-        data = vsparse.load_and_normalize(
-            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
-        )
+        if filter_mito_ribo:
+            data = load_and_normalize_excluding(
+                filename,
+                min_cell_counts=10.0,
+                gene_threshold=gene_threshold,
+                exclude_genes=_report_mito_ribo_mask,
+            )
+        else:
+            data = vsparse.load_and_normalize(
+                filename, min_cell_counts=10.0, gene_threshold=gene_threshold
+            )
         data = add_cond_idxs(data, condition_name)
         data.var["means"] = data.X.mean(axis=0)
         return data
 
     data = vsparse.load_packed(filename).to_anndata()
+    if filter_mito_ribo:
+        var = cast(pd.DataFrame, data.var)
+        mask = mito_ribo_mask(var)
+        print(f"   {describe_mask(var, mask)}")
+        data = data[:, ~mask].copy()
     return prepare_dataset(
         data, condition_name, geneThreshold=gene_threshold, normalize=normalize
     )
+
+
+def _report_mito_ribo_mask(var: pd.DataFrame) -> np.ndarray:
+    """`mito_ribo_mask`, announcing what it removed."""
+    mask = mito_ribo_mask(var)
+    print(f"   {describe_mask(var, mask)}")
+    return mask
 
 
 def add_cond_idxs(X, condition_key):
