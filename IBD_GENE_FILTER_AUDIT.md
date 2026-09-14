@@ -262,3 +262,107 @@ The ALAD cohort has not been audited. Its `var` does not carry the Sanger
 `gene_group__*` flags, so a symbol-based rule would have to be built and
 validated separately before the same filter could be applied there. The
 committed ALAD rank results are unaffected by this change.
+
+---
+
+## 6. What the literature says, and where this filter is too aggressive
+
+Added 2026-09-14 after reviewing the IBDverse papers and the CD/IBD
+mitochondrial literature. Two findings change how section 4 should be read.
+
+### 6a. The consortium filters these genes, but not at this step
+
+The IBDverse methods (Alegbe, Harris, Fachal et al., *Nature* 2026, the eQTL
+companion to Krzak et al.) do exclude these genes — but from **feature
+selection only**:
+
+> "Ribosomal, mitochondrial and immunoglobulin genes were then excluded from the
+> highly variable set."
+
+Their normalization runs *before* that, over the full gene set —
+`normalize_per_cell` to 10,000 counts then `log1p`, giving ln(cp10k + 1). Per-cell
+mitochondrial content is used as a QC threshold (>20% of reads for blood-derived
+cells, >50% for biopsy-derived) and not otherwise removed.
+
+So there is clear precedent for keeping these genes out of the step that learns
+structure, and **no precedent for taking them out of the normalization
+denominator**, which is what section 3 argued for and what the loader now does.
+Ours is strictly more aggressive than the pipeline that produced the data. That
+is defensible on its own terms — their cp10k denominator carries the same
+confound we measured — but it is a divergence, and it makes our normalized values
+not directly comparable to the published ones.
+
+### 6b. Part of the mitochondrial signal is real disease biology
+
+Suppression of mitochondrial transcription is an established IBD finding, not an
+artifact. Haberman et al. (*Nat Commun* 2019, 206 pediatric UC patients) report
+"marked suppression of mitochondrial genes and function" in active disease,
+specifically the mtDNA-encoded oxidative-phosphorylation subunits together with
+nuclear regulators such as `PPARGC1A`, and argue mitochondriopathy is a
+pathogenic process rather than a QC nuisance. The same theme runs through the
+Paneth-cell and epithelial-barrier literature (HSP60/OXPHOS loss, mitophagy
+defects).
+
+Our cohort reproduces the direction: `MT-` fraction falls Healthy 14.71% →
+CD uninflamed 13.70% → CD inflamed 10.26%. So section 2c's "technical channel"
+framing was too strong. Decomposing the 4.53-point Healthy-vs-CD-inflamed gap:
+
+| source | points | share |
+|---|---:|---:|
+| cell-type composition | 2.91 | 64% |
+| within-cell-type change | 1.62 | 36% |
+
+The composition term is large because CD-inflamed biopsies are a different tissue:
+plasma B cells go 6.2% → 18.0% and myeloid 4.9% → 13.4%, both mito-low, while
+enterocytes fall 27.8% → 17.0%. But the within-cell-type term is not noise — the
+reduction holds in the same direction in **all seven** lineages:
+
+| lineage | Healthy | CD inflamed | difference |
+|---|---:|---:|---:|
+| Secretory | 18.40% | 15.20% | +3.20 |
+| Enterocyte | 21.68% | 19.72% | +1.96 |
+| T cell | 8.73% | 7.13% | +1.60 |
+| B cell | 7.32% | 5.98% | +1.34 |
+| Plasma B cell | 6.06% | 4.73% | +1.33 |
+| Myeloid | 7.12% | 5.80% | +1.32 |
+| Stem cell | 23.81% | 23.66% | +0.15 |
+
+A consistent sign across seven independent lineages is the signature of a real
+effect. **Filtering `MT-` genes therefore does delete a genuine, published
+CD-associated axis** — it is not purely a technical clean-up.
+
+### 6c. What is actually at stake for this pipeline
+
+Less than 6b implies, because of where these genes sit in the model:
+
+* They are **never in the communication tensor.** It is indexed by ligand-receptor
+  pairs, and no mito, ribosomal or immunoglobulin gene is one (section 3).
+* They enter only through (i) the normalization denominator and (ii) the RISE
+  gene mode, where 27.9% of counts on the least-sparse genes in the dataset will
+  materially shape the eigen-states that the LR scores are then read off.
+
+So the trade is not "lose mitochondriopathy from the results" — the CP stage
+never sees it either way. It is "should the eigen-state basis be allowed to spend
+components on a mito/ribo/composition axis." That is a real modelling choice with
+arguments both ways, and it is **measurable**: fit both, compare the condition-mode
+factors and the recovered LR programmes. It should not be settled by assertion.
+
+### 6d. A gap: immunoglobulin genes
+
+The consortium excludes ribosomal, mitochondrial **and immunoglobulin** genes.
+We do not. On this cohort that is 410 genes carrying **6.77% of all counts** —
+`IGKC` alone is the single most-expressed gene in the dataset at 3.56%, ahead of
+every `MT-` gene — and none of them is a ligand or receptor either.
+
+They are also the most composition-confounded block in the data, precisely
+because plasma B cells nearly triple between Healthy and CD-inflamed. By the
+argument of section 3, immunoglobulins have a stronger claim to exclusion than
+the `MRP*` genes we debated in section 4. They are not currently filtered, and
+whether they should be is an open decision.
+
+### 6e. Note on cost
+
+Filtering is not a performance measure and should not be justified as one. It
+removes 112 of 33,538 genes, moves the working set 23,729 → 23,622, and the
+full-cohort load measured 80.5 GB peak either way. The case for it rests entirely
+on the normalization confound in section 3.
