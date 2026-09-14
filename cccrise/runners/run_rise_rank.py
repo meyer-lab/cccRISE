@@ -2,11 +2,7 @@
 """
 Runner: RISE (PARAFAC2) rank selection by bi-cross-validation.
 
-Thin wrapper over `scrise.rank_selection.bicv`: this module supplies the
-dataset registry, the canonical output filename and the provenance sidecar;
-everything about the criterion itself lives upstream.
-
-BiCV holds out a fraction of the cells *and* a fraction of the genes, fits
+BiCV holds out a fraction of the cells and a fraction of the genes, fits
 PARAFAC2 on the remaining block, and scores the prediction of the held-out
 block. Each fold is CANDELINC-compressed once (`--compress`, default `auto`)
 so a rank sweep pays one data traversal per fold rather than one per
@@ -56,9 +52,7 @@ def run_rise_rank_selection(
     """Run the BiCV sweep and persist the CSV plus its sidecar.
 
     `n_iter_max` sits above `bicv`'s own default because an under-converged fit
-    reads as a worse rank. It is not raised further: these fits reach the cap
-    rather than the tolerance, so cost is linear in it, and on ALAD the selected
-    rank is unchanged anywhere from 25 to 1000 iterations.
+    reads as a worse rank.
 
     `backend` is passed to `parafac2` ('cpu', 'cupy', 'mlx', or None to
     auto-detect). `PARAFAC2_BACKEND` in the environment does the same thing

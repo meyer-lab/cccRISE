@@ -6,10 +6,13 @@ Fits RISE once at a fixed (already-selected) rank, builds the 4D communication
 tensor from that single fit, then sweeps CP ranks over it. Every rank in a
 sweep therefore sees identical RISE factors.
 
-Each rank is fit once and all three criteria are read off that shared fit:
-fit R2X, core consistency (CORCONDIA), and a component-collinearity screen.
-The sweep runs on a CANDELINC core by default -- both criteria are invariant
-to that, and it is what makes a cohort-scale tensor sweepable at all.
+Each rank is fit once and we then read off the following three criteria:
+1. Fit R2X
+2. Core Consistency (CORCONDIA)
+3. Component-Collinearity Screen
+
+The sweep runs on a CANDELINC core by default which has been proven invariant
+to the three criteria.
 
     uv run cccrise-cpdrank --dataset alad --rise-rank 25 --ranks 1:26
     uv run cccrise-cpdrank --dataset ibd --rise-rank 70 --ranks 1:26 --oversample 5
@@ -101,12 +104,6 @@ def cp_fits_by_rank(
 
     `tensor` is the CANDELINC core when the sweep is compressed, so the
     returned factors and R2X are in that core's space.
-
-    `randomized_svd` rather than tensorly's default `truncated_svd`: only the
-    initialisation needs an SVD, and a full one on a wide mode-0 unfolding
-    dominates the fit. On the uncompressed IBDverse tensor at RISE rank 70
-    (343 x 2,513,700) that is 410 s against 72 s per fit, for an R2X that
-    agrees to 3 decimal places.
     """
     fits = {}
     for rank in ranks:
@@ -146,23 +143,14 @@ def run_cpd_rank_selection(
 
         CP rank selection is conditional on the already-selected `rise_rank`.
 
-    `backend` selects where the *RISE* fit runs ('cpu', 'cupy', 'mlx', or None to
-        auto-detect); the CP stage is CPU-only. Pass 'cpu' for a cohort-scale
-        dataset: `parafac2` uploads the whole sparse matrix to the device in one
-        allocation, so IBDverse (3.6e9 nonzeros) exhausts a 24 GB card before the
-        fit starts.
-
-        `n_iter_max` / `tol` control the RISE fit; `cp_n_iter_max` / `cp_tol` the
-        CP fits. They are separate because the two stages want very different
-        budgets: CORCONDIA is read off a converged fit, so the CP side is run far
-        tighter than the RISE side that produced the tensor.
+    `backend` selects where the RISE fit runs ('cpu', 'cupy', 'mlx', or None to
+        auto-detect); the CP stage is CPU-only.
 
         Returns the sweep results, the CSV path, and the sidecar path.
     """
     output_path = output_path or (DATA_DIR / spec.cpd_rank_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Pin the code version before writing anything: see `provenance.git_sha`.
     git_sha()
 
     print(f"=== CPD rank selection: {spec.label} (RISE rank {rise_rank}) ===")

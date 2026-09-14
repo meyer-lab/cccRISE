@@ -648,13 +648,6 @@ def build_context_ccc_tensor(
             row[interaction_columns[0]] + "^" + row[interaction_columns[1]]
             for idx, row in ppi_data_.iterrows()
         ]
-        # `generate_ccc_tensor` returns nested Python lists, where every scalar
-        # is a boxed float -- roughly 4x what the equivalent float64 array
-        # costs. Collecting one per context and converting at the end holds the
-        # whole tensor in its most expensive possible form: 3.8e9 boxed floats,
-        # over 100 GB, on the IBDverse cohort at RISE rank 90, against 30 GB
-        # for the array. Converting each context as it is produced, into a
-        # preallocated output, keeps one such list alive instead of 343.
         tensors = None
         for i, rnaseq in enumerate(rnaseq_matrices):
             slab = np.asarray(context_tensor(rnaseq), dtype=float)
@@ -672,7 +665,7 @@ def build_context_ccc_tensor(
         mask_tensor = (~np.isnan(tensors)).astype(int)
     else:
         mask_tensor = None
-    # In place: `tensors` is this function's own array, so the default copy
+    # In place, `tensors` is this function's own array, so the default copy
     # would duplicate the whole thing.
     tensors = np.nan_to_num(tensors, copy=False)
     return tensors, genes, cells, ppi_names, mask_tensor

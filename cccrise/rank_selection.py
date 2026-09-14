@@ -1,17 +1,3 @@
-"""Rank-selection criteria for the CPD stage.
-
-The RISE rank is chosen by bi-cross-validation, which lives upstream in
-`scrise.rank_selection.bicv` -- it holds out cells *and* genes, compresses each
-fold, and reports the per-trial diagnostics this repository's runner writes out.
-Nothing about it is communication-specific, so nothing about it is here.
-
-What is here is the CPD stage, which is: the interaction tensor is a plain
-4-mode CP problem rather than a PARAFAC2 one, so its rank criteria and its
-compression have no home upstream. Ranks are chosen by core consistency
-(`cp_core_consistency_sweep`) and a component-collinearity screen
-(`cpd_component_collinearity`), both read off one CP fit per rank.
-"""
-
 import numpy as np
 import pandas as pd
 from tensorly.base import unfold
@@ -19,11 +5,6 @@ from tensorly.cp_tensor import cp_to_tensor
 from tensorly.tenalg import mode_dot  # ty: ignore[unresolved-import]
 
 Factors = list[np.ndarray]
-
-
-# =============================================================================
-# Helper utilities
-# =============================================================================
 
 
 def calculate_r2x(weights: np.ndarray, factors: Factors, tensor: np.ndarray) -> float:
@@ -51,11 +32,6 @@ def calculate_r2x(weights: np.ndarray, factors: Factors, tensor: np.ndarray) -> 
     return float(1.0 - norm_residual_sq / norm_tensor_sq)
 
 
-# =============================================================================
-# CPD rank-selection criteria for the interaction tensor
-# =============================================================================
-
-
 def cpd_component_collinearity(
     factors_by_rank: dict[int, tuple[np.ndarray, Factors]],
     threshold: float = 0.9,
@@ -64,15 +40,11 @@ def cpd_component_collinearity(
 
     Two rank-1 terms that are nearly identical in most modes but flip sign in
     one nearly cancel in the sum, despite each carrying substantial weight.
-    That is the classic CPD degeneracy signature, and it says the rank is too
-    high more reliably than fit error does. A pair collinear across modes with
-    *no* sign flip is a near-duplicate rather than a canceling pair, so the
-    sign is reported separately from the count.
+    A pair collinear across modes with no sign flip is a near-duplicate rather
+    than a canceling pair, so the sign is reported separately from the count.
 
     Returns one row per rank:
-    ``MaxModesCollinear`` (0-4, how many modes the worst pair exceeds
-    `threshold` in), ``WorstPairCanceling`` (whether that pair's collinear
-    modes have a net-negative sign product; NaN when the count is 0), and
+    ``MaxModesCollinear``, ``WorstPairCanceling``, and
     ``WorstPairI`` / ``WorstPairJ`` (1-based component indices, -1 when
     rank < 2).
     """
@@ -135,16 +107,10 @@ def cp_core_consistency(
     Projects `tensor` onto each factor matrix's pseudoinverse to get the
     best-fit core in the CP factors' own basis, then compares that core to the
     super-diagonal core a valid quadrilinear model implies. Near 100 means the
-    rank-R model is appropriate and essentially unique; it drops sharply once
+    rank-R model is appropriate and essentially unique. It drops sharply once
     rank exceeds the tensor's true multilinear rank, because the extra
     components start trading off against one another and the projection picks
     up large off-diagonal entries.
-
-    `tensor` may equally be a CANDELINC core with `factors` in that core's own
-    space: the bases are orthonormal, so ``pinv(U_n F_n) = pinv(F_n) U_n^T``
-    and the projected core is identical either way. On a cohort-scale tensor
-    that is the difference between projecting ~300M entries and ~600k, so the
-    sweep normally passes the compressed core.
 
     Returned in percent; can go negative for a badly-fitting rank.
     """
@@ -180,11 +146,6 @@ def cp_core_consistency_sweep(
     return pd.DataFrame(rows)
 
 
-# =============================================================================
-# CANDELINC compression: fit CP inside a small orthonormal subspace
-# =============================================================================
-
-
 def candelinc_compress(
     tensor: np.ndarray, max_rank: int, oversample: int = 5
 ) -> tuple[np.ndarray, Factors, float]:
@@ -202,11 +163,7 @@ def candelinc_compress(
     core components (`cpd_component_collinearity`), and
     ``pinv(U_n F_n) = pinv(F_n) U_n^T`` makes the projected core identical
     whether taken from the original tensor or the core
-    (`cp_core_consistency`). Only fit error changes, and only by the fixed
-    amount lying outside the retained subspaces -- which `candelinc_r2x` adds
-    back.
-
-    Returns the core, the per-mode bases, and the squared norm discarded.
+    (`cp_core_consistency`).
 
     Raises
     ------
@@ -236,8 +193,7 @@ def candelinc_compress(
         unfolded = unfold(core, mode)
         gram = unfolded @ unfolded.T
         # `eigh` returns ascending eigenvalues, so the leading singular
-        # directions are the trailing columns. Their order within the basis is
-        # irrelevant: CANDELINC depends only on the span.
+        # directions are the trailing columns.
         _eigvals, eigvecs = np.linalg.eigh(gram)
         bases[mode] = eigvecs[:, -keep[mode] :]
         core = mode_dot(core, bases[mode].T, mode)

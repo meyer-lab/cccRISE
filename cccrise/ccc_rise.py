@@ -147,19 +147,13 @@ def calc_communication_score(
     if not ppi_names:
         raise ValueError(
             "No ligand-receptor pair matched the expression data, so the "
-            "interaction tensor would have a zero-length LR mode. The usual "
-            "cause is a gene-naming mismatch: the LR table is keyed by HGNC "
-            "symbol, so a dataset indexed by Ensembl ID matches nothing. See "
-            "`import_data.use_gene_symbols`. "
+            "interaction tensor would have a zero-length LR mode. "
             f"First few gene names seen: {list(rnaseq_matrices[0].index[:5])}"
         )
 
     # Transpose to the expected format
     # From: (context, ppi_idx, rank, rank)
     # To:   (context, rank, rank, ppi_idx)
-    # `asarray`, not `array`: `build_context_ccc_tensor` already returns an
-    # ndarray, so copying it again duplicates the whole tensor -- 30 GB on the
-    # IBDverse cohort at RISE rank 90.
     interaction_tensor = np.transpose(np.asarray(tensors), (0, 2, 3, 1))
 
     return interaction_tensor, filtered_lr_pairs

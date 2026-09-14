@@ -34,11 +34,7 @@ def rise_store_r2x(
     """Runs RISE and stores the results.
 
     `backend` is passed straight to `parafac2_nd` ('cpu', 'cupy', 'mlx', or
-    None to auto-detect). It has to be reachable from here because
-    `parafac2.backend.get_backend` selects CuPy whenever the module merely
-    imports, without checking that a device exists or that the data fits: a
-    cohort-scale matrix then dies uploading its CSR indices, and there is no
-    environment variable to opt out.
+    None to auto-detect).
     """
     pf2_out, r2x = parafac2_nd(
         X,
@@ -294,13 +290,7 @@ def calculate_interaction_tensor(
         else np.zeros(adata.n_obs, dtype=int)
     )
 
-    # Project one condition at a time. `condition_matrices` densifies and
-    # centers every slab up front, which is a second full copy of the
-    # expression matrix -- ~44 GB on the IBDverse cohort, held alive right
-    # through the (also large) communication-tensor build below. Slicing per
-    # condition is the same arithmetic on one ~130 MB slab at a time, and the
-    # projected result is four orders of magnitude smaller than the slab it
-    # came from.
+    # Project one condition at a time.
     gene_means = (
         adata.var["means"].to_numpy()
         if "means" in adata.var

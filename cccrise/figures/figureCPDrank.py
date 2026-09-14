@@ -11,8 +11,7 @@ import pandas as pd
 
 from .common import getSetup, load_runner_csv, subplotLabel
 
-# Change this to switch dataset; must match the runner's --dataset. The RISE
-# rank the sweep was conditioned on is recorded in the sweep's sidecar.
+# Change this to switch dataset. The RISErank the sweep was conditioned on is recorded in the sweep's sidecar.
 SELECTED_DATASET = "alad"
 SWEEP_CSV = f"cpd_rank_{SELECTED_DATASET}.csv"
 
@@ -29,7 +28,7 @@ def plot_fit_r2x(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
 def plot_collinearity(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ax.plot(df["Rank"], df["MaxModesCollinear"], color="0.7", zorder=1)
 
-    # Three-way: a canceling pair, a near-duplicate pair, or no collinear pair
+    # A canceling pair, a near-duplicate pair, or no collinear pair
     # at all (NaN). `fillna` keeps the NaN rows out of both of the other masks.
     flag = df["WorstPairCanceling"]
     none_found = flag.isna()
@@ -75,7 +74,7 @@ def plot_core_consistency(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ax.axhline(90, color="tab:green", linestyle="--", linewidth=0.8, label="90%")
     ax.axhline(50, color="tab:orange", linestyle="--", linewidth=0.8, label="50%")
     # Core consistency collapses by orders of magnitude past the valid-model
-    # rank; symlog keeps the 0-100% transition readable while still showing
+    # rank. symlog keeps the 0-100% transition readable while still showing
     # the full collapse instead of one axis extreme crushing the rest flat.
     ax.set_yscale("symlog", linthresh=100)
     ax.set_xlabel("CP Rank")
