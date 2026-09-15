@@ -10,9 +10,8 @@ import pandas as pd
 import vsparse
 from scipy.sparse import csr_array, issparse
 
-# Temporary imports until upstream APIs support gene exclusion
-from ._vsparse_filter import load_and_normalize_excluding
 from .gene_filters import describe_mask, mito_ribo_mask
+from .loading import load_normalized
 
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
@@ -68,12 +67,10 @@ def import_balf_covid(
 
     print("Loading BALF COVID data (preserving sparse format)...")
     if normalize:
-        adata = vsparse.load_and_normalize(
+        adata = load_normalized(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
-        adata = add_cond_idxs(adata, "sample")
-        adata.var["means"] = adata.X.mean(axis=0)
-        return adata
+        return add_cond_idxs(adata, "sample")
 
     adata = vsparse.load_packed(filename).to_anndata()
     return prepare_dataset(
@@ -130,7 +127,7 @@ def import_alad(
     patient ids: dsco_id
     """
     if normalize:
-        data = vsparse.load_and_normalize(
+        data = load_normalized(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
     else:
@@ -202,9 +199,7 @@ def import_alad(
         )
 
     if normalize:
-        data = add_cond_idxs(data, "dsco_id")
-        data.var["means"] = data.X.mean(axis=0)
-        return data
+        return add_cond_idxs(data, "dsco_id")
 
     return prepare_dataset(
         data, "dsco_id", geneThreshold=gene_threshold, normalize=normalize
@@ -221,23 +216,33 @@ def import_alad_brush(
     """
     print("Loading ALAD brushing data...")
     if normalize:
-        data = vsparse.load_and_normalize(
+        data = load_normalized(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
-        data = add_cond_idxs(data, "subj")
-        data.var["means"] = data.X.mean(axis=0)
-        return data
+        return add_cond_idxs(data, "subj")
 
     data = vsparse.load_packed(filename).to_anndata()
     return prepare_dataset(
         data, "subj", geneThreshold=gene_threshold, normalize=normalize
     )
 
-# Necessary fix for IBDverse genes
+
 def use_gene_symbols(
     data: anndata.AnnData, symbol_column: str = "gene_symbols"
 ) -> anndata.AnnData:
-    """Re-index an AnnData's genes by HGNC symbol, in place."""
+    """Re-index an AnnData's genes by HGNC symbol, in place.
+
+    Some cohorts ship Ensembl gene IDs as `var_names` and keep the symbols in a
+    `var` column. The ligand-receptor table is keyed by symbol, so leaving the
+    Ensembl IDs in place makes *every* LR pair fail to match -- the interaction
+    tensor then comes out with a zero-length ligand-receptor mode, which
+    surfaces far downstream as a reshape error rather than as a naming problem.
+
+    Duplicate symbols are suffixed rather than merged, so the first occurrence
+    keeps the bare symbol and stays matchable; genes with no symbol keep their
+    original identifier. A no-op when `symbol_column` is absent, so datasets
+    already keyed by symbol pass through untouched.
+    """
     if symbol_column not in data.var:
         return data
 
@@ -264,21 +269,14 @@ def import_ibdverse(
     """
     print("Loading IBDverse data...")
     if normalize:
-        if filter_mito_ribo:
-            data = load_and_normalize_excluding(
-                filename,
-                min_cell_counts=10.0,
-                gene_threshold=gene_threshold,
-                exclude_genes=_report_mito_ribo_mask,
-            )
-        else:
-            data = vsparse.load_and_normalize(
-                filename, min_cell_counts=10.0, gene_threshold=gene_threshold
-            )
+        data = load_normalized(
+            filename,
+            min_cell_counts=10.0,
+            gene_threshold=gene_threshold,
+            exclude_genes=_report_mito_ribo_mask if filter_mito_ribo else None,
+        )
         data = use_gene_symbols(data)
-        data = add_cond_idxs(data, condition_name)
-        data.var["means"] = data.X.mean(axis=0)
-        return data
+        return add_cond_idxs(data, condition_name)
 
     data = vsparse.load_packed(filename).to_anndata()
     if filter_mito_ribo:

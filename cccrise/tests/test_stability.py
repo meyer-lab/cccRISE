@@ -630,3 +630,74 @@ def test_summarize_component_stability_survives_a_csv_round_trip(tmp_path):
 
     assert summary["NullP95FMS"].notna().all()
     assert summary["FracAboveNull"].notna().all()
+
+
+def test_reference_condition_rows_matches_on_labels_not_positions():
+    """The map is a label lookup, so a roster whose sorted order permutes the
+    reference's still lands on the right rows.
+
+    `P10` sorts before `P2` as a string but after it as a number, so a roster
+    that reorders the two is exactly the case a positional map would get
+    wrong -- and it would get it wrong quietly, by comparing one patient's
+    factor row against another's.
+    """
+    reference = np.array(["P1", "P2", "P10"])
+    replicate = np.array(["P10", "P1", "P1__rep2", "P2"])
+
+    np.testing.assert_array_equal(
+        reference_condition_rows(reference, replicate), [2, 0, 0, 1]
+    )
+
+
+def test_fit_stability_pipeline_labels_conditions_in_row_order():
+    """`condition_labels` must name mode-0 row for row.
+
+    `add_cond_idxs` orders the rows by a sort in the condition column's own
+    dtype, so an integer column puts row 2 at patient ``10``. Deriving the
+    labels with an independent string sort would instead call that row ``2``,
+    and `reference_condition_rows` -- which reads this array as positionally
+    aligned to the rows -- would then match replicate patients onto the wrong
+    reference rows without raising.
+    """
+    adata = _simulate_adata()
+    # Sample IDs whose numeric and string sorts disagree: [1, 2, 10, 20]
+    # against ['1', '10', '2', '20'].
+    numeric_ids = {"S0": 1, "S1": 2, "S2": 10, "S3": 20}
+    adata.obs["patient"] = adata.obs["sample"].map(numeric_ids).astype(int)
+    kwargs = _pipeline_kwargs(condition_column="patient")
+
+    fit = fit_stability_pipeline(adata, _lr_pairs(), **kwargs, random_state=0)
+
+    # `add_cond_idxs` wrote the row each cell's condition owns; the label of
+    # row i is the patient of any cell carrying index i.
+    rows = adata.obs["condition_unique_idxs"].to_numpy()
+    patients = adata.obs["patient"].to_numpy().astype(str)
+    for row, patient in zip(rows, patients, strict=True):
+        assert fit["condition_labels"][row] == patient
+    assert len(fit["condition_labels"]) == fit["rise_factors"][0].shape[0]
+
+
+def test_fit_stability_pipeline_gives_a_twice_drawn_condition_two_equal_rows():
+    """A repeat draw is fit as its own condition off identical cells, so its
+    two mode-0 rows coincide and both expand from the one reference row."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(adata.copy(), lr_pairs, **kwargs, random_state=0)
+    replicate = fit_stability_pipeline(
+        resample_conditions(adata, "sample", stratify_by="group", random_seed=2),
+        lr_pairs,
+        **kwargs,
+        random_state=0,
+    )
+
+    labels = list(replicate["condition_labels"])
+    assert labels == ["S0", "S0__rep2", "S2", "S3"]
+
+    A = replicate["rise_factors"][0]
+    np.testing.assert_allclose(A[labels.index("S0")], A[labels.index("S0__rep2")])
+
+    rows = reference_condition_rows(
+        reference["condition_labels"], replicate["condition_labels"]
+    )
+    np.testing.assert_array_equal(rows, [0, 0, 2, 3])

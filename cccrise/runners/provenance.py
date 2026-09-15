@@ -98,6 +98,26 @@ def build_metadata(fields: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+class _Dumper(yaml.SafeDumper):
+    """SafeDumper that keeps integer sequences on one wrapped line.
+
+    A rank sweep records every rank it visited, which block style renders as
+    one line per rank -- fifty lines of scalar, burying the parameters that
+    actually differ between runs. Flow style still round-trips to the same
+    list, so this is presentation only.
+    """
+
+
+def _represent_list(dumper: yaml.SafeDumper, data: list[Any]) -> yaml.Node:
+    inline = bool(data) and all(
+        isinstance(v, int) and not isinstance(v, bool) for v in data
+    )
+    return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=inline)
+
+
+_Dumper.add_representer(list, _represent_list)
+
+
 def sidecar_path(output_path: str | Path) -> Path:
     """The sidecar that belongs to an output file."""
     path = Path(output_path)
@@ -118,11 +138,13 @@ def write_metadata(
                 f"# {line}\n".rstrip() + "\n" for line in header.strip().splitlines()
             )
             handle.write("\n")
-        yaml.safe_dump(
+        yaml.dump(
             _to_plain(metadata),
             handle,
+            Dumper=_Dumper,
             sort_keys=False,
             default_flow_style=False,
             allow_unicode=True,
+            width=88,
         )
     return path
