@@ -191,7 +191,10 @@ def run_significance(
         print(
             f"   Writing {len(diff_df)} differential interactions to {paths['differential']}..."
         )
-        diff_df.to_csv(paths["differential"], index=False)
+        if str(paths["differential"]).endswith(".parquet"):
+            diff_df.to_parquet(paths["differential"], index=False)
+        else:
+            diff_df.to_csv(paths["differential"], index=False)
         written_paths.append(paths["differential"])
 
     if save_tensor and "tensor" in paths:

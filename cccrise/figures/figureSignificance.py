@@ -14,11 +14,9 @@ Panels, in order:
     b. Observed vs. Permutation Null Mean -- scatter plot comparing observed
        communication score against null expectation, colored by empirical
        Z-score effect size.
-    c. Top Significant Ligand-Receptor Signaling Axes -- horizontal bar plot of
-       the top LR pairs ranked by empirical effect size (Z-score over null).
-    d. Differential Signaling Volcano Plot -- cross-condition communication
+    c. Differential Signaling Volcano Plot -- cross-condition communication
        difference (Group 1 - Group 0) versus -log10(p-value) across all
-       sender-receiver eigen-states and LR pairs.
+       sender-receiver eigen-states and LR pairs, with robust clamped outliers.
 """
 
 import matplotlib.pyplot as plt
@@ -33,6 +31,7 @@ from .common import getSetup, load_runner_csv, subplotLabel
 
 SELECTED_DATASET = "alad"
 SIGNIFICANCE_LR_CSV = f"significance_lr_{SELECTED_DATASET}.csv"
+SIGNIFICANCE_DIFF_PARQUET = f"significance_differential_{SELECTED_DATASET}.parquet"
 SIGNIFICANCE_DIFF_CSV = f"significance_differential_{SELECTED_DATASET}.csv"
 
 PALETTE_EMPHASIS = "#3a6b9c"
@@ -54,12 +53,15 @@ def plot_pvalue_density(
     sig_col = "FractionSignificant_p05"
     fracs = lr_df[sig_col].dropna().values
 
+    max_frac = float(np.max(fracs)) if len(fracs) > 0 else 0.25
+    x_max = max(0.25, float(np.ceil(max_frac * 20) / 20))
+
     sns.histplot(
         fracs,
         kde=True,
         ax=ax,
         color=PALETTE_EMPHASIS,
-        bins=np.linspace(0, 1.0, 41),
+        bins=np.linspace(0, x_max, 26),
         stat="density",
         alpha=0.4,
         edgecolor="white",
@@ -94,7 +96,7 @@ def plot_pvalue_density(
         bbox={"boxstyle": "round,pad=0.4", "fc": "white", "ec": "0.8", "alpha": 0.9},
     )
 
-    ax.set_xlim(0, 1.0)
+    ax.set_xlim(0, x_max)
     ax.set_xlabel("Fraction of significant entries (p < 0.05) per LR pair")
     ax.set_ylabel("Density")
     ax.set_title(f"Null Calibration {title_suffix}".strip())
@@ -119,6 +121,7 @@ def plot_observed_vs_null(
         s=18,
         alpha=0.7,
         edgecolors="none",
+        rasterized=True,
     )
     cbar = plt.colorbar(scatter, ax=ax, shrink=0.75, pad=0.03)
     cbar.set_label("Mean Z-score", fontsize=8)
@@ -144,45 +147,12 @@ def plot_observed_vs_null(
     ax.legend(loc="lower right", frameon=True, fontsize=8)
 
 
-def plot_top_lr_significance(
-    ax: plt.Axes,
-    lr_df: pd.DataFrame,
-    top_n: int = 10,
-    title_suffix: str = "",
-) -> None:
-    """Panel c: Top ligand-receptor pairs ranked by empirical effect size (Z-score)."""
-    top_df = lr_df.sort_values(by="MeanZScore", ascending=False).head(top_n).copy()
-    top_df = top_df.iloc[::-1].reset_index(drop=True)
-
-    y_pos = np.arange(len(top_df))
-    z_scores = top_df["MeanZScore"].values
-    lr_labels = top_df["LRPair"].values
-
-    ax.barh(
-        y_pos,
-        z_scores,
-        color="skyblue",
-        edgecolor="black",
-        linewidth=0.6,
-        height=0.65,
-    )
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(lr_labels, fontsize=7)
-    ax.set_xlabel("Mean effect size (Z-score over null)")
-    ax.set_title(f"Top LR Signaling Axes {title_suffix}".strip())
-
-    ax.axvline(
-        2.0, color="gray", linestyle=":", linewidth=1.0, label="z = 2.0 (p ≈ 0.05)"
-    )
-    ax.legend(loc="lower right", frameon=True, fontsize=7)
-
-
 def plot_differential_volcano(
     ax: plt.Axes,
     diff_df: pd.DataFrame | None,
     title_suffix: str = "",
 ) -> None:
-    """Panel d: Volcano plot of cross-condition differential signaling."""
+    """Panel c: Volcano plot of cross-condition differential signaling with clamped outliers."""
     if diff_df is None or diff_df.empty:
         ax.text(
             0.5,
@@ -200,39 +170,108 @@ def plot_differential_volcano(
     pvals = diff_df["PValue"].values
     neg_log_p = -np.log10(np.maximum(pvals, 1e-6))
 
+    # Determine robust symmetric axis limit around 0
+    abs_diff = np.abs(diff_obs)
+    q_limit = float(np.quantile(abs_diff, 0.998))
+    limit = max(q_limit * 1.15, 0.05)
+
     sig_mask = pvals < 0.05
     pos_mask = (diff_obs > 0) & sig_mask
     neg_mask = (diff_obs < 0) & sig_mask
     non_sig = ~sig_mask
 
+    # Separate in-bounds points from clipped outliers
+    outliers_pos = diff_obs > limit
+    outliers_neg = diff_obs < -limit
+    in_bounds = ~outliers_pos & ~outliers_neg
+
     ax.scatter(
-        diff_obs[non_sig],
-        neg_log_p[non_sig],
+        diff_obs[non_sig & in_bounds],
+        neg_log_p[non_sig & in_bounds],
         c=NON_SIG_COLOR,
-        s=12,
-        alpha=0.5,
+        s=10,
+        alpha=0.4,
         edgecolors="none",
+        rasterized=True,
         label="p ≥ 0.05",
     )
     ax.scatter(
-        diff_obs[pos_mask],
-        neg_log_p[pos_mask],
+        diff_obs[pos_mask & in_bounds],
+        neg_log_p[pos_mask & in_bounds],
         c=SIG_COLOR_POS,
-        s=16,
+        s=14,
         alpha=0.8,
         edgecolors="none",
+        rasterized=True,
         label="Elevated (p < 0.05)",
     )
     ax.scatter(
-        diff_obs[neg_mask],
-        neg_log_p[neg_mask],
+        diff_obs[neg_mask & in_bounds],
+        neg_log_p[neg_mask & in_bounds],
         c=SIG_COLOR_NEG,
-        s=16,
+        s=14,
         alpha=0.8,
         edgecolors="none",
+        rasterized=True,
         label="Decreased (p < 0.05)",
     )
 
+    # Clamped outlier arrows on borders
+    if np.any(outliers_pos):
+        pos_out_sig = outliers_pos & sig_mask
+        pos_out_nonsig = outliers_pos & ~sig_mask
+        if np.any(pos_out_sig):
+            ax.scatter(
+                np.full(np.sum(pos_out_sig), limit),
+                neg_log_p[pos_out_sig],
+                c=SIG_COLOR_POS,
+                marker=">",
+                s=24,
+                alpha=0.9,
+                edgecolors="none",
+                rasterized=True,
+                label=f"Outliers elevated (>{limit:.2f})",
+            )
+        if np.any(pos_out_nonsig):
+            ax.scatter(
+                np.full(np.sum(pos_out_nonsig), limit),
+                neg_log_p[pos_out_nonsig],
+                c=NON_SIG_COLOR,
+                marker=">",
+                s=18,
+                alpha=0.6,
+                edgecolors="none",
+                rasterized=True,
+            )
+
+    if np.any(outliers_neg):
+        neg_out_sig = outliers_neg & sig_mask
+        neg_out_nonsig = outliers_neg & ~sig_mask
+        if np.any(neg_out_sig):
+            ax.scatter(
+                np.full(np.sum(neg_out_sig), -limit),
+                neg_log_p[neg_out_sig],
+                c=SIG_COLOR_NEG,
+                marker="<",
+                s=24,
+                alpha=0.9,
+                edgecolors="none",
+                rasterized=True,
+                label=f"Outliers decreased (<{-limit:.2f})",
+            )
+        if np.any(neg_out_nonsig):
+            ax.scatter(
+                np.full(np.sum(neg_out_nonsig), -limit),
+                neg_log_p[neg_out_nonsig],
+                c=NON_SIG_COLOR,
+                marker="<",
+                s=18,
+                alpha=0.6,
+                edgecolors="none",
+                rasterized=True,
+            )
+
+    ax.set_xlim(-limit * 1.05, limit * 1.05)
     ax.axhline(
         -np.log10(0.05),
         color="gray",
@@ -247,11 +286,17 @@ def plot_differential_volcano(
 
 
 def makeFigure():
-    """Build the 4-panel significance figure."""
+    """Build the 3-panel significance figure."""
     lr_df = load_runner_csv(SIGNIFICANCE_LR_CSV)
 
-    diff_path = DATA_DIR / SIGNIFICANCE_DIFF_CSV
-    diff_df = load_runner_csv(SIGNIFICANCE_DIFF_CSV) if diff_path.exists() else None
+    diff_parquet_path = DATA_DIR / SIGNIFICANCE_DIFF_PARQUET
+    diff_csv_path = DATA_DIR / SIGNIFICANCE_DIFF_CSV
+    if diff_parquet_path.exists():
+        diff_df = pd.read_parquet(diff_parquet_path)
+    elif diff_csv_path.exists():
+        diff_df = pd.read_csv(diff_csv_path)
+    else:
+        diff_df = None
 
     sidecar = sidecar_path(DATA_DIR / SIGNIFICANCE_LR_CSV)
     metadata: dict = {}
@@ -289,8 +334,8 @@ def makeFigure():
     print(summary_df.to_string(index=False))
 
     title_suffix = f"({SELECTED_DATASET.upper()})"
-    figsize = (16, 3.5)
-    ax, f = getSetup(figsize, (1, 4))
+    figsize = (12, 3.5)
+    ax, f = getSetup(figsize, (1, 3))
 
     plot_pvalue_density(
         ax[0],
@@ -300,8 +345,7 @@ def makeFigure():
         title_suffix=title_suffix,
     )
     plot_observed_vs_null(ax[1], lr_df, title_suffix=title_suffix)
-    plot_top_lr_significance(ax[2], lr_df, top_n=10, title_suffix=title_suffix)
-    plot_differential_volcano(ax[3], diff_df, title_suffix=title_suffix)
+    plot_differential_volcano(ax[2], diff_df, title_suffix=title_suffix)
 
     subplotLabel(ax)
     return f

@@ -35,6 +35,6 @@ resulting_dims:
   lr_pairs: 513
 outputs:
 - cccrise/data/significance_lr_alad.csv
-- cccrise/data/significance_differential_alad.csv
+- cccrise/data/significance_differential_alad.parquet
 git_sha: a4b2165c397eeff05ab0b4c2426c4d524e3b3179
 generated: '2026-09-12T00:01:24+00:00'

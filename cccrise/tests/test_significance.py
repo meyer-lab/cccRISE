@@ -175,5 +175,5 @@ def test_runner_cli_parser_and_paths():
     assert "tensor" in paths
     assert str(paths["lr"]).endswith("significance_lr_test_cohort.csv")
     assert str(paths["differential"]).endswith(
-        "significance_differential_test_cohort.csv"
+        "significance_differential_test_cohort.parquet"
     )
