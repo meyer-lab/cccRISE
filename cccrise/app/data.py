@@ -6,12 +6,12 @@ from pathlib import Path
 
 import anndata
 
-from cellcommunicationpf2.factors import (
+from cccrise.factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
     load_factors_to_anndata,
 )
-from cellcommunicationpf2.figures.common import get_alad_data, get_covid_data
+from cccrise.figures.common import get_alad_data, get_covid_data
 
 
 @dataclass(frozen=True)

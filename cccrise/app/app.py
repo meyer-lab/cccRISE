@@ -1,27 +1,28 @@
 """Shiny app for interactively exploring RISE / CCC-RISE decomposition output.
 
 Run with:
-    shiny run --reload cellcommunicationpf2/app/app.py
+    shiny run --reload cccrise/app/app.py
+    shiny run --host 0.0.0.0 --port 8000 --reload cccrise/app/app.py
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 from shiny import App, reactive, render, ui
 
-from cellcommunicationpf2.figures.commonFuncs.plotFactors import (
+from cccrise.figures.commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_interaction_heatmap,
     plot_lr_factors,
     plot_lr_factors_partial,
 )
-from cellcommunicationpf2.figures.commonFuncs.plotPaCMAP import (
+from cccrise.figures.commonFuncs.plotPaCMAP import (
     plot_labels_pacmap,
     plot_wc_pacmap,
     plot_wc_per_celltype,
 )
-from cellcommunicationpf2.app.data import DATASETS, load_dataset, load_raw_dataset
-from cellcommunicationpf2.app.lr_pairs import parse_lr_pairs
+from cccrise.app.data import DATASETS, load_dataset, load_raw_dataset
+from cccrise.app.lr_pairs import parse_lr_pairs
 
 DATASET_CHOICES = {key: spec.label for key, spec in DATASETS.items()}
 

@@ -10,8 +10,8 @@ visualizations directly from the `.nc` file, without re-loading or
 re-projecting the raw single-cell data themselves.
 
 Usage:
-    python -m cellcommunicationpf2.regenerate_factors covid alad
-    python -m cellcommunicationpf2.regenerate_factors covid --alad-raw-path /opt/BAL-scRNAseq-raw.h5ad
+    python -m cccrise.regenerate_factors covid alad
+    python -m cccrise.regenerate_factors covid --alad-raw-path /opt/BAL-scRNAseq-raw.h5ad
 """
 
 import argparse
