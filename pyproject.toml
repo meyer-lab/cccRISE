@@ -17,8 +17,6 @@ dependencies = [
     "datashader>=0.17.0",
     "pacmap>=0.8.0",
     "tensorly-viz>=0.1.7",
-    # parafac2 1.7.0: managed-memory transfer and PARAFAC2_BACKEND.
-    # scrise 1.4.0: BiCV holds out cells and genes, with the alignment fix.
     "parafac2>=1.7.0",
     "scrise>=1.4.0",
     "pyarrow>=15.0.0",
@@ -46,7 +44,6 @@ Documentation = "https://meyer-lab.github.io/cellcommunication-Pf2/"
 [project.scripts]
 fbuild = "cccrise.figures.common:genFigure"
 factor = "cccrise.imports:factorSave"
-# Runners: produce the result files that figures and the Shiny app consume.
 cccrise-run = "cccrise.runners.run_ccc_rise:main"
 cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
