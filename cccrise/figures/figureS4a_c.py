@@ -1,0 +1,90 @@
+"""
+Figure S4a_c: Heatmaps of ligand-receptor expression products for selected cell types and components in cccRISE on BALF COVID-19 data.
+"""
+
+import pandas as pd
+import seaborn as sns
+
+from ..utils import aggregate_communication_scores_by_group
+from .common import (
+    get_covid_data,
+    getSetup,
+    subplotLabel,
+)
+
+
+def makeFigure():
+    ax, f = getSetup((6, 6), (2, 2))
+    subplotLabel(ax)
+
+    X = get_covid_data(project_cells=True)
+
+    # Create barplot of percent of cell-cell interactions that are non-zero for each sample
+    pal = sns.color_palette("Set2")
+    pal = [pal[0], pal[1], pal[2]]
+
+    pairs = [["PTN", "PTPRZ1"], ["PTN", "SDC1"], ["COL4A5", "SDC1"]]
+
+    X_mdc_sender = X[X.obs["celltype"] == "Epithelial"]
+    X_mdc_receiver = X[(X.obs["celltype"] == "Epithelial")]
+
+    for i, (lig, rec) in enumerate(pairs):
+        results_data = []
+        pair_name = f"{lig}-{rec}"
+
+        # Calculate percentage of non-zero interactions for each sample
+        for sample in X.obs["sample"].unique():
+            # Get condition for this sample
+            sample_condition = X.obs[X.obs["sample"] == sample]["condition"].iloc[0]
+
+            X_mdc_sender_sample = X_mdc_sender[X_mdc_sender.obs["sample"] == sample]
+            X_mdc_receiver_sample = X_mdc_receiver[
+                X_mdc_receiver.obs["sample"] == sample
+            ]
+
+            if len(X_mdc_sender_sample) > 0 and len(X_mdc_receiver_sample) > 0:
+                scores = aggregate_communication_scores_by_group(
+                    X_mdc_sender_sample,
+                    X_mdc_receiver_sample,
+                    lig,
+                    rec,
+                    stat="pct_nonzero",
+                ).iloc[0]
+
+                total_interactions = scores["n_interactions"]
+                percent_nonzero = scores["communication_score"]
+
+                if total_interactions > 0:
+                    results_data.append(
+                        {
+                            "pair": pair_name,
+                            "sample": sample,
+                            "condition": sample_condition,
+                            "percent_nonzero": percent_nonzero,
+                            "nonzero_interactions": round(
+                                percent_nonzero / 100 * total_interactions
+                            ),
+                            "total_interactions": total_interactions,
+                        }
+                    )
+
+        # Convert to DataFrame and create boxplot
+        results_df = pd.DataFrame(results_data)
+        print("Percentage of non-zero interactions within each sample:")
+        print(results_df)
+
+        # Create barplot showing distribution of percentages across samples
+
+        sns.barplot(
+            data=results_df,
+            x="sample",
+            y="percent_nonzero",
+            hue="condition",
+            ax=ax[i],
+            palette=pal,
+        )
+        ax[i].set_xlabel(f"Ligand-Receptor Pair: {pair_name}")
+        ax[i].set_ylabel("% Non-Zero Interactions")
+        ax[i].tick_params(axis="x", rotation=45)
+
+    return f

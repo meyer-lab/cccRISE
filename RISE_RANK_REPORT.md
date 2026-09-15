@@ -319,15 +319,15 @@ included here to keep this session's total compute within budget.
 
 ## Deliverables
 
-- `cellcommunicationpf2/rank_selection.py` — all six approaches implemented as
+- `cccrise/rank_selection.py` — all six approaches implemented as
   tested functions.
-- `cellcommunicationpf2/tests/test_rank_selection.py` — 12 tests, including the
+- `cccrise/tests/test_rank_selection.py` — 12 tests, including the
   synthetic bi-cross-validation leakage guard
   (`test_bicv_reconstruction_error_rises_past_true_rank`).
-- Cached sweep CSVs under `cellcommunicationpf2/data/`: `rise_rank_{degeneracy,
+- Cached sweep CSVs under `cccrise/data/`: `rise_rank_{degeneracy,
   bicv, permutation_null, splithalf, bootstrap_replication, nested_subspace,
   loo}_{covid,alad}.csv` (14 files).
-- `cellcommunicationpf2/figures/figureRISErank.py` — provisional `makeFigure()`
+- `cccrise/figures/figureRISErank.py` — provisional `makeFigure()`
   plotting all sweeps for COVID (ALAD sweeps are cached but not yet plotted in
   the same module; the COVID panel layout can be duplicated for ALAD as a
   follow-up).

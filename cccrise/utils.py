@@ -1,0 +1,519 @@
+import warnings
+from typing import Any, cast
+
+import anndata
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+
+
+def resample(
+    data: anndata.AnnData, condition_name: str, random_seed: int | None = None
+) -> anndata.AnnData:
+    """Perform stratified bootstrap sampling by resampling cells within each sample.
+
+    This maintains the same number of cells per sample in the resampled dataset.
+    """
+    # Set random seed for reproducibility if provided
+    if random_seed is not None:
+        np.random.seed(random_seed)
+
+    resampled_indices = []
+    for sample in data.obs[condition_name].unique():
+        # Get indices of cells in this sample
+        sample_cell_indices = np.where(data.obs[condition_name] == sample)[0]
+        n_cells = len(sample_cell_indices)
+
+        # Sample with replacement within this sample's cells
+        random_local_indices = np.random.randint(0, n_cells, size=n_cells)
+        resampled_indices.extend(sample_cell_indices[random_local_indices])
+
+    # Create new AnnData from resampled indices
+    resampled_data = data[resampled_indices].copy()
+    resampled_data.obs_names_make_unique()
+    return resampled_data
+
+
+def resample_cells(
+    data: anndata.AnnData,
+    condition_name: str,
+    random_seed: int | None = None,
+) -> anndata.AnnData:
+    """Bootstrap cells with replacement within each condition.
+
+    Probes robustness to which cells were captured and to sequencing depth,
+    holding the cohort itself fixed. Use `resample_conditions` for the
+    complementary question of robustness to cohort composition.
+
+    Supersedes `resample`, which draws the same way but seeds the global
+    `np.random` state -- perturbing every other draw in the process -- and
+    leaves `var["means"]` describing the original cells. That column is
+    load-bearing twice over: `parafac2.anndata_to_list` centers each condition
+    slice with it before the RISE fit, and `ccc_rise.calc_communication_score`
+    adds it back to un-center the projected matrices before scoring. A stale
+    column therefore biases both stages of the pipeline in correlated
+    directions, which would surface as instability that is really just
+    mis-centering. `resample` is kept for the existing FMS figures that cite
+    its numbers.
+
+    Parameters
+    ----------
+    data : anndata.AnnData
+        Single-cell expression data to resample.
+    condition_name : str
+        Column in `data.obs` identifying the condition (patient) to draw
+        within. Each condition keeps its original cell count.
+    random_seed : int | None, optional
+        Seed for the draw. None leaves it unseeded.
+
+    Returns
+    -------
+    anndata.AnnData
+        A copy holding the drawn cells, with `var["means"]` recomputed over
+        them.
+    """
+    rng = np.random.default_rng(random_seed)
+
+    drawn = []
+    for sample in data.obs[condition_name].unique():
+        cell_indices = np.where(data.obs[condition_name] == sample)[0]
+        drawn.append(rng.choice(cell_indices, size=cell_indices.size, replace=True))
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Observation names are not unique")
+        resampled = data[np.concatenate(drawn)].copy()
+    resampled.obs_names_make_unique()
+    resampled.var["means"] = np.asarray(cast(Any, resampled.X).mean(axis=0)).ravel()
+    return resampled
+
+
+def resample_conditions(
+    data: anndata.AnnData,
+    condition_name: str,
+    stratify_by: str | None = None,
+    random_seed: int | None = None,
+) -> anndata.AnnData:
+    """Bootstrap whole conditions (patients) with replacement, keeping every
+    cell of a drawn condition.
+
+    Complements `resample_cells`, which resamples cells *within* each condition
+    and so holds the patient roster fixed. Here the roster itself is the
+    resampled unit, which is what a bootstrap of a condition-mode result -- a
+    per-patient factor, or a model fit on one -- requires: the sampling
+    variability being estimated is variability in which patients were enrolled.
+
+    A condition drawn more than once is relabeled (``<label>__rep2``, ...) so
+    stages keying on `condition_name` -- `import_data.add_cond_idxs`, and
+    through it RISE's per-condition slicing -- treat repeat draws as separate
+    conditions instead of merging their cells into one oversized slice.
+
+    Parameters
+    ----------
+    data : anndata.AnnData
+        Single-cell expression data to resample.
+    condition_name : str
+        Column in `data.obs` identifying the condition (patient) to draw.
+    stratify_by : str | None, optional
+        Column in `data.obs` that is constant within a condition, typically a
+        group or outcome label. When given, conditions are drawn with
+        replacement *within* each stratum, so every stratum keeps exactly its
+        original condition count. Without it, a uniform draw on a small cohort
+        can return a replicate whose groups are badly imbalanced, or that has
+        lost a group entirely -- which changes what the condition factor can
+        express, and would register as instability caused by the draw rather
+        than by the cohort.
+    random_seed : int | None, optional
+        Seed for the draw. None leaves it unseeded.
+
+    Returns
+    -------
+    anndata.AnnData
+        A copy holding the drawn conditions' cells, with `condition_name`
+        relabeled per draw and `var["means"]` recomputed over the resampled
+        cells -- see `resample_cells` for why that column has to be refreshed.
+    """
+    rng = np.random.default_rng(random_seed)
+    obs = cast(pd.DataFrame, data.obs)
+    labels = obs[condition_name].to_numpy().astype(str)
+
+    if stratify_by is None:
+        conditions = np.unique(labels)
+        drawn = rng.choice(conditions, size=conditions.size, replace=True)
+    else:
+        strata = (
+            pd.DataFrame({condition_name: labels, stratify_by: obs[stratify_by].values})
+            .drop_duplicates(condition_name)
+            .set_index(condition_name)[stratify_by]
+        )
+        drawn = np.concatenate(
+            [
+                rng.choice(members.index.to_numpy(), size=len(members), replace=True)
+                for _, members in strata.groupby(strata, observed=True)
+            ]
+        )
+
+    cells_of = {cond: np.flatnonzero(labels == cond) for cond in np.unique(labels)}
+    draws_so_far: dict[str, int] = {}
+    cell_indices, new_labels = [], []
+    for cond in drawn:
+        draws_so_far[cond] = draws_so_far.get(cond, 0) + 1
+        cells = cells_of[cond]
+        suffix = "" if draws_so_far[cond] == 1 else f"__rep{draws_so_far[cond]}"
+        cell_indices.append(cells)
+        new_labels.append(np.full(cells.size, f"{cond}{suffix}"))
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Observation names are not unique")
+        resampled = data[np.concatenate(cell_indices)].copy()
+    resampled.obs[condition_name] = np.concatenate(new_labels)
+    resampled.obs_names_make_unique()
+    resampled.var["means"] = np.asarray(cast(Any, resampled.X).mean(axis=0)).ravel()
+    return resampled
+
+
+def replicate_seed(random_state: int, replicate: int) -> int:
+    """Seed for one replicate: ``random_state * 1000 + replicate + 1``.
+
+    One integer per (axis, replicate) drives the resample, the RISE refit and
+    the CP restarts, so a replicate's RISE and CPD rows describe the same
+    resampled dataset by construction rather than by coincidence. The ``+ 1``
+    leaves `random_state` itself to the reference pass, so no replicate reuses
+    the reference's starting point.
+    """
+    return random_state * 1000 + replicate + 1
+
+
+def resample_tensor(
+    interaction_tensors: np.ndarray,
+    random_seed: int | None = None,
+    return_indices: bool = False,
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+    """Bootstrap the communication tensor's ligand-receptor mode."""
+    rng = np.random.default_rng(random_seed)
+    n_lr = interaction_tensors.shape[-1]
+    indices = rng.choice(n_lr, size=n_lr, replace=True)
+    resampled = interaction_tensors[..., indices]
+    if return_indices:
+        return resampled, indices
+    return resampled
+
+
+def correct_conditions(X: anndata.AnnData) -> np.ndarray:
+    """Correct the conditions factors by overall read depth."""
+    sgIndex = X.obs["condition_unique_idxs"]
+
+    counts = np.zeros((np.amax(sgIndex.to_numpy()) + 1, 1))
+
+    cond_mean = np.linalg.norm(X.uns["A"], axis=1)
+
+    x_count = cast(Any, X.X).sum(axis=1)
+
+    for ii in range(counts.size):
+        counts[ii] = np.sum(x_count[X.obs["condition_unique_idxs"] == ii])
+
+    lr = LinearRegression()
+    lr.fit(counts, cond_mean.reshape(-1, 1))
+
+    counts_correct = lr.predict(counts)
+
+    return X.uns["A"] / counts_correct
+
+
+def pseudobulk_X(
+    X: anndata.AnnData, condition_name: str, groupby: str, type: str
+) -> list[pd.DataFrame]:
+    """
+    Calculate average gene expression for each groupby in each sample
+    """
+    # Get unique samples and cell types
+    samples = np.unique(X.obs[condition_name].unique())
+    groupby_names = np.unique(X.obs[groupby].unique())
+    gene_names = X.var_names
+
+    total_df = []
+    for sample in samples:
+        # Subset to current sample
+        sample_mask = X.obs[condition_name] == sample
+        X_sample = X[sample_mask, :]
+        results = []
+        for group_name in groupby_names:
+            # Subset to current groupby
+            group_mask = X_sample.obs[groupby] == group_name
+            adata_subset = X_sample[group_mask, :]
+            result_dict = {}
+            subset_X = cast(Any, adata_subset.X)
+            if adata_subset.n_obs > 0 and type == "mean":
+                mean_expression = np.mean(subset_X.toarray(), axis=0)
+                for i, gene in enumerate(gene_names):
+                    result_dict[gene] = mean_expression[i]
+            elif adata_subset.n_obs > 0 and type == "fraction":
+                ct_df = subset_X.toarray()
+                cell_fraction = (ct_df > 0).sum(axis=0) / ct_df.shape[0]
+                for i, gene in enumerate(gene_names):
+                    result_dict[gene] = cell_fraction[i]
+            else:
+                # Set zero expression for missing combinations
+                for gene in gene_names:
+                    result_dict[gene] = 0.0
+
+            results.append(result_dict)
+
+        # Dataframe with genes as rows and groupby as columns
+        results_df = pd.DataFrame(results, columns=gene_names, index=groupby_names)
+        total_df.append(results_df.T)
+
+    return total_df
+
+
+def add_obs_cmp_unique_one(X: anndata.AnnData, cmp: int):
+    """Creates AnnData observation column for a single component."""
+    if X.is_view:
+        X = X.copy()
+    label_col = f"Cmp{cmp}"
+    X.obs["Label"] = np.where(X.obs[label_col], label_col, "NoLabel")
+
+    return X
+
+
+def add_obs_cmp_label(
+    X: anndata.AnnData,
+    cmp: int,
+    pos: bool = True,
+    top_perc: float = 1,
+    type: str = "receiver",
+):
+    """Adds a boolean label to X.obs for cells in the top or bottom percentage of a single component."""
+    if X.is_view:
+        X = X.copy()
+    if type == "sender":
+        factor_type = cast(np.ndarray, X.obsm["sc_B"])
+    elif type == "receiver":
+        factor_type = cast(np.ndarray, X.obsm["rc_C"])
+
+    if pos:
+        thres_value = 100 - top_perc
+        threshold = np.percentile(factor_type, thres_value, axis=0)
+        idx = factor_type[:, cmp - 1] > threshold[cmp - 1]
+    else:
+        thres_value = top_perc
+        threshold = np.percentile(factor_type, thres_value, axis=0)
+        idx = factor_type[:, cmp - 1] < threshold[cmp - 1]
+
+    X.obs[f"Cmp{cmp}"] = idx
+
+    return X
+
+
+def _gene_vector(X: anndata.AnnData, gene: str) -> np.ndarray:
+    """Extract a gene's expression as a dense 1D array, whether X.X is sparse or dense."""
+    expr: Any = X[:, gene].X
+    if hasattr(expr, "toarray"):
+        return np.ravel(expr.toarray())
+    if hasattr(expr, "to_memory"):
+        return np.ravel(expr.to_memory())
+    return np.ravel(np.asarray(expr))
+
+
+def expression_product_matrix(
+    X1: anndata.AnnData, X2: anndata.AnnData, ligand: str, receptor: str
+):
+    """
+    For each cell in X1 and each cell in X2, compute the product:
+    X1[cell_i, ligand] * X2[cell_j, receptor]
+    Returns a DataFrame with X1 cells as rows and X2 cells as columns.
+    """
+    # Ensure gene names are present
+    assert ligand in X1.var_names, f"{ligand} not in X1"
+    assert receptor in X2.var_names, f"{receptor} not in X2"
+
+    expr1 = _gene_vector(X1, ligand)
+    expr2 = _gene_vector(X2, receptor)
+
+    # Compute outer product
+    product_matrix = np.outer(expr1, expr2)
+
+    # Build DataFrame
+    df = pd.DataFrame(product_matrix, index=X1.obs_names, columns=X2.obs_names)
+    return df
+
+
+def aggregate_communication_scores_by_group(
+    X_sender: anndata.AnnData,
+    X_receiver: anndata.AnnData,
+    ligand: str,
+    receptor: str,
+    sender_group: np.ndarray | pd.Series | None = None,
+    receiver_group: np.ndarray | pd.Series | None = None,
+    stat: str = "mean",
+) -> pd.DataFrame:
+    """
+    Compute a communication-score statistic for a ligand-receptor pair, aggregated over
+    sender/receiver cell groups.
+
+    Parameters
+    ----------
+    sender_group, receiver_group : array-like, optional
+        Group label for each sender/receiver cell (aligned to X_sender/X_receiver obs
+        order). Cells are left ungrouped (a single "All" group) if omitted.
+    stat : str, default='mean'
+        Aggregation statistic within each sender-group x receiver-group block.
+        Options are:
+
+        - 'mean' : Mean communication score.
+        - 'pct_nonzero' : Percentage of sender-receiver cell pairs with a nonzero score.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Long-format DataFrame with one row per (sender_group, receiver_group)
+        combination present, containing the aggregated score and cell counts.
+    """
+    product_matrix = expression_product_matrix(X_sender, X_receiver, ligand, receptor)
+
+    sender_group = (
+        np.full(X_sender.n_obs, "All")
+        if sender_group is None
+        else np.asarray(sender_group)
+    )
+    receiver_group = (
+        np.full(X_receiver.n_obs, "All")
+        if receiver_group is None
+        else np.asarray(receiver_group)
+    )
+
+    if stat == "mean":
+        agg = lambda values: values.mean() if values.size else np.nan
+    elif stat == "pct_nonzero":
+        agg = lambda values: 100 * np.mean(values > 0) if values.size else np.nan
+    else:
+        raise ValueError(f"Unknown stat: {stat}")
+
+    values = product_matrix.values
+    rows = []
+    for s_label in np.unique(sender_group):
+        s_idx = np.where(sender_group == s_label)[0]
+        for r_label in np.unique(receiver_group):
+            r_idx = np.where(receiver_group == r_label)[0]
+            if s_idx.size == 0 or r_idx.size == 0:
+                continue
+
+            block = values[np.ix_(s_idx, r_idx)]
+            rows.append(
+                {
+                    "sender_group": s_label,
+                    "receiver_group": r_label,
+                    "communication_score": agg(block),
+                    "n_sender_cells": s_idx.size,
+                    "n_receiver_cells": r_idx.size,
+                    "n_interactions": s_idx.size * r_idx.size,
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def _binned_means(expr: np.ndarray, n_bins: int) -> np.ndarray:
+    """Mean of `expr` within `n_bins` contiguous blocks (last block absorbs the remainder)."""
+    n = len(expr)
+    if n == 0:
+        return np.zeros(n_bins)
+    group_size = max(1, n // n_bins)
+    groups = np.clip(np.arange(n) // group_size, 0, n_bins - 1)
+    return np.array(
+        [
+            float(np.mean(expr[groups == g])) if np.any(groups == g) else 0.0
+            for g in range(n_bins)
+        ]
+    )
+
+
+def binned_expression_product_matrix(
+    X1: anndata.AnnData,
+    X2: anndata.AnnData,
+    ligand: str,
+    receptor: str,
+    n_bins: int = 10,
+) -> pd.DataFrame:
+    """
+    Equivalent to binning `expression_product_matrix(X1, X2, ligand, receptor)` into an
+    `n_bins` x `n_bins` matrix of block means, but computed without ever materializing the
+    full len(X1) x len(X2) outer product: since block entries are a product of independent
+    per-cell terms, the mean of a block is just the product of the row- and column-block
+    means of the two expression vectors.
+    """
+    assert ligand in X1.var_names, f"{ligand} not in X1"
+    assert receptor in X2.var_names, f"{receptor} not in X2"
+
+    expr1 = _gene_vector(X1, ligand)
+    expr2 = _gene_vector(X2, receptor)
+
+    row_means = _binned_means(expr1, n_bins)
+    col_means = _binned_means(expr2, n_bins)
+
+    product_matrix = np.outer(row_means, col_means)
+    return pd.DataFrame(
+        product_matrix, index=np.arange(n_bins), columns=np.arange(n_bins)
+    )
+
+
+def binned_complex_ligand_product_matrix(
+    X1: anndata.AnnData,
+    X2: anndata.AnnData,
+    ligand_subunits: list[str],
+    receptor: str,
+    n_bins: int = 10,
+) -> pd.DataFrame:
+    """
+    Same as `binned_expression_product_matrix`, but for a multi-subunit ligand complex
+    (e.g. LTA&LTB). The complex's per-cell expression is the minimum across its subunits,
+    the limiting-subunit convention used elsewhere for scoring ligand complexes.
+    """
+    for subunit in ligand_subunits:
+        assert subunit in X1.var_names, f"{subunit} not in X1"
+    assert receptor in X2.var_names, f"{receptor} not in X2"
+
+    expr1 = np.minimum.reduce([_gene_vector(X1, s) for s in ligand_subunits])
+    expr2 = _gene_vector(X2, receptor)
+
+    row_means = _binned_means(expr1, n_bins)
+    col_means = _binned_means(expr2, n_bins)
+
+    product_matrix = np.outer(row_means, col_means)
+    return pd.DataFrame(
+        product_matrix, index=np.arange(n_bins), columns=np.arange(n_bins)
+    )
+
+
+def add_obs_cmp_both_label(
+    X: anndata.AnnData,
+    cmp1: int,
+    cmp2: int,
+    pos1=True,
+    pos2=True,
+    top_perc=1,
+    type="sender",
+):
+    """Adds if cells in top/bot percentage"""
+    X = add_obs_cmp_label(X, cmp1, pos1, top_perc, type)
+    X = add_obs_cmp_label(X, cmp2, pos2, top_perc, type)
+
+    X.obs["Both"] = X.obs[f"Cmp{cmp1}"] & X.obs[f"Cmp{cmp2}"]
+
+    return X
+
+
+def add_obs_cmp_unique_two(X: anndata.AnnData, cmp1: int, cmp2: int):
+    """Creates AnnData observation column"""
+    obs = cast(pd.DataFrame, X.obs)
+    obs.loc[((obs[f"Cmp{cmp1}"] == True) & (obs[f"Cmp{cmp2}"] == False), "Label")] = (
+        f"Cmp{cmp1}"
+    )
+    obs.loc[(obs[f"Cmp{cmp1}"] == False) & (obs[f"Cmp{cmp2}"] == True), "Label"] = (
+        f"Cmp{cmp2}"
+    )
+    obs.loc[(obs[f"Cmp{cmp1}"] == True) & (obs[f"Cmp{cmp2}"] == True), "Label"] = "Both"
+    obs.loc[(obs[f"Cmp{cmp1}"] == False) & (obs[f"Cmp{cmp2}"] == False), "Label"] = (
+        "NoLabel"
+    )
+
+    return X

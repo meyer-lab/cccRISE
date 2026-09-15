@@ -45,6 +45,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+junit.xml
 *.cover
 *.py,cover
 .hypothesis/
@@ -170,13 +171,13 @@ output/
 nohup.out
 
 data/
-!cellcommunicationpf2/data/
+!cccrise/data/
 *.h5ad
 # Quarto manuscript build outputs
 manuscript/_output/
 manuscript/.quarto/
 manuscript/_site/
 manuscript/*_files/
-
-# R/ (uvr-managed environment for reviewer-requested R methods)
-R/.uvr/
+manuscript/.citation-cache/
+manuscript/.vale/styles/*
+!manuscript/.vale/styles/config/
