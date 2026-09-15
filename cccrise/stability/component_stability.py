@@ -52,6 +52,11 @@ Row Alignment
 - When ligand-receptor pairs are resampled with replacement (`lr_pairs` axis),
   reference mode-3 rows ($F$) are expanded using the drawn LR indices to align
   with the replicate's resampled LR roster.
+- The seed axis (`SEED_AXIS`) needs no alignment at all: the roster is the
+  reference's own, so mode 0 already matches row for row. That is what makes
+  its FMS comparable to the reference's on a per-component basis, and in turn
+  what lets `summarize_component_stability` hold a ceiling per component
+  rather than one pooled per stage.
 """
 
 from collections.abc import Callable
@@ -88,20 +93,53 @@ STAGE_CPD = "CPD"
 RISE_SKIP_MODES: tuple[int, ...] = (1,)
 CPD_SKIP_MODES: tuple[int, ...] = (1, 2)
 
-#: Name of the chance-floor axis. Deliberately not "null": pandas' `read_csv`
-#: parses that string as NaN by default, which silently erases the floor.
-PERMUTED_AXIS = "permuted"
+#: Name of the reproducibility-ceiling axis: identical data, a different random
+#: seed, refit end to end. Read as an *upper* reference rather than a floor --
+#: the FMS it produces is what two fits of the same data cost each other from
+#: the fitters' own randomness alone, so it is expected to be high, and an
+#: observed axis reaching it means the data perturbation added nothing on top.
+#: `random_state` genuinely moves both stages: `parafac2_nd` seeds the Gaussian
+#: projection of its randomized-SVD initialization and its compression stage,
+#: and tensorly's ``parafac(init="svd", svd="randomized_svd")`` does the same,
+#: so the axis is not degenerate.
+#:
+#: Deliberately not "null": pandas' `read_csv` parses that string as NaN by
+#: default, which would silently erase the baseline. Spelled with the ``_only``
+#: suffix so the `Axis` value cannot be confused with the `Seed` column, which
+#: carries an integer seed on *every* axis.
+SEED_AXIS = "seed_only"
 
-#: Axes that resample the cohort and so require a RISE refit. Both draw *with*
-#: replacement; see `utils.resample_cells` / `utils.resample_conditions`.
-RISE_REFIT_AXES = ("cells", "conditions")
+#: Percentile of the seed axis's FMS taken as the reproducibility band's lower
+#: edge. Fixed here rather than derived from `summarize_component_stability`'s
+#: `lower`, which describes the spread of the *observed* axes, so that the
+#: 'SeedP5FMS' column name stays stable for the figure and for anyone reading
+#: the CSV back.
+SEED_BAND_PERCENTILE = 5.0
+
+#: Axes that refit RISE. 'cells' and 'conditions' draw *with* replacement (see
+#: `utils.resample_cells` / `utils.resample_conditions`); `SEED_AXIS` draws
+#: nothing and refits the identical roster from a different starting point.
+#: What the three share is the cost -- one PARAFAC2 fit per replicate -- and
+#: the consequence, that each emits both RISE and CPD rows.
+RISE_REFIT_AXES = ("cells", "conditions", SEED_AXIS)
 
 #: Axes run by default. 'lr_pairs' bootstraps the reference tensor's
-#: ligand-receptor mode and so costs no PARAFAC2 fit.
-DEFAULT_AXES = ("cells", "conditions", "lr_pairs")
+#: ligand-receptor mode and so costs no PARAFAC2 fit; `SEED_AXIS` costs a full
+#: one per replicate and is still a default, because no other axis's FMS is
+#: interpretable without it beside them -- omitting it leaves
+#: `summarize_component_stability`'s comparison columns silently all-NaN.
+DEFAULT_AXES = ("cells", "conditions", "lr_pairs", SEED_AXIS)
 
-#: How a cohort axis perturbs the data. Each entry takes
+#: How an axis prepares the data it is fit on. Each entry takes
 #: ``(adata, condition_column, group_column, seed)``.
+#:
+#: `SEED_AXIS`'s entry perturbs nothing -- its perturbation is applied
+#: downstream, by handing `fit_stability_pipeline` a different `random_state`.
+#: It still copies, and the copy is load-bearing rather than defensive:
+#: `import_data.add_cond_idxs` writes `condition_unique_idxs` into `obs` in
+#: place and `parafac2.store_pf2` writes `uns`/`varm`, so returning `adata`
+#: itself would leave the caller's object carrying the first replicate's fit
+#: and silently change what every later axis resamples from.
 RESAMPLERS: dict[
     str, Callable[[anndata.AnnData, str, str | None, int], anndata.AnnData]
 ] = {
@@ -111,6 +149,7 @@ RESAMPLERS: dict[
     "conditions": lambda adata, col, group, seed: resample_conditions(
         adata, condition_name=col, stratify_by=group, random_seed=seed
     ),
+    SEED_AXIS: lambda adata, col, group, seed: adata.copy(),
 }
 
 
@@ -470,20 +509,23 @@ def component_stability(
 ) -> pd.DataFrame:
     """Per-component stability of both stages under resampling, in long form.
 
-    For each cohort axis ('cells', 'conditions') a replicate resamples the
-    data, refits RISE at `rise_rank`, and matches the resulting components
-    onto the reference's with Mode 1 held out (`RISE_SKIP_MODES`); the
-    communication tensor built from that same fit is then decomposed at
-    `cp_rank` and matched in turn with Modes 1 and 2 held out
-    (`CPD_SKIP_MODES`).
+    For each axis in `RISE_REFIT_AXES` a replicate prepares the data, refits
+    RISE at `rise_rank`, and matches the resulting components onto the
+    reference's with Mode 1 held out (`RISE_SKIP_MODES`); the communication
+    tensor built from that same fit is then decomposed at `cp_rank` and
+    matched in turn with Modes 1 and 2 held out (`CPD_SKIP_MODES`). 'cells'
+    and 'conditions' resample; `SEED_AXIS` hands the pipeline the identical
+    cohort and changes only the seed the fits start from, so it measures how
+    far components move under the fitters' own randomness -- the
+    reproducibility ceiling every resampling axis is read against, and the
+    term that would otherwise be confounded with sampling variability.
+    Because its roster is unchanged, its mode-0 rows line up with the
+    reference's directly and no `reference_condition_rows` expansion applies.
 
-    Two axes act on the reference tensor instead:
+    One axis acts on the reference tensor instead:
     - `lr_pairs`: The ligand-receptor mode bootstrapped with replacement,
       matching CPD modes 0 and 3 with reference mode-3 rows expanded by the
-      drawn LR indices.
-    - `permuted`: The tensor's entries randomly permuted, destroying
-      multilinear structure. This provides the empirical chance floor across
-      CPD modes 0 and 3.
+      drawn LR indices. It costs no PARAFAC2 fit and so emits CPD rows only.
 
     Parameters
     ----------
@@ -518,13 +560,13 @@ def component_stability(
         Long-form table containing per-component FMS matches and per-fit
         diagnostics for each replicate.
     """
-    unknown = set(axes) - set(RISE_REFIT_AXES) - {"lr_pairs", PERMUTED_AXIS}
+    unknown = set(axes) - set(RISE_REFIT_AXES) - {"lr_pairs"}
     if unknown:
         raise ValueError(f"Unknown stability axes: {sorted(unknown)}")
-    if reference.get("tensor") is None and ({"lr_pairs", PERMUTED_AXIS} & set(axes)):
+    if reference.get("tensor") is None and "lr_pairs" in axes:
         raise ValueError(
-            "The 'lr_pairs' and 'permuted' axes resample the reference "
-            "tensor, so the reference fit must be built with keep_tensor=True."
+            "The 'lr_pairs' axis resamples the reference tensor, so the "
+            "reference fit must be built with keep_tensor=True."
         )
 
     frames = []
@@ -607,18 +649,15 @@ def component_stability(
                 )
                 continue
 
+            # 'lr_pairs' is the only axis left that reaches the reference
+            # tensor rather than refitting RISE; the guard above is exhaustive.
             tensor = cast(np.ndarray, reference["tensor"])
-            if axis == "lr_pairs":
-                perturbed, lr_indices = resample_tensor(
-                    tensor, random_seed=seed, return_indices=True
-                )
-                ref_cp = _expand_reference_mode(
-                    reference["cp_factors"], mode=3, rows=lr_indices
-                )
-            else:
-                rng = np.random.default_rng(seed)
-                perturbed = rng.permutation(tensor.ravel()).reshape(tensor.shape)
-                ref_cp = reference["cp_factors"]
+            perturbed, lr_indices = resample_tensor(
+                tensor, random_seed=seed, return_indices=True
+            )
+            ref_cp = _expand_reference_mode(
+                reference["cp_factors"], mode=3, rows=lr_indices
+            )
             print(f"   {axis} replicate {replicate + 1}/{n_replicates}")
 
             weights, factors = parafac(
@@ -764,33 +803,77 @@ def summarize_component_stability(
     lower: float = 2.5,
     upper: float = 97.5,
 ) -> pd.DataFrame:
-    """Per-component FMS summary with the chance floor beside each component.
+    """Per-component FMS summary with the seed-refit ceiling beside each component.
 
     One row per (Axis, Stage, Component): that component's FMS band across
-    replicates, its median runner-up score, and -- matched on Stage, so the
-    floor compared the same modes -- the permuted axis's median and 95th
-    percentile plus the fraction of replicates in which the component scored
-    above that 95th percentile.
+    replicates, its median runner-up score, and -- matched on that same
+    component -- the seed axis's median FMS, the lower edge of its
+    reproducibility band, and the fraction of replicates in which the
+    component stayed inside it.
 
-    'FracAboveNull' is the column to read: a component clearing the floor on
-    nearly every replicate is reproducible structure, and one hovering at it is
-    not, regardless of how the aggregate FMS looks.
+    Reading the comparison
+    ----------------------
+    'FracWithinSeedBand' is the column to read, and it reads *upwards*. The
+    seed axis refits identical data from a different starting point, so its
+    FMS is what two fits of the same cohort cost each other from the fitters'
+    own randomness -- a ceiling, not a chance floor. A component at
+    'FracWithinSeedBand' near 1 moved no further under the data perturbation
+    than it moves under reseeding alone, so that perturbation cost it nothing;
+    one near 0 was genuinely moved by the data, and the size of the gap
+    between 'MedianFMS' and 'SeedMedianFMS' says by how much.
+
+    This replaces an entry-permutation floor, which was uninformative: shuffling
+    the tensor's entries destroys all multilinear structure, so every component
+    of every dataset at every rank cleared it. What was confounded there is
+    separated here -- initialization variance now has its own axis instead of
+    being mixed into every resampling axis's spread.
+
+    Why the ceiling is per component
+    --------------------------------
+    A chance floor is a property of the tensor's dimensions, so pooling it
+    across components was right. A reproducibility ceiling is not: one
+    component may reseed at 0.99 while another reseeds at 0.55 because it is
+    intrinsically non-identifiable at this rank. Scoring the second against a
+    ceiling dominated by the first would blame the data for what is really CP
+    non-identifiability -- exactly the distinction 'RunnerUpFMS' exists to
+    draw. Matching per component is only possible because the seed axis leaves
+    the roster alone, so its mode-0 rows carry the reference's own numbering
+    with no expansion.
+
+    Because that axis refits the whole pipeline it emits RISE rows as well as
+    CPD rows, so RISE components get a populated comparison for the first
+    time; the permutation floor was CPD-only and could only ever leave them
+    NaN.
+
+    The comparison is ``>=`` rather than ``>``. FMS is bounded above by 1, and
+    a component that reseeds to exactly 1.0 on every replicate puts the band's
+    lower edge there too; under a strict inequality an observed component that
+    also scored 1.0 would be recorded as having failed, for being perfectly
+    reproducible. Ties at the top of a saturating scale are common in a way
+    ties against a floor never were.
+
+    `SeedP5FMS` is a percentile over `n_replicates` values, so it means little
+    below roughly 20 replicates -- at 3 it is simply the minimum.
 
     Parameters
     ----------
     df : pd.DataFrame
         Output of `component_stability`.
     lower, upper : float
-        Percentiles reported as the interval.
+        Percentiles reported as the interval for the observed axes. The seed
+        band's own edge is `SEED_BAND_PERCENTILE`, deliberately independent of
+        these.
 
     Returns
     -------
     pd.DataFrame
         The `metric_interval` columns plus 'MedianRunnerUpFMS',
-        'NullMedianFMS', 'NullP95FMS' and 'FracAboveNull'.
+        'SeedMedianFMS', 'SeedP5FMS' and 'FracWithinSeedBand'. The last three
+        are NaN when the seed axis was not run: 0.0 would report every
+        component as having failed a test that was never performed.
     """
     keys = ["Axis", "Stage", "Component"]
-    observed = df[df["Axis"] != PERMUTED_AXIS]
+    observed = df[df["Axis"] != SEED_AXIS]
     summary = metric_interval(
         observed, "FMS", by=tuple(keys), lower=lower, upper=upper
     ).rename(columns={"Mean": "MeanFMS", "Median": "MedianFMS"})
@@ -803,37 +886,39 @@ def summarize_component_stability(
     )
     summary = summary.merge(runner_up, on=keys, how="left")
 
-    floor_df = df[df["Axis"] == PERMUTED_AXIS]
-    if not floor_df.empty:
-        floor = (
-            floor_df.groupby(["Stage"])["FMS"]
+    ceiling_df = df[df["Axis"] == SEED_AXIS]
+    if not ceiling_df.empty:
+        ceiling = (
+            ceiling_df.groupby(["Stage", "Component"])["FMS"]
             .agg(
-                NullMedianFMS="median",
-                NullP95FMS=lambda x: np.percentile(x, 95),
+                SeedMedianFMS="median",
+                SeedP5FMS=lambda x: np.percentile(x, SEED_BAND_PERCENTILE),
             )
             .reset_index()
         )
-        summary = summary.merge(floor, on=["Stage"], how="left")
-        above = observed.merge(floor, on=["Stage"], how="left")
-        above["Above"] = above["FMS"] > above["NullP95FMS"]
+        summary = summary.merge(ceiling, on=["Stage", "Component"], how="left")
+        within = observed.merge(ceiling, on=["Stage", "Component"], how="left")
+        within["Within"] = within["FMS"] >= within["SeedP5FMS"]
         frac = (
-            above.groupby(keys)
+            within.groupby(keys)
             .agg(
-                FracAboveNull=("Above", "mean"),
-                NFloor=("NullP95FMS", "count"),
+                FracWithinSeedBand=("Within", "mean"),
+                NCeiling=("SeedP5FMS", "count"),
                 NRows=("FMS", "count"),
             )
             .reset_index()
         )
-        frac["FracAboveNull"] = frac["FracAboveNull"].where(
-            frac["NFloor"] == frac["NRows"]
+        # A (Stage, Component) the seed axis never covered would otherwise be
+        # scored 0.0 -- indistinguishable from having genuinely failed.
+        frac["FracWithinSeedBand"] = frac["FracWithinSeedBand"].where(
+            frac["NCeiling"] == frac["NRows"]
         )
         summary = summary.merge(
-            frac.drop(columns=["NFloor", "NRows"]), on=keys, how="left"
+            frac.drop(columns=["NCeiling", "NRows"]), on=keys, how="left"
         )
     else:
-        summary["NullMedianFMS"] = np.nan
-        summary["NullP95FMS"] = np.nan
-        summary["FracAboveNull"] = np.nan
+        summary["SeedMedianFMS"] = np.nan
+        summary["SeedP5FMS"] = np.nan
+        summary["FracWithinSeedBand"] = np.nan
 
     return summary
