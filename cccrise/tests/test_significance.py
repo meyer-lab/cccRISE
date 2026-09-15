@@ -153,13 +153,11 @@ def test_runner_cli_parser_and_paths():
             "500",
             "--communication-score",
             "expression_product",
-            "--save-tensor",
         ]
     )
     assert args.dataset == "alad"
     assert args.rise_rank == 25
     assert args.n_perms == 500
-    assert args.save_tensor is True
 
     dummy_spec = DatasetSpec(
         key="test_cohort",
@@ -169,10 +167,10 @@ def test_runner_cli_parser_and_paths():
         factors_filename="test.nc",
         source_file=Path("test.h5ad"),
     )
-    paths = output_paths(dummy_spec, Path("/tmp"), save_tensor=True)
+    paths = output_paths(dummy_spec, Path("/tmp"))
     assert "lr" in paths
     assert "differential" in paths
-    assert "tensor" in paths
+    assert "tensor" not in paths
     assert str(paths["lr"]).endswith("significance_lr_test_cohort.csv")
     assert str(paths["differential"]).endswith(
         "significance_differential_test_cohort.parquet"
