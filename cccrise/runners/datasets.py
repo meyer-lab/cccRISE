@@ -69,6 +69,7 @@ class DatasetSpec:
     def significance_tensor_filename(self) -> str:
         return f"significance_tensor_{self.key}.nc"
 
+
 DATASETS: dict[str, DatasetSpec] = {
     "alad": DatasetSpec(
         key="alad",
