@@ -13,8 +13,8 @@ from scipy.sparse import csr_array, issparse
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
-IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
-IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "Full_cohort.ivcsc.h5ad"
+IBD_DATA_DIR = Path("/opt/IVCSC")
+IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "full_IBD_cohort.ivcsc.h5ad"
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
@@ -230,6 +230,33 @@ def import_alad_brush(
     )
 
 
+def use_gene_symbols(
+    data: anndata.AnnData, symbol_column: str = "gene_symbols"
+) -> anndata.AnnData:
+    """Re-index an AnnData's genes by HGNC symbol, in place.
+
+    Some cohorts ship Ensembl gene IDs as `var_names` and keep the symbols in a
+    `var` column. The ligand-receptor table is keyed by symbol, so leaving the
+    Ensembl IDs in place makes *every* LR pair fail to match -- the interaction
+    tensor then comes out with a zero-length ligand-receptor mode, which
+    surfaces far downstream as a reshape error rather than as a naming problem.
+
+    Duplicate symbols are suffixed rather than merged, so the first occurrence
+    keeps the bare symbol and stays matchable; genes with no symbol keep their
+    original identifier. A no-op when `symbol_column` is absent, so datasets
+    already keyed by symbol pass through untouched.
+    """
+    if symbol_column not in data.var:
+        return data
+
+    symbols = data.var[symbol_column].astype(str)
+    missing = symbols.isin(["", "nan", "None"])
+    data.var["ensembl_id"] = data.var_names
+    data.var_names = symbols.where(~missing, data.var_names).astype(str).tolist()
+    data.var_names_make_unique()
+    return data
+
+
 def import_ibdverse(
     filename: str | Path = IBD_FULL_COHORT_IVCSC,
     gene_threshold: float = 0.001,
@@ -247,11 +274,12 @@ def import_ibdverse(
         data = vsparse.load_and_normalize(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
+        data = use_gene_symbols(data)
         data = add_cond_idxs(data, condition_name)
         data.var["means"] = data.X.mean(axis=0)
         return data
 
-    data = vsparse.load_packed(filename).to_anndata()
+    data = use_gene_symbols(vsparse.load_packed(filename).to_anndata())
     return prepare_dataset(
         data, condition_name, geneThreshold=gene_threshold, normalize=normalize
     )
