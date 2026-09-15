@@ -12,7 +12,8 @@ title: "Resolving cell-cell communication programs beyond cell-type boundaries a
 ^4^Medical Service, San Francisco VA Health Care System, San Francisco, CA 94121, USA\
 ^5^Jonsson Comprehensive Cancer Center, UCLA, Los Angeles, CA, USA\
 ^6^Eli and Edythe Broad Center of Regenerative Medicine and Stem Cell Research, UCLA, Los Angeles, CA 90095, USA\
-^\*^Corresponding author. Email: <ameyer@asmlab.org>
+^\*^Corresponding author.
+Email: <ameyer@asmlab.org>
 
 Classification: Research report
 
@@ -20,7 +21,12 @@ Classification: Research report
 
 **Abstract:**
 
-Cell-cell communication (CCC) coordinates cellular activities that vary dynamically across time, location, and biological context. Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, the methods that do preserve single-cell resolution cannot model how communication is regulated across conditions. To bridge this gap, we developed CCC-RISE, an extension of the tensor-based method Reduction and Insight in Single-cell Exploration (RISE). Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by sender cells, receiver cells, ligand-receptor pairs, and conditions, then maps each program back to the individual cells that drive it. Applied to a COVID-19 severity cohort and a lung transplant cohort with acute allograft dysfunction, CCC-RISE recovered disease-associated communication programs and traced them to specific signaling subpopulations that cross conventional cell-type boundaries: for example, CCL19-CCR7 recruitment signaling restricted to an active subset of mDCs rather than the whole population. CCC-RISE thus resolves disease-relevant signaling subpopulations that are invisible to aggregate methods.
+Cell-cell communication (CCC) coordinates cellular activities that vary dynamically across time, location, and biological context.
+Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, the methods that do preserve single-cell resolution cannot model how communication is regulated across conditions.
+To bridge this gap, we developed CCC-RISE, an extension of the tensor-based method Reduction and Insight in Single-cell Exploration (RISE).
+Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by sender cells, receiver cells, ligand-receptor pairs, and conditions, then maps each program back to the individual cells that drive it.
+Applied to a COVID-19 severity cohort and a lung transplant cohort with acute allograft dysfunction, CCC-RISE recovered disease-associated communication programs and traced them to specific signaling subpopulations that cross conventional cell-type boundaries: for example, CCL19-CCR7 recruitment signaling restricted to an active subset of mDCs rather than the whole population.
+CCC-RISE thus resolves disease-relevant signaling subpopulations that are invisible to aggregate methods.
 
 **Highlights:**
 

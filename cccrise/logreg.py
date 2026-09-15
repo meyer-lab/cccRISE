@@ -1,8 +1,10 @@
 import anndata
 import numpy as np
 import pandas as pd
+import sklearn
+from numpy.typing import ArrayLike
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
-from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedGroupKFold
 
 from .figures.commonFuncs.plotGeneral import binarize_group, get_sample_to_group
 from .utils import add_obs_cmp_label, correct_conditions
@@ -16,6 +18,7 @@ def fit_logreg_weights(
     sample_to_group: pd.Series,
     scoring: str = "roc_auc",
     random_state: int | None = 0,
+    groups: ArrayLike | None = None,
 ) -> np.ndarray:
     """Fit one cross-validated L1 logistic regression on the condition factor
     matrix `X.uns["A"]` and return its per-component weights.
@@ -35,14 +38,28 @@ def fit_logreg_weights(
         Scikit-learn scoring used to select the regularization strength.
     random_state : int | None, default=0
         Seed for the cross-validation splits and the solver.
+    groups : ArrayLike | None, optional
+        Grouping of the rows, one entry per condition. When given, the folds
+        are drawn with `StratifiedGroupKFold` so that every row of a group
+        falls on one side of a split. This is what a bootstrapped roster
+        needs: repeat draws of a patient are distinct conditions here, and
+        with ungrouped folds copies of one patient land in both the train and
+        the test half, scoring the held-out half against rows the fit has
+        already seen. The strength selected off that optimistic score is too
+        weak, which reads downstream as too many nonzero components and too
+        narrow a bootstrap interval.
 
     Returns
     -------
     np.ndarray
         One weight per CP component.
     """
-    cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=5, random_state=random_state)
-    lr_fit = LogisticRegressionCV(
+    cv = (
+        RepeatedStratifiedKFold(n_splits=10, n_repeats=5, random_state=random_state)
+        if groups is None
+        else StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=random_state)
+    )
+    model = LogisticRegressionCV(
         random_state=random_state,
         max_iter=10000,
         solver="saga",
@@ -50,8 +67,14 @@ def fit_logreg_weights(
         cv=cv,
         scoring=scoring,
         use_legacy_attributes=False,
-    ).fit(X.uns["A"], sample_to_group)
-    return lr_fit.coef_[0]
+    )
+    if groups is None:
+        return model.fit(X.uns["A"], sample_to_group).coef_[0]
+    # `groups` only reaches the splitter through scikit-learn's metadata
+    # routing, which is off by default; scope it to this fit rather than
+    # switching it on for the process.
+    with sklearn.config_context(enable_metadata_routing=True):
+        return model.fit(X.uns["A"], sample_to_group, groups=groups).coef_[0]
 
 
 def ccc_rise_logreg_weights(

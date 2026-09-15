@@ -62,6 +62,9 @@ dev = [
     "pytest-xdist>=3.8.0",
     "ruff>=0.16.1",
     "ty>=0.0.1",
+    "pre-commit>=4.0",
+    "panache-cli>=3.10.0",
+    "vale>=3.21.0",
 ]
 docs = [
     "sphinx>=7.0",
