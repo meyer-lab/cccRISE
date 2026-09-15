@@ -2,17 +2,20 @@ import anndata
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.model_selection import StratifiedGroupKFold
+from scipy.stats import ttest_ind
 
-import cccrise.logreg
+from cccrise.anova import (
+    _eta_squared,
+    anova_component_associations,
+)
 from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
 from cccrise.import_data import add_cond_idxs
-from cccrise.stability.logreg_stability import (
+from cccrise.stability.anova_stability import (
     align_to_reference_components,
-    bootstrap_logreg_weights,
-    bootstrap_replicate_weights,
-    fit_logreg_pipeline,
-    summarize_bootstrap_weights,
+    bootstrap_anova,
+    bootstrap_replicate_anova,
+    fit_anova_pipeline,
+    summarize_bootstrap_anova,
     top_lr_pairs,
 )
 from cccrise.utils import replicate_seed, resample_conditions
@@ -52,50 +55,15 @@ def _synthetic_cohort(
     return adata
 
 
+# =============================================================================
+# Determinism and alignment helpers
+# =============================================================================
+
+
 def test_replicate_seed_determinism():
     assert replicate_seed(0, 0) == 1
     assert replicate_seed(0, 5) == 6
     assert replicate_seed(42, 3) == 42004
-
-
-def test_fit_logreg_pipeline_output_structure():
-    adata = _synthetic_cohort()
-    lr_pairs = pd.DataFrame(
-        {
-            "ligand": ["Gene_0", "Gene_2", "Gene_4"],
-            "receptor": ["Gene_1", "Gene_3", "Gene_5"],
-            "interaction_symbol": ["Gene_0_Gene_1", "Gene_2_Gene_3", "Gene_4_Gene_5"],
-        }
-    )
-    fit = fit_logreg_pipeline(
-        adata,
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-        rise_rank=2,
-        cp_rank=2,
-        lr_pairs=lr_pairs,
-        rise_n_iter_max=10,
-        cp_n_iter_max=10,
-        random_state=0,
-    )
-
-    assert isinstance(fit, dict)
-    expected_keys = {
-        "factors",
-        "cp_weights",
-        "lr_symbols",
-        "logreg_weights",
-        "r2x_cp",
-        "sample_to_group",
-    }
-    assert expected_keys.issubset(fit.keys())
-    assert len(fit["factors"]) == 4
-    assert len(fit["logreg_weights"]) == 2
-    assert len(fit["lr_symbols"]) == 3
-    assert isinstance(fit["r2x_cp"], float)
-    assert len(fit["sample_to_group"]) == 20
 
 
 def test_align_to_reference_components_exact_match():
@@ -117,7 +85,7 @@ def test_align_to_reference_components_sign_flip():
     # Invert sign of component 2 in replicate Mode 3 (LR)
     rep_factors[3][:, 1] = -rep_factors[3][:, 1]
 
-    # Suppose raw replicate weight was -3.0 on comp 2
+    # Suppose raw replicate difference was -3.0 on comp 2
     raw_values = np.array([1.0, -3.0])
     aligned = align_to_reference_components(ref_factors, rep_factors, raw_values)
 
@@ -175,10 +143,121 @@ def test_top_lr_pairs():
     assert list(c2["LRPair"]) == ["L1_R1", "L5_R5"]
 
 
-def test_summarize_bootstrap_weights_metrics():
-    # Component 1: positive, stable, excludes zero
-    # Component 2: centered at 0, frequently regularized to 0
-    # Component 3: negative reference, stable negative
+# =============================================================================
+# ANOVA mathematics and degenerate guards
+# =============================================================================
+
+
+def test_eta_squared_matches_hand_computed_sums_of_squares():
+    """Verify eta-squared SS_between / SS_total matches manual formula."""
+    group1 = np.array([2.0, 4.0, 6.0])
+    group2 = np.array([10.0, 12.0, 14.0])
+    # Grand mean = 8.0, SS_between = 96.0, SS_within = 16.0, SS_total = 112.0
+    expected_eta = 96.0 / 112.0
+    computed_eta = _eta_squared([group1, group2])
+    np.testing.assert_allclose(computed_eta, expected_eta)
+
+
+def test_two_group_anova_f_equals_squared_t():
+    """Verify one-way ANOVA F-statistic on two groups equals two-sample t^2."""
+    rng = np.random.default_rng(42)
+    n1, n2 = 12, 15
+    g1 = rng.normal(loc=1.0, scale=1.5, size=n1)
+    g2 = rng.normal(loc=2.5, scale=1.5, size=n2)
+
+    A = np.column_stack([np.concatenate([g1, g2])])  # 1 component
+    labels = pd.Series(["Ctrl"] * n1 + ["Treat"] * n2)
+
+    adata = anndata.AnnData(X=np.zeros((len(labels), 1)), uns={"A": A})
+    res = anova_component_associations(adata, labels, control_label="Ctrl")
+
+    f_stat = res.loc[0, "F"]
+    t_stat = ttest_ind(g2, g1, equal_var=True).statistic
+    np.testing.assert_allclose(f_stat, t_stat**2)
+    np.testing.assert_allclose(
+        res.loc[0, "GroupMeanDiff"], float(g2.mean() - g1.mean())
+    )
+
+
+def test_anova_reports_nan_for_a_degenerate_component():
+    """A component with a group having fewer than 2 samples reports NaN rather
+    than raising an error, so a bootstrap replicate survives."""
+    A = np.array([[1.0], [2.0], [3.0], [4.0]])
+    labels = pd.Series(["Ctrl", "Treat", "Treat", "Treat"])  # Ctrl has only 1 sample
+
+    adata = anndata.AnnData(X=np.zeros((4, 1)), uns={"A": A})
+    res = anova_component_associations(adata, labels, control_label="Ctrl")
+
+    assert len(res) == 1
+    assert np.isnan(res.loc[0, "F"])
+    assert np.isnan(res.loc[0, "P"])
+    assert np.isnan(res.loc[0, "EtaSquared"])
+    assert np.isnan(res.loc[0, "GroupMeanDiff"])
+    assert not res.loc[0, "Significant"]
+
+
+# =============================================================================
+# Pipeline, replicate, and summary tests
+# =============================================================================
+
+
+def test_fit_anova_pipeline_output_structure():
+    adata = _synthetic_cohort()
+    lr_pairs = pd.DataFrame(
+        {
+            "ligand": ["Gene_0", "Gene_2", "Gene_4"],
+            "receptor": ["Gene_1", "Gene_3", "Gene_5"],
+            "interaction_symbol": ["Gene_0_Gene_1", "Gene_2_Gene_3", "Gene_4_Gene_5"],
+        }
+    )
+    fit = fit_anova_pipeline(
+        adata,
+        condition_column="Sample",
+        group_column="Group",
+        control_label="Ctrl",
+        other_label="Treat",
+        rise_rank=2,
+        cp_rank=2,
+        lr_pairs=lr_pairs,
+        rise_n_iter_max=10,
+        cp_n_iter_max=10,
+        random_state=0,
+    )
+
+    assert isinstance(fit, dict)
+    expected_keys = {
+        "factors",
+        "cp_weights",
+        "lr_symbols",
+        "anova",
+        "r2x_cp",
+        "sample_to_group",
+    }
+    assert expected_keys.issubset(fit.keys())
+    assert len(fit["factors"]) == 4
+    assert isinstance(fit["anova"], pd.DataFrame)
+    assert len(fit["anova"]) == 2
+    assert list(fit["anova"]["Component"]) == [1, 2]
+    expected_anova_cols = {
+        "Component",
+        "F",
+        "P",
+        "EtaSquared",
+        "GroupMeanDiff",
+        "Significant",
+        "NGroups",
+        "GroupSizes",
+    }
+    assert expected_anova_cols.issubset(fit["anova"].columns)
+    assert len(fit["lr_symbols"]) == 3
+    assert isinstance(fit["r2x_cp"], float)
+    assert len(fit["sample_to_group"]) == 20
+
+
+def test_summarize_bootstrap_anova_metrics():
+    # Component 1: large eta, significant, positive diff
+    # Component 2: small eta, p > 0.05, 0 diff
+    # Component 3: medium eta, mixed p, negative diff
     boot_rows = []
     for b in range(100):
         boot_rows.append(
@@ -186,7 +265,10 @@ def test_summarize_bootstrap_weights_metrics():
                 "Replicate": b,
                 "Component": 1,
                 "MatchedComponent": 1,
-                "Weight": 2.0 + 0.1 * (b % 5 - 2),
+                "EtaSquared": 0.6 + 0.01 * (b % 5 - 2),
+                "F": 15.0 + (b % 5),
+                "P": 0.001 if b < 95 else 0.06,  # 95% significant (< 0.05)
+                "GroupMeanDiff": 2.0 + 0.1 * (b % 5 - 2),
                 "MatchScore": 0.95,
                 "SignedCosine": 0.95,
                 "RunnerUpScore": 0.1,
@@ -198,7 +280,10 @@ def test_summarize_bootstrap_weights_metrics():
                 "Replicate": b,
                 "Component": 2,
                 "MatchedComponent": 2,
-                "Weight": 0.0 if b < 80 else 0.5,
+                "EtaSquared": 0.02 + 0.001 * (b % 5 - 2),
+                "F": 0.5 + 0.1 * (b % 5),
+                "P": 0.40,
+                "GroupMeanDiff": 0.0 if b < 80 else 0.5,
                 "MatchScore": 0.90,
                 "SignedCosine": 0.90,
                 "RunnerUpScore": 0.2,
@@ -210,7 +295,10 @@ def test_summarize_bootstrap_weights_metrics():
                 "Replicate": b,
                 "Component": 3,
                 "MatchedComponent": 3,
-                "Weight": -1.5 + 0.05 * (b % 3 - 1),
+                "EtaSquared": 0.3 + 0.02 * (b % 3 - 1),
+                "F": 8.0 + (b % 3),
+                "P": 0.02 if b < 60 else 0.10,  # 60% significant
+                "GroupMeanDiff": -1.5 + 0.05 * (b % 3 - 1),
                 "MatchScore": 0.80,
                 "SignedCosine": 0.80,
                 "RunnerUpScore": 0.3,
@@ -219,34 +307,53 @@ def test_summarize_bootstrap_weights_metrics():
         )
 
     boot_df = pd.DataFrame(boot_rows)
-    reference_weights = np.array([2.0, 0.0, -1.5])
-    summary = summarize_bootstrap_weights(boot_df, reference_weights)
+    reference_anova = pd.DataFrame(
+        {
+            "Component": [1, 2, 3],
+            "EtaSquared": [0.6, 0.02, 0.3],
+            "F": [15.0, 0.5, 8.0],
+            "P": [0.001, 0.40, 0.02],
+            "GroupMeanDiff": [2.0, 0.0, -1.5],
+        }
+    )
+    summary = summarize_bootstrap_anova(
+        boot_df, reference_anova, ci_level=90.0, alpha=0.05
+    )
 
     assert len(summary) == 3
     s1 = summary[summary["Component"] == 1].iloc[0]
-    assert s1["CIExcludesZero"]
-    assert s1["FracNonzero"] == 1.0
+    assert s1["FracSignificant"] == 0.95
     assert s1["FracSameSignAsReference"] == 1.0
-    assert s1["CILow"] > 0
+    assert s1["CILow"] > 0.5
+    assert s1["ReferenceEtaSquared"] == 0.6
+    assert s1["ReferenceGroupMeanDiff"] == 2.0
 
     s2 = summary[summary["Component"] == 2].iloc[0]
-    assert not s2["CIExcludesZero"]
-    assert s2["FracNonzero"] == 0.2
-    assert np.isnan(s2["FracSameSignAsReference"])  # Reference is 0.0
+    assert s2["FracSignificant"] == 0.0
+    assert np.isnan(s2["FracSameSignAsReference"])  # ReferenceGroupMeanDiff is 0.0
 
     s3 = summary[summary["Component"] == 3].iloc[0]
-    assert s3["CIExcludesZero"]
+    assert s3["FracSignificant"] == 0.60
     assert s3["FracSameSignAsReference"] == 1.0
-    assert s3["CIHigh"] < 0
+    assert s3["ReferenceGroupMeanDiff"] == -1.5
 
 
-def test_bootstrap_replicate_weights_mismatched_lr_roster():
+def test_bootstrap_replicate_anova_mismatched_lr_roster():
     factors = _synthetic_factors(n_lr=5, rank=2)
+    ref_anova = pd.DataFrame(
+        {
+            "Component": [1, 2],
+            "EtaSquared": [0.5, 0.2],
+            "F": [10.0, 2.0],
+            "P": [0.01, 0.2],
+            "GroupMeanDiff": [1.0, -1.0],
+        }
+    )
     ref = {
         "factors": factors,
         "cp_weights": np.array([1.0, 1.0]),
         "lr_symbols": np.array(["L1_R1", "L2_R2"]),
-        "logreg_weights": np.array([1.0, -1.0]),
+        "anova": ref_anova,
         "r2x_cp": 0.8,
     }
 
@@ -262,7 +369,7 @@ def test_bootstrap_replicate_weights_mismatched_lr_roster():
     )
 
     with pytest.raises(ValueError, match="different ligand-receptor"):
-        bootstrap_replicate_weights(
+        bootstrap_replicate_anova(
             adata,
             reference=ref,
             condition_column="Sample",
@@ -278,8 +385,8 @@ def test_bootstrap_replicate_weights_mismatched_lr_roster():
 
 
 def test_end_to_end_synthetic_bootstrap():
-    """Verify synthetic AnnData runs through fit_logreg_pipeline, bootstrap_logreg_weights,
-    and summarize_bootstrap_weights without error."""
+    """Verify synthetic AnnData runs through fit_anova_pipeline, bootstrap_anova,
+    and summarize_bootstrap_anova without error."""
     adata = _synthetic_cohort()
 
     lr_pairs = pd.DataFrame(
@@ -290,7 +397,7 @@ def test_end_to_end_synthetic_bootstrap():
         }
     )
 
-    reference = fit_logreg_pipeline(
+    reference = fit_anova_pipeline(
         adata,
         condition_column="Sample",
         group_column="Group",
@@ -303,10 +410,10 @@ def test_end_to_end_synthetic_bootstrap():
         cp_n_iter_max=10,
         random_state=0,
     )
-    assert len(reference["logreg_weights"]) == 2
+    assert len(reference["anova"]) == 2
     assert len(reference["lr_symbols"]) == 3
 
-    boot_df = bootstrap_logreg_weights(
+    boot_df = bootstrap_anova(
         adata,
         reference=reference,
         condition_column="Sample",
@@ -322,28 +429,33 @@ def test_end_to_end_synthetic_bootstrap():
         random_state=0,
     )
     assert len(boot_df) == 4  # 2 replicates * 2 components
-    assert set(boot_df.columns) == {
+    expected_cols = {
         "Replicate",
         "Component",
         "MatchedComponent",
-        "Weight",
+        "EtaSquared",
+        "F",
+        "P",
+        "GroupMeanDiff",
         "MatchScore",
         "SignedCosine",
         "RunnerUpScore",
         "R2XCP",
     }
+    assert set(boot_df.columns) == expected_cols
 
-    summary = summarize_bootstrap_weights(boot_df, reference["logreg_weights"])
+    summary = summarize_bootstrap_anova(boot_df, reference["anova"])
     assert len(summary) == 2
     assert list(summary["Component"]) == [1, 2]
     assert (summary["NReplicates"] == 2).all()
 
 
 def test_get_sample_to_group_is_ordered_by_condition_unique_idxs():
-    """`fit_logreg_weights` reads `sample_to_group` as aligned to `uns["A"]`'s
-    rows, which are in `condition_unique_idxs` order. The ``__rep2`` suffix a
-    repeat draw carries sorts next to its source label, but the alignment must
-    not rest on that -- it rests on both orderings being the same sort."""
+    """`anova_component_associations` reads `sample_to_group` as aligned to
+    `uns["A"]`'s rows, which are in `condition_unique_idxs` order. The ``__rep2``
+    suffix a repeat draw carries sorts next to its source label, but the
+    alignment must not rest on that -- it rests on both orderings being the
+    same sort."""
     adata = _synthetic_cohort(n_conditions=6)
     resampled = add_cond_idxs(
         resample_conditions(adata, "Sample", stratify_by="Group", random_seed=0),
@@ -356,44 +468,3 @@ def test_get_sample_to_group_is_ordered_by_condition_unique_idxs():
     labels = resampled.obs["Sample"].to_numpy().astype(str)
     for row, label in zip(rows, labels, strict=True):
         assert sample_to_group.index[row] == label
-
-
-def test_fit_logreg_weights_hands_the_splitter_its_groups(monkeypatch):
-    """No copy of a bootstrapped patient may straddle a split.
-
-    Ungrouped folds score a held-out half against rows the fit has already
-    seen, and select the L1 strength off that optimistic score. `groups`
-    reaches the splitter only through scikit-learn's metadata routing, so the
-    check is on the folds the fit actually drew: a routing failure would fall
-    back to ungrouped folds silently.
-    """
-    n_source = 20
-    labels = [f"Sample_{i}" for i in range(n_source)]
-    # Four patients drawn twice, as a bootstrapped roster would have them.
-    labels += [f"Sample_{i}__rep2" for i in (0, 1, 10, 11)]
-    sources = np.array([label.split("__rep")[0] for label in labels])
-    y = pd.Series(
-        [0 if int(source.split("_")[1]) < n_source // 2 else 1 for source in sources],
-        index=labels,
-    )
-    rng = np.random.default_rng(0)
-    X = anndata.AnnData(
-        X=np.zeros((len(labels), 1)),
-        uns={"A": rng.standard_normal((len(labels), 3))},
-    )
-
-    drawn: list[tuple[np.ndarray, np.ndarray]] = []
-
-    class RecordingSplitter(StratifiedGroupKFold):
-        def split(self, X, y=None, groups=None):
-            groups = np.asarray(groups)
-            for train, test in super().split(X, y, groups):
-                drawn.append((groups[train], groups[test]))
-                yield train, test
-
-    monkeypatch.setattr(cccrise.logreg, "StratifiedGroupKFold", RecordingSplitter)
-    cccrise.logreg.fit_logreg_weights(X, y, groups=list(sources))
-
-    assert drawn
-    for train_sources, test_sources in drawn:
-        assert not (set(train_sources) & set(test_sources))
