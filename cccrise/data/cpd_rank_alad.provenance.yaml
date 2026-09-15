@@ -13,27 +13,7 @@ condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
 rise_rank: 20
-cp_ranks:
-- 1
-- 2
-- 3
-- 4
-- 5
-- 6
-- 7
-- 8
-- 9
-- 10
-- 11
-- 12
-- 13
-- 14
-- 15
-- 16
-- 17
-- 18
-- 19
-- 20
+cp_ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 n_iter_max: 300
 tol: 1.0e-08
 cp_n_iter_max: 4000
@@ -44,26 +24,18 @@ complex_sep: '&'
 communication_score: expression_product
 hill_k: 0.5
 random_state: 42
-interaction_tensor_shape:
-- 47
-- 20
-- 20
-- 513
+interaction_tensor_shape: [47, 20, 20, 513]
 compressed: true
 oversample: 5
-core_shape:
-- 25
-- 20
-- 20
-- 25
+core_shape: [25, 20, 20, 25]
 compression_ratio: 38.5776
-retained_fraction: 0.8680564043631513
+retained_fraction: 0.8680563910936759
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
   lr_pairs: 513
 lr_pairs_annotated: 2005
-r2x_pf2: 0.03825927629809811
-git_sha: c3d53e12a57c7900e49c80c304d36cf6ad0cf9ed
-generated: '2026-09-12T02:39:59+00:00'
+r2x_pf2: 0.03825927936769935
+git_sha: 8d03e2f69c540060f2469d236c7208075818beeb-dirty
+generated: '2026-09-15T04:08:32+00:00'
