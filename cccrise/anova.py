@@ -1,19 +1,19 @@
-"""One-way ANOVA of CP condition-factor loadings against a phenotype.
+"""One-way ANOVA of CP condition-factor loadings against patient status variables.
 
 Replaces the L1 logistic regression that used to score `X.uns["A"]`.
-The grouping is carried as a named label per condition rather than as an
-integer code: `prepare_anova_inputs` collapses to two named levels when told
-to, and otherwise passes every level of the group column through. Moving from
-control-vs-ALAD to three-level `ALADstatus`, or to Died/CLAD/No CLAD, is then
-an argument change rather than a code change.
+Supports multi-level categorical ANOVA, binary collapsed comparisons, subset level
+contrasts (e.g., Control vs. Declined, Control vs. Recovered, Declined vs. Recovered),
+and arbitrary recodings across any patient status column in `obs` (e.g. `ALADstatus`,
+`6monthcondition`, `1yearcondition`, `diagnosisgroup`, `cmvstatus`).
 
 Includes multiple testing correction support (Benjamini-Hochberg FDR,
-Benjamini-Yekutieli, Bonferroni, Holm) and support for running ANOVA on saved
-decomposition factors (e.g. `bal_alad_factors.nc`).
+Benjamini-Yekutieli, Bonferroni, Holm) and batch execution of multiple association
+specifications on saved decomposition factors (e.g. `bal_alad_factors.nc`).
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 import anndata
 import numpy as np
@@ -92,6 +92,56 @@ def adjust_pvalues(
     return out
 
 
+def prepare_group_labels(
+    sample_to_group: pd.Series,
+    levels: Sequence[str] | None = None,
+    mapping: Mapping[str, str] | None = None,
+    control_label: str | None = None,
+    other_label: str | None = None,
+    condition_order: Sequence[str] | None = None,
+) -> pd.Series:
+    """Filter, recode, or collapse a condition-to-group mapping Series.
+
+    Parameters
+    ----------
+    sample_to_group : pd.Series
+        Raw mapping from sample/condition identifiers to phenotype labels.
+    levels : Sequence[str] | None, optional
+        Subset of group levels to retain. Conditions with other levels are set to NaN.
+    mapping : Mapping[str, str] | None, optional
+        Dictionary mapping original group labels to new categories.
+    control_label, other_label : str | None, optional
+        When both are provided, collapses groups into binary levels:
+        `control_label` is retained, and all other non-null entries become `other_label`.
+    condition_order : Sequence[str] | None, optional
+        Order of conditions to align the index against.
+
+    Returns
+    -------
+    pd.Series
+        Processed group labels aligned to conditions.
+    """
+    s = sample_to_group.copy()
+    if condition_order is not None and s.index.size > 0:
+        s = s.reindex(condition_order)
+
+    if mapping is not None:
+        s = s.map(mapping)
+
+    if levels is not None:
+        level_set = set(levels)
+        s = s.where(s.isin(level_set))
+
+    if control_label is not None and other_label is not None:
+        s = collapse_group(s, control_label, control_label, other_label)
+    elif control_label is None and other_label is not None:
+        raise ValueError(
+            "Pass both control_label and other_label to collapse to binary levels."
+        )
+
+    return s
+
+
 def prepare_anova_inputs(
     adata: anndata.AnnData,
     factors: list[np.ndarray],
@@ -99,14 +149,11 @@ def prepare_anova_inputs(
     group_column: str,
     control_label: str | None = None,
     other_label: str | None = None,
+    levels: Sequence[str] | None = None,
+    mapping: Mapping[str, str] | None = None,
 ) -> tuple[anndata.AnnData, pd.Series]:
     """Attach one CP fit's factors to an AnnData object and derive the group
     label the ANOVA is run against.
-
-    Mirrors the condition-factor read-depth correction and group labeling
-    `figures/figure4.py` applies to the primary post hoc factorization, so
-    results computed from any other fit -- a different rank, a bootstrap
-    replicate -- are directly comparable to the ones reported there.
 
     Parameters
     ----------
@@ -118,9 +165,11 @@ def prepare_anova_inputs(
         Columns in `obs` holding the condition identity and its group label.
     control_label, other_label : str | None, optional
         When both are given, `group_column` is collapsed to those two named
-        levels. When both are None -- the default -- every level of
-        `group_column` is passed through untouched, which is the k-level
-        ANOVA path.
+        levels.
+    levels : Sequence[str] | None, optional
+        Subset of group levels to retain.
+    mapping : Mapping[str, str] | None, optional
+        Dictionary mapping original group labels to new categories.
 
     Returns
     -------
@@ -134,15 +183,14 @@ def prepare_anova_inputs(
     X.uns["A"] = correct_conditions(X)
 
     sample_to_group = get_sample_to_group(X, condition_column, group_column)
-    if control_label is None and other_label is None:
-        return X, sample_to_group.astype(str)
-    if control_label is None or other_label is None:
-        raise ValueError(
-            "Pass both control_label and other_label to collapse to two named "
-            f"levels, or neither to test every level of {group_column!r}; got "
-            f"control_label={control_label!r}, other_label={other_label!r}."
-        )
-    return X, collapse_group(sample_to_group, control_label, control_label, other_label)
+    processed_labels = prepare_group_labels(
+        sample_to_group,
+        levels=levels,
+        mapping=mapping,
+        control_label=control_label,
+        other_label=other_label,
+    )
+    return X, processed_labels
 
 
 def anova_component_associations(
@@ -190,6 +238,11 @@ def anova_component_associations(
     """
     A = np.asarray(X.uns["A"], dtype=float)
     labels = pd.Series(np.asarray(sample_to_group), dtype=object).reset_index(drop=True)
+    if len(labels) != A.shape[0]:
+        raise ValueError(
+            f"Length of sample_to_group ({len(labels)}) does not match condition "
+            f"factor rows in X.uns['A'] ({A.shape[0]})."
+        )
 
     rows = []
     raw_p_values = []
@@ -284,51 +337,13 @@ def _group_mean_diff(
     return float(other.mean() - control.mean())
 
 
-def run_saved_factors_anova(
+def _resolve_factors_and_metadata(
     factors: str | Path | xr.Dataset | anndata.AnnData,
     adata: anndata.AnnData | None = None,
-    sample_to_group: pd.Series | None = None,
-    group_column: str | None = None,
     condition_column: str | None = None,
-    control_label: str | None = None,
-    other_label: str | None = None,
-    alpha: float = 0.05,
-    correction: str | None = "fdr_bh",
-) -> pd.DataFrame:
-    """Run one-way ANOVA on a saved factors dataset (e.g. bal_alad_factors.nc).
-
-    Parameters
-    ----------
-    factors : str, Path, xr.Dataset, or anndata.AnnData
-        Path to a saved NetCDF factor dataset, an xarray Dataset, or an AnnData
-        holding decomposition factor matrices in `uns`.
-    adata : anndata.AnnData, optional
-        AnnData containing condition and group annotations in `obs`. If omitted
-        and `factors` is a path or NetCDF dataset registered in
-        `cccrise.runners.datasets.DATASETS` (e.g., 'alad' for 'bal_alad_factors.nc'),
-        the dataset is automatically loaded.
-    sample_to_group : pd.Series, optional
-        Pre-extracted condition-to-group mapping Series.
-    group_column : str, optional
-        Phenotype group column in `adata.obs` (e.g. 'ALADstatus'). Defaults to
-        the registered dataset's `group_column`.
-    condition_column : str, optional
-        Sample/condition column in `adata.obs`. Defaults to the registered
-        dataset's `condition_column` or `factors_ds.attrs["condition_key"]`.
-    control_label, other_label : str, optional
-        When provided, collapses `group_column` into two binary levels.
-        When omitted, tests every level of `group_column`.
-    alpha : float, default=0.05
-        Significance threshold for `Significant`.
-    correction : str | None, default="fdr_bh"
-        Multiple testing correction method: "fdr_bh", "bonferroni", "holm", or None.
-
-    Returns
-    -------
-    pd.DataFrame
-        ANOVA results table per component with F, P, PAdj, EtaSquared,
-        GroupMeanDiff, and Significant flags.
-    """
+    group_column: str | None = None,
+) -> tuple[anndata.AnnData, str, str]:
+    """Resolve factor matrices and AnnData metadata annotations."""
     from .factors import load_factors_netcdf, load_factors_to_anndata
     from .runners.datasets import DATASETS
 
@@ -342,7 +357,7 @@ def run_saved_factors_anova(
         ds_name = str(
             factors_ds.attrs.get("dataset_name", factors_ds.attrs.get("dataset", ""))
         )
-        if sample_to_group is None and adata is None and ds_name in DATASETS:
+        if adata is None and ds_name in DATASETS:
             spec = DATASETS[ds_name]
             try:
                 adata = spec.load()
@@ -354,11 +369,10 @@ def run_saved_factors_anova(
                     group_column = group_column or spec.group_column
                     condition_column = condition_column or spec.condition_column
                 except Exception as err:
-                    if sample_to_group is None:
-                        raise RuntimeError(
-                            f"Could not automatically load dataset {ds_name!r}: {err}. "
-                            "Provide `adata` or `sample_to_group` directly."
-                        ) from err
+                    raise RuntimeError(
+                        f"Could not automatically load dataset {ds_name!r}: {err}. "
+                        "Provide `adata` directly."
+                    ) from err
 
         cond_col = condition_column or str(
             factors_ds.attrs.get("condition_key", "sample")
@@ -372,26 +386,193 @@ def run_saved_factors_anova(
     else:
         raise TypeError(f"Unsupported factors type: {type(factors)}")
 
+    grp_col = group_column or (
+        "ALADstatus" if "ALADstatus" in factors_adata.obs.columns else ""
+    )
+    return factors_adata, cond_col, grp_col
+
+
+def run_saved_factors_anova(
+    factors: str | Path | xr.Dataset | anndata.AnnData,
+    adata: anndata.AnnData | None = None,
+    sample_to_group: pd.Series | None = None,
+    group_column: str | None = None,
+    condition_column: str | None = None,
+    control_label: str | None = None,
+    other_label: str | None = None,
+    levels: Sequence[str] | None = None,
+    mapping: Mapping[str, str] | None = None,
+    alpha: float = 0.05,
+    correction: str | None = "fdr_bh",
+    association_name: str | None = None,
+) -> pd.DataFrame:
+    """Run one-way ANOVA on a saved factors dataset (e.g. bal_alad_factors.nc).
+
+    Parameters
+    ----------
+    factors : str, Path, xr.Dataset, or anndata.AnnData
+        Path to a saved NetCDF factor dataset, an xarray Dataset, or an AnnData
+        holding decomposition factor matrices in `uns`.
+    adata : anndata.AnnData, optional
+        AnnData containing condition and group annotations in `obs`.
+    sample_to_group : pd.Series, optional
+        Pre-extracted condition-to-group mapping Series.
+    group_column : str, optional
+        Phenotype group column in `adata.obs`.
+    condition_column : str, optional
+        Sample/condition column in `adata.obs`.
+    control_label, other_label : str, optional
+        When provided, collapses `group_column` into two binary levels.
+    levels : Sequence[str], optional
+        Subset of group levels to retain (e.g. ['control', 'declined']).
+    mapping : Mapping[str, str], optional
+        Dictionary mapping original group levels to new categories.
+    alpha : float, default=0.05
+        Significance threshold for `Significant`.
+    correction : str | None, default="fdr_bh"
+        Multiple testing correction method: "fdr_bh", "bonferroni", "holm", or None.
+    association_name : str, optional
+        Optional name to record in an 'Association' column.
+
+    Returns
+    -------
+    pd.DataFrame
+        ANOVA results table per component with F, P, PAdj, EtaSquared,
+        GroupMeanDiff, and Significant flags.
+    """
+    factors_adata, cond_col, grp_col = _resolve_factors_and_metadata(
+        factors,
+        adata=adata,
+        condition_column=condition_column,
+        group_column=group_column,
+    )
+
     if sample_to_group is None:
-        if group_column is None:
+        target_grp_col = group_column or grp_col
+        if not target_grp_col:
             raise ValueError(
                 "group_column must be specified if sample_to_group is not provided."
             )
-        sample_to_group = get_sample_to_group(factors_adata, cond_col, group_column)
+        sample_to_group = get_sample_to_group(factors_adata, cond_col, target_grp_col)
 
-    if control_label is not None and other_label is not None:
-        sample_to_group = collapse_group(
-            sample_to_group, control_label, control_label, other_label
-        )
-    elif (control_label is None) ^ (other_label is None):
-        raise ValueError(
-            "Specify both control_label and other_label, or neither to test all levels."
-        )
-
-    return anova_component_associations(
-        factors_adata,
+    processed_labels = prepare_group_labels(
         sample_to_group,
+        levels=levels,
+        mapping=mapping,
+        control_label=control_label,
+        other_label=other_label,
+    )
+
+    df = anova_component_associations(
+        factors_adata,
+        processed_labels,
         alpha=alpha,
         control_label=control_label,
         correction=correction,
     )
+    if association_name is not None:
+        df["Association"] = association_name
+        df["GroupColumn"] = group_column or grp_col
+    return df
+
+
+def run_multiple_factors_anova(
+    factors: str | Path | xr.Dataset | anndata.AnnData,
+    associations: Sequence[dict[str, Any] | str],
+    adata: anndata.AnnData | None = None,
+    condition_column: str | None = None,
+    alpha: float = 0.05,
+    correction: str | None = "fdr_bh",
+    global_correction: bool = False,
+) -> pd.DataFrame:
+    """Run multiple ANOVA phenotype association tests on a saved factors dataset.
+
+    Parameters
+    ----------
+    factors : str, Path, xr.Dataset, or anndata.AnnData
+        Saved factor dataset or AnnData.
+    associations : Sequence[dict[str, Any] | str]
+        List of association configurations. Can be:
+        - Dictionaries with keys like 'name', 'group_column', 'levels', 'mapping',
+          'control_label', 'other_label', 'alpha', 'correction'
+        - Column names (strings) in `adata.obs` to test across all their levels
+    adata : anndata.AnnData, optional
+        AnnData containing condition annotations in `obs`.
+    condition_column : str, optional
+        Condition column name.
+    alpha : float, default=0.05
+        Default significance threshold for configs that do not specify one.
+    correction : str | None, default="fdr_bh"
+        Default multiple test correction for configs that do not specify one.
+    global_correction : bool, default=False
+        If True, applies multiple hypothesis testing correction across all
+        associations and components simultaneously.
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined DataFrame containing all ANOVA results with an added 'Association' column.
+    """
+    factors_adata, cond_col, _ = _resolve_factors_and_metadata(
+        factors,
+        adata=adata,
+        condition_column=condition_column,
+    )
+
+    dfs: list[pd.DataFrame] = []
+    for item in associations:
+        if isinstance(item, str):
+            assoc_dict: dict[str, Any] = {
+                "name": item,
+                "group_column": item,
+                "alpha": alpha,
+                "correction": correction,
+            }
+        elif isinstance(item, dict):
+            assoc_dict = {
+                "name": item.get("name", item["group_column"]),
+                "group_column": item["group_column"],
+                "levels": item.get("levels"),
+                "mapping": item.get("mapping"),
+                "control_label": item.get("control_label"),
+                "other_label": item.get("other_label"),
+                "alpha": item.get("alpha", alpha),
+                "correction": item.get("correction", correction),
+            }
+        else:
+            raise TypeError(f"Unsupported association item type: {type(item)}")
+
+        sample_to_group = get_sample_to_group(
+            factors_adata, cond_col, assoc_dict["group_column"]
+        )
+        processed_labels = prepare_group_labels(
+            sample_to_group,
+            levels=assoc_dict.get("levels"),
+            mapping=assoc_dict.get("mapping"),
+            control_label=assoc_dict.get("control_label"),
+            other_label=assoc_dict.get("other_label"),
+        )
+        corr_to_use = None if global_correction else assoc_dict.get("correction")
+        res = anova_component_associations(
+            factors_adata,
+            processed_labels,
+            alpha=float(assoc_dict["alpha"])
+            if assoc_dict.get("alpha") is not None
+            else alpha,
+            control_label=assoc_dict.get("control_label"),
+            correction=corr_to_use,
+        )
+        res["Association"] = assoc_dict["name"]
+        res["GroupColumn"] = assoc_dict["group_column"]
+        dfs.append(res)
+
+    combined_df = pd.concat(dfs, ignore_index=True)
+
+    if global_correction:
+        global_adj = adjust_pvalues(combined_df["P"].to_numpy(), method=correction)
+        combined_df["PAdj"] = global_adj
+        combined_df["Significant"] = [
+            bool(padj < alpha) if np.isfinite(padj) else False for padj in global_adj
+        ]
+
+    return combined_df

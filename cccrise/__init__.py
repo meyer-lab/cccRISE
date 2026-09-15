@@ -11,6 +11,8 @@ from .anova import (
     adjust_pvalues,
     anova_component_associations,
     prepare_anova_inputs,
+    prepare_group_labels,
+    run_multiple_factors_anova,
     run_saved_factors_anova,
 )
 from .factors import (
@@ -36,7 +38,9 @@ __all__ = [
     "load_factors_to_anndata",
     "load_or_compute_dataframe",
     "prepare_anova_inputs",
+    "prepare_group_labels",
     "run_ccc_rise_workflow",
+    "run_multiple_factors_anova",
     "run_pseudobulk_workflow",
     "run_saved_factors_anova",
     "save_factors_netcdf",

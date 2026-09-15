@@ -8,6 +8,8 @@ from cccrise.anova import (
     _eta_squared,
     adjust_pvalues,
     anova_component_associations,
+    prepare_group_labels,
+    run_multiple_factors_anova,
     run_saved_factors_anova,
 )
 from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
@@ -534,35 +536,70 @@ def test_anova_component_associations_with_correction():
     )
 
 
-def test_run_saved_factors_anova_and_plotting():
-    """`run_saved_factors_anova` works on saved factor datasets and figureAnova generates plots."""
+def test_prepare_group_labels():
+    """`prepare_group_labels` correctly handles levels filtering, mapping, and binary collapsing."""
+    raw = pd.Series(
+        ["control", "declined", "recovered", "control", "unknown"],
+        index=["S1", "S2", "S3", "S4", "S5"],
+    )
+
+    # Levels subsetting
+    s_levels = prepare_group_labels(raw, levels=["control", "declined"])
+    assert s_levels["S1"] == "control"
+    assert s_levels["S2"] == "declined"
+    assert pd.isna(s_levels["S3"])
+    assert pd.isna(s_levels["S5"])
+
+    # Mapping
+    s_map = prepare_group_labels(
+        raw, mapping={"control": "Healthy", "declined": "Diseased"}
+    )
+    assert s_map["S1"] == "Healthy"
+    assert s_map["S2"] == "Diseased"
+    assert pd.isna(s_map["S3"])
+
+    # Binary collapsing
+    s_collapse = prepare_group_labels(raw, control_label="control", other_label="alad")
+    assert s_collapse["S1"] == "control"
+    assert s_collapse["S2"] == "alad"
+    assert s_collapse["S3"] == "alad"
+
+
+def test_run_saved_factors_anova_and_multiple_associations():
+    """`run_saved_factors_anova`, `run_multiple_factors_anova`, and `figureAnova` work."""
     import matplotlib.pyplot as plt
 
     from cccrise.factors import load_factors_netcdf
     from cccrise.figures.figureAnova import (
         makeFigure,
-        plot_anova_effect_sizes,
-        plot_anova_significance,
+        plot_anova_summary_heatmap,
+        plot_association_effect_sizes,
+        plot_association_significance,
     )
 
     ds = load_factors_netcdf("cccrise/data/bal_alad_factors.nc")
     n_cond = ds.sizes["condition"]
     cond_names = [str(c) for c in ds["condition"].values]
     s2g = pd.Series(
-        ["control" if i % 2 == 0 else "alad" for i in range(n_cond)],
+        [
+            "control" if i % 3 == 0 else "declined" if i % 3 == 1 else "recovered"
+            for i in range(n_cond)
+        ],
         index=cond_names,
     )
 
-    # Test running ANOVA on bal_alad_factors.nc with sample_to_group
+    # Test running ANOVA on bal_alad_factors.nc with kwargs
     df = run_saved_factors_anova(
         "cccrise/data/bal_alad_factors.nc",
         sample_to_group=s2g,
+        group_column="ALADstatus",
+        levels=["control", "declined"],
         control_label="control",
-        other_label="alad",
-        correction="fdr_bh",
+        association_name="Control vs Declined",
     )
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 3
+    assert df["Association"].iloc[0] == "Control vs Declined"
     assert {
         "Component",
         "F",
@@ -575,13 +612,46 @@ def test_run_saved_factors_anova_and_plotting():
         "GroupSizes",
     }.issubset(df.columns)
 
-    # Test plotting effect sizes and significance subplots
+    # Test plotting subplots
     fig, (ax0, ax1) = plt.subplots(1, 2)
-    plot_anova_effect_sizes(df, ax0)
-    plot_anova_significance(df, ax1)
+    plot_association_effect_sizes(df, ax0)
+    plot_association_significance(df, ax1)
     plt.close(fig)
 
-    # Test makeFigure
-    fig_made = makeFigure()
-    assert isinstance(fig_made, plt.Figure)
-    plt.close(fig_made)
+    # Test multiple associations with global correction
+    associations_config = [
+        {
+            "name": "Control vs. ALAD",
+            "group_column": "ALADstatus",
+            "control_label": "control",
+            "other_label": "alad",
+        },
+        {
+            "name": "Control vs. Declined",
+            "group_column": "ALADstatus",
+            "levels": ["control", "declined"],
+            "control_label": "control",
+        },
+    ]
+    multi_df = run_multiple_factors_anova(
+        "cccrise/data/bal_alad_factors.nc",
+        associations=associations_config,
+        global_correction=True,
+    )
+    assert len(multi_df) == 6
+    assert set(multi_df["Association"]) == {"Control vs. ALAD", "Control vs. Declined"}
+
+    # Test summary heatmap
+    fig_hm, ax_hm = plt.subplots(1, 1)
+    plot_anova_summary_heatmap(multi_df, ax_hm)
+    plt.close(fig_hm)
+
+    # Test makeFigure with custom associations
+    fig_custom = makeFigure(associations=associations_config)
+    assert isinstance(fig_custom, plt.Figure)
+    plt.close(fig_custom)
+
+    # Test default makeFigure (runs all ALAD status types)
+    fig_default = makeFigure()
+    assert isinstance(fig_default, plt.Figure)
+    plt.close(fig_default)
