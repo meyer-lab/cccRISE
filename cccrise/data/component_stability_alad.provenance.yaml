@@ -13,13 +13,14 @@ loader_args:
 condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
-rise_rank: 25
+rise_rank: 10
 cp_rank: 4
 axes:
 - cells
+- conditions
 - lr_pairs
-- permuted
-n_replicates: 3
+- seed_only
+n_replicates: 50
 rise_n_iter_max: 100
 rise_tol: 1.0e-06
 n_iter_max: 100
@@ -30,30 +31,39 @@ complex_sep: '&'
 communication_score: expression_product
 hill_k: 0.5
 random_state: 0
-seed_formula: random_state * 1000 + replicate + 1; one seed drives the resample, the
-  RISE refit and the CP fit, so a replicate's RISE and CPD rows are the same resampled
-  dataset (see stability.replicate_seed)
+seed_formula: 'random_state * 1000 + replicate + 1; one seed drives the resample,
+  the RISE refit and the CP fit, so a replicate''s RISE and CPD rows are the same
+  resampled dataset (see stability.replicate_seed). On the seed_only axis the seed
+  is the only thing that differs from the reference: same cells, same conditions,
+  same ligand-receptor pairs'
 resampling:
   cells: cells bootstrapped with replacement within each condition
   conditions: whole conditions bootstrapped with replacement, stratified by ALADstatus
   lr_pairs: reference tensor's ligand-receptor mode bootstrapped with replacement;
     no PARAFAC2 refit
-  permuted: reference tensor's entries permuted, giving the chance floor; no PARAFAC2
-    refit
+  seed_only: identical data refit end to end (RISE -> communication tensor -> CP)
+    under a different random seed; one PARAFAC2 refit per replicate
+seed_axis_semantics: 'seed_only is an upper reference, not a chance floor: its FMS
+  is expected to be high, and FracWithinSeedBand reads high-is-good (the fraction
+  of a component''s replicates that stayed inside the seed-refit band, i.e. moved
+  no further than reseeding alone moves them). It replaces an entry-permutation floor
+  that every component cleared; runs before 2026-09 carry the old ''permuted'' axis
+  and the opposite reading'
 condition_mode_alignment: reference condition-mode rows expanded onto the replicate's
   roster by draw (see stability.reference_condition_rows)
 lr_mode_alignment: reference ligand-receptor mode rows expanded by the drawn LR indices
-fms_definition: congruence product across unskipped modes (RISE skips mode 1,
-  CPD skips modes 1 and 2), weights ignored (see stability.per_component_fms)
+fms_definition: congruence product across compared modes (Modes 0 and 2 for RISE,
+  with Mode 1 held out; Modes 0 and 3 for CPD, with Modes 1 and 2 held out), weights
+  ignored (see stability.per_component_fms)
 component_numbering: reference fit after ccc_rise.standardize_cc_pf2
 lr_roster_stable: true
 interaction_tensor_shape:
 - 47
-- 25
-- 25
+- 10
+- 10
 - 513
-r2x_pf2: 0.0404382309026593
-r2x_cp: 0.41878544591847366
+r2x_pf2: 0.03107754363741988
+r2x_cp: 0.5072285492131834
 reference_seed: 0
 first_replicate_seed: 1
 resulting_dims:
@@ -61,5 +71,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 756b9551f6ba18ee646369f986c77191b785b0c0
-generated: '2026-09-10T01:43:48+00:00'
+git_sha: 582682601079c29adcf762c04333b488558084ad-dirty
+generated: '2026-09-15T10:28:23+00:00'
