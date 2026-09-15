@@ -6,7 +6,9 @@ from scipy.stats import ttest_ind
 
 from cccrise.anova import (
     _eta_squared,
+    adjust_pvalues,
     anova_component_associations,
+    run_saved_factors_anova,
 )
 from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
 from cccrise.import_data import add_cond_idxs
@@ -468,3 +470,118 @@ def test_get_sample_to_group_is_ordered_by_condition_unique_idxs():
     labels = resampled.obs["Sample"].to_numpy().astype(str)
     for row, label in zip(rows, labels, strict=True):
         assert sample_to_group.index[row] == label
+
+
+def test_adjust_pvalues_methods():
+    """Verify multiple test correction methods and preservation of NaNs."""
+    ps = [0.01, 0.04, 0.03, float("nan")]
+
+    # Raw / None
+    np.testing.assert_allclose(
+        adjust_pvalues(ps, method=None),
+        [0.01, 0.04, 0.03, np.nan],
+    )
+
+    # Bonferroni: min(p * 3, 1.0)
+    np.testing.assert_allclose(
+        adjust_pvalues(ps, method="bonferroni"),
+        [0.03, 0.12, 0.09, np.nan],
+    )
+
+    # Benjamini-Hochberg FDR
+    bh = adjust_pvalues(ps, method="fdr_bh")
+    assert np.isnan(bh[3])
+    assert bh[0] == pytest.approx(0.03)  # 0.01 * 3 / 1
+    assert bh[2] == pytest.approx(0.04)  # 0.03 * 3 / 2 = 0.045 -> monotonized to 0.04
+    assert bh[1] == pytest.approx(0.04)  # 0.04 * 3 / 3 = 0.04
+
+    # Holm-Bonferroni
+    holm = adjust_pvalues(ps, method="holm")
+    assert np.isnan(holm[3])
+    assert holm[0] == pytest.approx(0.03)  # 0.01 * 3
+    assert holm[2] == pytest.approx(0.06)  # 0.03 * 2
+    assert holm[1] == pytest.approx(0.06)  # max(0.06, 0.04 * 1)
+
+
+def test_anova_component_associations_with_correction():
+    """`anova_component_associations` incorporates multiple testing corrections into PAdj and Significant."""
+    A = np.array(
+        [
+            [1.0, 10.0],
+            [1.1, 10.1],
+            [5.0, 1.0],
+            [5.2, 1.2],
+        ]
+    )
+    adata = anndata.AnnData(
+        X=np.zeros((4, 2)),
+        obs=pd.DataFrame({"sample": ["S1", "S2", "S3", "S4"]}),
+        uns={"A": A},
+    )
+    s2g = pd.Series(["Ctrl", "Ctrl", "Treat", "Treat"], index=["S1", "S2", "S3", "S4"])
+
+    # Uncorrected
+    df_raw = anova_component_associations(adata, s2g, alpha=0.05, correction=None)
+    assert "PAdj" in df_raw.columns
+    np.testing.assert_allclose(df_raw["P"], df_raw["PAdj"])
+
+    # Bonferroni corrected
+    df_bonf = anova_component_associations(
+        adata, s2g, alpha=0.05, correction="bonferroni"
+    )
+    np.testing.assert_allclose(
+        df_bonf["PAdj"], np.clip(df_raw["P"] * len(df_raw), 0.0, 1.0)
+    )
+
+
+def test_run_saved_factors_anova_and_plotting():
+    """`run_saved_factors_anova` works on saved factor datasets and figureAnova generates plots."""
+    import matplotlib.pyplot as plt
+
+    from cccrise.factors import load_factors_netcdf
+    from cccrise.figures.figureAnova import (
+        makeFigure,
+        plot_anova_effect_sizes,
+        plot_anova_significance,
+    )
+
+    ds = load_factors_netcdf("cccrise/data/bal_alad_factors.nc")
+    n_cond = ds.sizes["condition"]
+    cond_names = [str(c) for c in ds["condition"].values]
+    s2g = pd.Series(
+        ["control" if i % 2 == 0 else "alad" for i in range(n_cond)],
+        index=cond_names,
+    )
+
+    # Test running ANOVA on bal_alad_factors.nc with sample_to_group
+    df = run_saved_factors_anova(
+        "cccrise/data/bal_alad_factors.nc",
+        sample_to_group=s2g,
+        control_label="control",
+        other_label="alad",
+        correction="fdr_bh",
+    )
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 3
+    assert {
+        "Component",
+        "F",
+        "P",
+        "PAdj",
+        "EtaSquared",
+        "GroupMeanDiff",
+        "Significant",
+        "NGroups",
+        "GroupSizes",
+    }.issubset(df.columns)
+
+    # Test plotting effect sizes and significance subplots
+    fig, (ax0, ax1) = plt.subplots(1, 2)
+    plot_anova_effect_sizes(df, ax0)
+    plot_anova_significance(df, ax1)
+    plt.close(fig)
+
+    # Test makeFigure
+    fig_made = makeFigure()
+    assert isinstance(fig_made, plt.Figure)
+    plt.close(fig_made)
