@@ -43,13 +43,21 @@ def _var() -> pd.DataFrame:
     symbols[1] = "MT-CO1"
     symbols[2] = "RPL13"
     symbols[3] = "MRPS12"
+    # Real symbols that a naive ^RP[LS]/^MRP[SL] regex would catch but which are
+    # not ribosomal at all -- see test_mito_ribo_mask_keeps_the_s6_kinases.
+    symbols[4] = "RPS6KA1"
+    symbols[5] = "RPS6KB2"
+    symbols[6] = "MRPS30-DT"
+    # Flags as the Sanger pipeline actually sets them: on the ribosomal proteins
+    # themselves, not on everything whose symbol starts with RP. Assigning them
+    # by prefix here would make `test_mito_ribo_mask_keeps_the_s6_kinases`
+    # vacuous -- the fixture would contain the very bug it guards against.
+    ribosomal = {"RPL13", "MRPS12"}
     return pd.DataFrame(
         {
             "gene_symbols": symbols,
             "gene_group__mito_transcript": [s.startswith("MT-") for s in symbols],
-            "gene_group__ribo_protein": [
-                s.startswith(("RPL", "RPS", "MRP")) for s in symbols
-            ],
+            "gene_group__ribo_protein": [s in ribosomal for s in symbols],
         },
         index=[f"ENSG{i:05d}" for i in range(N_GENES)],
     )
@@ -246,3 +254,25 @@ def test_describe_mask_names_what_it_removed():
     var = _var()
     assert "nothing excluded" in describe_mask(var, np.zeros(len(var), bool))
     assert "MT-CO1" in describe_mask(var, mito_ribo_mask(var))
+
+
+def test_mito_ribo_mask_keeps_the_s6_kinases():
+    """Reading the Sanger flags beats matching on the symbol, and this is why.
+
+    A real IBDverse load keeps 18 symbols that a ``^RP[LS]``/``^MRP[SL]`` regex
+    would have removed: the ribosomal protein S6 kinases (``RPS6KA1``-``6``,
+    ``RPS6KB1``/``2``, ``RPS6KC1``, ``RPS6KL1``) are signalling kinases, and
+    the rest are antisense, divergent, or readthrough transcripts
+    (``RPL34-AS1``, ``MRPS30-DT``, ``RPL17-C18orf32``, ...). None carries a
+    ``gene_group__*`` flag. Dropping them would be a silent loss of 18
+    signalling genes, several of which are in the LR table's downstream space.
+    """
+    var = _var()
+    mask = mito_ribo_mask(var)
+    symbols = var["gene_symbols"]
+
+    for kept in ("RPS6KA1", "RPS6KB2", "MRPS30-DT"):
+        assert not mask[symbols == kept].any(), f"{kept} is not a ribosomal protein"
+    # The genuinely ribosomal neighbours in the same fixture still go.
+    assert mask[symbols == "RPL13"].all()
+    assert mask[symbols == "MRPS12"].all()
