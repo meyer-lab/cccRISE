@@ -7,6 +7,60 @@ Core Functions
 Preprocessing
 ~~~~~~~~~~~~~
 
+.. py:function:: load_normalized(path: str | PathLike[str], *, min_cell_counts: float = 10.0, gene_threshold: float = 0.0, min_cells: int | None = None, exclude_genes: Callable[[pd.DataFrame], np.ndarray] | None = None, obs_filter: Callable[[pd.DataFrame], Any] | None = None, recipe: str | vsparse.Recipe = "parafac2", dtype: Any = np.float32, x_key: str = "X")
+   :module: cccrise.loading
+
+   Load, filter and normalize a VCSC/VCSR-backed ``.h5ad``, in that order.
+
+   The entry point every dataset loader in :mod:`cccrise.import_data` goes
+   through. It reads the packed on-disk array, drops the cells and genes that
+   fail QC along with any the caller excludes, and only then computes the
+   normalization statistics -- so an excluded gene contributes to no cell's
+   depth. With no ``exclude_genes`` it is bitwise identical to the
+   ``vsparse.load_and_normalize`` call it replaces.
+
+   Filter thresholds are measured on raw counts before anything is dropped, so
+   the surviving set does not depend on the order the masks are applied: cells
+   with total counts <= ``min_cell_counts`` go, genes with total counts <=
+   ``gene_threshold * n_cells`` go, and ``exclude_genes`` goes unconditionally.
+
+   :param path: An ``.h5ad`` whose ``X`` was written with ``format="ivcsc"`` (see :meth:`vsparse.VCSCAnnData.write_h5ad`).
+   :param min_cell_counts: Cells with total raw counts at or below this are dropped.
+   :type min_cell_counts: float, optional
+   :param gene_threshold: Genes with total raw counts <= ``gene_threshold * n_cells`` are dropped, as in ``prepare_dataset``.
+   :type gene_threshold: float, optional
+   :param min_cells: Drop genes detected in fewer than this many cells.
+   :type min_cells: int, optional
+   :param exclude_genes: Given ``var``, returns a boolean mask of genes to drop before normalization -- e.g. :func:`cccrise.gene_filters.mito_ribo_mask`.
+   :param obs_filter: Given ``obs``, returns a boolean cell mask applied before every threshold is measured.
+   :param recipe: A ``vsparse`` recipe name or :class:`vsparse.Recipe`. ``"parafac2"`` is the normalization the rest of the package assumes.
+   :param dtype: Dtype of the returned ``X.data``. The float32 default matches the stored values' own precision.
+   :returns: ``X`` a ``csr_array``/``csc_array`` of uncentered normalized values, and ``var["means"]`` the per-gene mean to subtract once a condition block is densified.
+   :rtype: anndata.AnnData
+
+.. py:function:: mito_ribo_mask(var: pd.DataFrame, *, symbol_column: str = "gene_symbols", exclude_mito_ribosomal: bool = True, exclude_mtrnr2l: bool = True)
+   :module: cccrise.gene_filters
+
+   Boolean mask of the mitochondrial and ribosomal genes to exclude.
+
+   Reads the ``gene_group__*`` columns the Sanger pipeline ships and repairs
+   two gaps in them: ``gene_group__ribo_protein`` lumps the mitochondrial
+   ribosome (``MRPS*``/``MRPL*``, plus ``DAP3``) in with the cytosolic one,
+   which is a different kind of gene and separable via
+   ``exclude_mito_ribosomal``; and a few cytosolic ribosomal proteins are not
+   flagged at all. ``MTRNR2L*`` nuclear pseudogenes are covered by
+   ``exclude_mtrnr2l``.
+
+   Pass it to :func:`cccrise.loading.load_normalized` as ``exclude_genes``, so
+   the genes are gone before the depth divisor is measured -- these genes
+   carry a large share of each cell's counts, so dropping them afterwards is
+   not the same operation.
+
+   :param var: The gene table to read flags and symbols from.
+   :type var: pd.DataFrame
+   :returns: Boolean mask, True where the gene should be excluded.
+   :rtype: np.ndarray
+
 .. py:function:: prepare_dataset(X: anndata.AnnData, condition_name: str, geneThreshold: float, normalize: bool = False)
    :module: cccrise.import_data
 
