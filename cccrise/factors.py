@@ -375,12 +375,51 @@ def load_factors_to_anndata(
     # Ensure condition indexing
     out = add_cond_idxs(out, cond_key)
 
+    # Use stored cell projections if already present in factors dataset
+    if "cell_projections" in factors_ds:
+        out.obsm["projections"] = np.asarray(
+            factors_ds["cell_projections"].values, dtype=np.float32
+        )
+        if "cell_sc_B" in factors_ds:
+            out.obsm["sc_B"] = np.asarray(
+                factors_ds["cell_sc_B"].values, dtype=np.float32
+            )
+        else:
+            out.obsm["sc_B"] = out.obsm["projections"] @ B_cp
+        if "cell_rc_C" in factors_ds:
+            out.obsm["rc_C"] = np.asarray(
+                factors_ds["cell_rc_C"].values, dtype=np.float32
+            )
+        else:
+            out.obsm["rc_C"] = out.obsm["projections"] @ C_cp
+
+        if "cell_pacmap" in factors_ds:
+            out.obsm["PaCMAP"] = np.asarray(
+                factors_ds["cell_pacmap"].values, dtype=np.float32
+            )
+        elif do_embedding:
+            pcm = PaCMAP(random_state=random_state)
+            out.obsm["PaCMAP"] = pcm.fit_transform(out.obsm["projections"])
+
+        return out
+
     # Compute cell projections if PARAFAC2 factors are present
     rise_rank = int(factors_ds.attrs.get("rise_rank", B_cp.shape[0]))
     if "pf2_A" in factors_ds and "pf2_B" in factors_ds and "pf2_C" in factors_ds:
         A_pf2 = factors_ds["pf2_A"].values
         B_pf2 = factors_ds["pf2_B"].values
         C_pf2 = factors_ds["pf2_C"].values
+
+        # Align genes between adata and pf2_C if gene coordinates exist
+        if "gene" in factors_ds.coords:
+            ds_genes = factors_ds.coords["gene"].values
+            if len(ds_genes) == C_pf2.shape[0] and (
+                out.n_vars != len(ds_genes)
+                or not np.array_equal(out.var_names, ds_genes)
+            ):
+                matching_genes = [g for g in ds_genes if g in out.var_names]
+                if len(matching_genes) == len(ds_genes):
+                    out = out[:, ds_genes].copy()
 
         # Project matrices per condition
         X_list = condition_matrices(out)

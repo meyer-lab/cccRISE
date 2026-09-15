@@ -9,6 +9,7 @@ from cccrise.utils import (
     _gene_vector,
     add_obs_cmp_label,
     add_obs_cmp_unique_one,
+    celltype_component_association,
     expression_product_matrix,
     resample,
 )
@@ -104,5 +105,50 @@ def test_add_obs_cmp_label_and_unique_one():
     # Add unique label string
     adata = add_obs_cmp_unique_one(adata, cmp=1)
     assert "Label" in adata.obs.columns
+    assert pd.api.types.is_string_dtype(adata.obs["Label"].dtype)
     assert (adata.obs["Label"] == "Cmp1").sum() == 10
     assert (adata.obs["Label"] == "NoLabel").sum() == 40
+
+
+def test_celltype_component_association():
+    """A cell type loaded on one component should top that component under every stat."""
+    n_per_type, cp_rank = 50, 3
+    celltypes = ["A_cells", "B_cells", "C_cells"]
+    rng = np.random.default_rng(0)
+
+    sc_B = rng.uniform(0.0, 0.01, size=(n_per_type * len(celltypes), cp_rank))
+    rc_C = rng.uniform(0.0, 0.01, size=(n_per_type * len(celltypes), cp_rank))
+    # B_cells are strong senders on component 2, C_cells strong receivers on component 3
+    sc_B[n_per_type : 2 * n_per_type, 1] += 1.0
+    rc_C[2 * n_per_type :, 2] += 1.0
+
+    labels = np.repeat(celltypes, n_per_type)
+    adata = anndata.AnnData(
+        X=np.zeros((len(labels), 1)),
+        obs=pd.DataFrame(
+            {"celltype": labels}, index=[f"cell_{i}" for i in range(len(labels))]
+        ),
+        var=pd.DataFrame(index=["g1"]),
+    )
+    adata.obsm["sc_B"] = sc_B
+    adata.obsm["rc_C"] = rc_C
+
+    for stat in ["mean", "effect_size", "enrichment", "pct_top"]:
+        sender = celltype_component_association(
+            adata, factor_type="sender", stat=stat, top_perc=25
+        )
+        receiver = celltype_component_association(
+            adata, factor_type="receiver", stat=stat, top_perc=25
+        )
+
+        assert sender.shape == (len(celltypes), cp_rank)
+        assert list(sender.index) == celltypes
+        assert list(sender.columns) == [1, 2, 3]
+        assert np.isfinite(sender.to_numpy()).all()
+
+        assert sender[2].idxmax() == "B_cells"
+        assert receiver[3].idxmax() == "C_cells"
+        # The planted signal is sender-only for B_cells and receiver-only for C_cells
+        assert sender.loc["B_cells", 2] > sender.loc["B_cells", 1]
+        assert receiver.loc["B_cells", 2] < sender.loc["B_cells", 2]
+
