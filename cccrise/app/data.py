@@ -1,5 +1,6 @@
 """Dataset registry and cached loading for the CCC-RISE explorer app."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -21,7 +22,7 @@ class DatasetSpec:
     key: str
     label: str
     factors_path: Path
-    raw_loader: object  # Callable[[], anndata.AnnData]
+    raw_loader: Callable[[], anndata.AnnData]
     celltype_col: str
     condition_col: str
     group_col: str | None

@@ -5,9 +5,6 @@ Run with:
     shiny run --host 0.0.0.0 --port 8000 --reload cccrise/app/app.py
 """
 
-import math
-from typing import cast
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -462,8 +459,11 @@ def server(input, output, session):
         )
 
         raw = load_raw_dataset(input.dataset())
-        if raw.error is not None:
-            return ui.TagList(rank_panel, ui.markdown(f"⚠️ {raw.error}"))
+        if raw.error is not None or raw.adata is None:
+            return ui.TagList(
+                rank_panel,
+                ui.markdown(f"⚠️ {raw.error or 'Raw dataset unavailable.'}"),
+            )
 
         celltypes = sorted(raw.adata.obs[ds.spec.celltype_col].unique().tolist())
         pair_labels = [p.label for p in simple_lr_pairs()]
@@ -534,11 +534,6 @@ def server(input, output, session):
         ds = dataset()
         X = ds.adata
         cmp = input.component()
-        highlight_raw = input.lr_highlight_mode()
-        highlight: int | str = (
-            int(highlight_raw) if highlight_raw.isdigit() else highlight_raw
-        )
-        include_neg = input.lr_include_negative()
         weights = np.asarray(X.uns["D"], dtype=float)[:, cmp - 1]
         names = np.asarray(X.uns["lr_pairs"]).astype(str)
         order = np.argsort(-weights)

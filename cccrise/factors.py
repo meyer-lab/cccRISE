@@ -314,9 +314,9 @@ def load_factors_to_anndata(
     ):
         # Reconstruct a full per-cell AnnData from previously-saved per-cell arrays
         obs_data = {
-            col[len("obs_") :]: factors_ds[col].values
+            str(col)[len("obs_") :]: factors_ds[col].values
             for col in factors_ds.data_vars
-            if col.startswith("obs_")
+            if str(col).startswith("obs_")
         }
         cell_ids = factors_ds.coords["cell"].values
         obs_df = pd.DataFrame(obs_data, index=cell_ids)

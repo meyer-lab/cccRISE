@@ -151,4 +151,3 @@ def test_celltype_component_association():
         # The planted signal is sender-only for B_cells and receiver-only for C_cells
         assert sender.loc["B_cells", 2] > sender.loc["B_cells", 1]
         assert receiver.loc["B_cells", 2] < sender.loc["B_cells", 2]
-

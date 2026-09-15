@@ -611,4 +611,3 @@ def celltype_component_association(
         index=pd.Index(celltypes, name=celltype_col),
         columns=pd.Index(np.arange(1, loadings.shape[1] + 1), name="Component"),
     )
-
