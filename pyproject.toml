@@ -17,14 +17,10 @@ dependencies = [
     "datashader>=0.17.0",
     "pacmap>=0.8.0",
     "tensorly-viz>=0.1.7",
-    # TODO(release): revert both of these to PyPI version pins once the
-    # upstream releases are cut. They are git pins only because the work this
-    # package depends on is merged to main but not yet released:
-    #   parafac2  needs > v1.6.0  (managed-memory transfer, PARAFAC2_BACKEND)
-    #   scrise    needs > v1.3.0  (bicv cells+genes holdout, alignment fix)
-    # Restore:  "parafac2>=1.7.0",  "scrise>=1.4.0",
-    "parafac2",
-    "scrise",
+    # parafac2 1.7.0: managed-memory transfer and PARAFAC2_BACKEND.
+    # scrise 1.4.0: BiCV holds out cells and genes, with the alignment fix.
+    "parafac2>=1.7.0",
+    "scrise>=1.4.0",
     "pyarrow>=15.0.0",
     "xarray>=2024.1.0",
     "netcdf4>=1.6.5",
@@ -60,11 +56,6 @@ cccrise-stability = "cccrise.runners.run_component_stability:main"
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
 build-backend = "uv_build"
-
-[tool.uv.sources]
-# TODO(release): delete this whole table once parafac2 and scrise are released.
-parafac2 = { git = "https://github.com/meyer-lab/parafac2.git", rev = "90dcfe024f20f811dd39473ddf50518ffb8016d2" }
-scrise = { git = "https://github.com/meyer-lab/RISE.git", rev = "83ecb3bf1de1d9f489d1bc3143fbad6ffd25189d" }
 
 [tool.uv.build-backend]
 module-root = ""

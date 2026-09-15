@@ -166,14 +166,14 @@ requires-dist = [
     { name = "netcdf4", specifier = ">=1.6.5" },
     { name = "numpy", specifier = ">=2.2" },
     { name = "pacmap", specifier = ">=0.8.0" },
-    { name = "parafac2", git = "https://github.com/meyer-lab/parafac2.git?rev=90dcfe024f20f811dd39473ddf50518ffb8016d2" },
+    { name = "parafac2", specifier = ">=1.7.0" },
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pyreadr", specifier = ">=0.5.6" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "scanpy", specifier = ">=1.12.3" },
     { name = "scikit-learn", specifier = ">=1.4.2" },
     { name = "scipy", specifier = ">=1.16.0" },
-    { name = "scrise", git = "https://github.com/meyer-lab/RISE.git?rev=83ecb3bf1de1d9f489d1bc3143fbad6ffd25189d" },
+    { name = "scrise", specifier = ">=1.4.0" },
     { name = "seaborn", specifier = "~=0.13.2" },
     { name = "tensorly", specifier = ">=0.9.0" },
     { name = "tensorly-viz", specifier = ">=0.1.7" },
@@ -1522,14 +1522,18 @@ wheels = [
 
 [[package]]
 name = "parafac2"
-version = "1.6.0"
-source = { git = "https://github.com/meyer-lab/parafac2.git?rev=90dcfe024f20f811dd39473ddf50518ffb8016d2#90dcfe024f20f811dd39473ddf50518ffb8016d2" }
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata" },
     { name = "numpy" },
     { name = "scipy" },
     { name = "tensorly" },
     { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/40/55/35d771bcd672150a84993ea89764da418d7685df1925c17728e9fc35edfe/parafac2-1.7.0.tar.gz", hash = "sha256:074907a94c64ec0fce4c22cdf73396bb511f7cabd04af353f831302f14e4b1ee", size = 43927, upload-time = "2026-09-14T17:07:34.24Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/72/8e/634f3f244c9cb7f6b277f1240d09710e4f5fe3c62843242a21239d3c0d74/parafac2-1.7.0-py3-none-any.whl", hash = "sha256:c49ecc4eb4d6e971bce65cbb8ae3f9979ae0450a49b492026bce64633661dd74", size = 53172, upload-time = "2026-09-14T17:07:32.935Z" },
 ]
 
 [[package]]
@@ -2219,8 +2223,8 @@ wheels = [
 
 [[package]]
 name = "scrise"
-version = "1.3.0"
-source = { git = "https://github.com/meyer-lab/RISE.git?rev=83ecb3bf1de1d9f489d1bc3143fbad6ffd25189d#83ecb3bf1de1d9f489d1bc3143fbad6ffd25189d" }
+version = "1.5.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata" },
     { name = "hdf5plugin" },
@@ -2237,6 +2241,10 @@ dependencies = [
     { name = "tlviz" },
     { name = "tqdm" },
     { name = "vsparse" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8d/14/1ae282c1fb018d3b159816be14ff0d1eddc7f45141a1cd8be476963ce008/scrise-1.5.0.tar.gz", hash = "sha256:fe728e67a4c4b08adc40ee8e9b9266e054f57ea252047da0fab4566c5f7a6274", size = 63921, upload-time = "2026-09-14T17:38:39.507Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/55/3e/a155fb92049fe11cd751ad3bb1d0c218bb297cfa87ae791aca5050bdf019/scrise-1.5.0-py3-none-any.whl", hash = "sha256:2ec823d4e7bd521392d498a99bb99cfc452397bbff98c73ef2f866572dee0be4", size = 80487, upload-time = "2026-09-14T17:38:37.908Z" },
 ]
 
 [[package]]
@@ -2642,7 +2650,7 @@ wheels = [
 
 [[package]]
 name = "vsparse"
-version = "0.2.0"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata" },
@@ -2651,9 +2659,9 @@ dependencies = [
     { name = "numpy" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3d/a5/78db8f12cb1dfe2e0a2f7d637efef572ffb75578d01e34f2c1d2a4327747/vsparse-0.2.0.tar.gz", hash = "sha256:aba6221ec50ce3cbe6bc149d69216202c66b2361c9b7a7ba09e3f3bc21a52cff", size = 37836, upload-time = "2026-09-04T12:50:17.51Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/90/36/c4e280f14af925b71c223777389bfa3ad472f4540375880bfe9b50ac6225/vsparse-0.4.0.tar.gz", hash = "sha256:72faa01087fcdd3fd72467638303c53838ff226685b0126cf5c060fc54626742", size = 47657, upload-time = "2026-09-14T17:12:39.176Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/14/f2a51a5aa3a3d131429ed7d238d9a13d32dd10493b3019e69e9fd4399420/vsparse-0.2.0-py3-none-any.whl", hash = "sha256:567035afa9a51c5edfc3103a9f98f95568f4ba5e2a9477f73031b703a376d277", size = 45084, upload-time = "2026-09-04T12:50:16.137Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/4e/3a167ca192bcb10623cbf403e76798d600e249c7c26f0bd28f24d0ed15b6/vsparse-0.4.0-py3-none-any.whl", hash = "sha256:a294b647dd8fac06746a8d8ffd1a778a31d60a6387d50f5915a406a37d768f2c", size = 54961, upload-time = "2026-09-14T17:12:38.011Z" },
 ]
 
 [[package]]
