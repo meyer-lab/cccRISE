@@ -17,12 +17,14 @@ from cccrise.figures.commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_interaction_heatmap,
+    plot_logreg_weights,
     plot_lr_factor_rank,
     plot_lr_factors,
-    plot_lr_factors_partial,
 )
 from cccrise.figures.commonFuncs.plotGeneral import (
+    binarize_group,
     celltype_grid_shape,
+    get_sample_to_group,
     plot_wc_histogram_grid,
 )
 from cccrise.figures.commonFuncs.plotPaCMAP import (
@@ -30,9 +32,37 @@ from cccrise.figures.commonFuncs.plotPaCMAP import (
     plot_wc_pacmap,
     plot_wc_per_celltype,
 )
+from cccrise.logreg import fit_logreg_weights
 from cccrise.utils import celltype_component_association
 
 DATASET_CHOICES = {key: spec.label for key, spec in DATASETS.items()}
+
+LR_HIGHLIGHT_CHOICES = {
+    "5": "Top 5 Pairs",
+    "10": "Top 10 Pairs",
+    "15": "Top 15 Pairs",
+    "tukey": "Tukey Outliers (Q3 + 1.5*IQR)",
+    "q3": "Q3 (75th Percentile)",
+}
+
+
+def scrollable_plot(output_id: str, width_px: int, height_px: int) -> ui.Tag:
+    """A plot output pinned to a fixed pixel size, in a horizontally
+    scrollable wrapper.
+
+    `ui.output_plot` defaults to a responsive (percentage) width, which
+    combined with a fixed pixel height stretches or squashes a
+    fixed-aspect-ratio matplotlib figure as its container narrows (e.g. the
+    sidebar being toggled) -- heatmap rows compress until their labels
+    overlap, or the whole panel shrinks past legibility. Fixing both
+    dimensions keeps every panel at a legible, undistorted size regardless
+    of viewport width; a narrower window scrolls instead of squishing.
+    """
+    return ui.div(
+        ui.output_plot(output_id, width=f"{width_px}px", height=f"{height_px}px"),
+        style="overflow-x: auto; max-width: 100%;",
+    )
+
 
 app_ui = ui.page_sidebar(
     ui.sidebar(
@@ -44,26 +74,18 @@ app_ui = ui.page_sidebar(
             choices={"sender": "Sender (B)", "receiver": "Receiver (C)"},
             selected="sender",
         ),
+        ui.input_slider(
+            "top_perc",
+            "Top Cell % Threshold",
+            min=1,
+            max=50,
+            value=10,
+            step=1,
+        ),
         ui.output_ui("projections_notice"),
         width=300,
     ),
     ui.navset_tab(
-        ui.nav_panel(
-            "Component Interpretation",
-            ui.output_ui("interpretation_body"),
-        ),
-        ui.nav_panel(
-            "LR Explorer",
-            ui.output_ui("lr_explorer_body"),
-        ),
-        ui.nav_panel(
-            "Per-Cell-Type Distributions",
-            ui.output_ui("distributions_body"),
-        ),
-        ui.nav_panel(
-            "Cell Projections",
-            ui.output_ui("projections_body"),
-        ),
         ui.nav_panel(
             "Factor Matrices",
             ui.input_slider(
@@ -74,7 +96,19 @@ app_ui = ui.page_sidebar(
                 value=0.06,
                 step=0.01,
             ),
-            ui.output_plot("factor_heatmaps", height="650px"),
+            scrollable_plot("factor_heatmaps", 1400, 650),
+        ),
+        ui.nav_panel(
+            "Component Explorer",
+            ui.output_ui("explorer_body"),
+        ),
+        ui.nav_panel(
+            "Cell Projections",
+            ui.output_ui("projections_body"),
+        ),
+        ui.nav_panel(
+            "Summary Tables",
+            ui.output_ui("summary_tables_body"),
         ),
     ),
     title="CCC-RISE Explorer",
@@ -91,9 +125,16 @@ def server(input, output, session):
         return int(dataset().adata.uns["A"].shape[1])
 
     @reactive.effect
+    @reactive.event(cp_rank)
     def _sync_component_slider():
+        # Gated on cp_rank (only changes when the dataset does) rather than
+        # running on every component-slider tick: re-issuing update_slider
+        # on each tick raced with the slider's own client-side updates while
+        # dragging, producing the reported jumping between low and high
+        # values near the top of the range.
         rank = cp_rank()
-        current = input.component()
+        with reactive.isolate():
+            current = input.component()
         ui.update_slider(
             "component",
             max=rank,
@@ -111,150 +152,124 @@ def server(input, output, session):
         return None
 
     # ------------------------------------------------------------------
-    # Component Interpretation (Fig A6i unified panel)
+    # Factor Matrices
     # ------------------------------------------------------------------
+    @render.plot
+    def factor_heatmaps():
+        ds = dataset()
+        X = ds.adata
+        fig, axes = plt.subplots(1, 4, figsize=(20, 8), layout="constrained")
+
+        plot_condition_factors(X, axes[0], cond=ds.spec.condition_col)
+        axes[0].set_title("Condition Factor (A)")
+
+        plot_eigenstate_factors(X, axes[1], factor_type="B")
+        axes[1].set_title("Sender Eigenstate Factor (B)")
+
+        plot_eigenstate_factors(X, axes[2], factor_type="C")
+        axes[2].set_title("Receiver Eigenstate Factor (C)")
+
+        plot_lr_factors(X, axes[3], trim=True, weight=input.lr_weight())
+        axes[3].set_title("Ligand-Receptor Factor (D)")
+
+        return fig
+
+    # ------------------------------------------------------------------
+    # Component Explorer (top LR pairs, per-cell-type distributions, and
+    # the single-pair interaction heatmap, all keyed on the sidebar's
+    # dataset/component/top-cell-% selections)
+    # ------------------------------------------------------------------
+    @reactive.calc
+    def simple_lr_pairs():
+        ds = dataset()
+        pairs = parse_lr_pairs(np.asarray(ds.adata.uns["lr_pairs"]))
+        return [p for p in pairs if p.is_simple_receptor]
+
+    @reactive.calc
+    def logreg_result() -> tuple[np.ndarray | None, str | None]:
+        ds = dataset()
+        spec = ds.spec
+        if not ds.has_projections:
+            return None, "per-cell metadata needed to derive the group label is unavailable."
+        if spec.control_label is None or spec.group_col is None:
+            return None, "no case/control grouping is configured for this dataset."
+        try:
+            sample_to_group = get_sample_to_group(
+                ds.adata, spec.condition_col, spec.group_col
+            )
+            binary = binarize_group(
+                sample_to_group, spec.control_label, spec.control_label, spec.other_label
+            )
+            weights = fit_logreg_weights(ds.adata, binary, scoring="roc_auc")
+        except ValueError as exc:
+            return None, str(exc)
+        return weights, None
+
     @render.ui
-    def interpretation_body():
-        if not dataset().has_projections:
+    def logreg_weights_ui():
+        _, error = logreg_result()
+        if error is not None:
+            return ui.markdown(f"_Logistic regression weights unavailable: {error}_")
+        return ui.TagList(
+            ui.output_plot("logreg_weights_plot", height="220px"),
+            ui.markdown(
+                "_Fit live on this dataset's stored condition factors "
+                f"({dataset().spec.control_label!r} vs. "
+                f"{dataset().spec.other_label!r}); unlike the manuscript "
+                "figures, this skips read-depth correction since the app "
+                "doesn't keep raw counts on hand._"
+            ),
+        )
+
+    @render.plot
+    def logreg_weights_plot():
+        weights, _ = logreg_result()
+        if weights is None:
+            return None
+        fig, ax = plt.subplots(figsize=(10, 2.4), layout="constrained")
+        plot_logreg_weights(weights, ax, highlight_cmp=input.component())
+        return fig
+
+    @render.ui
+    def explorer_body():
+        ds = dataset()
+        if not ds.has_projections:
             return ui.markdown(
                 "Per-cell weights are unavailable for this dataset "
                 "(raw single-cell data or projections not found)."
             )
-        return ui.TagList(
+
+        sections = [
+            ui.h4("Top Ligand-Receptor Pairs"),
             ui.row(
                 ui.column(
                     4,
                     ui.input_select(
-                        "interp_highlight",
-                        "LR Highlight Rule",
-                        choices={
-                            "5": "Top 5 Pairs",
-                            "10": "Top 10 Pairs",
-                            "15": "Top 15 Pairs",
-                            "tukey": "Tukey Outliers (Q3 + 1.5*IQR)",
-                            "q3": "Q3 (75th Percentile)",
-                        },
+                        "lr_highlight_mode",
+                        "Highlight Rule",
+                        choices=LR_HIGHLIGHT_CHOICES,
                         selected="5",
                     ),
                 ),
                 ui.column(
                     4,
-                    ui.input_slider(
-                        "interp_top_perc",
-                        "Top Cell % Threshold",
-                        min=1,
-                        max=50,
-                        value=10,
-                        step=1,
-                    ),
-                ),
-                ui.column(
-                    4,
                     ui.input_checkbox(
-                        "interp_include_negative",
+                        "lr_include_negative",
                         "Include Negative LR Tail",
                         value=True,
                     ),
                 ),
+                ui.column(
+                    4,
+                    ui.input_numeric(
+                        "lr_max_labels", "Max Callout Labels", value=10, min=1, max=30
+                    ),
+                ),
             ),
-            ui.output_plot("interpretation_plot", height="900px"),
+            ui.output_ui("logreg_weights_ui"),
+            scrollable_plot("lr_rank_curve_plot", 1100, 450),
             ui.hr(),
-            ui.markdown("#### Cell Type Loadings Summary for Selected Component"),
-            ui.output_data_frame("interp_summary_table"),
-        )
-
-    @render.plot
-    def interpretation_plot():
-        ds = dataset()
-        X = ds.adata
-        cmp = input.component()
-        celltype_col = ds.spec.celltype_col
-
-        highlight_raw = input.interp_highlight()
-        highlight: int | str = (
-            int(highlight_raw) if highlight_raw.isdigit() else highlight_raw
-        )
-        include_neg = input.interp_include_negative()
-        top_perc = float(input.interp_top_perc())
-
-        nrows, ncols = celltype_grid_shape(X, celltype_col)
-        grid_width = 4.5 * ncols
-        grid_height = 3.2 * nrows
-        lr_height = 3.5
-
-        fig = plt.figure(
-            figsize=(grid_width, grid_height + lr_height),
-            layout="constrained",
-        )
-        top, bottom = fig.subfigures(2, 1, height_ratios=[lr_height, grid_height])
-
-        lr_width = min(6.0, grid_width)
-        if lr_width < grid_width:
-            ax_lr = top.add_subplot(
-                top.add_gridspec(1, 2, width_ratios=[lr_width, grid_width - lr_width])[
-                    0, 0
-                ]
-            )
-        else:
-            ax_lr = top.subplots()
-
-        plot_lr_factor_rank(
-            X,
-            cmp,
-            ax_lr,
-            highlight=highlight,
-            include_negative=include_neg,
-        )
-
-        plot_wc_histogram_grid(
-            X,
-            cmp,
-            bottom.subplots(nrows, ncols),
-            celltype_col=celltype_col,
-            top_perc=top_perc,
-        )
-        bottom.suptitle("Cell Weight Distributions by Cell Type")
-        fig.suptitle(f"Component {cmp} Interpretation", fontweight="bold")
-
-        return fig
-
-    @render.data_frame
-    def interp_summary_table():
-        ds = dataset()
-        X = ds.adata
-        cmp = input.component()
-        celltype_col = ds.spec.celltype_col
-        top_perc = float(input.interp_top_perc())
-
-        summary = pd.concat(
-            {
-                f"{factor_type}_{stat}": celltype_component_association(
-                    X,
-                    factor_type=factor_type,
-                    celltype_col=celltype_col,
-                    stat=stat,
-                    top_perc=top_perc,
-                )[cmp]
-                for factor_type in ("sender", "receiver")
-                for stat in ("mean", "pct_top")
-            },
-            axis=1,
-        )
-        summary = summary.reset_index().rename(columns={"index": "Cell Type"})
-        summary = summary.round(4)
-        return render.DataGrid(summary)
-
-    # ------------------------------------------------------------------
-    # Per-Cell-Type Distributions
-    # ------------------------------------------------------------------
-    @render.ui
-    def distributions_body():
-        if not dataset().has_projections:
-            return ui.markdown(
-                "Per-cell weights are unavailable for this dataset "
-                "(raw single-cell data not found)."
-            )
-        return ui.TagList(
+            ui.h4("Per-Cell-Type Distributions"),
             ui.row(
                 ui.column(
                     4,
@@ -271,20 +286,12 @@ def server(input, output, session):
                 ),
                 ui.column(
                     4,
-                    ui.input_slider(
-                        "dist_top_perc",
-                        "Top Cell % Threshold",
-                        min=1,
-                        max=50,
-                        value=10,
-                        step=1,
+                    ui.input_checkbox(
+                        "dist_log_y", "Log-scale Y axis (Histograms)", value=True
                     ),
                 ),
                 ui.column(
                     4,
-                    ui.input_checkbox(
-                        "dist_log_y", "Log-scale Y axis (Histograms)", value=True
-                    ),
                     ui.input_select(
                         "dist_assoc_stat",
                         "Association Heatmap Stat",
@@ -298,11 +305,68 @@ def server(input, output, session):
                     ),
                 ),
             ),
-            ui.output_plot("distributions_plot", height="650px"),
+            scrollable_plot("distributions_plot", 1300, 650),
             ui.hr(),
-            ui.markdown("#### Cell Type Summary Table"),
-            ui.output_data_frame("distributions_summary_table"),
+            ui.h4("LR Pair Interaction Heatmap"),
+        ]
+
+        raw = load_raw_dataset(input.dataset())
+        if raw.error is not None or raw.adata is None:
+            sections.append(ui.markdown(f"⚠️ {raw.error or 'Raw dataset unavailable.'}"))
+            return ui.TagList(*sections)
+
+        celltypes = sorted(raw.adata.obs[ds.spec.celltype_col].unique().tolist())
+        pair_labels = [p.label for p in simple_lr_pairs()]
+
+        sections.extend(
+            [
+                ui.row(
+                    ui.column(
+                        4,
+                        ui.input_selectize(
+                            "lr_pair", "Ligand-Receptor Pair", choices=pair_labels
+                        ),
+                    ),
+                    ui.column(
+                        4,
+                        ui.input_select(
+                            "sender_celltype", "Sender Cell Type", choices=celltypes
+                        ),
+                    ),
+                    ui.column(
+                        4,
+                        ui.input_select(
+                            "receiver_celltype", "Receiver Cell Type", choices=celltypes
+                        ),
+                    ),
+                ),
+                scrollable_plot("lr_interaction_plot", 700, 500),
+            ]
         )
+        return ui.TagList(*sections)
+
+    @render.plot
+    def lr_rank_curve_plot():
+        ds = dataset()
+        X = ds.adata
+        cmp = input.component()
+        highlight_raw = input.lr_highlight_mode()
+        highlight: int | str = (
+            int(highlight_raw) if highlight_raw.isdigit() else highlight_raw
+        )
+        include_neg = input.lr_include_negative()
+        max_labels = int(input.lr_max_labels() or 10)
+
+        fig, ax = plt.subplots(figsize=(10, 4.5), layout="constrained")
+        plot_lr_factor_rank(
+            X,
+            cmp,
+            ax,
+            highlight=highlight,
+            include_negative=include_neg,
+            max_labels=max_labels,
+        )
+        return fig
 
     @render.plot
     def distributions_plot():
@@ -311,6 +375,7 @@ def server(input, output, session):
         cmp = input.component()
         celltype_col = ds.spec.celltype_col
         view_mode = input.dist_view_mode()
+        top_perc = float(input.top_perc())
 
         if view_mode == "hist":
             nrows, ncols = celltype_grid_shape(X, celltype_col)
@@ -322,7 +387,7 @@ def server(input, output, session):
                 cmp,
                 axes,
                 celltype_col=celltype_col,
-                top_perc=float(input.dist_top_perc()),
+                top_perc=top_perc,
                 log_y=input.dist_log_y(),
             )
             fig.suptitle(f"Cmp. {cmp}: Cell Weight Distributions by Cell Type")
@@ -331,7 +396,6 @@ def server(input, output, session):
         elif view_mode == "assoc":
             fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="constrained")
             stat = input.dist_assoc_stat()
-            top_perc = float(input.dist_top_perc())
 
             scale = max(
                 float(
@@ -380,171 +444,6 @@ def server(input, output, session):
             )
             axes[1].set_title(f"Cmp. {cmp} Receiver Weight by Cell Type")
             return fig
-
-    @render.data_frame
-    def distributions_summary_table():
-        ds = dataset()
-        X = ds.adata
-        cmp = input.component()
-        celltype_col = ds.spec.celltype_col
-        top_perc = float(input.dist_top_perc())
-
-        summary = pd.concat(
-            {
-                f"{factor_type}_{stat}": celltype_component_association(
-                    X,
-                    factor_type=factor_type,
-                    celltype_col=celltype_col,
-                    stat=stat,
-                    top_perc=top_perc,
-                )[cmp]
-                for factor_type in ("sender", "receiver")
-                for stat in ("mean", "pct_top")
-            },
-            axis=1,
-        )
-        summary = summary.reset_index().rename(columns={"index": "Cell Type"})
-        summary = summary.round(4)
-        return render.DataGrid(summary)
-
-    # ------------------------------------------------------------------
-    # LR Explorer
-    # ------------------------------------------------------------------
-    @reactive.calc
-    def simple_lr_pairs():
-        ds = dataset()
-        pairs = parse_lr_pairs(np.asarray(ds.adata.uns["lr_pairs"]))
-        return [p for p in pairs if p.is_simple_receptor]
-
-    @render.ui
-    def lr_explorer_body():
-        ds = dataset()
-        rank_panel = ui.TagList(
-            ui.row(
-                ui.column(
-                    4,
-                    ui.input_select(
-                        "lr_highlight_mode",
-                        "Highlight Rule",
-                        choices={
-                            "5": "Top 5 Pairs",
-                            "10": "Top 10 Pairs",
-                            "15": "Top 15 Pairs",
-                            "tukey": "Tukey Outliers (Q3 + 1.5*IQR)",
-                            "q3": "Q3 (75th Percentile)",
-                        },
-                        selected="5",
-                    ),
-                ),
-                ui.column(
-                    4,
-                    ui.input_checkbox(
-                        "lr_include_negative",
-                        "Include Negative LR Tail",
-                        value=True,
-                    ),
-                ),
-                ui.column(
-                    4,
-                    ui.input_numeric(
-                        "lr_max_labels", "Max Callout Labels", value=10, min=1, max=30
-                    ),
-                ),
-            ),
-            ui.output_plot("lr_rank_curve_plot", height="400px"),
-            ui.output_plot("lr_top_bottom_plot", height="300px"),
-            ui.hr(),
-            ui.markdown("#### Ranked Ligand-Receptor Pairs for Selected Component"),
-            ui.output_data_frame("lr_ranked_table"),
-        )
-
-        raw = load_raw_dataset(input.dataset())
-        if raw.error is not None or raw.adata is None:
-            return ui.TagList(
-                rank_panel,
-                ui.markdown(f"⚠️ {raw.error or 'Raw dataset unavailable.'}"),
-            )
-
-        celltypes = sorted(raw.adata.obs[ds.spec.celltype_col].unique().tolist())
-        pair_labels = [p.label for p in simple_lr_pairs()]
-
-        return ui.TagList(
-            rank_panel,
-            ui.hr(),
-            ui.markdown("### Single-Pair Interaction Heatmap (Expression Product)"),
-            ui.row(
-                ui.column(
-                    4,
-                    ui.input_selectize(
-                        "lr_pair", "Ligand-Receptor Pair", choices=pair_labels
-                    ),
-                ),
-                ui.column(
-                    4,
-                    ui.input_select(
-                        "sender_celltype", "Sender Cell Type", choices=celltypes
-                    ),
-                ),
-                ui.column(
-                    4,
-                    ui.input_select(
-                        "receiver_celltype", "Receiver Cell Type", choices=celltypes
-                    ),
-                ),
-            ),
-            ui.output_plot("lr_interaction_plot", height="450px"),
-        )
-
-    @render.plot
-    def lr_rank_curve_plot():
-        ds = dataset()
-        X = ds.adata
-        cmp = input.component()
-        highlight_raw = input.lr_highlight_mode()
-        highlight: int | str = (
-            int(highlight_raw) if highlight_raw.isdigit() else highlight_raw
-        )
-        include_neg = input.lr_include_negative()
-        max_labels = int(input.lr_max_labels() or 10)
-
-        fig, ax = plt.subplots(figsize=(10, 4.5), layout="constrained")
-        plot_lr_factor_rank(
-            X,
-            cmp,
-            ax,
-            highlight=highlight,
-            include_negative=include_neg,
-            max_labels=max_labels,
-        )
-        return fig
-
-    @render.plot
-    def lr_top_bottom_plot():
-        ds = dataset()
-        cmp = input.component()
-        fig, axes = plt.subplots(1, 2, figsize=(16, 4), layout="constrained")
-        plot_lr_factors_partial(ds.adata, cmp, axes[0], geneAmount=10, top=True)
-        axes[0].set_title(f"Cmp. {cmp}: Top LR Pairs")
-        plot_lr_factors_partial(ds.adata, cmp, axes[1], geneAmount=10, top=False)
-        axes[1].set_title(f"Cmp. {cmp}: Bottom LR Pairs")
-        return fig
-
-    @render.data_frame
-    def lr_ranked_table():
-        ds = dataset()
-        X = ds.adata
-        cmp = input.component()
-        weights = np.asarray(X.uns["D"], dtype=float)[:, cmp - 1]
-        names = np.asarray(X.uns["lr_pairs"]).astype(str)
-        order = np.argsort(-weights)
-        ranked = pd.DataFrame(
-            {
-                "Rank": np.arange(1, weights.size + 1),
-                "LR Pair": names[order],
-                "Weight": weights[order].round(4),
-            }
-        )
-        return render.DataGrid(ranked)
 
     @render.plot
     def lr_interaction_plot():
@@ -618,27 +517,65 @@ def server(input, output, session):
         return fig
 
     # ------------------------------------------------------------------
-    # Factor Matrices
+    # Summary Tables
     # ------------------------------------------------------------------
-    @render.plot
-    def factor_heatmaps():
+    @render.ui
+    def summary_tables_body():
+        if not dataset().has_projections:
+            return ui.markdown(
+                "Summary tables are unavailable for this dataset "
+                "(raw single-cell data or projections not found)."
+            )
+        return ui.TagList(
+            ui.markdown("#### Cell Type Loadings Summary for Selected Component"),
+            ui.output_data_frame("celltype_summary_table"),
+            ui.hr(),
+            ui.markdown("#### Ranked Ligand-Receptor Pairs for Selected Component"),
+            ui.output_data_frame("lr_ranked_table"),
+        )
+
+    @render.data_frame
+    def celltype_summary_table():
         ds = dataset()
         X = ds.adata
-        fig, axes = plt.subplots(1, 4, figsize=(20, 8))
+        cmp = input.component()
+        celltype_col = ds.spec.celltype_col
+        top_perc = float(input.top_perc())
 
-        plot_condition_factors(X, axes[0], cond=ds.spec.condition_col)
-        axes[0].set_title("Condition Factor (A)")
+        summary = pd.concat(
+            {
+                f"{factor_type}_{stat}": celltype_component_association(
+                    X,
+                    factor_type=factor_type,
+                    celltype_col=celltype_col,
+                    stat=stat,
+                    top_perc=top_perc,
+                )[cmp]
+                for factor_type in ("sender", "receiver")
+                for stat in ("mean", "pct_top")
+            },
+            axis=1,
+        )
+        summary = summary.reset_index().rename(columns={"index": "Cell Type"})
+        summary = summary.round(4)
+        return render.DataGrid(summary)
 
-        plot_eigenstate_factors(X, axes[1], factor_type="B")
-        axes[1].set_title("Sender Eigenstate Factor (B)")
-
-        plot_eigenstate_factors(X, axes[2], factor_type="C")
-        axes[2].set_title("Receiver Eigenstate Factor (C)")
-
-        plot_lr_factors(X, axes[3], trim=True, weight=input.lr_weight())
-        axes[3].set_title("Ligand-Receptor Factor (D)")
-
-        return fig
+    @render.data_frame
+    def lr_ranked_table():
+        ds = dataset()
+        X = ds.adata
+        cmp = input.component()
+        weights = np.asarray(X.uns["D"], dtype=float)[:, cmp - 1]
+        names = np.asarray(X.uns["lr_pairs"]).astype(str)
+        order = np.argsort(-weights)
+        ranked = pd.DataFrame(
+            {
+                "Rank": np.arange(1, weights.size + 1),
+                "LR Pair": names[order],
+                "Weight": weights[order].round(4),
+            }
+        )
+        return render.DataGrid(ranked)
 
 
 app = App(app_ui, server)

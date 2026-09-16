@@ -26,6 +26,11 @@ class DatasetSpec:
     celltype_col: str
     condition_col: str
     group_col: str | None
+    #: Value of `group_col` treated as the reference class for the logistic
+    #: regression weight summary, and the name given to every other value.
+    #: None if no case/control grouping is defined for this dataset.
+    control_label: str | None = None
+    other_label: str | None = None
 
 
 DATASETS: dict[str, DatasetSpec] = {
@@ -37,6 +42,8 @@ DATASETS: dict[str, DatasetSpec] = {
         celltype_col="celltype",
         condition_col="sample",
         group_col="condition",
+        control_label="Control",
+        other_label="COVID-19",
     ),
     "alad": DatasetSpec(
         key="alad",
@@ -46,6 +53,8 @@ DATASETS: dict[str, DatasetSpec] = {
         celltype_col="broad_cell_type",
         condition_col="dsco_id",
         group_col="ALADstatus",
+        control_label="control",
+        other_label="alad",
     ),
 }
 
