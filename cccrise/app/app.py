@@ -5,6 +5,7 @@ Run with:
     shiny run --host 0.0.0.0 --port 8000 --reload cccrise/app/app.py
 """
 
+import anndata
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -33,7 +34,7 @@ from cccrise.figures.commonFuncs.plotPaCMAP import (
     plot_wc_per_celltype,
 )
 from cccrise.logreg import fit_logreg_weights
-from cccrise.utils import celltype_component_association
+from cccrise.utils import celltype_component_association, correct_conditions
 
 DATASET_CHOICES = {key: spec.label for key, spec in DATASETS.items()}
 
@@ -158,7 +159,7 @@ def server(input, output, session):
     def factor_heatmaps():
         ds = dataset()
         X = ds.adata
-        fig, axes = plt.subplots(1, 4, figsize=(20, 8), layout="constrained")
+        fig, axes = plt.subplots(1, 4, figsize=(20, 8), layout="tight")
 
         plot_condition_factors(X, axes[0], cond=ds.spec.condition_col)
         axes[0].set_title("Condition Factor (A)")
@@ -187,20 +188,31 @@ def server(input, output, session):
 
     @reactive.calc
     def logreg_result() -> tuple[np.ndarray | None, str | None]:
+        # There's no saved logreg result to load -- the fit is always ad hoc
+        # -- so this mirrors figure4.py's read-depth-corrected pipeline
+        # exactly, using the (cached, lazily-loaded) raw dataset rather than
+        # the lightweight per-cell-projections factors used elsewhere in the
+        # app. Uncorrected condition factors wash out the case/control signal
+        # enough that the CV-selected regularization zeroes every component.
         ds = dataset()
         spec = ds.spec
-        if not ds.has_projections:
-            return None, "per-cell metadata needed to derive the group label is unavailable."
         if spec.control_label is None or spec.group_col is None:
             return None, "no case/control grouping is configured for this dataset."
+        raw = load_raw_dataset(input.dataset())
+        if raw.adata is None:
+            return None, raw.error or "raw dataset unavailable."
         try:
             sample_to_group = get_sample_to_group(
-                ds.adata, spec.condition_col, spec.group_col
+                raw.adata, spec.condition_col, spec.group_col
             )
             binary = binarize_group(
                 sample_to_group, spec.control_label, spec.control_label, spec.other_label
             )
-            weights = fit_logreg_weights(ds.adata, binary, scoring="roc_auc")
+            corrected_a = correct_conditions(raw.adata)
+            factors_only = anndata.AnnData(
+                X=np.zeros((corrected_a.shape[0], 0)), uns={"A": corrected_a}
+            )
+            weights = fit_logreg_weights(factors_only, binary, scoring="roc_auc")
         except ValueError as exc:
             return None, str(exc)
         return weights, None
@@ -213,11 +225,10 @@ def server(input, output, session):
         return ui.TagList(
             ui.output_plot("logreg_weights_plot", height="220px"),
             ui.markdown(
-                "_Fit live on this dataset's stored condition factors "
-                f"({dataset().spec.control_label!r} vs. "
-                f"{dataset().spec.other_label!r}); unlike the manuscript "
-                "figures, this skips read-depth correction since the app "
-                "doesn't keep raw counts on hand._"
+                "_Fit live (read-depth corrected, as in the manuscript "
+                f"figures) on {dataset().spec.control_label!r} vs. "
+                f"{dataset().spec.other_label!r}; computed once per dataset "
+                "per session, on first use of the raw single-cell data._"
             ),
         )
 
@@ -226,7 +237,7 @@ def server(input, output, session):
         weights, _ = logreg_result()
         if weights is None:
             return None
-        fig, ax = plt.subplots(figsize=(10, 2.4), layout="constrained")
+        fig, ax = plt.subplots(figsize=(10, 2.4), layout="tight")
         plot_logreg_weights(weights, ax, highlight_cmp=input.component())
         return fig
 
@@ -278,7 +289,6 @@ def server(input, output, session):
                         "View Type",
                         choices={
                             "hist": "Histogram Grid (Sender & Receiver Overlaid)",
-                            "assoc": "Cell Type Association Heatmap (All Components)",
                             "box": "Boxplots (Selected Component)",
                         },
                         selected="hist",
@@ -290,10 +300,20 @@ def server(input, output, session):
                         "dist_log_y", "Log-scale Y axis (Histograms)", value=True
                     ),
                 ),
+            ),
+            scrollable_plot("distributions_plot", 1300, 650),
+            ui.hr(),
+            ui.h4("Cell Type Association Heatmap"),
+            ui.markdown(
+                "How each cell type associates with *every* component at "
+                "once -- a bird's-eye complement to the single-component "
+                "views above."
+            ),
+            ui.row(
                 ui.column(
                     4,
                     ui.input_select(
-                        "dist_assoc_stat",
+                        "assoc_stat",
                         "Association Heatmap Stat",
                         choices={
                             "mean": "Mean Cell Loading",
@@ -305,7 +325,7 @@ def server(input, output, session):
                     ),
                 ),
             ),
-            scrollable_plot("distributions_plot", 1300, 650),
+            scrollable_plot("assoc_heatmap_plot", 1300, 500),
             ui.hr(),
             ui.h4("LR Pair Interaction Heatmap"),
         ]
@@ -357,7 +377,7 @@ def server(input, output, session):
         include_neg = input.lr_include_negative()
         max_labels = int(input.lr_max_labels() or 10)
 
-        fig, ax = plt.subplots(figsize=(10, 4.5), layout="constrained")
+        fig, ax = plt.subplots(figsize=(10, 4.5), layout="tight")
         plot_lr_factor_rank(
             X,
             cmp,
@@ -380,7 +400,7 @@ def server(input, output, session):
         if view_mode == "hist":
             nrows, ncols = celltype_grid_shape(X, celltype_col)
             fig, axes = plt.subplots(
-                nrows, ncols, figsize=(4.5 * ncols, 3.2 * nrows), layout="constrained"
+                nrows, ncols, figsize=(4.5 * ncols, 3.2 * nrows), layout="tight"
             )
             plot_wc_histogram_grid(
                 X,
@@ -393,47 +413,8 @@ def server(input, output, session):
             fig.suptitle(f"Cmp. {cmp}: Cell Weight Distributions by Cell Type")
             return fig
 
-        elif view_mode == "assoc":
-            fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="constrained")
-            stat = input.dist_assoc_stat()
-
-            scale = max(
-                float(
-                    np.nanmax(
-                        np.abs(
-                            celltype_component_association(
-                                X,
-                                factor_type=ft,
-                                celltype_col=celltype_col,
-                                stat=stat,
-                                top_perc=top_perc,
-                            ).to_numpy()
-                        )
-                    )
-                )
-                for ft in ("sender", "receiver")
-            )
-
-            for ax, ft, label in zip(
-                axes, ["sender", "receiver"], ["Sender", "Receiver"], strict=True
-            ):
-                plot_celltype_association(
-                    X,
-                    ax,
-                    factor_type=ft,
-                    celltype_col=celltype_col,
-                    stat=stat,
-                    top_perc=top_perc,
-                    normalize="global",
-                    scale=scale,
-                    show_counts=True,
-                )
-                ax.set_title(f"{label} Cell Type Association")
-            fig.suptitle(f"Cell Type Associations ({stat})", fontweight="bold")
-            return fig
-
         else:
-            fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="constrained")
+            fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="tight")
             plot_wc_per_celltype(
                 X, cmp, axes[0], cellType=celltype_col, factor_matrix="B"
             )
@@ -444,6 +425,50 @@ def server(input, output, session):
             )
             axes[1].set_title(f"Cmp. {cmp} Receiver Weight by Cell Type")
             return fig
+
+    @render.plot
+    def assoc_heatmap_plot():
+        ds = dataset()
+        X = ds.adata
+        celltype_col = ds.spec.celltype_col
+        stat = input.assoc_stat()
+        top_perc = float(input.top_perc())
+
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="tight")
+        scale = max(
+            float(
+                np.nanmax(
+                    np.abs(
+                        celltype_component_association(
+                            X,
+                            factor_type=ft,
+                            celltype_col=celltype_col,
+                            stat=stat,
+                            top_perc=top_perc,
+                        ).to_numpy()
+                    )
+                )
+            )
+            for ft in ("sender", "receiver")
+        )
+
+        for ax, ft, label in zip(
+            axes, ["sender", "receiver"], ["Sender", "Receiver"], strict=True
+        ):
+            plot_celltype_association(
+                X,
+                ax,
+                factor_type=ft,
+                celltype_col=celltype_col,
+                stat=stat,
+                top_perc=top_perc,
+                normalize="global",
+                scale=scale,
+                show_counts=True,
+            )
+            ax.set_title(f"{label} Cell Type Association")
+        fig.suptitle(f"Cell Type Associations ({stat})", fontweight="bold")
+        return fig
 
     @render.plot
     def lr_interaction_plot():
@@ -526,8 +551,14 @@ def server(input, output, session):
                 "Summary tables are unavailable for this dataset "
                 "(raw single-cell data or projections not found)."
             )
+        top_perc = input.top_perc()
         return ui.TagList(
             ui.markdown("#### Cell Type Loadings Summary for Selected Component"),
+            ui.markdown(
+                f"_A cell counts as 'top' here if it's in the sidebar's Top "
+                f"Cell % Threshold, currently **{top_perc:g}%**; the mean "
+                "loading columns are unaffected by that threshold._"
+            ),
             ui.output_data_frame("celltype_summary_table"),
             ui.hr(),
             ui.markdown("#### Ranked Ligand-Receptor Pairs for Selected Component"),
@@ -542,9 +573,13 @@ def server(input, output, session):
         celltype_col = ds.spec.celltype_col
         top_perc = float(input.top_perc())
 
+        stat_labels = {
+            "mean": "Mean Loading",
+            "pct_top": f"% of Cells in Top {top_perc:g}%",
+        }
         summary = pd.concat(
             {
-                f"{factor_type}_{stat}": celltype_component_association(
+                f"{factor_type.capitalize()} {stat_labels[stat]}": celltype_component_association(
                     X,
                     factor_type=factor_type,
                     celltype_col=celltype_col,
