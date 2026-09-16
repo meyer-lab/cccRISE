@@ -10,7 +10,7 @@ import pandas as pd
 import vsparse
 from scipy.sparse import csr_array, issparse
 
-from .gene_filters import describe_mask, mito_ribo_mask
+from .gene_filters import mito_ribo_mask
 
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
@@ -18,10 +18,7 @@ LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 IBD_DATA_DIR = Path("/opt/IVCSC")
 IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "full_IBD_cohort.ivcsc.h5ad"
 
-#: Depth-normalize to the median, scale by gene sum, then log10(1 + 1000x) --
-#: what `prepare_dataset` and `vsparse.load_and_normalize` both compute, and
-#: what every figure in this project was produced with. `center` keeps the
-#: per-gene mean as a separate vector rather than subtracting it into `X`.
+# Depth-normalize to the median, scale by gene sum, then log10(1 + 1000x)
 IBD_NORMALIZATION = vsparse.RECIPES["parafac2"]
 
 
@@ -241,19 +238,7 @@ def import_alad_brush(
 def use_gene_symbols(
     data: anndata.AnnData, symbol_column: str = "gene_symbols"
 ) -> anndata.AnnData:
-    """Re-index an AnnData's genes by HGNC symbol, in place.
-
-    Some cohorts ship Ensembl gene IDs as `var_names` and keep the symbols in a
-    `var` column. The ligand-receptor table is keyed by symbol, so leaving the
-    Ensembl IDs in place makes *every* LR pair fail to match -- the interaction
-    tensor then comes out with a zero-length ligand-receptor mode, which
-    surfaces far downstream as a reshape error rather than as a naming problem.
-
-    Duplicate symbols are suffixed rather than merged, so the first occurrence
-    keeps the bare symbol and stays matchable; genes with no symbol keep their
-    original identifier. A no-op when `symbol_column` is absent, so datasets
-    already keyed by symbol pass through untouched.
-    """
+    """Re-index an AnnData's genes by HGNC symbol, in place."""
     if symbol_column not in data.var:
         return data
 
@@ -273,16 +258,6 @@ def import_ibdverse(
 ) -> anndata.AnnData:
     """IBDverse terminal-ileum biopsies: 343 samples, 232 healthy and 111 Crohn's.
 
-    The mitochondrial and ribosomal genes are dropped *before* the counts are
-    normalized, not after. They carry a large share of each cell's total, so
-    they have to be gone before the per-cell depth is measured -- removing the
-    columns from an already-normalized matrix leaves every remaining value
-    scaled by a divisor those genes contributed to.
-
-    That ordering is why this loader does not call `vsparse.load_and_normalize`,
-    which fuses the two steps: it reads the packed counts, indexes, and only
-    then applies `IBD_NORMALIZATION`.
-
     References:
     [1] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
         https://doi.org/10.1038/s41588-026-02634-7
@@ -293,7 +268,6 @@ def import_ibdverse(
     var = cast(pd.DataFrame, packed.var)
 
     excluded = mito_ribo_mask(var)
-    print(f"   {describe_mask(var, excluded)}")
 
     # Thresholds read the raw counts, before anything is dropped, so the
     # surviving set does not depend on the order the masks are applied.

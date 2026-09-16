@@ -68,15 +68,3 @@ def mito_ribo_mask(
         exclude |= _bools(symbols.str.match(MTRNR2L_PATTERN, na=False))
 
     return exclude
-
-
-def describe_mask(
-    var: pd.DataFrame, mask: np.ndarray, symbol_column: str = "gene_symbols"
-) -> str:
-    """One-line summary of what a mask removes, for runner logs."""
-    symbols = _symbols(var, symbol_column)
-    n = int(mask.sum())
-    if n == 0:
-        return "gene filter: nothing excluded"
-    shown = sorted(symbols[mask])[:6]
-    return f"gene filter: excluding {n} of {len(var)} genes ({', '.join(shown)}, ...)"
