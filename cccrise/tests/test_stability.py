@@ -284,7 +284,7 @@ def test_resample_conditions_keeps_each_stratum_at_its_original_size():
 
 
 # =============================================================================
-# Paired-patient resampling (#192)
+# Paired-patient resampling
 # =============================================================================
 
 
@@ -313,7 +313,7 @@ def test_paired_conditions_maps_only_conditions_sharing_a_multi_sample_patient()
 
 def test_carry_paired_samples_preserves_the_total_draw_count():
     """The compensating drop is what keeps the final number of patients in the
-    resampling fixed (#192): a carry-in must not grow the resample."""
+    resampling fixed: a carry-in must not grow the resample."""
     pair_of = {"S0": "S1", "S1": "S0"}
     drawn = np.array(["S0", "S2", "S3", "S2"])
     for seed in range(30):
@@ -366,7 +366,7 @@ def test_resample_conditions_with_patient_by_can_carry_the_sibling_in():
 
 
 def test_resample_conditions_without_patient_by_is_unaffected():
-    """`patient_by=None` (the default) must reproduce the pre-#192 behavior
+    """`patient_by=None` (the default) must reproduce the unpaired behavior
     exactly, seed for seed."""
     adata = _simulate_adata_with_paired_patient()
     a = resample_conditions(adata, "sample", random_seed=5)

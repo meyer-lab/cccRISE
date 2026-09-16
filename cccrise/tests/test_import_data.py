@@ -170,8 +170,8 @@ def test_use_gene_symbols_is_a_noop_without_the_column():
 
 
 def test_add_alad_patient_id_pairs_the_two_known_multi_sample_patients():
-    """#192: HS63 and HS65 each contributed two dsco_id samples, and must
-    share a `patient_id` so `stability`'s pairing can carry them together."""
+    """HS63 and HS65 each contributed two dsco_id samples, and must share a
+    `patient_id` so `stability`'s pairing can carry them together."""
     dsco_ids = [
         "ALAD1-HS1-E1",
         "ALAD1-HS63-E1",

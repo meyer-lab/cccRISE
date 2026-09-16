@@ -583,7 +583,7 @@ def component_stability(
         Condition-level patient identity column, for the 'conditions' axis
         alone. When a patient contributes more than one condition, drawing one
         of them carries its sibling condition in and drops one other random
-        draw to compensate (see `utils.resample_conditions`, #192).
+        draw to compensate (see `utils.resample_conditions`).
     axes : tuple[str, ...], default=DEFAULT_AXES
         Which axes to run.
     n_replicates : int, default=20

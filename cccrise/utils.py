@@ -96,7 +96,7 @@ def _paired_conditions(
     A patient contributing only one condition has no sibling and so is absent
     from the returned mapping. A patient contributing more than two is paired
     cyclically (each condition maps to the "next" one), which is untested
-    territory -- the motivating case (#192) is exactly two samples per patient.
+    territory -- ALAD's own paired patients each contribute exactly two.
     """
     patients = obs[patient_by].to_numpy().astype(str)
     table = pd.DataFrame(
@@ -119,12 +119,12 @@ def _carry_paired_samples(
     """Carry in a paired condition's sibling sample, dropping one other random
     draw per carry so the resample's total size is unchanged.
 
-    Addresses #192: some patients contribute two samples (conditions), so an
-    ordinary per-condition bootstrap can draw one of a patient's samples
-    without the other, treating one enrollment as two independent ones. This
-    carries the sibling sample in whenever the draw hits either one; the
-    compensating drop is what keeps the final number of patients in the
-    resampling fixed, rather than growing by one every time a pair is hit.
+    Some ALAD patients contributed two samples (conditions), so an ordinary
+    per-condition bootstrap can draw one of a patient's samples without the
+    other, treating one enrollment as two independent ones. This carries the
+    sibling sample in whenever the draw hits either one; the compensating
+    drop is what keeps the final number of patients in the resampling fixed,
+    rather than growing by one every time a pair is hit.
 
     Each of the original draws is visited once, so a condition drawn twice
     triggers two independent carry-and-drop steps.
@@ -182,8 +182,8 @@ def resample_conditions(
         every condition (sample) belonging to the same patient. When given,
         drawing one of a two-sample patient's conditions carries its sibling
         condition in too, and drops one other random draw to compensate (see
-        `_carry_paired_samples`, #192). Conditions whose patient contributes
-        only one of them are unaffected.
+        `_carry_paired_samples`). Conditions whose patient contributes only
+        one of them are unaffected.
 
     Returns
     -------

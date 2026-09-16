@@ -251,10 +251,10 @@ def run_component_stability(
                         else ", unstratified"
                     )
                     + (
-                        f"; paired by {spec.patient_column} (#192): drawing one "
-                        "of a patient's conditions carries its sibling in and "
-                        "drops one other random draw to keep the resample's "
-                        "size fixed"
+                        f"; paired by {spec.patient_column}: drawing one of a "
+                        "patient's conditions carries its sibling in and drops "
+                        "one other random draw to keep the resample's size "
+                        "fixed"
                         if spec.patient_column
                         else ""
                     )

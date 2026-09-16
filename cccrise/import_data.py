@@ -118,9 +118,9 @@ def import_ligand_receptor_pairs(
 
 
 #: ALAD1-HS63 and ALAD1-HS65 each contributed two dsco_id samples; every other
-#: dsco_id is its own patient (#192). Hardcoded rather than parsed out of
-#: dsco_id, since these are the only known pairs -- a regex would silently
-#: "find" pairs in any future dsco_id that happens to share a prefix.
+#: dsco_id is its own patient. Hardcoded rather than parsed out of dsco_id,
+#: since these are the only known pairs -- a regex would silently "find"
+#: pairs in any future dsco_id that happens to share a prefix.
 ALAD_PATIENT_OF: dict[str, str] = {
     "ALAD1-HS63-E1": "HS63",
     "ALAD1-HS63-E2": "HS63",
@@ -149,7 +149,7 @@ def import_alad(
 ):
     """Generate data for ALAD analysis, filtering and scaling as needed.
     patient ids: dsco_id (patient_id pairs its two known multi-sample
-    patients; see `ALAD_PATIENT_OF` and #192)
+    patients; see `ALAD_PATIENT_OF`)
     """
     if normalize:
         data = vsparse.load_and_normalize(
