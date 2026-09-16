@@ -1,13 +1,11 @@
 """Unit tests for cccrise.import_data."""
 
-from typing import cast
 
 import anndata
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_array
 
-from cccrise.gene_filters import mito_ribo_mask
 from cccrise.import_data import (
     add_cond_idxs,
     import_ligand_receptor_pairs,
