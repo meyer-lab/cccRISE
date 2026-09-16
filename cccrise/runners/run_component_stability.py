@@ -86,6 +86,9 @@ def run_component_stability(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int = 0,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score per-component RISE and CPD stability at fixed ranks.
@@ -107,6 +110,16 @@ def run_component_stability(
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=0
         Base seed for the reference fit and the replicates.
+    backend : str | None, default=None
+        Backend every RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
+        auto-detect); see `tensor.rise_store_r2x`.
+    compress : bool, default=True
+        Fit every CP stage inside a CANDELINC core sized for `cp_rank`
+        instead of the full tensor; see
+        `stability.component_stability._fit_cp`. R2X, core consistency and
+        collinearity are unaffected -- this is strictly a speed optimization.
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
     output_path : Path, optional
         CSV destination; defaults to the registry's stability filename.
 
@@ -125,6 +138,9 @@ def run_component_stability(
     print(f"=== Component stability: {spec.label} ===")
     print(f"    RISE rank {rise_rank}, CP rank {cp_rank}, {n_replicates} replicates")
     print(f"    Axes: {', '.join(axes)}")
+    print(
+        f"    backend={backend or 'auto'}  compress={compress}  oversample={oversample}"
+    )
     print(
         f"    {1 + len(rise_axes) * n_replicates} PARAFAC2 fits, "
         f"{1 + len(axes) * n_replicates} CP fits"
@@ -154,6 +170,9 @@ def run_component_stability(
         hill_k=hill_k,
         random_state=random_state,
         keep_tensor=True,
+        backend=backend,
+        compress=compress,
+        oversample=oversample,
     )
     assert reference["tensor"] is not None
     tensor_shape = tuple(int(dim) for dim in reference["tensor"].shape)
@@ -181,6 +200,9 @@ def run_component_stability(
         communication_score=communication_score,
         hill_k=hill_k,
         random_state=random_state,
+        backend=backend,
+        compress=compress,
+        oversample=oversample,
     )
 
     print("4. Aggregate FMS across replicates, per stage and axis:")
@@ -209,6 +231,9 @@ def run_component_stability(
             "communication_score": communication_score,
             "hill_k": hill_k,
             "random_state": random_state,
+            "backend": backend or "auto",
+            "compress": compress,
+            "oversample": oversample,
             "seed_formula": (
                 "random_state * 1000 + replicate + 1; one seed drives the "
                 "resample, the RISE refit and the CP fit, so a "
@@ -316,6 +341,26 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hill-k", type=float, default=0.5)
     parser.add_argument("--random-state", type=int, default=0)
     parser.add_argument(
+        "--backend",
+        type=str,
+        default=None,
+        choices=["cpu", "cupy", "mlx"],
+        help="Backend every RISE fit runs on (default: parafac2 auto-detect). "
+        "Use 'cpu' for cohort-scale data, which does not fit on a GPU.",
+    )
+    parser.add_argument(
+        "--no-compress",
+        dest="compress",
+        action="store_false",
+        help="Fit every CP stage on the full tensor instead of a CANDELINC core.",
+    )
+    parser.add_argument(
+        "--oversample",
+        type=int,
+        default=5,
+        help="Extra basis columns per mode beyond --cp-rank, when compressing.",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         default=None,
@@ -343,6 +388,9 @@ def main(argv: list[str] | None = None) -> None:
         communication_score=args.communication_score,
         hill_k=args.hill_k,
         random_state=args.random_state,
+        backend=args.backend,
+        compress=args.compress,
+        oversample=args.oversample,
         output_path=resolve_output(args.output, DATA_DIR, spec.stability_filename()),
     )
 

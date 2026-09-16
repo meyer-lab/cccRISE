@@ -66,7 +66,12 @@ from tensorly.decomposition import parafac
 from ..ccc import calculate_r2x
 from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
 from ..import_data import add_cond_idxs
-from ..rank_selection import cp_core_consistency, cpd_component_collinearity
+from ..rank_selection import (
+    candelinc_compress,
+    candelinc_r2x,
+    cp_core_consistency,
+    cpd_component_collinearity,
+)
 from ..tensor import (
     calculate_interaction_tensor,
     rise_store_r2x,
@@ -313,6 +318,9 @@ def fit_stability_pipeline(
     hill_k: float = 0.5,
     random_state: int = 0,
     keep_tensor: bool = False,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> dict[str, Any]:
     """Run RISE, build the communication tensor, and fit CP over `adata`.
 
@@ -342,6 +350,14 @@ def fit_stability_pipeline(
     keep_tensor : bool, default=False
         Retain the communication tensor on the returned fit. Only the
         reference pass needs it.
+    backend : str | None, default=None
+        Backend the RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
+        auto-detect); passed straight through to `tensor.rise_store_r2x`.
+    compress : bool, default=True
+        Fit CP inside a CANDELINC core sized for `cp_rank` instead of the
+        full tensor (see `stability.component_stability._fit_cp`).
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
@@ -355,6 +371,7 @@ def fit_stability_pipeline(
         n_iter_max=rise_n_iter_max,
         tolerance=rise_tol,
         random_state=random_state,
+        backend=backend,
     )
     tensor, filtered_lr_pairs = calculate_interaction_tensor(
         adata,
@@ -365,17 +382,17 @@ def fit_stability_pipeline(
     )
     validate_cp_rank(cp_rank, tensor.shape)
 
-    cp_weights, cp_factors = parafac(
+    cp_weights, cp_factors, r2x_cp, diagnostics = _fit_cp(
         tensor,
         cp_rank,
         n_iter_max=cp_n_iter_max,
         tol=cp_tol,
         init=init,
         svd=svd,
-        normalize_factors=True,
         random_state=random_state,
+        compress=compress,
+        oversample=oversample,
     )
-    r2x_cp = calculate_r2x(cp_weights, cp_factors, tensor)
     cp_weights, cp_factors = standardize_cc_pf2(cp_weights, cp_factors)
 
     return {
@@ -392,7 +409,7 @@ def fit_stability_pipeline(
         "tensor": tensor if keep_tensor else None,
         "r2x_rise": r2x_rise,
         "r2x_cp": r2x_cp,
-        "cpd_diagnostics": _cpd_diagnostics(tensor, cp_weights, cp_factors, cp_rank),
+        "cpd_diagnostics": diagnostics,
     }
 
 
@@ -420,6 +437,60 @@ def _cpd_diagnostics(
         "MaxModesCollinear": int(collinearity["MaxModesCollinear"]),
         "WorstPairCanceling": collinearity["WorstPairCanceling"],
     }
+
+
+def _fit_cp(
+    tensor: np.ndarray,
+    rank: int,
+    n_iter_max: int,
+    tol: float,
+    init: str,
+    svd: str,
+    random_state: int | None,
+    compress: bool = True,
+    oversample: int = 5,
+) -> tuple[np.ndarray, Factors, float, dict[str, Any]]:
+    """Fit CP at a fixed rank, in a CANDELINC core by default.
+
+    `compress` fits against a core sized for `rank`
+    (`rank_selection.candelinc_compress`) instead of the full tensor, then
+    maps the factors back onto the tensor's own modes with ``A_n = U_n F_n``.
+    R2X (via `rank_selection.candelinc_r2x`), core consistency and
+    collinearity are each proven invariant to that substitution, so this is a
+    speed optimization -- what a replicate's diagnostics and FMS say does not
+    change, only how fast they are computed.
+
+    Returns weights, factors (in `tensor`'s own space, ready for
+    `per_component_fms`), R2X against `tensor`, and the `_cpd_diagnostics`
+    dict -- each computed in the (cheaper) core space when compressed.
+    """
+    fit_target = tensor
+    bases: Factors | None = None
+    lost_sq = 0.0
+    if compress:
+        fit_target, bases, lost_sq = candelinc_compress(
+            tensor, max_rank=rank, oversample=oversample
+        )
+
+    weights, factors = parafac(
+        fit_target,
+        rank,
+        n_iter_max=n_iter_max,
+        tol=tol,
+        init=init,
+        svd=svd,
+        normalize_factors=True,
+        random_state=random_state,
+    )
+    diagnostics = _cpd_diagnostics(fit_target, weights, factors, rank)
+    r2x = candelinc_r2x(
+        calculate_r2x(weights, factors, fit_target), fit_target, lost_sq
+    )
+
+    if bases is not None:
+        factors = [b @ f for b, f in zip(bases, factors, strict=True)]
+
+    return weights, factors, r2x, diagnostics
 
 
 def _tag(
@@ -467,6 +538,9 @@ def component_stability(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int = 0,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> pd.DataFrame:
     """Per-component stability of both stages under resampling, in long form.
 
@@ -511,6 +585,14 @@ def component_stability(
         Communication-tensor options.
     random_state : int, default=0
         Base seed.
+    backend : str | None, default=None
+        Backend each replicate's RISE refit runs on; see
+        `fit_stability_pipeline`.
+    compress : bool, default=True
+        Fit every replicate's CP stage inside a CANDELINC core; see
+        `component_stability._fit_cp`.
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
@@ -557,6 +639,9 @@ def component_stability(
                     communication_score=communication_score,
                     hill_k=hill_k,
                     random_state=seed,
+                    backend=backend,
+                    compress=compress,
+                    oversample=oversample,
                 )
                 _check_rosters(reference, fit)
 
@@ -621,19 +706,18 @@ def component_stability(
                 ref_cp = reference["cp_factors"]
             print(f"   {axis} replicate {replicate + 1}/{n_replicates}")
 
-            weights, factors = parafac(
+            weights, factors, r2x, diagnostics = _fit_cp(
                 perturbed,
                 cp_rank,
                 n_iter_max=cp_n_iter_max,
                 tol=cp_tol,
                 init=init,
                 svd=svd,
-                normalize_factors=True,
                 random_state=seed,
+                compress=compress,
+                oversample=oversample,
             )
-            r2x = calculate_r2x(weights, factors, perturbed)
             weights, factors = standardize_cc_pf2(weights, factors)
-            diagnostics = _cpd_diagnostics(perturbed, weights, factors, cp_rank)
             frames.append(
                 _tag(
                     per_component_fms(ref_cp, factors, skip_modes=CPD_SKIP_MODES),
