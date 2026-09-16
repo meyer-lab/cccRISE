@@ -567,6 +567,14 @@ def test_prepare_group_labels():
 
 def test_run_saved_factors_anova_and_multiple_associations():
     """`run_saved_factors_anova`, `run_multiple_factors_anova`, and `figureAnova` work."""
+    import os
+
+    # `_resolve_factors_and_metadata` falls back to loading the real ALAD
+    # source file for `ALADstatus` annotations not stored in the saved
+    # factors dataset; that file is private and absent on CI runners.
+    if not os.path.exists("/opt/IVCSC/BAL-scRNAseq.raw.h5ad"):
+        pytest.skip("requires local ALAD source data")
+
     import matplotlib.pyplot as plt
 
     from cccrise.factors import load_factors_netcdf
