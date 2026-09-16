@@ -47,6 +47,48 @@ LR_HIGHLIGHT_CHOICES = {
 }
 
 
+def _fit_logreg_result(spec) -> tuple[np.ndarray | None, str | None]:
+    """One dataset's logistic regression weights (or why they're missing).
+
+    Mirrors figure4.py's read-depth-corrected pipeline exactly, using the
+    raw dataset rather than the lightweight per-cell-projections factors
+    used elsewhere in the app: the uncorrected condition factor matrix
+    leaves enough confounding read-depth variation that the CV-selected L1
+    penalty zeroes out every component.
+    """
+    if spec.control_label is None or spec.group_col is None:
+        return None, "no case/control grouping is configured for this dataset."
+    raw = load_raw_dataset(spec.key)
+    if raw.adata is None:
+        return None, raw.error or "raw dataset unavailable."
+    try:
+        sample_to_group = get_sample_to_group(
+            raw.adata, spec.condition_col, spec.group_col
+        )
+        binary = binarize_group(
+            sample_to_group, spec.control_label, spec.control_label, spec.other_label
+        )
+        corrected_a = correct_conditions(raw.adata)
+        factors_only = anndata.AnnData(
+            X=np.zeros((corrected_a.shape[0], 0)), uns={"A": corrected_a}
+        )
+        weights = fit_logreg_weights(factors_only, binary, scoring="roc_auc")
+    except ValueError as exc:
+        return None, str(exc)
+    return weights, None
+
+
+# There's no saved logreg result to load -- every fit is ad hoc -- so it's
+# run once per dataset here, when the app boots, rather than lazily
+# per-session: unlike the factorization (loaded, never recomputed, from
+# each dataset's `.nc` file) this needs to reflect whatever the current
+# raw single-cell data says on every restart. Also warms `load_raw_dataset`'s
+# cache for the LR interaction heatmap, which needs the same raw data.
+LOGREG_RESULTS: dict[str, tuple[np.ndarray | None, str | None]] = {
+    key: _fit_logreg_result(spec) for key, spec in DATASETS.items()
+}
+
+
 def scrollable_plot(output_id: str, width_px: int, height_px: int) -> ui.Tag:
     """A plot output pinned to a fixed pixel size, in a horizontally
     scrollable wrapper.
@@ -186,36 +228,12 @@ def server(input, output, session):
         pairs = parse_lr_pairs(np.asarray(ds.adata.uns["lr_pairs"]))
         return [p for p in pairs if p.is_simple_receptor]
 
-    @reactive.calc
     def logreg_result() -> tuple[np.ndarray | None, str | None]:
-        # There's no saved logreg result to load -- the fit is always ad hoc
-        # -- so this mirrors figure4.py's read-depth-corrected pipeline
-        # exactly, using the (cached, lazily-loaded) raw dataset rather than
-        # the lightweight per-cell-projections factors used elsewhere in the
-        # app. Uncorrected condition factors wash out the case/control signal
-        # enough that the CV-selected regularization zeroes every component.
-        ds = dataset()
-        spec = ds.spec
-        if spec.control_label is None or spec.group_col is None:
-            return None, "no case/control grouping is configured for this dataset."
-        raw = load_raw_dataset(input.dataset())
-        if raw.adata is None:
-            return None, raw.error or "raw dataset unavailable."
-        try:
-            sample_to_group = get_sample_to_group(
-                raw.adata, spec.condition_col, spec.group_col
-            )
-            binary = binarize_group(
-                sample_to_group, spec.control_label, spec.control_label, spec.other_label
-            )
-            corrected_a = correct_conditions(raw.adata)
-            factors_only = anndata.AnnData(
-                X=np.zeros((corrected_a.shape[0], 0)), uns={"A": corrected_a}
-            )
-            weights = fit_logreg_weights(factors_only, binary, scoring="roc_auc")
-        except ValueError as exc:
-            return None, str(exc)
-        return weights, None
+        # Computed once at boot for every dataset -- see LOGREG_RESULTS --
+        # not re-fit per session or per input change.
+        return LOGREG_RESULTS.get(
+            input.dataset(), (None, "no logistic regression result for this dataset.")
+        )
 
     @render.ui
     def logreg_weights_ui():
@@ -225,10 +243,10 @@ def server(input, output, session):
         return ui.TagList(
             ui.output_plot("logreg_weights_plot", height="220px"),
             ui.markdown(
-                "_Fit live (read-depth corrected, as in the manuscript "
-                f"figures) on {dataset().spec.control_label!r} vs. "
-                f"{dataset().spec.other_label!r}; computed once per dataset "
-                "per session, on first use of the raw single-cell data._"
+                "_Fit once at app startup (read-depth corrected, as in the "
+                f"manuscript figures) on {dataset().spec.control_label!r} vs. "
+                f"{dataset().spec.other_label!r}; not re-fit while the app is "
+                "running._"
             ),
         )
 

@@ -38,7 +38,11 @@ DATASETS: dict[str, DatasetSpec] = {
         key="covid",
         label="COVID-19 BALF",
         factors_path=COVID19_FACTORS_PATH,
-        raw_loader=lambda: get_covid_data(project_cells=True, do_embedding=True),
+        # No embedding: the app only ever reads raw cells for gene-level
+        # heatmaps and the boot-time logreg fit, neither of which touches
+        # PaCMAP coordinates (those come from the factors file instead, via
+        # `load_dataset`, when present).
+        raw_loader=lambda: get_covid_data(project_cells=True, do_embedding=False),
         celltype_col="celltype",
         condition_col="sample",
         group_col="condition",
@@ -49,7 +53,7 @@ DATASETS: dict[str, DatasetSpec] = {
         key="alad",
         label="ALAD Lung Transplant",
         factors_path=ALAD_FACTORS_PATH,
-        raw_loader=lambda: get_alad_data(project_cells=True, do_embedding=True),
+        raw_loader=lambda: get_alad_data(project_cells=True, do_embedding=False),
         celltype_col="broad_cell_type",
         condition_col="dsco_id",
         group_col="ALADstatus",
@@ -85,10 +89,18 @@ class RawDataset:
 
 @lru_cache(maxsize=4)
 def load_raw_dataset(key: str) -> RawDataset:
-    """Lazily load raw single-cell expression for a dataset. Only needed for
-    gene-level interaction heatmaps (actual expression values), not for the
+    """Load raw single-cell expression for a dataset, cached for the life of
+    the process. Needed for gene-level interaction heatmaps (actual
+    expression values) and the boot-time logistic regression fit (which
+    needs real per-cell counts for its read-depth correction), not for the
     per-cell projections/PaCMAP already stored in the factors file. Falls
-    back gracefully if the raw file isn't available locally."""
+    back gracefully if the raw file isn't available locally.
+
+    The app's boot-time logreg fit (see `app.py`) calls this for every
+    dataset up front, so in practice it's rarely "lazy" in a running
+    server -- by the time a session opens an interaction heatmap, the raw
+    data is normally already loaded and cached from that.
+    """
     spec = DATASETS[key]
     try:
         return RawDataset(adata=spec.raw_loader())
