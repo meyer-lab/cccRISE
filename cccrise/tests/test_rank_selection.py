@@ -235,8 +235,11 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
 
     results = {}
     for compress in (True, False):
-        with patch.object(
-            runner, "build_interaction_tensor", return_value=(tensor, facts)
+        with (
+            patch.object(
+                runner, "build_interaction_tensor", return_value=(tensor, facts)
+            ),
+            patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
         ):
             df, csv_path, sidecar = runner.run_cpd_rank_selection(
                 DATASETS["alad"],
