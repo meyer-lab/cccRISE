@@ -33,6 +33,34 @@ def parse_ranks(spec: str) -> list[int]:
     return sorted(ranks)
 
 
+def _selected_rank(spec: DatasetSpec, stage: str, explicit: int | None) -> int:
+    """An explicit rank, else the one recorded for the dataset in the registry.
+
+    Refuses to guess: a dataset whose sweep has not been read off yet has no
+    registered rank, and running at an invented one would quietly produce a
+    result nothing justifies.
+    """
+    if explicit is not None:
+        return explicit
+    rank = getattr(spec, f"{stage}_rank")
+    if rank is None:
+        raise ValueError(
+            f"Dataset {spec.key!r} has no selected {stage}_rank in the registry; "
+            f"pass --{stage}-rank explicitly."
+        )
+    return int(rank)
+
+
+def selected_rise_rank(spec: DatasetSpec, explicit: int | None = None) -> int:
+    """The RISE rank this dataset's BiCV sweep settled on."""
+    return _selected_rank(spec, "rise", explicit)
+
+
+def selected_cp_rank(spec: DatasetSpec, explicit: int | None = None) -> int:
+    """The CP rank this dataset's CPD sweep settled on."""
+    return _selected_rank(spec, "cp", explicit)
+
+
 def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--dataset",
@@ -117,6 +145,8 @@ def dataset_metadata(spec: DatasetSpec) -> dict:
         meta["celltype_key"] = spec.celltype_column
     if spec.group_column:
         meta["group_key"] = spec.group_column
+    if spec.rank_notes:
+        meta["rank_notes"] = spec.rank_notes
     if spec.notes:
         meta["dataset_notes"] = spec.notes
     return meta

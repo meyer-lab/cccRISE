@@ -8,6 +8,7 @@ diagnostic, one panel each. Run that first.
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.ticker import MaxNLocator
 
 from .common import getSetup, load_runner_csv, subplotLabel
 
@@ -18,9 +19,16 @@ SWEEP_CSV = f"cpd_rank_{SELECTED_DATASET}.csv"
 PANELS_PER_ROW = 3
 
 
+def _rank_axis(ax: plt.Axes) -> None:
+    """Label the shared x-axis. A CP rank is a count, so the ticks are whole
+    numbers -- matplotlib's default locator otherwise lands on 2.5 and 7.5."""
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.set_xlabel("CP Rank")
+
+
 def plot_fit_r2x(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ax.plot(df["Rank"], df["FitR2X"], marker="s")
-    ax.set_xlabel("CP Rank")
+    _rank_axis(ax)
     ax.set_ylabel("Fit $R^2X$")
     ax.set_title(title)
 
@@ -63,7 +71,7 @@ def plot_collinearity(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ax.axhline(2, color="0.8", linestyle="--", linewidth=0.8)
     ax.set_ylim(-0.3, 4.3)
     ax.set_yticks([0, 1, 2, 3, 4])
-    ax.set_xlabel("CP Rank")
+    _rank_axis(ax)
     ax.set_ylabel("Max modes worst pair is collinear in")
     ax.set_title(title)
     ax.legend(fontsize=6, loc="upper left")
@@ -77,7 +85,7 @@ def plot_core_consistency(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     # rank. symlog keeps the 0-100% transition readable while still showing
     # the full collapse instead of one axis extreme crushing the rest flat.
     ax.set_yscale("symlog", linthresh=100)
-    ax.set_xlabel("CP Rank")
+    _rank_axis(ax)
     ax.set_ylabel("Core consistency (%)")
     ax.set_title(title)
     ax.legend(fontsize=6, loc="upper right")

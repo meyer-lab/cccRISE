@@ -14,7 +14,9 @@ Each rank is fit once and we then read off the following three criteria:
 The sweep runs on a CANDELINC core by default which has been proven invariant
 to the three criteria.
 
-    uv run cccrise-cpdrank --dataset alad --rise-rank 25 --ranks 1:26
+``--rise-rank`` defaults to the rank recorded for the dataset in the registry.
+
+    uv run cccrise-cpdrank --dataset alad --ranks 1:26
     uv run cccrise-cpdrank --dataset ibd --rise-rank 70 --ranks 1:26 --oversample 5
 """
 
@@ -41,6 +43,7 @@ from ._cli import (
     parse_ranks,
     resolve_output,
     resulting_dims,
+    selected_rise_rank,
 )
 from .datasets import DATA_DIR, DATASETS, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
@@ -125,8 +128,8 @@ def run_cpd_rank_selection(
     spec: DatasetSpec,
     rise_rank: int,
     ranks: list[int],
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
+    n_iter_max: int = 300,
+    tol: float = 1e-8,
     cp_n_iter_max: int = 4000,
     cp_tol: float = 1e-12,
     init: str = "svd",
@@ -258,8 +261,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--rise-rank",
         type=int,
-        required=True,
-        help="RISE rank the interaction tensor is built at.",
+        default=None,
+        help="RISE rank the interaction tensor is built at (default: the "
+        "dataset registry's selected rise_rank).",
     )
     parser.add_argument(
         "--ranks",
@@ -268,9 +272,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="CP ranks: comma list and/or start:stop[:step] slices (default: 1:26).",
     )
     parser.add_argument(
-        "--n-iter-max", type=int, default=100, help="RISE fit iteration cap."
+        "--n-iter-max", type=int, default=300, help="RISE fit iteration cap."
     )
-    parser.add_argument("--tol", type=float, default=1e-3, help="RISE fit tolerance.")
+    parser.add_argument("--tol", type=float, default=1e-8, help="RISE fit tolerance.")
     parser.add_argument(
         "--cp-n-iter-max", type=int, default=4000, help="CP fit iteration cap."
     )
@@ -324,7 +328,7 @@ def main(argv: list[str] | None = None) -> None:
     spec = DATASETS[args.dataset]
     run_cpd_rank_selection(
         spec,
-        rise_rank=args.rise_rank,
+        rise_rank=selected_rise_rank(spec, args.rise_rank),
         ranks=parse_ranks(args.ranks),
         n_iter_max=args.n_iter_max,
         tol=args.tol,
