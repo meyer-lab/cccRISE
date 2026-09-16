@@ -41,7 +41,6 @@ def fit_significance_pipeline(
     n_iter_max: int = 100,
     tol: float = 1e-6,
     random_state: int = 42,
-    backend: str | None = None,
     validate: bool = False,
 ) -> dict[str, Any]:
     """Fit RISE and compute within-condition and differential communication significance.
@@ -82,8 +81,6 @@ def fit_significance_pipeline(
         Convergence tolerance for PARAFAC2 fitting.
     random_state : int, default=42
         Random seed for permutations and PARAFAC2 initialization.
-    backend : str, optional
-        PARAFAC2 backend ('cpu', 'cupy', 'mlx', or None for auto-detection).
     validate : bool, default=False
         If True, validates vectorized tensor computation against `calc_communication_score`.
 
@@ -110,7 +107,6 @@ def fit_significance_pipeline(
         n_iter_max=n_iter_max,
         tol=tol,
         random_state=random_state,
-        backend=backend,
     )
     dense_P = pf2_output[2]
     condition_names = np.unique(adata.obs[condition_column]).tolist()

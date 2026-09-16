@@ -73,7 +73,6 @@ def run_significance(
     n_iter_max: int = 100,
     tol: float = 1e-6,
     random_state: int = 42,
-    backend: str | None = None,
     output_path: Path | None = None,
     output_root: Path = DATA_DIR,
 ) -> tuple[pd.DataFrame, dict[str, Path]]:
@@ -107,8 +106,6 @@ def run_significance(
         Convergence tolerance for PARAFAC2.
     random_state : int, default=42
         Seed for permutations and RISE fitting.
-    backend : str, optional
-        PARAFAC2 backend ('cpu', 'cupy', 'mlx', or None for auto-detection).
     output_path : Path, optional
         Custom path for the primary LR significance CSV.
     output_root : Path, default=DATA_DIR
@@ -138,11 +135,10 @@ def run_significance(
     )
     print(
         f"    score={communication_score!r}  complex_sep={complex_sep!r}  "
-        f"group_column={group_column!r}  control={control_label!r}  other={other_label!r}  "
-        f"backend={backend or 'auto'!r}"
+        f"group_column={group_column!r}  control={control_label!r}  other={other_label!r}"
     )
 
-    print(f"1. Loading dataset {spec.key}...")
+    print("1. Loading dataset...")
     adata = spec.load()
     lr_pairs = import_ligand_receptor_pairs()
     print(f"   AnnData shape: {adata.shape}, LR pairs: {len(lr_pairs)}")
@@ -165,7 +161,6 @@ def run_significance(
         n_iter_max=n_iter_max,
         tol=tol,
         random_state=random_state,
-        backend=backend,
         validate=False,
     )
     print(f"   RISE fit R2X: {results['r2x_rise']:.4f}")
@@ -206,7 +201,6 @@ def run_significance(
             "hill_k": hill_k,
             "r2x_rise": float(results["r2x_rise"]),
             "random_state": random_state,
-            "backend": backend or "auto",
             "total_tensor_entries": int(overview_df["TotalEntries"].iloc[0]),
             "cohort_fraction_significant_p05": float(
                 overview_df["FractionSignificant_p05"].iloc[0]
@@ -298,13 +292,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Random seed (default: 42).",
     )
     parser.add_argument(
-        "--backend",
-        type=str,
-        default=None,
-        choices=["cpu", "cupy", "mlx"],
-        help="parafac2 backend (default: auto-detect; PARAFAC2_BACKEND also works).",
-    )
-    parser.add_argument(
         "--output",
         type=str,
         default=None,
@@ -339,7 +326,6 @@ def main(argv: list[str] | None = None) -> None:
         n_iter_max=args.n_iter_max,
         tol=args.tol,
         random_state=args.random_state,
-        backend=args.backend,
         output_path=resolve_output(
             args.output, args.output_root, spec.significance_lr_filename()
         ),
