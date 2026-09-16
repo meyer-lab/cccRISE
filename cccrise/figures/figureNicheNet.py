@@ -1,11 +1,13 @@
 """
 Figure: NicheNet-style downstream-target validation of CPD components
-(``cccrise.nichenet``), run against a finalized cccRISE factor fit.
+(``cccrise.nichenet``), plotted from the cached scores written by
+``uv run cccrise-nichenet --dataset <dataset>``.
 
 For every CPD component of the selected dataset's finalized factors, scores
 each of its top-loading ligands' curated NicheNet v2 downstream targets for
 differential expression in the component's implicated receiver population
-(``component_accuracy_scores``), under both receiver-population definitions:
+(``component_accuracy_scores``, run by the ``run_nichenet`` runner -- this
+figure only plots), under both receiver-population definitions:
 
 - "within_celltype": receiver cells restricted to the cell type with the
   highest mean receiver-eigenstate loading for that component.
@@ -25,52 +27,18 @@ import pandas as pd
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-from ..factors import load_factors_to_anndata
-from ..nichenet import (
-    ReceiverMode,
-    component_accuracy_scores,
-    load_ligand_target_matrix,
-)
-from ..runners.datasets import DATASETS, DatasetSpec
-from .common import getSetup, subplotLabel
+from ..runners.datasets import DATASETS
+from .common import getSetup, load_runner_csv, subplotLabel
 
 # Change this to switch dataset; must be a key in `runners.datasets.DATASETS`
-# with a finalized factors .nc already produced by `uv run cccrise-run`.
+# with cached scores already produced by `uv run cccrise-nichenet`.
 # Only "alad" has a finalized fit today; "ibd" is wired up for when it does.
 SELECTED_DATASET = "alad"
-
-TOP_M_LR = 10
-TOP_PERC = 10.0
-DE_METHOD = "wilcoxon"
 
 EMPHASIS_COLOR = "#3a6b9c"
 MUTED_COLOR = "0.72"
 VSREST_COLOR = "#c98b3a"
 CHANCE_COLOR = "0.4"
-
-RECEIVER_MODES: list[ReceiverMode] = ["within_celltype", "vs_rest"]
-
-
-def _load_dataset_with_factors() -> tuple:
-    spec: DatasetSpec = DATASETS[SELECTED_DATASET]
-    factors_path = spec.factors_path()
-    if not factors_path.exists():
-        raise FileNotFoundError(
-            f"{factors_path} not found. Produce it with:\n"
-            f"    uv run cccrise-run --dataset {SELECTED_DATASET} "
-            "--rise-rank <N> --cp-rank <M>"
-        )
-    raw = spec.load()
-    adata = load_factors_to_anndata(factors_path, adata=raw)
-    return adata, spec
-
-
-def _lr_pairs_from_adata(adata) -> pd.DataFrame:
-    """Recover ligand/receptor columns from `adata.uns["lr_pairs"]`
-    ("LIGAND^RECEPTOR[&RECEPTOR2...]" strings), in the row order matching
-    `adata.uns["D"]`."""
-    ligand, receptor = zip(*(s.split("^", 1) for s in adata.uns["lr_pairs"]))
-    return pd.DataFrame({"ligand": ligand, "receptor": receptor})
 
 
 def _component_summary(scores: pd.DataFrame, components: list[int]) -> pd.DataFrame:
@@ -83,9 +51,7 @@ def _component_summary(scores: pd.DataFrame, components: list[int]) -> pd.DataFr
     return summary
 
 
-def plot_component_ligands(
-    scores: pd.DataFrame, cmp: int, ax, mode_label: str, top_m_lr: int
-) -> None:
+def plot_component_ligands(scores: pd.DataFrame, cmp: int, ax, mode_label: str) -> None:
     """Per-ligand AUROC bars for one component/receiver-mode combination."""
     full = scores[scores["component"] == cmp]
     sub = full.dropna(subset=["auroc"]).sort_values("auroc")
@@ -97,7 +63,7 @@ def plot_component_ligands(
     title_bits = [f"Cmp{cmp}", mode_label]
     if celltype:
         title_bits.append(str(celltype))
-    title = " - ".join(title_bits) + f" (n={len(sub)}/{top_m_lr})"
+    title = " - ".join(title_bits) + f" (n={len(sub)}/{len(full)})"
 
     if sub.empty:
         ax.text(
@@ -173,29 +139,13 @@ def plot_component_summary(
 
 
 def makeFigure():
-    adata, spec = _load_dataset_with_factors()
-    lr_pairs = _lr_pairs_from_adata(adata)
-    lt_df = load_ligand_target_matrix()
+    spec = DATASETS[SELECTED_DATASET]
+    scores = load_runner_csv(spec.nichenet_scores_filename())
+    components = sorted(scores["component"].unique())
+    cp_rank = len(components)
 
-    cp_rank = adata.uns["D"].shape[1]
-    components = list(range(1, cp_rank + 1))
-
-    scores_by_mode = {
-        mode: component_accuracy_scores(
-            adata,
-            lr_pairs=lr_pairs,
-            lt_df=lt_df,
-            components=components,
-            top_m_lr=TOP_M_LR,
-            receiver_mode=mode,
-            celltype_col=spec.celltype_column,
-            top_perc=TOP_PERC,
-            de_method=DE_METHOD,
-        )
-        for mode in RECEIVER_MODES
-    }
-    scores_within = scores_by_mode["within_celltype"]
-    scores_vsrest = scores_by_mode["vs_rest"]
+    scores_within = scores[scores["receiver_mode"] == "within_celltype"]
+    scores_vsrest = scores[scores["receiver_mode"] == "vs_rest"]
 
     summary_within = _component_summary(scores_within, components)
     summary_vsrest = _component_summary(scores_vsrest, components)
@@ -205,8 +155,8 @@ def makeFigure():
     subplotLabel(ax)
 
     for i, cmp in enumerate(components):
-        plot_component_ligands(scores_within, cmp, ax[i * 2], "within_celltype", TOP_M_LR)
-        plot_component_ligands(scores_vsrest, cmp, ax[i * 2 + 1], "vs_rest", TOP_M_LR)
+        plot_component_ligands(scores_within, cmp, ax[i * 2], "within_celltype")
+        plot_component_ligands(scores_vsrest, cmp, ax[i * 2 + 1], "vs_rest")
 
     summary_row = cp_rank * 2
     plot_component_summary(
@@ -225,7 +175,7 @@ def makeFigure():
         components,
         ax[summary_row + 1],
         value_col="n_scored",
-        ylabel=f"Ligands scored (of top {TOP_M_LR})",
+        ylabel="Ligands scored (of top-loading set)",
         title=f"Per-component ligand coverage ({SELECTED_DATASET})",
     )
 
