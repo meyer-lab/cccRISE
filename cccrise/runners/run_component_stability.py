@@ -188,6 +188,7 @@ def run_component_stability(
         rise_rank=rise_rank,
         cp_rank=cp_rank,
         group_column=spec.group_column,
+        patient_column=spec.patient_column,
         axes=axes,
         n_replicates=n_replicates,
         rise_n_iter_max=rise_n_iter_max,
@@ -248,6 +249,14 @@ def run_component_stability(
                         f", stratified by {spec.group_column}"
                         if spec.group_column
                         else ", unstratified"
+                    )
+                    + (
+                        f"; paired by {spec.patient_column} (#192): drawing one "
+                        "of a patient's conditions carries its sibling in and "
+                        "drops one other random draw to keep the resample's "
+                        "size fixed"
+                        if spec.patient_column
+                        else ""
                     )
                 ),
                 "lr_pairs": (

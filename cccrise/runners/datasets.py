@@ -30,6 +30,11 @@ class DatasetSpec:
     gene_threshold: float = 0.001
     celltype_column: str | None = None
     group_column: str | None = None
+    #: Condition-level patient identity, for conditions the same patient
+    #: contributes more than one sample of (see `stability`'s `patient_column`
+    #: and #192). None where `condition_column` already identifies the patient
+    #: one-to-one.
+    patient_column: str | None = None
     notes: str = ""
 
     @property

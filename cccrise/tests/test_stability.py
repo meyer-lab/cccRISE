@@ -24,7 +24,13 @@ from cccrise.stability.component_stability import (
     reference_condition_rows,
     summarize_component_stability,
 )
-from cccrise.utils import resample_cells, resample_conditions, resample_tensor
+from cccrise.utils import (
+    _carry_paired_samples,
+    _paired_conditions,
+    resample_cells,
+    resample_conditions,
+    resample_tensor,
+)
 
 RISE_RANK = 3
 CP_RANK = 2
@@ -275,6 +281,100 @@ def test_resample_conditions_keeps_each_stratum_at_its_original_size():
         drawn = resampled.obs.drop_duplicates("sample")["group"].value_counts()
         for group, count in per_group.items():
             assert drawn[group] == count
+
+
+# =============================================================================
+# Paired-patient resampling (#192)
+# =============================================================================
+
+
+def _simulate_adata_with_paired_patient(
+    n_cond: int = 6, cells_per_cond: int = 8, random_state: int = 0
+) -> anndata.AnnData:
+    """`_simulate_adata`, plus a `patient` column pairing conditions S0 and S1
+    to one patient; every other condition keeps its own distinct patient."""
+    adata = _simulate_adata(
+        n_cond=n_cond, cells_per_cond=cells_per_cond, random_state=random_state
+    )
+    patient_of = {f"S{i}": ("P_pair" if i < 2 else f"P{i}") for i in range(n_cond)}
+    adata.obs["patient"] = adata.obs["sample"].map(patient_of)
+    return adata
+
+
+def test_paired_conditions_maps_only_conditions_sharing_a_multi_sample_patient():
+    obs = pd.DataFrame(
+        {"sample": ["S0", "S1", "S2", "S3"], "patient": ["P0", "P0", "P1", "P2"]}
+    )
+    labels = obs["sample"].to_numpy()
+    pairs = _paired_conditions(obs, "sample", "patient", labels)
+
+    assert pairs == {"S0": "S1", "S1": "S0"}
+
+
+def test_carry_paired_samples_preserves_the_total_draw_count():
+    """The compensating drop is what keeps the final number of patients in the
+    resampling fixed (#192): a carry-in must not grow the resample."""
+    pair_of = {"S0": "S1", "S1": "S0"}
+    drawn = np.array(["S0", "S2", "S3", "S2"])
+    for seed in range(30):
+        rng = np.random.default_rng(seed)
+        result = _carry_paired_samples(drawn, pair_of, rng)
+        assert len(result) == len(drawn)
+
+
+def test_carry_paired_samples_leaves_exactly_one_of_the_pair():
+    """Carrying S0's sibling in and immediately dropping one of the two
+    (nothing else was drawn) must leave exactly one of the pair -- never
+    neither, and never both."""
+    pair_of = {"S0": "S1", "S1": "S0"}
+    for seed in range(30):
+        rng = np.random.default_rng(seed)
+        result = _carry_paired_samples(["S0"], pair_of, rng)
+        assert len(result) == 1
+        assert result[0] in ("S0", "S1")
+
+
+def test_resample_conditions_with_patient_by_keeps_the_condition_count_fixed():
+    """Drawing one of a patient's two conditions carries the sibling in for
+    free unless something else is dropped to compensate; the final resample
+    must still hold exactly as many conditions as an unpaired draw would."""
+    adata = _simulate_adata_with_paired_patient()
+    n_conditions = adata.obs["sample"].nunique()
+
+    for seed in range(20):
+        resampled = resample_conditions(
+            adata, "sample", random_seed=seed, patient_by="patient"
+        )
+        assert resampled.obs["sample"].nunique() == n_conditions
+
+
+def test_resample_conditions_with_patient_by_can_carry_the_sibling_in():
+    """Demonstrates the fix itself: a replicate can hold both of a patient's
+    samples, which an unpaired per-condition bootstrap draws independently."""
+    adata = _simulate_adata_with_paired_patient()
+
+    carried = False
+    for seed in range(50):
+        resampled = resample_conditions(
+            adata, "sample", random_seed=seed, patient_by="patient"
+        )
+        drawn = {label.split("__rep")[0] for label in resampled.obs["sample"]}
+        if {"S0", "S1"} <= drawn:
+            carried = True
+            break
+    assert carried
+
+
+def test_resample_conditions_without_patient_by_is_unaffected():
+    """`patient_by=None` (the default) must reproduce the pre-#192 behavior
+    exactly, seed for seed."""
+    adata = _simulate_adata_with_paired_patient()
+    a = resample_conditions(adata, "sample", random_seed=5)
+    b = resample_conditions(adata, "sample", random_seed=5, patient_by=None)
+
+    pd.testing.assert_frame_equal(
+        a.obs.reset_index(drop=True), b.obs.reset_index(drop=True)
+    )
 
 
 # =============================================================================

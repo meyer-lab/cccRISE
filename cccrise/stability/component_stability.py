@@ -106,15 +106,20 @@ RISE_REFIT_AXES = ("cells", "conditions")
 DEFAULT_AXES = ("cells", "conditions", "lr_pairs")
 
 #: How a cohort axis perturbs the data. Each entry takes
-#: ``(adata, condition_column, group_column, seed)``.
+#: ``(adata, condition_column, group_column, patient_column, seed)``.
 RESAMPLERS: dict[
-    str, Callable[[anndata.AnnData, str, str | None, int], anndata.AnnData]
+    str,
+    Callable[[anndata.AnnData, str, str | None, str | None, int], anndata.AnnData],
 ] = {
-    "cells": lambda adata, col, group, seed: resample_cells(
+    "cells": lambda adata, col, group, patient, seed: resample_cells(
         adata, condition_name=col, random_seed=seed
     ),
-    "conditions": lambda adata, col, group, seed: resample_conditions(
-        adata, condition_name=col, stratify_by=group, random_seed=seed
+    "conditions": lambda adata, col, group, patient, seed: resample_conditions(
+        adata,
+        condition_name=col,
+        stratify_by=group,
+        random_seed=seed,
+        patient_by=patient,
     ),
 }
 
@@ -526,6 +531,7 @@ def component_stability(
     rise_rank: int,
     cp_rank: int,
     group_column: str | None = None,
+    patient_column: str | None = None,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
     rise_n_iter_max: int = 100,
@@ -573,6 +579,11 @@ def component_stability(
         Ranks for the RISE and CP stages.
     group_column : str | None, default=None
         Condition-level phenotype column the condition draw is stratified within.
+    patient_column : str | None, default=None
+        Condition-level patient identity column, for the 'conditions' axis
+        alone. When a patient contributes more than one condition, drawing one
+        of them carries its sibling condition in and drops one other random
+        draw to compensate (see `utils.resample_conditions`, #192).
     axes : tuple[str, ...], default=DEFAULT_AXES
         Which axes to run.
     n_replicates : int, default=20
@@ -616,7 +627,7 @@ def component_stability(
 
             if axis in RISE_REFIT_AXES:
                 resampled = RESAMPLERS[axis](
-                    adata, condition_column, group_column, seed
+                    adata, condition_column, group_column, patient_column, seed
                 )
                 print(
                     f"   {axis} replicate {replicate + 1}/{n_replicates}: "
