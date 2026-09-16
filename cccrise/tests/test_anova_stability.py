@@ -571,10 +571,12 @@ def test_run_saved_factors_anova_and_multiple_associations():
 
     from cccrise.factors import load_factors_netcdf
     from cccrise.figures.figureAnova import (
+        DEFAULT_BOXPLOTS,
         makeFigure,
         plot_anova_summary_heatmap,
         plot_association_effect_sizes,
         plot_association_significance,
+        plot_configured_boxplots,
     )
 
     ds = load_factors_netcdf("cccrise/data/bal_alad_factors.nc")
@@ -646,12 +648,33 @@ def test_run_saved_factors_anova_and_multiple_associations():
     plot_anova_summary_heatmap(multi_df, ax_hm)
     plt.close(fig_hm)
 
-    # Test makeFigure with custom associations
-    fig_custom = makeFigure(associations=associations_config)
+    # Test plot_configured_boxplots with dictionary configuration
+    fig_bp, (ax_bp0, ax_bp1) = plt.subplots(1, 2)
+    plot_configured_boxplots(
+        ds,
+        DEFAULT_BOXPLOTS,
+        [ax_bp0, ax_bp1],
+        combined_anova_df=multi_df,
+    )
+    plt.close(fig_bp)
+
+    # Test makeFigure with custom associations and custom boxplots
+    custom_boxplots = [
+        {
+            "component": 1,
+            "group_column": "ALADstatus",
+            "levels": ["control", "declined"],
+            "title": "C1: Ctrl vs Dec",
+        }
+    ]
+    fig_custom = makeFigure(
+        associations=associations_config,
+        boxplots=custom_boxplots,
+    )
     assert isinstance(fig_custom, plt.Figure)
     plt.close(fig_custom)
 
-    # Test default makeFigure (runs all ALAD status types)
+    # Test default makeFigure (runs all ALAD status types and default boxplots)
     fig_default = makeFigure()
     assert isinstance(fig_default, plt.Figure)
     plt.close(fig_default)
