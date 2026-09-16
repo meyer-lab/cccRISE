@@ -11,13 +11,18 @@ import vsparse
 from scipy.sparse import csr_array, issparse
 
 from .gene_filters import describe_mask, mito_ribo_mask
-from .loading import load_normalized
 
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
 IBD_DATA_DIR = Path("/opt/IVCSC")
 IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "full_IBD_cohort.ivcsc.h5ad"
+
+#: Depth-normalize to the median, scale by gene sum, then log10(1 + 1000x) --
+#: what `prepare_dataset` and `vsparse.load_and_normalize` both compute, and
+#: what every figure in this project was produced with. `center` keeps the
+#: per-gene mean as a separate vector rather than subtracting it into `X`.
+IBD_NORMALIZATION = vsparse.RECIPES["parafac2"]
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
@@ -67,10 +72,12 @@ def import_balf_covid(
 
     print("Loading BALF COVID data (preserving sparse format)...")
     if normalize:
-        adata = load_normalized(
+        adata = vsparse.load_and_normalize(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
-        return add_cond_idxs(adata, "sample")
+        adata = add_cond_idxs(adata, "sample")
+        adata.var["means"] = adata.X.mean(axis=0)
+        return adata
 
     adata = vsparse.load_packed(filename).to_anndata()
     return prepare_dataset(
@@ -127,7 +134,7 @@ def import_alad(
     patient ids: dsco_id
     """
     if normalize:
-        data = load_normalized(
+        data = vsparse.load_and_normalize(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
     else:
@@ -199,7 +206,9 @@ def import_alad(
         )
 
     if normalize:
-        return add_cond_idxs(data, "dsco_id")
+        data = add_cond_idxs(data, "dsco_id")
+        data.var["means"] = data.X.mean(axis=0)
+        return data
 
     return prepare_dataset(
         data, "dsco_id", geneThreshold=gene_threshold, normalize=normalize
@@ -216,10 +225,12 @@ def import_alad_brush(
     """
     print("Loading ALAD brushing data...")
     if normalize:
-        data = load_normalized(
+        data = vsparse.load_and_normalize(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
-        return add_cond_idxs(data, "subj")
+        data = add_cond_idxs(data, "subj")
+        data.var["means"] = data.X.mean(axis=0)
+        return data
 
     data = vsparse.load_packed(filename).to_anndata()
     return prepare_dataset(
@@ -259,42 +270,58 @@ def import_ibdverse(
     gene_threshold: float = 0.001,
     normalize: bool = True,
     condition_name: str = "sanger_sample_id",
-    filter_mito_ribo: bool = True,
 ) -> anndata.AnnData:
     """IBDverse terminal-ileum biopsies: 343 samples, 232 healthy and 111 Crohn's.
+
+    The mitochondrial and ribosomal genes are dropped *before* the counts are
+    normalized, not after. They carry a large share of each cell's total, so
+    they have to be gone before the per-cell depth is measured -- removing the
+    columns from an already-normalized matrix leaves every remaining value
+    scaled by a divisor those genes contributed to.
+
+    That ordering is why this loader does not call `vsparse.load_and_normalize`,
+    which fuses the two steps: it reads the packed counts, indexes, and only
+    then applies `IBD_NORMALIZATION`.
 
     References:
     [1] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
         https://doi.org/10.1038/s41588-026-02634-7
     """
     print("Loading IBDverse data...")
-    if normalize:
-        data = load_normalized(
-            filename,
-            min_cell_counts=10.0,
-            gene_threshold=gene_threshold,
-            exclude_genes=_report_mito_ribo_mask if filter_mito_ribo else None,
+    packed = vsparse.load_packed(filename)
+    counts = cast(Any, packed.X)
+    var = cast(pd.DataFrame, packed.var)
+
+    excluded = mito_ribo_mask(var)
+    print(f"   {describe_mask(var, excluded)}")
+
+    # Thresholds read the raw counts, before anything is dropped, so the
+    # surviving set does not depend on the order the masks are applied.
+    n_cells = counts.shape[0]
+    keep_cells = np.asarray(counts.sum(axis=1)).reshape(-1) > 10.0
+    keep_genes = np.asarray(counts.sum(axis=0)).reshape(-1) > gene_threshold * n_cells
+    keep_genes &= ~excluded
+    kept = packed[keep_cells, keep_genes]
+    del packed, counts
+
+    if not normalize:
+        data = use_gene_symbols(kept.to_anndata())
+        return prepare_dataset(
+            data, condition_name, geneThreshold=gene_threshold, normalize=normalize
         )
-        data = use_gene_symbols(data)
-        return add_cond_idxs(data, condition_name)
 
-    data = vsparse.load_packed(filename).to_anndata()
-    if filter_mito_ribo:
-        var = cast(pd.DataFrame, data.var)
-        mask = mito_ribo_mask(var)
-        print(f"   {describe_mask(var, mask)}")
-        data = data[:, ~mask].copy()
-    data = use_gene_symbols(data)
-    return prepare_dataset(
-        data, condition_name, geneThreshold=gene_threshold, normalize=normalize
+    # `to_scipy_sparse` leaves the centering term out of `X` so the matrix stays
+    # sparse; `means` is what `condition_matrices` subtracts once a condition
+    # block is densified.
+    view = kept.normalized(IBD_NORMALIZATION)
+    data = anndata.AnnData(
+        X=view.to_scipy_sparse(dtype=np.float32),
+        obs=cast(pd.DataFrame, kept.obs).copy(),
+        var=cast(pd.DataFrame, kept.var).copy(),
     )
-
-
-def _report_mito_ribo_mask(var: pd.DataFrame) -> np.ndarray:
-    """`mito_ribo_mask`, announcing what it removed."""
-    mask = mito_ribo_mask(var)
-    print(f"   {describe_mask(var, mask)}")
-    return mask
+    data.var["means"] = np.asarray(view.means, dtype=np.float64)
+    data = use_gene_symbols(data)
+    return add_cond_idxs(data, condition_name)
 
 
 def add_cond_idxs(X, condition_key):
