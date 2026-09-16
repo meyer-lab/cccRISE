@@ -76,6 +76,7 @@ DATASETS: dict[str, DatasetSpec] = {
         source_file=Path("/opt/IVCSC/BAL-scRNAseq.raw.h5ad"),
         celltype_column="broad_cell_type",
         group_column="ALADstatus",
+        patient_column="patient_id",
     ),
     "ibd": DatasetSpec(
         key="ibd",
