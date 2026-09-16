@@ -34,12 +34,7 @@ def parse_ranks(spec: str) -> list[int]:
 
 
 def _selected_rank(spec: DatasetSpec, stage: str, explicit: int | None) -> int:
-    """An explicit rank, else the one recorded for the dataset in the registry.
-
-    Refuses to guess: a dataset whose sweep has not been read off yet has no
-    registered rank, and running at an invented one would quietly produce a
-    result nothing justifies.
-    """
+    """An explicit rank, else the one recorded for the dataset in the registry."""
     if explicit is not None:
         return explicit
     rank = getattr(spec, f"{stage}_rank")

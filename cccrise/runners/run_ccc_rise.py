@@ -94,19 +94,11 @@ def run_pipeline(
     n_iter_max : int, default=300
         Maximum iterations for the RISE stage.
     tol : float, default=1e-8
-        Convergence tolerance for the RISE stage. `tol=1e-3` stops RISE after
-        about four ALS iterations with R2X still climbing -- R2X tolerates
-        that, factor structure does not.
+        Convergence tolerance for the RISE stage.
     cp_n_iter_max : int, default=4000
         Maximum iterations for the CP stage.
     cp_tol : float, default=1e-12
-        Convergence tolerance for the CP stage. CORCONDIA reads an
-        under-converged CP fit as degenerate, so CP wants a budget that would
-        be absurd for RISE; on a tensor this small the high cap is nearly free.
-
-        Each stage's defaults are the ones its own rank-selection sweep uses --
-        RISE from `run_rise_rank`, CP from `run_cpd_rank` -- so the published
-        model is converged the same way the fits its ranks were read off were.
+        Convergence tolerance for the CP stage.
     random_state : int, optional, default=42
         Seed for the decompositions.
     complex_sep : str, optional, default="&"

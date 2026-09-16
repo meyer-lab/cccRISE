@@ -12,10 +12,6 @@ loader_args:
 condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
-rank_notes: RISE 19 is the argmax of the 10-repeat BiCV sweep; ranks 14-22 sit within one
-  SEM of it, so it is the best-supported point in a flat interval rather than a resolved optimum.
-  CP 3 is the last rank before CORCONDIA flips sign (97.2% at 3, -238% at 4) in the sweep
-  conditioned on RISE 19.
 rise_rank: 19
 cp_ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 n_iter_max: 300

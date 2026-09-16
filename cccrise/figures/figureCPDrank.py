@@ -20,8 +20,6 @@ PANELS_PER_ROW = 3
 
 
 def _rank_axis(ax: plt.Axes) -> None:
-    """Label the shared x-axis. A CP rank is a count, so the ticks are whole
-    numbers -- matplotlib's default locator otherwise lands on 2.5 and 7.5."""
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_xlabel("CP Rank")
 

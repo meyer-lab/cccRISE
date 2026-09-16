@@ -687,11 +687,7 @@ def ccc_rise(
     cp_n_iter_max : int, default=4000
         Maximum number of iterations for the CP decomposition.
     cp_tol : float, default=1e-12
-        Convergence tolerance for the CP decomposition. Deliberately separate
-        from `tol`: an under-converged CP fit reads as degenerate to CORCONDIA,
-        so CP wants a budget that would be absurd for PARAFAC2. These are the
-        values `run_cpd_rank` selects the CP rank at, and on a tensor this
-        small the high cap is nearly free.
+        Convergence tolerance for the CP decomposition.
 
     Returns:
     --------

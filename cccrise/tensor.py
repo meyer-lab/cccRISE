@@ -126,8 +126,7 @@ def run_ccc_rise_workflow(
     cp_n_iter_max : int, default=4000
         Maximum number of iterations for the CP stage.
     cp_tol : float, default=1e-12
-        Convergence tolerance for the CP stage. Separate from `tol` because
-        the two stages want very different budgets -- see `ccc_rise`.
+        Convergence tolerance for the CP stage.
 
     Returns
     -------
