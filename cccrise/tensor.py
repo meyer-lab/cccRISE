@@ -98,6 +98,8 @@ def run_ccc_rise_workflow(
     complex_sep: str | None = None,
     doEmbedding: bool = True,
     svd_init: str = "svd",
+    cp_n_iter_max: int = 4000,
+    cp_tol: float = 1e-12,
 ) -> tuple[anndata.AnnData, float]:
     """
     Executes the complete cccRISE workflow: decomposition, standardization,
@@ -116,11 +118,16 @@ def run_ccc_rise_workflow(
     condition_column : str, default="sample"
         The column in `adata.obs` that defines the conditions.
     n_iter_max : int
-        Maximum number of iterations for the decomposition.
+        Maximum number of iterations for the RISE / PARAFAC2 stage.
     tol : float
-        Convergence tolerance for the decomposition.
+        Convergence tolerance for the RISE / PARAFAC2 stage.
     random_state : int | None
         Random seed for reproducibility.
+    cp_n_iter_max : int, default=4000
+        Maximum number of iterations for the CP stage.
+    cp_tol : float, default=1e-12
+        Convergence tolerance for the CP stage. Separate from `tol` because
+        the two stages want very different budgets -- see `ccc_rise`.
 
     Returns
     -------
@@ -142,6 +149,8 @@ def run_ccc_rise_workflow(
         complex_sep=complex_sep,
         lr_pairs=lr_pairs,
         svd_init=svd_init,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
     )
     (cp_weights, factors), projections = results
 

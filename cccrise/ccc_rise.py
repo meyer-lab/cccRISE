@@ -663,6 +663,8 @@ def ccc_rise(
     complex_sep: str | None = None,
     lr_pairs: pd.DataFrame | None = None,
     svd_init: str = "svd",
+    cp_n_iter_max: int = 4000,
+    cp_tol: float = 1e-12,
 ) -> tuple[tuple, float, pd.DataFrame]:
     """
     Perform RISE on an AnnData object, followed by
@@ -682,6 +684,14 @@ def ccc_rise(
         Rank for the CP decomposition. If None, defaults to `rise_rank`.
     random_state : int, optional
         Seed for reproducibility
+    cp_n_iter_max : int, default=4000
+        Maximum number of iterations for the CP decomposition.
+    cp_tol : float, default=1e-12
+        Convergence tolerance for the CP decomposition. Deliberately separate
+        from `tol`: an under-converged CP fit reads as degenerate to CORCONDIA,
+        so CP wants a budget that would be absurd for PARAFAC2. These are the
+        values `run_cpd_rank` selects the CP rank at, and on a tensor this
+        small the high cap is nearly free.
 
     Returns:
     --------
@@ -739,8 +749,8 @@ def ccc_rise(
     cp_weights, cp_factors = parafac(
         interaction_tensors,
         cp_rank,
-        n_iter_max=n_iter_max,
-        tol=tol,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
         init=svd_init,  # Use initialization
         svd="randomized_svd",
         normalize_factors=True,

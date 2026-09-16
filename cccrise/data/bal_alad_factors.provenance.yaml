@@ -18,6 +18,8 @@ rank_notes: RISE 19 is the argmax of the 10-repeat BiCV sweep; ranks 14-22 sit w
   conditioned on RISE 19.
 n_iter_max: 300
 tol: 1.0e-08
+cp_n_iter_max: 4000
+cp_tol: 1.0e-12
 random_state: 42
 complex_sep: '&'
 svd_init: svd
@@ -29,7 +31,7 @@ resulting_dims:
   lr_pairs: 513
 interaction_tensor_shape: [47, 19, 19, 513]
 r2x_pf2: 0.03774031504644859
-r2x_cp: 0.3260607498412421
+r2x_cp: 0.32606080721868025
 rank_selection:
   rise:
     rank: 19
@@ -40,5 +42,5 @@ rank_selection:
     sweep_csv: cccrise/data/cpd_rank_alad.csv
     notes: CORCONDIA sign flip at 4 (97.2% at 3, -238% at 4) in the sweep conditioned on RISE
       19.
-git_sha: 94531809dc91d796abf3f3a375b2541c9da19edf-dirty
-generated: '2026-09-16T03:06:41+00:00'
+git_sha: 5377c5a1dd8cd4d986280a65f29a182cfb39d74b-dirty
+generated: '2026-09-16T19:06:09+00:00'

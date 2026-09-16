@@ -72,6 +72,8 @@ def run_pipeline(
     cp_rank: int,
     n_iter_max: int = 300,
     tol: float = 1e-8,
+    cp_n_iter_max: int = 4000,
+    cp_tol: float = 1e-12,
     random_state: int | None = 42,
     complex_sep: str | None = "&",
     svd_init: str = "svd",
@@ -90,12 +92,21 @@ def run_pipeline(
     cp_rank : int
         Rank for the CP decomposition of the interaction tensor.
     n_iter_max : int, default=300
-        Maximum iterations for both fits.
+        Maximum iterations for the RISE stage.
     tol : float, default=1e-8
-        Convergence tolerance for both fits. `tol=1e-3` stops RISE after about
-        four ALS iterations with R2X still climbing -- R2X tolerates that,
-        factor structure does not -- so the published fit uses the same
-        settings the rank sweeps are run at.
+        Convergence tolerance for the RISE stage. `tol=1e-3` stops RISE after
+        about four ALS iterations with R2X still climbing -- R2X tolerates
+        that, factor structure does not.
+    cp_n_iter_max : int, default=4000
+        Maximum iterations for the CP stage.
+    cp_tol : float, default=1e-12
+        Convergence tolerance for the CP stage. CORCONDIA reads an
+        under-converged CP fit as degenerate, so CP wants a budget that would
+        be absurd for RISE; on a tensor this small the high cap is nearly free.
+
+        Each stage's defaults are the ones its own rank-selection sweep uses --
+        RISE from `run_rise_rank`, CP from `run_cpd_rank` -- so the published
+        model is converged the same way the fits its ranks were read off were.
     random_state : int, optional, default=42
         Seed for the decompositions.
     complex_sep : str, optional, default="&"
@@ -142,6 +153,8 @@ def run_pipeline(
         condition_column=spec.condition_column,
         n_iter_max=n_iter_max,
         tol=tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
         random_state=random_state,
         complex_sep=complex_sep,
         doEmbedding=False,
@@ -182,6 +195,8 @@ def run_pipeline(
         | {
             "n_iter_max": n_iter_max,
             "tol": tol,
+            "cp_n_iter_max": cp_n_iter_max,
+            "cp_tol": cp_tol,
             "random_state": random_state,
             "complex_sep": complex_sep,
             "svd_init": svd_init,
@@ -220,8 +235,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="CP (CPD) rank (default: the dataset registry's selected cp_rank).",
     )
-    parser.add_argument("--n-iter-max", type=int, default=300)
-    parser.add_argument("--tol", type=float, default=1e-8)
+    parser.add_argument(
+        "--n-iter-max", type=int, default=300, help="RISE fit iteration cap."
+    )
+    parser.add_argument("--tol", type=float, default=1e-8, help="RISE fit tolerance.")
+    parser.add_argument(
+        "--cp-n-iter-max", type=int, default=4000, help="CP fit iteration cap."
+    )
+    parser.add_argument("--cp-tol", type=float, default=1e-12, help="CP fit tolerance.")
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument(
@@ -258,6 +279,8 @@ def main(argv: list[str] | None = None) -> None:
         cp_rank=selected_cp_rank(spec, args.cp_rank),
         n_iter_max=args.n_iter_max,
         tol=args.tol,
+        cp_n_iter_max=args.cp_n_iter_max,
+        cp_tol=args.cp_tol,
         random_state=args.random_state,
         complex_sep=args.complex_sep,
         svd_init=args.svd_init,
