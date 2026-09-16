@@ -140,10 +140,18 @@ def top_lr_pairs_for_component(
     """
     Return the top `top_m` ligand-receptor pairs loading onto CPD component `cmp`.
 
-    Ranks by absolute loading magnitude rather than signed loading.
-    TODO: revisit once the communication-score sign ambiguity (#139) is
-    resolved -- at that point it may be correct to only take
-    positive-signed loadings.
+    Ranks by absolute loading magnitude rather than signed loading. This was
+    revisited after the communication-score sign ambiguity fix (#139, which
+    re-centers the score on real expression so a component's sign is no
+    longer a gauge artifact) landed: across the finalized ALAD fit, the large
+    majority of loadings are positive, and the negative ones are generally
+    noise-level (e.g. components 1-2: <1.5% of pairs negative, |loading|
+    <~0.001 vs a positive max of ~0.5-0.7, never surfacing in a
+    top-10-by-magnitude), so restricting to positive loadings would rarely
+    change anything -- but not always: component 3 has a real
+    negative-loading pair at rank 3 by magnitude (|loading|~0.23, comparable
+    to the top positive pairs). Abs-magnitude ranking is kept so that this
+    kind of genuine negative signal isn't silently dropped.
 
     Parameters
     ----------
