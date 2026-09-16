@@ -529,10 +529,12 @@ def server(input, output, session):
     # ------------------------------------------------------------------
     @render.ui
     def projections_body():
-        if not dataset().has_projections:
+        if not dataset().has_pacmap:
             return ui.markdown(
-                "Per-cell projections are unavailable for this dataset "
-                "(raw single-cell data not found)."
+                "Per-cell PaCMAP coordinates are unavailable for this "
+                "dataset's factors file. Regenerate it with "
+                "`cccrise.regenerate_factors` (or `add_cell_projections`) to "
+                "add them."
             )
         return ui.output_plot("projections_plot", height="500px")
 

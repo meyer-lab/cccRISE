@@ -67,7 +67,16 @@ DATASETS: dict[str, DatasetSpec] = {
 class LoadedDataset:
     adata: anndata.AnnData
     spec: DatasetSpec
+    #: Per-cell sender/receiver weights (`obsm["sc_B"]`/`obsm["rc_C"]`) are
+    #: stored -- drives the Component Explorer's per-cell views.
     has_projections: bool
+    #: 2D PaCMAP coordinates (`obsm["PaCMAP"]`) are stored -- drives the Cell
+    #: Projections tab specifically. `add_cell_projections` always writes
+    #: these together, but a factors file built another way (e.g. a fresh
+    #: factorization run through a different pipeline) could have one
+    #: without the other, so they're tracked separately rather than assuming
+    #: PaCMAP whenever per-cell weights are present.
+    has_pacmap: bool
 
 
 @lru_cache(maxsize=4)
@@ -78,7 +87,10 @@ def load_dataset(key: str) -> LoadedDataset:
     spec = DATASETS[key]
     adata = load_factors_to_anndata(spec.factors_path)
     has_projections = "sc_B" in adata.obsm
-    return LoadedDataset(adata=adata, spec=spec, has_projections=has_projections)
+    has_pacmap = "PaCMAP" in adata.obsm
+    return LoadedDataset(
+        adata=adata, spec=spec, has_projections=has_projections, has_pacmap=has_pacmap
+    )
 
 
 @dataclass(frozen=True)
