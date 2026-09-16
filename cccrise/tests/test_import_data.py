@@ -1,6 +1,5 @@
 """Unit tests for cccrise.import_data."""
 
-
 import anndata
 import numpy as np
 import pandas as pd
