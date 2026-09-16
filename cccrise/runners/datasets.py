@@ -60,6 +60,20 @@ class DatasetSpec:
     def logreg_bootstrap_weights_filename(self) -> str:
         return f"logreg_bootstrap_weights_{self.key}.csv"
 
+    def cell_obs_columns(self) -> list[str]:
+        """`.obs` columns to persist per-cell in the factors file (for the
+        Shiny explorer's per-cell projections)."""
+        return [
+            col
+            for col in (
+                "celltype",
+                self.celltype_column,
+                self.condition_column,
+                self.group_column,
+            )
+            if col
+        ]
+
 
 DATASETS: dict[str, DatasetSpec] = {
     "alad": DatasetSpec(

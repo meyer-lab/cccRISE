@@ -23,7 +23,7 @@ import numpy as np
 import xarray as xr
 
 from ..ccc_rise import validate_cp_rank
-from ..factors import factors_to_xarray, save_factors_netcdf
+from ..factors import add_cell_projections, factors_to_xarray, save_factors_netcdf
 from ..import_data import import_ligand_receptor_pairs
 from ..tensor import run_ccc_rise_workflow
 from ._cli import (
@@ -167,7 +167,10 @@ def run_pipeline(
         },
     )
 
-    print(f"4. Saving factor model to {output_path}...")
+    print("4. Attaching per-cell projections...")
+    ds = add_cell_projections(ds, adata, obs_columns=spec.cell_obs_columns())
+
+    print(f"5. Saving factor model to {output_path}...")
     save_factors_netcdf(ds, output_path)
 
     rank_selection = _rank_selection_block(
