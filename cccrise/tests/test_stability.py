@@ -81,7 +81,7 @@ def _lr_pairs() -> pd.DataFrame:
     )
 
 
-from typing import Any
+from typing import Any, cast
 
 
 def _pipeline_kwargs(**overrides: Any) -> dict[str, Any]:
@@ -372,8 +372,10 @@ def test_resample_conditions_without_patient_by_is_unaffected():
     a = resample_conditions(adata, "sample", random_seed=5)
     b = resample_conditions(adata, "sample", random_seed=5, patient_by=None)
 
+    a_obs = cast(pd.DataFrame, a.obs)
+    b_obs = cast(pd.DataFrame, b.obs)
     pd.testing.assert_frame_equal(
-        a.obs.reset_index(drop=True), b.obs.reset_index(drop=True)
+        a_obs.reset_index(drop=True), b_obs.reset_index(drop=True)
     )
 
 

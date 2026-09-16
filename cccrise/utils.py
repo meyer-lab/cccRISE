@@ -1,4 +1,5 @@
 import warnings
+from collections.abc import Sequence
 from typing import Any, cast
 
 import anndata
@@ -114,7 +115,9 @@ def _paired_conditions(
 
 
 def _carry_paired_samples(
-    drawn: np.ndarray, pair_of: dict[str, str], rng: np.random.Generator
+    drawn: np.ndarray | Sequence[str],
+    pair_of: dict[str, str],
+    rng: np.random.Generator,
 ) -> list[str]:
     """Carry in a paired condition's sibling sample, dropping one other random
     draw per carry so the resample's total size is unchanged.
@@ -129,14 +132,14 @@ def _carry_paired_samples(
     Each of the original draws is visited once, so a condition drawn twice
     triggers two independent carry-and-drop steps.
     """
-    drawn = list(drawn)
-    for cond in list(drawn):
+    result = list(drawn)
+    for cond in list(result):
         sibling = pair_of.get(cond)
         if sibling is None:
             continue
-        drawn.append(sibling)
-        drawn.pop(rng.integers(0, len(drawn)))
-    return drawn
+        result.append(sibling)
+        result.pop(rng.integers(0, len(result)))
+    return result
 
 
 def resample_conditions(
