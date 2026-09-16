@@ -153,14 +153,11 @@ def test_runner_cli_parser_and_paths():
             "500",
             "--communication-score",
             "expression_product",
-            "--backend",
-            "cpu",
         ]
     )
     assert args.dataset == "alad"
     assert args.rise_rank == 25
     assert args.n_perms == 500
-    assert args.backend == "cpu"
 
     dummy_spec = DatasetSpec(
         key="test_cohort",
