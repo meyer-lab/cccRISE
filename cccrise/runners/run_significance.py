@@ -41,7 +41,7 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, relpath, write_metadata
 
 HEADER = """\
@@ -74,7 +74,7 @@ def run_significance(
     tol: float = 1e-6,
     random_state: int = 42,
     output_path: Path | None = None,
-    output_root: Path = DATA_DIR,
+    output_root: Path | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Path]]:
     """Fit RISE, run permutation significance testing, and write output tables.
 
@@ -108,8 +108,11 @@ def run_significance(
         Seed for permutations and RISE fitting.
     output_path : Path, optional
         Custom path for the primary LR significance CSV.
-    output_root : Path, default=DATA_DIR
-        Directory for runner outputs.
+    output_root : Path, optional
+        Directory for runner outputs. Defaults to `DATA_DIR` for
+        `communication_score="expression_product"` (the canonical location
+        figures read), or `alt_score_methods/<communication_score>/` for any
+        other score.
 
     Returns
     -------
@@ -120,6 +123,7 @@ def run_significance(
         spec, group_column, control_label, other_label
     )
 
+    output_root = output_root or scoring_output_dir(communication_score)
     paths = output_paths(spec, output_root)
     if output_path is not None:
         paths["lr"] = output_path
@@ -300,8 +304,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=DATA_DIR,
-        help=f"Root directory for outputs (default: {DATA_DIR}).",
+        default=None,
+        help="Root directory for outputs (default: DATA_DIR for "
+        "expression_product, alt_score_methods/<communication-score>/ "
+        "otherwise).",
     )
     return parser
 
@@ -311,6 +317,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
     spec = DATASETS[args.dataset]
+    output_root = args.output_root or scoring_output_dir(args.communication_score)
 
     run_significance(
         spec=spec,
@@ -327,9 +334,9 @@ def main(argv: list[str] | None = None) -> None:
         tol=args.tol,
         random_state=args.random_state,
         output_path=resolve_output(
-            args.output, args.output_root, spec.significance_lr_filename()
+            args.output, output_root, spec.significance_lr_filename()
         ),
-        output_root=args.output_root,
+        output_root=output_root,
     )
 
 

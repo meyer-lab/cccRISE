@@ -421,7 +421,11 @@ def test_standardize_cc_pf2_preserves_tensor():
         np.testing.assert_allclose(norms, np.ones(rank), rtol=1e-5)
 
 
-def test_full_ccc_rise_workflow_synthetic():
+@pytest.mark.parametrize(
+    "communication_score",
+    ["expression_product", "expression_mean", "expression_gmean", "expression_hill"],
+)
+def test_full_ccc_rise_workflow_synthetic(communication_score):
     n_cells = 30
     n_genes = 6
     rise_rank = 3
@@ -458,6 +462,7 @@ def test_full_ccc_rise_workflow_synthetic():
         n_iter_max=30,
         tol=1e-4,
         doEmbedding=False,
+        communication_score=communication_score,
     )
 
     assert isinstance(r2x, float)

@@ -98,6 +98,8 @@ def run_ccc_rise_workflow(
     complex_sep: str | None = None,
     doEmbedding: bool = True,
     svd_init: str = "svd",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
 ) -> tuple[anndata.AnnData, float]:
     """
     Executes the complete cccRISE workflow: decomposition, standardization,
@@ -121,6 +123,8 @@ def run_ccc_rise_workflow(
         Convergence tolerance for the decomposition.
     random_state : int | None
         Random seed for reproducibility.
+    communication_score, hill_k : str, float
+        Communication-tensor options; see `ccc_rise.calc_communication_score`.
 
     Returns
     -------
@@ -142,6 +146,8 @@ def run_ccc_rise_workflow(
         complex_sep=complex_sep,
         lr_pairs=lr_pairs,
         svd_init=svd_init,
+        communication_score=communication_score,
+        hill_k=hill_k,
     )
     (cp_weights, factors), projections = results
 

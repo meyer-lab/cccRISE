@@ -663,6 +663,8 @@ def ccc_rise(
     complex_sep: str | None = None,
     lr_pairs: pd.DataFrame | None = None,
     svd_init: str = "svd",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
 ) -> tuple[tuple, float, pd.DataFrame]:
     """
     Perform RISE on an AnnData object, followed by
@@ -682,6 +684,8 @@ def ccc_rise(
         Rank for the CP decomposition. If None, defaults to `rise_rank`.
     random_state : int, optional
         Seed for reproducibility
+    communication_score, hill_k : str, float
+        Communication-tensor options; see `ccc_rise.calc_communication_score`.
 
     Returns:
     --------
@@ -726,6 +730,8 @@ def ccc_rise(
         complex_sep=complex_sep,
         lr_pairs=lr_pairs,
         gene_means=gene_means,
+        communication_score=communication_score,
+        hill_k=hill_k,
     )
 
     cp_rank = cp_rank if cp_rank is not None else rise_rank

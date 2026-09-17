@@ -38,7 +38,7 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -61,6 +61,8 @@ def run_anova_bootstrap(
     n_iter_max: int = 100,
     tol: float = 1e-3,
     complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
     random_state: int = 42,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
@@ -93,13 +95,15 @@ def run_anova_bootstrap(
         `utils.resample_conditions`.
     n_iter_max, tol
         Fitting controls for the RISE and CP fits.
-    complex_sep : str, optional
-        Communication-tensor option; see `ccc_rise.calc_communication_score`.
+    complex_sep, communication_score, hill_k : str | None, str, float
+        Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=42
         Seed for the full-cohort fit; replicate `b` uses
         ``replicate_seed(random_state, b)`` (``random_state * 1000 + b + 1``).
     output_path : Path, optional
-        CSV destination; defaults to the registry's anova bootstrap filename.
+        CSV destination; defaults to the registry's anova bootstrap filename
+        under `DATA_DIR` for `communication_score="expression_product"`, or
+        `alt_score_methods/<communication_score>/` for any other score.
 
     Returns
     -------
@@ -110,7 +114,9 @@ def run_anova_bootstrap(
         spec, group_column, control_label, other_label
     )
 
-    output_path = output_path or (DATA_DIR / spec.anova_bootstrap_filename())
+    output_path = output_path or (
+        scoring_output_dir(communication_score) / spec.anova_bootstrap_filename()
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -146,6 +152,8 @@ def run_anova_bootstrap(
         cp_n_iter_max=n_iter_max,
         cp_tol=tol,
         complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
         random_state=random_state,
     )
     print(f"   Reference CP R2X: {reference['r2x_cp']:.4f}")
@@ -167,6 +175,8 @@ def run_anova_bootstrap(
         cp_n_iter_max=n_iter_max,
         cp_tol=tol,
         complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
         stratify=stratify,
         random_state=random_state,
     )
@@ -205,6 +215,8 @@ def run_anova_bootstrap(
             "n_iter_max": n_iter_max,
             "tol": tol,
             "complex_sep": complex_sep,
+            "communication_score": communication_score,
+            "hill_k": hill_k,
             "random_state": random_state,
             "match_mode_weights": {"3": 1.0},
             "reference_r2x_cp": float(reference["r2x_cp"]),
@@ -271,6 +283,24 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--n-iter-max", type=int, default=100)
     parser.add_argument("--tol", type=float, default=1e-3)
     parser.add_argument("--complex-sep", type=str, default="&")
+    parser.add_argument(
+        "--communication-score",
+        type=str,
+        default="expression_product",
+        choices=[
+            "expression_product",
+            "expression_mean",
+            "expression_gmean",
+            "expression_hill",
+        ],
+        help="Scoring function for ligand-receptor interactions (default: expression_product).",
+    )
+    parser.add_argument(
+        "--hill-k",
+        type=float,
+        default=0.5,
+        help="Hill function half-saturation constant (default: 0.5).",
+    )
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
         "--output",
@@ -298,9 +328,13 @@ def main(argv: list[str] | None = None) -> None:
         n_iter_max=args.n_iter_max,
         tol=args.tol,
         complex_sep=args.complex_sep,
+        communication_score=args.communication_score,
+        hill_k=args.hill_k,
         random_state=args.random_state,
         output_path=resolve_output(
-            args.output, DATA_DIR, spec.anova_bootstrap_filename()
+            args.output,
+            scoring_output_dir(args.communication_score),
+            spec.anova_bootstrap_filename(),
         ),
     )
 

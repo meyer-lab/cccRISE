@@ -57,7 +57,7 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, write_metadata
 
 #: Every axis the runner knows how to run, in report order.
@@ -108,14 +108,18 @@ def run_component_stability(
     random_state : int, default=0
         Base seed for the reference fit and the replicates.
     output_path : Path, optional
-        CSV destination; defaults to the registry's stability filename.
+        CSV destination; defaults to the registry's stability filename under
+        `DATA_DIR` for `communication_score="expression_product"`, or
+        `alt_score_methods/<communication_score>/` for any other score.
 
     Returns
     -------
     tuple[pd.DataFrame, Path, Path]
         The long per-component table, the CSV path, and the sidecar path.
     """
-    output_path = output_path or (DATA_DIR / spec.stability_filename())
+    output_path = output_path or (
+        scoring_output_dir(communication_score) / spec.stability_filename()
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -343,7 +347,11 @@ def main(argv: list[str] | None = None) -> None:
         communication_score=args.communication_score,
         hill_k=args.hill_k,
         random_state=args.random_state,
-        output_path=resolve_output(args.output, DATA_DIR, spec.stability_filename()),
+        output_path=resolve_output(
+            args.output,
+            scoring_output_dir(args.communication_score),
+            spec.stability_filename(),
+        ),
     )
 
 

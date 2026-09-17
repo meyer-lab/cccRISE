@@ -32,7 +32,7 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATA_DIR, DATASETS, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, relpath, write_metadata
 
 HEADER = """\
@@ -75,6 +75,8 @@ def run_pipeline(
     random_state: int | None = 42,
     complex_sep: str | None = "&",
     svd_init: str = "svd",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
     output_path: Path | None = None,
     rise_rank_notes: str | None = None,
     cpd_rank_notes: str | None = None,
@@ -99,9 +101,13 @@ def run_pipeline(
         Separator for multimeric complexes in the ligand-receptor annotation.
     svd_init : str, default="svd"
         Initialization for the CP fit.
+    communication_score, hill_k : str, float
+        Communication-tensor options; see `ccc_rise.calc_communication_score`.
     output_path : Path, optional
-        NetCDF destination. Defaults to the dataset's canonical factors path,
-        which is what the figure modules load.
+        NetCDF destination. Defaults to the dataset's canonical factors path
+        for `communication_score="expression_product"` (what the figure
+        modules load), or `alt_score_methods/<communication_score>/` for any
+        other score.
     rise_rank_notes, cpd_rank_notes : str, optional
         Rationale for each chosen rank, written into the provenance file.
 
@@ -111,7 +117,9 @@ def run_pipeline(
         The fitted AnnData, the factor Dataset, the ``.nc`` path, and the
         sidecar path.
     """
-    output_path = output_path or spec.factors_path()
+    output_path = output_path or (
+        scoring_output_dir(communication_score) / spec.factors_filename
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -143,6 +151,8 @@ def run_pipeline(
         complex_sep=complex_sep,
         doEmbedding=False,
         svd_init=svd_init,
+        communication_score=communication_score,
+        hill_k=hill_k,
     )
     r2x_pf2 = adata.uns.get("r2x_pf2")
     print(f"   CP R2X: {r2x_cp:.4f}")
@@ -182,6 +192,8 @@ def run_pipeline(
             "random_state": random_state,
             "complex_sep": complex_sep,
             "svd_init": svd_init,
+            "communication_score": communication_score,
+            "hill_k": hill_k,
             "lr_pairs_annotated": len(lr_pairs),
             "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=n_lr_used),
             "interaction_tensor_shape": [
@@ -213,6 +225,24 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument(
         "--svd-init", type=str, default="svd", choices=["svd", "random"]
+    )
+    parser.add_argument(
+        "--communication-score",
+        type=str,
+        default="expression_product",
+        choices=[
+            "expression_product",
+            "expression_mean",
+            "expression_gmean",
+            "expression_hill",
+        ],
+        help="Scoring function for ligand-receptor interactions (default: expression_product).",
+    )
+    parser.add_argument(
+        "--hill-k",
+        type=float,
+        default=0.5,
+        help="Hill function half-saturation constant (default: 0.5).",
     )
     parser.add_argument(
         "--output",
@@ -248,7 +278,13 @@ def main(argv: list[str] | None = None) -> None:
         random_state=args.random_state,
         complex_sep=args.complex_sep,
         svd_init=args.svd_init,
-        output_path=resolve_output(args.output, DATA_DIR, spec.factors_filename),
+        communication_score=args.communication_score,
+        hill_k=args.hill_k,
+        output_path=resolve_output(
+            args.output,
+            scoring_output_dir(args.communication_score),
+            spec.factors_filename,
+        ),
         rise_rank_notes=args.rise_rank_notes,
         cpd_rank_notes=args.cpd_rank_notes,
     )

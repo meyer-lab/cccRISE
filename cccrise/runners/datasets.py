@@ -17,6 +17,26 @@ from ..import_data import IBD_FULL_COHORT_IVCSC, import_alad, import_ibdverse
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
+#: `communication_score` value every runner defaults to; its results are the
+#: ones manuscript figures and interpretation read, so they stay in `DATA_DIR`
+#: instead of the per-method subdirectory `scoring_output_dir` uses for the rest.
+DEFAULT_COMMUNICATION_SCORE = "expression_product"
+
+ALT_SCORE_METHODS_DIR = "alt_score_methods"
+
+
+def scoring_output_dir(communication_score: str) -> Path:
+    """Where a runner should default its output for `communication_score`.
+
+    The default score's results are canonical and live in `DATA_DIR`; every
+    other score's results land in their own subdirectory under
+    `DATA_DIR/alt_score_methods/` so a scoring-method sweep can't collide with
+    the canonical files or with each other.
+    """
+    if communication_score == DEFAULT_COMMUNICATION_SCORE:
+        return DATA_DIR
+    return DATA_DIR / ALT_SCORE_METHODS_DIR / communication_score
+
 
 @dataclass(frozen=True)
 class DatasetSpec:
