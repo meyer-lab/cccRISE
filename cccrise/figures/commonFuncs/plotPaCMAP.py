@@ -47,9 +47,24 @@ def _to_hex(arr):
     return [matplotlib.colors.to_hex(c) for c in arr]
 
 
-def ds_show(result, ax):
+def ds_show(result, ax, canvas: ds.Canvas):
+    """Draw a shaded datashader aggregation, mapped onto `canvas`'s actual
+    data coordinates.
+
+    `imshow` defaults to plain pixel coordinates (0..plot_width,
+    0..plot_height) when given no `extent`, leaving the axes disconnected
+    from the real x/y values -- harmless for a plot nothing else is drawn
+    on (e.g. a PaCMAP embedding, whose orientation carries no meaning), but
+    wrong for anything overlaid afterward in data coordinates (e.g. a
+    threshold line), which ends up pinned near an axis edge instead of at
+    its actual value.
+    """
     result = tf.set_background(result, "white")
-    ax.imshow(result.to_pil())
+    assert canvas.x_range is not None
+    assert canvas.y_range is not None
+    x0, x1 = canvas.x_range
+    y0, y1 = canvas.y_range
+    ax.imshow(result.to_pil(), extent=(x0, x1, y0, y1), origin="upper")
 
 
 def _plot_shaded_pacmap(
@@ -67,7 +82,7 @@ def _plot_shaded_pacmap(
         min_alpha=255,
     )
 
-    ds_show(result, ax)
+    ds_show(result, ax, canvas)
 
     sm = ScalarMappable(norm=matplotlib.colors.Normalize(*span), cmap=cmap)
     plt.colorbar(sm, ax=ax)
@@ -211,7 +226,7 @@ def plot_categorical_scatter(
         min_alpha=255,
     )
 
-    ds_show(result, ax)
+    ds_show(result, ax, canvas)
     ax.legend(handles=legend_elements)
 
 
