@@ -529,32 +529,6 @@ def plot_pair_lr_factors(X: anndata.AnnData, cmp1: int, cmp2: int, ax: Axes):
     ax.set(title="LR Factors")
 
 
-def plot_logreg_weights(
-    weights: np.ndarray, ax: Axes, highlight_cmp: int | None = None
-) -> None:
-    """Bar plot of one cross-validated logistic regression's per-component
-    weights (e.g. `fit_logreg_weights`'s output), with the component
-    currently being viewed elsewhere picked out in a different color so it
-    can be read straight off this summary instead of cross-referencing a
-    separate table.
-    """
-    components = np.arange(1, weights.size + 1)
-    colors = ["0.55"] * weights.size
-    if highlight_cmp is not None and 1 <= highlight_cmp <= weights.size:
-        colors[highlight_cmp - 1] = sns.color_palette("colorblind")[3]
-
-    ax.bar(components, weights, color=colors)
-    ax.axhline(0.0, color="0.3", lw=0.6)
-    ax.set_xticks(components)
-    ax.set(
-        xlabel="Component",
-        ylabel="LogReg Weight",
-        title="Logistic Regression Weights by Component",
-    )
-    ymax = float(np.max(np.abs(weights))) * 1.15 if weights.size else 1.0
-    ax.set_ylim(-ymax or -1.0, ymax or 1.0)
-
-
 def plot_interaction_heatmap(
     X: anndata.AnnData,
     cmp: int,

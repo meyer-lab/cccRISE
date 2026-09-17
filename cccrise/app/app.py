@@ -5,12 +5,12 @@ Run with:
     shiny run --host 0.0.0.0 --port 8000 --reload cccrise/app/app.py
 """
 
-import anndata
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from shiny import App, reactive, render, ui
 
+from cccrise.anova import run_saved_factors_anova
 from cccrise.app.data import DATASETS, load_dataset, load_raw_dataset
 from cccrise.app.lr_pairs import parse_lr_pairs
 from cccrise.figures.commonFuncs.plotFactors import (
@@ -18,14 +18,11 @@ from cccrise.figures.commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_interaction_heatmap,
-    plot_logreg_weights,
     plot_lr_factor_rank,
     plot_lr_factors,
 )
 from cccrise.figures.commonFuncs.plotGeneral import (
-    binarize_group,
     celltype_grid_shape,
-    get_sample_to_group,
     plot_wc_histogram_grid,
 )
 from cccrise.figures.commonFuncs.plotPaCMAP import (
@@ -33,8 +30,8 @@ from cccrise.figures.commonFuncs.plotPaCMAP import (
     plot_wc_pacmap,
     plot_wc_per_celltype,
 )
-from cccrise.logreg import fit_logreg_weights
-from cccrise.utils import celltype_component_association, correct_conditions
+from cccrise.figures.figureAnova import plot_association_effect_sizes
+from cccrise.utils import celltype_component_association
 
 DATASET_CHOICES = {key: spec.label for key, spec in DATASETS.items()}
 
@@ -47,45 +44,42 @@ LR_HIGHLIGHT_CHOICES = {
 }
 
 
-def _fit_logreg_result(spec) -> tuple[np.ndarray | None, str | None]:
-    """One dataset's logistic regression weights (or why they're missing).
+def _fit_anova_result(spec) -> tuple[pd.DataFrame | None, str | None]:
+    """One dataset's per-component ANOVA of condition loading against its
+    case/control grouping (or why it's unavailable).
 
-    Mirrors figure4.py's read-depth-corrected pipeline exactly, using the
-    raw dataset rather than the lightweight per-cell-projections factors
-    used elsewhere in the app: the uncorrected condition factor matrix
-    leaves enough confounding read-depth variation that the CV-selected L1
-    penalty zeroes out every component.
+    Uses `run_saved_factors_anova` exactly as `figureAnova.py` does: it reads
+    condition/group metadata and factor matrices straight off the dataset's
+    own per-cell obs (already reconstructed from the `.nc` file by
+    `load_dataset`), so unlike the logistic regression it replaced, this
+    needs no raw single-cell data and no read-depth correction.
     """
     if spec.control_label is None or spec.group_col is None:
         return None, "no case/control grouping is configured for this dataset."
-    raw = load_raw_dataset(spec.key)
-    if raw.adata is None:
-        return None, raw.error or "raw dataset unavailable."
+    ds = load_dataset(spec.key)
+    if not ds.has_projections:
+        return None, "per-cell metadata needed to derive the group label is unavailable."
     try:
-        sample_to_group = get_sample_to_group(
-            raw.adata, spec.condition_col, spec.group_col
+        df = run_saved_factors_anova(
+            factors=ds.adata,
+            condition_column=spec.condition_col,
+            group_column=spec.group_col,
+            control_label=spec.control_label,
+            other_label=spec.other_label,
+            correction="fdr_bh",
         )
-        binary = binarize_group(
-            sample_to_group, spec.control_label, spec.control_label, spec.other_label
-        )
-        corrected_a = correct_conditions(raw.adata)
-        factors_only = anndata.AnnData(
-            X=np.zeros((corrected_a.shape[0], 0)), uns={"A": corrected_a}
-        )
-        weights = fit_logreg_weights(factors_only, binary, scoring="roc_auc")
     except ValueError as exc:
         return None, str(exc)
-    return weights, None
+    return df, None
 
 
-# There's no saved logreg result to load -- every fit is ad hoc -- so it's
-# run once per dataset here, when the app boots, rather than lazily
-# per-session: unlike the factorization (loaded, never recomputed, from
-# each dataset's `.nc` file) this needs to reflect whatever the current
-# raw single-cell data says on every restart. Also warms `load_raw_dataset`'s
-# cache for the LR interaction heatmap, which needs the same raw data.
-LOGREG_RESULTS: dict[str, tuple[np.ndarray | None, str | None]] = {
-    key: _fit_logreg_result(spec) for key, spec in DATASETS.items()
+# There's no saved ANOVA result to load -- like the logistic regression it
+# replaced, every fit is ad hoc -- so it's run once per dataset here, when
+# the app boots, rather than lazily per-session: unlike the factorization
+# (loaded, never recomputed, from each dataset's `.nc` file) this needs to
+# reflect whatever the current data says on every restart.
+ANOVA_RESULTS: dict[str, tuple[pd.DataFrame | None, str | None]] = {
+    key: _fit_anova_result(spec) for key, spec in DATASETS.items()
 }
 
 
@@ -228,35 +222,37 @@ def server(input, output, session):
         pairs = parse_lr_pairs(np.asarray(ds.adata.uns["lr_pairs"]))
         return [p for p in pairs if p.is_simple_receptor]
 
-    def logreg_result() -> tuple[np.ndarray | None, str | None]:
-        # Computed once at boot for every dataset -- see LOGREG_RESULTS --
+    def anova_result() -> tuple[pd.DataFrame | None, str | None]:
+        # Computed once at boot for every dataset -- see ANOVA_RESULTS --
         # not re-fit per session or per input change.
-        return LOGREG_RESULTS.get(
-            input.dataset(), (None, "no logistic regression result for this dataset.")
+        return ANOVA_RESULTS.get(
+            input.dataset(), (None, "no ANOVA result for this dataset.")
         )
 
     @render.ui
-    def logreg_weights_ui():
-        _, error = logreg_result()
+    def anova_associations_ui():
+        _, error = anova_result()
         if error is not None:
-            return ui.markdown(f"_Logistic regression weights unavailable: {error}_")
+            return ui.markdown(f"_ANOVA component associations unavailable: {error}_")
         return ui.TagList(
-            ui.output_plot("logreg_weights_plot", height="220px"),
+            ui.output_plot("anova_associations_plot", height="260px"),
             ui.markdown(
-                "_Fit once at app startup (read-depth corrected, as in the "
-                f"manuscript figures) on {dataset().spec.control_label!r} vs. "
-                f"{dataset().spec.other_label!r}; not re-fit while the app is "
-                "running._"
+                "_Fit once at app startup, as in the manuscript figures, on "
+                f"{dataset().spec.control_label!r} vs. "
+                f"{dataset().spec.other_label!r}, FDR-adjusted across "
+                "components; not re-fit while the app is running._"
             ),
         )
 
     @render.plot
-    def logreg_weights_plot():
-        weights, _ = logreg_result()
-        if weights is None:
+    def anova_associations_plot():
+        df, _ = anova_result()
+        if df is None:
             return None
-        fig, ax = plt.subplots(figsize=(10, 2.4), layout="tight")
-        plot_logreg_weights(weights, ax, highlight_cmp=input.component())
+        fig, ax = plt.subplots(figsize=(10, 2.8), layout="tight")
+        plot_association_effect_sizes(df, ax)
+        cmp = input.component()
+        ax.axvline(cmp - 1, color="0.15", ls="--", lw=1.2, zorder=0)
         return fig
 
     @render.ui
@@ -269,6 +265,9 @@ def server(input, output, session):
             )
 
         sections = [
+            ui.h4("Component Association (ANOVA)"),
+            ui.output_ui("anova_associations_ui"),
+            ui.hr(),
             ui.h4("Top Ligand-Receptor Pairs"),
             ui.row(
                 ui.column(
@@ -295,7 +294,6 @@ def server(input, output, session):
                     ),
                 ),
             ),
-            ui.output_ui("logreg_weights_ui"),
             scrollable_plot("lr_rank_curve_plot", 1100, 450),
             ui.hr(),
             ui.h4("Per-Cell-Type Distributions"),
