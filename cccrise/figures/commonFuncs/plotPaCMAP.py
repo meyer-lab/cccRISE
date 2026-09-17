@@ -124,39 +124,6 @@ def make_wc_pacmap_figure(
     return f
 
 
-def make_celltype_condition_pacmap_figure(
-    h5ad_path: str,
-    celltype_col: str,
-    condition_col: str,
-    sample_col: str | None = None,
-) -> Figure:
-    """Build a figure of PaCMAPs colored by cell type, by condition, and
-    optionally by sample."""
-    ax, f = getSetup((6, 6), (2, 2))
-    subplotLabel(ax)
-
-    X = anndata.read_h5ad(h5ad_path)
-
-    celltype_counts = X.obs[celltype_col].value_counts()
-    print("Cell type counts:\n", celltype_counts)
-
-    pal = sns.color_palette(palette="Set3")
-    pal = pal.as_hex()
-    plot_labels_pacmap(X, labelType=celltype_col, ax=ax[0], color_key=pal)
-
-    pal = sns.color_palette("Set2")
-    pal = [pal[0], pal[1], pal[2]]
-    pal = [
-        f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}" for r, g, b in pal
-    ]
-    plot_labels_pacmap(X, labelType=condition_col, ax=ax[1], color_key=pal)
-
-    if sample_col is not None:
-        plot_labels_pacmap(X, labelType=sample_col, ax=ax[2])
-
-    return f
-
-
 def plot_labels_pacmap(
     X: anndata.AnnData,
     labelType: str,
@@ -202,37 +169,6 @@ def plot_labels_pacmap(
     ds_show(result, ax)
     ax.legend(handles=legend_elements)
     ax = assign_labels(ax)
-
-
-def plot_wc_per_celltype(
-    X: anndata.AnnData,
-    cmp: int,
-    ax: Axes,
-    outliers: bool = False,
-    cellType="cell_type",
-    factor_matrix: str | None = None,
-):
-    """Boxplot of weighted cells for one component across cell types"""
-    if factor_matrix == "B":
-        factor = "sc_B"
-    elif factor_matrix == "C":
-        factor = "rc_C"
-    sc_factor = X.obsm[factor]
-    XX = sc_factor[:, cmp - 1]
-    cmpName = f"Cmp. {cmp}"
-
-    df = pd.DataFrame({cmpName: XX, "Cell Type": X.obs[cellType].to_numpy()})
-
-    sns.boxplot(
-        data=df,
-        x=cmpName,
-        y="Cell Type",
-        showfliers=outliers,
-        ax=ax,
-    )
-    maxvalue = np.max(np.abs(ax.get_xticks()))
-    ax.set(xticks=np.linspace(-maxvalue, maxvalue, num=5), xlabel="WC Weight")
-    ax.set_title(cmpName)
 
 
 def assign_labels(ax):

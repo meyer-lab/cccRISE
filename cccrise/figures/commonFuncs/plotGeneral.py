@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.axes import Axes
+from scipy.stats import f_oneway, ttest_ind
 
 
 def get_sample_to_group(
@@ -239,3 +240,93 @@ def get_alad_patient_factors_df(
 
     factor_df = pd.DataFrame(factor_df_list)
     return patient_info_df, factor_df
+
+
+def format_p_value(p_value: float) -> str:
+    """Format a p-value for display, flagging p < 0.05 with a trailing asterisk."""
+    if p_value < 0.001:
+        return "p < 0.001"
+    if p_value < 0.01:
+        return "p < 0.01"
+    if p_value < 0.05:
+        return f"p = {p_value:.3f}*"
+    return f"p = {p_value:.3f}"
+
+
+def run_group_anova(
+    data: pd.DataFrame,
+    group_col: str,
+    value_col: str = "factor_value",
+    min_group_size: int = 2,
+) -> dict | None:
+    """Run a one-way ANOVA of value_col across the categories of group_col.
+
+    Returns None if fewer than two categories have at least min_group_size
+    non-null observations.
+    """
+    subset = data.dropna(subset=[group_col])
+    if subset.empty:
+        return None
+
+    groups, group_names, group_sizes = [], [], []
+    for cat in subset[group_col].unique():
+        group_data = subset.loc[subset[group_col] == cat, value_col].dropna()
+        if len(group_data) >= min_group_size:
+            groups.append(group_data)
+            group_names.append(cat)
+            group_sizes.append(len(group_data))
+
+    if len(groups) < 2:
+        return None
+
+    f_stat, p_value = f_oneway(*groups)
+    return {
+        "f_stat": f_stat,
+        "p_value": p_value,
+        "groups": group_names,
+        "group_sizes": group_sizes,
+        "total_n": sum(group_sizes),
+    }
+
+
+def run_pairwise_ttest(
+    data: pd.DataFrame,
+    group_col: str,
+    value_col: str = "factor_value",
+    min_group_size: int = 2,
+) -> dict | None:
+    """Run a two-sample t-test between exactly two categories of group_col.
+
+    Returns None unless group_col has exactly two categories with at least
+    min_group_size non-null observations each.
+    """
+    categories = data[group_col].dropna().unique()
+    if len(categories) != 2:
+        return None
+
+    group1_data = data.loc[data[group_col] == categories[0], value_col].dropna()
+    group2_data = data.loc[data[group_col] == categories[1], value_col].dropna()
+    if len(group1_data) < min_group_size or len(group2_data) < min_group_size:
+        return None
+
+    t_stat, p_value = ttest_ind(group1_data, group2_data)
+    return {
+        "t_stat": t_stat,
+        "p_value": p_value,
+        "group1": categories[0],
+        "group2": categories[1],
+        "n1": len(group1_data),
+        "n2": len(group2_data),
+    }
+
+
+def annotate_boxplot_n(ax: Axes, n: int, fontsize: int = 8) -> None:
+    """Add a sample-size annotation to the top-left corner of a boxplot axis."""
+    ax.text(
+        0.02,
+        0.98,
+        f"n = {n}",
+        transform=ax.transAxes,
+        verticalalignment="top",
+        fontsize=fontsize,
+    )

@@ -64,6 +64,9 @@ dev = [
     "pre-commit>=4.0",
     "panache-cli>=3.10.0",
     "vale>=3.21.0",
+    "vulture>=2.16",
+    "radon>=6.0.1",
+    "xenon>=0.9.3",
 ]
 docs = [
     "sphinx>=7.0",

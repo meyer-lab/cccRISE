@@ -1,3 +1,5 @@
+from typing import Any
+
 import anndata
 import numpy as np
 import pandas as pd
@@ -15,6 +17,7 @@ from .ccc_rise import (
     pseudobulk_cp_decomposition,
     save_ccc_rise_results,
     standardize_cc_pf2,
+    validate_cp_rank,
 )
 from .import_data import add_cond_idxs, condition_matrices, import_ligand_receptor_pairs
 from .utils import pseudobulk_X, resample_tensor
@@ -302,6 +305,101 @@ def calculate_interaction_tensor(
     )
 
     return interaction_tensor, filtered_lr_pairs
+
+
+def fit_rise_cp_pipeline(
+    adata: anndata.AnnData,
+    lr_pairs: pd.DataFrame,
+    condition_column: str,
+    rise_rank: int,
+    cp_rank: int,
+    rise_n_iter_max: int = 100,
+    rise_tol: float = 1e-6,
+    cp_n_iter_max: int = 100,
+    cp_tol: float = 1e-3,
+    init: str = "svd",
+    svd: str = "randomized_svd",
+    complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    random_state: int | None = None,
+) -> dict[str, Any]:
+    """Run RISE, build the communication tensor, and fit CP over `adata` at
+    fixed ranks -- the model-fitting core shared by every bootstrap/stability
+    pipeline (`stability.component_stability.fit_stability_pipeline`,
+    `stability.logreg_stability.fit_logreg_pipeline`), each of which
+    additionally derives its own downstream summary from the fit.
+
+    `adata` is written into by `parafac2.store_pf2`, so callers must hand
+    over a copy they do not need pristine -- which is what the resamplers
+    return.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        Data to fit: the full cohort for the reference pass, a resampled
+        copy for a replicate.
+    lr_pairs : pd.DataFrame
+        Ligand-receptor pairs to score.
+    condition_column : str
+        Column in `obs` holding the condition (patient) identity.
+    rise_rank, cp_rank : int
+        Ranks for the RISE and CP stages.
+    rise_n_iter_max, rise_tol : int, float
+        Fitting controls for RISE.
+    cp_n_iter_max, cp_tol, init, svd
+        Fitting controls for CP.
+    complex_sep, communication_score, hill_k
+        Communication-tensor options; see `ccc_rise.calc_communication_score`.
+    random_state : int | None, optional
+        Seed for the RISE fit and the CP fit.
+
+    Returns
+    -------
+    dict[str, Any]
+        Keys 'adata' (written into by RISE), 'tensor', 'filtered_lr_pairs',
+        'cp_weights', 'cp_factors' (standardized/sign-flipped), 'r2x_rise',
+        'r2x_cp'.
+    """
+    adata = add_cond_idxs(adata, condition_column)
+    adata, r2x_rise = rise_store_r2x(
+        adata,
+        rank=rise_rank,
+        n_iter_max=rise_n_iter_max,
+        tolerance=rise_tol,
+        random_state=random_state,
+    )
+    tensor, filtered_lr_pairs = calculate_interaction_tensor(
+        adata,
+        lr_pairs,
+        complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
+    )
+    validate_cp_rank(cp_rank, tensor.shape)
+
+    cp_weights, cp_factors = parafac(
+        tensor,
+        cp_rank,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
+        init=init,
+        svd=svd,
+        normalize_factors=True,
+        random_state=random_state,
+    )
+    r2x_cp = calculate_r2x(cp_weights, cp_factors, tensor)
+    cp_weights, cp_factors = standardize_cc_pf2(cp_weights, cp_factors)
+
+    return {
+        "adata": adata,
+        "tensor": tensor,
+        "filtered_lr_pairs": filtered_lr_pairs,
+        "cp_weights": cp_weights,
+        "cp_factors": cp_factors,
+        "r2x_rise": r2x_rise,
+        "r2x_cp": r2x_cp,
+    }
 
 
 def run_fms_r2x_analysis(

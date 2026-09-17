@@ -17,7 +17,59 @@ from .import_data import add_cond_idxs, condition_matrices
 DATA_DIR = Path(__file__).parent / "data"
 COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
 ALAD_FACTORS_PATH = DATA_DIR / "bal_alad_factors.nc"
-IBD_FACTORS_PATH = DATA_DIR / "ibd_ti_factors.nc"
+
+
+def _resolve_lr_symbols(
+    filtered_lr_pairs: pd.DataFrame | list[str] | np.ndarray,
+) -> np.ndarray:
+    """Derive ligand-receptor pair label strings from any of the supported input forms."""
+    if not isinstance(filtered_lr_pairs, pd.DataFrame):
+        return np.asarray(filtered_lr_pairs)
+
+    if "interaction_symbol" in filtered_lr_pairs.columns:
+        return filtered_lr_pairs["interaction_symbol"].values
+    if (
+        "ligand" in filtered_lr_pairs.columns
+        and "receptor" in filtered_lr_pairs.columns
+    ):
+        return (
+            filtered_lr_pairs["ligand"].astype(str)
+            + "_"
+            + filtered_lr_pairs["receptor"].astype(str)
+        ).values
+    return np.array([f"pair_{i}" for i in range(len(filtered_lr_pairs))])
+
+
+def _add_pf2_factors(
+    data_vars: dict[str, tuple[list[str], np.ndarray]],
+    coords: dict[str, Any],
+    pf2_factors: list[np.ndarray] | None,
+    pf2_weights: np.ndarray | None,
+    gene_names: list[str] | np.ndarray | None,
+) -> None:
+    """Add PARAFAC2 factor matrices/weights to data_vars and coords, in place."""
+    if pf2_factors is None or len(pf2_factors) < 3:
+        return
+
+    data_vars["pf2_A"] = (
+        ["condition", "rise_component"],
+        np.asarray(pf2_factors[0], dtype=np.float32),
+    )
+    data_vars["pf2_B"] = (
+        ["rise_component", "rise_component_dim2"],
+        np.asarray(pf2_factors[1], dtype=np.float32),
+    )
+    coords["rise_component_dim2"] = np.arange(1, pf2_factors[1].shape[1] + 1)
+    if gene_names is not None:
+        data_vars["pf2_C"] = (
+            ["gene", "rise_component"],
+            np.asarray(pf2_factors[2], dtype=np.float32),
+        )
+    if pf2_weights is not None:
+        data_vars["pf2_weights"] = (
+            ["rise_component"],
+            np.asarray(pf2_weights, dtype=np.float32),
+        )
 
 
 def factors_to_xarray(
@@ -63,22 +115,7 @@ def factors_to_xarray(
     xr.Dataset
         A fully-annotated xarray Dataset holding the factor matrices and coordinates.
     """
-    if isinstance(filtered_lr_pairs, pd.DataFrame):
-        if "interaction_symbol" in filtered_lr_pairs.columns:
-            lr_symbols = filtered_lr_pairs["interaction_symbol"].values
-        elif (
-            "ligand" in filtered_lr_pairs.columns
-            and "receptor" in filtered_lr_pairs.columns
-        ):
-            lr_symbols = (
-                filtered_lr_pairs["ligand"].astype(str)
-                + "_"
-                + filtered_lr_pairs["receptor"].astype(str)
-            ).values
-        else:
-            lr_symbols = np.array([f"pair_{i}" for i in range(len(filtered_lr_pairs))])
-    else:
-        lr_symbols = np.asarray(filtered_lr_pairs)
+    lr_symbols = _resolve_lr_symbols(filtered_lr_pairs)
 
     condition_names = np.asarray(condition_names)
     rise_rank = cpd_factors[1].shape[0]
@@ -114,26 +151,7 @@ def factors_to_xarray(
     if gene_names is not None:
         coords["gene"] = np.asarray(gene_names)
 
-    if pf2_factors is not None and len(pf2_factors) >= 3:
-        data_vars["pf2_A"] = (
-            ["condition", "rise_component"],
-            np.asarray(pf2_factors[0], dtype=np.float32),
-        )
-        data_vars["pf2_B"] = (
-            ["rise_component", "rise_component_dim2"],
-            np.asarray(pf2_factors[1], dtype=np.float32),
-        )
-        coords["rise_component_dim2"] = np.arange(1, pf2_factors[1].shape[1] + 1)
-        if gene_names is not None:
-            data_vars["pf2_C"] = (
-                ["gene", "rise_component"],
-                np.asarray(pf2_factors[2], dtype=np.float32),
-            )
-        if pf2_weights is not None:
-            data_vars["pf2_weights"] = (
-                ["rise_component"],
-                np.asarray(pf2_weights, dtype=np.float32),
-            )
+    _add_pf2_factors(data_vars, coords, pf2_factors, pf2_weights, gene_names)
 
     ds_attrs = {
         "rise_rank": rise_rank,

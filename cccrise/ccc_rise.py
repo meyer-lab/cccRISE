@@ -20,6 +20,60 @@ from .ccc import (
 from .import_data import condition_matrices, import_ligand_receptor_pairs
 
 
+def _matrices_to_rnaseq_dataframes(
+    projected_matrices: list[np.ndarray],
+    gene_names: list[str],
+    gene_means: np.ndarray | None,
+) -> list[pd.DataFrame]:
+    """Optionally re-add gene means, then convert projected matrices to
+    genes x cells DataFrames for `build_context_ccc_tensor`."""
+    if gene_means is not None:
+        means_row = np.asarray(gene_means).reshape(1, -1)
+        projected_matrices = [
+            np.clip(matrix + means_row, 0.0, None) for matrix in projected_matrices
+        ]
+
+    return [
+        pd.DataFrame(
+            matrix.T,
+            index=pd.Index(gene_names),
+            columns=pd.Index([f"rank_{j}" for j in range(matrix.shape[0])]),
+        )
+        for matrix in projected_matrices
+    ]
+
+
+def _rename_lr_columns(lr_pairs: pd.DataFrame) -> pd.DataFrame:
+    """Rename ligand/receptor columns to Cell2Cell's A/B convention, if present."""
+    if "ligand" in lr_pairs.columns and "receptor" in lr_pairs.columns:
+        return lr_pairs.rename(columns={"ligand": "A", "receptor": "B"})
+    return lr_pairs
+
+
+def _apply_complex_aggregation(
+    rnaseq_matrices: list[pd.DataFrame],
+    lr_pairs_renamed: pd.DataFrame,
+    complex_sep: str | None,
+    complex_agg_method: str,
+    verbose: bool,
+) -> list[pd.DataFrame]:
+    """Aggregate multimeric complex subunits into single rows, if requested."""
+    if complex_sep is None:
+        return [df.copy() for df in rnaseq_matrices]
+
+    if verbose:
+        print("Getting expression values for protein complexes")
+    _, _, _, _, complexes = get_genes_from_complexes(
+        ppi_data=lr_pairs_renamed,
+        complex_sep=complex_sep,
+        interaction_columns=("A", "B"),
+    )
+    return [
+        add_complexes_to_expression(rnaseq, complexes, agg_method=complex_agg_method)
+        for rnaseq in rnaseq_matrices
+    ]
+
+
 def calc_communication_score(
     projected_matrices: list[np.ndarray],
     gene_names: list[str] | None = None,
@@ -83,45 +137,13 @@ def calc_communication_score(
     if gene_names is None:
         gene_names = [f"gene_{i}" for i in range(projected_matrices[0].shape[1])]
 
-    if gene_means is not None:
-        means_row = np.asarray(gene_means).reshape(1, -1)
-        projected_matrices = [
-            np.clip(matrix + means_row, 0.0, None) for matrix in projected_matrices
-        ]
-
-    # Convert matrices to DataFrames (genes as rows, cells as columns)
-    rnaseq_matrices = []
-    for matrix in projected_matrices:
-        df = pd.DataFrame(
-            matrix.T,
-            index=pd.Index(gene_names),
-            columns=pd.Index([f"rank_{j}" for j in range(matrix.shape[0])]),
-        )
-        rnaseq_matrices.append(df)
-
-    # Rename columns to match Cell2Cell convention
-    if "ligand" in lr_pairs.columns and "receptor" in lr_pairs.columns:
-        lr_pairs_renamed = lr_pairs.rename(columns={"ligand": "A", "receptor": "B"})
-    else:
-        lr_pairs_renamed = lr_pairs
-
-    # Handle complexes if requested
-    if complex_sep is not None:
-        if verbose:
-            print("Getting expression values for protein complexes")
-        _, _, _, _, complexes = get_genes_from_complexes(
-            ppi_data=lr_pairs_renamed,
-            complex_sep=complex_sep,
-            interaction_columns=("A", "B"),
-        )
-        mod_rnaseq_matrices = [
-            add_complexes_to_expression(
-                rnaseq, complexes, agg_method=complex_agg_method
-            )
-            for rnaseq in rnaseq_matrices
-        ]
-    else:
-        mod_rnaseq_matrices = [df.copy() for df in rnaseq_matrices]
+    rnaseq_matrices = _matrices_to_rnaseq_dataframes(
+        projected_matrices, gene_names, gene_means
+    )
+    lr_pairs_renamed = _rename_lr_columns(lr_pairs)
+    mod_rnaseq_matrices = _apply_complex_aggregation(
+        rnaseq_matrices, lr_pairs_renamed, complex_sep, complex_agg_method, verbose
+    )
 
     # Generate communication tensor for all contexts
     tensors, _, _, ppi_names, _ = build_context_ccc_tensor(
@@ -410,7 +432,8 @@ def compute_communication_significance(
     )
 
     if validate:
-        fast_observed = _fast_interaction_tensor(
+        _validate_fast_interaction_tensor(
+            interaction_tensor,
             projected_matrices,
             lig_idx,
             lig_mask,
@@ -419,15 +442,90 @@ def compute_communication_significance(
             rec_mask,
             rec_valid,
             complex_agg_method,
-            communication_score=communication_score,
-            hill_k=hill_k,
+            communication_score,
+            hill_k,
         )
-        if not np.allclose(fast_observed, interaction_tensor, rtol=1e-5, atol=1e-8):
-            raise RuntimeError(
-                "Vectorized communication score does not match "
-                "calc_communication_score on the observed tensor."
-            )
 
+    pvalue_tensor, null_mean_tensor, null_std_tensor = _run_permutation_null(
+        interaction_tensor,
+        dense_P,
+        X_arrays,
+        _project_and_recenter,
+        lig_idx,
+        lig_mask,
+        lig_valid,
+        rec_idx,
+        rec_mask,
+        rec_valid,
+        complex_agg_method,
+        communication_score,
+        hill_k,
+        n_perms,
+        random_state,
+    )
+
+    return (
+        interaction_tensor,
+        pvalue_tensor,
+        null_mean_tensor,
+        null_std_tensor,
+        filtered_lr_pairs,
+    )
+
+
+def _validate_fast_interaction_tensor(
+    interaction_tensor: np.ndarray,
+    projected_matrices: list[np.ndarray],
+    lig_idx: np.ndarray,
+    lig_mask: np.ndarray,
+    lig_valid: np.ndarray,
+    rec_idx: np.ndarray,
+    rec_mask: np.ndarray,
+    rec_valid: np.ndarray,
+    complex_agg_method: str,
+    communication_score: str,
+    hill_k: float,
+) -> None:
+    """Cross-check the vectorized observed tensor against the reference
+    `calc_communication_score` path, raising if they disagree."""
+    fast_observed = _fast_interaction_tensor(
+        projected_matrices,
+        lig_idx,
+        lig_mask,
+        lig_valid,
+        rec_idx,
+        rec_mask,
+        rec_valid,
+        complex_agg_method,
+        communication_score=communication_score,
+        hill_k=hill_k,
+    )
+    if not np.allclose(fast_observed, interaction_tensor, rtol=1e-5, atol=1e-8):
+        raise RuntimeError(
+            "Vectorized communication score does not match "
+            "calc_communication_score on the observed tensor."
+        )
+
+
+def _run_permutation_null(
+    interaction_tensor: np.ndarray,
+    dense_P: list[np.ndarray],
+    X_arrays: list[Any],
+    project_and_recenter,
+    lig_idx: np.ndarray,
+    lig_mask: np.ndarray,
+    lig_valid: np.ndarray,
+    rec_idx: np.ndarray,
+    rec_mask: np.ndarray,
+    rec_valid: np.ndarray,
+    complex_agg_method: str,
+    communication_score: str,
+    hill_k: float,
+    n_perms: int,
+    random_state: int | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Build the CellChat-style permutation null and return empirical
+    p-values plus the per-entry null mean/std."""
     rng = np.random.default_rng(random_state)
     ge_count = np.zeros_like(interaction_tensor, dtype=np.int64)
     null_sum = np.zeros_like(interaction_tensor, dtype=np.float64)
@@ -435,7 +533,7 @@ def compute_communication_significance(
 
     for _ in range(n_perms):
         permuted_matrices = [
-            _project_and_recenter(P[rng.permutation(P.shape[0]), :], X)
+            project_and_recenter(P[rng.permutation(P.shape[0]), :], X)
             for P, X in zip(dense_P, X_arrays)
         ]
         null_tensor = _fast_interaction_tensor(
@@ -459,13 +557,7 @@ def compute_communication_significance(
     null_var_tensor = np.maximum(null_sumsq / n_perms - null_mean_tensor**2, 0.0)
     null_std_tensor = np.sqrt(null_var_tensor)
 
-    return (
-        interaction_tensor,
-        pvalue_tensor,
-        null_mean_tensor,
-        null_std_tensor,
-        filtered_lr_pairs,
-    )
+    return pvalue_tensor, null_mean_tensor, null_std_tensor
 
 
 def compute_differential_significance(

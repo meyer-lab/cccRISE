@@ -370,25 +370,35 @@ def aggregate_communication_scores_by_group(
     """
     product_matrix = expression_product_matrix(X_sender, X_receiver, ligand, receptor)
 
-    sender_group = (
-        np.full(X_sender.n_obs, "All")
-        if sender_group is None
-        else np.asarray(sender_group)
-    )
-    receiver_group = (
-        np.full(X_receiver.n_obs, "All")
-        if receiver_group is None
-        else np.asarray(receiver_group)
-    )
+    sender_group = _fill_default_group(sender_group, X_sender.n_obs)
+    receiver_group = _fill_default_group(receiver_group, X_receiver.n_obs)
+    agg = _group_aggregator(stat)
 
+    rows = _score_group_blocks(product_matrix.values, sender_group, receiver_group, agg)
+    return pd.DataFrame(rows)
+
+
+def _fill_default_group(group: np.ndarray | pd.Series | None, n_obs: int) -> np.ndarray:
+    """Return `group` as an array, or a single "All" label per cell if omitted."""
+    return np.full(n_obs, "All") if group is None else np.asarray(group)
+
+
+def _group_aggregator(stat: str):
+    """Return the reduction function for a given `stat` option."""
     if stat == "mean":
-        agg = lambda values: values.mean() if values.size else np.nan
-    elif stat == "pct_nonzero":
-        agg = lambda values: 100 * np.mean(values > 0) if values.size else np.nan
-    else:
-        raise ValueError(f"Unknown stat: {stat}")
+        return lambda values: values.mean() if values.size else np.nan
+    if stat == "pct_nonzero":
+        return lambda values: 100 * np.mean(values > 0) if values.size else np.nan
+    raise ValueError(f"Unknown stat: {stat}")
 
-    values = product_matrix.values
+
+def _score_group_blocks(
+    values: np.ndarray,
+    sender_group: np.ndarray,
+    receiver_group: np.ndarray,
+    agg,
+) -> list[dict]:
+    """Aggregate `values` over every present sender-group x receiver-group block."""
     rows = []
     for s_label in np.unique(sender_group):
         s_idx = np.where(sender_group == s_label)[0]
@@ -408,8 +418,7 @@ def aggregate_communication_scores_by_group(
                     "n_interactions": s_idx.size * r_idx.size,
                 }
             )
-
-    return pd.DataFrame(rows)
+    return rows
 
 
 def _binned_means(expr: np.ndarray, n_bins: int) -> np.ndarray:

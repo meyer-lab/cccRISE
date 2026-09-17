@@ -437,6 +437,56 @@ def get_elements_over_fraction(abundance_dict, fraction):
     return elements
 
 
+def _resolve_tensor_genes_and_cells(how, df_idxs, df_cols, outer_fraction):
+    """Determine the gene and cell sets to include in the tensor for a given `how`."""
+
+    def outer_elements(element_lists):
+        return set(
+            get_elements_over_fraction(
+                abundance_dict=get_element_abundances(element_lists=element_lists),
+                fraction=outer_fraction,
+            )
+        )
+
+    if how == "inner":
+        return set.intersection(*map(set, df_idxs)), set.intersection(
+            *map(set, df_cols)
+        )
+    if how == "outer":
+        return outer_elements(df_idxs), outer_elements(df_cols)
+    if how == "outer_genes":
+        return outer_elements(df_idxs), set.intersection(*map(set, df_cols))
+    if how == "outer_cells":
+        return set.intersection(*map(set, df_idxs)), outer_elements(df_cols)
+    raise ValueError(
+        'Provide a valid way to build the tensor; "how" must be "inner", "outer", "outer_genes" or "outer_cells"'
+    )
+
+
+def _group_or_name_ppis(
+    tensors, ppi_data, group_ppi_by, group_ppi_method, interaction_columns
+):
+    """Aggregate tensors by PPI group when requested, else name PPIs individually."""
+    if group_ppi_by is None:
+        ppi_names = [
+            row[interaction_columns[0]] + "^" + row[interaction_columns[1]]
+            for _, row in ppi_data.iterrows()
+        ]
+        return tensors, ppi_names
+
+    ppi_names = [group for group, _ in ppi_data.groupby(group_ppi_by)]
+    tensors = [
+        aggregate_ccc_tensor(
+            ccc_tensor=t,
+            ppi_data=ppi_data,
+            group_ppi_by=group_ppi_by,
+            group_ppi_method=group_ppi_method,
+        )
+        for t in tensors
+    ]
+    return tensors, ppi_names
+
+
 def build_context_ccc_tensor(
     rnaseq_matrices,
     ppi_data,
@@ -567,42 +617,9 @@ def build_context_ccc_tensor(
     df_idxs = [list(rnaseq.index) for rnaseq in rnaseq_matrices]
     df_cols = [list(rnaseq.columns) for rnaseq in rnaseq_matrices]
 
-    if how == "inner":
-        genes = set.intersection(*map(set, df_idxs))
-        cells = set.intersection(*map(set, df_cols))
-    elif how == "outer":
-        genes = set(
-            get_elements_over_fraction(
-                abundance_dict=get_element_abundances(element_lists=df_idxs),
-                fraction=outer_fraction,
-            )
-        )
-        cells = set(
-            get_elements_over_fraction(
-                abundance_dict=get_element_abundances(element_lists=df_cols),
-                fraction=outer_fraction,
-            )
-        )
-    elif how == "outer_genes":
-        genes = set(
-            get_elements_over_fraction(
-                abundance_dict=get_element_abundances(element_lists=df_idxs),
-                fraction=outer_fraction,
-            )
-        )
-        cells = set.intersection(*map(set, df_cols))
-    elif how == "outer_cells":
-        genes = set.intersection(*map(set, df_idxs))
-        cells = set(
-            get_elements_over_fraction(
-                abundance_dict=get_element_abundances(element_lists=df_cols),
-                fraction=outer_fraction,
-            )
-        )
-    else:
-        raise ValueError(
-            'Provide a valid way to build the tensor; "how" must be "inner", "outer", "outer_genes" or "outer_cells"'
-        )
+    genes, cells = _resolve_tensor_genes_and_cells(
+        how, df_idxs, df_cols, outer_fraction
+    )
 
     # Preserve order or sort new set (either inner or outer)
     genes = df_idxs[0] if set(df_idxs[0]) == genes else sorted(genes)
@@ -632,22 +649,9 @@ def build_context_ccc_tensor(
         for rnaseq in rnaseq_matrices
     ]
 
-    if group_ppi_by is not None:
-        ppi_names = [group for group, _ in ppi_data_.groupby(group_ppi_by)]
-        tensors = [
-            aggregate_ccc_tensor(
-                ccc_tensor=t,
-                ppi_data=ppi_data_,
-                group_ppi_by=group_ppi_by,
-                group_ppi_method=group_ppi_method,
-            )
-            for t in tensors
-        ]
-    else:
-        ppi_names = [
-            row[interaction_columns[0]] + "^" + row[interaction_columns[1]]
-            for idx, row in ppi_data_.iterrows()
-        ]
+    tensors, ppi_names = _group_or_name_ppis(
+        tensors, ppi_data_, group_ppi_by, group_ppi_method, interaction_columns
+    )
 
     # Generate mask:
     if how != "inner":

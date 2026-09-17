@@ -64,13 +64,9 @@ from scipy.optimize import linear_sum_assignment
 from tensorly.decomposition import parafac
 
 from ..ccc import calculate_r2x
-from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
-from ..import_data import add_cond_idxs
+from ..ccc_rise import standardize_cc_pf2
 from ..rank_selection import cp_core_consistency, cpd_component_collinearity
-from ..tensor import (
-    calculate_interaction_tensor,
-    rise_store_r2x,
-)
+from ..tensor import fit_rise_cp_pipeline
 from ..utils import (
     replicate_seed,
     resample_cells,
@@ -323,35 +319,27 @@ def fit_stability_pipeline(
     dict[str, Any]
         Fitted factors, diagnostics, and metadata.
     """
-    adata = add_cond_idxs(adata, condition_column)
-    adata, r2x_rise = rise_store_r2x(
-        adata,
-        rank=rise_rank,
-        n_iter_max=rise_n_iter_max,
-        tolerance=rise_tol,
-        random_state=random_state,
-    )
-    tensor, filtered_lr_pairs = calculate_interaction_tensor(
+    fit = fit_rise_cp_pipeline(
         adata,
         lr_pairs,
+        condition_column,
+        rise_rank,
+        cp_rank,
+        rise_n_iter_max=rise_n_iter_max,
+        rise_tol=rise_tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
+        init=init,
+        svd=svd,
         complex_sep=complex_sep,
         communication_score=communication_score,
         hill_k=hill_k,
-    )
-    validate_cp_rank(cp_rank, tensor.shape)
-
-    cp_weights, cp_factors = parafac(
-        tensor,
-        cp_rank,
-        n_iter_max=cp_n_iter_max,
-        tol=cp_tol,
-        init=init,
-        svd=svd,
-        normalize_factors=True,
         random_state=random_state,
     )
-    r2x_cp = calculate_r2x(cp_weights, cp_factors, tensor)
-    cp_weights, cp_factors = standardize_cc_pf2(cp_weights, cp_factors)
+    adata = fit["adata"]
+    tensor, filtered_lr_pairs = fit["tensor"], fit["filtered_lr_pairs"]
+    cp_weights, cp_factors = fit["cp_weights"], fit["cp_factors"]
+    r2x_rise, r2x_cp = fit["r2x_rise"], fit["r2x_cp"]
 
     return {
         "rise_factors": [
@@ -376,11 +364,6 @@ def fit_stability_pipeline(
 # =============================================================================
 # The shared replicate loop
 # =============================================================================
-
-
-def _skip_label(skip_modes: tuple[int, ...]) -> str:
-    """The 'SkippedModes' column value, e.g. ``(1, 2)`` -> ``"1,2"``."""
-    return ",".join(str(mode) for mode in skip_modes)
 
 
 def _cpd_diagnostics(

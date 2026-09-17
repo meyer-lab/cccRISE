@@ -26,13 +26,9 @@ import anndata
 import numpy as np
 import pandas as pd
 from scipy.optimize import linear_sum_assignment
-from tensorly.decomposition import parafac
 
-from ..ccc import calculate_r2x
-from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
-from ..import_data import add_cond_idxs
 from ..logreg import fit_logreg_weights, prepare_logreg_inputs
-from ..tensor import calculate_interaction_tensor, rise_store_r2x
+from ..tensor import fit_rise_cp_pipeline
 from ..utils import replicate_seed, resample_conditions
 
 Factors = list[np.ndarray]
@@ -242,35 +238,26 @@ def fit_logreg_pipeline(
 
         lr_pairs = import_ligand_receptor_pairs()
 
-    adata = add_cond_idxs(adata, condition_column)
-    adata, _r2x_rise = rise_store_r2x(
-        adata,
-        rank=rise_rank,
-        n_iter_max=rise_n_iter_max,
-        tolerance=rise_tol,
-        random_state=random_state,
-    )
-    tensor, filtered_lr_pairs = calculate_interaction_tensor(
+    fit = fit_rise_cp_pipeline(
         adata,
         lr_pairs,
+        condition_column,
+        rise_rank,
+        cp_rank,
+        rise_n_iter_max=rise_n_iter_max,
+        rise_tol=rise_tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
+        init=init,
+        svd=svd,
         complex_sep=complex_sep,
         communication_score=communication_score,
         hill_k=hill_k,
-    )
-    validate_cp_rank(cp_rank, tensor.shape)
-
-    cp_weights, cp_factors = parafac(
-        tensor,
-        cp_rank,
-        n_iter_max=cp_n_iter_max,
-        tol=cp_tol,
-        init=init,
-        svd=svd,
-        normalize_factors=True,
         random_state=random_state,
     )
-    r2x_cp = calculate_r2x(cp_weights, cp_factors, tensor)
-    cp_weights, factors = standardize_cc_pf2(cp_weights, cp_factors)
+    adata = fit["adata"]
+    filtered_lr_pairs = fit["filtered_lr_pairs"]
+    cp_weights, factors, r2x_cp = fit["cp_weights"], fit["cp_factors"], fit["r2x_cp"]
 
     X, sample_to_group = prepare_logreg_inputs(
         adata,
