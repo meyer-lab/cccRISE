@@ -73,16 +73,17 @@ def resolve_group_labels(
     group_column: str | None,
     control_label: str | None,
     other_label: str | None,
-) -> tuple[str, str, str]:
-    """Fill a runner's binary-outcome encoding in from the dataset registry.
+) -> tuple[str, str | None, str | None]:
+    """Fill a runner's group encoding in from the dataset registry.
 
-    Refuses to guess: a dataset with no registered `group_column`, or no
-    entry in `DEFAULT_GROUP_LABELS`, has to be told its encoding explicitly
-    rather than silently comparing the wrong two classes.
+    When both labels are omitted and the dataset has a registered default
+    binary encoding in `DEFAULT_GROUP_LABELS`, those defaults are used.
+    When omitted and no default exists, returns ``(group_column, None, None)``
+    to test every level.
 
     Returns
     -------
-    tuple[str, str, str]
+    tuple[str, str | None, str | None]
         The group column, the control label, and the other label.
     """
     group_column = group_column or spec.group_column
@@ -91,16 +92,17 @@ def resolve_group_labels(
             f"Dataset {spec.key!r} has no group_column in the registry; "
             "pass --group-column explicitly."
         )
-    if control_label is None or other_label is None:
+    if control_label is None and other_label is None:
         defaults = DEFAULT_GROUP_LABELS.get(spec.key)
-        if defaults is None:
-            raise ValueError(
-                f"No default (control, other) label pair for dataset "
-                f"{spec.key!r}; pass --control-label and --other-label "
-                "explicitly."
-            )
-        control_label = control_label or defaults[0]
-        other_label = other_label or defaults[1]
+        if defaults is not None:
+            return group_column, defaults[0], defaults[1]
+        return group_column, None, None
+    if control_label is None or other_label is None:
+        raise ValueError(
+            f"Pass both --control-label and --other-label to collapse to two named "
+            f"levels, or neither to test every level of {group_column!r}; got "
+            f"control_label={control_label!r}, other_label={other_label!r}."
+        )
     return group_column, control_label, other_label
 
 
