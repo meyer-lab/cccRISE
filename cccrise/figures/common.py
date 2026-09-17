@@ -99,7 +99,8 @@ def load_runner_csv(filename: str) -> pd.DataFrame:
         raise FileNotFoundError(
             f"{path} not found. Produce it with the matching runner, e.g.\n"
             "    uv run cccrise-riserank --dataset <dataset> --ranks 5:51:5\n"
-            "    uv run cccrise-cpdrank  --dataset <dataset> --rise-rank <N>"
+            "    uv run cccrise-cpdrank  --dataset <dataset> --rise-rank <N>\n"
+            "    uv run cccrise-anovaboot --dataset <dataset> --rise-rank <N> --cp-rank <K>"
         )
     return pd.read_csv(path)
 

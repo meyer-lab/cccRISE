@@ -10,11 +10,16 @@ import pandas as pd
 import vsparse
 from scipy.sparse import csr_array, issparse
 
+from .gene_filters import mito_ribo_mask
+
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
 IBD_DATA_DIR = Path("/opt/IVCSC")
 IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "full_IBD_cohort.ivcsc.h5ad"
+
+# Depth-normalize to the median, scale by gene sum, then log10(1 + 1000x)
+IBD_NORMALIZATION = vsparse.RECIPES["parafac2"]
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
@@ -261,19 +266,7 @@ def import_alad_brush(
 def use_gene_symbols(
     data: anndata.AnnData, symbol_column: str = "gene_symbols"
 ) -> anndata.AnnData:
-    """Re-index an AnnData's genes by HGNC symbol, in place.
-
-    Some cohorts ship Ensembl gene IDs as `var_names` and keep the symbols in a
-    `var` column. The ligand-receptor table is keyed by symbol, so leaving the
-    Ensembl IDs in place makes *every* LR pair fail to match -- the interaction
-    tensor then comes out with a zero-length ligand-receptor mode, which
-    surfaces far downstream as a reshape error rather than as a naming problem.
-
-    Duplicate symbols are suffixed rather than merged, so the first occurrence
-    keeps the bare symbol and stays matchable; genes with no symbol keep their
-    original identifier. A no-op when `symbol_column` is absent, so datasets
-    already keyed by symbol pass through untouched.
-    """
+    """Re-index an AnnData's genes by HGNC symbol, in place."""
     if symbol_column not in data.var:
         return data
 
@@ -298,19 +291,39 @@ def import_ibdverse(
         https://doi.org/10.1038/s41588-026-02634-7
     """
     print("Loading IBDverse data...")
-    if normalize:
-        data = vsparse.load_and_normalize(
-            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
-        )
-        data = use_gene_symbols(data)
-        data = add_cond_idxs(data, condition_name)
-        data.var["means"] = data.X.mean(axis=0)
-        return data
+    packed = vsparse.load_packed(filename)
+    counts = cast(Any, packed.X)
+    var = cast(pd.DataFrame, packed.var)
 
-    data = use_gene_symbols(vsparse.load_packed(filename).to_anndata())
-    return prepare_dataset(
-        data, condition_name, geneThreshold=gene_threshold, normalize=normalize
+    excluded = mito_ribo_mask(var)
+
+    # Thresholds read the raw counts, before anything is dropped, so the
+    # surviving set does not depend on the order the masks are applied.
+    n_cells = counts.shape[0]
+    keep_cells = np.asarray(counts.sum(axis=1)).reshape(-1) > 10.0
+    keep_genes = np.asarray(counts.sum(axis=0)).reshape(-1) > gene_threshold * n_cells
+    keep_genes &= ~excluded
+    kept = packed[keep_cells, keep_genes]
+    del packed, counts
+
+    if not normalize:
+        data = use_gene_symbols(kept.to_anndata())
+        return prepare_dataset(
+            data, condition_name, geneThreshold=gene_threshold, normalize=normalize
+        )
+
+    # `to_scipy_sparse` leaves the centering term out of `X` so the matrix stays
+    # sparse; `means` is what `condition_matrices` subtracts once a condition
+    # block is densified.
+    view = kept.normalized(IBD_NORMALIZATION)
+    data = anndata.AnnData(
+        X=view.to_scipy_sparse(dtype=np.float32),
+        obs=cast(pd.DataFrame, kept.obs).copy(),
+        var=cast(pd.DataFrame, kept.var).copy(),
     )
+    data.var["means"] = np.asarray(view.means, dtype=np.float64)
+    data = use_gene_symbols(data)
+    return add_cond_idxs(data, condition_name)
 
 
 def add_cond_idxs(X, condition_key):
