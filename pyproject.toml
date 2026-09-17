@@ -47,8 +47,9 @@ factor = "cccrise.imports:factorSave"
 cccrise-run = "cccrise.runners.run_ccc_rise:main"
 cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
-cccrise-logregboot = "cccrise.runners.run_logreg_bootstrap:main"
+cccrise-anovaboot = "cccrise.runners.run_anova_bootstrap:main"
 cccrise-stability = "cccrise.runners.run_component_stability:main"
+cccrise-significance = "cccrise.runners.run_significance:main"
 cccrise-nichenet = "cccrise.runners.run_nichenet:main"
 
 [build-system]
@@ -82,6 +83,14 @@ docs = [
 ignore = [
     "N999",   # figure modules are intentionally named figureXX.py
     "BLE001", # figure scripts deliberately catch broad exceptions to keep batch analyses running
+]
+
+[tool.ty.src]
+# Legacy figures still reference the pre-ANOVA logreg API and will be
+# removed along with the rest of the outdated figure/manuscript files.
+exclude = [
+    "cccrise/figures/figure4.py",
+    "cccrise/figures/figureA6d.py",
 ]
 
 [tool.ty.rules]

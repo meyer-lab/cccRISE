@@ -235,8 +235,14 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
 
     results = {}
     for compress in (True, False):
-        with patch.object(
-            runner, "build_interaction_tensor", return_value=(tensor, facts)
+        with (
+            patch.object(
+                runner, "build_interaction_tensor", return_value=(tensor, facts)
+            ),
+            # DATASETS["alad"] points at the real (private, multi-GB) BAL
+            # source file, which isn't present in CI; only the mocked tensor
+            # above should matter here, so stub out the hash of that file.
+            patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
         ):
             df, csv_path, sidecar = runner.run_cpd_rank_selection(
                 DATASETS["alad"],
