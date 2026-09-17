@@ -55,51 +55,35 @@ LR_HIGHLIGHT_CHOICES = {
 # muted rather than drawn from the same accented palette as the other three.
 STRENGTH_CATEGORY_COLORS = ["#7B3294", "#D9D9D9", "#E66101", "#2C7BB6"]
 
-# ALAD-only: figureAnova.py's own curated comparisons, reused as-is (single
-# source of truth) rather than re-hardcoded here. Only ALAD has more than one
-# patient status column recorded in its raw single-cell data.
-ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in DEFAULT_ASSOCIATIONS}
+# ALAD: figureAnova.py's own curated comparisons, reused as-is (single
+# source of truth) rather than re-hardcoded here, reordered so "6-Month
+# Outcome (4-Way)" (the one with a significant component) leads, followed by
+# the original single default; the rest keep their source order.
+_ALAD_ALL_COMPARISONS = {cfg["name"]: cfg for cfg in DEFAULT_ASSOCIATIONS}
+_ALAD_LEAD_COMPARISONS = ["6-Month Outcome (4-Way)", "Control vs. ALAD (All)"]
+ALAD_COMPARISONS: dict[str, dict] = {
+    name: _ALAD_ALL_COMPARISONS[name] for name in _ALAD_LEAD_COMPARISONS
+} | {
+    name: cfg
+    for name, cfg in _ALAD_ALL_COMPARISONS.items()
+    if name not in _ALAD_LEAD_COMPARISONS
+}
 
+# COVID-19's raw data only has one patient status column, so it gets a single
+# comparison rather than a curated list; built from its DatasetSpec fields
+# instead of repeating those strings here.
+_covid_spec = DATASETS["covid"]
+COVID_COMPARISONS: dict[str, dict] = {
+    "Control vs. COVID-19 (All)": {
+        "group_column": _covid_spec.group_col,
+        "control_label": _covid_spec.control_label,
+        "other_label": _covid_spec.other_label,
+    },
+}
 
-def _fit_anova_result(spec) -> tuple[pd.DataFrame | None, str | None]:
-    """One dataset's per-component ANOVA of condition loading against its
-    case/control grouping (or why it's unavailable).
-
-    Uses `run_saved_factors_anova` exactly as `figureAnova.py` does: it reads
-    condition/group metadata and factor matrices straight off the dataset's
-    own per-cell obs (already reconstructed from the `.nc` file by
-    `load_dataset`), so unlike the logistic regression it replaced, this
-    needs no raw single-cell data and no read-depth correction.
-    """
-    if spec.control_label is None or spec.group_col is None:
-        return None, "no case/control grouping is configured for this dataset."
-    ds = load_dataset(spec.key)
-    if not ds.has_projections:
-        return (
-            None,
-            "per-cell metadata needed to derive the group label is unavailable.",
-        )
-    try:
-        df = run_saved_factors_anova(
-            factors=ds.adata,
-            condition_column=spec.condition_col,
-            group_column=spec.group_col,
-            control_label=spec.control_label,
-            other_label=spec.other_label,
-            correction="fdr_bh",
-        )
-    except ValueError as exc:
-        return None, str(exc)
-    return df, None
-
-
-# There's no saved ANOVA result to load -- like the logistic regression it
-# replaced, every fit is ad hoc -- so it's run once per dataset here, when
-# the app boots, rather than lazily per-session: unlike the factorization
-# (loaded, never recomputed, from each dataset's `.nc` file) this needs to
-# reflect whatever the current data says on every restart.
-ANOVA_RESULTS: dict[str, tuple[pd.DataFrame | None, str | None]] = {
-    key: _fit_anova_result(spec) for key, spec in DATASETS.items()
+DATASET_COMPARISONS: dict[str, dict[str, dict]] = {
+    "alad": ALAD_COMPARISONS,
+    "covid": COVID_COMPARISONS,
 }
 
 
@@ -248,47 +232,12 @@ def server(input, output, session):
         pairs = parse_lr_pairs(np.asarray(ds.adata.uns["lr_pairs"]))
         return [p for p in pairs if p.is_simple_receptor]
 
-    def anova_result() -> tuple[pd.DataFrame | None, str | None]:
-        # Computed once at boot for every dataset -- see ANOVA_RESULTS --
-        # not re-fit per session or per input change.
-        return ANOVA_RESULTS.get(
-            input.dataset(), (None, "no ANOVA result for this dataset.")
-        )
-
-    @render.ui
-    def anova_associations_ui():
-        _, error = anova_result()
-        if error is not None:
-            return ui.markdown(f"_ANOVA component associations unavailable: {error}_")
-        return ui.TagList(
-            ui.markdown(
-                "Bar plot of each component's ANOVA effect size "
-                "(eta-squared) against the dataset's case/control "
-                f"grouping ({dataset().spec.control_label!r} vs. "
-                f"{dataset().spec.other_label!r}), with the FDR-adjusted "
-                "p-value above each bar. The dashed line marks the "
-                "component selected in the sidebar."
-            ),
-            ui.output_plot("anova_associations_plot", height="260px"),
-        )
-
-    @render.plot
-    def anova_associations_plot():
-        df, _ = anova_result()
-        if df is None:
-            return None
-        fig, ax = plt.subplots(figsize=(10, 2.8), layout="tight")
-        plot_association_effect_sizes(df, ax)
-        cmp = input.component()
-        ax.axvline(cmp - 1, color="0.15", ls="--", lw=1.2, zorder=0)
-        return fig
-
     @reactive.calc
     def patient_status_result():
         ds = dataset()
-        if ds.spec.key != "alad":
-            return None, None, "no comparisons are configured for this dataset."
-        cfg = ALAD_COMPARISONS.get(input.patient_status_comparison())
+        comparisons = DATASET_COMPARISONS.get(ds.spec.key, {})
+        name = input.patient_status_comparison()
+        cfg = comparisons.get(name)
         if cfg is None:
             return None, None, "no comparison selected."
         raw = load_raw_dataset(input.dataset())
@@ -304,7 +253,7 @@ def server(input, output, session):
                 levels=cfg.get("levels"),
                 mapping=cfg.get("mapping"),
                 correction="fdr_bh",
-                association_name=cfg["name"],
+                association_name=name,
             )
         except ValueError as exc:
             return None, None, str(exc)
@@ -324,6 +273,7 @@ def server(input, output, session):
             return None
         raw = load_raw_dataset(input.dataset())
         cmp = input.component()
+        name = input.patient_status_comparison()
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5), layout="tight")
         plot_association_effect_sizes(df, axes[0])
@@ -336,7 +286,7 @@ def server(input, output, session):
             levels=cfg.get("levels"),
             control_label=cfg.get("control_label"),
             other_label=cfg.get("other_label"),
-            title=cfg["name"],
+            title=name,
             ax=axes[1],
             anova_df=df,
         )
@@ -351,32 +301,24 @@ def server(input, output, session):
                 "(raw single-cell data or projections not found)."
             )
 
+        comparisons = DATASET_COMPARISONS.get(ds.spec.key, {})
         sections = [
             ui.h4("Component Association (ANOVA)"),
-            ui.output_ui("anova_associations_ui"),
+            ui.markdown(
+                "ANOVA effect sizes and a per-component boxplot for a "
+                "chosen patient status comparison, computed from the raw "
+                "single-cell data. Comparison selects the patient status "
+                "variable/grouping tested; both panels use the component "
+                "selected in the sidebar."
+            ),
+            ui.input_select(
+                "patient_status_comparison",
+                "Comparison",
+                choices=list(comparisons),
+            ),
+            ui.output_ui("patient_status_ui"),
             ui.hr(),
         ]
-
-        if ds.spec.key == "alad":
-            sections.extend(
-                [
-                    ui.h4("Patient Status Comparisons"),
-                    ui.markdown(
-                        "ANOVA effect sizes and a per-component boxplot for "
-                        "a chosen patient status comparison, computed from "
-                        "the raw single-cell data. Comparison selects the "
-                        "patient status variable/grouping tested; both "
-                        "panels use the component selected in the sidebar."
-                    ),
-                    ui.input_select(
-                        "patient_status_comparison",
-                        "Comparison",
-                        choices=list(ALAD_COMPARISONS),
-                    ),
-                    ui.output_ui("patient_status_ui"),
-                    ui.hr(),
-                ]
-            )
 
         sections.extend(
             [
