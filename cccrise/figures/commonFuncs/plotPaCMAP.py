@@ -17,13 +17,21 @@ from ..common import getSetup, subplotLabel
 
 
 def _get_canvas(points: np.ndarray) -> ds.Canvas:
-    """Compute bounds on a space with appropriate padding"""
+    """Compute bounds on a space with appropriate padding.
+
+    Not rounded to integers: PaCMAP coordinates span enough range that
+    rounding barely mattered (axis ticks are hidden anyway, see
+    `assign_labels`), but other 2D spaces plotted the same way -- e.g.
+    sender/receiver weight, spanning a fraction of a unit -- would have
+    both bounds round to the same integer and hand datashader a
+    zero-width canvas.
+    """
     min_xy = np.nanmin(points, axis=0)
     assert min_xy.size == 2
     max_xy = np.nanmax(points, axis=0)
 
-    mins = np.round(min_xy - 0.05 * (max_xy - min_xy))
-    maxs = np.round(max_xy + 0.05 * (max_xy - min_xy))
+    mins = min_xy - 0.05 * (max_xy - min_xy)
+    maxs = max_xy + 0.05 * (max_xy - min_xy)
 
     canvas = ds.Canvas(
         plot_width=300,
@@ -157,26 +165,30 @@ def make_celltype_condition_pacmap_figure(
     return f
 
 
-def plot_labels_pacmap(
-    X: anndata.AnnData,
-    labelType: str,
+def plot_categorical_scatter(
+    points: np.ndarray,
+    labels: pd.Series,
     ax: Axes,
-    condition=None,
-    cmap="tab20",
+    cmap: str = "tab20",
     color_key=None,
-):
-    """Scatterplot of PaCMAP visualization weighted by condition or cell type"""
-    labels = X.obs[labelType]
+) -> None:
+    """Datashader-aggregated scatter of arbitrary 2D points colored by a
+    categorical label, with a legend.
 
-    if condition is not None:
-        labels = pd.Series([c if c in condition else "Z Other" for c in labels])
+    Point clouds here run to tens of thousands of cells; a plain matplotlib
+    scatter redrawn on every Shiny interaction is both slow and prone to
+    overplotting, so this always goes through datashader's aggregation
+    (`ds_show`) instead. Shared by `plot_labels_pacmap` (PaCMAP coordinates)
+    and any other 2D space -- e.g. sender vs. receiver weight -- that needs
+    the same large-N-safe categorical rendering.
+    """
     if labels.dtype == "category":
         labels = labels.cat.set_categories(
             np.sort(labels.cat.categories.values), ordered=True
         )
     indices = np.argsort(labels)
 
-    points = X.obsm["PaCMAP"][indices, :]
+    points = points[indices, :]
     labels = labels.iloc[indices]
 
     canvas = _get_canvas(points)
@@ -201,7 +213,25 @@ def plot_labels_pacmap(
 
     ds_show(result, ax)
     ax.legend(handles=legend_elements)
-    ax = assign_labels(ax)
+
+
+def plot_labels_pacmap(
+    X: anndata.AnnData,
+    labelType: str,
+    ax: Axes,
+    condition=None,
+    cmap="tab20",
+    color_key=None,
+):
+    """Scatterplot of PaCMAP visualization weighted by condition or cell type"""
+    labels = pd.Series(X.obs[labelType])
+
+    if condition is not None:
+        labels = pd.Series([c if c in condition else "Z Other" for c in labels])
+
+    points = np.array(X.obsm["PaCMAP"])
+    plot_categorical_scatter(points, labels, ax, cmap=cmap, color_key=color_key)
+    assign_labels(ax)
 
 
 def plot_wc_per_celltype(

@@ -26,6 +26,8 @@ from cccrise.figures.commonFuncs.plotGeneral import (
     plot_wc_histogram_grid,
 )
 from cccrise.figures.commonFuncs.plotPaCMAP import (
+    assign_labels,
+    plot_categorical_scatter,
     plot_labels_pacmap,
     plot_wc_pacmap,
     plot_wc_per_celltype,
@@ -43,6 +45,12 @@ LR_HIGHLIGHT_CHOICES = {
     "q3": "Q3 (75th Percentile)",
 }
 
+# `plot_categorical_scatter` sorts categories alphabetically for its color
+# assignment, so this list has to be in that order: Both, Neither, Receiver
+# Only, Sender Only. "Neither" is usually the majority category, so it's
+# muted rather than drawn from the same accented palette as the other three.
+STRENGTH_CATEGORY_COLORS = ["#7B3294", "#D9D9D9", "#E66101", "#2C7BB6"]
+
 
 def _fit_anova_result(spec) -> tuple[pd.DataFrame | None, str | None]:
     """One dataset's per-component ANOVA of condition loading against its
@@ -58,7 +66,10 @@ def _fit_anova_result(spec) -> tuple[pd.DataFrame | None, str | None]:
         return None, "no case/control grouping is configured for this dataset."
     ds = load_dataset(spec.key)
     if not ds.has_projections:
-        return None, "per-cell metadata needed to derive the group label is unavailable."
+        return (
+            None,
+            "per-cell metadata needed to derive the group label is unavailable.",
+        )
     try:
         df = run_saved_factors_anova(
             factors=ds.adata,
@@ -534,7 +545,152 @@ def server(input, output, session):
                 "`cccrise.regenerate_factors` (or `add_cell_projections`) to "
                 "add them."
             )
-        return ui.output_plot("projections_plot", height="500px")
+        celltypes = sorted(
+            dataset().adata.obs[dataset().spec.celltype_col].unique().tolist()
+        )
+        return ui.TagList(
+            ui.output_plot("projections_plot", height="500px"),
+            ui.hr(),
+            ui.h4("Sender/Receiver Strength"),
+            ui.markdown(
+                "How many cells are a *strong* sender, receiver, both, or "
+                'neither for the selected component -- "strong" meaning '
+                "the cell's sender (or receiver) weight is at or above the "
+                "given percentile across *all* cells in the dataset."
+            ),
+            ui.row(
+                ui.column(
+                    6,
+                    ui.input_select("tt_celltype", "Cell Type", choices=celltypes),
+                ),
+                ui.column(
+                    6,
+                    ui.input_slider(
+                        "tt_percentile",
+                        "Strength Threshold (percentile)",
+                        min=50,
+                        max=99,
+                        value=90,
+                        step=1,
+                    ),
+                ),
+            ),
+            ui.markdown("###### Truth Table (Selected Cell Type)"),
+            ui.output_data_frame("truth_table"),
+            ui.markdown(
+                "###### Strength Category PaCMAP (All Cell Types)\n"
+                "The same four categories, plotted spatially across every "
+                "cell in the dataset rather than counted within one cell "
+                "type."
+            ),
+            scrollable_plot("strength_category_pacmap_plot", 650, 550),
+            ui.markdown(
+                "###### Sender vs. Receiver Weight (All Cell Types)\n"
+                "The raw weights the truth table and PaCMAP above threshold "
+                "into strong/not-strong -- threshold-agnostic, so it shows "
+                "the full continuous relationship (and how it differs by "
+                "cell type) rather than a binary call. Dashed lines mark "
+                "the current percentile threshold for reference only."
+            ),
+            scrollable_plot("sender_receiver_scatter_plot", 900, 700),
+        )
+
+    @reactive.calc
+    def strength_weights():
+        ds = dataset()
+        cmp = input.component()
+        sender = np.asarray(ds.adata.obsm["sc_B"])[:, cmp - 1]
+        receiver = np.asarray(ds.adata.obsm["rc_C"])[:, cmp - 1]
+        percentile = input.tt_percentile()
+        return (
+            sender,
+            receiver,
+            float(np.percentile(sender, percentile)),
+            float(np.percentile(receiver, percentile)),
+        )
+
+    @render.data_frame
+    def truth_table():
+        ds = dataset()
+        celltype_col = ds.spec.celltype_col
+        sender, receiver, sender_threshold, receiver_threshold = strength_weights()
+
+        in_celltype = ds.adata.obs[celltype_col].to_numpy() == input.tt_celltype()
+        is_sender = (sender >= sender_threshold) & in_celltype
+        is_receiver = (receiver >= receiver_threshold) & in_celltype
+
+        both = int(np.sum(is_sender & is_receiver))
+        sender_only = int(np.sum(is_sender & ~is_receiver))
+        receiver_only = int(np.sum(~is_sender & is_receiver))
+        neither = int(np.sum(~is_sender & ~is_receiver & in_celltype))
+
+        table = pd.DataFrame(
+            {
+                "": ["Strong Receiver", "Not Strong Receiver", "Total"],
+                "Strong Sender": [both, sender_only, both + sender_only],
+                "Not Strong Sender": [
+                    receiver_only,
+                    neither,
+                    receiver_only + neither,
+                ],
+                "Total": [
+                    both + receiver_only,
+                    sender_only + neither,
+                    int(np.sum(in_celltype)),
+                ],
+            }
+        )
+        return render.DataGrid(table)
+
+    @render.plot
+    def strength_category_pacmap_plot():
+        ds = dataset()
+        cmp = input.component()
+        sender, receiver, sender_threshold, receiver_threshold = strength_weights()
+        is_sender = sender >= sender_threshold
+        is_receiver = receiver >= receiver_threshold
+        categories = np.where(
+            is_sender & is_receiver,
+            "Both",
+            np.where(
+                is_sender & ~is_receiver,
+                "Sender Only",
+                np.where(~is_sender & is_receiver, "Receiver Only", "Neither"),
+            ),
+        )
+
+        fig, ax = plt.subplots(figsize=(6.5, 5.5), layout="tight")
+        plot_categorical_scatter(
+            np.asarray(ds.adata.obsm["PaCMAP"]),
+            pd.Series(categories),
+            ax,
+            color_key=STRENGTH_CATEGORY_COLORS,
+        )
+        assign_labels(ax)
+        ax.set_title(f"Cmp. {cmp} Strength Category")
+        return fig
+
+    @render.plot
+    def sender_receiver_scatter_plot():
+        ds = dataset()
+        cmp = input.component()
+        celltype_col = ds.spec.celltype_col
+        sender, receiver, sender_threshold, receiver_threshold = strength_weights()
+
+        fig, ax = plt.subplots(figsize=(9, 7), layout="tight")
+        plot_categorical_scatter(
+            np.column_stack([sender, receiver]),
+            ds.adata.obs[celltype_col],
+            ax,
+        )
+        ax.axvline(sender_threshold, color="0.3", ls="--", lw=1.0)
+        ax.axhline(receiver_threshold, color="0.3", ls="--", lw=1.0)
+        ax.set(
+            xlabel=f"Cmp. {cmp} Sender Weight",
+            ylabel=f"Cmp. {cmp} Receiver Weight",
+            title=f"Cmp. {cmp} Sender vs. Receiver Weight by Cell Type",
+        )
+        return fig
 
     @render.plot
     def projections_plot():
