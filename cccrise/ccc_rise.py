@@ -543,7 +543,7 @@ def compute_differential_significance(
     sample_to_group : Sequence[bool] or np.ndarray
         Boolean (or 0/1) group label per condition/sample, same order and
         length as `interaction_tensor`'s first axis and as the CP condition
-        factor `A` (see `logreg.ccc_rise_logreg_weights`, which uses the same
+        factor `A` (see `anova.prepare_anova_inputs`, which uses the same
         `sample_to_group` convention). Must contain both groups.
     n_perms : int, default=1000
         Number of random group-label permutations, used only when the exact

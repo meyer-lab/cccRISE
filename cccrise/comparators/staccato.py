@@ -108,9 +108,9 @@ def staccato(
     1. **Downstream ALAD-status AUC (the reviewer's ask).** Feed this
        function's per-sample mode-1 scores -- ``covariate @ result.W1`` when
        ``covariate`` was supplied, or ``result.W1`` directly when it wasn't
-       -- into the same logistic-regression/AUC pipeline already used to
-       score cccRISE's condition factor ``A`` (see ``logreg.py``), and
-       report both AUCs side by side.
+       -- into the same ANOVA/association pipeline already used to
+       score cccRISE's condition factor ``A`` (see ``anova.py``), and
+       report both effect sizes side by side.
     2. **Per-mode factor congruence (optional, for the concordance figure).**
        Build the input tensor the same way for both methods -- run
        ``ccc_rise.calc_communication_score_pseudobulk`` /
