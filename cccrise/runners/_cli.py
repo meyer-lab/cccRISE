@@ -10,6 +10,7 @@ from .provenance import sha256_file
 # explicitly.
 DEFAULT_GROUP_LABELS: dict[str, tuple[str, str]] = {
     "alad": ("control", "alad"),
+    "ibd": ("healthy", "inflamed"),
 }
 
 
