@@ -92,7 +92,9 @@ def plot_component_ligands(scores: pd.DataFrame, cmp: int, ax, mode_label: str) 
     handles = [
         Patch(facecolor=EMPHASIS_COLOR, label="AUROC > 0.5"),
         Patch(facecolor=MUTED_COLOR, label="AUROC ≤ 0.5"),
-        Line2D([0], [0], color=CHANCE_COLOR, linestyle="--", linewidth=0.8, label="Chance"),
+        Line2D(
+            [0], [0], color=CHANCE_COLOR, linestyle="--", linewidth=0.8, label="Chance"
+        ),
     ]
     ax.legend(handles=handles, fontsize=5, loc="lower right")
 
