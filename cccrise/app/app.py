@@ -32,7 +32,11 @@ from cccrise.figures.commonFuncs.plotPaCMAP import (
     plot_wc_pacmap,
     plot_wc_per_celltype,
 )
-from cccrise.figures.figureAnova import plot_association_effect_sizes
+from cccrise.figures.figureAnova import (
+    DEFAULT_ASSOCIATIONS,
+    plot_association_effect_sizes,
+    plot_category_component_weights,
+)
 from cccrise.utils import celltype_component_association
 
 DATASET_CHOICES = {key: spec.label for key, spec in DATASETS.items()}
@@ -50,6 +54,11 @@ LR_HIGHLIGHT_CHOICES = {
 # Only, Sender Only. "Neither" is usually the majority category, so it's
 # muted rather than drawn from the same accented palette as the other three.
 STRENGTH_CATEGORY_COLORS = ["#7B3294", "#D9D9D9", "#E66101", "#2C7BB6"]
+
+# ALAD-only: figureAnova.py's own curated comparisons, reused as-is (single
+# source of truth) rather than re-hardcoded here. Only ALAD has more than one
+# patient status column recorded in its raw single-cell data.
+ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in DEFAULT_ASSOCIATIONS}
 
 
 def _fit_anova_result(spec) -> tuple[pd.DataFrame | None, str | None]:
@@ -274,6 +283,65 @@ def server(input, output, session):
         ax.axvline(cmp - 1, color="0.15", ls="--", lw=1.2, zorder=0)
         return fig
 
+    @reactive.calc
+    def patient_status_result():
+        ds = dataset()
+        if ds.spec.key != "alad":
+            return None, None, "no comparisons are configured for this dataset."
+        cfg = ALAD_COMPARISONS.get(input.patient_status_comparison())
+        if cfg is None:
+            return None, None, "no comparison selected."
+        raw = load_raw_dataset(input.dataset())
+        if raw.adata is None:
+            return None, None, raw.error or "raw dataset unavailable."
+        try:
+            df = run_saved_factors_anova(
+                factors=raw.adata,
+                condition_column=ds.spec.condition_col,
+                group_column=cfg["group_column"],
+                control_label=cfg.get("control_label"),
+                other_label=cfg.get("other_label"),
+                levels=cfg.get("levels"),
+                mapping=cfg.get("mapping"),
+                correction="fdr_bh",
+                association_name=cfg["name"],
+            )
+        except ValueError as exc:
+            return None, None, str(exc)
+        return df, cfg, None
+
+    @render.ui
+    def patient_status_ui():
+        _, _, error = patient_status_result()
+        if error is not None:
+            return ui.markdown(f"_Patient status comparison unavailable: {error}_")
+        return scrollable_plot("patient_status_plot", 1200, 500)
+
+    @render.plot
+    def patient_status_plot():
+        df, cfg, error = patient_status_result()
+        if error is not None:
+            return None
+        raw = load_raw_dataset(input.dataset())
+        cmp = input.component()
+
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5), layout="tight")
+        plot_association_effect_sizes(df, axes[0])
+        axes[0].axvline(cmp - 1, color="0.15", ls="--", lw=1.2, zorder=0)
+        plot_category_component_weights(
+            raw.adata,
+            component=cmp,
+            group_column=cfg["group_column"],
+            mapping=cfg.get("mapping"),
+            levels=cfg.get("levels"),
+            control_label=cfg.get("control_label"),
+            other_label=cfg.get("other_label"),
+            title=cfg["name"],
+            ax=axes[1],
+            anova_df=df,
+        )
+        return fig
+
     @render.ui
     def explorer_body():
         ds = dataset()
@@ -287,99 +355,129 @@ def server(input, output, session):
             ui.h4("Component Association (ANOVA)"),
             ui.output_ui("anova_associations_ui"),
             ui.hr(),
-            ui.h4("Top Ligand-Receptor Pairs"),
-            ui.markdown(
-                "Every LR pair's weight for the selected component, ranked "
-                "from highest to lowest. Highlight Rule sets which pairs "
-                "get markers and labels; Include Negative LR Tail also "
-                "marks the low end; Max Callout Labels caps labels per "
-                "side."
-            ),
-            ui.row(
-                ui.column(
-                    4,
-                    ui.input_select(
-                        "lr_highlight_mode",
-                        "Highlight Rule",
-                        choices=LR_HIGHLIGHT_CHOICES,
-                        selected="5",
-                    ),
-                ),
-                ui.column(
-                    4,
-                    ui.input_checkbox(
-                        "lr_include_negative",
-                        "Include Negative LR Tail",
-                        value=True,
-                    ),
-                ),
-                ui.column(
-                    4,
-                    ui.input_numeric(
-                        "lr_max_labels", "Max Callout Labels", value=10, min=1, max=30
-                    ),
-                ),
-            ),
-            scrollable_plot("lr_rank_curve_plot", 1100, 450),
-            ui.hr(),
-            ui.h4("Per-Cell-Type Distributions"),
-            ui.markdown(
-                "Sender and receiver weight distributions for the selected "
-                "component, by cell type. View Type switches between a "
-                "histogram grid and boxplots; Log-scale Y axis applies to "
-                "the histograms; the sidebar's Top Cell % Threshold sets "
-                "the percentile marked on the histograms."
-            ),
-            ui.row(
-                ui.column(
-                    4,
-                    ui.input_radio_buttons(
-                        "dist_view_mode",
-                        "View Type",
-                        choices={
-                            "hist": "Histogram Grid (Sender & Receiver Overlaid)",
-                            "box": "Boxplots (Selected Component)",
-                        },
-                        selected="hist",
-                    ),
-                ),
-                ui.column(
-                    4,
-                    ui.input_checkbox(
-                        "dist_log_y", "Log-scale Y axis (Histograms)", value=True
-                    ),
-                ),
-            ),
-            scrollable_plot("distributions_plot", 1300, 650),
-            ui.hr(),
-            ui.h4("Cell Type Association Heatmap"),
-            ui.markdown(
-                "Heatmap of every cell type's association with every "
-                "component, for sender and receiver. Association Heatmap "
-                "Stat selects the statistic shown; the sidebar's Top Cell "
-                "% Threshold sets the percentile used by the enrichment "
-                "and % Top statistics."
-            ),
-            ui.row(
-                ui.column(
-                    4,
-                    ui.input_select(
-                        "assoc_stat",
-                        "Association Heatmap Stat",
-                        choices={
-                            "mean": "Mean Cell Loading",
-                            "effect_size": "Cohen's d vs Other Cells",
-                            "enrichment": "log2 Enrichment",
-                            "pct_top": "% in Top Percentile",
-                        },
-                        selected="mean",
-                    ),
-                ),
-            ),
-            scrollable_plot("assoc_heatmap_plot", 1300, 500),
-            ui.hr(),
-            ui.h4("LR Pair Interaction Heatmap"),
         ]
+
+        if ds.spec.key == "alad":
+            sections.extend(
+                [
+                    ui.h4("Patient Status Comparisons"),
+                    ui.markdown(
+                        "ANOVA effect sizes and a per-component boxplot for "
+                        "a chosen patient status comparison, computed from "
+                        "the raw single-cell data. Comparison selects the "
+                        "patient status variable/grouping tested; both "
+                        "panels use the component selected in the sidebar."
+                    ),
+                    ui.input_select(
+                        "patient_status_comparison",
+                        "Comparison",
+                        choices=list(ALAD_COMPARISONS),
+                    ),
+                    ui.output_ui("patient_status_ui"),
+                    ui.hr(),
+                ]
+            )
+
+        sections.extend(
+            [
+                ui.h4("Top Ligand-Receptor Pairs"),
+                ui.markdown(
+                    "Every LR pair's weight for the selected component, ranked "
+                    "from highest to lowest. Highlight Rule sets which pairs "
+                    "get markers and labels; Include Negative LR Tail also "
+                    "marks the low end; Max Callout Labels caps labels per "
+                    "side."
+                ),
+                ui.row(
+                    ui.column(
+                        4,
+                        ui.input_select(
+                            "lr_highlight_mode",
+                            "Highlight Rule",
+                            choices=LR_HIGHLIGHT_CHOICES,
+                            selected="5",
+                        ),
+                    ),
+                    ui.column(
+                        4,
+                        ui.input_checkbox(
+                            "lr_include_negative",
+                            "Include Negative LR Tail",
+                            value=True,
+                        ),
+                    ),
+                    ui.column(
+                        4,
+                        ui.input_numeric(
+                            "lr_max_labels",
+                            "Max Callout Labels",
+                            value=10,
+                            min=1,
+                            max=30,
+                        ),
+                    ),
+                ),
+                scrollable_plot("lr_rank_curve_plot", 1100, 450),
+                ui.hr(),
+                ui.h4("Per-Cell-Type Distributions"),
+                ui.markdown(
+                    "Sender and receiver weight distributions for the selected "
+                    "component, by cell type. View Type switches between a "
+                    "histogram grid and boxplots; Log-scale Y axis applies to "
+                    "the histograms; the sidebar's Top Cell % Threshold sets "
+                    "the percentile marked on the histograms."
+                ),
+                ui.row(
+                    ui.column(
+                        4,
+                        ui.input_radio_buttons(
+                            "dist_view_mode",
+                            "View Type",
+                            choices={
+                                "hist": "Histogram Grid (Sender & Receiver Overlaid)",
+                                "box": "Boxplots (Selected Component)",
+                            },
+                            selected="hist",
+                        ),
+                    ),
+                    ui.column(
+                        4,
+                        ui.input_checkbox(
+                            "dist_log_y", "Log-scale Y axis (Histograms)", value=True
+                        ),
+                    ),
+                ),
+                scrollable_plot("distributions_plot", 1300, 650),
+                ui.hr(),
+                ui.h4("Cell Type Association Heatmap"),
+                ui.markdown(
+                    "Heatmap of every cell type's association with every "
+                    "component, for sender and receiver. Association Heatmap "
+                    "Stat selects the statistic shown; the sidebar's Top Cell "
+                    "% Threshold sets the percentile used by the enrichment "
+                    "and % Top statistics."
+                ),
+                ui.row(
+                    ui.column(
+                        4,
+                        ui.input_select(
+                            "assoc_stat",
+                            "Association Heatmap Stat",
+                            choices={
+                                "mean": "Mean Cell Loading",
+                                "effect_size": "Cohen's d vs Other Cells",
+                                "enrichment": "log2 Enrichment",
+                                "pct_top": "% in Top Percentile",
+                            },
+                            selected="mean",
+                        ),
+                    ),
+                ),
+                scrollable_plot("assoc_heatmap_plot", 1300, 500),
+                ui.hr(),
+                ui.h4("LR Pair Interaction Heatmap"),
+            ]
+        )
 
         raw = load_raw_dataset(input.dataset())
         if raw.error is not None or raw.adata is None:
