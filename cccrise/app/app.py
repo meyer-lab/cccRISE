@@ -136,6 +136,12 @@ app_ui = ui.page_sidebar(
     ui.navset_tab(
         ui.nav_panel(
             "Factor Matrices",
+            ui.markdown(
+                "Heatmaps of the condition (A), sender (B), receiver (C), "
+                "and ligand-receptor (D) factor matrices. The trim "
+                "threshold slider drops low-weight LR pairs from the D "
+                "panel."
+            ),
             ui.input_slider(
                 "lr_weight",
                 "LR factor trim threshold (min |weight|)",
@@ -246,13 +252,15 @@ def server(input, output, session):
         if error is not None:
             return ui.markdown(f"_ANOVA component associations unavailable: {error}_")
         return ui.TagList(
-            ui.output_plot("anova_associations_plot", height="260px"),
             ui.markdown(
-                "_Fit once at app startup, as in the manuscript figures, on "
-                f"{dataset().spec.control_label!r} vs. "
-                f"{dataset().spec.other_label!r}, FDR-adjusted across "
-                "components; not re-fit while the app is running._"
+                "Bar plot of each component's ANOVA effect size "
+                "(eta-squared) against the dataset's case/control "
+                f"grouping ({dataset().spec.control_label!r} vs. "
+                f"{dataset().spec.other_label!r}), with the FDR-adjusted "
+                "p-value above each bar. The dashed line marks the "
+                "component selected in the sidebar."
             ),
+            ui.output_plot("anova_associations_plot", height="260px"),
         )
 
     @render.plot
@@ -280,6 +288,13 @@ def server(input, output, session):
             ui.output_ui("anova_associations_ui"),
             ui.hr(),
             ui.h4("Top Ligand-Receptor Pairs"),
+            ui.markdown(
+                "Every LR pair's weight for the selected component, ranked "
+                "from highest to lowest. Highlight Rule sets which pairs "
+                "get markers and labels; Include Negative LR Tail also "
+                "marks the low end; Max Callout Labels caps labels per "
+                "side."
+            ),
             ui.row(
                 ui.column(
                     4,
@@ -308,6 +323,13 @@ def server(input, output, session):
             scrollable_plot("lr_rank_curve_plot", 1100, 450),
             ui.hr(),
             ui.h4("Per-Cell-Type Distributions"),
+            ui.markdown(
+                "Sender and receiver weight distributions for the selected "
+                "component, by cell type. View Type switches between a "
+                "histogram grid and boxplots; Log-scale Y axis applies to "
+                "the histograms; the sidebar's Top Cell % Threshold sets "
+                "the percentile marked on the histograms."
+            ),
             ui.row(
                 ui.column(
                     4,
@@ -332,9 +354,11 @@ def server(input, output, session):
             ui.hr(),
             ui.h4("Cell Type Association Heatmap"),
             ui.markdown(
-                "How each cell type associates with *every* component at "
-                "once -- a bird's-eye complement to the single-component "
-                "views above."
+                "Heatmap of every cell type's association with every "
+                "component, for sender and receiver. Association Heatmap "
+                "Stat selects the statistic shown; the sidebar's Top Cell "
+                "% Threshold sets the percentile used by the enrichment "
+                "and % Top statistics."
             ),
             ui.row(
                 ui.column(
@@ -367,6 +391,12 @@ def server(input, output, session):
 
         sections.extend(
             [
+                ui.markdown(
+                    "Binned expression-product heatmap for one "
+                    "ligand-receptor pair. Ligand-Receptor Pair selects the "
+                    "pair; Sender/Receiver Cell Type select the two cell "
+                    "populations."
+                ),
                 ui.row(
                     ui.column(
                         4,
@@ -549,14 +579,23 @@ def server(input, output, session):
             dataset().adata.obs[dataset().spec.celltype_col].unique().tolist()
         )
         return ui.TagList(
+            ui.markdown(
+                "Three PaCMAP embeddings of individual cells for the "
+                "selected component: weighted by sender or receiver score, "
+                "colored by cell type, and colored by group/condition. The "
+                "sidebar's Cell weight source switches the first panel "
+                "between sender and receiver weight."
+            ),
             ui.output_plot("projections_plot", height="500px"),
             ui.hr(),
             ui.h4("Sender/Receiver Strength"),
             ui.markdown(
-                "How many cells are a *strong* sender, receiver, both, or "
-                'neither for the selected component -- "strong" meaning '
-                "the cell's sender (or receiver) weight is at or above the "
-                "given percentile across *all* cells in the dataset."
+                "A cell counts as a strong sender (or receiver) if its "
+                "weight for the selected component is at or above the "
+                "chosen percentile across all cells. Cell Type selects the "
+                "cell type counted in the truth table below; Strength "
+                "Threshold (percentile) sets that percentile for all three "
+                "panels below."
             ),
             ui.row(
                 ui.column(
@@ -575,22 +614,26 @@ def server(input, output, session):
                     ),
                 ),
             ),
-            ui.markdown("###### Truth Table (Selected Cell Type)"),
+            ui.markdown(
+                "###### Truth Table (Selected Cell Type)\n"
+                "Counts of the selected cell type's cells that are a "
+                "strong sender, strong receiver, both, or neither, with "
+                "row/column totals."
+            ),
             ui.output_data_frame("truth_table"),
             ui.markdown(
                 "###### Strength Category PaCMAP (All Cell Types)\n"
-                "The same four categories, plotted spatially across every "
-                "cell in the dataset rather than counted within one cell "
-                "type."
+                "PaCMAP embedding colored by strength category (Both, "
+                "Sender Only, Receiver Only, Neither), for every cell in "
+                "the dataset."
             ),
             scrollable_plot("strength_category_pacmap_plot", 650, 550),
             ui.markdown(
                 "###### Sender vs. Receiver Weight (All Cell Types)\n"
-                "The raw weights the truth table and PaCMAP above threshold "
-                "into strong/not-strong -- threshold-agnostic, so it shows "
-                "the full continuous relationship (and how it differs by "
-                "cell type) rather than a binary call. Dashed lines mark "
-                "the current percentile threshold for reference only."
+                "Each cell's sender weight plotted against its receiver "
+                "weight for the selected component, colored by cell type. "
+                "Dashed lines mark the current Strength Threshold "
+                "percentile."
             ),
             scrollable_plot("sender_receiver_scatter_plot", 900, 700),
         )
@@ -729,13 +772,20 @@ def server(input, output, session):
         return ui.TagList(
             ui.markdown("#### Cell Type Loadings Summary for Selected Component"),
             ui.markdown(
-                f"_A cell counts as 'top' here if it's in the sidebar's Top "
-                f"Cell % Threshold, currently **{top_perc:g}%**; the mean "
-                "loading columns are unaffected by that threshold._"
+                "Mean sender/receiver loading and % of cells in the top "
+                "percentile, by cell type, for the selected component. The "
+                "sidebar's Top Cell % Threshold "
+                f"(currently **{top_perc:g}%**) sets the percentile used "
+                "by the '% of Cells in Top' columns; mean loading is "
+                "unaffected by it."
             ),
             ui.output_data_frame("celltype_summary_table"),
             ui.hr(),
             ui.markdown("#### Ranked Ligand-Receptor Pairs for Selected Component"),
+            ui.markdown(
+                "Every LR pair's weight for the selected component, ranked "
+                "from highest to lowest."
+            ),
             ui.output_data_frame("lr_ranked_table"),
         )
 
