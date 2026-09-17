@@ -28,11 +28,18 @@ Axes, and what each one asks:
   lr_pairs    The reference tensor's ligand-receptor mode bootstrapped.
               Robustness to which interactions the database contains. Costs
               no PARAFAC2 fit.
-  permuted    The reference tensor's entries permuted: the chance floor an
-              observed FMS has to be read against. Costs no PARAFAC2 fit.
+  seed_only   Identical data refit end to end (RISE -> communication tensor
+              -> CP) from a different random seed. The reproducibility
+              ceiling an observed FMS has to be read against: how far
+              components move from the fitters' own randomness alone, which
+              every other axis would otherwise carry mixed into its spread.
+              Refits RISE.
+
+All four run by default, so the comparison columns are populated without
+having to remember `--axes`:
 
     uv run cccrise-stability --dataset alad --rise-rank 25 --cp-rank 4 \
-        --n-replicates 20 --axes cells,conditions,lr_pairs,permuted
+        --n-replicates 20
 """
 
 import argparse
@@ -43,8 +50,8 @@ import pandas as pd
 from ..import_data import import_ligand_receptor_pairs
 from ..stability.component_stability import (
     DEFAULT_AXES,
-    PERMUTED_AXIS,
     RISE_REFIT_AXES,
+    SEED_AXIS,
     component_stability,
     fit_stability_pipeline,
     metric_interval,
@@ -59,9 +66,6 @@ from ._cli import (
 )
 from .datasets import DATA_DIR, DATASETS, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
-
-#: Every axis the runner knows how to run, in report order.
-ALL_AXES = (*DEFAULT_AXES, PERMUTED_AXIS)
 
 HEADER = """\
 Per-component RISE and CPD stability at fixed ranks under resampling.
@@ -239,7 +243,9 @@ def run_component_stability(
                 "random_state * 1000 + replicate + 1; one seed drives the "
                 "resample, the RISE refit and the CP fit, so a "
                 "replicate's RISE and CPD rows are the same resampled dataset "
-                "(see stability.replicate_seed)"
+                "(see stability.replicate_seed). On the seed_only axis the "
+                "seed is the only thing that differs from the reference: same "
+                "cells, same conditions, same ligand-receptor pairs"
             ),
             "resampling": {
                 "cells": "cells bootstrapped with replacement within each condition",
@@ -263,11 +269,22 @@ def run_component_stability(
                     "reference tensor's ligand-receptor mode bootstrapped "
                     "with replacement; no PARAFAC2 refit"
                 ),
-                PERMUTED_AXIS: (
-                    "reference tensor's entries permuted, giving the chance "
-                    "floor; no PARAFAC2 refit"
+                SEED_AXIS: (
+                    "identical data refit end to end (RISE -> communication "
+                    "tensor -> CP) under a different random seed; one "
+                    "PARAFAC2 refit per replicate"
                 ),
             },
+            "seed_axis_semantics": (
+                "seed_only is an upper reference, not a chance floor: its FMS "
+                "is expected to be high, and FracWithinSeedBand reads "
+                "high-is-good (the fraction of a component's replicates that "
+                "stayed inside the seed-refit band, i.e. moved no further "
+                "than reseeding alone moves them). It replaces an "
+                "entry-permutation floor that every component cleared; runs "
+                "before 2026-09 carry the old 'permuted' axis and the "
+                "opposite reading"
+            ),
             "condition_mode_alignment": (
                 "reference condition-mode rows expanded onto the replicate's "
                 "roster by draw (see stability.reference_condition_rows)"
@@ -319,8 +336,9 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default=",".join(DEFAULT_AXES),
         help=(
-            "Comma-separated resampling axes. Cohort axes draw with "
-            f"replacement. Options: {', '.join(ALL_AXES)}."
+            "Comma-separated axes. The cohort axes draw with replacement; "
+            "seed_only draws nothing and varies only the fits' starting "
+            f"point. Options: {', '.join(DEFAULT_AXES)}."
         ),
     )
     parser.add_argument("--n-replicates", type=int, default=20)

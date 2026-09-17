@@ -12,8 +12,9 @@ from tlviz.factor_tools import factor_match_score
 from cccrise.ccc import calculate_r2x
 from cccrise.stability.component_stability import (
     CPD_SKIP_MODES,
-    PERMUTED_AXIS,
+    DEFAULT_AXES,
     RISE_SKIP_MODES,
+    SEED_AXIS,
     STAGE_CPD,
     STAGE_RISE,
     _fit_cp,
@@ -397,7 +398,7 @@ def test_component_stability_emits_one_row_per_axis_stage_and_component():
         reference,
         lr_pairs,
         **kwargs,
-        axes=("cells", "conditions", "lr_pairs", PERMUTED_AXIS),
+        axes=("cells", "conditions", "lr_pairs", SEED_AXIS),
         n_replicates=2,
         random_state=0,
     )
@@ -408,7 +409,10 @@ def test_component_stability_emits_one_row_per_axis_stage_and_component():
     assert counts[("conditions", STAGE_RISE)] == 2 * RISE_RANK
     assert counts[("conditions", STAGE_CPD)] == 2 * CP_RANK
     assert counts[("lr_pairs", STAGE_CPD)] == 2 * CP_RANK
-    assert counts[(PERMUTED_AXIS, STAGE_CPD)] == 2 * CP_RANK
+    # The seed axis refits the whole pipeline, so unlike the permutation floor
+    # it replaced it has something to say about RISE components too.
+    assert counts[(SEED_AXIS, STAGE_RISE)] == 2 * RISE_RANK
+    assert counts[(SEED_AXIS, STAGE_CPD)] == 2 * CP_RANK
 
     assert df["FMS"].between(0.0, 1.0 + 1e-9).all()
 
@@ -587,6 +591,100 @@ def test_component_stability_runs_with_compression_disabled():
     assert df["FMS"].between(0.0, 1.0 + 1e-9).all()
 
 
+# =============================================================================
+# The seed-refit ceiling
+# =============================================================================
+
+
+def test_seed_axis_is_run_by_default():
+    """No other axis's FMS is interpretable without the ceiling beside it, and
+    an absent ceiling shows up only as a column of NaNs -- easy to miss."""
+    assert SEED_AXIS in DEFAULT_AXES
+
+
+def test_seed_axis_emits_both_stages_with_real_cohort_sizes():
+    """The axis it replaced decomposed the reference tensor and so could only
+    describe CPD components, with no cell or condition count to report."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
+
+    df = component_stability(
+        adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=2
+    )
+
+    assert set(df["Stage"]) == {STAGE_RISE, STAGE_CPD}
+    assert (df["NCells"] == adata.n_obs).all()
+    assert (df["NConditions"] == adata.obs["sample"].nunique()).all()
+
+
+def test_seed_axis_reproduces_the_reference_when_it_draws_the_reference_seed():
+    """Proves the axis varies the seed and nothing else.
+
+    `replicate_seed(0, 0) == 1`, so a reference fit at `random_state=1` is the
+    fit the first replicate re-derives. If the axis were perturbing the data
+    as well, the two would not land on top of each other.
+    """
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=1, keep_tensor=True
+    )
+
+    df = component_stability(
+        adata,
+        reference,
+        lr_pairs,
+        **kwargs,
+        axes=(SEED_AXIS,),
+        n_replicates=1,
+        random_state=0,
+    )
+
+    assert (df["FMS"] > 0.99).all()
+
+
+def test_seed_axis_leaves_the_callers_adata_untouched():
+    """`import_data.add_cond_idxs` writes into `obs` in place and
+    `parafac2.store_pf2` writes `uns`/`varm`, so the seed axis's identity
+    resampler has to copy. Without the copy the caller's object would carry
+    the first replicate's fit and every later axis would resample from it."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
+
+    component_stability(
+        adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=1
+    )
+
+    assert "Pf2_A" not in adata.uns
+    assert "condition_unique_idxs" not in adata.obs.columns
+
+
+def test_seed_axis_does_not_require_a_retained_tensor():
+    """It refits the pipeline rather than decomposing the reference tensor,
+    so the guard that gates 'lr_pairs' must not gate it."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=False
+    )
+
+    df = component_stability(
+        adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=1
+    )
+
+    assert not df.empty
+
+
 def test_component_stability_rejects_an_unknown_axis():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
@@ -598,6 +696,14 @@ def test_component_stability_rejects_an_unknown_axis():
     with pytest.raises(ValueError, match="Unknown stability axes"):
         component_stability(
             adata, reference, lr_pairs, **kwargs, axes=("genes",), n_replicates=1
+        )
+
+    # The retired permutation floor is an unknown axis now, not a silently
+    # accepted one: a stale command line should fail rather than produce a
+    # table whose baseline column means the opposite of what it used to.
+    with pytest.raises(ValueError, match="Unknown stability axes"):
+        component_stability(
+            adata, reference, lr_pairs, **kwargs, axes=("permuted",), n_replicates=1
         )
 
 
@@ -756,7 +862,17 @@ def test_metric_interval_groups_by_the_keys_it_is_given():
     np.testing.assert_allclose(aggregate["Mean"].iloc[0], 0.65)
 
 
-def _stability_frame(with_floor: bool) -> pd.DataFrame:
+def _stability_frame(with_ceiling: bool) -> pd.DataFrame:
+    """A summary-ready table whose two components need different ceilings.
+
+    Component 1 reseeds almost perfectly but the cell bootstrap moves it well
+    below that, so the perturbation genuinely cost it something. Component 2
+    reseeds worse than component 1 scores under resampling -- it is fuzzy at
+    this rank however it is fit -- so its lower observed FMS is not the data's
+    doing. A ceiling pooled across components would put the band edge at 0.45
+    and call both components fine; matching per component separates them, so
+    these values are what makes that behaviour testable rather than incidental.
+    """
     rows = [
         {
             "Axis": "cells",
@@ -768,62 +884,87 @@ def _stability_frame(with_floor: bool) -> pd.DataFrame:
             "RunnerUpComponent": 3 - component,
             "RunnerUpFMS": 0.1,
         }
-        # Component 1 is reproducible, component 2 hovers near chance.
-        for component, values in [(1, [0.9, 0.92, 0.95]), (2, [0.2, 0.25, 0.3])]
+        for component, values in [(1, [0.9, 0.92, 0.95]), (2, [0.5, 0.55, 0.6])]
         for b, fms in enumerate(values)
     ]
-    if with_floor:
+    if with_ceiling:
         rows += [
             {
-                "Axis": PERMUTED_AXIS,
+                "Axis": SEED_AXIS,
                 "Replicate": b,
                 "Stage": STAGE_CPD,
                 "Component": component,
                 "MatchedComponent": component,
-                "FMS": 0.3,
+                "FMS": fms,
                 "RunnerUpComponent": 3 - component,
                 "RunnerUpFMS": 0.1,
             }
-            for component in (1, 2)
+            for component, fms in [(1, 0.99), (2, 0.45)]
             for b in range(3)
         ]
     return pd.DataFrame(rows)
 
 
-def test_summarize_component_stability_scores_each_component_against_the_floor():
-    summary = summarize_component_stability(_stability_frame(with_floor=True))
+def test_summarize_component_stability_scores_each_component_against_the_seed_band():
+    summary = summarize_component_stability(_stability_frame(with_ceiling=True))
     summary = summary.set_index("Component")
 
     assert set(summary.index) == {1, 2}
-    np.testing.assert_allclose(summary.loc[1, "NullP95FMS"], 0.3)
-    # The reproducible component clears the floor every time; the other never
-    # does, which the aggregate FMS alone would not reveal.
-    assert summary.loc[1, "FracAboveNull"] == 1.0
-    assert summary.loc[2, "FracAboveNull"] == 0.0
+    np.testing.assert_allclose(summary.loc[1, "SeedP5FMS"], 0.99)
+    np.testing.assert_allclose(summary.loc[2, "SeedP5FMS"], 0.45)
+    # Component 1 reseeds better than any bootstrap replicate reproduced it,
+    # so the draw moved it; component 2 never drops below what reseeding alone
+    # costs it, which the aggregate FMS alone would read as the worse result.
+    assert summary.loc[1, "FracWithinSeedBand"] == 0.0
+    assert summary.loc[2, "FracWithinSeedBand"] == 1.0
     np.testing.assert_allclose(summary.loc[1, "MedianFMS"], 0.92)
     np.testing.assert_allclose(summary.loc[1, "MedianRunnerUpFMS"], 0.1)
 
 
-def test_summarize_component_stability_reports_nan_when_no_floor_was_run():
+def test_summarize_component_stability_matches_the_seed_ceiling_per_component():
+    """Pooling the ceiling across components would hide the distinction.
+
+    A single stage-wide band edge here is 0.45, which every observed replicate
+    of both components clears -- so both would read 1.0 and component 1's real
+    sensitivity to the draw would vanish.
+    """
+    df = _stability_frame(with_ceiling=True)
+    pooled_edge = np.percentile(df[df["Axis"] == SEED_AXIS]["FMS"], 5)
+    assert (df[df["Axis"] == "cells"]["FMS"] >= pooled_edge).all()
+
+    summary = summarize_component_stability(df).set_index("Component")
+    assert summary.loc[1, "FracWithinSeedBand"] == 0.0
+
+
+def test_summarize_component_stability_reports_nan_when_no_seed_axis_was_run():
     """0.0 would report every component as having failed a test that was
     never performed."""
-    summary = summarize_component_stability(_stability_frame(with_floor=False))
+    summary = summarize_component_stability(_stability_frame(with_ceiling=False))
 
-    assert summary["NullMedianFMS"].isna().all()
-    assert summary["NullP95FMS"].isna().all()
-    assert summary["FracAboveNull"].isna().all()
+    assert summary["SeedMedianFMS"].isna().all()
+    assert summary["SeedP5FMS"].isna().all()
+    assert summary["FracWithinSeedBand"].isna().all()
 
 
 def test_summarize_component_stability_survives_a_csv_round_trip(tmp_path):
-    """The floor axis is named 'permuted', not 'null', because `read_csv`
-    parses the latter as NaN and silently erases the floor."""
+    """The baseline axis is named 'seed_only', not 'null', because `read_csv`
+    parses the latter as NaN and silently erases the baseline.
+
+    Asserted at the cause as well as the consequence: a future rename that
+    happens to land on one of pandas' NA strings should fail here rather than
+    downstream, as an unexplained column of NaNs.
+    """
+    from pandas._libs.parsers import STR_NA_VALUES
+
+    assert SEED_AXIS not in STR_NA_VALUES
+
     path = tmp_path / "stability.csv"
-    _stability_frame(with_floor=True).to_csv(path, index=False)
+    _stability_frame(with_ceiling=True).to_csv(path, index=False)
 
     summary = summarize_component_stability(pd.read_csv(path))
 
-    assert summary["NullP95FMS"].notna().all()
-    assert summary["FracAboveNull"].notna().all()
+    assert summary["SeedP5FMS"].notna().all()
+    assert summary["FracWithinSeedBand"].notna().all()
 
 
 def test_reference_condition_rows_matches_on_labels_not_positions():
