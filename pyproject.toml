@@ -17,7 +17,8 @@ dependencies = [
     "datashader>=0.17.0",
     "pacmap>=0.8.0",
     "tensorly-viz>=0.1.7",
-    "parafac2>=1.6.0",
+    "parafac2>=1.7.0",
+    "scrise>=1.4.0",
     "pyarrow>=15.0.0",
     "xarray>=2024.1.0",
     "netcdf4>=1.6.5",
@@ -31,6 +32,12 @@ dependencies = [
 
 readme = "README.md"
 
+[project.optional-dependencies]
+# CuPy is optional. The `[ctk]` extra ships the CUDA toolkit headers CuPy JIT-compiles against.
+gpu = [
+    "cupy-cuda12x[ctk]>=13.0; sys_platform != 'darwin'",
+]
+
 [project.urls]
 Homepage = "https://github.com/meyer-lab/cellcommunication-Pf2"
 Repository = "https://github.com/meyer-lab/cellcommunication-Pf2"
@@ -39,12 +46,12 @@ Documentation = "https://meyer-lab.github.io/cellcommunication-Pf2/"
 [project.scripts]
 fbuild = "cccrise.figures.common:genFigure"
 factor = "cccrise.imports:factorSave"
-# Runners: produce the result files that figures and the Shiny app consume.
 cccrise-run = "cccrise.runners.run_ccc_rise:main"
 cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
-cccrise-logregboot = "cccrise.runners.run_logreg_bootstrap:main"
+cccrise-anovaboot = "cccrise.runners.run_anova_bootstrap:main"
 cccrise-stability = "cccrise.runners.run_component_stability:main"
+cccrise-significance = "cccrise.runners.run_significance:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
@@ -78,6 +85,17 @@ ignore = [
     "N999",   # figure modules are intentionally named figureXX.py
     "BLE001", # figure scripts deliberately catch broad exceptions to keep batch analyses running
 ]
+
+[tool.ty.src]
+# Legacy figures still reference the pre-ANOVA logreg API and will be
+# removed along with the rest of the outdated figure/manuscript files.
+exclude = [
+    "cccrise/figures/figure4.py",
+    "cccrise/figures/figureA6d.py",
+]
+
+[tool.ty.rules]
+unused-ignore-comment = "ignore"
 
 [tool.pytest.ini_options]
 addopts = "-n auto"

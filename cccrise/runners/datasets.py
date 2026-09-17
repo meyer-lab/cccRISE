@@ -57,8 +57,14 @@ class DatasetSpec:
     def stability_filename(self) -> str:
         return f"component_stability_{self.key}.csv"
 
-    def logreg_bootstrap_weights_filename(self) -> str:
-        return f"logreg_bootstrap_weights_{self.key}.csv"
+    def anova_bootstrap_filename(self) -> str:
+        return f"anova_bootstrap_{self.key}.csv"
+
+    def significance_lr_filename(self) -> str:
+        return f"significance_lr_{self.key}.csv"
+
+    def significance_differential_filename(self) -> str:
+        return f"significance_differential_{self.key}.parquet"
 
     def cell_obs_columns(self) -> list[str]:
         """`.obs` columns to persist per-cell in the factors file (for the

@@ -251,8 +251,13 @@ def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
     `save_factors_netcdf`). The default `netcdf4` engine can't represent
     float16 and, worse, doesn't fail cleanly when asked to open such a
     file, so it's avoided entirely here rather than used as a fallback.
+
+    Loads eagerly (`load_dataset`, not `open_dataset`) so the returned
+    Dataset stays usable after the underlying file is closed -- needed to
+    read a file and then overwrite it in the same process, e.g.
+    `regenerate_factors`'s read-then-replace.
     """
-    return xr.open_dataset(Path(filepath), engine="h5netcdf")
+    return xr.load_dataset(Path(filepath), engine="h5netcdf")
 
 
 def load_factors_to_anndata(

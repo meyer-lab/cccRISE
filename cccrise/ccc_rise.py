@@ -144,11 +144,17 @@ def calc_communication_score(
     )
     filtered_lr_pairs = lr_pairs[lr_pair_names.isin(ppi_names)].reset_index(drop=True)
 
-    # Convert to numpy and transpose to expected format
+    if not ppi_names:
+        raise ValueError(
+            "No ligand-receptor pair matched the expression data, so the "
+            "interaction tensor would have a zero-length LR mode. "
+            f"First few gene names seen: {list(rnaseq_matrices[0].index[:5])}"
+        )
+
+    # Transpose to the expected format
     # From: (context, ppi_idx, rank, rank)
     # To:   (context, rank, rank, ppi_idx)
-    interaction_tensor = np.array(tensors)
-    interaction_tensor = np.transpose(interaction_tensor, (0, 2, 3, 1))
+    interaction_tensor = np.transpose(np.asarray(tensors), (0, 2, 3, 1))
 
     return interaction_tensor, filtered_lr_pairs
 
@@ -245,8 +251,12 @@ def _fast_interaction_tensor(
     """Vectorized communication tensor for a fixed LR pair set, for any of
     the scoring strategies in `combine_communication_score` (product, mean,
     gmean, or the CellChat-style Hill function)."""
-    tensors = []
-    for matrix in projected_matrices:
+    # Written into a preallocated output rather than stacked at the end:
+    # `np.stack` needs the per-condition slabs and the result live at once, and
+    # at cohort scale with a high RISE rank each of those is tens of GB (a
+    # 343 x 70 x 70 x 1372 tensor is 18 GB on its own).
+    out = None
+    for i, matrix in enumerate(projected_matrices):
         lig = _aggregate_subunit_expression(
             matrix, lig_idx, lig_mask, lig_valid, complex_agg_method
         )
@@ -255,16 +265,19 @@ def _fast_interaction_tensor(
         )
         raw_product = np.einsum("rl,sl->rsl", lig, rec)
         raw_sum = lig[:, np.newaxis, :] + rec[np.newaxis, :, :]
-        tensors.append(
-            combine_communication_score(
-                raw_product,
-                raw_sum,
-                communication_score=communication_score,
-                hill_k=hill_k,
-            )
+        score = combine_communication_score(
+            raw_product,
+            raw_sum,
+            communication_score=communication_score,
+            hill_k=hill_k,
         )
+        if out is None:
+            out = np.empty((len(projected_matrices), *score.shape), dtype=score.dtype)
+        out[i] = score
 
-    return np.stack(tensors, axis=0)
+    if out is None:
+        raise ValueError("No projected matrices to build a communication tensor from.")
+    return out
 
 
 def compute_communication_significance(
@@ -530,7 +543,7 @@ def compute_differential_significance(
     sample_to_group : Sequence[bool] or np.ndarray
         Boolean (or 0/1) group label per condition/sample, same order and
         length as `interaction_tensor`'s first axis and as the CP condition
-        factor `A` (see `logreg.ccc_rise_logreg_weights`, which uses the same
+        factor `A` (see `anova.prepare_anova_inputs`, which uses the same
         `sample_to_group` convention). Must contain both groups.
     n_perms : int, default=1000
         Number of random group-label permutations, used only when the exact
