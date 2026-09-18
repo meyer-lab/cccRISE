@@ -119,9 +119,23 @@ def run_anova_bootstrap(
     tuple[pd.DataFrame, Path, Path]
         The replicate ANOVA table, the CSV path, and the sidecar path.
     """
-    group_column, control_label, other_label = resolve_group_labels(
-        spec, group_column, control_label, other_label
-    )
+    if (
+        spec.key == "alad"
+        and group_column is None
+        and control_label is None
+        and other_label is None
+    ):
+        # ALADstatus (the registry's default group_column, shared with the
+        # component-stability runner's condition-axis stratification) showed
+        # no significant component association. The 6-month post-transplant
+        # outcome did, tested across all four of its levels rather than
+        # collapsed to a binary pair -- so the ANOVA bootstrap alone departs
+        # from the registry default here.
+        group_column, control_label, other_label = "6monthcondition", None, None
+    else:
+        group_column, control_label, other_label = resolve_group_labels(
+            spec, group_column, control_label, other_label
+        )
 
     output_path = output_path or (DATA_DIR / spec.anova_bootstrap_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
