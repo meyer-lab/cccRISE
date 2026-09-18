@@ -17,11 +17,8 @@ figure only plots), under both receiver-population definitions:
 
 Significance is a permutation test (``nichenet.permutation_null_aurocs``):
 each ligand's AUROC is compared to its empirical null distribution from
-random relabelings of the same receiver population, holding group sizes
-fixed. Bars are colored by significance (p < 0.05) and direction (AUROC
-above/below chance) rather than by AUROC alone, since a modest AUROC can
-still be a robust hit if the null variance for that receiver population is
-small (and vice versa).
+random relabelings of the same receiver population. Bars are colored by
+significance (p < 0.05) and direction (AUROC above/below chance).
 
 Panels, in order: one per-ligand AUROC panel per component for each mode
 (left column "within_celltype", right column "vs_rest"), followed by a

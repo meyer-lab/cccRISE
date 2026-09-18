@@ -2,12 +2,11 @@
 NicheNet-style downstream-target validation of cccRISE / CPD components.
 
 For each CPD component, this module tests whether the literature-curated
-downstream targets of the component's top-loading ligands are actually
-differentially expressed in the receiver cells the component implicates,
-reporting a per-ligand/per-component AUROC (the standard NicheNet
-ligand-activity statistic), plus an empirical permutation p-value against a
-null built from the same receiver population. This is a real-data accuracy
-metric, in place of a synthetic ground truth (see GitHub issue #136).
+downstream targets of the component's top-loading ligands are differentially
+expressed in the receiver cells the component implicates, reporting a
+per-ligand/per-component AUROC (the standard NicheNet ligand-activity
+statistic) and an empirical permutation p-value against a null built from
+the same receiver population.
 
 The ligand-target prior is the NicheNet v2 ligand-target matrix (Zenodo
 record 7074291), which is only published as an R `.rds` object; it is read
@@ -143,18 +142,7 @@ def top_lr_pairs_for_component(
     """
     Return the top `top_m` ligand-receptor pairs loading onto CPD component `cmp`.
 
-    Ranks by absolute loading magnitude rather than signed loading. This was
-    revisited after the communication-score sign ambiguity fix (#139, which
-    re-centers the score on real expression so a component's sign is no
-    longer a gauge artifact) landed: across the finalized ALAD fit, the large
-    majority of loadings are positive, and the negative ones are generally
-    noise-level (e.g. components 1-2: <1.5% of pairs negative, |loading|
-    <~0.001 vs a positive max of ~0.5-0.7, never surfacing in a
-    top-10-by-magnitude), so restricting to positive loadings would rarely
-    change anything -- but not always: component 3 has a real
-    negative-loading pair at rank 3 by magnitude (|loading|~0.23, comparable
-    to the top positive pairs). Abs-magnitude ranking is kept so that this
-    kind of genuine negative signal isn't silently dropped.
+    Ranks by absolute loading magnitude rather than signed loading.
 
     Parameters
     ----------
@@ -196,17 +184,6 @@ def receiver_celltypes_for_component(
     included; any other cell type whose mean loading is at least
     `pool_threshold` of the top cell type's mean loading is pooled in too.
 
-    A single fixed "top-N cell types" rule doesn't work well here: some
-    components are essentially specific to one cell type (e.g. the ALAD fit's
-    component 1 is ~30x more active in Epithelial cells than the runner-up),
-    where pooling in the runner-up only dilutes real signal with a
-    near-inactive population, while others are genuinely shared across
-    several cell types with comparable loading (e.g. component 3's CD8 T,
-    NK, and CD4 T cells are all within ~20% of each other), where restricting
-    to a single "top" cell type is itself a mis-specification. Gating pooling
-    on relative loading magnitude, rather than rank, handles both cases with
-    one rule.
-
     Parameters
     ----------
     adata : anndata.AnnData
@@ -242,55 +219,48 @@ def receiver_celltypes_for_component(
 def _receiver_population(
     adata: anndata.AnnData,
     cmp: int,
-    receiver_mode: ReceiverMode,
     celltype_col: str,
     celltype: str | list[str] | None,
     top_perc: float,
 ) -> tuple[anndata.AnnData, np.ndarray, int, int]:
     """
-    Restrict `adata` to the receiver population for `cmp`/`receiver_mode` and
-    split it into "high"/"low" component-loading groups.
+    Restrict `adata` to `celltype` (if given) and split it into the cells
+    above the `100 - top_perc` percentile ("high") and below the `top_perc`
+    percentile ("low") of component `cmp`'s receiver-eigenstate loading
+    (`adata.obsm["rc_C"][:, cmp - 1]`), discarding every other cell.
 
-    - "within_celltype": restrict to `celltype` (a single cell type, or a
-      pooled list from `receiver_celltypes_for_component`) first, then split
-      *that* population into its genuine top/bottom `top_perc` by
-      receiver-eigenstate loading (`adata.obsm["rc_C"][:, cmp - 1]`),
-      discarding the middle `100 - 2 * top_perc`%. Both compared groups are
-      real loading extremes, and the DE test's gene ranks are computed only
-      over this kept top+bottom population, not the excluded middle.
-    - "vs_rest": take the top `top_perc` of *all* cells (not restricted to
-      any cell type) by receiver-eigenstate loading and compare them to
-      every other cell -- nothing is excluded. Larger effective sample size
-      / effect size, but conflates component activity with cell-type
-      composition.
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        AnnData with `obsm["rc_C"]` populated.
+    cmp : int
+        1-indexed component number.
+    celltype_col : str
+        Column in `adata.obs` naming cell types.
+    celltype : str, list[str], or None
+        If given, `adata` is restricted to this cell type (or these cell
+        types) before splitting into groups. If None, all of `adata` is used.
+    top_perc : float
+        Percentile threshold defining the "high" and "low" groups.
 
     Returns
     -------
     tuple[anndata.AnnData, np.ndarray, int, int]
-        (kept, pos_mask, n_pos, n_neg): `kept` is the AnnData actually used
-        for the DE test (pos union neg cells only), and `pos_mask` is a
-        boolean array aligned to `kept` marking the "high"/positive group.
+        (kept, pos_mask, n_pos, n_neg): `kept` is the cells in the "high" or
+        "low" group (union), `pos_mask` is a boolean array aligned to `kept`
+        marking the "high" group, and `n_pos`/`n_neg` are the two group sizes.
     """
-    if receiver_mode == "within_celltype":
-        if celltype is None:
-            raise ValueError(
-                "`celltype` is required when receiver_mode='within_celltype'"
-            )
+    if celltype is None:
+        X = adata
+    else:
         celltypes = [celltype] if isinstance(celltype, str) else list(celltype)
         X = adata[adata.obs[celltype_col].isin(celltypes)]
-        loadings = np.asarray(X.obsm["rc_C"])[:, cmp - 1]
-        hi_thr = np.percentile(loadings, 100 - top_perc)
-        lo_thr = np.percentile(loadings, top_perc)
-        pos_idx = loadings > hi_thr
-        neg_idx = loadings < lo_thr
-    elif receiver_mode == "vs_rest":
-        X = adata
-        loadings = np.asarray(X.obsm["rc_C"])[:, cmp - 1]
-        hi_thr = np.percentile(loadings, 100 - top_perc)
-        pos_idx = loadings > hi_thr
-        neg_idx = ~pos_idx
-    else:
-        raise ValueError(f"Unknown receiver_mode: {receiver_mode!r}")
+
+    loadings = np.asarray(X.obsm["rc_C"])[:, cmp - 1]
+    hi_thr = np.percentile(loadings, 100 - top_perc)
+    lo_thr = np.percentile(loadings, top_perc)
+    pos_idx = loadings > hi_thr
+    neg_idx = loadings < lo_thr
 
     kept_idx = pos_idx | neg_idx
     kept = X[kept_idx].copy()
@@ -323,9 +293,8 @@ def receiver_de_ranking(
     method: DeMethod = "wilcoxon",
 ) -> pd.Series:
     """
-    Rank genes by a differential-expression statistic between receiver cells
-    with high vs. low loading on CPD component `cmp` (see `_receiver_population`
-    for exactly how the compared groups are defined for each `receiver_mode`).
+    Rank genes by a differential-expression statistic between the "high" and
+    "low" component-loading groups defined by `_receiver_population`.
 
     Parameters
     ----------
@@ -335,13 +304,16 @@ def receiver_de_ranking(
     cmp : int
         1-indexed component number.
     receiver_mode : {"within_celltype", "vs_rest"}, default="within_celltype"
+        "within_celltype" restricts to `celltype` before grouping;
+        "vs_rest" uses all of `adata`.
     celltype_col : str, default="broad_cell_type"
-        Required (and used) only when `receiver_mode == "within_celltype"`.
+        Column in `adata.obs` naming cell types. Used only when
+        `receiver_mode == "within_celltype"`.
     celltype : str or list[str], optional
-        Required when `receiver_mode == "within_celltype"`; a single cell
-        type or a pooled list (see `receiver_celltypes_for_component`).
+        Required when `receiver_mode == "within_celltype"`.
     top_perc : float, default=10
-        Percentile defining the "high"/"low" component-loading groups.
+        Percentile threshold defining the "high"/"low" groups; see
+        `_receiver_population`.
     method : str, default="wilcoxon"
         `scanpy.tl.rank_genes_groups` method.
 
@@ -350,8 +322,18 @@ def receiver_de_ranking(
     pd.Series
         Gene -> DE test statistic, sorted descending (most "high-group-up" first).
     """
+    if receiver_mode == "within_celltype":
+        if celltype is None:
+            raise ValueError(
+                "`celltype` is required when receiver_mode='within_celltype'"
+            )
+    elif receiver_mode == "vs_rest":
+        celltype = None
+    else:
+        raise ValueError(f"Unknown receiver_mode: {receiver_mode!r}")
+
     kept, pos_mask, n_pos, n_neg = _receiver_population(
-        adata, cmp, receiver_mode, celltype_col, celltype, top_perc
+        adata, cmp, celltype_col, celltype, top_perc
     )
     if n_pos < 2 or n_neg < 2:
         raise ValueError(
@@ -413,44 +395,33 @@ def permutation_null_aurocs(
     random_state: int | None = 0,
 ) -> dict[str, np.ndarray]:
     """
-    Empirical null AUROC distributions for `ligands`, from `n_perm` random
-    relabelings of `kept`'s cells into groups the same sizes as `pos_mask`.
+    Compute a null distribution of ligand-activity AUROCs for `ligands`, by
+    repeatedly reassigning which cells in `kept` are in the positive group.
 
-    This is a proper permutation test (relabel within the exact cell
-    population actually compared, holding group sizes fixed), but it avoids
-    the naive approach of rerunning `scanpy.tl.rank_genes_groups` from
-    scratch for every permutation, which is far too slow to do hundreds of
-    times for a "vs_rest" population (~70s/call on the full ALAD dataset).
-
-    The key fact this exploits: for a *fixed* pair of group sizes, the
-    Mann-Whitney U statistic behind the "wilcoxon" DE score is an increasing
-    affine function of the positive group's rank sum, with coefficients
-    (the null mean/variance of U) that depend only on the group sizes and
-    each gene's tie structure -- both fixed across relabelings, since only
-    the group *labels* change, not the underlying expression values.
-    Ranking genes by rank sum therefore reproduces the exact same gene
-    ordering (and hence the exact same AUROC) that scanpy's z-score would,
-    for a fraction of the cost: the expensive step (ranking every cell
-    within every gene) is computed once and reused for all `n_perm`
-    relabelings, which then reduce to a single matrix multiply.
+    Each of `n_perm` iterations draws `pos_mask.sum()` cells (without
+    replacement, from all cells in `kept`) as the positive group and treats
+    the remaining cells as the negative group. Per-gene ranks across cells
+    are computed once and reused for every iteration; each iteration's
+    per-gene score is the sum of positive-group ranks for that gene, and
+    each ligand's AUROC is computed from that score against its target set,
+    as in `ligand_activity_auroc`.
 
     Parameters
     ----------
     kept : anndata.AnnData
-        The exact cell population compared in the observed test (i.e. the
-        `kept` returned by `_receiver_population`).
+        Cell population to draw the positive/negative relabeling from.
     pos_mask : np.ndarray[bool]
-        The observed "high"/positive group assignment, aligned to `kept`;
-        only its size (`pos_mask.sum()`) is used.
+        Aligned to `kept`; only `pos_mask.sum()` (the positive group size)
+        is used.
     lt_df : pd.DataFrame
         Long-format ligand-target matrix, as in `ligand_activity_auroc`.
     ligands : list[str]
         Ligand gene symbols to compute null distributions for. Duplicates
         are computed once and reused.
     n_perm : int, default=1000
-        Number of random relabelings.
+        Number of relabelings.
     random_state : int, optional
-        Seed for reproducibility.
+        Seed for the relabeling draws.
 
     Returns
     -------
@@ -540,7 +511,7 @@ def component_accuracy_scores(
 
         try:
             kept, pos_mask, n_pos, n_neg = _receiver_population(
-                adata, cmp, receiver_mode, celltype_col, celltype, top_perc
+                adata, cmp, celltype_col, celltype, top_perc
             )
             if n_pos < 2 or n_neg < 2:
                 raise ValueError(

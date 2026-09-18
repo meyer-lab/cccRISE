@@ -98,9 +98,7 @@ def _make_synthetic_adata(
 ) -> anndata.AnnData:
     """Build a small AnnData where the first `n_high` cells have elevated
     expression of `target_genes` and a continuous receiver-eigenstate loading
-    (`rc_C`) that's clearly separated between those cells and the rest, so a
-    genuine top-vs-bottom percentile split (not just top-vs-rest) recovers
-    them as component 1's "high" group."""
+    (`rc_C`) that is higher for those cells than for the rest."""
     rng = np.random.default_rng(random_state)
     gene_names = [f"g{i}" for i in range(n_genes)]
     if target_genes is None:
@@ -126,12 +124,11 @@ def _make_synthetic_adata(
     return adata
 
 
-def test_receiver_population_within_celltype_excludes_middle():
+def test_receiver_population_excludes_middle():
     adata = _make_synthetic_adata(n_cells=200, n_high=40, random_state=1)
     kept, pos_mask, n_pos, n_neg = _receiver_population(
         adata,
         cmp=1,
-        receiver_mode="within_celltype",
         celltype_col="broad_cell_type",
         celltype="CT1",
         top_perc=20,
@@ -143,18 +140,17 @@ def test_receiver_population_within_celltype_excludes_middle():
     assert pos_mask.sum() == n_pos
 
 
-def test_receiver_population_vs_rest_keeps_all_cells():
+def test_receiver_population_with_no_celltype_uses_whole_adata():
     adata = _make_synthetic_adata(n_cells=200, n_high=40, random_state=1)
     kept, _pos_mask, n_pos, n_neg = _receiver_population(
         adata,
         cmp=1,
-        receiver_mode="vs_rest",
         celltype_col="broad_cell_type",
         celltype=None,
         top_perc=20,
     )
-    assert kept.n_obs == adata.n_obs
-    assert n_pos + n_neg == adata.n_obs
+    assert kept.n_obs == n_pos + n_neg
+    assert kept.n_obs < adata.n_obs
 
 
 def test_receiver_de_ranking_within_celltype_recovers_target_genes():
@@ -262,7 +258,6 @@ def test_permutation_null_aurocs_null_centered_near_chance():
     kept, pos_mask, _, _ = _receiver_population(
         adata,
         cmp=1,
-        receiver_mode="within_celltype",
         celltype_col="broad_cell_type",
         celltype="CT1",
         top_perc=20,
@@ -291,7 +286,6 @@ def test_permutation_null_aurocs_dedupes_repeated_ligands():
     kept, pos_mask, _, _ = _receiver_population(
         adata,
         cmp=1,
-        receiver_mode="within_celltype",
         celltype_col="broad_cell_type",
         celltype="CT1",
         top_perc=20,

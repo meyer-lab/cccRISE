@@ -33,5 +33,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 5ced0d155f31aff6bfdfd27a606a97a6164c141a-dirty
-generated: '2026-09-17T22:28:24+00:00'
+git_sha: dd4ee0f97a2af36cc4e6975260495bde89671ac0-dirty
+generated: '2026-09-18T19:30:12+00:00'
