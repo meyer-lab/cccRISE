@@ -70,6 +70,7 @@ from tensorly.decomposition import parafac
 
 from ..ccc import calculate_r2x
 from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
+from ..factors import clean_memory
 from ..import_data import add_cond_idxs
 from ..rank_selection import (
     candelinc_compress,
@@ -743,6 +744,10 @@ def component_stability(
                         diagnostics=fit["cpd_diagnostics"],
                     )
                 )
+                # CuPy's pool never returns freed blocks to the driver on its
+                # own, so a long sweep of variably-sized resamples fragments
+                # it until a fit spuriously trips the managed-memory fallback.
+                clean_memory()
                 continue
 
             # 'lr_pairs' is the only axis left that reaches the reference
@@ -781,6 +786,7 @@ def component_stability(
                     n_conditions=np.nan,
                 )
             )
+            clean_memory()
 
     return pd.concat(frames, ignore_index=True)
 
