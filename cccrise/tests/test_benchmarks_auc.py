@@ -75,6 +75,31 @@ def test_permutation_null_is_near_chance_and_p_is_significant_when_separable():
     assert 0.2 < res.null_auc < 0.8
     # 20 permutations floors the p-value at 1/21.
     assert res.null_p == pytest.approx(1 / 21)
+    assert res.null_sd is not None and res.null_sd > 0
+
+
+def test_null_draws_are_the_same_statistic_as_the_observed_auc_by_default():
+    # The p-value compares the observed AUC against the permutation draws, so a
+    # draw has to be formed the same way: a mean over the same number of outer
+    # CV repeats. A single-repeat draw has larger variance than a mean of five,
+    # which fattens the null's upper tail and silently inflates p.
+    X, y = _noise(n=30, seed=1)
+    res = cv_auc(X, y, n_repeats=3, n_permutations=4, n_boot=0, random_state=0)
+    assert res.params["null_n_repeats"] == 3
+    assert res.params["null_matched"] is True
+    assert res.to_row()["NullNRepeats"] == 3
+
+
+def test_unmatched_null_is_allowed_but_flagged():
+    # Still available as a deliberate cost trade for wide sweeps; it must be
+    # visible in the params and on the row so a stale CSV can be recognized.
+    X, y = _noise(n=30, seed=1)
+    res = cv_auc(
+        X, y, n_repeats=3, n_permutations=4, null_n_repeats=1, n_boot=0, random_state=0
+    )
+    assert res.params["null_n_repeats"] == 1
+    assert res.params["null_matched"] is False
+    assert res.to_row()["NullNRepeats"] == 1
 
 
 def test_result_is_invariant_to_row_order():

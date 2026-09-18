@@ -172,7 +172,11 @@ class AUCResult:
     classes : tuple[str, str]
         The label values mapped to 0 and 1, in that order.
     null_auc : float | None
-        Mean AUC over label permutations, when `n_permutations > 0`.
+        Mean AUC over label permutations, when `n_permutations > 0`. Its own
+        standard error is `null_sd / sqrt(len(null_aucs))`, which is what tells
+        you whether a null mean away from 0.50 is anything but noise.
+    null_sd : float | None
+        Standard deviation across permutation draws.
     null_p : float | None
         `(1 + #{null >= observed}) / (1 + n_permutations)`.
     null_aucs : np.ndarray | None
@@ -197,6 +201,7 @@ class AUCResult:
     n_conditions: int
     n_components: int
     null_auc: float | None = None
+    null_sd: float | None = None
     null_p: float | None = None
     null_aucs: np.ndarray | None = None
     params: dict[str, Any] = field(default_factory=dict)
@@ -217,6 +222,9 @@ class AUCResult:
             "RepeatHi": self.repeat_hi,
             "Accuracy": self.accuracy,
             "NullAUC": self.null_auc,
+            "NullSD": self.null_sd,
+            "NullN": None if self.null_aucs is None else len(self.null_aucs),
+            "NullNRepeats": self.params.get("null_n_repeats"),
             "NullP": self.null_p,
             "NConditions": self.n_conditions,
             "NComponents": self.n_components,
@@ -360,6 +368,7 @@ def cv_auc(
     random_state: int = 0,
     groups: LabelLike | None = None,
     n_permutations: int = 0,
+    null_n_repeats: int | None = None,
     n_boot: int = 2000,
     ci_level: float = 95.0,
 ) -> AUCResult:
@@ -394,7 +403,18 @@ def cv_auc(
         have that property, so the argument exists rather than the assumption.
     n_permutations : int, default=0
         Label permutations for the null AUC. Each one repeats the whole CV, so
-        this dominates runtime; 100 is usually enough to place an observed AUC.
+        this dominates runtime. The empirical p-value cannot fall below
+        ``1 / (n_permutations + 1)``, so 200 is the smallest count that can
+        resolve p < 0.01 and 20 the smallest that can resolve p < 0.05.
+    null_n_repeats : int | None, optional
+        Outer CV repeats per permutation draw. Defaults to `n_repeats`, which
+        makes each draw **the same statistic** as the observed AUC it is
+        compared against -- necessary for the p-value to mean anything. Setting
+        it lower is a deliberate cost/validity trade: a single-repeat draw has
+        larger variance than a mean of `n_repeats`, which fattens the null's
+        upper tail and makes the p-value **conservative**, so a reported p is
+        then an upper bound rather than an estimate. The chosen value is
+        recorded in `params` and on every row.
     n_boot : int, default=2000
         Bootstrap draws for the confidence interval. Cheap -- it resamples the
         out-of-fold predictions rather than refitting.
@@ -448,7 +468,8 @@ def cv_auc(
         )
     )
 
-    null_auc = null_p = None
+    null_repeats = n_repeats if null_n_repeats is None else int(null_n_repeats)
+    null_auc = null_p = null_sd = None
     null_aucs = None
     if n_permutations > 0:
         perm_rng = np.random.default_rng(random_state + 1)
@@ -456,11 +477,21 @@ def cv_auc(
         for _ in range(n_permutations):
             y_perm = perm_rng.permutation(y)
             _, perm_repeat, _ = _one_pass(
-                X, y_perm, factory, splits, 1, inner_splits, random_state, groups_arr
+                X,
+                y_perm,
+                factory,
+                splits,
+                null_repeats,
+                inner_splits,
+                random_state,
+                groups_arr,
             )
-            vals.append(float(perm_repeat[0]))
+            # Mean over the draw's repeats, matching how the observed AUC is
+            # formed, so observed and null are the same statistic.
+            vals.append(float(perm_repeat.mean()))
         null_aucs = np.array(vals)
         null_auc = float(null_aucs.mean())
+        null_sd = float(null_aucs.std(ddof=1)) if len(null_aucs) > 1 else float("nan")
         observed = float(repeat_aucs.mean())
         null_p = float((1 + np.sum(null_aucs >= observed)) / (1 + n_permutations))
 
@@ -479,6 +510,7 @@ def cv_auc(
         n_conditions=int(X.shape[0]),
         n_components=int(X.shape[1]),
         null_auc=null_auc,
+        null_sd=null_sd,
         null_p=null_p,
         null_aucs=null_aucs,
         params={
@@ -489,6 +521,8 @@ def cv_auc(
             "inner_splits": inner_splits,
             "random_state": random_state,
             "n_permutations": n_permutations,
+            "null_n_repeats": null_repeats,
+            "null_matched": null_repeats == n_repeats,
             "n_boot": n_boot,
             "ci_level": ci_level,
             "grouped": groups_arr is not None,
