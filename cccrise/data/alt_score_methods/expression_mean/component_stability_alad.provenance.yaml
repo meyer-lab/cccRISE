@@ -48,7 +48,7 @@ component_numbering: reference fit after ccc_rise.standardize_cc_pf2
 lr_roster_stable: true
 interaction_tensor_shape: [47, 19, 19, 513]
 r2x_pf2: 0.03771146303854245
-r2x_cp: 0.3328641450302404
+r2x_cp: 0.3331345761268375
 reference_seed: 0
 first_replicate_seed: 1
 resulting_dims:
@@ -56,5 +56,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 0c980bd0862361c817c0902897c88ffa9ba801a9
-generated: '2026-09-17T23:31:36+00:00'
+git_sha: aafaaad29ce0afafbe95e81634c0ffeef00ae55d-dirty
+generated: '2026-09-18T21:29:06+00:00'

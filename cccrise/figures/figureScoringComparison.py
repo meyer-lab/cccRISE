@@ -15,13 +15,18 @@ alternates (``expression_mean``, CellPhoneDB-style; ``expression_gmean``;
        estimates only -- no bootstrap; see the caveats below).
     4. Bootstrap CP component stability (placeholder scale -- see caveats).
 
-This figure only loads results; it never generates them. The default score's
-results are the ones every other figure and the manuscript's interpretation
-reads (produced by ``cccrise-run`` / ``cccrise-significance`` /
-``cccrise-stability`` directly, at whatever settings they were last run at).
-The three alternates' results are produced by ``cccrise-altcommscore``, one
-invocation per method:
+This figure only loads results; it never generates them. All four methods
+compared here -- including the default -- are read from
+``DATA_DIR/alt_score_methods/<method>/``, a comparison-scope copy generated
+by ``cccrise-altcommscore`` at identical ranks and settings for all four, so
+the comparison is apples-to-apples. This is deliberately separate from the
+default's comprehensive, canonical results directly in ``DATA_DIR`` (produced
+by ``cccrise-run`` / ``cccrise-significance`` / ``cccrise-stability``, at
+whatever scale and ranks those were last run at), which every other figure
+and the manuscript's interpretation reads instead. Regenerate all four with:
 
+    uv run cccrise-altcommscore --dataset alad --rise-rank 19 --cp-rank 3 \
+        --communication-score expression_product --n-perms 3 --n-replicates 3
     uv run cccrise-altcommscore --dataset alad --rise-rank 19 --cp-rank 3 \
         --communication-score expression_mean --n-perms 3 --n-replicates 3
     uv run cccrise-altcommscore --dataset alad --rise-rank 19 --cp-rank 3 \
@@ -29,22 +34,13 @@ invocation per method:
     uv run cccrise-altcommscore --dataset alad --rise-rank 19 --cp-rank 3 \
         --communication-score expression_hill --n-perms 3 --n-replicates 3
 
-Known caveats in this comparison (not fixed here since fixing them means
-regenerating the default's committed results, which is the user's call, not
-this figure's):
+Known caveats in this comparison:
 
-* The committed default significance run used RISE rank 25, not 19 -- the
-  three alternates are run at 19. LR-pair-level significance is compared
-  anyway since it is not rank-sensitive at the level reported here, but this
-  is an apples-to-oranges rank comparison, not apples-to-apples.
-* The committed default stability run used RISE rank 25 / CP rank 4, not
-  19 / 3 -- same caveat, and it is already only 3 replicates (a placeholder,
-  not a real result).
 * The ANOVA point estimates are exactly that -- a single fit per method, no
   patient-resampling bootstrap -- so they show whether components associate
   with ALADstatus at all under each score, not whether that association
   would survive a different patient roster.
-* The three alternates' significance/stability results were generated at
+* Every method's significance/stability results here were generated at
   smoke-test scale (3 permutations / 3 bootstrap replicates), to validate
   this figure's plumbing cheaply, not to be a statistically powered result.
 """
@@ -54,7 +50,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 from ..factors import load_factors_netcdf, load_factors_to_anndata
-from ..runners.datasets import DATASETS, scoring_output_dir
+from ..runners.datasets import DATASETS, comparison_output_dir
 from ..stability.anova_stability import align_to_reference_components, top_lr_pairs
 from .common import getSetup, load_runner_csv, subplotLabel
 
@@ -97,12 +93,12 @@ ALT_COMM_SCORE_HINT = (
 
 
 def _cp_factors(method: str) -> list[np.ndarray]:
-    ds = load_factors_netcdf(scoring_output_dir(method) / SPEC.factors_filename)
+    ds = load_factors_netcdf(comparison_output_dir(method) / SPEC.factors_filename)
     return [ds[f"cp_{mode}"].values for mode in "ABCD"]
 
 
 def _lr_symbols(method: str) -> np.ndarray:
-    ds = load_factors_netcdf(scoring_output_dir(method) / SPEC.factors_filename)
+    ds = load_factors_netcdf(comparison_output_dir(method) / SPEC.factors_filename)
     return ds.coords["lr_pair"].values
 
 
@@ -118,7 +114,7 @@ def _celltype_loadings(method: str, adata_raw) -> tuple[pd.DataFrame, pd.DataFra
     comparable; no separate RISE-basis alignment is needed.
     """
     ad = load_factors_to_anndata(
-        scoring_output_dir(method) / SPEC.factors_filename,
+        comparison_output_dir(method) / SPEC.factors_filename,
         adata=adata_raw,
         condition_column=SPEC.condition_column,
     )
@@ -206,19 +202,6 @@ def _match_and_compare(reference_method: str, method: str, adata_raw) -> pd.Data
 # =============================================================================
 
 
-def _heatmap(
-    ax: plt.Axes, data: pd.DataFrame, title: str, vmin: float = 0.0, vmax: float = 1.0
-) -> None:
-    im = ax.imshow(data.to_numpy(), vmin=vmin, vmax=vmax, cmap="viridis", aspect="auto")
-    ax.set_xticks(range(data.shape[1]))
-    ax.set_xticklabels(data.columns, rotation=0)
-    ax.set_yticks(range(data.shape[0]))
-    ax.set_yticklabels(data.index, fontsize=6)
-    ax.set_xlabel("CP component (reference numbering)")
-    ax.set_title(title, fontsize=8)
-    plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-
-
 def _grouped_bar(
     ax: plt.Axes,
     data: pd.DataFrame,
@@ -262,19 +245,19 @@ def makeFigure():
     }
     match_score = pd.DataFrame(
         {m: comparisons[m].set_index("Component")["MatchScore"] for m in ALT_SCORES}
-    ).T
+    )
     bc_cosine = pd.DataFrame(
         {m: comparisons[m].set_index("Component")["MeanBCCosine"] for m in ALT_SCORES}
-    ).T
+    )
     lr_jaccard = pd.DataFrame(
         {m: comparisons[m].set_index("Component")["TopLRJaccard"] for m in ALT_SCORES}
-    ).T
+    )
     celltype_jaccard = pd.DataFrame(
         {
             m: comparisons[m].set_index("Component")["CelltypeJaccard"]
             for m in ALT_SCORES
         }
-    ).T
+    )
 
     # --- ANOVA point estimates (e) --------------------------------------
     ref_anova_factors = _cp_factors(DEFAULT_SCORE)
@@ -283,7 +266,7 @@ def makeFigure():
     for method in ALL_SCORES:
         df = load_runner_csv(
             SPEC.anova_point_estimate_filename(),
-            root=scoring_output_dir(method),
+            root=comparison_output_dir(method),
             hint=ALT_COMM_SCORE_HINT.replace("<method>", method),
         )
         if method == DEFAULT_SCORE:
@@ -317,7 +300,7 @@ def makeFigure():
     for method in ALL_SCORES:
         sig_df = load_runner_csv(
             SPEC.significance_lr_filename(),
-            root=scoring_output_dir(method),
+            root=comparison_output_dir(method),
             hint=ALT_COMM_SCORE_HINT.replace("<method>", method),
         )
         frac_sig[method] = float(sig_df["FractionSignificant_p05"].mean())
@@ -332,7 +315,7 @@ def makeFigure():
     for method in ALL_SCORES:
         df = load_runner_csv(
             SPEC.stability_filename(),
-            root=scoring_output_dir(method),
+            root=comparison_output_dir(method),
             hint=ALT_COMM_SCORE_HINT.replace("<method>", method),
         )
         cpd = df[df["Stage"] == "CPD"]
@@ -342,13 +325,26 @@ def makeFigure():
     # --- Draw ------------------------------------------------------------
     axs, fig = getSetup((16, 8), (2, 4))
 
-    _heatmap(axs[0], match_score, "CP component match quality (LR-mode cosine)")
-    _heatmap(axs[1], bc_cosine, "Aligned sender/receiver (B/C) cosine similarity")
-    _heatmap(axs[2], lr_jaccard, f"Top-{TOP_N_LR} LR-pair Jaccard overlap")
-    _heatmap(
+    _grouped_bar(
+        axs[0],
+        match_score,
+        "CP component match quality (LR-mode cosine)",
+        "Match score",
+    )
+    _grouped_bar(
+        axs[1],
+        bc_cosine,
+        "Aligned sender/receiver (B/C) cosine similarity",
+        "Cosine similarity",
+    )
+    _grouped_bar(
+        axs[2], lr_jaccard, f"Top-{TOP_N_LR} LR-pair Jaccard overlap", "Jaccard index"
+    )
+    _grouped_bar(
         axs[3],
         celltype_jaccard,
         f"Top-{TOP_N_CELLTYPE} sender/receiver cell-type Jaccard",
+        "Jaccard index",
     )
 
     _grouped_bar(
@@ -402,14 +398,14 @@ def makeFigure():
         (
             f"Dataset: {SPEC.label}\n"
             f"RISE rank {RISE_RANK}, CP rank {CP_RANK}\n"
-            f"Alternate scores: n_perms={N_PERMS_SMOKE}, "
+            f"All 4 methods: n_perms={N_PERMS_SMOKE}, "
             f"n_replicates={N_REPLICATES_SMOKE} (smoke test)\n\n"
             "Caveats:\n"
-            "- Default significance/stability results predate this\n"
-            "  comparison and were run at different RISE/CP ranks.\n"
             "- ANOVA is a point estimate, not a bootstrap.\n"
-            "- Alt-score results are smoke-test scale, not\n"
-            "  statistically powered."
+            "- All results here are smoke-test scale, not\n"
+            "  statistically powered -- a separate, comprehensive\n"
+            "  copy of the default score's results lives in the\n"
+            "  root data dir for manuscript interpretation."
         ),
         transform=axs[7].transAxes,
         va="top",
