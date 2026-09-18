@@ -66,6 +66,9 @@ class DatasetSpec:
     def benchmark_auc_filename(self) -> str:
         return f"benchmark_auc_{self.key}.csv"
 
+    def benchmark_rank_filename(self) -> str:
+        return f"benchmark_rank_{self.key}.csv"
+
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.key}.csv"
 

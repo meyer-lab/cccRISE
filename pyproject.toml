@@ -50,6 +50,7 @@ cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
 cccrise-anovaboot = "cccrise.runners.run_anova_bootstrap:main"
 cccrise-stability = "cccrise.runners.run_component_stability:main"
 cccrise-bench-auc = "cccrise.runners.run_benchmark_auc:main"
+cccrise-bench-rank = "cccrise.runners.run_benchmark_rank:main"
 cccrise-significance = "cccrise.runners.run_significance:main"
 
 [build-system]
