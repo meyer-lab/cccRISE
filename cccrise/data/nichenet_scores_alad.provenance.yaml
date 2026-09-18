@@ -24,11 +24,14 @@ top_m_lr: 10
 top_perc: 10.0
 de_method: wilcoxon
 celltype_col: broad_cell_type
+pool_threshold: 0.3
+n_perm: 1000
+random_state: 0
 nichenet_ligand_target_url: https://zenodo.org/records/7074291/files/ligand_target_matrix_nsga2r_final.rds
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: c9b4d6299d90d90d22a6dacf8402143154e9d2cd
-generated: '2026-09-17T16:56:50+00:00'
+git_sha: 5ced0d155f31aff6bfdfd27a606a97a6164c141a-dirty
+generated: '2026-09-17T22:28:24+00:00'

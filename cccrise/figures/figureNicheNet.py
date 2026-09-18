@@ -9,17 +9,24 @@ differential expression in the component's implicated receiver population
 (``component_accuracy_scores``, run by the ``run_nichenet`` runner -- this
 figure only plots), under both receiver-population definitions:
 
-- "within_celltype": receiver cells restricted to the cell type with the
-  highest mean receiver-eigenstate loading for that component.
+- "within_celltype": receiver cells restricted to the cell type(s) with
+  comparably high mean receiver-eigenstate loading for that component (see
+  ``nichenet.receiver_celltypes_for_component``) -- one or several cell
+  types may be pooled together.
 - "vs_rest": receiver cells drawn from the whole dataset.
+
+Significance is a permutation test (``nichenet.permutation_null_aurocs``):
+each ligand's AUROC is compared to its empirical null distribution from
+random relabelings of the same receiver population, holding group sizes
+fixed. Bars are colored by significance (p < 0.05) and direction (AUROC
+above/below chance) rather than by AUROC alone, since a modest AUROC can
+still be a robust hit if the null variance for that receiver population is
+small (and vice versa).
 
 Panels, in order: one per-ligand AUROC panel per component for each mode
 (left column "within_celltype", right column "vs_rest"), followed by a
-per-component summary row (mean AUROC, and how many of each component's top
-ligands could actually be scored).
-
-No null/significance comparison is computed here (deferred) -- the vertical
-dashed line at AUROC=0.5 marks chance, not a tested threshold.
+per-component summary row (mean AUROC, ligand coverage, and significant-hit
+count).
 """
 
 import numpy as np
@@ -35,19 +42,33 @@ from .common import getSetup, load_runner_csv, subplotLabel
 # Only "alad" has a finalized fit today; "ibd" is wired up for when it does.
 SELECTED_DATASET = "alad"
 
-EMPHASIS_COLOR = "#3a6b9c"
-MUTED_COLOR = "0.72"
+SIG_ALPHA = 0.05
+SIG_UP_COLOR = "#3a6b9c"
+SIG_DOWN_COLOR = "#b3382c"
+NOT_SIG_COLOR = "0.72"
 VSREST_COLOR = "#c98b3a"
 CHANCE_COLOR = "0.4"
 
 
+def _significance_color(auroc: float, p_value: float | None) -> str:
+    if p_value is None or pd.isna(p_value) or p_value >= SIG_ALPHA:
+        return NOT_SIG_COLOR
+    return SIG_UP_COLOR if auroc > 0.5 else SIG_DOWN_COLOR
+
+
 def _component_summary(scores: pd.DataFrame, components: list[int]) -> pd.DataFrame:
     summary = (
-        scores.groupby("component")["auroc"]
-        .agg(mean_auroc="mean", median_auroc="median", n_scored="count")
+        scores.groupby("component")
+        .agg(
+            mean_auroc=("auroc", "mean"),
+            median_auroc=("auroc", "median"),
+            n_scored=("auroc", "count"),
+            n_significant=("p_value", lambda p: int((p < SIG_ALPHA).sum())),
+        )
         .reindex(components)
     )
     summary["n_scored"] = summary["n_scored"].fillna(0).astype(int)
+    summary["n_significant"] = summary["n_significant"].fillna(0).astype(int)
     return summary
 
 
@@ -80,8 +101,11 @@ def plot_component_ligands(scores: pd.DataFrame, cmp: int, ax, mode_label: str) 
         ax.set_yticks([])
         return
 
-    labels = [f"{lig}→{rec}" for lig, rec in zip(sub["ligand"], sub["receptor"])]
-    colors = [EMPHASIS_COLOR if a > 0.5 else MUTED_COLOR for a in sub["auroc"]]
+    labels = [
+        f"{lig}→{rec}" + (" *" if p < SIG_ALPHA else "")
+        for lig, rec, p in zip(sub["ligand"], sub["receptor"], sub["p_value"])
+    ]
+    colors = [_significance_color(a, p) for a, p in zip(sub["auroc"], sub["p_value"])]
     ax.barh(labels, sub["auroc"], color=colors)
     ax.axvline(0.5, color=CHANCE_COLOR, linestyle="--", linewidth=0.8)
     ax.set_xlim(0, 1)
@@ -90,8 +114,9 @@ def plot_component_ligands(scores: pd.DataFrame, cmp: int, ax, mode_label: str) 
     ax.tick_params(axis="y", labelsize=6)
 
     handles = [
-        Patch(facecolor=EMPHASIS_COLOR, label="AUROC > 0.5"),
-        Patch(facecolor=MUTED_COLOR, label="AUROC ≤ 0.5"),
+        Patch(facecolor=SIG_UP_COLOR, label=f"p<{SIG_ALPHA}, AUROC>0.5"),
+        Patch(facecolor=SIG_DOWN_COLOR, label=f"p<{SIG_ALPHA}, AUROC<0.5"),
+        Patch(facecolor=NOT_SIG_COLOR, label="not significant"),
         Line2D(
             [0], [0], color=CHANCE_COLOR, linestyle="--", linewidth=0.8, label="Chance"
         ),
@@ -118,7 +143,7 @@ def plot_component_summary(
         positions - width / 2,
         summary_within[value_col].to_numpy(dtype=float),
         width=width,
-        color=EMPHASIS_COLOR,
+        color=SIG_UP_COLOR,
         label="within_celltype",
     )
     ax.bar(
@@ -152,7 +177,7 @@ def makeFigure():
     summary_within = _component_summary(scores_within, components)
     summary_vsrest = _component_summary(scores_vsrest, components)
 
-    nrows = cp_rank + 1
+    nrows = cp_rank + 2
     ax, f = getSetup((11, 3.0 * nrows), (nrows, 2))
     subplotLabel(ax)
 
@@ -180,6 +205,16 @@ def makeFigure():
         ylabel="Ligands scored (of top-loading set)",
         title=f"Per-component ligand coverage ({SELECTED_DATASET})",
     )
+    plot_component_summary(
+        summary_within,
+        summary_vsrest,
+        components,
+        ax[summary_row + 2],
+        value_col="n_significant",
+        ylabel=f"Ligands significant (p<{SIG_ALPHA})",
+        title=f"Per-component permutation-null hits ({SELECTED_DATASET})",
+    )
+    ax[summary_row + 3].axis("off")
 
     print(f"=== NicheNet component summary: {SELECTED_DATASET}, within_celltype ===")
     print(summary_within.to_string())

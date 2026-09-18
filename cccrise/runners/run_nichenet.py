@@ -59,6 +59,9 @@ def run_nichenet(
     top_perc: float = 10.0,
     de_method: DeMethod = "wilcoxon",
     celltype_col: str | None = None,
+    pool_threshold: float = 0.3,
+    n_perm: int = 1000,
+    random_state: int | None = 0,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score every CPD component's top ligands against the NicheNet v2 prior,
@@ -75,12 +78,21 @@ def run_nichenet(
     top_m_lr : int, default=10
         Top LR pairs scored per component.
     top_perc : float, default=10.0
-        Percentile split defining "high"/"low" component loading.
+        Percentile defining "high"/"low" component loading.
     de_method : str, default="wilcoxon"
         `scanpy.tl.rank_genes_groups` method.
     celltype_col : str, optional
         Column in `adata.obs` naming cell types. Defaults to
         `spec.celltype_column`.
+    pool_threshold : float, default=0.3
+        Minimum mean receiver loading, as a fraction of the top cell type's,
+        for another cell type to be pooled into the "within_celltype"
+        receiver population; see `nichenet.receiver_celltypes_for_component`.
+    n_perm : int, default=1000
+        Permutation-null iterations per component; see
+        `nichenet.permutation_null_aurocs`.
+    random_state : int, optional
+        Seed for the permutation null.
     output_path : Path, optional
         CSV destination; defaults to the registry's NicheNet scores filename.
 
@@ -117,6 +129,10 @@ def run_nichenet(
         f"top_perc={top_perc}  de_method={de_method!r}  celltype_col={celltype_col!r}"
     )
 
+    print(
+        f"    pool_threshold={pool_threshold}  n_perm={n_perm}  random_state={random_state}"
+    )
+
     print(f"1. Loading factors from {factors_path}...")
     raw = spec.load()
     adata = load_factors_to_anndata(factors_path, adata=raw)
@@ -143,6 +159,9 @@ def run_nichenet(
             celltype_col=celltype_col,
             top_perc=top_perc,
             de_method=de_method,
+            pool_threshold=pool_threshold,
+            n_perm=n_perm,
+            random_state=random_state,
         )
         mode_scores.insert(0, "receiver_mode", mode)
         scored.append(mode_scores)
@@ -150,8 +169,14 @@ def run_nichenet(
 
     print("4. Per-component summary:")
     summary = (
-        scores.groupby(["receiver_mode", "component"])["auroc"]
-        .agg(mean_auroc="mean", median_auroc="median", n_scored="count")
+        scores.groupby(["receiver_mode", "component"])
+        .agg(
+            celltype=("celltype", "first"),
+            mean_auroc=("auroc", "mean"),
+            median_auroc=("auroc", "median"),
+            n_scored=("auroc", "count"),
+            n_significant=("p_value", lambda p: int((p < 0.05).sum())),
+        )
         .reset_index()
     )
     print(summary.to_string(index=False))
@@ -171,6 +196,9 @@ def run_nichenet(
             "top_perc": top_perc,
             "de_method": de_method,
             "celltype_col": celltype_col,
+            "pool_threshold": pool_threshold,
+            "n_perm": n_perm,
+            "random_state": random_state,
             "nichenet_ligand_target_url": (
                 "https://zenodo.org/records/7074291/files/"
                 "ligand_target_matrix_nsga2r_final.rds"
@@ -212,6 +240,26 @@ def build_parser() -> argparse.ArgumentParser:
         "(default: the dataset registry's celltype_column).",
     )
     parser.add_argument(
+        "--pool-threshold",
+        type=float,
+        default=0.3,
+        help="Minimum mean receiver loading, as a fraction of the top cell "
+        "type's, for another cell type to be pooled into the "
+        "within_celltype receiver population.",
+    )
+    parser.add_argument(
+        "--n-perm",
+        type=int,
+        default=1000,
+        help="Permutation-null iterations per component.",
+    )
+    parser.add_argument(
+        "--random-state",
+        type=int,
+        default=0,
+        help="Seed for the permutation null.",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         default=None,
@@ -234,6 +282,9 @@ def main(argv: list[str] | None = None) -> None:
         top_perc=args.top_perc,
         de_method=cast(DeMethod, args.de_method),
         celltype_col=args.celltype_col,
+        pool_threshold=args.pool_threshold,
+        n_perm=args.n_perm,
+        random_state=args.random_state,
         output_path=resolve_output(
             args.output, DATA_DIR, spec.nichenet_scores_filename()
         ),
