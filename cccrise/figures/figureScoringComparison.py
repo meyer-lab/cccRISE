@@ -12,23 +12,26 @@ alternates (``expression_mean``, CellPhoneDB-style; ``expression_gmean``;
        similarity, top ligand-receptor pairs, top sender/receiver cell types.
     2. Permutation significance of ligand-receptor pairs.
     3. ANOVA association between CP components and ALADstatus (point
-       estimates only -- no bootstrap; see module docstring caveat below).
-    4. Bootstrap CP component stability (placeholder scale -- see caveat).
+       estimates only -- no bootstrap; see the caveats below).
+    4. Bootstrap CP component stability (placeholder scale -- see caveats).
 
-Result-file handling
----------------------
-The default score's results are the ones every other figure and the
-manuscript's interpretation reads, so they are never regenerated here --
-whatever is already committed in ``DATA_DIR`` is loaded as-is, even where its
-settings (rise/cp rank, n_perms, n_replicates) predate this comparison. The
-three alternate scores' results do not exist yet; this module generates them
-under ``DATA_DIR/alt_score_methods/<method>/`` the first time it runs and
-reuses them on every subsequent run (`_ensure_*` functions below check the
-target path before calling the runner).
+This figure only loads results; it never generates them. The default score's
+results are the ones every other figure and the manuscript's interpretation
+reads (produced by ``cccrise-run`` / ``cccrise-significance`` /
+``cccrise-stability`` directly, at whatever settings they were last run at).
+The three alternates' results are produced by ``cccrise-altcommscore``, one
+invocation per method:
 
-Known caveats in this comparison (see PR discussion, not fixed here since
-fixing them means regenerating the default's committed results, which is the
-user's call, not this figure's):
+    uv run cccrise-altcommscore --dataset alad --rise-rank 19 --cp-rank 3 \
+        --communication-score expression_mean --n-perms 3 --n-replicates 3
+    uv run cccrise-altcommscore --dataset alad --rise-rank 19 --cp-rank 3 \
+        --communication-score expression_gmean --n-perms 3 --n-replicates 3
+    uv run cccrise-altcommscore --dataset alad --rise-rank 19 --cp-rank 3 \
+        --communication-score expression_hill --n-perms 3 --n-replicates 3
+
+Known caveats in this comparison (not fixed here since fixing them means
+regenerating the default's committed results, which is the user's call, not
+this figure's):
 
 * The committed default significance run used RISE rank 25, not 19 -- the
   three alternates are run at 19. LR-pair-level significance is compared
@@ -36,44 +39,30 @@ user's call, not this figure's):
   is an apples-to-oranges rank comparison, not apples-to-apples.
 * The committed default stability run used RISE rank 25 / CP rank 4, not
   19 / 3 -- same caveat, and it is already only 3 replicates (a placeholder,
-  not a real result) before this figure was ever written.
+  not a real result).
 * The ANOVA point estimates are exactly that -- a single fit per method, no
   patient-resampling bootstrap -- so they show whether components associate
   with ALADstatus at all under each score, not whether that association
   would survive a different patient roster.
-* Every alternate-score run here uses 3 permutations / 3 bootstrap replicates,
-  a smoke-test scale to validate this figure's plumbing, not a statistically
-  powered result.
+* The three alternates' significance/stability results were generated at
+  smoke-test scale (3 permutations / 3 bootstrap replicates), to validate
+  this figure's plumbing cheaply, not to be a statistically powered result.
 """
-
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
 from ..factors import load_factors_netcdf, load_factors_to_anndata
-from ..import_data import import_ligand_receptor_pairs
-from ..runners._cli import resolve_group_labels
 from ..runners.datasets import DATASETS, scoring_output_dir
-from ..runners.run_ccc_rise import run_pipeline as run_ccc_rise_pipeline
-from ..runners.run_component_stability import (
-    run_component_stability as run_stability_pipeline,
-)
-from ..runners.run_significance import run_significance as run_significance_pipeline
-from ..stability.anova_stability import (
-    align_to_reference_components,
-    fit_anova_pipeline,
-    top_lr_pairs,
-)
-from .common import getSetup, subplotLabel
+from ..stability.anova_stability import align_to_reference_components, top_lr_pairs
+from .common import getSetup, load_runner_csv, subplotLabel
 
 DATASET_KEY = "alad"
 SPEC = DATASETS[DATASET_KEY]
 
 RISE_RANK = 19
 CP_RANK = 3
-RANDOM_STATE = 42
 
 DEFAULT_SCORE = "expression_product"
 ALT_SCORES = ["expression_mean", "expression_gmean", "expression_hill"]
@@ -85,117 +74,36 @@ SCORE_LABELS = {
     "expression_hill": "Hill (CellChat-style)",
 }
 
-# Smoke-test scale for the three alternate scores; see module docstring.
+# The three alternates' significance/stability results were generated at this
+# scale; see module docstring.
 N_PERMS_SMOKE = 3
 N_REPLICATES_SMOKE = 3
-STABILITY_AXES = ("cells", "lr_pairs", "permuted")
 
 TOP_N_LR = 10
 TOP_N_CELLTYPE = 3
 
 MATCH_MODE_WEIGHTS = {3: 1.0}  # match CP components on the LR mode only
 
-
-# =============================================================================
-# Result-file generation / loading
-# =============================================================================
-
-
-def _ensure_factors(method: str) -> Path:
-    path = scoring_output_dir(method) / SPEC.factors_filename
-    if not path.exists():
-        print(f"[ScoringComparison] Generating CPD factors for {method!r}...")
-        run_ccc_rise_pipeline(
-            SPEC,
-            rise_rank=RISE_RANK,
-            cp_rank=CP_RANK,
-            random_state=RANDOM_STATE,
-            communication_score=method,
-            output_path=path,
-        )
-    return path
-
-
-def _ensure_significance(method: str) -> Path:
-    root = scoring_output_dir(method)
-    path = root / SPEC.significance_lr_filename()
-    if not path.exists():
-        print(f"[ScoringComparison] Generating significance test for {method!r}...")
-        run_significance_pipeline(
-            SPEC,
-            rise_rank=RISE_RANK,
-            n_perms=N_PERMS_SMOKE,
-            communication_score=method,
-            random_state=RANDOM_STATE,
-            output_root=root,
-        )
-    return path
-
-
-def _anova_point_estimate_path(method: str) -> Path:
-    return scoring_output_dir(method) / f"anova_point_estimate_{DATASET_KEY}.csv"
-
-
-def _ensure_anova_point_estimate(method: str) -> pd.DataFrame:
-    path = _anova_point_estimate_path(method)
-    if path.exists():
-        return pd.read_csv(path)
-
-    print(f"[ScoringComparison] Fitting ANOVA point estimate for {method!r}...")
-    group_column, control_label, other_label = resolve_group_labels(
-        SPEC, None, None, None
-    )
-    adata = SPEC.load()
-    lr_pairs = import_ligand_receptor_pairs()
-    reference = fit_anova_pipeline(
-        adata,
-        condition_column=SPEC.condition_column,
-        group_column=group_column,
-        control_label=control_label,
-        other_label=other_label,
-        rise_rank=RISE_RANK,
-        cp_rank=CP_RANK,
-        lr_pairs=lr_pairs,
-        communication_score=method,
-        random_state=RANDOM_STATE,
-    )
-    df = reference["anova"].copy()
-    labels = top_lr_pairs(reference["factors"][3], reference["lr_symbols"], top_n=1)
-    df = df.merge(
-        labels[["Component", "LRPair"]].rename(columns={"LRPair": "TopLRPair"}),
-        on="Component",
-        how="left",
-    )
-    path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(path, index=False)
-    return df
-
-
-def _ensure_stability(method: str) -> Path:
-    path = scoring_output_dir(method) / SPEC.stability_filename()
-    if not path.exists():
-        print(f"[ScoringComparison] Generating component stability for {method!r}...")
-        run_stability_pipeline(
-            SPEC,
-            rise_rank=RISE_RANK,
-            cp_rank=CP_RANK,
-            axes=STABILITY_AXES,
-            n_replicates=N_REPLICATES_SMOKE,
-            communication_score=method,
-            random_state=0,
-            output_path=path,
-        )
-    return path
+ALT_COMM_SCORE_HINT = (
+    "    uv run cccrise-altcommscore --dataset {dataset} --rise-rank {rise_rank} "
+    "--cp-rank {cp_rank} --communication-score {method} "
+    "--n-perms 3 --n-replicates 3"
+).format(dataset=DATASET_KEY, rise_rank=RISE_RANK, cp_rank=CP_RANK, method="<method>")
 
 
 # =============================================================================
-# CPD factor comparison (analysis 1)
+# Result loading
 # =============================================================================
 
 
 def _cp_factors(method: str) -> list[np.ndarray]:
-    ds = load_factors_netcdf(_ensure_factors(method))
+    ds = load_factors_netcdf(scoring_output_dir(method) / SPEC.factors_filename)
     return [ds[f"cp_{mode}"].values for mode in "ABCD"]
+
+
+def _lr_symbols(method: str) -> np.ndarray:
+    ds = load_factors_netcdf(scoring_output_dir(method) / SPEC.factors_filename)
+    return ds.coords["lr_pair"].values
 
 
 def _celltype_loadings(method: str, adata_raw) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -210,7 +118,9 @@ def _celltype_loadings(method: str, adata_raw) -> tuple[pd.DataFrame, pd.DataFra
     comparable; no separate RISE-basis alignment is needed.
     """
     ad = load_factors_to_anndata(
-        _ensure_factors(method), adata=adata_raw, condition_column=SPEC.condition_column
+        scoring_output_dir(method) / SPEC.factors_filename,
+        adata=adata_raw,
+        condition_column=SPEC.condition_column,
     )
     celltypes = ad.obs[SPEC.celltype_column].to_numpy()
     sender = pd.DataFrame(ad.obsm["sc_B"], index=celltypes).groupby(level=0).mean()
@@ -234,8 +144,7 @@ def _match_and_compare(reference_method: str, method: str, adata_raw) -> pd.Data
         ref_factors, alt_factors, np.arange(1, CP_RANK + 1), MATCH_MODE_WEIGHTS
     )
 
-    lr_pairs_ds = load_factors_netcdf(_ensure_factors(reference_method))
-    lr_symbols = lr_pairs_ds.coords["lr_pair"].values
+    lr_symbols = _lr_symbols(reference_method)
     ref_top_lr = top_lr_pairs(ref_factors[3], lr_symbols, top_n=TOP_N_LR)
     alt_top_lr = top_lr_pairs(alt_factors[3], lr_symbols, top_n=TOP_N_LR)
 
@@ -372,15 +281,16 @@ def makeFigure():
     anova_eta = {}
     anova_sig = {}
     for method in ALL_SCORES:
-        df = _ensure_anova_point_estimate(method)
+        df = load_runner_csv(
+            SPEC.anova_point_estimate_filename(),
+            root=scoring_output_dir(method),
+            hint=ALT_COMM_SCORE_HINT.replace("<method>", method),
+        )
         if method == DEFAULT_SCORE:
             eta = df.set_index("Component")["EtaSquared"]
             sig = df.set_index("Component")["P"] < 0.05
         else:
-            method_factors = [
-                load_factors_netcdf(_ensure_factors(method))[f"cp_{mode}"].values
-                for mode in "ABCD"
-            ]
+            method_factors = _cp_factors(method)
             matched = align_to_reference_components(
                 ref_anova_factors,
                 method_factors,
@@ -405,7 +315,11 @@ def makeFigure():
     frac_sig = {}
     top_sig_lr = {}
     for method in ALL_SCORES:
-        sig_df = pd.read_csv(_ensure_significance(method))
+        sig_df = load_runner_csv(
+            SPEC.significance_lr_filename(),
+            root=scoring_output_dir(method),
+            hint=ALT_COMM_SCORE_HINT.replace("<method>", method),
+        )
         frac_sig[method] = float(sig_df["FractionSignificant_p05"].mean())
         top_sig_lr[method] = set(sig_df.nlargest(TOP_N_LR, "MeanZScore")["LRPair"])
     sig_jaccard = {
@@ -416,7 +330,11 @@ def makeFigure():
     # --- Bootstrap component stability (g) -------------------------------
     stability_fms = {}
     for method in ALL_SCORES:
-        df = pd.read_csv(_ensure_stability(method))
+        df = load_runner_csv(
+            SPEC.stability_filename(),
+            root=scoring_output_dir(method),
+            hint=ALT_COMM_SCORE_HINT.replace("<method>", method),
+        )
         cpd = df[df["Stage"] == "CPD"]
         stability_fms[method] = cpd.groupby("Axis")["FMS"].median()
     stability_df = pd.DataFrame(stability_fms)

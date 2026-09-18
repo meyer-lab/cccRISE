@@ -80,6 +80,9 @@ class DatasetSpec:
     def anova_bootstrap_filename(self) -> str:
         return f"anova_bootstrap_{self.key}.csv"
 
+    def anova_point_estimate_filename(self) -> str:
+        return f"anova_point_estimate_{self.key}.csv"
+
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.key}.csv"
 
