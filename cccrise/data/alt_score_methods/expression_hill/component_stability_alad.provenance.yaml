@@ -13,6 +13,7 @@ loader_args:
 condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
+reference_source: cccrise/data/alt_score_methods/expression_hill/bal_alad_factors.nc
 rise_rank: 19
 cp_rank: 3
 axes:
@@ -20,8 +21,6 @@ axes:
 - lr_pairs
 - permuted
 n_replicates: 3
-rise_n_iter_max: 100
-rise_tol: 1.0e-06
 n_iter_max: 100
 tol: 0.001
 init: svd
@@ -47,8 +46,8 @@ fms_definition: congruence product across compared modes (Modes 0 and 2 for RISE
 component_numbering: reference fit after ccc_rise.standardize_cc_pf2
 lr_roster_stable: true
 interaction_tensor_shape: [47, 19, 19, 513]
-r2x_pf2: 0.03771146303854245
-r2x_cp: 0.21340084509906343
+r2x_pf2: 0.03546146389893878
+r2x_cp: 0.25061580745435197
 reference_seed: 0
 first_replicate_seed: 1
 resulting_dims:
@@ -56,5 +55,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 0c980bd0862361c817c0902897c88ffa9ba801a9
-generated: '2026-09-17T23:57:48+00:00'
+git_sha: 80ddf2ce7c64e29806b41d7f47cef101a6d862d2-dirty
+generated: '2026-09-19T00:23:44+00:00'

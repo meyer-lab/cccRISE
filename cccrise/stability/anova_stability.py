@@ -43,6 +43,7 @@ a patient's copies together. Two consequences:
   `ReferenceP`, computed on the un-resampled cohort with one row per patient.
 """
 
+from pathlib import Path
 from typing import Any, cast
 
 import anndata
@@ -54,6 +55,7 @@ from tensorly.decomposition import parafac
 from ..anova import anova_component_associations, prepare_anova_inputs
 from ..ccc import calculate_r2x
 from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
+from ..factors import load_factors_netcdf
 from ..import_data import add_cond_idxs
 from ..tensor import calculate_interaction_tensor, rise_store_r2x
 from ..utils import replicate_seed, resample_conditions
@@ -306,6 +308,81 @@ def fit_anova_pipeline(
         "factors": factors,
         "cp_weights": cp_weights,
         "lr_symbols": filtered_lr_pairs["interaction_symbol"].to_numpy(),
+        "anova": anova,
+        "r2x_cp": r2x_cp,
+        "sample_to_group": sample_to_group,
+    }
+
+
+def load_anova_reference(
+    reference_path: str | Path,
+    adata: anndata.AnnData,
+    condition_column: str,
+    group_column: str,
+    control_label: str | None = None,
+    other_label: str | None = None,
+) -> dict[str, Any]:
+    """Load a previously-fit CP result and test it against `group_column`
+    with a one-way ANOVA, instead of refitting RISE and CP.
+
+    Used as the full-cohort reference row `bootstrap_anova`'s replicates are
+    matched onto; each replicate still fits `fit_anova_pipeline` fresh on
+    its own resampled roster.
+
+    Parameters
+    ----------
+    reference_path : str | Path
+        A factors.nc written by `run_ccc_rise`.
+    adata : anndata.AnnData
+        The raw dataset, used only for `condition_column`/`group_column`
+        lookups (via `anova.prepare_anova_inputs`).
+    condition_column, group_column : str
+        Columns in `adata.obs` holding the patient identity and its group
+        label.
+    control_label, other_label : str | None, optional
+        Values of `group_column` collapsed to the reference and other level.
+
+    Returns
+    -------
+    dict[str, Any]
+        Same shape as `fit_anova_pipeline`'s return: 'factors', 'cp_weights',
+        'lr_symbols', 'anova', 'r2x_cp', 'sample_to_group'.
+    """
+    adata = add_cond_idxs(adata, condition_column)
+    ds = load_factors_netcdf(reference_path)
+    file_conditions = np.asarray(ds.coords["condition"].values, dtype=str)
+    adata_conditions = np.unique(adata.obs[condition_column].astype(str))
+    if not np.array_equal(np.sort(file_conditions), np.sort(adata_conditions)):
+        raise ValueError(
+            f"{reference_path}'s conditions do not match `adata`'s -- reusing "
+            "a CP fit requires the identical dataset it was fit on."
+        )
+
+    factors = [
+        ds["cp_A"].values,
+        ds["cp_B"].values,
+        ds["cp_C"].values,
+        ds["cp_D"].values,
+    ]
+    cp_weights = ds["cp_weights"].values
+    lr_symbols = ds.coords["lr_pair"].values
+    r2x_cp = float(ds.attrs.get("r2x_cp", 0.0))
+
+    X, sample_to_group = prepare_anova_inputs(
+        adata,
+        factors,
+        condition_column,
+        group_column,
+        control_label,
+        other_label,
+    )
+    anova = anova_component_associations(
+        X, sample_to_group, control_label=control_label
+    )
+    return {
+        "factors": factors,
+        "cp_weights": cp_weights,
+        "lr_symbols": lr_symbols,
         "anova": anova,
         "r2x_cp": r2x_cp,
         "sample_to_group": sample_to_group,

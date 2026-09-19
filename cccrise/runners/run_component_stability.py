@@ -31,7 +31,13 @@ Axes, and what each one asks:
   permuted    The reference tensor's entries permuted: the chance floor an
               observed FMS has to be read against. Costs no PARAFAC2 fit.
 
-    uv run cccrise-stability --dataset alad --rise-rank 25 --cp-rank 4 \
+The reference (full-cohort) fit is loaded from ``--reference-source`` (a
+factors.nc written by `run_ccc_rise`) rather than fit here; its ranks,
+communication score, and fitting controls (read from its provenance sidecar)
+are used for every replicate too.
+
+    uv run cccrise-stability --dataset alad \
+        --reference-source cccrise/data/bal_alad_factors.nc \
         --n-replicates 20 --axes cells,conditions,lr_pairs,permuted
 """
 
@@ -46,7 +52,7 @@ from ..stability.component_stability import (
     PERMUTED_AXIS,
     RISE_REFIT_AXES,
     component_stability,
-    fit_stability_pipeline,
+    load_stability_reference,
     metric_interval,
     replicate_seed,
     summarize_component_stability,
@@ -58,7 +64,7 @@ from ._cli import (
     resulting_dims,
 )
 from .datasets import DATASETS, DatasetSpec, scoring_output_dir
-from .provenance import build_metadata, git_sha, write_metadata
+from .provenance import build_metadata, git_sha, read_metadata, relpath, write_metadata
 
 #: Every axis the runner knows how to run, in report order.
 ALL_AXES = (*DEFAULT_AXES, PERMUTED_AXIS)
@@ -72,41 +78,29 @@ hand-edit.
 
 def run_component_stability(
     spec: DatasetSpec,
-    rise_rank: int,
-    cp_rank: int,
+    reference_source: str | Path,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
-    rise_n_iter_max: int = 100,
-    rise_tol: float = 1e-6,
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
-    init: str = "svd",
-    svd: str = "randomized_svd",
-    complex_sep: str | None = "&",
-    communication_score: str = "expression_product",
-    hill_k: float = 0.5,
     random_state: int = 0,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
-    """Score per-component RISE and CPD stability at fixed ranks.
+    """Score per-component RISE and CPD stability at the reference's ranks.
 
     Parameters
     ----------
     spec : DatasetSpec
         Dataset registry entry.
-    rise_rank, cp_rank : int
-        The already-selected ranks. Stability is a claim about the chosen
-        model, so both are fixed rather than swept.
+    reference_source : str | Path
+        A factors.nc written by `run_ccc_rise`. Its ranks, communication
+        score, and fitting controls (read from its provenance sidecar) are
+        used for the reference and every replicate.
     axes : tuple[str, ...], default=DEFAULT_AXES
         Resampling axes to run; see the module docstring.
     n_replicates : int, default=20
         Replicates per axis.
-    rise_n_iter_max, rise_tol, n_iter_max, tol, init, svd
-        Fitting controls for the RISE and CP fits.
-    complex_sep, communication_score, hill_k
-        Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=0
-        Base seed for the reference fit and the replicates.
+        Base seed for the replicates. Independent of `reference_source`'s
+        own fitting seed.
     output_path : Path, optional
         CSV destination; defaults to the registry's stability filename under
         `DATA_DIR` for `communication_score="expression_product"`, or
@@ -117,22 +111,8 @@ def run_component_stability(
     tuple[pd.DataFrame, Path, Path]
         The long per-component table, the CSV path, and the sidecar path.
     """
-    output_path = output_path or (
-        scoring_output_dir(communication_score) / spec.stability_filename()
-    )
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
     # Pin the code version before writing anything: see `provenance.git_sha`.
     git_sha()
-
-    rise_axes = [axis for axis in axes if axis in RISE_REFIT_AXES]
-    print(f"=== Component stability: {spec.label} ===")
-    print(f"    RISE rank {rise_rank}, CP rank {cp_rank}, {n_replicates} replicates")
-    print(f"    Axes: {', '.join(axes)}")
-    print(
-        f"    {1 + len(rise_axes) * n_replicates} PARAFAC2 fits, "
-        f"{1 + len(axes) * n_replicates} CP fits"
-    )
 
     print("1. Loading data...")
     adata = spec.load()
@@ -140,24 +120,41 @@ def run_component_stability(
     print(f"   AnnData shape: {adata.shape}")
     print(f"   Ligand-receptor pairs: {len(lr_pairs)}")
 
-    print("2. Fitting the reference model on the full cohort...")
-    reference = fit_stability_pipeline(
-        adata.copy(),
-        lr_pairs,
+    print("2. Loading the reference model fit on the full cohort...")
+    reference = load_stability_reference(
+        reference_source,
+        adata,
         condition_column=spec.condition_column,
-        rise_rank=rise_rank,
-        cp_rank=cp_rank,
-        rise_n_iter_max=rise_n_iter_max,
-        rise_tol=rise_tol,
-        cp_n_iter_max=n_iter_max,
-        cp_tol=tol,
-        init=init,
-        svd=svd,
-        complex_sep=complex_sep,
-        communication_score=communication_score,
-        hill_k=hill_k,
-        random_state=random_state,
-        keep_tensor=True,
+        lr_pairs=lr_pairs,
+    )
+    provenance = reference["provenance"]
+    rise_rank = int(provenance["rank_selection"]["rise"]["rank"])
+    cp_rank = int(provenance["rank_selection"]["cpd"]["rank"])
+    communication_score = provenance["communication_score"]
+    hill_k = provenance["hill_k"]
+    complex_sep = provenance["complex_sep"]
+    n_iter_max = int(provenance["n_iter_max"])
+    tol = float(provenance["tol"])
+    # `run_ccc_rise` does not record RISE's own init algorithm choice
+    # (distinct from the CP fit's `svd_init`), so the replicate refits use
+    # this module's own defaults rather than a value read from provenance.
+    init = "svd"
+    svd = "randomized_svd"
+
+    output_path = output_path or (
+        scoring_output_dir(communication_score) / spec.stability_filename()
+    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    rise_axes = [axis for axis in axes if axis in RISE_REFIT_AXES]
+    print(
+        f"=== Component stability: {spec.label} "
+        f"(RISE rank {rise_rank}, CP rank {cp_rank}, score {communication_score!r}) ==="
+    )
+    print(f"    {n_replicates} replicates, axes: {', '.join(axes)}")
+    print(
+        f"    {len(rise_axes) * n_replicates} PARAFAC2 fits, "
+        f"{len(axes) * n_replicates} CP fits"
     )
     assert reference["tensor"] is not None
     tensor_shape = tuple(int(dim) for dim in reference["tensor"].shape)
@@ -175,8 +172,8 @@ def run_component_stability(
         group_column=spec.group_column,
         axes=axes,
         n_replicates=n_replicates,
-        rise_n_iter_max=rise_n_iter_max,
-        rise_tol=rise_tol,
+        rise_n_iter_max=n_iter_max,
+        rise_tol=tol,
         cp_n_iter_max=n_iter_max,
         cp_tol=tol,
         init=init,
@@ -199,12 +196,11 @@ def run_component_stability(
     metadata = build_metadata(
         dataset_metadata(spec)
         | {
+            "reference_source": relpath(reference_source),
             "rise_rank": rise_rank,
             "cp_rank": cp_rank,
             "axes": list(axes),
             "n_replicates": n_replicates,
-            "rise_n_iter_max": rise_n_iter_max,
-            "rise_tol": rise_tol,
             "n_iter_max": n_iter_max,
             "tol": tol,
             "init": init,
@@ -273,16 +269,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_dataset_argument(parser)
     parser.add_argument(
-        "--rise-rank",
-        type=int,
+        "--reference-source",
+        type=str,
         required=True,
-        help="RISE rank every fit uses; see rank_selection.select_rise_rank.",
-    )
-    parser.add_argument(
-        "--cp-rank",
-        type=int,
-        required=True,
-        help="CP rank every fit uses; see rank_selection.select_cpd_rank.",
+        help="A factors.nc written by run_ccc_rise; its ranks, communication "
+        "score, and fitting controls (read from its provenance sidecar) are "
+        "used for the reference and every replicate.",
     )
     parser.add_argument(
         "--axes",
@@ -294,30 +286,6 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--n-replicates", type=int, default=20)
-    parser.add_argument("--rise-n-iter-max", type=int, default=100)
-    parser.add_argument("--rise-tol", type=float, default=1e-6)
-    parser.add_argument("--n-iter-max", type=int, default=100)
-    parser.add_argument("--tol", type=float, default=1e-3)
-    parser.add_argument("--init", type=str, default="svd", choices=["random", "svd"])
-    parser.add_argument(
-        "--svd",
-        type=str,
-        default="randomized_svd",
-        choices=["randomized_svd", "truncated_svd"],
-    )
-    parser.add_argument("--complex-sep", type=str, default="&")
-    parser.add_argument(
-        "--communication-score",
-        type=str,
-        default="expression_product",
-        choices=[
-            "expression_product",
-            "expression_mean",
-            "expression_gmean",
-            "expression_hill",
-        ],
-    )
-    parser.add_argument("--hill-k", type=float, default=0.5)
     parser.add_argument("--random-state", type=int, default=0)
     parser.add_argument(
         "--output",
@@ -331,27 +299,15 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     spec = DATASETS[args.dataset]
+    provenance = read_metadata(args.reference_source)
+    output_root = scoring_output_dir(provenance["communication_score"])
     run_component_stability(
         spec,
-        rise_rank=args.rise_rank,
-        cp_rank=args.cp_rank,
+        reference_source=args.reference_source,
         axes=tuple(axis.strip() for axis in args.axes.split(",") if axis.strip()),
         n_replicates=args.n_replicates,
-        rise_n_iter_max=args.rise_n_iter_max,
-        rise_tol=args.rise_tol,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
-        init=args.init,
-        svd=args.svd,
-        complex_sep=args.complex_sep,
-        communication_score=args.communication_score,
-        hill_k=args.hill_k,
         random_state=args.random_state,
-        output_path=resolve_output(
-            args.output,
-            scoring_output_dir(args.communication_score),
-            spec.stability_filename(),
-        ),
+        output_path=resolve_output(args.output, output_root, spec.stability_filename()),
     )
 
 

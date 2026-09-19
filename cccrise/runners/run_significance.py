@@ -12,13 +12,16 @@ Performs two complementary significance tests:
    Permutes condition labels across tensor slices to identify sender-receiver-LR
    signaling axes that differ significantly between condition classes (e.g. control vs ALAD).
 
+Loads a RISE fit produced by `run_ccc_rise` (`--reference-source`) rather
+than fitting PARAFAC2 itself; see `utils.load_rise_reference`.
+
 Writes the primary significance outputs:
 
     significance_lr_<dataset>.csv             per-LR pair observed vs null & z-scores
     significance_differential_<dataset>.parquet   differential sender-receiver-LR comparisons
 
-    uv run cccrise-significance --dataset alad --rise-rank 25 --n-perms 1000
-    uv run cccrise-significance --dataset ibd --rise-rank 30 --n-perms 1000
+    uv run cccrise-significance --dataset alad \
+        --reference-source cccrise/data/bal_alad_factors.nc --n-perms 1000
 """
 
 import argparse
@@ -60,7 +63,7 @@ def output_paths(spec: DatasetSpec, output_root: Path) -> dict[str, Path]:
 
 def run_significance(
     spec: DatasetSpec,
-    rise_rank: int,
+    reference_source: str | Path,
     n_perms: int = 1000,
     group_column: str | None = None,
     control_label: str | None = None,
@@ -70,20 +73,20 @@ def run_significance(
     complex_agg_method: str = "min",
     hill_k: float = 0.5,
     max_exact_perms: int = 100_000,
-    n_iter_max: int = 100,
-    tol: float = 1e-6,
     random_state: int = 42,
     output_path: Path | None = None,
     output_root: Path | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Path]]:
-    """Fit RISE, run permutation significance testing, and write output tables.
+    """Load a shared RISE fit, run permutation significance testing, and
+    write output tables.
 
     Parameters
     ----------
     spec : DatasetSpec
         Dataset registry entry.
-    rise_rank : int
-        Number of RISE eigen-states.
+    reference_source : str | Path
+        A factors.nc written by `run_ccc_rise`; its RISE fit is loaded
+        rather than refit.
     n_perms : int, default=1000
         Number of permutations.
     group_column : str, optional
@@ -91,7 +94,8 @@ def run_significance(
     control_label, other_label : str, optional
         Values of `group_column` mapped to the reference and other class.
     communication_score : str, default='expression_product'
-        Scoring function for ligand-receptor interactions.
+        Scoring function for ligand-receptor interactions. Independent of
+        whichever score `reference_source` itself was built with.
     complex_sep : str, default='&'
         Delimiter for multi-subunit complexes.
     complex_agg_method : str, default='min'
@@ -100,12 +104,8 @@ def run_significance(
         Half-saturation constant for Hill scoring.
     max_exact_perms : int, default=100_000
         Threshold for exact vs Monte Carlo differential permutations.
-    n_iter_max : int, default=100
-        Max iterations for PARAFAC2 fitting.
-    tol : float, default=1e-6
-        Convergence tolerance for PARAFAC2.
     random_state : int, default=42
-        Seed for permutations and RISE fitting.
+        Seed for permutations.
     output_path : Path, optional
         Custom path for the primary LR significance CSV.
     output_root : Path, optional
@@ -133,13 +133,11 @@ def run_significance(
 
     git_sha()
 
-    print(
-        f"=== Permutation Significance Testing: {spec.label} "
-        f"(RISE rank {rise_rank}, n_perms {n_perms}) ==="
-    )
+    print(f"=== Permutation Significance Testing: {spec.label} (n_perms {n_perms}) ===")
     print(
         f"    score={communication_score!r}  complex_sep={complex_sep!r}  "
-        f"group_column={group_column!r}  control={control_label!r}  other={other_label!r}"
+        f"group_column={group_column!r}  control={control_label!r}  other={other_label!r}  "
+        f"reference_source={reference_source!r}"
     )
 
     print("1. Loading dataset...")
@@ -147,11 +145,11 @@ def run_significance(
     lr_pairs = import_ligand_receptor_pairs()
     print(f"   AnnData shape: {adata.shape}, LR pairs: {len(lr_pairs)}")
 
-    print("2. Fitting RISE and computing permutation significance...")
+    print("2. Loading the shared RISE fit and computing permutation significance...")
     results = fit_significance_pipeline(
         adata=adata,
         condition_column=spec.condition_column,
-        rise_rank=rise_rank,
+        reference_path=reference_source,
         lr_pairs=lr_pairs,
         n_perms=n_perms,
         group_column=group_column,
@@ -162,8 +160,6 @@ def run_significance(
         complex_agg_method=complex_agg_method,
         hill_k=hill_k,
         max_exact_perms=max_exact_perms,
-        n_iter_max=n_iter_max,
-        tol=tol,
         random_state=random_state,
         validate=False,
     )
@@ -194,7 +190,7 @@ def run_significance(
     metadata = build_metadata(
         dataset_metadata(spec)
         | {
-            "rise_rank": rise_rank,
+            "reference_source": relpath(reference_source),
             "n_perms": n_perms,
             "group_column": group_column,
             "control_label": control_label,
@@ -235,10 +231,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_dataset_argument(parser)
     add_group_arguments(parser)
     parser.add_argument(
-        "--rise-rank",
-        type=int,
+        "--reference-source",
+        type=str,
         required=True,
-        help="Number of RISE eigen-states to fit.",
+        help="A factors.nc written by run_ccc_rise, whose RISE fit is reused "
+        "rather than refit.",
     )
     parser.add_argument(
         "--n-perms",
@@ -278,18 +275,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Complex subunit aggregation method (default: min).",
     )
     parser.add_argument(
-        "--n-iter-max",
-        type=int,
-        default=100,
-        help="Maximum PARAFAC2 iterations (default: 100).",
-    )
-    parser.add_argument(
-        "--tol",
-        type=float,
-        default=1e-6,
-        help="PARAFAC2 convergence tolerance (default: 1e-6).",
-    )
-    parser.add_argument(
         "--random-state",
         type=int,
         default=42,
@@ -321,7 +306,7 @@ def main(argv: list[str] | None = None) -> None:
 
     run_significance(
         spec=spec,
-        rise_rank=args.rise_rank,
+        reference_source=args.reference_source,
         n_perms=args.n_perms,
         group_column=args.group_column,
         control_label=args.control_label,
@@ -330,8 +315,6 @@ def main(argv: list[str] | None = None) -> None:
         complex_sep=args.complex_sep,
         complex_agg_method=args.complex_agg_method,
         hill_k=args.hill_k,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
         random_state=args.random_state,
         output_path=resolve_output(
             args.output, output_root, spec.significance_lr_filename()

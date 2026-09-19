@@ -28,6 +28,8 @@ def factors_to_xarray(
     gene_names: list[str] | np.ndarray | None = None,
     pf2_factors: list[np.ndarray] | None = None,
     pf2_weights: np.ndarray | None = None,
+    pf2_projections: np.ndarray | None = None,
+    cell_ids: np.ndarray | None = None,
     r2x_cp: float | None = None,
     r2x_pf2: float | None = None,
     attrs: dict[str, Any] | None = None,
@@ -51,6 +53,11 @@ def factors_to_xarray(
         List of PARAFAC2 factor matrices [A_pf2, B_pf2, C_pf2].
     pf2_weights : np.ndarray, optional
         PARAFAC2 component weights.
+    pf2_projections : np.ndarray, optional
+        Per-cell PARAFAC2 projections, shape (n_cells, rise_rank), in the
+        same row order as `cell_ids`.
+    cell_ids : np.ndarray, optional
+        Cell barcodes matching `pf2_projections`' row order.
     r2x_cp : float, optional
         Variance explained by CP decomposition.
     r2x_pf2 : float, optional
@@ -133,6 +140,12 @@ def factors_to_xarray(
             data_vars["pf2_weights"] = (
                 ["rise_component"],
                 np.asarray(pf2_weights, dtype=np.float32),
+            )
+        if pf2_projections is not None and cell_ids is not None:
+            coords["cell"] = np.asarray(cell_ids)
+            data_vars["pf2_projections"] = (
+                ["cell", "rise_component"],
+                np.asarray(pf2_projections, dtype=np.float32),
             )
 
     ds_attrs = {
