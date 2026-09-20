@@ -3,7 +3,8 @@ title: "Point-by-Point Response to Reviewers"
 subtitle: "MSB-2026-13900 — Resolving cell-cell communication programs beyond cell-type boundaries across conditions"
 ---
 
-We thank both reviewers for their thoughtful and constructive evaluation of our manuscript.
+We thank both reviewers for their very thoughtful and constructive evaluation of our manuscript.
+These points have been extremely helpful in improving our manuscript.
 Below, we reproduce each reviewer comment in full (in block quotes) followed by our point-by-point response.
 
 ## Reviewer #1
@@ -16,10 +17,11 @@ Below, we reproduce each reviewer comment in full (in block quotes) followed by 
 > The method is conceptually well-motivated, the manuscript is clearly written, and the eigen-state -> CPD -> cell-mapping construction is elegant and addresses a genuine limitation of existing tensor-based CCC tools.
 > However, in its current form the central claims are inadequately validated: the only quantitative benchmark is constructed in a biased manner, the "resolution" claim is not quantified, and there is an unaddressed methodological concern in the communication score itself.
 
-We appreciate the reviewer's assessment that the eigen-state → CPD → cell-mapping construction is elegant and addresses a genuine limitation, and we agree that the original validation did not support the central claims.
-The revision therefore changes the work substantially rather than only its presentation.
-In brief: (i) the twelve-sample COVID-19 BAL cohort has been replaced with the IBDverse terminal-ileum cohort (343 samples; 232 healthy and 111 Crohn's disease), so that the primary demonstration is no longer underpowered (l. XXX); (ii) the communication score has been corrected so that it is computed on approximate non-negative expression rather than on signed, mean-centered loadings (l. XXX); (iii) both decomposition ranks are now selected by a label-free cross-validation criterion evaluated only on the molecular data, so no patient outcome enters model selection (l. XXX); (iv) two permutation-based null models now provide significance for individual communication entries and for between-group differences (l. XXX, Fig. XXX); (v) published single-cell-resolution (Scriabin, NICHES) and multi-condition tensor (Tensor-cell2cell, STACCato) methods are now run head-to-head on the same data (l. XXX, Fig. XXX); and (vi) components are validated quantitatively against a curated ligand → downstream-target prior (NicheNet) and against resampling-based stability metrics (l. XXX, Fig. XXX).
-We respond to each point below.
+<!-- EDITED. -->
+
+We appreciate the reviewer's assessment that the eigen-state → CPD → cell-mapping construction is elegant and addresses a genuine limitation. We agree that our approach to validation was limited both in its approach, and in a disconnect between what should have been the goal (validating the communication scoring itself), and implementation (assessing the strength of association with clinical features).
+
+Following the reviewers' suggestions, we have comprehensively re-worked our approach to validation of the model, and added a variety of quantitative validation metrics to evaluate the communication scoring itself. In the process, we think that this validation work also serves to better explain the construction of our approach. Also, as detailed below, we now compare our results to a broad panel of existing approaches, and use these comparisons to demonstrate the relative strengths of our approach.
 
 ### Major concerns
 
@@ -54,20 +56,24 @@ We state this explicitly in the revised text rather than omitting the method sil
 >    I recognize the field lacks gold standards, but simulation frameworks with defined communication ground truth exist (e.g., the SERGIO-based CCC simulator) and would allow the authors to quantify the resolution advantage.
 >    At minimum, the manuscript should provide a quantitative concordance/discordance analysis against Scriabin on the same data.
 
-We agree that qualitative embeddings cannot carry this claim, and the revision adds three quantitative lines of evidence.
+<!-- EDITED. -->
+<!-- Somewhere, we need to talk about the benefit over Scriabin of finding _patterns_ of communication. -->
 
-First, as a real-data accuracy metric we test each component against an independent, literature-curated ligand → downstream-target prior (the NicheNet v2 ligand--target matrix).
-For each component, we take its top-loading ligands and ask whether their curated downstream targets are preferentially upregulated in the receiver cells that component implicates, scoring this with the standard ligand-activity AUROC (Fig. XXX, l. XXX).
-This provides a per-component accuracy number derived from held-out biology rather than from the decomposition itself, and it is computed identically for CCC-RISE and for the pseudobulk baseline, so the resolution advantage becomes a number rather than an assertion.
+We agree that our qualitative observations did not adequatley support this claim. Our revision adds three quantitative lines of evidence.
 
-Second, we report the concordance analysis against Scriabin on the same data that the reviewer requests as a minimum (see our response to comment #1; Fig. XXX).
+First, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand → downstream-target prior (the NicheNet v2 ligand--target matrix).
+For each component, we took its top-loading ligands and ask whether their curated downstream targets are preferentially upregulated in the receiver cells that component implicates, scoring this with the standard ligand-activity AUROC (Fig. XXX, l. XXX).
+This provides a per-component accuracy number derived from held-out biology rather than from the decomposition itself, and it is computed identically for CCC-RISE and for the pseudobulk baseline.
+One limitation that we encountered in this analysis is that there is only moderate overlap between the receptor-ligand pairs highlighted by our method, and the NicheNet target database, due to the limited coverage of the latter.
 
-Third, we quantify reproducibility: components are refit under resampling of cells, of patients, and of LR pairs, and under re-initialization, and each component is scored by a Hungarian-matched factor match score against the reference fit (Fig. XXX, l. XXX).
+Second, we now also report the concordance analysis against Scriabin on the same data (Fig. XXX).
+
+Third, we now quantify reproducibility: components are refit under resampling of cells, of patients, and of LR pairs, and under re-initialization, and each component is scored by a Hungarian-matched factor match score against the reference fit (Fig. XXX, l. XXX).
 This distinguishes components that reflect shared structure from those that are fit to individual patients, and we report the latter as such.
 
-We deliberately did not build the analysis on a SERGIO-style simulator.
+We deliberately did not build the suggested analysis on a SERGIO-style simulator.
 Simulated communication ground truth is generated under an assumed model of how ligand--receptor signaling shapes expression, and agreement with it mainly certifies that our score matches that assumption; where a simulation disagrees with the real-data result, it is not clear which should be believed.
-We judged a curated-prior recovery metric on the actual cohorts to be the more informative test, and we state this reasoning explicitly rather than leaving the omission unexplained (l. XXX).
+We judged that, while the field suffers from well-defined gold standards, many of the other suggestions from the reviewers here provide stronger evidence of CCC-RISE working on real data (l. XXX).
 
 > 3. Sign ambiguity in the communication score.
 >    The communication score is the outer product of a sender eigen-state's ligand loading and a receiver eigen-state's receptor loading (if I am not mistaken).
@@ -76,20 +82,24 @@ We judged a curated-prior recovery metric on the actual cohorts to be the more i
 >    The authors should state explicitly how signs are handled before and after the outer product, and demonstrate that the reported components are not driven by sign artifacts.
 >    This is fundamental, since the entire tensor is built from this score.
 
-The reviewer is correct, and we agree this needed to be fixed rather than merely explained.
-Eigen-state gene loadings are estimated relative to a single, fixed per-gene mean computed once over the full dataset before RISE is fit (the same mean that RISE's own alternating least-squares fit subtracts internally); the loading itself is therefore a *deviation* from that mean, not an expression level, and it can legitimately be negative.
+<!-- EDITED. -->
+
+The reviewer is correct, and investigating this issue helped us to clarify what the factor loadings of CCC-RISE represent.
+Eigen-state gene loadings are estimated relative to a single, fixed per-gene mean computed once over the full dataset before RISE is fit; the loading itself is therefore a *deviation* from that mean, not an expression level, and it can legitimately be negative.
 The outer product previously used for scoring, however, was taken directly on these signed deviations.
-Writing actual expression as (mean + deviation) for both partners shows why this is a problem: the full product expands to $\mu_L\mu_R + \mu_L\Delta_R + \mu_R\Delta_L + \Delta_L\Delta_R$, and the prior score kept only the last term, $\Delta_L\Delta_R$ --- the pure interaction term, with the baseline and both main effects discarded.
+Writing actual expression as (mean + deviation) for both partners shows why this is a problem: the full product expands to $\mu_L\mu_R + \mu_L\Delta_R + \mu_R\Delta_L + \Delta_L\Delta_R$, and the prior score kept only the last term, $\Delta_L\Delta_R$---the interaction term, with baseline and main effects discarded.
 That term alone has no reliable relationship to actual signaling strength, which is exactly why two negative deviations produced a spurious positive score indistinguishable from two positive ones.
 
-We have changed the communication score to add the per-gene mean back to each eigen-state's ligand/receptor loading before scoring (clipping the rare, small negative residual left by the linear reconstruction to zero), so that the score is computed on an approximation of actual non-negative expression rather than on centered loadings directly.
-This uses the same, already-defined centering reference that RISE itself commits to --- it does not require choosing a new baseline --- and it makes every entry of the communication tensor non-negative by construction, which we then verified empirically holds across both datasets.
-We describe this convention explicitly in the Methods (sign convention paragraph) and report the sign-artifact audit and before/after comparison of the reported components in [NEW FIGURE/PANEL --- TBD]{.placeholder}.
+We have changed the communication score to add the per-gene mean back to each eigen-state's ligand/receptor loading before scoring, so that the score is computed on an approximation of actual non-negative expression rather than on centered loadings directly.
+This uses the same centering reference as RISE and makes every entry of the communication tensor non-negative by construction, which we then verified empirically holds across both datasets.
+We describe this convention explicitly in the Methods (sign convention paragraph).
 
 We also considered decomposing each eigen-state into separate non-negative positive- and negative-loading components (analogous to how non-negative matrix factorization resolves a signed PCA-like axis into two unipolar programs).
-We have independent evidence, from a companion PARAFAC2-vs-cNMF investigation of this same cohort, that this bidirectional structure is often genuine, coherent biology rather than noise --- e.g., ablating the minority-sign arm of a component measurably degrades held-out reconstruction, and cNMF independently recovers the same positive/negative split as two distinct, functionally coherent, antagonistic programs.
+We have independent evidence, from a companion investigation that compares PARAFAC2 to other methods such as iNMF, MOFA+, etc., that this bidirectional structure often represents coherent biology rather than noise. For instance, ablating the minority-sign arm of a component measurably degrades held-out reconstruction, and non-negative methods independently recover the same positive/negative split as two distinct, functionally coherent, antagonistic programs.
 We ultimately did not adopt this as the primary fix because it doubles the sender/receiver dimension of the communication tensor and still requires classifying which cells belong to which arm, whereas re-centering the score resolves the non-negativity concern directly without changing the rank of the model.
 We note the bidirectional-loading evidence in the Discussion as a data point for why we did not additionally constrain RISE itself to be non-negative (see response to Reviewer #2, minor comment #3).
+
+Finally, we also evaluated whether the communications tensor should be factored with the factor matrices constrained to be non-negative. Across multiple datasets, we observed that this constraint significantly reduced the ability of factorization to impute held-out data, indicating that it reduced the fidelity of the factorization as a representation of the communication scoring. Therefore, we retained the communication tensor factorization as signed, and use our results as an opportunity to explain how these signs should be interpreted (l. XXX)
 
 > 4. Risk of overfitting in the ALAD classifier.
 >    For the ALAD cohort, the number of eigenstates and CPD components were selected because they "yielded the optimal predictive performance for ALAD status".
