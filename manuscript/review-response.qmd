@@ -355,42 +355,23 @@ Where a classifier is reported --- for the head-to-head comparisons against Tens
 > 5. All colorbars should clearly indicate whether the displayed values are normalized (e.g., Fig. 2b, 2i, 2m).
 >    How was the normalization performed?
 
+<!-- EDITED. -->
+
 We have now ensured that all colorbars clearly indicate whether and how the displayed values are normalized, and that the normalization is defined in the Methods (l. XXX).
 Factor matrices are shown with each component scaled to unit maximum absolute loading so that components are visually comparable, with the scaling stated on the axis label; communication-score heatmaps are shown on the score's own scale, labeled as such (Fig. XXX).
 
 > 6. How was PaCMAP performed to project cells into 2D space?
 
+<!-- EDITED. -->
+
 We have expanded the Methods to describe this fully (l. XXX).
-PaCMAP is applied to the concatenated RISE projection matrices across all conditions --- not to the raw expression --- so that the embedding is a visualization of the same low-dimensional space the communication scores are computed in, and cells from different samples are directly comparable within it.
+PaCMAP is applied to the concatenated RISE projection matrices across all conditions so that the embedding is a visualization of the same low-dimensional space the communication scores are computed in, and cells from different samples are directly comparable within it.
 The parameters used are now stated alongside the software version and random seed.
 
 > 7. In Fig. 1d, the purple heatmap is incorrectly labeled as "sender Eigen-state Factor."
 >    Please correct this labeling.
 
+<!-- EDITED. -->
+
 We thank the reviewer for catching this.
-The label has been corrected in Fig. 1d, and we have checked every panel label in Fig. 1 against the quantity actually plotted (l. XXX).
-
-## Pre-decision reviewer cross-commenting
-
-### Reviewer #1
-
-> The analyses presented in the manuscript are quite limited (esp.
-> quantitative ones), so it is actually not quite clear to me if the concerns R2 and myself identified reflect fundamental limitations (e.g. the concerns raising from inconsistent communication patterns you mention really needs those additional synthetic experiments to quantify recall and precision across a biologically plausible range of conditions to understand how much of an issue that is; as is it is just unclear to me what the limitations are and in which setting)...my optimistic take is that with a very substantial revision most concerns can be resolved in principle, but it will require a lot of work.
-
-We agree with the reviewer's reading, and the revision has been correspondingly substantial.
-The quantitative analyses that were missing are now present: head-to-head comparison against Scriabin, NICHES, Tensor-cell2cell, and STACCato; a curated-prior recovery metric per component; permutation-based significance; and a resampling-based stability analysis (Fig. XXX, l. XXX).
-The primary demonstration has moved to a 343-sample cohort, and both ranks are now selected by label-free criteria.
-
-We have chosen not to build the validation on synthetic data, and we want to be direct about the disagreement rather than quietly omitting it.
-Our concern is that a CCC simulator must assume a model of how ligand--receptor signaling shapes transcription, and precision and recall measured against that assumption largely certify that our score shares it.
-We have instead made the evaluation adversarial on real data: recovery of independently curated ligand → target relationships, concordance with published single-cell methods, degradation when the multi-condition structure is removed, and explicit reporting of which components fail to reproduce under resampling (l. XXX).
-Where limitations remain --- particularly the power of the lung-transplant cohort for CLAD and death, and the sensitivity of the CP rank to a criterion that identifies a range rather than a point --- we now state them in the Discussion rather than leaving them for the reader to infer (l. XXX).
-
-### Reviewer #2
-
-> The authors indeed should provide the exact mathematical formulation, along with consistent notation and clear biological explanations.
-> While several critical methodological justifications and validation gaps still need to be properly addressed, I would be happy to see a revised version that can fully address both reviewers' concerns.
-
-We thank the reviewer.
-The Methods are rewritten to follow the pipeline order of Fig. 1, every symbol is defined once and used consistently throughout, and the communication score, the tensor construction, and both decompositions are now given explicitly with their biological interpretation stated alongside each quantity (l. XXX).
-We hope the accompanying validation --- the method comparisons, enrichment and downstream-target analyses, significance testing, and stability analysis described above --- addresses the remaining gaps.
+The label has been corrected in Fig. 1d, and we have checked every other panel label in Fig. 1.
