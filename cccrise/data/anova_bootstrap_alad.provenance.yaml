@@ -14,10 +14,10 @@ celltype_key: broad_cell_type
 group_key: ALADstatus
 rise_rank: 19
 cp_rank: 3
-n_boot: 500
-group_column: ALADstatus
-control_label: control
-other_label: alad
+n_boot: 100
+group_column: 6monthcondition
+control_label: null
+other_label: null
 ci_level: 95.0
 alpha: 0.05
 stratify: true
@@ -30,29 +30,29 @@ compress: true
 oversample: 5
 match_mode_weights:
   '3': 1.0
-reference_r2x_cp: 0.40228210941573495
+reference_r2x_cp: 0.40228205573078746
 reference_eta_squared:
-- 0.06738792237368527
-- 0.02027368035158224
-- 0.016170771642837
+- 0.2627702269988462
+- 0.0300604294857254
+- 0.055595070818641845
 reference_f:
-- 3.251573274210696
-- 0.9311943524683427
-- 0.7396453601432255
+- 5.108818704266076
+- 0.4442195875497821
+- 0.8437722603000534
 reference_p:
-- 0.07805303817507064
-- 0.3397102404526152
-- 0.3943333556666316
+- 0.004114663793119983
+- 0.722613371225837
+- 0.47749977745525574
 reference_group_mean_diff:
-- 0.23869110160126022
-- 0.14631923918526452
-- 1.6658329833007026
-n_components_significant: 0
-min_component_match_score: 0.0002218359571077537
+- .nan
+- .nan
+- .nan
+n_components_significant: 1
+min_component_match_score: 0.00016275834089527006
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 1d13cafee8a4122428e3fd578bd130bf5bb80ef7-dirty
-generated: '2026-09-18T05:53:32+00:00'
+git_sha: e33407029011ad1022c30cc83b594cbfb773a164-dirty
+generated: '2026-09-19T05:08:42+00:00'
