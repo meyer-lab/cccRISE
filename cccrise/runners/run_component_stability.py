@@ -252,8 +252,8 @@ def run_component_stability(
                     + (
                         f"; paired by {spec.patient_column}: drawing one of a "
                         "patient's conditions carries its sibling in and drops "
-                        "one other random draw to keep the resample's size "
-                        "fixed"
+                        "one other random draw from the sibling's stratum to "
+                        "keep every stratum's size fixed"
                         if spec.patient_column
                         else ""
                     )

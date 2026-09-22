@@ -338,6 +338,7 @@ def bootstrap_replicate_anova(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     stratify: bool = True,
+    patient_column: str | None = None,
     random_state: int | None = None,
     backend: str | None = None,
     compress: bool = True,
@@ -372,6 +373,10 @@ def bootstrap_replicate_anova(
     stratify : bool, default=True
         Draw patients within each `group_column` stratum, keeping the class
         balance fixed; see `utils.resample_conditions`.
+    patient_column : str | None, optional
+        Condition-level patient identity column. Drawing one of a
+        multi-sample patient's conditions carries its sibling in too; see
+        `utils.resample_conditions`'s `patient_by`.
     random_state : int | None, optional
         Seed for the draw and for the replicate's fits.
     backend : str | None, default=None
@@ -394,6 +399,7 @@ def bootstrap_replicate_anova(
         adata,
         condition_column,
         stratify_by=group_column if stratify else None,
+        patient_by=patient_column,
         random_seed=random_state,
     )
     fit = fit_anova_pipeline(
@@ -466,6 +472,7 @@ def bootstrap_anova(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     stratify: bool = True,
+    patient_column: str | None = None,
     random_state: int = 0,
     backend: str | None = None,
     compress: bool = True,
@@ -500,6 +507,10 @@ def bootstrap_anova(
     stratify : bool, default=True
         Draw patients within each `group_column` stratum, keeping the class
         balance fixed; see `utils.resample_conditions`.
+    patient_column : str | None, optional
+        Condition-level patient identity column. Drawing one of a
+        multi-sample patient's conditions carries its sibling in too; see
+        `utils.resample_conditions`'s `patient_by`.
     random_state : int, default=0
         Base seed; replicate ``b`` uses `replicate_seed(random_state, b)`.
     backend : str | None, default=None
@@ -540,6 +551,7 @@ def bootstrap_anova(
             communication_score=communication_score,
             hill_k=hill_k,
             stratify=stratify,
+            patient_column=patient_column,
             random_state=seed,
             backend=backend,
             compress=compress,

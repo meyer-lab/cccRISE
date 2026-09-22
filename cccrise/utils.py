@@ -118,6 +118,7 @@ def _carry_paired_samples(
     drawn: np.ndarray | Sequence[str],
     pair_of: dict[str, str],
     rng: np.random.Generator,
+    stratum_of: dict[str, Any] | None = None,
 ) -> list[str]:
     """Carry in a paired condition's sibling sample, dropping one other random
     draw per carry so the resample's total size is unchanged.
@@ -129,6 +130,10 @@ def _carry_paired_samples(
     drop is what keeps the final number of patients in the resampling fixed,
     rather than growing by one every time a pair is hit.
 
+    With `stratum_of` (condition -> stratum), the drop is drawn from the
+    carried sibling's own stratum, so every stratum keeps its original count
+    even when a patient's two samples fall in different strata.
+
     Each of the original draws is visited once, so a condition drawn twice
     triggers two independent carry-and-drop steps.
     """
@@ -138,7 +143,12 @@ def _carry_paired_samples(
         if sibling is None:
             continue
         result.append(sibling)
-        result.pop(rng.integers(0, len(result)))
+        pool = [
+            i
+            for i, c in enumerate(result)
+            if stratum_of is None or stratum_of[c] == stratum_of[sibling]
+        ]
+        result.pop(pool[rng.integers(0, len(pool))])
     return result
 
 
@@ -184,7 +194,8 @@ def resample_conditions(
         Column in `data.obs` that is constant within a condition and shared by
         every condition (sample) belonging to the same patient. When given,
         drawing one of a two-sample patient's conditions carries its sibling
-        condition in too, and drops one other random draw to compensate (see
+        condition in too, and drops one other random draw to compensate --
+        from the sibling's own stratum when `stratify_by` is given (see
         `_carry_paired_samples`). Conditions whose patient contributes only
         one of them are unaffected.
 
@@ -199,6 +210,7 @@ def resample_conditions(
     obs = cast(pd.DataFrame, data.obs)
     labels = obs[condition_name].to_numpy().astype(str)
 
+    stratum_of = None
     if stratify_by is None:
         conditions = np.unique(labels)
         drawn = rng.choice(conditions, size=conditions.size, replace=True)
@@ -214,10 +226,11 @@ def resample_conditions(
                 for _, members in strata.groupby(strata, observed=True)
             ]
         )
+        stratum_of = strata.to_dict()
 
     if patient_by is not None:
         pair_of = _paired_conditions(obs, condition_name, patient_by, labels)
-        drawn = _carry_paired_samples(drawn, pair_of, rng)
+        drawn = _carry_paired_samples(drawn, pair_of, rng, stratum_of)
 
     cells_of = {cond: np.flatnonzero(labels == cond) for cond in np.unique(labels)}
     draws_so_far: dict[str, int] = {}
