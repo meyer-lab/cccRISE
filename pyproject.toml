@@ -54,6 +54,7 @@ cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
 cccrise-anovaboot = "cccrise.runners.run_anova_bootstrap:main"
 cccrise-stability = "cccrise.runners.run_component_stability:main"
 cccrise-significance = "cccrise.runners.run_significance:main"
+cccrise-nichenet = "cccrise.runners.run_nichenet:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]

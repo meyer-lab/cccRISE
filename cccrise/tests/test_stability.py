@@ -1,4 +1,4 @@
-"""Tests for cccrise.stability."""
+"""Tests for cccrise.validation."""
 
 import anndata
 import numpy as np
@@ -10,7 +10,14 @@ from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score
 
 from cccrise.ccc import calculate_r2x
-from cccrise.stability.component_stability import (
+from cccrise.utils import (
+    _carry_paired_samples,
+    _paired_conditions,
+    resample_cells,
+    resample_conditions,
+    resample_tensor,
+)
+from cccrise.validation.component_stability import (
     CPD_SKIP_MODES,
     DEFAULT_AXES,
     RISE_SKIP_MODES,
@@ -24,13 +31,6 @@ from cccrise.stability.component_stability import (
     per_component_fms,
     reference_condition_rows,
     summarize_component_stability,
-)
-from cccrise.utils import (
-    _carry_paired_samples,
-    _paired_conditions,
-    resample_cells,
-    resample_conditions,
-    resample_tensor,
 )
 
 RISE_RANK = 3
@@ -378,6 +378,38 @@ def test_resample_conditions_without_patient_by_is_unaffected():
     pd.testing.assert_frame_equal(
         a_obs.reset_index(drop=True), b_obs.reset_index(drop=True)
     )
+
+
+def test_carry_paired_samples_drops_only_from_the_siblings_stratum():
+    """A carried-in sibling grows its own stratum, so the compensating drop
+    must come from that stratum or the strata drift off their sizes."""
+    pair_of = {"S0": "S3", "S3": "S0"}
+    stratum_of = {"S0": "ctrl", "S1": "ctrl", "S2": "ctrl", "S3": "case"}
+    drawn = ["S0", "S1", "S2", "S3"]
+    for seed in range(30):
+        rng = np.random.default_rng(seed)
+        result = _carry_paired_samples(drawn, pair_of, rng, stratum_of)
+        assert sorted(stratum_of[c] for c in result) == sorted(
+            stratum_of[c] for c in drawn
+        )
+
+
+def test_resample_conditions_with_patient_by_keeps_each_stratum_size():
+    """Pairing S0 (ctrl) with S3 (case) puts the pair across strata, the case
+    where a drop from the whole draw would unbalance the groups."""
+    adata = _simulate_adata(n_cond=6)
+    adata.obs["patient"] = adata.obs["sample"].replace({"S3": "S0"})
+    assert isinstance(adata.obs, pd.DataFrame)
+    per_group = adata.obs.drop_duplicates("sample")["group"].value_counts()
+
+    for seed in range(30):
+        resampled = resample_conditions(
+            adata, "sample", stratify_by="group", random_seed=seed, patient_by="patient"
+        )
+        assert isinstance(resampled.obs, pd.DataFrame)
+        drawn = resampled.obs.drop_duplicates("sample")["group"].value_counts()
+        for group, count in per_group.items():
+            assert drawn[group] == count
 
 
 # =============================================================================
@@ -958,7 +990,7 @@ def test_summarize_component_stability_survives_a_csv_round_trip(tmp_path):
 
     assert SEED_AXIS not in STR_NA_VALUES
 
-    path = tmp_path / "stability.csv"
+    path = tmp_path / "validation.csv"
     _stability_frame(with_ceiling=True).to_csv(path, index=False)
 
     summary = summarize_component_stability(pd.read_csv(path))

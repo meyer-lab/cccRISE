@@ -16,7 +16,8 @@ from cccrise.anova import (
 )
 from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
 from cccrise.import_data import add_cond_idxs
-from cccrise.stability.anova_stability import (
+from cccrise.utils import replicate_seed, resample_conditions
+from cccrise.validation.anova_stability import (
     align_to_reference_components,
     bootstrap_anova,
     bootstrap_replicate_anova,
@@ -24,7 +25,6 @@ from cccrise.stability.anova_stability import (
     summarize_bootstrap_anova,
     top_lr_pairs,
 )
-from cccrise.utils import replicate_seed, resample_conditions
 
 
 def _synthetic_factors(
@@ -335,6 +335,40 @@ def test_bootstrap_anova_runs_with_compression_disabled():
         adata, reference=reference, **kwargs, n_boot=1, random_state=0, compress=False
     )
     assert df["EtaSquared"].between(-1e-9, 1.0 + 1e-9).all()
+
+
+def test_bootstrap_anova_forwards_patient_column_to_the_resampler(monkeypatch):
+    """Paired patients must be carried together in the ANOVA bootstrap too,
+    not only in `component_stability`."""
+    from cccrise.validation import anova_stability
+
+    seen = []
+    real = anova_stability.resample_conditions
+
+    def spy(*args, **kwargs):
+        seen.append(kwargs.get("patient_by"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(anova_stability, "resample_conditions", spy)
+
+    adata = _synthetic_cohort()
+    adata.obs["Patient"] = adata.obs["Sample"].replace({"Sample_1": "Sample_0"})
+    kwargs: dict[str, Any] = {
+        "condition_column": "Sample",
+        "group_column": "Group",
+        "control_label": "Ctrl",
+        "other_label": "Treat",
+        "rise_rank": 2,
+        "cp_rank": 2,
+        "lr_pairs": _anova_lr_pairs(),
+        "rise_n_iter_max": 10,
+        "cp_n_iter_max": 10,
+    }
+    reference = fit_anova_pipeline(adata, **kwargs, random_state=0)
+    bootstrap_anova(
+        adata, reference=reference, **kwargs, n_boot=1, patient_column="Patient"
+    )
+    assert seen == ["Patient"]
 
 
 def test_summarize_bootstrap_anova_metrics():
