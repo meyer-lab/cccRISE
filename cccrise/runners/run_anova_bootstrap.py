@@ -24,7 +24,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
-from ..stability.anova_stability import (
+from ..validation.anova_stability import (
     bootstrap_anova,
     fit_anova_pipeline,
     summarize_bootstrap_anova,
@@ -107,7 +107,7 @@ def run_anova_bootstrap(
     compress : bool, default=True
         Fit every CP stage inside a CANDELINC core sized for `cp_rank`
         instead of the full tensor; see
-        `stability.component_stability._fit_cp`. R2X, core consistency and
+        `validation.component_stability._fit_cp`. R2X, core consistency and
         collinearity are unaffected -- this is strictly a speed optimization.
     oversample : int, default=5
         Extra basis columns per mode beyond `cp_rank`, when `compress`.

@@ -1,6 +1,6 @@
 """
 Figure: NicheNet-style downstream-target validation of CPD components
-(``cccrise.stability.nichenet``), plotted from the cached scores written by
+(``cccrise.validation.nichenet``), plotted from the cached scores written by
 ``uv run cccrise-nichenet --dataset <dataset>``.
 
 For every CPD component of the selected dataset's finalized factors, scores

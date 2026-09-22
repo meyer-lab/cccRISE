@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from ..stability.component_stability import (
+from ..validation.component_stability import (
     SEED_AXIS,
     STAGE_CPD,
     STAGE_RISE,
@@ -74,7 +74,7 @@ def plot_per_component_fms(
     ax : plt.Axes
         Matplotlib axis to plot onto.
     stage : str
-        'RISE' or 'CPD'; see `stability.STAGE_RISE` / `STAGE_CPD`.
+        'RISE' or 'CPD'; see `validation.STAGE_RISE` / `STAGE_CPD`.
     title : str | None
         Optional title for the subplot.
     """

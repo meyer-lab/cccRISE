@@ -1,4 +1,4 @@
-"""Tests for cccrise.stability."""
+"""Tests for cccrise.validation."""
 
 import anndata
 import numpy as np
@@ -10,7 +10,14 @@ from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score
 
 from cccrise.ccc import calculate_r2x
-from cccrise.stability.component_stability import (
+from cccrise.utils import (
+    _carry_paired_samples,
+    _paired_conditions,
+    resample_cells,
+    resample_conditions,
+    resample_tensor,
+)
+from cccrise.validation.component_stability import (
     CPD_SKIP_MODES,
     DEFAULT_AXES,
     RISE_SKIP_MODES,
@@ -24,13 +31,6 @@ from cccrise.stability.component_stability import (
     per_component_fms,
     reference_condition_rows,
     summarize_component_stability,
-)
-from cccrise.utils import (
-    _carry_paired_samples,
-    _paired_conditions,
-    resample_cells,
-    resample_conditions,
-    resample_tensor,
 )
 
 RISE_RANK = 3
@@ -990,7 +990,7 @@ def test_summarize_component_stability_survives_a_csv_round_trip(tmp_path):
 
     assert SEED_AXIS not in STR_NA_VALUES
 
-    path = tmp_path / "stability.csv"
+    path = tmp_path / "validation.csv"
     _stability_frame(with_ceiling=True).to_csv(path, index=False)
 
     summary = summarize_component_stability(pd.read_csv(path))

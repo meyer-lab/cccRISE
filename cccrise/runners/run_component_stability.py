@@ -41,7 +41,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..import_data import import_ligand_receptor_pairs
-from ..stability.component_stability import (
+from ..validation.component_stability import (
     DEFAULT_AXES,
     RISE_REFIT_AXES,
     SEED_AXIS,
@@ -113,7 +113,7 @@ def run_component_stability(
     compress : bool, default=True
         Fit every CP stage inside a CANDELINC core sized for `cp_rank`
         instead of the full tensor; see
-        `stability.component_stability._fit_cp`. R2X, core consistency and
+        `validation.component_stability._fit_cp`. R2X, core consistency and
         collinearity are unaffected -- this is strictly a speed optimization.
     oversample : int, default=5
         Extra basis columns per mode beyond `cp_rank`, when `compress`.
@@ -236,7 +236,7 @@ def run_component_stability(
                 "random_state * 1000 + replicate + 1; one seed drives the "
                 "resample, the RISE refit and the CP fit, so a "
                 "replicate's RISE and CPD rows are the same resampled dataset "
-                "(see stability.replicate_seed). On the seed_only axis the "
+                "(see validation.replicate_seed). On the seed_only axis the "
                 "seed is the only thing that differs from the reference: same "
                 "cells, same conditions, same ligand-receptor pairs"
             ),
@@ -270,7 +270,7 @@ def run_component_stability(
             },
             "condition_mode_alignment": (
                 "reference condition-mode rows expanded onto the replicate's "
-                "roster by draw (see stability.reference_condition_rows)"
+                "roster by draw (see validation.reference_condition_rows)"
             ),
             "lr_mode_alignment": (
                 "reference ligand-receptor mode rows expanded by the drawn LR indices"
@@ -278,7 +278,7 @@ def run_component_stability(
             "fms_definition": (
                 "congruence product across compared modes (Modes 0 and 2 for RISE, "
                 "with Mode 1 held out; Modes 0 and 3 for CPD, with Modes 1 and 2 "
-                "held out), weights ignored (see stability.per_component_fms)"
+                "held out), weights ignored (see validation.per_component_fms)"
             ),
             "component_numbering": ("reference fit after ccc_rise.standardize_cc_pf2"),
             "lr_roster_stable": True,

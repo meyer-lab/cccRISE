@@ -16,7 +16,8 @@ from cccrise.anova import (
 )
 from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
 from cccrise.import_data import add_cond_idxs
-from cccrise.stability.anova_stability import (
+from cccrise.utils import replicate_seed, resample_conditions
+from cccrise.validation.anova_stability import (
     align_to_reference_components,
     bootstrap_anova,
     bootstrap_replicate_anova,
@@ -24,7 +25,6 @@ from cccrise.stability.anova_stability import (
     summarize_bootstrap_anova,
     top_lr_pairs,
 )
-from cccrise.utils import replicate_seed, resample_conditions
 
 
 def _synthetic_factors(
@@ -340,7 +340,7 @@ def test_bootstrap_anova_runs_with_compression_disabled():
 def test_bootstrap_anova_forwards_patient_column_to_the_resampler(monkeypatch):
     """Paired patients must be carried together in the ANOVA bootstrap too,
     not only in `component_stability`."""
-    from cccrise.stability import anova_stability
+    from cccrise.validation import anova_stability
 
     seen = []
     real = anova_stability.resample_conditions

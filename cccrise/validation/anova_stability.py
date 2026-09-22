@@ -234,7 +234,7 @@ def fit_anova_pipeline(
         auto-detect); passed straight through to `tensor.rise_store_r2x`.
     compress : bool, default=True
         Fit CP inside a CANDELINC core sized for `cp_rank` instead of the
-        full tensor (see `stability.component_stability._fit_cp`).
+        full tensor (see `validation.component_stability._fit_cp`).
     oversample : int, default=5
         Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
@@ -383,7 +383,7 @@ def bootstrap_replicate_anova(
         Backend the replicate's RISE refit runs on; see `fit_anova_pipeline`.
     compress : bool, default=True
         Fit the replicate's CP stage inside a CANDELINC core; see
-        `stability.component_stability._fit_cp`.
+        `validation.component_stability._fit_cp`.
     oversample : int, default=5
         Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
@@ -517,7 +517,7 @@ def bootstrap_anova(
         Backend every replicate's RISE refit runs on; see `fit_anova_pipeline`.
     compress : bool, default=True
         Fit every replicate's CP stage inside a CANDELINC core; see
-        `stability.component_stability._fit_cp`.
+        `validation.component_stability._fit_cp`.
     oversample : int, default=5
         Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
