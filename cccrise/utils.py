@@ -1,4 +1,5 @@
 import warnings
+from collections.abc import Sequence
 from typing import Any, cast
 
 import anndata
@@ -87,11 +88,66 @@ def resample_cells(
     return resampled
 
 
+def _paired_conditions(
+    obs: pd.DataFrame, condition_name: str, patient_by: str, labels: np.ndarray
+) -> dict[str, str]:
+    """Map each condition sharing a patient with exactly one sibling condition
+    to that sibling's label, for `resample_conditions`'s `patient_by`.
+
+    A patient contributing only one condition has no sibling and so is absent
+    from the returned mapping. A patient contributing more than two is paired
+    cyclically (each condition maps to the "next" one), which is untested
+    territory -- ALAD's own paired patients each contribute exactly two.
+    """
+    patients = obs[patient_by].to_numpy().astype(str)
+    table = pd.DataFrame(
+        {condition_name: labels, patient_by: patients}
+    ).drop_duplicates(condition_name)
+
+    pairs: dict[str, str] = {}
+    for _patient, members in table.groupby(patient_by)[condition_name]:
+        conds = members.tolist()
+        if len(conds) < 2:
+            continue
+        for i, cond in enumerate(conds):
+            pairs[cond] = conds[(i + 1) % len(conds)]
+    return pairs
+
+
+def _carry_paired_samples(
+    drawn: np.ndarray | Sequence[str],
+    pair_of: dict[str, str],
+    rng: np.random.Generator,
+) -> list[str]:
+    """Carry in a paired condition's sibling sample, dropping one other random
+    draw per carry so the resample's total size is unchanged.
+
+    Some ALAD patients contributed two samples (conditions), so an ordinary
+    per-condition bootstrap can draw one of a patient's samples without the
+    other, treating one enrollment as two independent ones. This carries the
+    sibling sample in whenever the draw hits either one; the compensating
+    drop is what keeps the final number of patients in the resampling fixed,
+    rather than growing by one every time a pair is hit.
+
+    Each of the original draws is visited once, so a condition drawn twice
+    triggers two independent carry-and-drop steps.
+    """
+    result = list(drawn)
+    for cond in list(result):
+        sibling = pair_of.get(cond)
+        if sibling is None:
+            continue
+        result.append(sibling)
+        result.pop(rng.integers(0, len(result)))
+    return result
+
+
 def resample_conditions(
     data: anndata.AnnData,
     condition_name: str,
     stratify_by: str | None = None,
     random_seed: int | None = None,
+    patient_by: str | None = None,
 ) -> anndata.AnnData:
     """Bootstrap whole conditions (patients) with replacement, keeping every
     cell of a drawn condition.
@@ -124,6 +180,13 @@ def resample_conditions(
         than by the cohort.
     random_seed : int | None, optional
         Seed for the draw. None leaves it unseeded.
+    patient_by : str | None, optional
+        Column in `data.obs` that is constant within a condition and shared by
+        every condition (sample) belonging to the same patient. When given,
+        drawing one of a two-sample patient's conditions carries its sibling
+        condition in too, and drops one other random draw to compensate (see
+        `_carry_paired_samples`). Conditions whose patient contributes only
+        one of them are unaffected.
 
     Returns
     -------
@@ -151,6 +214,10 @@ def resample_conditions(
                 for _, members in strata.groupby(strata, observed=True)
             ]
         )
+
+    if patient_by is not None:
+        pair_of = _paired_conditions(obs, condition_name, patient_by, labels)
+        drawn = _carry_paired_samples(drawn, pair_of, rng)
 
     cells_of = {cond: np.flatnonzero(labels == cond) for cond in np.unique(labels)}
     draws_so_far: dict[str, int] = {}

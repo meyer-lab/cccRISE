@@ -9,13 +9,6 @@ interaction tensor, CP at the same fixed ranks, then the ANOVA -- turns each
 component's effect size into a distribution whose spread is exactly that
 sampling variability.
 
-The ANOVA is what makes that statement true. Its predecessor here was an L1
-logistic regression, whose per-component weight mixed sampling variability
-with whether the penalty happened to select the component for a given roster;
-the old `FracNonzero` measured only that second thing. An ANOVA has no
-selection path, so every component is tested on every roster and the spread
-means one thing.
-
 Every replicate refits RISE and CP from scratch, so its components come out in
 an arbitrary order and sign; each replicate is therefore matched back onto the
 full-cohort ("reference") fit's components before its statistics are recorded
@@ -27,20 +20,6 @@ a wide distribution for a reason that has nothing to do with the phenotype,
 and the two explanations have to stay separable. Only `GroupMeanDiff` carries
 a sign and so is the only column the alignment's sign correction touches; F, P
 and eta-squared are sign-invariant.
-
-Caveat -- resampled degrees of freedom
---------------------------------------
-A bootstrapped roster contains repeat draws of the same patient (relabeled
-``<label>__rep2``). Those copies inflate the ANOVA's residual degrees of
-freedom and shrink the per-replicate p-value, and unlike the logistic
-regression's grouped cross-validation there is no ANOVA analogue that can hold
-a patient's copies together. Two consequences:
-
-* **eta-squared is the primary reported quantity.** It is a variance ratio, so
-  it is far less sensitive to the replicate's sample count than a p-value is.
-* **`FracSignificant` is a descriptive tally across rosters, not a calibrated
-  type-I error rate.** The p-value to quote is the reference fit's
-  `ReferenceP`, computed on the un-resampled cohort with one row per patient.
 """
 
 from typing import Any, cast
@@ -49,14 +28,13 @@ import anndata
 import numpy as np
 import pandas as pd
 from scipy.optimize import linear_sum_assignment
-from tensorly.decomposition import parafac
 
 from ..anova import anova_component_associations, prepare_anova_inputs
-from ..ccc import calculate_r2x
 from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
 from ..import_data import add_cond_idxs
 from ..tensor import calculate_interaction_tensor, rise_store_r2x
 from ..utils import replicate_seed, resample_conditions
+from .component_stability import _fit_cp
 
 Factors = list[np.ndarray]
 
@@ -221,6 +199,9 @@ def fit_anova_pipeline(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int | None = None,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> dict[str, Any]:
     """Run RISE, the interaction tensor and CP over `adata`, then test the
     resulting condition factors against the phenotype by one-way ANOVA.
@@ -248,6 +229,14 @@ def fit_anova_pipeline(
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int | None, optional
         Seed for the RISE fit and the CP fit. The ANOVA is deterministic.
+    backend : str | None, default=None
+        Backend the RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
+        auto-detect); passed straight through to `tensor.rise_store_r2x`.
+    compress : bool, default=True
+        Fit CP inside a CANDELINC core sized for `cp_rank` instead of the
+        full tensor (see `stability.component_stability._fit_cp`).
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
@@ -268,6 +257,7 @@ def fit_anova_pipeline(
         n_iter_max=rise_n_iter_max,
         tolerance=rise_tol,
         random_state=random_state,
+        backend=backend,
     )
     tensor, filtered_lr_pairs = calculate_interaction_tensor(
         adata,
@@ -278,17 +268,17 @@ def fit_anova_pipeline(
     )
     validate_cp_rank(cp_rank, tensor.shape)
 
-    cp_weights, cp_factors = parafac(
+    cp_weights, cp_factors, r2x_cp, _diagnostics = _fit_cp(
         tensor,
         cp_rank,
         n_iter_max=cp_n_iter_max,
         tol=cp_tol,
         init=init,
         svd=svd,
-        normalize_factors=True,
         random_state=random_state,
+        compress=compress,
+        oversample=oversample,
     )
-    r2x_cp = calculate_r2x(cp_weights, cp_factors, tensor)
     cp_weights, factors = standardize_cc_pf2(cp_weights, cp_factors)
 
     X, sample_to_group = prepare_anova_inputs(
@@ -349,6 +339,9 @@ def bootstrap_replicate_anova(
     hill_k: float = 0.5,
     stratify: bool = True,
     random_state: int | None = None,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> pd.DataFrame:
     """One bootstrap replicate: resample patients, re-run the pipeline, and
     report each reference component's ANOVA against the phenotype from the
@@ -381,6 +374,13 @@ def bootstrap_replicate_anova(
         balance fixed; see `utils.resample_conditions`.
     random_state : int | None, optional
         Seed for the draw and for the replicate's fits.
+    backend : str | None, default=None
+        Backend the replicate's RISE refit runs on; see `fit_anova_pipeline`.
+    compress : bool, default=True
+        Fit the replicate's CP stage inside a CANDELINC core; see
+        `stability.component_stability._fit_cp`.
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
@@ -415,6 +415,9 @@ def bootstrap_replicate_anova(
         communication_score=communication_score,
         hill_k=hill_k,
         random_state=random_state,
+        backend=backend,
+        compress=compress,
+        oversample=oversample,
     )
 
     if not np.array_equal(fit["lr_symbols"], reference["lr_symbols"]):
@@ -464,6 +467,9 @@ def bootstrap_anova(
     hill_k: float = 0.5,
     stratify: bool = True,
     random_state: int = 0,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> pd.DataFrame:
     """Run `n_boot` patient-resampled replicates of the pipeline.
 
@@ -496,6 +502,13 @@ def bootstrap_anova(
         balance fixed; see `utils.resample_conditions`.
     random_state : int, default=0
         Base seed; replicate ``b`` uses `replicate_seed(random_state, b)`.
+    backend : str | None, default=None
+        Backend every replicate's RISE refit runs on; see `fit_anova_pipeline`.
+    compress : bool, default=True
+        Fit every replicate's CP stage inside a CANDELINC core; see
+        `stability.component_stability._fit_cp`.
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
@@ -528,6 +541,9 @@ def bootstrap_anova(
             hill_k=hill_k,
             stratify=stratify,
             random_state=seed,
+            backend=backend,
+            compress=compress,
+            oversample=oversample,
         )
         replicate.insert(0, "Replicate", b)
         frames.append(replicate)
