@@ -19,12 +19,13 @@ Writes the long-format CSV `figureNicheNet` reads:
 
 import argparse
 from pathlib import Path
-from typing import Literal, cast
+from typing import cast, get_args
 
 import pandas as pd
 
 from ..factors import load_factors_to_anndata
 from ..stability.nichenet import (
+    DeMethod,
     ReceiverMode,
     component_accuracy_scores,
     load_ligand_target_matrix,
@@ -32,8 +33,6 @@ from ..stability.nichenet import (
 from ._cli import add_dataset_argument, dataset_metadata, resolve_output, resulting_dims
 from .datasets import DATA_DIR, DATASETS, DatasetSpec
 from .provenance import build_metadata, git_sha, relpath, sha256_file, write_metadata
-
-DeMethod = Literal["logreg", "t-test", "wilcoxon", "t-test_overestim_var"]
 
 DEFAULT_RECEIVER_MODES: tuple[ReceiverMode, ...] = ("within_celltype", "vs_rest")
 
@@ -230,7 +229,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--de-method",
         type=str,
         default="wilcoxon",
-        choices=["logreg", "t-test", "wilcoxon", "t-test_overestim_var"],
+        choices=get_args(DeMethod),
     )
     parser.add_argument(
         "--celltype-col",
