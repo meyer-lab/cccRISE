@@ -9,13 +9,6 @@ interaction tensor, CP at the same fixed ranks, then the ANOVA -- turns each
 component's effect size into a distribution whose spread is exactly that
 sampling variability.
 
-The ANOVA is what makes that statement true. Its predecessor here was an L1
-logistic regression, whose per-component weight mixed sampling variability
-with whether the penalty happened to select the component for a given roster;
-the old `FracNonzero` measured only that second thing. An ANOVA has no
-selection path, so every component is tested on every roster and the spread
-means one thing.
-
 Every replicate refits RISE and CP from scratch, so its components come out in
 an arbitrary order and sign; each replicate is therefore matched back onto the
 full-cohort ("reference") fit's components before its statistics are recorded
@@ -27,20 +20,6 @@ a wide distribution for a reason that has nothing to do with the phenotype,
 and the two explanations have to stay separable. Only `GroupMeanDiff` carries
 a sign and so is the only column the alignment's sign correction touches; F, P
 and eta-squared are sign-invariant.
-
-Caveat -- resampled degrees of freedom
---------------------------------------
-A bootstrapped roster contains repeat draws of the same patient (relabeled
-``<label>__rep2``). Those copies inflate the ANOVA's residual degrees of
-freedom and shrink the per-replicate p-value, and unlike the logistic
-regression's grouped cross-validation there is no ANOVA analogue that can hold
-a patient's copies together. Two consequences:
-
-* **eta-squared is the primary reported quantity.** It is a variance ratio, so
-  it is far less sensitive to the replicate's sample count than a p-value is.
-* **`FracSignificant` is a descriptive tally across rosters, not a calibrated
-  type-I error rate.** The p-value to quote is the reference fit's
-  `ReferenceP`, computed on the un-resampled cohort with one row per patient.
 """
 
 from typing import Any, cast

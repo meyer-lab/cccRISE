@@ -29,17 +29,10 @@ Axes, and what each one asks:
               Robustness to which interactions the database contains. Costs
               no PARAFAC2 fit.
   seed_only   Identical data refit end to end (RISE -> communication tensor
-              -> CP) from a different random seed. The reproducibility
-              ceiling an observed FMS has to be read against: how far
-              components move from the fitters' own randomness alone, which
-              every other axis would otherwise carry mixed into its spread.
-              Refits RISE.
+              -> CP) from a different random seed. Refits RISE.
 
-All four run by default, so the comparison columns are populated without
-having to remember `--axes`:
-
-    uv run cccrise-stability --dataset alad --rise-rank 25 --cp-rank 4 \
-        --n-replicates 20
+    uv run cccrise-stability --dataset alad --rise-rank 19 --cp-rank 3 \
+        --n-replicates 100
 """
 
 import argparse
@@ -275,16 +268,6 @@ def run_component_stability(
                     "PARAFAC2 refit per replicate"
                 ),
             },
-            "seed_axis_semantics": (
-                "seed_only is an upper reference, not a chance floor: its FMS "
-                "is expected to be high, and FracWithinSeedBand reads "
-                "high-is-good (the fraction of a component's replicates that "
-                "stayed inside the seed-refit band, i.e. moved no further "
-                "than reseeding alone moves them). It replaces an "
-                "entry-permutation floor that every component cleared; runs "
-                "before 2026-09 carry the old 'permuted' axis and the "
-                "opposite reading"
-            ),
             "condition_mode_alignment": (
                 "reference condition-mode rows expanded onto the replicate's "
                 "roster by draw (see stability.reference_condition_rows)"

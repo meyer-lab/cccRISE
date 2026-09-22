@@ -54,9 +54,7 @@ Row Alignment
   with the replicate's resampled LR roster.
 - The seed axis (`SEED_AXIS`) needs no alignment at all: the roster is the
   reference's own, so mode 0 already matches row for row. That is what makes
-  its FMS comparable to the reference's on a per-component basis, and in turn
-  what lets `summarize_component_stability` hold a ceiling per component
-  rather than one pooled per stage.
+  its FMS comparable to the reference's on a per-component basis.
 """
 
 from collections.abc import Callable
@@ -100,40 +98,20 @@ RISE_SKIP_MODES: tuple[int, ...] = (1,)
 CPD_SKIP_MODES: tuple[int, ...] = (1, 2)
 
 #: Name of the reproducibility-ceiling axis: identical data, a different random
-#: seed, refit end to end. Read as an *upper* reference rather than a floor --
-#: the FMS it produces is what two fits of the same data cost each other from
-#: the fitters' own randomness alone, so it is expected to be high, and an
-#: observed axis reaching it means the data perturbation added nothing on top.
-#: `random_state` genuinely moves both stages: `parafac2_nd` seeds the Gaussian
-#: projection of its randomized-SVD initialization and its compression stage,
-#: and tensorly's ``parafac(init="svd", svd="randomized_svd")`` does the same,
-#: so the axis is not degenerate.
-#:
-#: Deliberately not "null": pandas' `read_csv` parses that string as NaN by
-#: default, which would silently erase the baseline. Spelled with the ``_only``
-#: suffix so the `Axis` value cannot be confused with the `Seed` column, which
-#: carries an integer seed on *every* axis.
+#: seed, refit end to end. `random_state` genuinely moves both stages: `parafac2_nd`
+#: seeds the Gaussian projection of its randomized-SVD initialization and its
+#: compression stage, and tensorly's ``parafac(init="svd", svd="randomized_svd")`` does
+#: the same, so the axis is not degenerate.
 SEED_AXIS = "seed_only"
 
 #: Percentile of the seed axis's FMS taken as the reproducibility band's lower
-#: edge. Fixed here rather than derived from `summarize_component_stability`'s
-#: `lower`, which describes the spread of the *observed* axes, so that the
-#: 'SeedP5FMS' column name stays stable for the figure and for anyone reading
-#: the CSV back.
+#: edge.
 SEED_BAND_PERCENTILE = 5.0
 
-#: Axes that refit RISE. 'cells' and 'conditions' draw *with* replacement (see
-#: `utils.resample_cells` / `utils.resample_conditions`); `SEED_AXIS` draws
-#: nothing and refits the identical roster from a different starting point.
-#: What the three share is the cost -- one PARAFAC2 fit per replicate -- and
-#: the consequence, that each emits both RISE and CPD rows.
+#: Axes that refit RISE.
 RISE_REFIT_AXES = ("cells", "conditions", SEED_AXIS)
 
-#: Axes run by default. 'lr_pairs' bootstraps the reference tensor's
-#: ligand-receptor mode and so costs no PARAFAC2 fit; `SEED_AXIS` costs a full
-#: one per replicate and is still a default, because no other axis's FMS is
-#: interpretable without it beside them -- omitting it leaves
-#: `summarize_component_stability`'s comparison columns silently all-NaN.
+#: Axes run by default.
 DEFAULT_AXES = ("cells", "conditions", "lr_pairs", SEED_AXIS)
 
 #: How an axis prepares the data it is fit on. Each entry takes
@@ -141,11 +119,6 @@ DEFAULT_AXES = ("cells", "conditions", "lr_pairs", SEED_AXIS)
 #:
 #: `SEED_AXIS`'s entry perturbs nothing -- its perturbation is applied
 #: downstream, by handing `fit_stability_pipeline` a different `random_state`.
-#: It still copies, and the copy is load-bearing rather than defensive:
-#: `import_data.add_cond_idxs` writes `condition_unique_idxs` into `obs` in
-#: place and `parafac2.store_pf2` writes `uns`/`varm`, so returning `adata`
-#: itself would leave the caller's object carrying the first replicate's fit
-#: and silently change what every later axis resamples from.
 RESAMPLERS: dict[
     str,
     Callable[[anndata.AnnData, str, str | None, str | None, int], anndata.AnnData],
@@ -911,50 +884,6 @@ def summarize_component_stability(
     component -- the seed axis's median FMS, the lower edge of its
     reproducibility band, and the fraction of replicates in which the
     component stayed inside it.
-
-    Reading the comparison
-    ----------------------
-    'FracWithinSeedBand' is the column to read, and it reads *upwards*. The
-    seed axis refits identical data from a different starting point, so its
-    FMS is what two fits of the same cohort cost each other from the fitters'
-    own randomness -- a ceiling, not a chance floor. A component at
-    'FracWithinSeedBand' near 1 moved no further under the data perturbation
-    than it moves under reseeding alone, so that perturbation cost it nothing;
-    one near 0 was genuinely moved by the data, and the size of the gap
-    between 'MedianFMS' and 'SeedMedianFMS' says by how much.
-
-    This replaces an entry-permutation floor, which was uninformative: shuffling
-    the tensor's entries destroys all multilinear structure, so every component
-    of every dataset at every rank cleared it. What was confounded there is
-    separated here -- initialization variance now has its own axis instead of
-    being mixed into every resampling axis's spread.
-
-    Why the ceiling is per component
-    --------------------------------
-    A chance floor is a property of the tensor's dimensions, so pooling it
-    across components was right. A reproducibility ceiling is not: one
-    component may reseed at 0.99 while another reseeds at 0.55 because it is
-    intrinsically non-identifiable at this rank. Scoring the second against a
-    ceiling dominated by the first would blame the data for what is really CP
-    non-identifiability -- exactly the distinction 'RunnerUpFMS' exists to
-    draw. Matching per component is only possible because the seed axis leaves
-    the roster alone, so its mode-0 rows carry the reference's own numbering
-    with no expansion.
-
-    Because that axis refits the whole pipeline it emits RISE rows as well as
-    CPD rows, so RISE components get a populated comparison for the first
-    time; the permutation floor was CPD-only and could only ever leave them
-    NaN.
-
-    The comparison is ``>=`` rather than ``>``. FMS is bounded above by 1, and
-    a component that reseeds to exactly 1.0 on every replicate puts the band's
-    lower edge there too; under a strict inequality an observed component that
-    also scored 1.0 would be recorded as having failed, for being perfectly
-    reproducible. Ties at the top of a saturating scale are common in a way
-    ties against a floor never were.
-
-    `SeedP5FMS` is a percentile over `n_replicates` values, so it means little
-    below roughly 20 replicates -- at 3 it is simply the minimum.
 
     Parameters
     ----------
