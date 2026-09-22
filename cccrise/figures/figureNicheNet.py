@@ -36,7 +36,6 @@ from .common import getSetup, load_runner_csv, subplotLabel
 
 # Change this to switch dataset; must be a key in `runners.datasets.DATASETS`
 # with cached scores already produced by `uv run cccrise-nichenet`.
-# Only "alad" has a finalized fit today; "ibd" is wired up for when it does.
 SELECTED_DATASET = "alad"
 
 SIG_ALPHA = 0.05
