@@ -337,6 +337,40 @@ def test_bootstrap_anova_runs_with_compression_disabled():
     assert df["EtaSquared"].between(-1e-9, 1.0 + 1e-9).all()
 
 
+def test_bootstrap_anova_forwards_patient_column_to_the_resampler(monkeypatch):
+    """Paired patients must be carried together in the ANOVA bootstrap too,
+    not only in `component_stability`."""
+    from cccrise.stability import anova_stability
+
+    seen = []
+    real = anova_stability.resample_conditions
+
+    def spy(*args, **kwargs):
+        seen.append(kwargs.get("patient_by"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(anova_stability, "resample_conditions", spy)
+
+    adata = _synthetic_cohort()
+    adata.obs["Patient"] = adata.obs["Sample"].replace({"Sample_1": "Sample_0"})
+    kwargs: dict[str, Any] = {
+        "condition_column": "Sample",
+        "group_column": "Group",
+        "control_label": "Ctrl",
+        "other_label": "Treat",
+        "rise_rank": 2,
+        "cp_rank": 2,
+        "lr_pairs": _anova_lr_pairs(),
+        "rise_n_iter_max": 10,
+        "cp_n_iter_max": 10,
+    }
+    reference = fit_anova_pipeline(adata, **kwargs, random_state=0)
+    bootstrap_anova(
+        adata, reference=reference, **kwargs, n_boot=1, patient_column="Patient"
+    )
+    assert seen == ["Patient"]
+
+
 def test_summarize_bootstrap_anova_metrics():
     # Component 1: large eta, significant, positive diff
     # Component 2: small eta, p > 0.05, 0 diff
