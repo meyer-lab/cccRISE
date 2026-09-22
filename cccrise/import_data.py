@@ -139,7 +139,7 @@ def add_alad_patient_id(data: anndata.AnnData) -> anndata.AnnData:
 
     Every dsco_id not in `ALAD_PATIENT_OF` is treated as its own patient (its
     `patient_id` is just its `dsco_id`), so `patient_id` is safe to pass as
-    `stability.component_stability`'s `patient_column` unconditionally: a
+    `validation.component_stability`'s `patient_column` unconditionally: a
     singleton dsco_id groups to itself and so never gets paired.
     """
     dsco_id = data.obs["dsco_id"].astype(str)

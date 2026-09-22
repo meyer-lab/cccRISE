@@ -373,7 +373,7 @@ def fit_stability_pipeline(
         auto-detect); passed straight through to `tensor.rise_store_r2x`.
     compress : bool, default=True
         Fit CP inside a CANDELINC core sized for `cp_rank` instead of the
-        full tensor (see `stability.component_stability._fit_cp`).
+        full tensor (see `validation.component_stability._fit_cp`).
     oversample : int, default=5
         Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
