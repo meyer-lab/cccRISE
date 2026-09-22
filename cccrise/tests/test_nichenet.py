@@ -1,11 +1,11 @@
-"""Unit tests for cccrise.nichenet (no network access)."""
+"""Unit tests for cccrise.stability.nichenet (no network access)."""
 
 import anndata
 import numpy as np
 import pandas as pd
 import pytest
 
-from cccrise.nichenet import (
+from cccrise.stability.nichenet import (
     _receiver_population,
     component_accuracy_scores,
     ligand_activity_auroc,

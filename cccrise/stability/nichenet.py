@@ -29,7 +29,7 @@ import scanpy as sc
 from scipy.stats import rankdata
 from sklearn.metrics import roc_auc_score
 
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = Path(__file__).parent.parent / "data"
 NICHENET_LT_URL = (
     "https://zenodo.org/records/7074291/files/ligand_target_matrix_nsga2r_final.rds"
 )

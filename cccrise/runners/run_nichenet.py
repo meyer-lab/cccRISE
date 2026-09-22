@@ -4,7 +4,7 @@ Runner: NicheNet-style downstream-target validation of CPD components.
 
 Unlike the other runners, this does not refit RISE/CPD -- it loads an
 already-finalized factor fit (``spec.factors_path()``, produced by
-``cccrise-run``) and scores it (``cccrise.nichenet.component_accuracy_scores``)
+``cccrise-run``) and scores it (``cccrise.stability.nichenet.component_accuracy_scores``)
 for every CPD component, under every requested receiver-population
 definition. The expensive step is per-component differential expression
 (``scanpy.tl.rank_genes_groups`` over the full single-cell dataset), which
@@ -24,7 +24,7 @@ from typing import Literal, cast
 import pandas as pd
 
 from ..factors import load_factors_to_anndata
-from ..nichenet import (
+from ..stability.nichenet import (
     ReceiverMode,
     component_accuracy_scores,
     load_ligand_target_matrix,
