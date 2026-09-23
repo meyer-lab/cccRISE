@@ -15,10 +15,8 @@ from cccrise.ccc_rise import (
     compute_differential_significance,
     standardize_cc_pf2,
 )
-from cccrise.tensor import (
-    calculate_fms_rise,
-    run_ccc_rise_workflow,
-)
+from cccrise.runners.run_ccc_rise import run_ccc_rise_workflow
+from cccrise.tensor import calculate_fms_rise
 from cccrise.utils import pseudobulk_X
 
 
@@ -455,8 +453,10 @@ def test_full_ccc_rise_workflow_synthetic():
         rise_rank=rise_rank,
         cp_rank=cp_rank,
         lr_pairs=lr_pairs,
-        n_iter_max=30,
-        tol=1e-4,
+        rise_n_iter_max=30,
+        cp_n_iter_max=30,
+        rise_tol=1e-4,
+        cp_tol=1e-4,
         doEmbedding=False,
     )
 

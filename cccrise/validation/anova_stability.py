@@ -190,9 +190,7 @@ def fit_anova_pipeline(
     cp_rank: int = 10,
     lr_pairs: pd.DataFrame | None = None,
     rise_n_iter_max: int = 100,
-    rise_tol: float = 1e-6,
     cp_n_iter_max: int = 100,
-    cp_tol: float = 1e-3,
     init: str = "svd",
     svd: str = "randomized_svd",
     complex_sep: str | None = "&",
@@ -202,6 +200,9 @@ def fit_anova_pipeline(
     backend: str | None = None,
     compress: bool = True,
     oversample: int = 5,
+    *,
+    rise_tol: float,
+    cp_tol: float,
 ) -> dict[str, Any]:
     """Run RISE, the interaction tensor and CP over `adata`, then test the
     resulting condition factors against the phenotype by one-way ANOVA.
@@ -329,9 +330,7 @@ def bootstrap_replicate_anova(
     cp_rank: int = 10,
     lr_pairs: pd.DataFrame | None = None,
     rise_n_iter_max: int = 100,
-    rise_tol: float = 1e-6,
     cp_n_iter_max: int = 100,
-    cp_tol: float = 1e-3,
     init: str = "svd",
     svd: str = "randomized_svd",
     complex_sep: str | None = "&",
@@ -343,6 +342,9 @@ def bootstrap_replicate_anova(
     backend: str | None = None,
     compress: bool = True,
     oversample: int = 5,
+    *,
+    rise_tol: float,
+    cp_tol: float,
 ) -> pd.DataFrame:
     """One bootstrap replicate: resample patients, re-run the pipeline, and
     report each reference component's ANOVA against the phenotype from the
@@ -463,9 +465,7 @@ def bootstrap_anova(
     n_boot: int = 100,
     lr_pairs: pd.DataFrame | None = None,
     rise_n_iter_max: int = 100,
-    rise_tol: float = 1e-6,
     cp_n_iter_max: int = 100,
-    cp_tol: float = 1e-3,
     init: str = "svd",
     svd: str = "randomized_svd",
     complex_sep: str | None = "&",
@@ -477,6 +477,9 @@ def bootstrap_anova(
     backend: str | None = None,
     compress: bool = True,
     oversample: int = 5,
+    *,
+    rise_tol: float,
+    cp_tol: float,
 ) -> pd.DataFrame:
     """Run `n_boot` patient-resampled replicates of the pipeline.
 

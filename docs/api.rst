@@ -111,8 +111,8 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 Factorization
 ~~~~~~~~~~~~~
 
-.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", n_iter_max: int = 100, tol: float = 1e-3, random_state: int = None, complex_sep: str = None, doEmbedding: bool = True, svd_init: str = "svd")
-   :module: cccrise.tensor
+.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", rise_n_iter_max: int = 300, cp_n_iter_max: int = 1000, rise_tol: float = 1e-8, cp_tol: float = 1e-8, random_state: int = None, complex_sep: str = None, doEmbedding: bool = True, svd_init: str = "svd")
+   :module: cccrise.runners.run_ccc_rise
 
    Execute the complete cccRISE workflow including RISE decomposition, CPD factorization, and result storage.
    
@@ -131,10 +131,14 @@ Factorization
    :type cp_rank: int, optional
    :param condition_column: Column name in adata.obs containing condition identifiers.
    :type condition_column: str, optional
-   :param n_iter_max: Maximum iterations for decomposition.
-   :type n_iter_max: int, optional
-   :param tol: Convergence tolerance for optimization.
-   :type tol: float, optional
+   :param rise_n_iter_max: Maximum iterations for the RISE fit.
+   :type rise_n_iter_max: int, optional
+   :param cp_n_iter_max: Maximum iterations for the CP fit.
+   :type cp_n_iter_max: int, optional
+   :param rise_tol: Convergence tolerance for the RISE fit.
+   :type rise_tol: float, optional
+   :param cp_tol: Convergence tolerance for the CP fit.
+   :type cp_tol: float, optional
    :param random_state: Random seed for reproducibility of decomposition.
    :type random_state: int, optional
    :param complex_sep: Separator for protein complexes in L-R pairs (typically "&").

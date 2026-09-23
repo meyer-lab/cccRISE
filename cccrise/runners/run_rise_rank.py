@@ -18,6 +18,8 @@ import pandas as pd
 from scrise.rank_selection import bicv
 
 from ._cli import (
+    RISE_N_ITER_MAX,
+    RISE_TOL,
     add_dataset_argument,
     dataset_metadata,
     parse_ranks,
@@ -41,8 +43,8 @@ def run_rise_rank_selection(
     n_repeats: int = 3,
     held_out_cell_frac: float = 0.5,
     held_out_gene_frac: float = 0.5,
-    n_iter_max: int = 300,
-    tol: float = 1e-8,
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
     compress: str | int | bool = "auto",
     n_power_iter: int = 2,
     backend: str | None = None,
@@ -51,7 +53,7 @@ def run_rise_rank_selection(
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Run the BiCV sweep and persist the CSV plus its sidecar.
 
-    `n_iter_max` sits above `bicv`'s own default because an under-converged fit
+    `rise_n_iter_max` sits above `bicv`'s own default because an under-converged fit
     reads as a worse rank.
 
     `backend` is passed to `parafac2` ('cpu', 'cupy', 'mlx', or None to
@@ -91,8 +93,8 @@ def run_rise_rank_selection(
         held_out_cell_frac=held_out_cell_frac,
         held_out_gene_frac=held_out_gene_frac,
         random_state=random_state,
-        tolerance=tol,
-        max_iter=n_iter_max,
+        tolerance=rise_tol,
+        max_iter=rise_n_iter_max,
         compress=compress,
         compression_kwarg=compression_kwarg,
         parafac2_kwarg={"backend": backend} if backend else None,
@@ -109,8 +111,8 @@ def run_rise_rank_selection(
             "n_repeats": n_repeats,
             "held_out_cell_frac": held_out_cell_frac,
             "held_out_gene_frac": held_out_gene_frac,
-            "n_iter_max": n_iter_max,
-            "tol": tol,
+            "rise_n_iter_max": rise_n_iter_max,
+            "rise_tol": rise_tol,
             "compress": compress,
             "n_power_iter": n_power_iter,
             "backend": backend or "auto",
@@ -140,8 +142,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--held-out-cell-frac", type=float, default=0.5)
     parser.add_argument("--held-out-gene-frac", type=float, default=0.5)
-    parser.add_argument("--n-iter-max", type=int, default=300)
-    parser.add_argument("--tol", type=float, default=1e-8)
+    parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
+    parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
     parser.add_argument(
         "--compress",
         type=str,
@@ -188,8 +190,8 @@ def main(argv: list[str] | None = None) -> None:
         n_repeats=args.n_repeats,
         held_out_cell_frac=args.held_out_cell_frac,
         held_out_gene_frac=args.held_out_gene_frac,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
+        rise_n_iter_max=args.rise_n_iter_max,
+        rise_tol=args.rise_tol,
         compress=compress,
         n_power_iter=args.n_power_iter,
         backend=args.backend,

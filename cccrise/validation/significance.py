@@ -39,9 +39,10 @@ def fit_significance_pipeline(
     hill_k: float = 0.5,
     max_exact_perms: int = 100_000,
     n_iter_max: int = 100,
-    tol: float = 1e-6,
     random_state: int = 42,
     validate: bool = False,
+    *,
+    rise_tol: float,
 ) -> dict[str, Any]:
     """Fit RISE and compute within-condition and differential communication significance.
 
@@ -77,7 +78,7 @@ def fit_significance_pipeline(
         Maximum combinatorial assignments to enumerate exactly for differential test.
     n_iter_max : int, default=100
         Maximum iterations for PARAFAC2 fitting.
-    tol : float, default=1e-6
+    rise_tol : float
         Convergence tolerance for PARAFAC2 fitting.
     random_state : int, default=42
         Random seed for permutations and PARAFAC2 initialization.
@@ -105,7 +106,7 @@ def fit_significance_pipeline(
         adata,
         rank=rise_rank,
         n_iter_max=n_iter_max,
-        tol=tol,
+        tol=rise_tol,
         random_state=random_state,
     )
     dense_P = pf2_output[2]
