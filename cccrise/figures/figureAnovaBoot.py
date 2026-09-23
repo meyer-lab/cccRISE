@@ -7,7 +7,7 @@ The pipeline is re-run end to end -- RISE, the interaction tensor, CP at the
 same fixed ranks, then the ANOVA -- on bootstrap resamples of the patient
 roster, and each replicate's components are matched back onto the full-cohort
 fit before its statistics are recorded (see
-`stability.anova_stability.bootstrap_anova`). Every component's effect size
+`validation.anova_stability.bootstrap_anova`). Every component's effect size
 therefore comes with a distribution over rosters, which is what separates an
 association that would survive a different cohort from one that describes the
 patients who happened to be enrolled.
@@ -41,7 +41,7 @@ import yaml
 from ..factors import DATA_DIR, load_factors_to_anndata
 from ..runners.datasets import DATASETS
 from ..runners.provenance import sidecar_path
-from ..stability.anova_stability import summarize_bootstrap_anova, top_lr_pairs
+from ..validation.anova_stability import summarize_bootstrap_anova, top_lr_pairs
 from .common import getSetup, load_runner_csv, subplotLabel
 
 # Change this to switch dataset; must match the runner's --dataset. The ranks

@@ -30,7 +30,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..import_data import import_ligand_receptor_pairs
-from ..stability.significance import (
+from ..validation.significance import (
     fit_significance_pipeline,
     summarize_significance_differential,
     summarize_significance_lr,

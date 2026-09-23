@@ -24,17 +24,16 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from tensorly.decomposition import parafac
 
-from ..ccc import calculate_r2x
 from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
 from ..factors import factors_to_xarray, save_factors_netcdf
 from ..import_data import import_ligand_receptor_pairs
-from ..stability.anova_stability import load_anova_reference
 from ..tensor import calculate_interaction_tensor
 from ..utils import load_rise_reference
+from ..validation.anova_stability import load_anova_reference
+from ..validation.component_stability import SEED_AXIS, _fit_cp
 from . import run_component_stability, run_significance
-from ._cli import add_dataset_argument, dataset_metadata, resolve_group_labels
+from ._cli import add_dataset_argument, dataset_metadata, resolve_anova_labels
 from .datasets import DATASETS, DatasetSpec, comparison_output_dir
 from .provenance import (
     build_metadata,
@@ -69,7 +68,7 @@ ALL_SCORES = (
 
 # Skips the expensive `conditions` cohort-resampling axis by default; see
 # `run_component_stability`'s module docstring for what each axis measures.
-DEFAULT_STABILITY_AXES = ("cells", "lr_pairs", "permuted")
+DEFAULT_STABILITY_AXES = ("cells", "lr_pairs", SEED_AXIS)
 
 
 def _generate_cp_from_shared_rise(
@@ -80,9 +79,13 @@ def _generate_cp_from_shared_rise(
     cp_rank: int,
     hill_k: float,
     output_path: Path,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> Path:
     """Build a CP fit for `communication_score` against a shared RISE fit,
-    and save a factors.nc in the same format `run_ccc_rise` writes."""
+    and save a factors.nc in the same format `run_ccc_rise` writes. CP is fit
+    inside a CANDELINC core when `compress`; see
+    `validation.component_stability._fit_cp`."""
     adata = spec.load()
     lr_pairs = import_ligand_receptor_pairs()
     adata = load_rise_reference(
@@ -97,16 +100,17 @@ def _generate_cp_from_shared_rise(
         hill_k=hill_k,
     )
     validate_cp_rank(cp_rank, tensor.shape)
-    cp_weights, cp_factors = parafac(
+    cp_weights, cp_factors, r2x_cp, _diagnostics = _fit_cp(
         tensor,
         cp_rank,
         n_iter_max=100,
         tol=1e-3,
         init="svd",
-        normalize_factors=True,
+        svd="randomized_svd",
         random_state=42,
+        compress=compress,
+        oversample=oversample,
     )
-    r2x_cp = calculate_r2x(cp_weights, cp_factors, tensor)
     cp_weights, cp_factors = standardize_cc_pf2(cp_weights, cp_factors)
 
     condition_names = np.unique(adata.obs[spec.condition_column].unique())
@@ -146,6 +150,8 @@ def _generate_cp_from_shared_rise(
             "tol": 1e-3,
             "svd_init": "svd",
             "random_state": 42,
+            "compress": compress,
+            "oversample": oversample,
             "rise_reference_source": relpath(rise_reference_path),
             "rank_selection": {
                 "rise": {
@@ -174,7 +180,7 @@ def _load_anova_point_estimate(
 ) -> Path:
     """Test `reference_path`'s own CP fit against `spec`'s phenotype with a
     one-way ANOVA, and write the point-estimate table."""
-    group_column, control_label, other_label = resolve_group_labels(
+    group_column, control_label, other_label = resolve_anova_labels(
         spec, None, None, None
     )
     adata = spec.load()
@@ -259,6 +265,9 @@ def run_alt_comm_score(
     n_perms: int = 3,
     stability_axes: tuple[str, ...] = DEFAULT_STABILITY_AXES,
     n_replicates: int = 3,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> dict[str, Path]:
     """Generate CPD factors, permutation significance, an ANOVA point
     estimate, and CP component stability for all four scoring methods.
@@ -274,10 +283,18 @@ def run_alt_comm_score(
         Half-saturation constant, used only for `expression_hill`.
     n_perms : int, default=3
         Permutations for each method's significance test.
-    stability_axes : tuple[str, ...], default=("cells", "lr_pairs", "permuted")
+    stability_axes : tuple[str, ...], default=DEFAULT_STABILITY_AXES
         Resampling axes for each method's stability run.
     n_replicates : int, default=3
         Replicates per stability axis.
+    backend : str | None, default=None
+        Backend each stability replicate's RISE refit runs on ('cpu', 'cupy',
+        'mlx', or None to auto-detect).
+    compress : bool, default=True
+        Fit every CP stage inside a CANDELINC core; see
+        `validation.component_stability._fit_cp`.
+    oversample : int, default=5
+        Extra basis columns per mode beyond the CP rank, when `compress`.
 
     Returns
     -------
@@ -305,6 +322,8 @@ def run_alt_comm_score(
             cp_rank=cp_rank,
             hill_k=hill_k,
             output_path=comparison_output_dir(method) / spec.factors_filename,
+            compress=compress,
+            oversample=oversample,
         )
 
     for method, factors_path in factors_paths.items():
@@ -337,7 +356,10 @@ def run_alt_comm_score(
                 "--axes", ",".join(stability_axes),
                 "--n-replicates", str(n_replicates),
                 "--output", str(output_dir / spec.stability_filename()),
+                "--oversample", str(oversample),
             ]
+            + (["--backend", backend] if backend else [])
+            + ([] if compress else ["--no-compress"])
         )  # fmt: skip
 
         print(f"\n--- 5. Consolidating {method!r}'s provenance ---")
@@ -390,6 +412,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--n-replicates", type=int, default=3, help="Stability replicates per axis."
     )
+    parser.add_argument(
+        "--backend",
+        type=str,
+        default=None,
+        choices=["cpu", "cupy", "mlx"],
+        help="Backend every stability RISE refit runs on (default: auto-detect).",
+    )
+    parser.add_argument(
+        "--no-compress",
+        dest="compress",
+        action="store_false",
+        help="Fit every CP stage on the full tensor instead of a CANDELINC core.",
+    )
+    parser.add_argument(
+        "--oversample",
+        type=int,
+        default=5,
+        help="Extra basis columns per mode beyond the CP rank, when compressing.",
+    )
     return parser
 
 
@@ -405,6 +446,9 @@ def main(argv: list[str] | None = None) -> None:
             axis.strip() for axis in args.stability_axes.split(",") if axis.strip()
         ),
         n_replicates=args.n_replicates,
+        backend=args.backend,
+        compress=args.compress,
+        oversample=args.oversample,
     )
 
 

@@ -5,8 +5,8 @@ methods on ALAD, at the already-selected ranks (RISE 19, CP 3):
     1. CPD factor matrices -- component match quality, aligned factor cosine
        similarity, top ligand-receptor pairs, top sender/receiver cell types.
     2. Permutation significance of ligand-receptor pairs.
-    3. ANOVA association between CP components and ALADstatus (point
-       estimate, no bootstrap).
+    3. ANOVA association between CP components and the dataset's outcome
+       (`DatasetSpec.outcome_column`; point estimate, no bootstrap).
     4. CP component stability (smoke-test scale).
 
 Only loads results; never generates them. All four methods, including the
@@ -29,7 +29,8 @@ from matplotlib import pyplot as plt
 
 from ..factors import load_factors_netcdf, load_factors_to_anndata
 from ..runners.datasets import DATASETS, comparison_output_dir
-from ..stability.anova_stability import align_to_reference_components, top_lr_pairs
+from ..runners.provenance import read_metadata
+from ..validation.anova_stability import align_to_reference_components, top_lr_pairs
 from .common import getSetup, load_runner_csv, subplotLabel
 
 DATASET_KEY = "alad"
@@ -41,6 +42,8 @@ CP_RANK = 3
 DEFAULT_SCORE = "expression_product"
 ALT_SCORES = ["expression_mean", "expression_gmean", "expression_hill"]
 ALL_SCORES = [DEFAULT_SCORE, *ALT_SCORES]
+# Fixed per method, so a method keeps its color in panels that omit the default.
+SCORE_COLORS = {method: f"C{i}" for i, method in enumerate(ALL_SCORES)}
 SCORE_LABELS = {
     "expression_product": "product (default)",
     "expression_mean": "mean (CellPhoneDB-style)",
@@ -184,7 +187,13 @@ def _grouped_bar(
     width = 0.8 / n_methods
     x = np.arange(n_groups)
     for i, method in enumerate(data.columns):
-        ax.bar(x + i * width, data[method], width, label=SCORE_LABELS[method])
+        ax.bar(
+            x + i * width,
+            data[method],
+            width,
+            label=SCORE_LABELS[method],
+            color=SCORE_COLORS[method],
+        )
         if sig is not None:
             for xi, (val, is_sig) in enumerate(
                 zip(data[method], sig[method], strict=True)
@@ -261,6 +270,9 @@ def makeFigure():
             sig = sig_matched["Value"] > 0.5
         anova_eta[method] = eta
         anova_sig[method] = sig
+    outcome = read_metadata(
+        comparison_output_dir(DEFAULT_SCORE) / SPEC.anova_point_estimate_filename()
+    )["group_column"]
     anova_eta_df = pd.DataFrame(anova_eta)
     anova_eta_df.index.name = "Component"
     anova_sig_df = pd.DataFrame(anova_sig)
@@ -321,7 +333,7 @@ def makeFigure():
     _grouped_bar(
         axs[4],
         anova_eta_df,
-        "ANOVA eta-squared vs ALADstatus (point estimate, * p<0.05)",
+        f"ANOVA eta-squared vs {outcome} (point estimate, * p<0.05)",
         "Eta-squared",
         sig=anova_sig_df,
     )
@@ -352,7 +364,11 @@ def makeFigure():
     width = 0.8 / len(ALL_SCORES)
     for i, method in enumerate(ALL_SCORES):
         axs[6].bar(
-            x + i * width, stability_df[method], width, label=SCORE_LABELS[method]
+            x + i * width,
+            stability_df[method],
+            width,
+            label=SCORE_LABELS[method],
+            color=SCORE_COLORS[method],
         )
     axs[6].set_xticks(x + width * (len(ALL_SCORES) - 1) / 2)
     axs[6].set_xticklabels(stability_df.index)
@@ -360,7 +376,8 @@ def makeFigure():
     axs[6].set_title(
         f"CP component stability (n={N_REPLICATES_SMOKE} placeholder)", fontsize=8
     )
-    axs[6].legend(fontsize=5, loc="best")
+    axs[6].set_ylim(0, 1.3)
+    axs[6].legend(fontsize=5, loc="upper center", ncol=2)
 
     axs[7].axis("off")
     axs[7].text(

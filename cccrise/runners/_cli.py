@@ -106,6 +106,20 @@ def resolve_group_labels(
     return group_column, control_label, other_label
 
 
+def resolve_anova_labels(
+    spec: DatasetSpec,
+    group_column: str | None,
+    control_label: str | None,
+    other_label: str | None,
+) -> tuple[str, str | None, str | None]:
+    """`resolve_group_labels` for the ANOVA runners: with nothing passed,
+    test every level of `spec.outcome_column` when the dataset registers one.
+    """
+    if spec.outcome_column and not (group_column or control_label or other_label):
+        return spec.outcome_column, None, None
+    return resolve_group_labels(spec, group_column, control_label, other_label)
+
+
 def dataset_metadata(spec: DatasetSpec) -> dict:
     """The dataset-identity head of a sidecar."""
     meta: dict = {

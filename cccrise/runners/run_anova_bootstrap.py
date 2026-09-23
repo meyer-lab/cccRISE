@@ -26,7 +26,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..import_data import import_ligand_receptor_pairs
-from ..stability.anova_stability import (
+from ..validation.anova_stability import (
     bootstrap_anova,
     load_anova_reference,
     summarize_bootstrap_anova,
@@ -36,7 +36,7 @@ from ._cli import (
     add_dataset_argument,
     add_group_arguments,
     dataset_metadata,
-    resolve_group_labels,
+    resolve_anova_labels,
     resolve_output,
     resulting_dims,
 )
@@ -60,6 +60,9 @@ def run_anova_bootstrap(
     alpha: float = 0.05,
     stratify: bool = True,
     random_state: int = 42,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Bootstrap the patient roster and re-run the pipeline, reporting each CP
@@ -79,7 +82,7 @@ def run_anova_bootstrap(
         `n_boot` times a full pipeline run.
     group_column : str, optional
         Column in `adata.obs` carrying the group label. Defaults to
-        `spec.group_column`.
+        `spec.outcome_column` (every level tested), else `spec.group_column`.
     control_label, other_label : str, optional
         Values of `group_column` mapped to the reference and other class.
         Default to `_cli.DEFAULT_GROUP_LABELS[spec.key]` when not given.
@@ -94,6 +97,16 @@ def run_anova_bootstrap(
         Seed for the bootstrap's patient draws; replicate `b` uses
         ``replicate_seed(random_state, b)`` (``random_state * 1000 + b + 1``).
         Independent of `reference_source`'s own fitting seed.
+    backend : str | None, default=None
+        Backend every RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
+        auto-detect); see `tensor.rise_store_r2x`.
+    compress : bool, default=True
+        Fit every CP stage inside a CANDELINC core sized for `cp_rank`
+        instead of the full tensor; see
+        `validation.component_stability._fit_cp`. R2X, core consistency and
+        collinearity are unaffected -- this is strictly a speed optimization.
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
     output_path : Path, optional
         CSV destination; defaults to the registry's anova bootstrap filename
         under `DATA_DIR` for `communication_score="expression_product"`, or
@@ -104,7 +117,7 @@ def run_anova_bootstrap(
     tuple[pd.DataFrame, Path, Path]
         The replicate ANOVA table, the CSV path, and the sidecar path.
     """
-    group_column, control_label, other_label = resolve_group_labels(
+    group_column, control_label, other_label = resolve_anova_labels(
         spec, group_column, control_label, other_label
     )
 
@@ -133,6 +146,9 @@ def run_anova_bootstrap(
         f"    n_boot={n_boot}  stratify={stratify}  alpha={alpha}  "
         f"group_column={group_column!r}  control={control_label!r}  "
         f"other={other_label!r}  reference_source={reference_source!r}"
+    )
+    print(
+        f"    backend={backend or 'auto'}  compress={compress}  oversample={oversample}"
     )
 
     print("1. Loading data...")
@@ -170,7 +186,11 @@ def run_anova_bootstrap(
         communication_score=communication_score,
         hill_k=hill_k,
         stratify=stratify,
+        patient_column=spec.patient_column,
         random_state=random_state,
+        backend=backend,
+        compress=compress,
+        oversample=oversample,
     )
 
     print("4. Summarizing each component's effect-size distribution...")
@@ -205,12 +225,16 @@ def run_anova_bootstrap(
             "ci_level": ci_level,
             "alpha": alpha,
             "stratify": stratify,
+            "patient_column": spec.patient_column,
             "n_iter_max": n_iter_max,
             "tol": tol,
             "complex_sep": complex_sep,
             "communication_score": communication_score,
             "hill_k": hill_k,
             "random_state": random_state,
+            "backend": backend or "auto",
+            "compress": compress,
+            "oversample": oversample,
             "match_mode_weights": {"3": 1.0},
             "reference_r2x_cp": float(reference["r2x_cp"]),
             "reference_eta_squared": reference["anova"]["EtaSquared"].tolist(),
@@ -271,6 +295,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
+        "--backend",
+        type=str,
+        default=None,
+        choices=["cpu", "cupy", "mlx"],
+        help="Backend every RISE fit runs on (default: parafac2 auto-detect). "
+        "Use 'cpu' for cohort-scale data, which does not fit on a GPU.",
+    )
+    parser.add_argument(
+        "--no-compress",
+        dest="compress",
+        action="store_false",
+        help="Fit every CP stage on the full tensor instead of a CANDELINC core.",
+    )
+    parser.add_argument(
+        "--oversample",
+        type=int,
+        default=5,
+        help="Extra basis columns per mode beyond --cp-rank, when compressing.",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         default=None,
@@ -295,6 +339,9 @@ def main(argv: list[str] | None = None) -> None:
         alpha=args.alpha,
         stratify=args.stratify,
         random_state=args.random_state,
+        backend=args.backend,
+        compress=args.compress,
+        oversample=args.oversample,
         output_path=resolve_output(
             args.output, output_root, spec.anova_bootstrap_filename()
         ),

@@ -302,7 +302,7 @@ def clean_memory() -> None:
 
         cp.get_default_memory_pool().free_all_blocks()
         cp.get_default_pinned_memory_pool().free_all_blocks()
-    except (ImportError, AttributeError):
+    except Exception:  # no CuPy, or CuPy installed without a visible GPU
         return
 
 

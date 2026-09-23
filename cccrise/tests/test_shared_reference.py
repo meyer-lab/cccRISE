@@ -12,13 +12,13 @@ from parafac2.parafac2 import parafac2_nd, store_pf2
 
 from cccrise.factors import factors_to_xarray, save_factors_netcdf
 from cccrise.import_data import add_cond_idxs
-from cccrise.stability.anova_stability import fit_anova_pipeline, load_anova_reference
-from cccrise.stability.component_stability import (
+from cccrise.tensor import calculate_interaction_tensor
+from cccrise.utils import load_rise_reference
+from cccrise.validation.anova_stability import fit_anova_pipeline, load_anova_reference
+from cccrise.validation.component_stability import (
     fit_stability_pipeline,
     load_stability_reference,
 )
-from cccrise.tensor import calculate_interaction_tensor
-from cccrise.utils import load_rise_reference
 
 
 def _synthetic_cohort(

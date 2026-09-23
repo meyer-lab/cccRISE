@@ -1,3 +1,5 @@
+from typing import Any
+
 import anndata
 import numpy as np
 import pandas as pd
@@ -14,7 +16,8 @@ from cccrise.anova import (
 )
 from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
 from cccrise.import_data import add_cond_idxs
-from cccrise.stability.anova_stability import (
+from cccrise.utils import replicate_seed, resample_conditions
+from cccrise.validation.anova_stability import (
     align_to_reference_components,
     bootstrap_anova,
     bootstrap_replicate_anova,
@@ -22,7 +25,6 @@ from cccrise.stability.anova_stability import (
     summarize_bootstrap_anova,
     top_lr_pairs,
 )
-from cccrise.utils import replicate_seed, resample_conditions
 
 
 def _synthetic_factors(
@@ -256,6 +258,117 @@ def test_fit_anova_pipeline_output_structure():
     assert len(fit["lr_symbols"]) == 3
     assert isinstance(fit["r2x_cp"], float)
     assert len(fit["sample_to_group"]) == 20
+
+
+# =============================================================================
+# GPU backend and CANDELINC compression
+# =============================================================================
+
+
+def _anova_lr_pairs() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "ligand": ["Gene_0", "Gene_2", "Gene_4"],
+            "receptor": ["Gene_1", "Gene_3", "Gene_5"],
+            "interaction_symbol": ["Gene_0_Gene_1", "Gene_2_Gene_3", "Gene_4_Gene_5"],
+        }
+    )
+
+
+def test_fit_anova_pipeline_runs_with_compression_disabled():
+    """`compress=False` must still be a supported code path, not just the
+    default's untested complement."""
+    fit = fit_anova_pipeline(
+        _synthetic_cohort(),
+        condition_column="Sample",
+        group_column="Group",
+        control_label="Ctrl",
+        other_label="Treat",
+        rise_rank=2,
+        cp_rank=2,
+        lr_pairs=_anova_lr_pairs(),
+        rise_n_iter_max=10,
+        cp_n_iter_max=10,
+        random_state=0,
+        compress=False,
+    )
+    assert 0.0 <= fit["r2x_cp"] <= 1.0 + 1e-9
+
+
+def test_fit_anova_pipeline_accepts_an_explicit_cpu_backend():
+    """`backend` must reach `rise_store_r2x` without erroring on a plain CPU
+    box, which is what every CI run and every cohort-scale fit uses."""
+    fit = fit_anova_pipeline(
+        _synthetic_cohort(),
+        condition_column="Sample",
+        group_column="Group",
+        control_label="Ctrl",
+        other_label="Treat",
+        rise_rank=2,
+        cp_rank=2,
+        lr_pairs=_anova_lr_pairs(),
+        rise_n_iter_max=10,
+        cp_n_iter_max=10,
+        random_state=0,
+        backend="cpu",
+    )
+    assert 0.0 <= fit["r2x_cp"] <= 1.0 + 1e-9
+
+
+def test_bootstrap_anova_runs_with_compression_disabled():
+    adata = _synthetic_cohort()
+    lr_pairs = _anova_lr_pairs()
+    kwargs: dict[str, Any] = {
+        "condition_column": "Sample",
+        "group_column": "Group",
+        "control_label": "Ctrl",
+        "other_label": "Treat",
+        "rise_rank": 2,
+        "cp_rank": 2,
+        "lr_pairs": lr_pairs,
+        "rise_n_iter_max": 10,
+        "cp_n_iter_max": 10,
+    }
+    reference = fit_anova_pipeline(adata, **kwargs, random_state=0, compress=False)
+
+    df = bootstrap_anova(
+        adata, reference=reference, **kwargs, n_boot=1, random_state=0, compress=False
+    )
+    assert df["EtaSquared"].between(-1e-9, 1.0 + 1e-9).all()
+
+
+def test_bootstrap_anova_forwards_patient_column_to_the_resampler(monkeypatch):
+    """Paired patients must be carried together in the ANOVA bootstrap too,
+    not only in `component_stability`."""
+    from cccrise.validation import anova_stability
+
+    seen = []
+    real = anova_stability.resample_conditions
+
+    def spy(*args, **kwargs):
+        seen.append(kwargs.get("patient_by"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(anova_stability, "resample_conditions", spy)
+
+    adata = _synthetic_cohort()
+    adata.obs["Patient"] = adata.obs["Sample"].replace({"Sample_1": "Sample_0"})
+    kwargs: dict[str, Any] = {
+        "condition_column": "Sample",
+        "group_column": "Group",
+        "control_label": "Ctrl",
+        "other_label": "Treat",
+        "rise_rank": 2,
+        "cp_rank": 2,
+        "lr_pairs": _anova_lr_pairs(),
+        "rise_n_iter_max": 10,
+        "cp_n_iter_max": 10,
+    }
+    reference = fit_anova_pipeline(adata, **kwargs, random_state=0)
+    bootstrap_anova(
+        adata, reference=reference, **kwargs, n_boot=1, patient_column="Patient"
+    )
+    assert seen == ["Patient"]
 
 
 def test_summarize_bootstrap_anova_metrics():
