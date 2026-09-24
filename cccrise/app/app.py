@@ -107,24 +107,16 @@ def scrollable_plot(output_id: str, width_px: int, height_px: int) -> ui.Tag:
     )
 
 
+def top_perc_slider(input_id: str) -> ui.Tag:
+    return ui.input_slider(
+        input_id, "Top Cell % Threshold", min=1, max=50, value=10, step=1
+    )
+
+
 app_ui = ui.page_sidebar(
     ui.sidebar(
         ui.input_select("dataset", "Dataset", choices=DATASET_CHOICES),
         ui.input_slider("component", "CP Component", min=1, max=1, value=1, step=1),
-        ui.input_radio_buttons(
-            "weight_source",
-            "Cell weight source (PaCMAP)",
-            choices={"sender": "Sender (B)", "receiver": "Receiver (C)"},
-            selected="sender",
-        ),
-        ui.input_slider(
-            "top_perc",
-            "Top Cell % Threshold",
-            min=1,
-            max=50,
-            value=10,
-            step=1,
-        ),
         ui.output_ui("projections_notice"),
         width=300,
     ),
@@ -226,7 +218,7 @@ def server(input, output, session):
     # ------------------------------------------------------------------
     # Component Explorer (top LR pairs, per-cell-type distributions, and
     # the single-pair interaction heatmap, all keyed on the sidebar's
-    # dataset/component/top-cell-% selections)
+    # dataset/component selections)
     # ------------------------------------------------------------------
     @reactive.calc
     def simple_lr_pairs():
@@ -372,8 +364,9 @@ def server(input, output, session):
                     "Sender and receiver weight distributions for the selected "
                     "component, by cell type. View Type switches between a "
                     "histogram grid and boxplots; Log-scale Y axis applies to "
-                    "the histograms; the sidebar's Top Cell % Threshold sets "
-                    "the percentile marked on the histograms."
+                    "the histograms; Top Cell % Threshold sets the percentile "
+                    "marked on the histograms and used by the association "
+                    "heatmap below."
                 ),
                 ui.row(
                     ui.column(
@@ -394,6 +387,7 @@ def server(input, output, session):
                             "dist_log_y", "Log-scale Y axis (Histograms)", value=True
                         ),
                     ),
+                    ui.column(4, top_perc_slider("explorer_top_perc")),
                 ),
                 scrollable_plot("distributions_plot", 1300, 650),
                 ui.hr(),
@@ -401,9 +395,9 @@ def server(input, output, session):
                 ui.markdown(
                     "Heatmap of every cell type's association with every "
                     "component, for sender and receiver. Association Heatmap "
-                    "Stat selects the statistic shown; the sidebar's Top Cell "
-                    "% Threshold sets the percentile used by the enrichment "
-                    "and % Top statistics."
+                    "Stat selects the statistic shown; the Top Cell % "
+                    "Threshold above sets the percentile used by the "
+                    "enrichment and % Top statistics."
                 ),
                 ui.row(
                     ui.column(
@@ -498,7 +492,7 @@ def server(input, output, session):
         cmp = input.component()
         celltype_col = ds.spec.celltype_col
         view_mode = input.dist_view_mode()
-        top_perc = float(input.top_perc())
+        top_perc = float(input.explorer_top_perc())
 
         if view_mode == "hist":
             nrows, ncols = celltype_grid_shape(X, celltype_col)
@@ -535,7 +529,7 @@ def server(input, output, session):
         X = ds.adata
         celltype_col = ds.spec.celltype_col
         stat = input.assoc_stat()
-        top_perc = float(input.top_perc())
+        top_perc = float(input.explorer_top_perc())
 
         fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="tight")
         scale = max(
@@ -627,9 +621,16 @@ def server(input, output, session):
             ui.markdown(
                 "Three PaCMAP embeddings of individual cells for the "
                 "selected component: weighted by sender or receiver score, "
-                "colored by cell type, and colored by group/condition. The "
-                "sidebar's Cell weight source switches the first panel "
-                "between sender and receiver weight."
+                "colored by cell type, and colored by group/condition. Cell "
+                "weight source switches the first panel between sender and "
+                "receiver weight."
+            ),
+            ui.input_radio_buttons(
+                "weight_source",
+                "Cell weight source",
+                choices={"sender": "Sender (B)", "receiver": "Receiver (C)"},
+                selected="sender",
+                inline=True,
             ),
             ui.output_plot("projections_plot", height="500px"),
             ui.hr(),
@@ -813,17 +814,15 @@ def server(input, output, session):
                 "Summary tables are unavailable for this dataset "
                 "(raw single-cell data or projections not found)."
             )
-        top_perc = input.top_perc()
         return ui.TagList(
             ui.markdown("#### Cell Type Loadings Summary for Selected Component"),
             ui.markdown(
                 "Mean sender/receiver loading and % of cells in the top "
-                "percentile, by cell type, for the selected component. The "
-                "sidebar's Top Cell % Threshold "
-                f"(currently **{top_perc:g}%**) sets the percentile used "
-                "by the '% of Cells in Top' columns; mean loading is "
-                "unaffected by it."
+                "percentile, by cell type, for the selected component. Top "
+                "Cell % Threshold sets the percentile used by the '% of "
+                "Cells in Top' columns; mean loading is unaffected by it."
             ),
+            top_perc_slider("summary_top_perc"),
             ui.output_data_frame("celltype_summary_table"),
             ui.hr(),
             ui.markdown("#### Ranked Ligand-Receptor Pairs for Selected Component"),
@@ -840,7 +839,7 @@ def server(input, output, session):
         X = ds.adata
         cmp = input.component()
         celltype_col = ds.spec.celltype_col
-        top_perc = float(input.top_perc())
+        top_perc = float(input.summary_top_perc())
 
         stat_labels = {
             "mean": "Mean Loading",
