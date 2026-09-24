@@ -5,9 +5,14 @@ Run with:
     shiny run --host 0.0.0.0 --port 8000 --reload cccrise/app/app.py
 """
 
+import functools
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.figure import Figure
+from matplotlib.font_manager import FontProperties
+from matplotlib.text import Text
 from shiny import App, reactive, render, ui
 
 from cccrise.anova import run_saved_factors_anova
@@ -49,6 +54,17 @@ LR_HIGHLIGHT_CHOICES = {
     "tukey": "Tukey Outliers (Q3 + 1.5*IQR)",
     "q3": "Q3 (75th Percentile)",
 }
+
+# Multipliers applied to every plot's text by `scale_fonts`, relative to the
+# sizes the shared plotting functions set for the paper figures.
+TITLE_SCALE = 1.3
+AXIS_LABEL_SCALE = 1.3
+TICK_LABEL_SCALE = 1.15
+CBAR_TICK_LABEL_SCALE = 1.3
+TEXT_SCALE = 1.15
+
+# Section headers, 1.5x Bootstrap's h4 (1.5rem) and h6 (1rem).
+HEADER_CSS = "h4 { font-size: 2.25rem; } h6 { font-size: 1.5rem; }"
 
 # `plot_categorical_scatter` sorts categories alphabetically for its color
 # assignment, so this list has to be in that order: Both, Neither, Receiver
@@ -107,6 +123,94 @@ def scrollable_plot(output_id: str, width_px: int, height_px: int) -> ui.Tag:
     )
 
 
+def scale_fonts(fig: Figure, scale_ticks: bool = True) -> None:
+    """Enlarge a figure's text in place, by text category (see `*_SCALE`).
+    `scale_ticks=False` leaves non-colorbar tick labels at their size.
+    Legends are then set to the figure's tick label size."""
+
+    def grow(text: Text, factor: float) -> None:
+        text.set_fontsize(float(text.get_fontsize()) * factor)
+
+    for text in fig.texts:
+        grow(text, TEXT_SCALE)
+    if (suptitle := getattr(fig, "_suptitle", None)) is not None:
+        grow(suptitle, TITLE_SCALE)
+
+    # Inset axes (e.g. a colorbar via `ax.inset_axes`) aren't in `fig.axes`.
+    all_axes = [*fig.axes, *(child for ax in fig.axes for child in ax.child_axes)]
+    for ax in all_axes:
+        grow(ax.title, TITLE_SCALE)
+        grow(ax.xaxis.label, AXIS_LABEL_SCALE)
+        grow(ax.yaxis.label, AXIS_LABEL_SCALE)
+        for text in ax.texts:
+            grow(text, TEXT_SCALE)
+
+        if hasattr(ax, "_colorbar"):
+            tick_scale = CBAR_TICK_LABEL_SCALE
+        else:
+            tick_scale = TICK_LABEL_SCALE if scale_ticks else 1.0
+        for axis_name, axis in (("x", ax.xaxis), ("y", ax.yaxis)):
+            labels = axis.get_ticklabels()
+            if labels:
+                ax.tick_params(
+                    axis=axis_name,
+                    labelsize=float(labels[0].get_fontsize()) * tick_scale,
+                )
+
+    legend_size = figure_tick_size(fig)
+    legends = [*fig.legends, *(ax.get_legend() for ax in all_axes)]
+    for legend in filter(None, legends):
+        for text in [*legend.get_texts(), legend.get_title()]:
+            text.set_fontsize(legend_size)
+
+
+def figure_tick_size(fig: Figure) -> float:
+    """Size of the first visible non-colorbar tick label, else the scaled
+    default (PaCMAPs hide their ticks)."""
+    for ax in fig.axes:
+        if hasattr(ax, "_colorbar") or not ax.get_visible():
+            continue
+        for axis in (ax.xaxis, ax.yaxis):
+            if labels := axis.get_ticklabels():
+                return float(labels[0].get_fontsize())
+    default = FontProperties(size=plt.rcParams["xtick.labelsize"])
+    return default.get_size_in_points() * TICK_LABEL_SCALE
+
+
+def place_legends(fig: Figure) -> None:
+    """Move in-axes legends to matplotlib's least-overlapping spot ("best").
+    "best" can't see datashader images (PaCMAPs, the sender/receiver
+    scatter), so those axes get their legend just outside on the right.
+    Legends already anchored elsewhere (e.g. beside a heatmap) are left alone."""
+    for ax in fig.axes:
+        legend = ax.get_legend()
+        if legend is None or getattr(legend, "_bbox_to_anchor", None) is not None:
+            continue
+        if ax.images:
+            legend.set_loc("upper left")
+            legend.set_bbox_to_anchor((1.01, 1), transform=ax.transAxes)
+        else:
+            legend.set_loc("best")
+
+
+def styled_figure(scale_ticks: bool = True):
+    """Decorator applying `scale_fonts` and `place_legends` to the figure a
+    render function returns."""
+
+    def decorator(render_fn):
+        @functools.wraps(render_fn)
+        def wrapper():
+            fig = render_fn()
+            if fig is not None:
+                scale_fonts(fig, scale_ticks=scale_ticks)
+                place_legends(fig)
+            return fig
+
+        return wrapper
+
+    return decorator
+
+
 def top_perc_slider(input_id: str) -> ui.Tag:
     return ui.input_slider(
         input_id, "Top Cell % Threshold", min=1, max=50, value=10, step=1
@@ -120,6 +224,7 @@ app_ui = ui.page_sidebar(
         ui.output_ui("projections_notice"),
         width=300,
     ),
+    ui.tags.style(HEADER_CSS),
     ui.navset_tab(
         ui.nav_panel(
             "Factor Matrices",
@@ -196,6 +301,7 @@ def server(input, output, session):
     # Factor Matrices
     # ------------------------------------------------------------------
     @render.plot
+    @styled_figure(scale_ticks=False)
     def factor_heatmaps():
         ds = dataset()
         X = ds.adata
@@ -261,6 +367,7 @@ def server(input, output, session):
         return scrollable_plot("patient_status_plot", 1200, 500)
 
     @render.plot
+    @styled_figure()
     def patient_status_plot():
         df, cfg, error = patient_status_result()
         if error is not None:
@@ -463,6 +570,7 @@ def server(input, output, session):
         return ui.TagList(*sections)
 
     @render.plot
+    @styled_figure()
     def lr_rank_curve_plot():
         ds = dataset()
         X = ds.adata
@@ -486,6 +594,7 @@ def server(input, output, session):
         return fig
 
     @render.plot
+    @styled_figure()
     def distributions_plot():
         ds = dataset()
         X = ds.adata
@@ -524,6 +633,7 @@ def server(input, output, session):
             return fig
 
     @render.plot
+    @styled_figure()
     def assoc_heatmap_plot():
         ds = dataset()
         X = ds.adata
@@ -568,6 +678,7 @@ def server(input, output, session):
         return fig
 
     @render.plot
+    @styled_figure()
     def lr_interaction_plot():
         ds = dataset()
         raw = load_raw_dataset(input.dataset())
@@ -732,6 +843,7 @@ def server(input, output, session):
         return render.DataGrid(table)
 
     @render.plot
+    @styled_figure()
     def strength_category_pacmap_plot():
         ds = dataset()
         cmp = input.component()
@@ -760,6 +872,7 @@ def server(input, output, session):
         return fig
 
     @render.plot
+    @styled_figure()
     def sender_receiver_scatter_plot():
         ds = dataset()
         cmp = input.component()
@@ -782,13 +895,14 @@ def server(input, output, session):
         return fig
 
     @render.plot
+    @styled_figure()
     def projections_plot():
         ds = dataset()
         X = ds.adata
         cmp = input.component()
         factor_matrix = "B" if input.weight_source() == "sender" else "C"
 
-        fig, axes = plt.subplots(1, 3, figsize=(20, 6.5))
+        fig, axes = plt.subplots(1, 3, figsize=(20, 6.5), layout="tight")
 
         plot_wc_pacmap(X, cmp, axes[0], cbarMax=0.3, factor_matrix=factor_matrix)
         axes[0].set_title(f"Cmp. {cmp} {input.weight_source().capitalize()} Weight")
