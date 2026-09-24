@@ -1,7 +1,7 @@
 """
-Unit tests for loading a previously-fit RISE/CP result instead of
-refitting, used by `run_significance` / `run_anova_bootstrap` /
-`run_component_stability` / `run_alt_comm_score`.
+Unit tests for loading a previously-fit RISE result instead of refitting
+(`run_significance`), and for splitting `fit_stability_pipeline` into its
+RISE and CP stages so `run_alt_comm_score` can share one RISE fit.
 """
 
 import anndata
@@ -14,10 +14,10 @@ from cccrise.factors import factors_to_xarray, save_factors_netcdf
 from cccrise.import_data import add_cond_idxs
 from cccrise.tensor import calculate_interaction_tensor
 from cccrise.utils import load_rise_reference
-from cccrise.validation.anova_stability import fit_anova_pipeline, load_anova_reference
 from cccrise.validation.component_stability import (
+    fit_cp_stage,
+    fit_rise_stage,
     fit_stability_pipeline,
-    load_stability_reference,
 )
 
 
@@ -169,146 +169,17 @@ def test_load_rise_reference_rejects_missing_projections(tmp_path):
         load_rise_reference(path, adata.copy(), "Sample")
 
 
-def test_load_anova_reference_matches_fit_anova_pipeline(tmp_path):
+def test_split_stages_reproduce_fit_stability_pipeline():
     adata = _synthetic_cohort()
     lr_pairs = _lr_pairs()
-    fit = fit_anova_pipeline(
-        adata,
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-        rise_rank=2,
-        cp_rank=2,
-        lr_pairs=lr_pairs,
-        rise_n_iter_max=10,
-        cp_n_iter_max=10,
-        random_state=0,
+    whole = fit_stability_pipeline(
+        adata.copy(), lr_pairs, "Sample", rise_rank=3, cp_rank=2, backend="cpu"
     )
+    rise_adata, r2x_rise = fit_rise_stage(adata.copy(), "Sample", 3, backend="cpu")
+    split = fit_cp_stage(rise_adata, r2x_rise, lr_pairs, "Sample", 2)
 
-    condition_names = np.unique(add_cond_idxs(adata.copy(), "Sample").obs["Sample"])
-    ds = factors_to_xarray(
-        cpd_factors=fit["factors"],
-        cpd_weights=fit["cp_weights"],
-        filtered_lr_pairs=list(fit["lr_symbols"]),
-        condition_names=condition_names,
-        r2x_cp=fit["r2x_cp"],
-        attrs={"condition_key": "Sample", "complex_sep": "&"},
-    )
-    path = tmp_path / "anova_ref.nc"
-    save_factors_netcdf(ds, path)
-
-    loaded = load_anova_reference(
-        path,
-        adata,
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-    )
-    pd.testing.assert_frame_equal(
-        loaded["anova"].reset_index(drop=True),
-        fit["anova"].reset_index(drop=True),
-        check_exact=False,
-        rtol=1e-4,
-    )
-
-
-def test_load_anova_reference_rejects_condition_mismatch(tmp_path):
-    adata = _synthetic_cohort()
-    lr_pairs = _lr_pairs()
-    fit = fit_anova_pipeline(
-        adata,
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-        rise_rank=2,
-        cp_rank=2,
-        lr_pairs=lr_pairs,
-        random_state=0,
-    )
-    condition_names = np.unique(add_cond_idxs(adata.copy(), "Sample").obs["Sample"])
-    ds = factors_to_xarray(
-        cpd_factors=fit["factors"],
-        cpd_weights=fit["cp_weights"],
-        filtered_lr_pairs=list(fit["lr_symbols"]),
-        condition_names=condition_names,
-        r2x_cp=fit["r2x_cp"],
-        attrs={"condition_key": "Sample", "complex_sep": "&"},
-    )
-    path = tmp_path / "anova_ref.nc"
-    save_factors_netcdf(ds, path)
-
-    other = _synthetic_cohort(n_conditions=4)
-    with pytest.raises(ValueError, match="conditions"):
-        load_anova_reference(
-            path,
-            other,
-            condition_column="Sample",
-            group_column="Group",
-            control_label="Ctrl",
-            other_label="Treat",
-        )
-
-
-def test_load_stability_reference_smoke(tmp_path):
-    adata = _synthetic_cohort()
-    lr_pairs = _lr_pairs()
-    reference = fit_stability_pipeline(
-        adata.copy(),
-        lr_pairs,
-        condition_column="Sample",
-        rise_rank=2,
-        cp_rank=2,
-        rise_n_iter_max=10,
-        cp_n_iter_max=10,
-        random_state=0,
-        keep_tensor=True,
-    )
-    # Rebuild a RISE fit directly so we have real per-cell projections to store
-    # (fit_stability_pipeline does not return the fitted AnnData itself).
-    fit_adata = add_cond_idxs(adata.copy(), "Sample")
-    pf2_out, r2x_pf2 = parafac2_nd(fit_adata, rank=2, random_state=0)
-    fit_adata = store_pf2(fit_adata, pf2_out)
-
-    condition_names = np.unique(fit_adata.obs["Sample"])
-    ds = factors_to_xarray(
-        cpd_factors=reference["cp_factors"],
-        cpd_weights=reference["cp_weights"],
-        filtered_lr_pairs=list(reference["lr_symbols"]),
-        condition_names=condition_names,
-        gene_names=list(fit_adata.var_names),
-        pf2_factors=[
-            np.asarray(fit_adata.uns["Pf2_A"]),
-            np.asarray(fit_adata.uns["Pf2_B"]),
-            np.asarray(fit_adata.varm["Pf2_C"]),
-        ],
-        pf2_weights=fit_adata.uns["Pf2_weights"],
-        pf2_projections=np.asarray(fit_adata.obsm["projections"]),
-        cell_ids=fit_adata.obs_names.to_numpy(),
-        r2x_cp=reference["r2x_cp"],
-        r2x_pf2=r2x_pf2,
-        attrs={"condition_key": "Sample", "complex_sep": "&"},
-    )
-    path = tmp_path / "stability_ref.nc"
-    save_factors_netcdf(ds, path)
-    # `load_stability_reference` reads fitting params from the provenance
-    # sidecar, not the netCDF attrs -- write a matching one.
-    from cccrise.runners.provenance import write_metadata
-
-    write_metadata(
-        path,
-        {
-            "communication_score": "expression_product",
-            "hill_k": 0.5,
-            "complex_sep": "&",
-            "rank_selection": {"rise": {"rank": 2}, "cpd": {"rank": 2}},
-        },
-    )
-
-    loaded = load_stability_reference(path, adata.copy(), "Sample", lr_pairs)
-    assert loaded["tensor"] is not None
-    assert loaded["tensor"].shape[0] == adata.obs["Sample"].nunique()
-    assert len(loaded["cp_factors"]) == 4
-    assert "cpd_diagnostics" in loaded
+    assert split["r2x_rise"] == pytest.approx(whole["r2x_rise"])
+    assert split["r2x_cp"] == pytest.approx(whole["r2x_cp"])
+    np.testing.assert_array_equal(split["lr_symbols"], whole["lr_symbols"])
+    for a, b in zip(split["cp_factors"], whole["cp_factors"], strict=True):
+        np.testing.assert_allclose(a, b)

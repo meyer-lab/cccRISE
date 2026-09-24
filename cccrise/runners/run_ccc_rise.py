@@ -1,22 +1,19 @@
 #!/usr/bin/env python
 """
-Runner: the end-to-end cccRISE pipeline, and the sole generator of the
-shared RISE/CPD reference other runners consume.
+Runner: the end-to-end cccRISE pipeline.
 
 Loads a registered dataset, runs RISE at ``--rise-rank`` followed by CP
 decomposition of the interaction tensor at ``--cp-rank``, and serializes the
-factor model to NetCDF alongside a provenance sidecar. The ``.nc`` is written
-in the format the figure modules read via `factors.load_factors_to_anndata`.
+factor model to NetCDF alongside a provenance sidecar. The ``.nc`` is written in
+the format the figure modules read via `factors.load_factors_to_anndata`.
 
-This is the only runner that ever fits RISE from scratch; `run_significance`,
-`run_anova_bootstrap`, and `run_component_stability` each take one of this
-runner's outputs as a required ``--reference-source`` and load it
-(`utils.load_rise_reference`) instead of refitting, reading their own fitting
-parameters from that file's provenance sidecar (`provenance.read_metadata`).
+The ``.nc`` also stores the per-cell RISE projections, so `run_significance`
+can load this fit (``--reference-source``, `utils.load_rise_reference`)
+instead of refitting RISE.
 
-The sidecar's ``rank_selection`` block records which sweep justifies each
-chosen rank -- the sweep CSVs written by `run_rise_rank` / `run_cpd_rank`,
-plus a free-text rationale from ``--rise-rank-notes`` / ``--cpd-rank-notes``.
+The sidecar's ``rank_selection`` block records which sweep justifies each chosen
+rank -- the sweep CSVs written by `run_rise_rank` / `run_cpd_rank`, plus a
+free-text rationale from ``--rise-rank-notes`` / ``--cpd-rank-notes``.
 
     uv run cccrise-run --dataset alad --rise-rank 25 --cp-rank 14
 """

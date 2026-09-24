@@ -58,7 +58,6 @@ Row Alignment
 """
 
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any, cast
 
 import anndata
@@ -69,7 +68,7 @@ from tensorly.decomposition import parafac
 
 from ..ccc import calculate_r2x
 from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
-from ..factors import clean_memory, load_factors_netcdf
+from ..factors import clean_memory
 from ..import_data import add_cond_idxs
 from ..rank_selection import (
     candelinc_compress,
@@ -77,10 +76,11 @@ from ..rank_selection import (
     cp_core_consistency,
     cpd_component_collinearity,
 )
-from ..runners.provenance import read_metadata
-from ..tensor import calculate_interaction_tensor, rise_store_r2x
+from ..tensor import (
+    calculate_interaction_tensor,
+    rise_store_r2x,
+)
 from ..utils import (
-    load_rise_reference,
     replicate_seed,
     resample_cells,
     resample_conditions,
@@ -382,15 +382,81 @@ def fit_stability_pipeline(
     dict[str, Any]
         Fitted factors, diagnostics, and metadata.
     """
-    adata = add_cond_idxs(adata, condition_column)
-    adata, r2x_rise = rise_store_r2x(
+    adata, r2x_rise = fit_rise_stage(
         adata,
-        rank=rise_rank,
+        condition_column,
+        rise_rank,
         n_iter_max=rise_n_iter_max,
-        tolerance=rise_tol,
+        tol=rise_tol,
         random_state=random_state,
         backend=backend,
     )
+    return fit_cp_stage(
+        adata,
+        r2x_rise,
+        lr_pairs,
+        condition_column,
+        cp_rank,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
+        init=init,
+        svd=svd,
+        complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
+        random_state=random_state,
+        keep_tensor=keep_tensor,
+        compress=compress,
+        oversample=oversample,
+    )
+
+
+def fit_rise_stage(
+    adata: anndata.AnnData,
+    condition_column: str,
+    rise_rank: int,
+    n_iter_max: int = 100,
+    tol: float = 1e-6,
+    random_state: int = 0,
+    backend: str | None = None,
+) -> tuple[anndata.AnnData, float]:
+    """The RISE stage of `fit_stability_pipeline`: fit PARAFAC2 into `adata`
+    and return it with its R2X."""
+    adata = add_cond_idxs(adata, condition_column)
+    return rise_store_r2x(
+        adata,
+        rank=rise_rank,
+        n_iter_max=n_iter_max,
+        tolerance=tol,
+        random_state=random_state,
+        backend=backend,
+    )
+
+
+def fit_cp_stage(
+    adata: anndata.AnnData,
+    r2x_rise: float,
+    lr_pairs: pd.DataFrame,
+    condition_column: str,
+    cp_rank: int,
+    n_iter_max: int = 100,
+    tol: float = 1e-3,
+    init: str = "svd",
+    svd: str = "randomized_svd",
+    complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    random_state: int = 0,
+    keep_tensor: bool = False,
+    compress: bool = True,
+    oversample: int = 5,
+) -> dict[str, Any]:
+    """The CP stage of `fit_stability_pipeline`: build the communication
+    tensor from `adata`'s existing RISE fit (see `fit_rise_stage`) and fit CP.
+
+    `adata` is only read, so one RISE fit can back several CP stages (e.g.
+    one per communication score). Returns `fit_stability_pipeline`'s dict.
+    """
     tensor, filtered_lr_pairs = calculate_interaction_tensor(
         adata,
         lr_pairs,
@@ -403,8 +469,8 @@ def fit_stability_pipeline(
     cp_weights, cp_factors, r2x_cp, diagnostics = _fit_cp(
         tensor,
         cp_rank,
-        n_iter_max=cp_n_iter_max,
-        tol=cp_tol,
+        n_iter_max=n_iter_max,
+        tol=tol,
         init=init,
         svd=svd,
         random_state=random_state,
@@ -428,90 +494,6 @@ def fit_stability_pipeline(
         "r2x_rise": r2x_rise,
         "r2x_cp": r2x_cp,
         "cpd_diagnostics": diagnostics,
-    }
-
-
-def load_stability_reference(
-    reference_path: str | Path,
-    adata: anndata.AnnData,
-    condition_column: str,
-    lr_pairs: pd.DataFrame,
-) -> dict[str, Any]:
-    """Load a previously-fit RISE+CP result as the stability reference,
-    instead of refitting.
-
-    Fitting parameters (ranks, communication score, `complex_sep`) are read
-    from `reference_path`'s provenance sidecar and returned under
-    `"provenance"`, for the caller to fit the `cells`/`conditions` replicate
-    axes at the same settings.
-
-    Parameters
-    ----------
-    reference_path : str | Path
-        A factors.nc written by `run_ccc_rise`.
-    adata : anndata.AnnData
-        The freshly-loaded raw dataset the reference was fit on.
-    condition_column : str
-        Column in `adata.obs` holding the condition (patient) identity.
-    lr_pairs : pd.DataFrame
-        Ligand-receptor pairs to score, matching what the reference was
-        built from -- asserted against the reference's own LR roster.
-
-    Returns
-    -------
-    dict[str, Any]
-        Same shape as `fit_stability_pipeline(..., keep_tensor=True)`'s
-        return, plus `"provenance"` (the reference's full sidecar).
-    """
-    provenance = read_metadata(reference_path)
-    communication_score = provenance["communication_score"]
-    hill_k = provenance["hill_k"]
-    complex_sep = provenance["complex_sep"]
-    cp_rank = int(provenance["rank_selection"]["cpd"]["rank"])
-
-    adata = load_rise_reference(reference_path, adata, condition_column)
-    tensor, filtered_lr_pairs = calculate_interaction_tensor(
-        adata,
-        lr_pairs,
-        complex_sep=complex_sep,
-        communication_score=communication_score,
-        hill_k=hill_k,
-    )
-
-    ds = load_factors_netcdf(reference_path)
-    lr_symbols = filtered_lr_pairs["interaction_symbol"].to_numpy()
-    if not np.array_equal(lr_symbols, ds.coords["lr_pair"].values):
-        raise ValueError(
-            f"Rebuilding the interaction tensor from `lr_pairs` did not "
-            f"reproduce {reference_path}'s ligand-receptor roster -- pass "
-            "the same ligand-receptor database the reference was built from."
-        )
-
-    cp_weights = ds["cp_weights"].values
-    cp_factors = [
-        ds["cp_A"].values,
-        ds["cp_B"].values,
-        ds["cp_C"].values,
-        ds["cp_D"].values,
-    ]
-    r2x_cp = float(ds.attrs.get("r2x_cp", 0.0))
-
-    return {
-        "rise_factors": [
-            adata.uns["Pf2_A"],
-            adata.uns["Pf2_B"],
-            np.asarray(adata.varm["Pf2_C"]),
-        ],
-        "cp_weights": cp_weights,
-        "cp_factors": cp_factors,
-        "condition_labels": _condition_labels(adata, condition_column),
-        "gene_names": np.asarray(adata.var_names),
-        "lr_symbols": lr_symbols,
-        "tensor": tensor,
-        "r2x_rise": adata.uns["r2x_pf2"],
-        "r2x_cp": r2x_cp,
-        "cpd_diagnostics": _cpd_diagnostics(tensor, cp_weights, cp_factors, cp_rank),
-        "provenance": provenance,
     }
 
 

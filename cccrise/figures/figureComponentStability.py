@@ -7,8 +7,8 @@ conclusions rest on a handful of named components, not on a mean -- with the
 aggregate FMS the Methods define in panel c and the match-ambiguity diagnostic
 in panel d.
 
-    uv run cccrise-stability --dataset alad \
-        --reference-source cccrise/data/bal_alad_factors.nc --n-replicates 20
+    uv run cccrise-stability --dataset alad --rise-rank 25 --cp-rank 4 \
+        --n-replicates 20
 """
 
 import matplotlib.pyplot as plt

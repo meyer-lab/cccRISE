@@ -20,7 +20,9 @@ def test_alt_comm_score_default_axes_are_accepted_by_component_stability():
 
 
 def test_alt_comm_score_parser_defaults_to_compressed_cp():
-    args = build_parser().parse_args(["--dataset", "alad", "--reference-source", "x"])
+    args = build_parser().parse_args(
+        ["--dataset", "alad", "--rise-rank", "19", "--cp-rank", "3"]
+    )
     assert args.compress and args.backend is None
 
 
