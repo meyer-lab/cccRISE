@@ -111,7 +111,7 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 Factorization
 ~~~~~~~~~~~~~
 
-.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", rise_n_iter_max: int = 300, cp_n_iter_max: int = 1000, rise_tol: float = 1e-8, cp_tol: float = 1e-8, random_state: int = None, complex_sep: str = None, doEmbedding: bool = True, svd_init: str = "svd")
+.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", rise_n_iter_max: int = 300, cp_n_iter_max: int = 4000, rise_tol: float = 1e-8, fix_B_identity: bool = False, cp_tol: float = 1e-12, random_state: int = None, complex_sep: str = None, doEmbedding: bool = True, svd_init: str = "svd")
    :module: cccrise.runners.run_ccc_rise
 
    Execute the complete cccRISE workflow including RISE decomposition, CPD factorization, and result storage.
@@ -137,6 +137,8 @@ Factorization
    :type cp_n_iter_max: int, optional
    :param rise_tol: Convergence tolerance for the RISE fit.
    :type rise_tol: float, optional
+   :param fix_B_identity: Hold the RISE B factor at the identity instead of fitting it.
+   :type fix_B_identity: bool, optional
    :param cp_tol: Convergence tolerance for the CP fit.
    :type cp_tol: float, optional
    :param random_state: Random seed for reproducibility of decomposition.

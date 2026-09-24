@@ -74,6 +74,20 @@ class DatasetSpec:
     def significance_differential_filename(self) -> str:
         return f"significance_differential_{self.key}.parquet"
 
+    def cell_obs_columns(self) -> list[str]:
+        """`.obs` columns to persist per-cell in the factors file (for the
+        Shiny explorer's per-cell projections)."""
+        return [
+            col
+            for col in (
+                "celltype",
+                self.celltype_column,
+                self.condition_column,
+                self.group_column,
+            )
+            if col
+        ]
+
     def nichenet_scores_filename(self) -> str:
         return f"nichenet_scores_{self.key}.csv"
 
