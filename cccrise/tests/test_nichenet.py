@@ -1,17 +1,19 @@
-"""Unit tests for cccrise.nichenet (no network access)."""
+"""Unit tests for cccrise.validation.nichenet (no network access)."""
 
 import anndata
 import numpy as np
 import pandas as pd
 import pytest
 
-from cccrise.nichenet import (
+from cccrise.validation.nichenet import (
+    _receiver_population,
     component_accuracy_scores,
     ligand_activity_auroc,
     load_ligand_target_matrix,
+    permutation_null_aurocs,
+    receiver_celltypes_for_component,
     receiver_de_ranking,
     top_lr_pairs_for_component,
-    top_receiver_celltype,
 )
 
 
@@ -95,8 +97,8 @@ def _make_synthetic_adata(
     random_state: int = 0,
 ) -> anndata.AnnData:
     """Build a small AnnData where the first `n_high` cells have elevated
-    expression of `target_genes` and a receiver-eigenstate loading (`rc_C`)
-    that identifies exactly those cells as "high" for component 1."""
+    expression of `target_genes` and a continuous receiver-eigenstate loading
+    (`rc_C`) that is higher for those cells than for the rest."""
     rng = np.random.default_rng(random_state)
     gene_names = [f"g{i}" for i in range(n_genes)]
     if target_genes is None:
@@ -115,11 +117,40 @@ def _make_synthetic_adata(
 
     adata = anndata.AnnData(X=X, obs=obs, var=var)
 
-    rc_C = np.zeros((n_cells, 1))
-    rc_C[:n_high, 0] = 1.0
+    rc_C = rng.normal(loc=0.0, scale=0.05, size=(n_cells, 1))
+    rc_C[:n_high, 0] += 1.0
     adata.obsm["rc_C"] = rc_C
 
     return adata
+
+
+def test_receiver_population_excludes_middle():
+    adata = _make_synthetic_adata(n_cells=200, n_high=40, random_state=1)
+    kept, pos_mask, n_pos, n_neg = _receiver_population(
+        adata,
+        cmp=1,
+        celltype_col="broad_cell_type",
+        celltype="CT1",
+        top_perc=20,
+    )
+    assert n_pos == pytest.approx(40, abs=2)
+    assert n_neg == pytest.approx(40, abs=2)
+    assert kept.n_obs == n_pos + n_neg
+    assert kept.n_obs < adata.n_obs
+    assert pos_mask.sum() == n_pos
+
+
+def test_receiver_population_with_no_celltype_uses_whole_adata():
+    adata = _make_synthetic_adata(n_cells=200, n_high=40, random_state=1)
+    kept, _pos_mask, n_pos, n_neg = _receiver_population(
+        adata,
+        cmp=1,
+        celltype_col="broad_cell_type",
+        celltype=None,
+        top_perc=20,
+    )
+    assert kept.n_obs == n_pos + n_neg
+    assert kept.n_obs < adata.n_obs
 
 
 def test_receiver_de_ranking_within_celltype_recovers_target_genes():
@@ -132,6 +163,23 @@ def test_receiver_de_ranking_within_celltype_recovers_target_genes():
         receiver_mode="within_celltype",
         celltype_col="broad_cell_type",
         celltype="CT1",
+        top_perc=20,
+    )
+
+    top_genes = set(de_ranking.index[:5])
+    assert set(target_genes).issubset(top_genes)
+
+
+def test_receiver_de_ranking_within_celltype_accepts_pooled_celltypes():
+    target_genes = ["g0", "g1", "g2"]
+    adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
+
+    de_ranking = receiver_de_ranking(
+        adata,
+        cmp=1,
+        receiver_mode="within_celltype",
+        celltype_col="broad_cell_type",
+        celltype=["CT1"],
         top_perc=20,
     )
 
@@ -166,20 +214,94 @@ def test_receiver_de_ranking_within_celltype_requires_celltype():
         receiver_de_ranking(adata, cmp=1, receiver_mode="within_celltype")
 
 
-def test_top_receiver_celltype_picks_highest_mean_loading():
-    n_cells = 100
-    obs = pd.DataFrame(
-        {"broad_cell_type": ["A"] * 50 + ["B"] * 50},
-        index=[f"c{i}" for i in range(n_cells)],
-    )
+def test_receiver_celltypes_for_component_excludes_dilute_celltypes():
+    n_each = 50
+    obs = pd.DataFrame({"broad_cell_type": ["A"] * n_each + ["B"] * n_each})
     adata = anndata.AnnData(
-        X=np.zeros((n_cells, 2)), obs=obs, var=pd.DataFrame(index=["g0", "g1"])
+        X=np.zeros((2 * n_each, 2)), obs=obs, var=pd.DataFrame(index=["g0", "g1"])
     )
-    rc_C = np.zeros((n_cells, 1))
-    rc_C[50:, 0] = 1.0  # group "B" has higher mean loading
+    rc_C = np.zeros((2 * n_each, 1))
+    rc_C[:n_each, 0] = 1.0  # A: strong signal
+    rc_C[n_each:, 0] = 0.01  # B: negligible signal
     adata.obsm["rc_C"] = rc_C
 
-    assert top_receiver_celltype(adata, cmp=1, celltype_col="broad_cell_type") == "B"
+    result = receiver_celltypes_for_component(
+        adata, cmp=1, celltype_col="broad_cell_type", pool_threshold=0.3
+    )
+    assert result == ["A"]
+
+
+def test_receiver_celltypes_for_component_pools_comparable_celltypes():
+    n_each = 50
+    obs = pd.DataFrame(
+        {"broad_cell_type": ["A"] * n_each + ["B"] * n_each + ["C"] * n_each}
+    )
+    adata = anndata.AnnData(
+        X=np.zeros((3 * n_each, 2)), obs=obs, var=pd.DataFrame(index=["g0", "g1"])
+    )
+    rc_C = np.zeros((3 * n_each, 1))
+    rc_C[:n_each, 0] = 1.0
+    rc_C[n_each : 2 * n_each, 0] = 0.9
+    rc_C[2 * n_each :, 0] = 0.1
+    adata.obsm["rc_C"] = rc_C
+
+    result = receiver_celltypes_for_component(
+        adata, cmp=1, celltype_col="broad_cell_type", pool_threshold=0.3
+    )
+    assert set(result) == {"A", "B"}
+
+
+def test_permutation_null_aurocs_null_centered_near_chance():
+    adata = _make_synthetic_adata(
+        target_genes=["g0", "g1", "g2"], n_high=40, random_state=2
+    )
+    kept, pos_mask, _, _ = _receiver_population(
+        adata,
+        cmp=1,
+        celltype_col="broad_cell_type",
+        celltype="CT1",
+        top_perc=20,
+    )
+    lt_df = pd.DataFrame(
+        {
+            "ligand": ["LIGA"] * 3,
+            "target": ["g0", "g1", "g2"],
+            "weight": [0.9, 0.8, 0.7],
+        }
+    )
+
+    null = permutation_null_aurocs(
+        kept, pos_mask, lt_df, ["LIGA"], n_perm=200, random_state=0
+    )
+
+    assert "LIGA" in null
+    assert null["LIGA"].shape == (200,)
+    assert abs(null["LIGA"].mean() - 0.5) < 0.1
+
+
+def test_permutation_null_aurocs_dedupes_repeated_ligands():
+    adata = _make_synthetic_adata(
+        target_genes=["g0", "g1", "g2"], n_high=40, random_state=2
+    )
+    kept, pos_mask, _, _ = _receiver_population(
+        adata,
+        cmp=1,
+        celltype_col="broad_cell_type",
+        celltype="CT1",
+        top_perc=20,
+    )
+    lt_df = pd.DataFrame(
+        {
+            "ligand": ["LIGA"] * 3,
+            "target": ["g0", "g1", "g2"],
+            "weight": [0.9, 0.8, 0.7],
+        }
+    )
+
+    null = permutation_null_aurocs(
+        kept, pos_mask, lt_df, ["LIGA", "LIGA"], n_perm=50, random_state=0
+    )
+    assert list(null.keys()) == ["LIGA"]
 
 
 def test_component_accuracy_scores_end_to_end():
@@ -204,11 +326,18 @@ def test_component_accuracy_scores_end_to_end():
         top_m_lr=2,
         receiver_mode="within_celltype",
         top_perc=20,
+        n_perm=200,
+        random_state=0,
     )
 
     assert set(scores["ligand"]) == {"LIGA", "LIGB"}
-    liga_auroc = scores.loc[scores["ligand"] == "LIGA", "auroc"].iloc[0]
-    ligb_auroc = scores.loc[scores["ligand"] == "LIGB", "auroc"].iloc[0]
-    assert liga_auroc is not None and liga_auroc > 0.9
+    assert {"n_pos", "n_neg", "null_mean_auroc", "null_sd_auroc", "p_value"}.issubset(
+        scores.columns
+    )
+
+    liga_row = scores.loc[scores["ligand"] == "LIGA"].iloc[0]
+    ligb_row = scores.loc[scores["ligand"] == "LIGB"].iloc[0]
+    assert liga_row["auroc"] > 0.9
+    assert liga_row["p_value"] < 0.05
     # LIGB's targets aren't planted as DE, so its AUROC should be near chance.
-    assert ligb_auroc is not None and ligb_auroc < 0.75
+    assert ligb_row["auroc"] < 0.75

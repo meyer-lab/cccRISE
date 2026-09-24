@@ -6,6 +6,8 @@ import pandas as pd
 from scipy.sparse import csr_array
 
 from cccrise.import_data import (
+    ALAD_PATIENT_OF,
+    add_alad_patient_id,
     add_cond_idxs,
     import_ligand_receptor_pairs,
     prepare_dataset,
@@ -165,3 +167,41 @@ def test_use_gene_symbols_is_a_noop_without_the_column():
     result = use_gene_symbols(adata)
     assert list(result.var_names) == ["TGFB1", "ACVR1"]
     assert "ensembl_id" not in result.var
+
+
+def test_add_alad_patient_id_pairs_the_two_known_multi_sample_patients():
+    """HS63 and HS65 each contributed two dsco_id samples, and must share a
+    `patient_id` so `validation`'s pairing can carry them together."""
+    dsco_ids = [
+        "ALAD1-HS1-E1",
+        "ALAD1-HS63-E1",
+        "ALAD1-HS63-E2",
+        "ALAD1-HS65-E1",
+        "ALAD1-HS65-E2",
+    ]
+    adata = anndata.AnnData(
+        X=np.zeros((len(dsco_ids), 1)),
+        obs=pd.DataFrame({"dsco_id": dsco_ids}),
+    )
+
+    result = add_alad_patient_id(adata)
+
+    patient_id = dict(zip(result.obs["dsco_id"], result.obs["patient_id"], strict=True))
+    assert patient_id["ALAD1-HS63-E1"] == patient_id["ALAD1-HS63-E2"]
+    assert patient_id["ALAD1-HS65-E1"] == patient_id["ALAD1-HS65-E2"]
+    assert patient_id["ALAD1-HS63-E1"] != patient_id["ALAD1-HS65-E1"]
+
+
+def test_add_alad_patient_id_leaves_a_singleton_dsco_id_unpaired():
+    """A dsco_id with no known sibling must map to a `patient_id` no other
+    condition shares, so `_paired_conditions` never groups it with anything."""
+    dsco_ids = ["ALAD1-HS1-E1", "ALAD1-HS2-E1"]
+    adata = anndata.AnnData(
+        X=np.zeros((len(dsco_ids), 1)),
+        obs=pd.DataFrame({"dsco_id": dsco_ids}),
+    )
+
+    result = add_alad_patient_id(adata)
+
+    assert list(result.obs["patient_id"]) == dsco_ids
+    assert set(ALAD_PATIENT_OF) & set(dsco_ids) == set()

@@ -8,15 +8,15 @@ aggregate FMS the Methods define in panel c and the match-ambiguity diagnostic
 in panel d.
 
     uv run cccrise-stability --dataset alad --rise-rank 25 --cp-rank 4 \
-        --n-replicates 20 --axes cells,conditions,lr_pairs,permuted
+        --n-replicates 20
 """
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from ..stability.component_stability import (
-    PERMUTED_AXIS,
+from ..validation.component_stability import (
+    SEED_AXIS,
     STAGE_CPD,
     STAGE_RISE,
     metric_interval,
@@ -29,11 +29,19 @@ from .common import getSetup, load_runner_csv, subplotLabel
 SELECTED_DATASET = "alad"
 STABILITY_CSV = f"component_stability_{SELECTED_DATASET}.csv"
 
+#: The axes that perturb the data. `SEED_AXIS` is deliberately kept out: it is
+#: the baseline the others are read against rather than one of them, and
+#: `summarize_component_stability` emits no rows for it, so the panels that
+#: read the summary iterate this dict and get the right set for free.
 AXIS_COLORS = {
     "cells": "tab:blue",
     "conditions": "tab:orange",
     "lr_pairs": "tab:green",
 }
+#: Grey, and drawn first in each group, so the ceiling reads as a reference
+#: rather than as a fourth result.
+SEED_COLOR = "0.45"
+PLOT_AXES = {SEED_AXIS: SEED_COLOR, **AXIS_COLORS}
 BAND = (2.5, 97.5)
 
 
@@ -46,11 +54,18 @@ def plot_per_component_fms(
     """Per-component FMS distribution across replicates, one box per axis.
 
     A component whose box sits high and tight was recovered the same way in
-    every replicate; one whose box is low or long was not. The permuted axis,
-    when present, is drawn as a horizontal chance floor rather than as a box,
-    and one line is drawn per set of compared modes: an FMS is a product over
-    however many modes were comparable, so a floor is only valid against rows
-    that compared the same ones.
+    every replicate; one whose box is low or long was not. The grey box is the
+    seed-refit ceiling for that same component -- identical data, a different
+    starting point -- so a coloured box reaching it means the perturbation
+    cost that component nothing beyond what reseeding costs it anyway, and the
+    gap below it is the part attributable to the data. Plotting the ceiling as
+    a per-component box rather than as one horizontal line is what the seed
+    axis makes possible: it leaves the roster alone, so its components carry
+    the reference's own numbering.
+
+    Axes are selected by whitelist, so rows from a run predating the seed axis
+    (which carried a permuted chance floor on a different scale) are dropped
+    rather than drawn as an unlabelled fourth hue.
 
     Parameters
     ----------
@@ -59,35 +74,24 @@ def plot_per_component_fms(
     ax : plt.Axes
         Matplotlib axis to plot onto.
     stage : str
-        'RISE' or 'CPD'; see `stability.STAGE_RISE` / `STAGE_CPD`.
+        'RISE' or 'CPD'; see `validation.STAGE_RISE` / `STAGE_CPD`.
     title : str | None
         Optional title for the subplot.
     """
     stage_rows = df[df["Stage"] == stage]
-    observed = stage_rows[stage_rows["Axis"] != PERMUTED_AXIS]
-    axes_present = [a for a in AXIS_COLORS if a in set(observed["Axis"])]
+    axes_present = [a for a in PLOT_AXES if a in set(stage_rows["Axis"])]
 
     sns.boxplot(
-        data=observed,
+        data=stage_rows[stage_rows["Axis"].isin(axes_present)],
         x="Component",
         y="FMS",
         hue="Axis",
         hue_order=axes_present,
-        palette={a: AXIS_COLORS[a] for a in axes_present},
+        palette={a: PLOT_AXES[a] for a in axes_present},
         fliersize=1,
         linewidth=0.5,
         ax=ax,
     )
-
-    floor = stage_rows[stage_rows["Axis"] == PERMUTED_AXIS]
-    if not floor.empty:
-        ax.axhline(
-            floor["FMS"].quantile(0.95),
-            color="grey",
-            linestyle="--",
-            linewidth=0.8,
-            label="chance floor P95",
-        )
 
     ax.set_ylim(0, 1.02)
     ax.set_xlabel(f"{stage} component (reference numbering)")
@@ -106,10 +110,12 @@ def plot_aggregate_fms(
 
     This is the number the Methods define. It is the mean of the per-component
     scores within a replicate, so panels a/b and this panel cannot disagree
-    about what a replicate contributed.
+    about what a replicate contributed. The seed axis is included: how close
+    each resampling axis sits to the reproducibility ceiling is exactly what
+    this panel is for.
     """
     stats = metric_interval(
-        df[df["Axis"] != PERMUTED_AXIS],
+        df[df["Axis"].isin(PLOT_AXES)],
         "FMS",
         by=("Stage", "Axis"),
         lower=BAND[0],

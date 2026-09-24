@@ -122,13 +122,39 @@ def import_ligand_receptor_pairs(
     return df
 
 
+#: ALAD1-HS63 and ALAD1-HS65 each contributed two dsco_id samples; every other
+#: dsco_id is its own patient. Hardcoded rather than parsed out of dsco_id,
+#: since these are the only known pairs -- a regex would silently "find"
+#: pairs in any future dsco_id that happens to share a prefix.
+ALAD_PATIENT_OF: dict[str, str] = {
+    "ALAD1-HS63-E1": "HS63",
+    "ALAD1-HS63-E2": "HS63",
+    "ALAD1-HS65-E1": "HS65",
+    "ALAD1-HS65-E2": "HS65",
+}
+
+
+def add_alad_patient_id(data: anndata.AnnData) -> anndata.AnnData:
+    """Add `patient_id`, pairing dsco_id's two known multi-sample patients.
+
+    Every dsco_id not in `ALAD_PATIENT_OF` is treated as its own patient (its
+    `patient_id` is just its `dsco_id`), so `patient_id` is safe to pass as
+    `validation.component_stability`'s `patient_column` unconditionally: a
+    singleton dsco_id groups to itself and so never gets paired.
+    """
+    dsco_id = data.obs["dsco_id"].astype(str)
+    data.obs["patient_id"] = dsco_id.map(ALAD_PATIENT_OF).fillna(dsco_id)
+    return data
+
+
 def import_alad(
     filename: str | Path = "/opt/IVCSC/BAL-scRNAseq.raw.h5ad",
     gene_threshold: float = 0.001,
     normalize: bool = True,
 ):
     """Generate data for ALAD analysis, filtering and scaling as needed.
-    patient ids: dsco_id
+    patient ids: dsco_id (patient_id pairs its two known multi-sample
+    patients; see `ALAD_PATIENT_OF`)
     """
     if normalize:
         data = vsparse.load_and_normalize(
@@ -136,6 +162,8 @@ def import_alad(
         )
     else:
         data = vsparse.load_packed(filename).to_anndata()
+
+    data = add_alad_patient_id(data)
 
     # Map cell types directly from the metadata column revised_annotations_10_5
     if "revised_annotations_10_5" in data.obs:

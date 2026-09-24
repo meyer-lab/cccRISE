@@ -33,9 +33,13 @@ dependencies = [
 readme = "README.md"
 
 [project.optional-dependencies]
-# CuPy is optional. The `[ctk]` extra ships the CUDA toolkit headers CuPy JIT-compiles against.
+# GPU support is optional. Propagate parafac2's own `gpu` extra rather than
+# re-declaring its pieces here: `_matmul_cupy`'s sparse path needs
+# nvmath-python alongside CuPy, and hand-picking only cupy-cuda12x left that
+# missing, so backend="cupy" crashed with ModuleNotFoundError on any sparse
+# (i.e. every real ALAD/IBD) fit before touching the GPU at all.
 gpu = [
-    "cupy-cuda12x[ctk]>=13.0; sys_platform != 'darwin'",
+    "parafac2[gpu]>=1.7.0",
 ]
 
 [project.urls]
@@ -52,6 +56,7 @@ cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
 cccrise-anovaboot = "cccrise.runners.run_anova_bootstrap:main"
 cccrise-stability = "cccrise.runners.run_component_stability:main"
 cccrise-significance = "cccrise.runners.run_significance:main"
+cccrise-nichenet = "cccrise.runners.run_nichenet:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]

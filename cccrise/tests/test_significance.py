@@ -1,5 +1,5 @@
 """
-Unit tests for cccrise.stability.significance and cccrise.runners.run_significance.
+Unit tests for cccrise.validation.significance and cccrise.runners.run_significance.
 """
 
 from pathlib import Path
@@ -10,7 +10,7 @@ import pandas as pd
 
 from cccrise.runners.datasets import DatasetSpec
 from cccrise.runners.run_significance import build_parser, output_paths
-from cccrise.stability.significance import (
+from cccrise.validation.significance import (
     fit_significance_pipeline,
     significance_to_xarray,
     summarize_significance_differential,
