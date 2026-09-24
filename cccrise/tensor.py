@@ -40,6 +40,7 @@ def rise_store_r2x(
         tol=tolerance,
         n_iter_max=n_iter_max,
         backend=backend,
+        normalize_slices=True,
     )
     X = store_pf2(X, pf2_out)
 

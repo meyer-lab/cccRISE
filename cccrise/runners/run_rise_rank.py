@@ -97,7 +97,8 @@ def run_rise_rank_selection(
         max_iter=rise_n_iter_max,
         compress=compress,
         compression_kwarg=compression_kwarg,
-        parafac2_kwarg={"backend": backend} if backend else None,
+        parafac2_kwarg={"normalize_slices": True}
+        | ({"backend": backend} if backend else {}),
         condition_key=spec.condition_column,
     )
 

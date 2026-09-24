@@ -108,6 +108,7 @@ def fit_significance_pipeline(
         n_iter_max=n_iter_max,
         tol=rise_tol,
         random_state=random_state,
+        normalize_slices=True,
     )
     dense_P = pf2_output[2]
     condition_names = np.unique(adata.obs[condition_column]).tolist()

@@ -707,6 +707,7 @@ def ccc_rise(
         n_iter_max=rise_n_iter_max,
         tol=rise_tol,
         random_state=random_state,
+        normalize_slices=True,
     )
     pf2_weights, pf2_factors, projections = pf2_output
 
