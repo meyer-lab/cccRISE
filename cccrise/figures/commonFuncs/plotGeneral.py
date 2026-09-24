@@ -6,10 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 from scipy.stats import f_oneway, ttest_ind
-
-from ..common import getSetup
 
 
 def get_sample_to_group(
@@ -206,36 +203,6 @@ def plot_wc_histogram_grid(
 
     for axis in axes[len(celltypes) :]:
         axis.axis("off")
-
-
-def make_wc_histogram_figure(
-    X: anndata.AnnData,
-    cmp: int,
-    celltype_col: str = "celltype",
-    factor_types: tuple[str, ...] = ("sender", "receiver"),
-    ncols: int = 4,
-    panel_size: tuple[float, float] = (4.5, 3.2),
-    **kwargs,
-) -> Figure:
-    """Build a standalone grid of `plot_wc_histogram` panels, one per cell type, for
-    one component."""
-    nrows, ncols = celltype_grid_shape(X, celltype_col, ncols)
-
-    ax, f = getSetup(
-        (panel_size[0] * ncols, panel_size[1] * nrows),
-        (nrows, ncols),
-    )
-    plot_wc_histogram_grid(
-        X,
-        cmp,
-        ax,
-        celltype_col=celltype_col,
-        factor_types=factor_types,
-        **kwargs,
-    )
-    f.suptitle(f"Component {cmp}: Cell Weight Distributions by Cell Type")
-
-    return f
 
 
 DEFAULT_PATIENT_INFO = [
