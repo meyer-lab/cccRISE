@@ -549,7 +549,7 @@ def plot_association_effect_sizes(
         p_str = _format_pvalue(padj)
         sig_star = " *" if padj < alpha else ""
         ax.text(
-            pos,
+            float(pos),
             val + 0.02 * max(max_val, 0.1),
             f"{val:.3f}\np={p_str}{sig_star}",
             ha="center",
