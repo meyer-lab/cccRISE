@@ -6,6 +6,8 @@ from functools import lru_cache
 from pathlib import Path
 
 import anndata
+import pandas as pd
+import yaml
 
 from cccrise.factors import (
     ALAD_FACTORS_PATH,
@@ -13,6 +15,9 @@ from cccrise.factors import (
     load_factors_to_anndata,
 )
 from cccrise.figures.common import get_alad_data, get_covid_data
+from cccrise.runners.datasets import DATA_DIR
+from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
+from cccrise.runners.provenance import sidecar_path
 
 
 @dataclass(frozen=True)
@@ -124,3 +129,37 @@ def load_raw_dataset(key: str) -> RawDataset:
                 f"locally, so interaction heatmaps are unavailable ({exc})."
             ),
         )
+
+
+@dataclass(frozen=True)
+class RankSelection:
+    """Cached rank-selection sweeps from `cccrise-riserank`/`cccrise-cpdrank`.
+    Either sweep is None if it hasn't been run for this dataset."""
+
+    rise: pd.DataFrame | None
+    cpd: pd.DataFrame | None
+    #: RISE rank the CPD sweep's interaction tensor was built at.
+    cpd_rise_rank: int | None
+
+
+def _read_sweep(filename: str) -> pd.DataFrame | None:
+    path = DATA_DIR / filename
+    return pd.read_csv(path) if path.exists() else None
+
+
+@lru_cache(maxsize=4)
+def load_rank_selection(key: str) -> RankSelection:
+    runner_spec = RUNNER_DATASETS.get(key)
+    if runner_spec is None:
+        return RankSelection(rise=None, cpd=None, cpd_rise_rank=None)
+    cpd = _read_sweep(runner_spec.cpd_rank_filename())
+    cpd_rise_rank = None
+    if cpd is not None:
+        sidecar = sidecar_path(DATA_DIR / runner_spec.cpd_rank_filename())
+        if sidecar.exists():
+            cpd_rise_rank = yaml.safe_load(sidecar.read_text()).get("rise_rank")
+    return RankSelection(
+        rise=_read_sweep(runner_spec.rise_rank_filename()),
+        cpd=cpd,
+        cpd_rise_rank=cpd_rise_rank,
+    )

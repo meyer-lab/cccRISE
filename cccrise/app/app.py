@@ -14,11 +14,18 @@ from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
 from matplotlib.rcsetup import cycler
 from matplotlib.text import Text
+from matplotlib.ticker import MaxNLocator
+from scrise.plotting import plot_bicv_r2x
 from shiny import App, reactive, render, ui
 
 from cccrise.anova import run_saved_factors_anova
 from cccrise.app import colors
-from cccrise.app.data import DATASETS, load_dataset, load_raw_dataset
+from cccrise.app.data import (
+    DATASETS,
+    load_dataset,
+    load_rank_selection,
+    load_raw_dataset,
+)
 from cccrise.app.lr_pairs import parse_lr_pairs
 from cccrise.figures.commonFuncs.plotFactors import (
     plot_celltype_association,
@@ -44,6 +51,7 @@ from cccrise.figures.figureAnova import (
     plot_association_effect_sizes,
     plot_category_component_weights,
 )
+from cccrise.figures.figureCPDrank import plot_collinearity, plot_core_consistency
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.utils import celltype_component_association
 
@@ -221,6 +229,13 @@ def styled_figure(scale_ticks: bool = True):
     return decorator
 
 
+def mark_selected_rank(ax: plt.Axes, rank: int) -> None:
+    """Dashed vertical line at the rank the loaded factors were fit at."""
+    ax.axvline(
+        rank, color="black", ls="--", lw=1.2, zorder=0, label=f"Loaded rank ({rank})"
+    )
+
+
 def top_perc_slider(input_id: str) -> ui.Tag:
     return ui.input_slider(
         input_id, "Top Cell % Threshold", min=1, max=50, value=10, step=1
@@ -236,6 +251,10 @@ app_ui = ui.page_sidebar(
     ),
     ui.tags.style(HEADER_CSS),
     ui.navset_tab(
+        ui.nav_panel(
+            "Rank Selection",
+            ui.output_ui("rank_selection_body"),
+        ),
         ui.nav_panel(
             "Factor Matrices",
             ui.markdown(
@@ -306,6 +325,84 @@ def server(input, output, session):
                 "`uv run cccrise-run`, which stores them."
             )
         return None
+
+    # ------------------------------------------------------------------
+    # Rank Selection
+    # ------------------------------------------------------------------
+    @reactive.calc
+    def rise_rank():
+        return int(dataset().adata.uns["B"].shape[0])
+
+    @render.ui
+    def rank_selection_body():
+        sweeps = load_rank_selection(input.dataset())
+        if sweeps.rise is None and sweeps.cpd is None:
+            return ui.markdown(
+                "No cached rank-selection sweeps for this dataset. Produce them "
+                "with `uv run cccrise-riserank` and `uv run cccrise-cpdrank`."
+            )
+        notes = [
+            (
+                "Cached rank-selection sweeps: RISE bi-cross-validation (BiCV) "
+                "R2X, and CPD core consistency (CORCONDIA) and component "
+                "collinearity. Dashed lines mark the RISE rank "
+                f"(**{rise_rank()}**) and CP rank (**{cp_rank()}**) of the loaded "
+                "factors used by the remaining tabs."
+            )
+        ]
+        if sweeps.cpd_rise_rank is not None and sweeps.cpd_rise_rank != rise_rank():
+            notes.append(
+                f"⚠️ The CPD sweep was run on an interaction tensor built at "
+                f"RISE rank {sweeps.cpd_rise_rank}, not the loaded factors' "
+                f"RISE rank {rise_rank()}."
+            )
+        return ui.TagList(
+            ui.markdown("\n\n".join(notes)),
+            scrollable_plot("rank_selection_plot", 1800, 550),
+        )
+
+    @render.plot
+    @styled_figure()
+    def rank_selection_plot():
+        sweeps = load_rank_selection(input.dataset())
+        fig, axes = plt.subplots(1, 3, figsize=(18, 5.5), layout="tight")
+
+        if sweeps.rise is None:
+            axes[0].axis("off")
+            axes[0].text(0.5, 0.5, "No cached RISE BiCV sweep", ha="center")
+        else:
+            plot_bicv_r2x(sweeps.rise, axes[0])
+            axes[0].set_title("RISE BiCV Rank Selection")
+            mark_selected_rank(axes[0], rise_rank())
+
+        if sweeps.cpd is None:
+            for ax in axes[1:]:
+                ax.axis("off")
+                ax.text(0.5, 0.5, "No cached CPD sweep", ha="center")
+        else:
+            plot_core_consistency(
+                sweeps.cpd,
+                axes[1],
+                "CPD Core Consistency (CORCONDIA)",
+                threshold_colors=(colors.GREEN, colors.ORANGE),
+            )
+            # `plot_core_consistency` sets symlog after autoscaling, so rescale
+            # to drop the resulting empty decades above 100%.
+            axes[1].autoscale_view()
+            plot_collinearity(
+                sweeps.cpd,
+                axes[2],
+                "CPD Component Collinearity Screen",
+                colors=(colors.GREY, colors.BLUE, colors.ORANGE),
+            )
+            for ax in axes[1:]:
+                mark_selected_rank(ax, cp_rank())
+        for ax in axes:
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            if ax.get_legend() is not None:
+                # Long enough handles for the dashed selected-rank line to read
+                ax.legend(handlelength=2)
+        return fig
 
     # ------------------------------------------------------------------
     # Factor Matrices
