@@ -195,8 +195,8 @@ def server(input, output, session):
         if not dataset().has_projections:
             return ui.markdown(
                 "⚠️ This dataset's factors file has no stored per-cell "
-                "projections; only factor matrices are available. Regenerate "
-                "it with `cccrise.regenerate_factors`."
+                "projections; only factor matrices are available. Re-run "
+                "`uv run cccrise-run`, which stores them."
             )
         return None
 
@@ -617,9 +617,8 @@ def server(input, output, session):
         if not dataset().has_pacmap:
             return ui.markdown(
                 "Per-cell PaCMAP coordinates are unavailable for this "
-                "dataset's factors file. Regenerate it with "
-                "`cccrise.regenerate_factors` (or `add_cell_projections`) to "
-                "add them."
+                "dataset's factors file. Re-run `uv run cccrise-run` without "
+                "`--no-embedding`."
             )
         celltypes = sorted(
             dataset().adata.obs[dataset().spec.celltype_col].unique().tolist()

@@ -254,8 +254,7 @@ def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
 
     Loads eagerly (`load_dataset`, not `open_dataset`) so the returned
     Dataset stays usable after the underlying file is closed -- needed to
-    read a file and then overwrite it in the same process, e.g.
-    `regenerate_factors`'s read-then-replace.
+    read a file and then overwrite it in the same process.
     """
     return xr.load_dataset(Path(filepath), engine="h5netcdf")
 

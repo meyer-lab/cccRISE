@@ -7,6 +7,10 @@ decomposition of the interaction tensor at ``--cp-rank``, and serializes the
 factor model to NetCDF alongside a provenance sidecar. The ``.nc`` is written in
 the format the figure modules read via `factors.load_factors_to_anndata`.
 
+The ``.nc`` also carries per-cell projections, sender/receiver weights and a
+PaCMAP embedding, so the Shiny explorer can read it directly (``--no-embedding``
+skips the PaCMAP fit for cohorts where it is too slow).
+
 The sidecar's ``rank_selection`` block records which sweep justifies each chosen
 rank -- the sweep CSVs written by `run_rise_rank` / `run_cpd_rank`, plus a
 free-text rationale from ``--rise-rank-notes`` / ``--cpd-rank-notes``.
@@ -78,6 +82,7 @@ def run_pipeline(
     output_path: Path | None = None,
     rise_rank_notes: str | None = None,
     cpd_rank_notes: str | None = None,
+    do_embedding: bool = True,
 ) -> tuple[anndata.AnnData, xr.Dataset, Path, Path]:
     """Run cccRISE end to end and serialize the factor model plus provenance.
 
@@ -104,6 +109,9 @@ def run_pipeline(
         which is what the figure modules load.
     rise_rank_notes, cpd_rank_notes : str, optional
         Rationale for each chosen rank, written into the provenance file.
+    do_embedding : bool, default=True
+        Fit a PaCMAP embedding of the per-cell projections and store it with
+        them, for the Shiny explorer's cell projection views.
 
     Returns
     -------
@@ -141,7 +149,7 @@ def run_pipeline(
         tol=tol,
         random_state=random_state,
         complex_sep=complex_sep,
-        doEmbedding=False,
+        doEmbedding=do_embedding,
         svd_init=svd_init,
     )
     r2x_pf2 = adata.uns.get("r2x_pf2")
@@ -185,6 +193,7 @@ def run_pipeline(
             "random_state": random_state,
             "complex_sep": complex_sep,
             "svd_init": svd_init,
+            "pacmap_embedding": do_embedding,
             "lr_pairs_annotated": len(lr_pairs),
             "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=n_lr_used),
             "interaction_tensor_shape": [
@@ -225,6 +234,12 @@ def build_parser() -> argparse.ArgumentParser:
         "which the figure modules load).",
     )
     parser.add_argument(
+        "--no-embedding",
+        dest="do_embedding",
+        action="store_false",
+        help="Skip the PaCMAP embedding of per-cell projections.",
+    )
+    parser.add_argument(
         "--rise-rank-notes",
         type=str,
         default=None,
@@ -254,6 +269,7 @@ def main(argv: list[str] | None = None) -> None:
         output_path=resolve_output(args.output, DATA_DIR, spec.factors_filename),
         rise_rank_notes=args.rise_rank_notes,
         cpd_rank_notes=args.cpd_rank_notes,
+        do_embedding=args.do_embedding,
     )
 
 
