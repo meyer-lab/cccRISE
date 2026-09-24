@@ -149,20 +149,114 @@ def factors_to_xarray(
     return xr.Dataset(data_vars=data_vars, coords=coords, attrs=ds_attrs)
 
 
+def add_cell_projections(
+    ds: xr.Dataset,
+    adata: anndata.AnnData,
+    obs_columns: list[str],
+) -> xr.Dataset:
+    """
+    Attach per-cell RISE projections, CP sender/receiver embeddings, PaCMAP
+    coordinates, and selected `.obs` columns to a factors Dataset.
+
+    This lets a saved `.nc` file drive per-cell visualizations (e.g. the
+    Shiny explorer app) on its own, without re-loading and re-projecting the
+    raw single-cell data. `adata` must already carry `obsm["projections"]`,
+    `obsm["sc_B"]`, and `obsm["rc_C"]` (as produced by
+    `load_factors_to_anndata(..., do_embedding=...)` or
+    `run_ccc_rise_workflow`); `obsm["PaCMAP"]` is included if present.
+
+    Per-cell arrays are stored as float16 to keep file size small -- these
+    are used for exploratory visualization, not for further numerical
+    analysis, so the added quantization is an acceptable tradeoff.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset produced by `factors_to_xarray`.
+    adata : anndata.AnnData
+        AnnData with per-cell projections computed.
+    obs_columns : list[str]
+        Columns of `adata.obs` to persist per-cell (e.g. cell type,
+        condition/sample). Missing columns are skipped.
+
+    Returns
+    -------
+    xr.Dataset
+        A copy of `ds` augmented with per-cell data.
+    """
+    ds = ds.copy()
+    cell_ids = np.asarray(adata.obs_names)
+
+    ds = ds.assign_coords(cell=cell_ids)
+    ds["cell_projections"] = (
+        ["cell", "rise_component"],
+        np.asarray(adata.obsm["projections"], dtype=np.float16),
+    )
+    ds["cell_sc_B"] = (
+        ["cell", "cp_component"],
+        np.asarray(adata.obsm["sc_B"], dtype=np.float16),
+    )
+    ds["cell_rc_C"] = (
+        ["cell", "cp_component"],
+        np.asarray(adata.obsm["rc_C"], dtype=np.float16),
+    )
+
+    if "PaCMAP" in adata.obsm:
+        ds = ds.assign_coords(pacmap_dim=np.array([1, 2]))
+        ds["cell_pacmap"] = (
+            ["cell", "pacmap_dim"],
+            np.asarray(adata.obsm["PaCMAP"], dtype=np.float16),
+        )
+
+    for col in obs_columns:
+        if col not in adata.obs:
+            continue
+        ds[f"obs_{col}"] = (["cell"], adata.obs[col].astype(str).to_numpy())
+
+    return ds
+
+
 def save_factors_netcdf(ds: xr.Dataset, filepath: str | Path) -> None:
-    """Save an xarray Dataset of factors to a NetCDF file, ensuring float arrays are float32."""
+    """Save an xarray Dataset of factors to a NetCDF file, ensuring float
+    arrays are float32, except for per-cell arrays (added by
+    `add_cell_projections`) which are kept at float16 to save space.
+
+    float16 isn't part of the classic netCDF-4 data model, so if any
+    variable was quantized to float16 the file is written via the
+    `h5netcdf` engine (HDF5-native, supports float16) instead of the
+    default `netcdf4` engine.
+    """
     path = Path(filepath)
     path.parent.mkdir(parents=True, exist_ok=True)
     ds_to_save = ds.copy()
+    has_float16 = False
     for var_name in ds_to_save.data_vars:
-        if np.issubdtype(ds_to_save[var_name].dtype, np.floating):
+        dtype = ds_to_save[var_name].dtype
+        if dtype == np.float16:
+            has_float16 = True
+        elif np.issubdtype(dtype, np.floating):
             ds_to_save[var_name] = ds_to_save[var_name].astype(np.float32)
-    ds_to_save.to_netcdf(path)
+
+    if has_float16:
+        ds_to_save.to_netcdf(path, engine="h5netcdf", invalid_netcdf=True)
+    else:
+        ds_to_save.to_netcdf(path)
 
 
 def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
-    """Load an xarray Dataset of factors from a NetCDF file."""
-    return xr.load_dataset(Path(filepath))
+    """Load an xarray Dataset of factors from a NetCDF file.
+
+    Always uses the `h5netcdf` engine: it reads both plain netCDF-4 files
+    and ones written with float16 per-cell arrays (see
+    `save_factors_netcdf`). The default `netcdf4` engine can't represent
+    float16 and, worse, doesn't fail cleanly when asked to open such a
+    file, so it's avoided entirely here rather than used as a fallback.
+
+    Loads eagerly (`load_dataset`, not `open_dataset`) so the returned
+    Dataset stays usable after the underlying file is closed -- needed to
+    read a file and then overwrite it in the same process.
+    """
+    return xr.load_dataset(Path(filepath), engine="h5netcdf")
 
 
 def load_factors_to_anndata(
@@ -179,8 +273,12 @@ def load_factors_to_anndata(
     projections (`obsm["projections"]`), sender loadings (`obsm["sc_B"]`), receiver
     loadings (`obsm["rc_C"]`), and optional 2D PaCMAP coordinates are computed.
 
-    If `adata` is None, creates a lightweight AnnData holding factor matrices in `.uns`
-    and condition annotations in `.obs`.
+    If `adata` is None and `factors_ds` was augmented with `add_cell_projections`,
+    reconstructs a full per-cell AnnData directly from the stored per-cell arrays
+    (no raw single-cell data needed).
+
+    If `adata` is None and no per-cell data is stored, creates a lightweight AnnData
+    holding factor matrices in `.uns` and condition annotations in `.obs`.
 
     Parameters
     ----------
@@ -213,6 +311,43 @@ def load_factors_to_anndata(
     lr_pairs = factors_ds.coords["lr_pair"].values
     r2x_cp = float(factors_ds.attrs.get("r2x_cp", 0.0))
 
+    if (
+        adata is None
+        and "cell" in factors_ds.coords
+        and "cell_projections" in factors_ds
+    ):
+        # Reconstruct a full per-cell AnnData from previously-saved per-cell arrays
+        obs_data = {
+            str(col)[len("obs_") :]: factors_ds[col].values
+            for col in factors_ds.data_vars
+            if str(col).startswith("obs_")
+        }
+        cell_ids = factors_ds.coords["cell"].values
+        obs_df = pd.DataFrame(obs_data, index=cell_ids)
+        out = anndata.AnnData(obs=obs_df, shape=(len(cell_ids), 0))
+        out.uns["A"] = A_cp
+        out.uns["B"] = B_cp
+        out.uns["C"] = C_cp
+        out.uns["D"] = D_cp
+        out.uns["weights"] = weights_cp
+        out.uns["lr_pairs"] = lr_pairs
+        out.uns["r2x"] = r2x_cp
+
+        out.obsm["projections"] = np.asarray(
+            factors_ds["cell_projections"].values, dtype=np.float32
+        )
+        out.obsm["sc_B"] = np.asarray(factors_ds["cell_sc_B"].values, dtype=np.float32)
+        out.obsm["rc_C"] = np.asarray(factors_ds["cell_rc_C"].values, dtype=np.float32)
+        if "cell_pacmap" in factors_ds:
+            out.obsm["PaCMAP"] = np.asarray(
+                factors_ds["cell_pacmap"].values, dtype=np.float32
+            )
+
+        if cond_key in out.obs:
+            out = add_cond_idxs(out, cond_key)
+
+        return out
+
     if adata is None:
         # Construct lightweight factor container AnnData
         obs_df = pd.DataFrame(
@@ -244,12 +379,51 @@ def load_factors_to_anndata(
     # Ensure condition indexing
     out = add_cond_idxs(out, cond_key)
 
+    # Use stored cell projections if already present in factors dataset
+    if "cell_projections" in factors_ds:
+        out.obsm["projections"] = np.asarray(
+            factors_ds["cell_projections"].values, dtype=np.float32
+        )
+        if "cell_sc_B" in factors_ds:
+            out.obsm["sc_B"] = np.asarray(
+                factors_ds["cell_sc_B"].values, dtype=np.float32
+            )
+        else:
+            out.obsm["sc_B"] = out.obsm["projections"] @ B_cp
+        if "cell_rc_C" in factors_ds:
+            out.obsm["rc_C"] = np.asarray(
+                factors_ds["cell_rc_C"].values, dtype=np.float32
+            )
+        else:
+            out.obsm["rc_C"] = out.obsm["projections"] @ C_cp
+
+        if "cell_pacmap" in factors_ds:
+            out.obsm["PaCMAP"] = np.asarray(
+                factors_ds["cell_pacmap"].values, dtype=np.float32
+            )
+        elif do_embedding:
+            pcm = PaCMAP(random_state=random_state)
+            out.obsm["PaCMAP"] = pcm.fit_transform(out.obsm["projections"])
+
+        return out
+
     # Compute cell projections if PARAFAC2 factors are present
     rise_rank = int(factors_ds.attrs.get("rise_rank", B_cp.shape[0]))
     if "pf2_A" in factors_ds and "pf2_B" in factors_ds and "pf2_C" in factors_ds:
         A_pf2 = factors_ds["pf2_A"].values
         B_pf2 = factors_ds["pf2_B"].values
         C_pf2 = factors_ds["pf2_C"].values
+
+        # Align genes between adata and pf2_C if gene coordinates exist
+        if "gene" in factors_ds.coords:
+            ds_genes = factors_ds.coords["gene"].values
+            if len(ds_genes) == C_pf2.shape[0] and (
+                out.n_vars != len(ds_genes)
+                or not np.array_equal(out.var_names, ds_genes)
+            ):
+                matching_genes = [g for g in ds_genes if g in out.var_names]
+                if len(matching_genes) == len(ds_genes):
+                    out = out[:, ds_genes].copy()
 
         # Project matrices per condition
         X_list = condition_matrices(out)
