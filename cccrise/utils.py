@@ -606,3 +606,97 @@ def add_obs_cmp_unique_two(X: anndata.AnnData, cmp1: int, cmp2: int):
     )
 
     return X
+
+
+def celltype_component_association(
+    X: anndata.AnnData,
+    factor_type: str = "sender",
+    celltype_col: str = "celltype",
+    stat: str = "mean",
+    top_perc: float = 10,
+) -> pd.DataFrame:
+    """
+    Quantify how strongly each cell type is associated with each CPD component.
+
+    The pseudobulk decomposition aggregates cells by type before factorization, so
+    its sender/receiver factors (`uns["B"]`, `uns["C"]`) are already cell type x
+    component matrices that can be plotted directly. CCC-RISE instead resolves the
+    two cell dimensions into RISE eigenstates, so cell-type associations have to be
+    recovered from the per-cell loadings `obsm["sc_B"]` / `obsm["rc_C"]`
+    (`projections @ B` and `projections @ C`) by aggregating them within cell type.
+
+    Parameters
+    ----------
+    X : anndata.AnnData
+        AnnData carrying per-cell sender/receiver loadings in
+        `obsm["sc_B"]` / `obsm["rc_C"]` and cell type labels in `.obs`.
+    factor_type : {"sender", "receiver"}, default="sender"
+        Whether to use the sender (`sc_B`) or receiver (`rc_C`) loadings.
+    celltype_col : str, default="celltype"
+        Column of `.obs` holding cell type labels.
+    stat : {"mean", "effect_size", "enrichment", "pct_top"}, default="mean"
+        How the association is quantified:
+
+        - 'mean' : Mean per-cell loading within the cell type. The direct analogue
+          of a row of the pseudobulk sender/receiver factor, and on the same scale
+          across components (so components can be compared to one another).
+        - 'effect_size' : Cohen's d of the cell type's loadings against all other
+          cells. Scale-free, so it measures how distinctly a cell type is loaded
+          rather than how large the component is.
+        - 'enrichment' : log2 fold enrichment of the cell type among the top
+          `top_perc` percent of cells for that component, using the same
+          top-percentile convention as `add_obs_cmp_label`. Counts are computed
+          with a pseudocount of one cell so that absent cell types stay finite.
+          Saturates near log2(100 / `top_perc`) once most of a cell type sits in
+          the tail, so it cannot separate two strongly loaded cell types.
+        - 'pct_top' : percent of the cell type's own cells that fall in that top
+          `top_perc` percent. Unlike 'mean' it survives a bimodal population,
+          whose positive and negative halves cancel in the mean.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Cell types (sorted) as rows, 1-based component numbers as columns.
+    """
+    if factor_type == "sender":
+        loadings = np.asarray(X.obsm["sc_B"], dtype=float)
+    elif factor_type == "receiver":
+        loadings = np.asarray(X.obsm["rc_C"], dtype=float)
+    else:
+        raise ValueError(f"Unknown factor_type: {factor_type}")
+
+    labels = np.asarray(cast(pd.DataFrame, X.obs)[celltype_col]).astype(str)
+    celltypes = np.unique(labels)
+
+    if stat in ("enrichment", "pct_top"):
+        is_top = loadings > np.percentile(loadings, 100 - top_perc, axis=0)
+        top_rate_all = is_top.mean(axis=0)
+
+    rows = []
+    for celltype in celltypes:
+        mask = labels == celltype
+        if stat == "mean":
+            values = loadings[mask].mean(axis=0)
+        elif stat == "effect_size":
+            inside, outside = loadings[mask], loadings[~mask]
+            pooled_sd = np.sqrt(
+                (inside.var(axis=0, ddof=1) + outside.var(axis=0, ddof=1)) / 2
+            )
+            values = (inside.mean(axis=0) - outside.mean(axis=0)) / np.where(
+                pooled_sd > 0, pooled_sd, np.nan
+            )
+        elif stat == "enrichment":
+            top_rate_in = (is_top[mask].sum(axis=0) + 1) / (mask.sum() + 1)
+            values = np.log2(top_rate_in / top_rate_all)
+        elif stat == "pct_top":
+            values = 100 * is_top[mask].mean(axis=0)
+        else:
+            raise ValueError(f"Unknown stat: {stat}")
+
+        rows.append(values)
+
+    return pd.DataFrame(
+        np.vstack(rows),
+        index=pd.Index(celltypes, name=celltype_col),
+        columns=pd.Index(np.arange(1, loadings.shape[1] + 1), name="Component"),
+    )

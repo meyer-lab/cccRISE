@@ -25,7 +25,14 @@ def plot_fit_r2x(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ax.set_title(title)
 
 
-def plot_collinearity(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
+def plot_collinearity(
+    df: pd.DataFrame,
+    ax: plt.Axes,
+    title: str,
+    colors: tuple[str, str, str] = ("0.5", "tab:blue", "tab:red"),
+) -> None:
+    """`colors` is (no collinear pair, near-duplicate pair, canceling pair)."""
+    none_color, duplicate_color, canceling_color = colors
     ax.plot(df["Rank"], df["MaxModesCollinear"], color="0.7", zorder=1)
 
     # A canceling pair, a near-duplicate pair, or no collinear pair
@@ -38,7 +45,7 @@ def plot_collinearity(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ax.scatter(
         df.loc[none_found, "Rank"],
         df.loc[none_found, "MaxModesCollinear"],
-        color="0.5",
+        color=none_color,
         marker="o",
         label="no collinear pair",
         zorder=2,
@@ -46,7 +53,7 @@ def plot_collinearity(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ax.scatter(
         df.loc[duplicate, "Rank"],
         df.loc[duplicate, "MaxModesCollinear"],
-        color="tab:blue",
+        color=duplicate_color,
         marker="o",
         label="near-duplicate pair",
         zorder=2,
@@ -54,7 +61,7 @@ def plot_collinearity(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ax.scatter(
         df.loc[canceling, "Rank"],
         df.loc[canceling, "MaxModesCollinear"],
-        color="tab:red",
+        color=canceling_color,
         marker="D",
         label="canceling pair",
         zorder=3,
@@ -69,10 +76,20 @@ def plot_collinearity(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ax.legend(fontsize=6, loc="upper left")
 
 
-def plot_core_consistency(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
+def plot_core_consistency(
+    df: pd.DataFrame,
+    ax: plt.Axes,
+    title: str,
+    threshold_colors: tuple[str, str] = ("tab:green", "tab:orange"),
+) -> None:
+    """`threshold_colors` colors the 90% and 50% reference lines."""
     ax.plot(df["Rank"], df["CoreConsistency"], marker="o")
-    ax.axhline(90, color="tab:green", linestyle="--", linewidth=0.8, label="90%")
-    ax.axhline(50, color="tab:orange", linestyle="--", linewidth=0.8, label="50%")
+    ax.axhline(
+        90, color=threshold_colors[0], linestyle="--", linewidth=0.8, label="90%"
+    )
+    ax.axhline(
+        50, color=threshold_colors[1], linestyle="--", linewidth=0.8, label="50%"
+    )
     # Core consistency collapses by orders of magnitude past the valid-model
     # rank. symlog keeps the 0-100% transition readable while still showing
     # the full collapse instead of one axis extreme crushing the rest flat.

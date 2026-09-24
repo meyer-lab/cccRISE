@@ -13,6 +13,7 @@ from matplotlib.patches import Patch
 from ...utils import (
     binned_complex_ligand_product_matrix,
     binned_expression_product_matrix,
+    celltype_component_association,
 )
 from ..common import getSetup, subplotLabel
 
@@ -129,6 +130,105 @@ def plot_eigenstate_factors(data: anndata.AnnData, ax: Axes, factor_type: str):
     ax.set(xlabel="Component")
 
 
+STAT_LABELS = {
+    "mean": "Mean Cell Loading",
+    "effect_size": "Cohen's $d$ vs. Other Cells",
+    "enrichment": "log$_2$ Enrichment in Top {top_perc:g}% of Cells",
+    "pct_top": "% of Cells in Top {top_perc:g}%",
+}
+
+
+def plot_celltype_association(
+    data: anndata.AnnData,
+    ax: Axes,
+    factor_type: str = "sender",
+    celltype_col: str = "celltype",
+    stat: str = "mean",
+    top_perc: float = 10,
+    normalize: str | None = "global",
+    scale: float | None = None,
+    show_counts: bool = False,
+    cbar: bool = True,
+) -> pd.DataFrame:
+    """Heatmap of cell types against components, colored by each cell type's
+    association with each component.
+
+    Unlike the pseudobulk decomposition, whose sender/receiver factors are
+    themselves cell type x component matrices (`plot_eigenstate_factors`), CCC-RISE
+    resolves the cell dimensions into RISE eigenstates; the associations plotted
+    here are aggregated from the per-cell loadings by
+    `celltype_component_association`, which documents the available `stat` options.
+
+    Parameters
+    ----------
+    normalize : {"global", "component", None}, default="global"
+        'global' divides the whole matrix by its largest magnitude, keeping
+        components comparable to each other on a fixed -1 to 1 color scale.
+        'component' rescales each component separately, which shows the ranking of
+        cell types within a component but hides differences in component magnitude.
+        None plots the raw values on symmetric limits.
+    scale : float, optional
+        Divisor to use in place of the matrix's own maximum magnitude when
+        `normalize="global"`. Pass the same value across panels (e.g. the joint
+        maximum of the sender and receiver matrices) to make their colors
+        directly comparable, since normalization is otherwise per call.
+    show_counts : bool, default=False
+        Append each cell type's cell count to its label.
+    cbar : bool, default=True
+        Draw the colorbar; drop it on all but one of several panels sharing
+        a `scale`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The (unnormalized) association values that were plotted.
+    """
+    df = celltype_component_association(
+        data,
+        factor_type=factor_type,
+        celltype_col=celltype_col,
+        stat=stat,
+        top_perc=top_perc,
+    )
+    values = df.to_numpy(dtype=float)
+
+    if normalize == "global":
+        values = values / (float(np.nanmax(np.abs(values))) if scale is None else scale)
+    elif normalize == "component":
+        values = values / np.nanmax(np.abs(values), axis=0, keepdims=True)
+    elif normalize is not None:
+        raise ValueError(f"Unknown normalize: {normalize}")
+
+    yt = df.index.to_numpy()
+    if show_counts:
+        counts = data.obs[celltype_col].astype(str).value_counts()
+        yt = np.array([f"{name} (n={counts[name]})" for name in yt])
+
+    cbar_label = STAT_LABELS[stat].format(top_perc=top_perc)
+    if normalize is not None:
+        cbar_label = f"{cbar_label} (Normalized)"
+
+    # Normalized values live on a fixed -1 to 1 scale, so a panel scaled by a
+    # shared `scale` keeps color limits comparable rather than restretching them.
+    vmax = 1.0 if normalize is not None else float(np.nanmax(np.abs(values)))
+    sns.heatmap(
+        data=values,
+        xticklabels=df.columns.to_numpy(),
+        yticklabels=yt,
+        ax=ax,
+        center=0,
+        cmap=cmap,
+        vmin=-vmax,
+        vmax=vmax,
+        cbar=cbar,
+        cbar_kws={"label": cbar_label},
+    )
+    ax.tick_params(axis="y", rotation=0)
+    ax.set(xlabel="Component", ylabel="")
+
+    return df
+
+
 def plot_lr_factors(data: anndata.AnnData, ax: Axes, trim=True, weight=0.08):
     """Plots lr factors"""
     # Read the LR factor and pair information from .uns
@@ -159,6 +259,213 @@ def plot_lr_factors(data: anndata.AnnData, ax: Axes, trim=True, weight=0.08):
         vmax=1,
     )
     ax.set(xlabel="Component")
+    # A low trim threshold keeps enough LR pairs that their row labels
+    # collide; shrink them with row count rather than letting a lenient
+    # threshold produce an unreadable heatmap.
+    ax.tick_params(axis="y", labelsize=float(np.clip(200 / max(len(yt), 1), 4, 9)))
+
+
+def _lr_highlight_mask(weights: np.ndarray, highlight: int | str) -> np.ndarray:
+    """Boolean mask over rank-sorted `weights` selecting the pairs to mark."""
+    mask = np.zeros(weights.size, dtype=bool)
+    if isinstance(highlight, int):
+        mask[: min(highlight, weights.size)] = True
+        return mask
+
+    q1, q3 = np.percentile(weights, [25, 75])
+    if highlight == "tukey":
+        threshold = q3 + 1.5 * (q3 - q1)
+    elif highlight == "q3":
+        threshold = q3
+    else:
+        raise ValueError(f"Unknown highlight rule: {highlight}")
+    return weights > threshold
+
+
+def plot_lr_factor_rank(
+    X: anndata.AnnData,
+    cmp: int,
+    ax: Axes,
+    highlight: int | str = 5,
+    include_negative: bool = False,
+    max_labels: int = 10,
+    label_fontsize: float = 9,
+    colors: tuple | None = None,
+) -> pd.DataFrame:
+    """Plot every LR pair's weight for one component against its rank in that
+    component, marking and labeling only the pairs that stand out.
+
+    The LR factor is sparse, so the ranked curve has a steep head, a long flat
+    middle that carries no signal, and (since the factor is signed) a short tail
+    below zero. Drawing the line for all pairs but markers only for the extremes
+    keeps the shape of the component visible while naming just the pairs worth
+    interpreting -- a more compact read than the full factor heatmap
+    (`plot_lr_factors`) or the fixed top-N barplots (`plot_lr_factors_partial`).
+
+    Parameters
+    ----------
+    cmp : int
+        Component to plot (1-indexed).
+    highlight : int or {"tukey", "q3"}, default=5
+        Which pairs get markers. An int takes that many top-ranked pairs. "tukey"
+        takes those above Q3 + 1.5 * IQR and "q3" those above the 75th percentile;
+        note that on a factor this sparse the quartiles sit near zero, so both
+        rules select a large fraction of the pairs.
+    include_negative : bool, default=False
+        Also mark the negative tail, applying the mirrored rule (bottom N, or below
+        the lower fence / Q1). Worth enabling when a component's most negative
+        weights rival its positive ones in magnitude.
+    max_labels : int, default=10
+        Cap on labeled pairs per tail; the rest keep their markers. Labels are laid
+        out in a callout column and nudged apart so they never overlap, however
+        tightly the marked weights are packed.
+    colors : tuple, optional
+        (top tail, negative tail) marker/label colors; defaults to colorblind
+        red/blue.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per LR pair, sorted by descending weight, with `lr_pair`, `weight`,
+        `rank`, and `highlighted` columns.
+    """
+    weights = np.asarray(X.uns["D"], dtype=float)[:, cmp - 1]
+    names = np.asarray(X.uns["lr_pairs"]).astype(str)
+
+    order = np.argsort(-weights)
+    ranked = pd.DataFrame(
+        {
+            "lr_pair": names[order],
+            "weight": weights[order],
+            "rank": np.arange(1, weights.size + 1),
+        }
+    )
+
+    top_mask = _lr_highlight_mask(ranked["weight"].to_numpy(), highlight)
+    bottom_mask = np.zeros_like(top_mask)
+    if include_negative:
+        # Mirror the rule by ranking the flipped weights, then flipping back
+        bottom_mask = _lr_highlight_mask(-ranked["weight"].to_numpy()[::-1], highlight)[
+            ::-1
+        ]
+    ranked["highlighted"] = top_mask | bottom_mask
+
+    if colors is None:
+        palette = sns.color_palette("colorblind")
+        colors = (palette[3], palette[0])
+    ax.axhline(0.0, color="0.75", lw=0.6, ls="--", zorder=0)
+    ax.plot(ranked["rank"], ranked["weight"], color="0.35", lw=1.0, zorder=1)
+
+    # Fix the limits from the data before annotating: the callouts are laid out in
+    # data coordinates and setting limits at all disables autoscaling, so they have
+    # to be established up front rather than left to a later autoscale.
+    lo, hi = float(weights.min()), float(weights.max())
+    pad = 0.06 * (hi - lo)
+    ax.set_ylim(lo - pad, hi + pad)
+    ax.set_xlim(0, len(ranked) + 1)
+
+    for mask, color, from_top in [
+        (top_mask, colors[0], True),
+        (bottom_mask, colors[1], False),
+    ]:
+        selected = ranked[mask]
+        if selected.empty:
+            continue
+        ax.scatter(
+            selected["rank"],
+            selected["weight"],
+            s=20,
+            color=color,
+            zorder=2,
+            clip_on=False,
+        )
+        labeled = selected.head(max_labels) if from_top else selected.tail(max_labels)
+        _annotate_lr_callouts(ax, selected, labeled, color, from_top, label_fontsize)
+
+    ax.set(
+        xlabel="LR Pair Rank",
+        ylabel=f"Cmp. {cmp} Weight",
+        title=f"Cmp. {cmp} Ligand-Receptor Pair Weights by Rank",
+    )
+
+    return ranked
+
+
+def _annotate_lr_callouts(
+    ax: Axes,
+    selected: pd.DataFrame,
+    labeled: pd.DataFrame,
+    color,
+    from_top: bool,
+    fontsize: float,
+) -> None:
+    """Label marked points in a callout column, nudged apart to avoid collisions.
+
+    Points at the head of a sparse factor are packed into a tiny weight range, so
+    labels placed at their own heights would overlap; each is instead pushed at
+    least one label-height away from the previous one, and the axis is extended if
+    the resulting column runs past it. The column is anchored just beyond the last
+    marked point so it clears the markers even when the rule marks many pairs.
+    """
+    x0, x1 = ax.get_xlim()
+    lo, hi = ax.get_ylim()
+    span = hi - lo
+    gap = 0.07 * span
+
+    names = labeled["lr_pair"].to_numpy().astype(str)
+    label_weights = labeled["weight"].to_numpy(dtype=float)
+    ranks = labeled["rank"].to_numpy(dtype=float)
+    if not from_top:
+        # Walk the negative tail from the most negative label upward
+        names, label_weights, ranks = names[::-1], label_weights[::-1], ranks[::-1]
+
+    positions = []
+    previous = None
+    for weight in label_weights:
+        if previous is None:
+            position = float(weight)
+        elif from_top:
+            position = min(float(weight), previous - gap)
+        else:
+            position = max(float(weight), previous + gap)
+        positions.append(position)
+        previous = position
+
+    # Extend the axis if the stacked column overruns it
+    if from_top and positions[-1] < lo:
+        ax.set_ylim(bottom=positions[-1] - 0.04 * span)
+    elif not from_top and positions[-1] > hi:
+        ax.set_ylim(top=positions[-1] + 0.04 * span)
+
+    offset = 0.03 * (x1 - x0)
+    label_x = (
+        float(selected["rank"].max()) + offset
+        if from_top
+        else float(selected["rank"].min()) - offset
+    )
+    for name, weight, rank, position in zip(
+        names, label_weights, ranks, positions, strict=True
+    ):
+        ax.annotate(
+            f"{name} ({weight:+.3f})",
+            xy=(rank, weight),
+            xytext=(label_x, position),
+            textcoords="data",
+            fontsize=fontsize,
+            va="center",
+            ha="left" if from_top else "right",
+            color=color,
+            # Backing box so the flat middle of the curve does not strike through a
+            # callout that lands near zero
+            bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.75, "pad": 0.8},
+            arrowprops={
+                "arrowstyle": "-",
+                "lw": 0.4,
+                "color": "0.55",
+                "shrinkA": 1,
+                "shrinkB": 2,
+            },
+        )
 
 
 def plot_lr_factors_partial(
