@@ -37,6 +37,7 @@ from cccrise.figures.figureAnova import (
     plot_association_effect_sizes,
     plot_category_component_weights,
 )
+from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.utils import celltype_component_association
 
 DATASET_CHOICES = {key: spec.label for key, spec in DATASETS.items()}
@@ -56,18 +57,18 @@ LR_HIGHLIGHT_CHOICES = {
 STRENGTH_CATEGORY_COLORS = ["#7B3294", "#D9D9D9", "#E66101", "#2C7BB6"]
 
 # ALAD: figureAnova.py's own curated comparisons, reused as-is (single
-# source of truth) rather than re-hardcoded here, reordered so "6-Month
-# Outcome (4-Way)" (the one with a significant component) leads, followed by
-# the original single default; the rest keep their source order.
-_ALAD_ALL_COMPARISONS = {cfg["name"]: cfg for cfg in DEFAULT_ASSOCIATIONS}
-_ALAD_LEAD_COMPARISONS = ["6-Month Outcome (4-Way)", "Control vs. ALAD (All)"]
-ALAD_COMPARISONS: dict[str, dict] = {
-    name: _ALAD_ALL_COMPARISONS[name] for name in _ALAD_LEAD_COMPARISONS
-} | {
-    name: cfg
-    for name, cfg in _ALAD_ALL_COMPARISONS.items()
-    if name not in _ALAD_LEAD_COMPARISONS
-}
+# source of truth) rather than re-hardcoded here.
+ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in DEFAULT_ASSOCIATIONS}
+
+# ALAD's default comparison tests every level of the dataset spec's outcome
+# column, matching the ANOVA bootstrap's default.
+_REGROUPING_KEYS = {"mapping", "levels", "control_label", "other_label"}
+ALAD_DEFAULT_COMPARISON = next(
+    name
+    for name, cfg in ALAD_COMPARISONS.items()
+    if cfg["group_column"] == RUNNER_DATASETS["alad"].outcome_column
+    and not _REGROUPING_KEYS & cfg.keys()
+)
 
 # COVID-19's raw data only has one patient status column, so it gets a single
 # comparison rather than a curated list; built from its DatasetSpec fields
@@ -85,6 +86,7 @@ DATASET_COMPARISONS: dict[str, dict[str, dict]] = {
     "alad": ALAD_COMPARISONS,
     "covid": COVID_COMPARISONS,
 }
+DEFAULT_COMPARISONS: dict[str, str] = {"alad": ALAD_DEFAULT_COMPARISON}
 
 
 def scrollable_plot(output_id: str, width_px: int, height_px: int) -> ui.Tag:
@@ -274,6 +276,8 @@ def server(input, output, session):
         raw = load_raw_dataset(input.dataset())
         cmp = input.component()
         name = input.patient_status_comparison()
+        runner_spec = RUNNER_DATASETS.get(input.dataset())
+        patient_column = runner_spec.patient_column if runner_spec else None
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5), layout="tight")
         plot_association_effect_sizes(df, axes[0])
@@ -289,6 +293,7 @@ def server(input, output, session):
             title=name,
             ax=axes[1],
             anova_df=df,
+            patient_column=patient_column,
         )
         return fig
 
@@ -315,6 +320,7 @@ def server(input, output, session):
                 "patient_status_comparison",
                 "Comparison",
                 choices=list(comparisons),
+                selected=DEFAULT_COMPARISONS.get(ds.spec.key),
             ),
             ui.output_ui("patient_status_ui"),
             ui.hr(),

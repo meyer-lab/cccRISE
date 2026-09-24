@@ -158,6 +158,8 @@ EMPHASIS_COLOR = "#2b5c8f"
 MUTED_COLOR = "#a0aec0"
 RAW_P_COLOR = "#5e3c99"
 PADJ_COLOR = "#e66101"
+PAIR_LINE_COLOR = "#d62728"
+STRIP_JITTER = 0.2
 
 
 def _format_pvalue(p: float) -> str:
@@ -260,6 +262,7 @@ def plot_category_component_weights(
     title: str | None = None,
     anova_df: pd.DataFrame | None = None,
     alpha: float = 0.05,
+    patient_column: str | None = None,
 ) -> None:
     """Plot component loadings across patient status categories as boxplot + stripplot.
 
@@ -287,6 +290,9 @@ def plot_category_component_weights(
         ANOVA results table for annotating test statistics in the title.
     alpha : float, default=0.05
         Significance threshold.
+    patient_column : str, optional
+        Metadata column identifying the patient behind each condition. Points
+        of conditions sharing a patient are joined by a line.
     """
     if not hasattr(factors_adata, "obs"):
         resolved_adata, _, _ = _resolve_factors_and_metadata(factors_adata)
@@ -356,6 +362,7 @@ def plot_category_component_weights(
         y="Loading",
         order=categories,
         hue="Status",
+        dodge=False,
         legend=False,
         ax=ax,
         palette="Set2",
@@ -366,17 +373,28 @@ def plot_category_component_weights(
         medianprops={"color": "black", "linewidth": 1.5},
         fliersize=0,
     )
-    sns.stripplot(
-        data=df_plot,
-        x="Status",
-        y="Loading",
-        order=categories,
-        ax=ax,
-        color="0.2",
-        size=5.5,
-        jitter=0.2,
-        alpha=0.8,
+    # Jittered by hand rather than via sns.stripplot so pairing lines can be
+    # drawn through the exact point positions
+    rng = np.random.default_rng(0)
+    positions = {cat: i for i, cat in enumerate(categories)}
+    df_plot["x"] = df_plot["Status"].map(positions).astype(float) + rng.uniform(
+        -STRIP_JITTER, STRIP_JITTER, len(df_plot)
     )
+    ax.scatter(df_plot["x"], df_plot["Loading"], color="0.2", s=30, alpha=0.8, zorder=3)
+
+    if patient_column is not None:
+        patient_of = get_sample_to_group(resolved_adata, cond_col, patient_column)
+        df_plot["Patient"] = patient_of.loc[df_plot["Condition"]].to_numpy()
+        for _, samples in df_plot.groupby("Patient"):
+            if len(samples) > 1:
+                ax.plot(
+                    samples["x"],
+                    samples["Loading"],
+                    color=PAIR_LINE_COLOR,
+                    lw=1.2,
+                    alpha=0.8,
+                    zorder=2,
+                )
 
     # Label x-ticks with sample counts and rotate if necessary
     xtick_labels = [f"{cat}\n(n={counts[cat]})" for cat in categories]
