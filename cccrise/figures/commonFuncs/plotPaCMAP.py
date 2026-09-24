@@ -107,7 +107,7 @@ def plot_wc_pacmap(
     points = np.array(X.obsm["PaCMAP"])
 
     cmap = sns.diverging_palette(240, 10, as_cmap=True)
-    values /= np.max(values)
+    values = values / np.max(values)
 
     _plot_shaded_pacmap(
         points, values, ax, cmap, (-cbarMax, cbarMax), "Cmp. " + str(cmp)
