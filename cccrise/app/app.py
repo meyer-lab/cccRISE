@@ -389,8 +389,13 @@ def server(input, output, session):
         patient_column = runner_spec.patient_column if runner_spec else None
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5), layout="tight")
-        plot_association_effect_sizes(df, axes[0])
-        axes[0].axvline(cmp - 1, color="0.15", ls="--", lw=1.2, zorder=0)
+        plot_association_effect_sizes(
+            df,
+            axes[0],
+            highlight_component=cmp,
+            emphasis_color=colors.HIGHLIGHT,
+            muted_color=colors.MUTED,
+        )
         plot_category_component_weights(
             raw.adata,
             component=cmp,
@@ -460,7 +465,7 @@ def server(input, output, session):
                         ui.input_checkbox(
                             "lr_include_negative",
                             "Include Negative LR Tail",
-                            value=True,
+                            value=False,
                         ),
                     ),
                     ui.column(
@@ -626,9 +631,9 @@ def server(input, output, session):
                 celltype_col=celltype_col,
                 top_perc=top_perc,
                 log_y=input.dist_log_y(),
+                show_stats=False,
                 colors=[colors.SENDER, colors.RECEIVER],
             )
-            fig.suptitle(f"Cmp. {cmp}: Cell Weight Distributions by Cell Type")
             return fig
 
         else:
@@ -694,9 +699,11 @@ def server(input, output, session):
                 normalize="global",
                 scale=scale,
                 show_counts=True,
+                cbar=ft == "receiver",
             )
             ax.set_title(f"{label} Cell Type Association")
-        fig.suptitle(f"Cell Type Associations ({stat})", fontweight="bold")
+        # Both panels share rows and a color scale: label rows once, on the left
+        axes[1].tick_params(axis="y", labelleft=False)
         return fig
 
     @render.plot
@@ -862,13 +869,24 @@ def server(input, output, session):
                 ],
             }
         )
-        return render.DataGrid(table)
+        # Style the row labels like the header row
+        return render.DataGrid(
+            table,
+            styles=[
+                {
+                    "cols": [0],
+                    "style": {
+                        "background-color": "var(--shiny-datagrid-grid-header-bgcolor)",
+                        "font-weight": "bold",
+                    },
+                }
+            ],
+        )
 
     @render.plot
     @styled_figure()
     def strength_category_pacmap_plot():
         ds = dataset()
-        cmp = input.component()
         sender, receiver, sender_threshold, receiver_threshold = strength_weights()
         is_sender = sender >= sender_threshold
         is_receiver = receiver >= receiver_threshold
@@ -890,7 +908,6 @@ def server(input, output, session):
             color_key=STRENGTH_CATEGORY_COLORS,
         )
         assign_labels(ax)
-        ax.set_title(f"Cmp. {cmp} Strength Category")
         return fig
 
     @render.plot
@@ -913,7 +930,6 @@ def server(input, output, session):
         ax.set(
             xlabel=f"Cmp. {cmp} Sender Weight",
             ylabel=f"Cmp. {cmp} Receiver Weight",
-            title=f"Cmp. {cmp} Sender vs. Receiver Weight by Cell Type",
         )
         return fig
 
@@ -927,7 +943,14 @@ def server(input, output, session):
 
         fig, axes = plt.subplots(1, 3, figsize=(20, 6.5), layout="tight")
 
-        plot_wc_pacmap(X, cmp, axes[0], cbarMax=0.3, factor_matrix=factor_matrix)
+        plot_wc_pacmap(
+            X,
+            cmp,
+            axes[0],
+            cbarMax=0.3,
+            factor_matrix=factor_matrix,
+            cbar_match_height=True,
+        )
         axes[0].set_title(f"Cmp. {cmp} {input.weight_source().capitalize()} Weight")
 
         plot_labels_pacmap(
