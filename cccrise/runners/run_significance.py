@@ -37,6 +37,7 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
+    add_fix_b_identity_argument,
     add_group_arguments,
     dataset_metadata,
     resolve_group_labels,
@@ -74,6 +75,7 @@ def run_significance(
     max_exact_perms: int = 100_000,
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
+    fix_B_identity: bool = False,
     random_state: int = 42,
     output_path: Path | None = None,
     output_root: Path = DATA_DIR,
@@ -162,6 +164,7 @@ def run_significance(
         max_exact_perms=max_exact_perms,
         n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
+        fix_B_identity=fix_B_identity,
         random_state=random_state,
         validate=False,
     )
@@ -203,6 +206,7 @@ def run_significance(
             "hill_k": hill_k,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            "fix_B_identity": fix_B_identity,
             "r2x_rise": float(results["r2x_rise"]),
             "random_state": random_state,
             "total_tensor_entries": int(overview_df["TotalEntries"].iloc[0]),
@@ -233,6 +237,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_dataset_argument(parser)
+    add_fix_b_identity_argument(parser)
     add_group_arguments(parser)
     parser.add_argument(
         "--rise-rank",
@@ -329,6 +334,7 @@ def main(argv: list[str] | None = None) -> None:
         hill_k=args.hill_k,
         rise_n_iter_max=args.rise_n_iter_max,
         rise_tol=args.rise_tol,
+        fix_B_identity=args.fix_B_identity,
         random_state=args.random_state,
         output_path=resolve_output(
             args.output, args.output_root, spec.significance_lr_filename()

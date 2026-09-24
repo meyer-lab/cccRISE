@@ -27,6 +27,7 @@ def rise_store_r2x(
     tolerance: float = 1e-6,
     random_state: int | None = None,
     backend: str | None = None,
+    fix_B_identity: bool = False,
 ):
     """Runs RISE and stores the results.
 
@@ -41,6 +42,7 @@ def rise_store_r2x(
         n_iter_max=n_iter_max,
         backend=backend,
         normalize_slices=True,
+        fix_B_identity=fix_B_identity,
     )
     X = store_pf2(X, pf2_out)
 

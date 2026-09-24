@@ -21,6 +21,7 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
+    add_fix_b_identity_argument,
     dataset_metadata,
     parse_ranks,
     resolve_output,
@@ -45,6 +46,7 @@ def run_rise_rank_selection(
     held_out_gene_frac: float = 0.5,
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
+    fix_B_identity: bool = False,
     compress: str | int | bool = "auto",
     n_power_iter: int = 2,
     backend: str | None = None,
@@ -97,7 +99,7 @@ def run_rise_rank_selection(
         max_iter=rise_n_iter_max,
         compress=compress,
         compression_kwarg=compression_kwarg,
-        parafac2_kwarg={"normalize_slices": True}
+        parafac2_kwarg={"normalize_slices": True, "fix_B_identity": fix_B_identity}
         | ({"backend": backend} if backend else {}),
         condition_key=spec.condition_column,
     )
@@ -114,6 +116,7 @@ def run_rise_rank_selection(
             "held_out_gene_frac": held_out_gene_frac,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            "fix_B_identity": fix_B_identity,
             "compress": compress,
             "n_power_iter": n_power_iter,
             "backend": backend or "auto",
@@ -131,6 +134,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     add_dataset_argument(parser)
+    add_fix_b_identity_argument(parser)
     parser.add_argument(
         "--ranks",
         type=str,
@@ -193,6 +197,7 @@ def main(argv: list[str] | None = None) -> None:
         held_out_gene_frac=args.held_out_gene_frac,
         rise_n_iter_max=args.rise_n_iter_max,
         rise_tol=args.rise_tol,
+        fix_B_identity=args.fix_B_identity,
         compress=compress,
         n_power_iter=args.n_power_iter,
         backend=args.backend,

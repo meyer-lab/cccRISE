@@ -3,10 +3,10 @@ revision = 3
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32'",
-    "python_full_version < '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and platform_machine != 'ARM64' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32'",
     "python_full_version < '3.14' and platform_machine != 'ARM64' and sys_platform == 'win32'",
     "python_full_version < '3.14' and sys_platform == 'emscripten'",
     "python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
@@ -168,8 +168,8 @@ requires-dist = [
     { name = "netcdf4", specifier = ">=1.6.5" },
     { name = "numpy", specifier = ">=2.2" },
     { name = "pacmap", specifier = ">=0.8.0" },
-    { name = "parafac2", specifier = ">=1.7.0" },
-    { name = "parafac2", extras = ["gpu"], marker = "extra == 'gpu'", specifier = ">=1.7.0" },
+    { name = "parafac2", specifier = ">=1.8.0" },
+    { name = "parafac2", extras = ["gpu"], marker = "extra == 'gpu'", specifier = ">=1.8.0" },
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pyreadr", specifier = ">=0.5.6" },
     { name = "pyyaml", specifier = ">=6.0" },

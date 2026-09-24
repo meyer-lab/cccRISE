@@ -36,6 +36,7 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
+    add_fix_b_identity_argument,
     add_group_arguments,
     dataset_metadata,
     resolve_group_labels,
@@ -65,6 +66,7 @@ def run_anova_bootstrap(
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     cp_n_iter_max: int = CP_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
+    fix_B_identity: bool = False,
     cp_tol: float = CP_TOL,
     complex_sep: str | None = "&",
     random_state: int = 42,
@@ -168,6 +170,7 @@ def run_anova_bootstrap(
         lr_pairs=lr_pairs,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
+        fix_B_identity=fix_B_identity,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
         complex_sep=complex_sep,
@@ -192,6 +195,7 @@ def run_anova_bootstrap(
         lr_pairs=lr_pairs,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
+        fix_B_identity=fix_B_identity,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
         complex_sep=complex_sep,
@@ -238,6 +242,7 @@ def run_anova_bootstrap(
             "rise_n_iter_max": rise_n_iter_max,
             "cp_n_iter_max": cp_n_iter_max,
             "rise_tol": rise_tol,
+            "fix_B_identity": fix_B_identity,
             "cp_tol": cp_tol,
             "complex_sep": complex_sep,
             "random_state": random_state,
@@ -268,6 +273,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     add_dataset_argument(parser)
+    add_fix_b_identity_argument(parser)
     parser.add_argument(
         "--rise-rank",
         type=int,
@@ -358,6 +364,7 @@ def main(argv: list[str] | None = None) -> None:
         rise_n_iter_max=args.rise_n_iter_max,
         cp_n_iter_max=args.cp_n_iter_max,
         rise_tol=args.rise_tol,
+        fix_B_identity=args.fix_B_identity,
         cp_tol=args.cp_tol,
         complex_sep=args.complex_sep,
         random_state=args.random_state,

@@ -49,6 +49,16 @@ def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_fix_b_identity_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--fix-b-identity",
+        dest="fix_B_identity",
+        action="store_true",
+        help="Exploratory: hold the RISE B factor at the identity "
+        "(parafac2_nd fix_B_identity).",
+    )
+
+
 def add_group_arguments(parser: argparse.ArgumentParser) -> None:
     """Add the binary-outcome arguments every group-comparison runner takes."""
     parser.add_argument(

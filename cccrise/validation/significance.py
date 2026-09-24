@@ -43,6 +43,7 @@ def fit_significance_pipeline(
     validate: bool = False,
     *,
     rise_tol: float,
+    fix_B_identity: bool = False,
 ) -> dict[str, Any]:
     """Fit RISE and compute within-condition and differential communication significance.
 
@@ -109,6 +110,7 @@ def fit_significance_pipeline(
         tol=rise_tol,
         random_state=random_state,
         normalize_slices=True,
+        fix_B_identity=fix_B_identity,
     )
     dense_P = pf2_output[2]
     condition_names = np.unique(adata.obs[condition_column]).tolist()
