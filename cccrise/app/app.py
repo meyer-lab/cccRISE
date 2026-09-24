@@ -12,10 +12,12 @@ import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
+from matplotlib.rcsetup import cycler
 from matplotlib.text import Text
 from shiny import App, reactive, render, ui
 
 from cccrise.anova import run_saved_factors_anova
+from cccrise.app import colors
 from cccrise.app.data import DATASETS, load_dataset, load_raw_dataset
 from cccrise.app.lr_pairs import parse_lr_pairs
 from cccrise.figures.commonFuncs.plotFactors import (
@@ -70,7 +72,15 @@ HEADER_CSS = "h4 { font-size: 2.25rem; } h6 { font-size: 1.5rem; }"
 # assignment, so this list has to be in that order: Both, Neither, Receiver
 # Only, Sender Only. "Neither" is usually the majority category, so it's
 # muted rather than drawn from the same accented palette as the other three.
-STRENGTH_CATEGORY_COLORS = ["#7B3294", "#D9D9D9", "#E66101", "#2C7BB6"]
+STRENGTH_CATEGORY_COLORS = [
+    colors.PINK,
+    colors.LIGHT_GREY,
+    colors.RECEIVER,
+    colors.SENDER,
+]
+
+# Plots that don't set their own colors draw from the shared palette.
+plt.rcParams["axes.prop_cycle"] = cycler(color=colors.categorical_colors(8))
 
 # ALAD: figureAnova.py's own curated comparisons, reused as-is (single
 # source of truth) rather than re-hardcoded here.
@@ -590,6 +600,7 @@ def server(input, output, session):
             highlight=highlight,
             include_negative=include_neg,
             max_labels=max_labels,
+            colors=(colors.ORANGE, colors.BLUE),
         )
         return fig
 
@@ -615,6 +626,7 @@ def server(input, output, session):
                 celltype_col=celltype_col,
                 top_perc=top_perc,
                 log_y=input.dist_log_y(),
+                colors=[colors.SENDER, colors.RECEIVER],
             )
             fig.suptitle(f"Cmp. {cmp}: Cell Weight Distributions by Cell Type")
             return fig
@@ -622,12 +634,22 @@ def server(input, output, session):
         else:
             fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="tight")
             plot_wc_per_celltype(
-                X, cmp, axes[0], cellType=celltype_col, factor_matrix="B"
+                X,
+                cmp,
+                axes[0],
+                cellType=celltype_col,
+                factor_matrix="B",
+                color=colors.SENDER,
             )
             axes[0].set_title(f"Cmp. {cmp} Sender Weight by Cell Type")
 
             plot_wc_per_celltype(
-                X, cmp, axes[1], cellType=celltype_col, factor_matrix="C"
+                X,
+                cmp,
+                axes[1],
+                cellType=celltype_col,
+                factor_matrix="C",
+                color=colors.RECEIVER,
             )
             axes[1].set_title(f"Cmp. {cmp} Receiver Weight by Cell Type")
             return fig
@@ -884,6 +906,7 @@ def server(input, output, session):
             np.column_stack([sender, receiver]),
             ds.adata.obs[celltype_col],
             ax,
+            color_key=colors.celltype_colors(ds.adata.obs[celltype_col].nunique()),
         )
         ax.axvline(sender_threshold, color="0.3", ls="--", lw=1.0)
         ax.axhline(receiver_threshold, color="0.3", ls="--", lw=1.0)
@@ -907,11 +930,21 @@ def server(input, output, session):
         plot_wc_pacmap(X, cmp, axes[0], cbarMax=0.3, factor_matrix=factor_matrix)
         axes[0].set_title(f"Cmp. {cmp} {input.weight_source().capitalize()} Weight")
 
-        plot_labels_pacmap(X, labelType=ds.spec.celltype_col, ax=axes[1])
+        plot_labels_pacmap(
+            X,
+            labelType=ds.spec.celltype_col,
+            ax=axes[1],
+            color_key=colors.celltype_colors(X.obs[ds.spec.celltype_col].nunique()),
+        )
         axes[1].set_title("Cell Type")
 
         if ds.spec.group_col is not None and ds.spec.group_col in X.obs:
-            plot_labels_pacmap(X, labelType=ds.spec.group_col, ax=axes[2])
+            plot_labels_pacmap(
+                X,
+                labelType=ds.spec.group_col,
+                ax=axes[2],
+                color_key=colors.categorical_colors(X.obs[ds.spec.group_col].nunique()),
+            )
             axes[2].set_title(ds.spec.group_col)
         else:
             axes[2].axis("off")
