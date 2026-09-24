@@ -46,8 +46,8 @@ Repository = "https://github.com/meyer-lab/cellcommunication-Pf2"
 Documentation = "https://meyer-lab.github.io/cellcommunication-Pf2/"
 
 [project.scripts]
-fbuild = "cccrise.figures.common:genFigure"
-factor = "cccrise.imports:factorSave"
+cccrise-fbuild = "cccrise.figures.common:genFigure"
+cccrise-factor = "cccrise.imports:factorSave"
 cccrise-run = "cccrise.runners.run_ccc_rise:main"
 cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
