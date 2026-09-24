@@ -31,7 +31,7 @@ resulting_dims:
   lr_pairs: 513
 interaction_tensor_shape: [47, 9, 9, 513]
 r2x_pf2: 0.027284062516550245
-r2x_cp: 0.5347675178471689
+r2x_cp: 0.38182223806920434
 rank_selection:
   rise:
     rank: 9
@@ -39,9 +39,10 @@ rank_selection:
     notes: 'first BiCV plateau: smallest rank whose mean held-out BiCV R2X is within one SEM
       (at the argmax) of the maximum (10 repeats; argmax 18, rank 8 misses by 0.027 points)'
   cpd:
-    rank: 4
+    rank: 2
     sweep_csv: cccrise/data/cpd_rank_alad.csv
-    notes: highest CP rank with CORCONDIA >= 85% (86.2% at CP 4; 83.7% at CP 3, -223% at CP
-      5)
-git_sha: 994c3e289adf81f865f4fc8cfa8f2a1e6bc538ef
-generated: '2026-09-24T22:32:42+00:00'
+    notes: last CP rank before CORCONDIA first drops below 85% (99.99% at CP 2, 83.7% at CP
+      3), and the largest rank with no collinear component pair in any mode (single-mode collinearity
+      from CP 3). CP 4 also passes 85% (86.2%) but follows the CP-3 dip.
+git_sha: 0e05645611e0fa4e36949e92658c407ed05d1ee3
+generated: '2026-09-24T23:42:32+00:00'
