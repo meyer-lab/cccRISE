@@ -76,6 +76,8 @@ def plot_wc_histogram(
     bins: int = 50,
     top_perc: float = 10,
     log_y: bool = True,
+    show_stats: bool = True,
+    colors: list | None = None,
 ) -> None:
     """Histogram of one cell type's weights for one component, sender and receiver
     overlaid.
@@ -106,6 +108,11 @@ def plot_wc_histogram(
     log_y : bool, default=True
         Log-scale the y axis, which keeps a small high-weight tail visible against a
         peak near zero.
+    show_stats : bool, default=True
+        Report the mean and top-percentile share in the legend; otherwise label
+        each histogram by factor type only.
+    colors : list, optional
+        One color per entry of `factor_types`; defaults to colorblind blue/red.
     """
     labels = np.asarray(cast(pd.DataFrame, X.obs)[celltype_col]).astype(str)
     mask = labels == celltype
@@ -118,14 +125,16 @@ def plot_wc_histogram(
     hi = max(float(values.max()) for values in all_values)
     # A list rather than an array: matplotlib's stubs type `bins` as Sequence[float]
     edges = np.linspace(lo, hi, bins + 1).tolist()
-    colors = sns.color_palette("colorblind")
+    if colors is None:
+        palette = sns.color_palette("colorblind")
+        colors = [palette[[0, 3][i % 2]] for i in range(len(factor_types))]
 
     ax.axvline(0.0, color="0.6", lw=0.6, zorder=0)
     for i, (factor_type, values) in enumerate(
         zip(factor_types, all_values, strict=True)
     ):
         subset = values[mask]
-        color = colors[[0, 3][i % 2]]
+        color = colors[i]
         threshold = float(np.percentile(values, 100 - top_perc))
         pct_top = 100 * float(np.mean(subset > threshold)) if subset.size else np.nan
 
@@ -139,7 +148,9 @@ def plot_wc_histogram(
             edgecolor=color,
             lw=0.8,
             label=(
-                f"{factor_type.capitalize()}: "
+                factor_type.capitalize()
+                if not show_stats
+                else f"{factor_type.capitalize()}: "
                 f"$\\mu$={subset.mean():+.3f}, {pct_top:.0f}% in top {top_perc:g}%"
                 if subset.size
                 else f"{factor_type.capitalize()}: no cells"

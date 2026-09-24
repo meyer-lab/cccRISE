@@ -68,9 +68,17 @@ def ds_show(result, ax, canvas: ds.Canvas):
 
 
 def _plot_shaded_pacmap(
-    points, values, ax: Axes, cmap, span: tuple[float, float], title: str
+    points,
+    values,
+    ax: Axes,
+    cmap,
+    span: tuple[float, float],
+    title: str,
+    cbar_match_height: bool = False,
 ):
-    """Shade PaCMAP points by a continuous value and draw the result with a colorbar"""
+    """Shade PaCMAP points by a continuous value and draw the result with a
+    colorbar. `cbar_match_height` sizes the colorbar to the (equal-aspect)
+    image rather than the full axes slot."""
     canvas = _get_canvas(points)
     data = pd.DataFrame(points, columns=pd.Index(["x", "y"]))
     data["val_cat"] = values
@@ -85,7 +93,12 @@ def _plot_shaded_pacmap(
     ds_show(result, ax, canvas)
 
     sm = ScalarMappable(norm=matplotlib.colors.Normalize(*span), cmap=cmap)
-    plt.colorbar(sm, ax=ax)
+    if cbar_match_height:
+        # An inset follows the drawn (aspect-adjusted) axes box, and stays out
+        # of `fig.axes` for callers that expect every axes to sit on a grid.
+        plt.colorbar(sm, cax=ax.inset_axes((1.03, 0.0, 0.04, 1.0)))
+    else:
+        plt.colorbar(sm, ax=ax)
     ax.set(title=title)
     assign_labels(ax)
 
@@ -96,6 +109,7 @@ def plot_wc_pacmap(
     ax: Axes,
     cbarMax: float = 1.0,
     factor_matrix: str | None = None,
+    cbar_match_height: bool = False,
 ):
     """Scatterplot of PaCMAP visualization of weighted cells for one component in receiver or sender"""
     if factor_matrix == "B":
@@ -110,7 +124,13 @@ def plot_wc_pacmap(
     values = values / np.max(values)
 
     _plot_shaded_pacmap(
-        points, values, ax, cmap, (-cbarMax, cbarMax), "Cmp. " + str(cmp)
+        points,
+        values,
+        ax,
+        cmap,
+        (-cbarMax, cbarMax),
+        "Cmp. " + str(cmp),
+        cbar_match_height=cbar_match_height,
     )
 
 
@@ -256,6 +276,7 @@ def plot_wc_per_celltype(
     outliers: bool = False,
     cellType="cell_type",
     factor_matrix: str | None = None,
+    color=None,
 ):
     """Boxplot of weighted cells for one component across cell types"""
     if factor_matrix == "B":
@@ -273,6 +294,7 @@ def plot_wc_per_celltype(
         x=cmpName,
         y="Cell Type",
         showfliers=outliers,
+        color=color,
         ax=ax,
     )
     maxvalue = np.max(np.abs(ax.get_xticks()))

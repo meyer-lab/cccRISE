@@ -502,6 +502,9 @@ def plot_association_effect_sizes(
     alpha: float = 0.05,
     title: str | None = None,
     metric: str = "EtaSquared",
+    highlight_component: int | None = None,
+    emphasis_color: str = EMPHASIS_COLOR,
+    muted_color: str = MUTED_COLOR,
 ) -> None:
     """Plot component effect sizes (eta-squared or F-statistic) for a single association.
 
@@ -518,6 +521,11 @@ def plot_association_effect_sizes(
         Optional title for the subplot.
     metric : str, default="EtaSquared"
         Effect size metric ('EtaSquared' or 'F').
+    highlight_component : int | None
+        If given, shade only this component's bar instead of the significant
+        ones; significant labels stay bold either way.
+    emphasis_color, muted_color : str
+        Colors of the shaded and the remaining bars.
     """
     df_sorted = df.copy().sort_values("Component").reset_index(drop=True)
     components = df_sorted["Component"].astype(int).to_numpy()
@@ -527,7 +535,10 @@ def plot_association_effect_sizes(
     p_col = "PAdj" if "PAdj" in df_sorted.columns else "P"
     is_sig = (df_sorted[p_col] < alpha).to_numpy(dtype=bool)
 
-    colors = [EMPHASIS_COLOR if sig else MUTED_COLOR for sig in is_sig]
+    emphasized = (
+        is_sig if highlight_component is None else (components == highlight_component)
+    )
+    colors = [emphasis_color if emph else muted_color for emph in emphasized]
     val_col = metric if metric in df_sorted.columns else "EtaSquared"
     values = df_sorted[val_col].to_numpy(dtype=float)
 

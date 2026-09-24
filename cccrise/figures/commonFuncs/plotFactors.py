@@ -148,6 +148,7 @@ def plot_celltype_association(
     normalize: str | None = "global",
     scale: float | None = None,
     show_counts: bool = False,
+    cbar: bool = True,
 ) -> pd.DataFrame:
     """Heatmap of cell types against components, colored by each cell type's
     association with each component.
@@ -173,6 +174,9 @@ def plot_celltype_association(
         directly comparable, since normalization is otherwise per call.
     show_counts : bool, default=False
         Append each cell type's cell count to its label.
+    cbar : bool, default=True
+        Draw the colorbar; drop it on all but one of several panels sharing
+        a `scale`.
 
     Returns
     -------
@@ -216,6 +220,7 @@ def plot_celltype_association(
         cmap=cmap,
         vmin=-vmax,
         vmax=vmax,
+        cbar=cbar,
         cbar_kws={"label": cbar_label},
     )
     ax.tick_params(axis="y", rotation=0)
@@ -285,6 +290,7 @@ def plot_lr_factor_rank(
     include_negative: bool = False,
     max_labels: int = 10,
     label_fontsize: float = 9,
+    colors: tuple | None = None,
 ) -> pd.DataFrame:
     """Plot every LR pair's weight for one component against its rank in that
     component, marking and labeling only the pairs that stand out.
@@ -313,6 +319,9 @@ def plot_lr_factor_rank(
         Cap on labeled pairs per tail; the rest keep their markers. Labels are laid
         out in a callout column and nudged apart so they never overlap, however
         tightly the marked weights are packed.
+    colors : tuple, optional
+        (top tail, negative tail) marker/label colors; defaults to colorblind
+        red/blue.
 
     Returns
     -------
@@ -341,7 +350,9 @@ def plot_lr_factor_rank(
         ]
     ranked["highlighted"] = top_mask | bottom_mask
 
-    colors = sns.color_palette("colorblind")
+    if colors is None:
+        palette = sns.color_palette("colorblind")
+        colors = (palette[3], palette[0])
     ax.axhline(0.0, color="0.75", lw=0.6, ls="--", zorder=0)
     ax.plot(ranked["rank"], ranked["weight"], color="0.35", lw=1.0, zorder=1)
 
@@ -354,8 +365,8 @@ def plot_lr_factor_rank(
     ax.set_xlim(0, len(ranked) + 1)
 
     for mask, color, from_top in [
-        (top_mask, colors[3], True),
-        (bottom_mask, colors[0], False),
+        (top_mask, colors[0], True),
+        (bottom_mask, colors[1], False),
     ]:
         selected = ranked[mask]
         if selected.empty:
