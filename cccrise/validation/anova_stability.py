@@ -1,23 +1,25 @@
 """
-Patient-level bootstrap of the CCC-RISE logistic regression weights.
+Patient-level bootstrap of the CCC-RISE component--phenotype ANOVA.
 
-A single logistic regression fit on one CCC-RISE factorization reports a
-weight per CP component, but says nothing about how much of that weight is
+A single one-way ANOVA on one CCC-RISE factorization reports an F, a p and an
+effect size per CP component, but says nothing about how much of that is
 attributable to *which patients happened to be enrolled*. Resampling the
 patient roster with replacement and re-running the whole pipeline -- RISE, the
-interaction tensor, CP at the same fixed ranks, then the logistic regression
--- turns each component's weight into a distribution whose spread is exactly
-that sampling variability.
+interaction tensor, CP at the same fixed ranks, then the ANOVA -- turns each
+component's effect size into a distribution whose spread is exactly that
+sampling variability.
 
 Every replicate refits RISE and CP from scratch, so its components come out in
 an arbitrary order and sign; each replicate is therefore matched back onto the
-full-cohort ("reference") fit's components before its weights are recorded
+full-cohort ("reference") fit's components before its statistics are recorded
 (`align_to_reference_components`). The match is computed on the
 ligand-receptor mode alone, the one mode whose coordinates mean the same thing
 in two fits with separately-fit RISE factors, and its score is kept alongside
-every weight: a component that could not be re-identified in a replicate
-produces a wide weight distribution for a reason that has nothing to do with
-the logistic regression, and the two explanations have to stay separable.
+every row: a component that could not be re-identified in a replicate produces
+a wide distribution for a reason that has nothing to do with the phenotype,
+and the two explanations have to stay separable. Only `GroupMeanDiff` carries
+a sign and so is the only column the alignment's sign correction touches; F, P
+and eta-squared are sign-invariant.
 """
 
 from typing import Any, cast
@@ -27,9 +29,9 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import linear_sum_assignment
 
-from ..logreg import fit_logreg_weights, prepare_logreg_inputs
-from ..tensor import fit_rise_cp_pipeline
+from ..anova import anova_component_associations, prepare_anova_inputs
 from ..utils import replicate_seed, resample_conditions
+from .component_stability import fit_rise_cp
 
 Factors = list[np.ndarray]
 
@@ -175,14 +177,14 @@ def top_lr_pairs(
     return pd.DataFrame(rows)
 
 
-def fit_logreg_pipeline(
+def fit_anova_pipeline(
     adata: anndata.AnnData,
     condition_column: str,
     group_column: str,
-    control_label: str,
-    other_label: str,
-    rise_rank: int,
-    cp_rank: int,
+    control_label: str | None = None,
+    other_label: str | None = None,
+    rise_rank: int = 25,
+    cp_rank: int = 10,
     lr_pairs: pd.DataFrame | None = None,
     rise_n_iter_max: int = 100,
     rise_tol: float = 1e-6,
@@ -193,11 +195,13 @@ def fit_logreg_pipeline(
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
-    scoring: str = "roc_auc",
     random_state: int | None = None,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> dict[str, Any]:
-    """Run RISE, the interaction tensor and CP over `adata`, then fit the
-    logistic regression on the resulting condition factors.
+    """Run RISE, the interaction tensor and CP over `adata`, then test the
+    resulting condition factors against the phenotype by one-way ANOVA.
 
     Parameters
     ----------
@@ -206,10 +210,10 @@ def fit_logreg_pipeline(
         roster for a replicate.
     condition_column, group_column : str
         Columns in `obs` holding the patient identity and its group label.
-    control_label : str
-        Value of `group_column` mapped to the reference class.
-    other_label : str
-        Label applied to every other value of `group_column`.
+    control_label, other_label : str | None, optional
+        Values of `group_column` collapsed to the reference and other level.
+        Both None -- the default -- tests every level of `group_column`; see
+        `anova.prepare_anova_inputs`.
     rise_rank, cp_rank : int
         The already-selected ranks the bootstrap is conditional on.
     lr_pairs : pd.DataFrame | None, optional
@@ -220,25 +224,30 @@ def fit_logreg_pipeline(
         Fitting controls for the CP fit.
     complex_sep, communication_score, hill_k : str | None, str, float
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
-    scoring : str, default="roc_auc"
-        Scikit-learn scoring the logistic regression selects its
-        regularization strength by; see `logreg.fit_logreg_weights`.
     random_state : int | None, optional
-        Seed for the RISE fit, the CP fit and the logistic regression's
-        cross-validation.
+        Seed for the RISE fit and the CP fit. The ANOVA is deterministic.
+    backend : str | None, default=None
+        Backend the RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
+        auto-detect); passed straight through to `tensor.rise_store_r2x`.
+    compress : bool, default=True
+        Fit CP inside a CANDELINC core sized for `cp_rank` instead of the
+        full tensor (see `validation.component_stability._fit_cp`).
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
     dict[str, Any]
-        Dictionary with keys 'factors', 'cp_weights', 'lr_symbols',
-        'logreg_weights', 'r2x_cp', 'sample_to_group'.
+        Dictionary with keys 'factors', 'cp_weights', 'lr_symbols', 'anova'
+        (the per-component table from `anova.anova_component_associations`),
+        'r2x_cp', 'sample_to_group'.
     """
     if lr_pairs is None:
         from ..import_data import import_ligand_receptor_pairs
 
         lr_pairs = import_ligand_receptor_pairs()
 
-    fit = fit_rise_cp_pipeline(
+    fit = fit_rise_cp(
         adata,
         lr_pairs,
         condition_column,
@@ -254,12 +263,14 @@ def fit_logreg_pipeline(
         communication_score=communication_score,
         hill_k=hill_k,
         random_state=random_state,
+        backend=backend,
+        compress=compress,
+        oversample=oversample,
     )
-    adata = fit["adata"]
-    filtered_lr_pairs = fit["filtered_lr_pairs"]
+    adata, filtered_lr_pairs = fit["adata"], fit["filtered_lr_pairs"]
     cp_weights, factors, r2x_cp = fit["cp_weights"], fit["cp_factors"], fit["r2x_cp"]
 
-    X, sample_to_group = prepare_logreg_inputs(
+    X, sample_to_group = prepare_anova_inputs(
         adata,
         factors,
         condition_column,
@@ -267,31 +278,44 @@ def fit_logreg_pipeline(
         control_label,
         other_label,
     )
-    logreg_weights = fit_logreg_weights(
-        X,
-        sample_to_group,
-        scoring=scoring,
-        random_state=random_state,
+    anova = anova_component_associations(
+        X, sample_to_group, control_label=control_label
     )
     return {
         "factors": factors,
         "cp_weights": cp_weights,
         "lr_symbols": filtered_lr_pairs["interaction_symbol"].to_numpy(),
-        "logreg_weights": logreg_weights,
+        "anova": anova,
         "r2x_cp": r2x_cp,
         "sample_to_group": sample_to_group,
     }
 
 
-def bootstrap_replicate_weights(
+#: Column order of one replicate's table, and so of the replicate-level CSV
+#: once `bootstrap_anova` prepends 'Replicate'.
+REPLICATE_COLUMNS = [
+    "Component",
+    "MatchedComponent",
+    "EtaSquared",
+    "F",
+    "P",
+    "GroupMeanDiff",
+    "MatchScore",
+    "SignedCosine",
+    "RunnerUpScore",
+    "R2XCP",
+]
+
+
+def bootstrap_replicate_anova(
     adata: anndata.AnnData,
     reference: dict[str, Any],
     condition_column: str,
     group_column: str,
-    control_label: str,
-    other_label: str,
-    rise_rank: int,
-    cp_rank: int,
+    control_label: str | None = None,
+    other_label: str | None = None,
+    rise_rank: int = 25,
+    cp_rank: int = 10,
     lr_pairs: pd.DataFrame | None = None,
     rise_n_iter_max: int = 100,
     rise_tol: float = 1e-6,
@@ -302,12 +326,15 @@ def bootstrap_replicate_weights(
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
-    scoring: str = "roc_auc",
     stratify: bool = True,
+    patient_column: str | None = None,
     random_state: int | None = None,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> pd.DataFrame:
     """One bootstrap replicate: resample patients, re-run the pipeline, and
-    report each reference component's logistic regression weight from the
+    report each reference component's ANOVA against the phenotype from the
     resampled fit.
 
     Parameters
@@ -316,13 +343,12 @@ def bootstrap_replicate_weights(
         Full-cohort data to resample patients from.
     reference : dict[str, Any]
         The full-cohort fit whose component numbering and orientation the
-        replicate's weights are expressed in.
+        replicate's statistics are expressed in.
     condition_column, group_column : str
         Columns in `obs` holding the patient identity and its group label.
-    control_label : str
-        Value of `group_column` mapped to the reference class.
-    other_label : str
-        Label applied to every other value of `group_column`.
+    control_label, other_label : str | None, optional
+        Values of `group_column` collapsed to the reference and other level;
+        both None tests every level. See `anova.prepare_anova_inputs`.
     rise_rank, cp_rank : int
         The already-selected ranks the bootstrap is conditional on.
     lr_pairs : pd.DataFrame | None, optional
@@ -333,30 +359,39 @@ def bootstrap_replicate_weights(
         Fitting controls for the CP fit.
     complex_sep, communication_score, hill_k : str | None, str, float
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
-    scoring : str, default="roc_auc"
-        Scikit-learn scoring the logistic regression selects its
-        regularization strength by; see `logreg.fit_logreg_weights`.
     stratify : bool, default=True
         Draw patients within each `group_column` stratum, keeping the class
         balance fixed; see `utils.resample_conditions`.
+    patient_column : str | None, optional
+        Condition-level patient identity column. Drawing one of a
+        multi-sample patient's conditions carries its sibling in too; see
+        `utils.resample_conditions`'s `patient_by`.
     random_state : int | None, optional
         Seed for the draw and for the replicate's fits.
+    backend : str | None, default=None
+        Backend the replicate's RISE refit runs on; see `fit_anova_pipeline`.
+    compress : bool, default=True
+        Fit the replicate's CP stage inside a CANDELINC core; see
+        `validation.component_stability._fit_cp`.
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
     pd.DataFrame
-        One row per reference component, columns 'Component',
-        'MatchedComponent', 'Weight' (sign-corrected onto the reference
-        component's orientation), 'MatchScore', 'SignedCosine',
-        'RunnerUpScore', 'R2XCP'.
+        One row per reference component, columns `REPLICATE_COLUMNS`.
+        'GroupMeanDiff' is sign-corrected onto the reference component's
+        orientation; 'EtaSquared', 'F' and 'P' are sign-invariant and are
+        carried across on the matched component alone.
     """
     resampled = resample_conditions(
         adata,
         condition_column,
         stratify_by=group_column if stratify else None,
+        patient_by=patient_column,
         random_seed=random_state,
     )
-    fit = fit_logreg_pipeline(
+    fit = fit_anova_pipeline(
         resampled,
         lr_pairs=lr_pairs,
         condition_column=condition_column,
@@ -374,8 +409,10 @@ def bootstrap_replicate_weights(
         complex_sep=complex_sep,
         communication_score=communication_score,
         hill_k=hill_k,
-        scoring=scoring,
         random_state=random_state,
+        backend=backend,
+        compress=compress,
+        oversample=oversample,
     )
 
     if not np.array_equal(fit["lr_symbols"], reference["lr_symbols"]):
@@ -385,25 +422,33 @@ def bootstrap_replicate_weights(
             "component matching would be meaningless."
         )
 
+    anova = fit["anova"]
     aligned = align_to_reference_components(
         reference["factors"],
         fit["factors"],
-        fit["logreg_weights"],
+        anova["GroupMeanDiff"].to_numpy(dtype=float),
         mode_weights=BOOTSTRAP_MATCH_MODE_WEIGHTS,
-    ).rename(columns={"Value": "Weight"})
+    ).rename(columns={"Value": "GroupMeanDiff"})
+
+    # F, P and eta-squared do not change under a gauge flip, so they are read
+    # straight off the replicate component the alignment picked out.
+    matched = aligned["MatchedComponent"].to_numpy(dtype=int) - 1
+    for column in ("EtaSquared", "F", "P"):
+        aligned[column] = anova[column].to_numpy(dtype=float)[matched]
+
     aligned["R2XCP"] = fit["r2x_cp"]
-    return aligned
+    return aligned[REPLICATE_COLUMNS]
 
 
-def bootstrap_logreg_weights(
+def bootstrap_anova(
     adata: anndata.AnnData,
     reference: dict[str, Any],
     condition_column: str,
     group_column: str,
-    control_label: str,
-    other_label: str,
-    rise_rank: int,
-    cp_rank: int,
+    control_label: str | None = None,
+    other_label: str | None = None,
+    rise_rank: int = 25,
+    cp_rank: int = 10,
     n_boot: int = 100,
     lr_pairs: pd.DataFrame | None = None,
     rise_n_iter_max: int = 100,
@@ -415,9 +460,12 @@ def bootstrap_logreg_weights(
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
-    scoring: str = "roc_auc",
     stratify: bool = True,
+    patient_column: str | None = None,
     random_state: int = 0,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> pd.DataFrame:
     """Run `n_boot` patient-resampled replicates of the pipeline.
 
@@ -426,15 +474,13 @@ def bootstrap_logreg_weights(
     adata : anndata.AnnData
         Full-cohort data to resample patients from.
     reference : dict[str, Any]
-        The full-cohort fit dictionary returned by `fit_logreg_pipeline`, whose
-        component numbering and orientation the replicate's weights are
-        expressed in.
+        The full-cohort fit dictionary returned by `fit_anova_pipeline`, whose
+        component numbering and orientation the replicates are expressed in.
     condition_column, group_column : str
         Columns in `obs` holding the patient identity and its group label.
-    control_label : str
-        Value of `group_column` mapped to the reference class.
-    other_label : str
-        Label applied to every other value of `group_column`.
+    control_label, other_label : str | None, optional
+        Values of `group_column` collapsed to the reference and other level;
+        both None tests every level. See `anova.prepare_anova_inputs`.
     rise_rank, cp_rank : int
         The already-selected ranks the bootstrap is conditional on.
     n_boot : int, default=100
@@ -447,26 +493,34 @@ def bootstrap_logreg_weights(
         Fitting controls for CP.
     complex_sep, communication_score, hill_k : str | None, str, float
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
-    scoring : str, default="roc_auc"
-        Scikit-learn scoring the logistic regression selects its
-        regularization strength by; see `logreg.fit_logreg_weights`.
     stratify : bool, default=True
         Draw patients within each `group_column` stratum, keeping the class
         balance fixed; see `utils.resample_conditions`.
+    patient_column : str | None, optional
+        Condition-level patient identity column. Drawing one of a
+        multi-sample patient's conditions carries its sibling in too; see
+        `utils.resample_conditions`'s `patient_by`.
     random_state : int, default=0
         Base seed; replicate ``b`` uses `replicate_seed(random_state, b)`.
+    backend : str | None, default=None
+        Backend every replicate's RISE refit runs on; see `fit_anova_pipeline`.
+    compress : bool, default=True
+        Fit every replicate's CP stage inside a CANDELINC core; see
+        `validation.component_stability._fit_cp`.
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
     pd.DataFrame
-        `bootstrap_replicate_weights` stacked over replicates, with a
-        leading 'Replicate' column.
+        `bootstrap_replicate_anova` stacked over replicates, with a leading
+        'Replicate' column.
     """
     frames = []
     for b in range(n_boot):
         print(f"   replicate {b + 1}/{n_boot}")
         seed = replicate_seed(random_state, b)
-        replicate = bootstrap_replicate_weights(
+        replicate = bootstrap_replicate_anova(
             adata,
             reference=reference,
             condition_column=condition_column,
@@ -485,77 +539,100 @@ def bootstrap_logreg_weights(
             complex_sep=complex_sep,
             communication_score=communication_score,
             hill_k=hill_k,
-            scoring=scoring,
             stratify=stratify,
+            patient_column=patient_column,
             random_state=seed,
+            backend=backend,
+            compress=compress,
+            oversample=oversample,
         )
         replicate.insert(0, "Replicate", b)
         frames.append(replicate)
     return pd.concat(frames, ignore_index=True)
 
 
-def summarize_bootstrap_weights(
-    boot_weights: pd.DataFrame,
-    reference_weights: np.ndarray,
+def summarize_bootstrap_anova(
+    boot_anova: pd.DataFrame,
+    reference_anova: pd.DataFrame,
     ci_level: float = 95.0,
+    alpha: float = 0.05,
 ) -> pd.DataFrame:
-    """One row per component: its bootstrap weight distribution, and how
-    reliably the sign and the selection survive resampling.
+    """One row per component: its bootstrap effect-size distribution, and how
+    reliably the association and its direction survive resampling.
 
-    Three failure modes are reported side by side rather than collapsed into
-    one number, because they call for different conclusions: a weight whose
-    interval spans zero is not distinguishable from no association at all; a
-    weight that is frequently regularized to exactly zero was selected by the
-    L1 penalty only for some rosters; and a component with a low match score
-    was not reliably re-identified across replicates, so its spread says more
-    about CP identifiability than about the regression.
+    Three things are reported side by side rather than collapsed into one
+    number, because they call for different conclusions: how large the effect
+    is and how tightly the rosters pin it down (the eta-squared interval); how
+    often the association reaches `alpha` at all (`FracSignificant`); and
+    whether the component was even re-identifiable across replicates
+    (`MedianMatchScore`/`MinMatchScore`), which is a CP identifiability
+    question rather than a question about the phenotype.
+
+    There is deliberately no "interval excludes zero" column: eta-squared is a
+    variance ratio and cannot be negative, so such a test would be vacuous.
+    `FracSignificant` takes its place -- read as a descriptive tally, per the
+    degrees-of-freedom caveat in this module's docstring.
 
     Parameters
     ----------
-    boot_weights : pd.DataFrame
-        Output of `bootstrap_logreg_weights`.
-    reference_weights : np.ndarray
-        The full-cohort fit's per-component weights, indexed from component 1
-        in order.
+    boot_anova : pd.DataFrame
+        Output of `bootstrap_anova`.
+    reference_anova : pd.DataFrame
+        The full-cohort fit's per-component ANOVA table -- `fit_anova_pipeline`'s
+        ``result["anova"]`` -- carrying 'Component', 'EtaSquared', 'F', 'P' and
+        'GroupMeanDiff'.
     ci_level : float, default=95.0
-        Central percentile interval width, in percent.
+        Central percentile interval width, in percent, taken on eta-squared.
+    alpha : float, default=0.05
+        Threshold `FracSignificant` counts replicates against.
 
     Returns
     -------
     pd.DataFrame
         One row per component, sorted by component, with columns 'Component',
-        'ReferenceWeight', 'MeanWeight', 'MedianWeight', 'SDWeight', 'CILow',
-        'CIHigh', 'CIExcludesZero', 'FracNonzero',
-        'FracSameSignAsReference' (NaN when the reference weight is exactly
-        zero, i.e. has no sign to agree with), 'MedianMatchScore',
-        'MinMatchScore', 'NReplicates'.
+        'ReferenceEtaSquared', 'ReferenceF', 'ReferenceP', 'MeanEtaSquared',
+        'MedianEtaSquared', 'SDEtaSquared', 'CILow', 'CIHigh', 'MedianP',
+        'FracSignificant', 'ReferenceGroupMeanDiff', 'MedianGroupMeanDiff',
+        'FracSameSignAsReference' (NaN when the reference group-mean
+        difference is exactly zero, i.e. has no direction to agree with),
+        'MedianMatchScore', 'MinMatchScore', 'NReplicates'.
     """
     tail = (100.0 - ci_level) / 2.0
+    reference_by_component = reference_anova.set_index("Component")
     rows = []
-    for component_key, group in boot_weights.groupby("Component"):
+    for component_key, group in boot_anova.groupby("Component"):
         component = cast(int, component_key)
-        weights = group["Weight"].to_numpy()
-        reference = float(reference_weights[component - 1])
-        ci_low, ci_high = np.percentile(weights, [tail, 100.0 - tail])
+        eta = group["EtaSquared"].to_numpy(dtype=float)
+        p_values = group["P"].to_numpy(dtype=float)
+        diffs = group["GroupMeanDiff"].to_numpy(dtype=float)
+        reference = reference_by_component.loc[component]
+        reference_diff = float(reference["GroupMeanDiff"])
+        ci_low, ci_high = np.nanpercentile(eta, [tail, 100.0 - tail])
         rows.append(
             {
                 "Component": component,
-                "ReferenceWeight": reference,
-                "MeanWeight": float(np.mean(weights)),
-                "MedianWeight": float(np.median(weights)),
-                "SDWeight": float(np.std(weights, ddof=1)) if len(weights) > 1 else 0.0,
+                "ReferenceEtaSquared": float(reference["EtaSquared"]),
+                "ReferenceF": float(reference["F"]),
+                "ReferenceP": float(reference["P"]),
+                "MeanEtaSquared": float(np.nanmean(eta)),
+                "MedianEtaSquared": float(np.nanmedian(eta)),
+                "SDEtaSquared": float(np.nanstd(eta, ddof=1)) if len(eta) > 1 else 0.0,
                 "CILow": float(ci_low),
                 "CIHigh": float(ci_high),
-                "CIExcludesZero": bool(ci_low > 0 or ci_high < 0),
-                "FracNonzero": float(np.mean(weights != 0)),
+                "MedianP": float(np.nanmedian(p_values)),
+                # A replicate whose ANOVA came back degenerate (NaN p) counts
+                # as not significant rather than dropping out of the tally.
+                "FracSignificant": float(np.mean(p_values < alpha)),
+                "ReferenceGroupMeanDiff": reference_diff,
+                "MedianGroupMeanDiff": float(np.nanmedian(diffs)),
                 "FracSameSignAsReference": (
-                    float(np.mean(np.sign(weights) == np.sign(reference)))
-                    if reference != 0
+                    float(np.mean(np.sign(diffs) == np.sign(reference_diff)))
+                    if np.isfinite(reference_diff) and reference_diff != 0
                     else np.nan
                 ),
                 "MedianMatchScore": float(np.median(group["MatchScore"])),
                 "MinMatchScore": float(np.min(group["MatchScore"])),
-                "NReplicates": len(weights),
+                "NReplicates": len(eta),
             }
         )
     return pd.DataFrame(rows).sort_values("Component").reset_index(drop=True)

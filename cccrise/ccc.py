@@ -463,28 +463,26 @@ def _resolve_tensor_genes_and_cells(how, df_idxs, df_cols, outer_fraction):
     )
 
 
-def _group_or_name_ppis(
-    tensors, ppi_data, group_ppi_by, group_ppi_method, interaction_columns
-):
-    """Aggregate tensors by PPI group when requested, else name PPIs individually."""
-    if group_ppi_by is None:
-        ppi_names = [
-            row[interaction_columns[0]] + "^" + row[interaction_columns[1]]
-            for _, row in ppi_data.iterrows()
-        ]
-        return tensors, ppi_names
-
-    ppi_names = [group for group, _ in ppi_data.groupby(group_ppi_by)]
-    tensors = [
-        aggregate_ccc_tensor(
-            ccc_tensor=t,
-            ppi_data=ppi_data,
-            group_ppi_by=group_ppi_by,
-            group_ppi_method=group_ppi_method,
-        )
-        for t in tensors
+def _ppi_names(ppi_data, group_ppi_by, interaction_columns):
+    """PPI-group names when grouping, else individual "ligand^receptor" names."""
+    if group_ppi_by is not None:
+        return [group for group, _ in ppi_data.groupby(group_ppi_by)]
+    return [
+        row[interaction_columns[0]] + "^" + row[interaction_columns[1]]
+        for _, row in ppi_data.iterrows()
     ]
-    return tensors, ppi_names
+
+
+def _stack_context_slabs(slabs, n_contexts):
+    """Fill a preallocated (context, ...) array one slab at a time."""
+    tensors = None
+    for i, slab in enumerate(slabs):
+        if tensors is None:
+            tensors = np.empty((n_contexts, *slab.shape), dtype=slab.dtype)
+        tensors[i] = slab
+    if tensors is None:
+        raise ValueError("No contexts to build a communication tensor from.")
+    return tensors
 
 
 def build_context_ccc_tensor(
@@ -638,27 +636,36 @@ def build_context_ccc_tensor(
     if verbose:
         print("Building tensor for the provided context")
 
-    tensors = [
-        generate_ccc_tensor(
+    def context_tensor(rnaseq):
+        tensor = generate_ccc_tensor(
             rnaseq_data=rnaseq.reindex(genes).reindex(cells, axis="columns"),
             ppi_data=ppi_data_,
             communication_score=communication_score,
             interaction_columns=interaction_columns,
             hill_k=hill_k,
         )
-        for rnaseq in rnaseq_matrices
-    ]
+        if group_ppi_by is not None:
+            tensor = aggregate_ccc_tensor(
+                ccc_tensor=tensor,
+                ppi_data=ppi_data_,
+                group_ppi_by=group_ppi_by,
+                group_ppi_method=group_ppi_method,
+            )
+        return np.asarray(tensor, dtype=float)
 
-    tensors, ppi_names = _group_or_name_ppis(
-        tensors, ppi_data_, group_ppi_by, group_ppi_method, interaction_columns
+    ppi_names = _ppi_names(ppi_data_, group_ppi_by, interaction_columns)
+    tensors = _stack_context_slabs(
+        (context_tensor(rnaseq) for rnaseq in rnaseq_matrices), len(rnaseq_matrices)
     )
 
     # Generate mask:
     if how != "inner":
-        mask_tensor = (~np.isnan(np.asarray(tensors))).astype(int)
+        mask_tensor = (~np.isnan(tensors)).astype(int)
     else:
         mask_tensor = None
-    tensors = np.nan_to_num(tensors)
+    # In place, `tensors` is this function's own array, so the default copy
+    # would duplicate the whole thing.
+    tensors = np.nan_to_num(tensors, copy=False)
     return tensors, genes, cells, ppi_names, mask_tensor
 
 

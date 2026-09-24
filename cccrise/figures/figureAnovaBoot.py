@@ -1,62 +1,59 @@
 """
-Figure for the patient-resampled bootstrap of the CCC-RISE logistic
-regression weights.
+Figure for the patient-resampled bootstrap of the CCC-RISE ANOVA effect sizes.
 
-Plots the replicates produced by ``uv run cccrise-logregboot``; run that
-first.
+Plots the replicates produced by ``uv run cccrise-anovaboot``; run that first.
 
 The pipeline is re-run end to end -- RISE, the interaction tensor, CP at the
-same fixed ranks, then the logistic regression -- on bootstrap resamples of
-the patient roster, and each replicate's components are matched back onto the
-full-cohort fit before its weights are recorded (see
-`stability.logreg_stability.bootstrap_logreg_weights`). Every component's weight therefore
-comes with a distribution over rosters, which is what separates a weight that
-would survive a different cohort from one that describes the patients who
-happened to be enrolled.
+same fixed ranks, then the ANOVA -- on bootstrap resamples of the patient
+roster, and each replicate's components are matched back onto the full-cohort
+fit before its statistics are recorded (see
+`validation.anova_stability.bootstrap_anova`). Every component's effect size
+therefore comes with a distribution over rosters, which is what separates an
+association that would survive a different cohort from one that describes the
+patients who happened to be enrolled.
 
 Panels, in order:
 
-    a. Bootstrap weight distributions -- one violin per CP component over the
-       replicates, with the full-cohort weight overlaid. Components whose
-       central interval excludes zero are drawn in the emphasis color; the
-       rest are muted, since a weight whose interval spans zero is not
-       distinguishable from no association at all.
-    b. Interval forest -- the same intervals ranked by median magnitude and
-       labeled with each component's dominant ligand-receptor pair, so the
-       components worth interpreting can be read off directly. A hollow
-       marker means the interval covers zero.
-    c. Stability of selection and sign -- how often the L1 penalty kept the
-       component at all, and how often its weight agreed in sign with the
-       full-cohort fit. A component can have a tight interval and still fail
-       here, by being dropped entirely for some rosters.
+    a. Bootstrap effect size distributions -- one violin per CP component over
+       the replicates, with the full-cohort eta-squared overlaid. Components
+       whose full-cohort p-value is below alpha are drawn in the emphasis
+       color; the rest are muted.
+    b. Interval forest -- the same eta-squared intervals ranked by median
+       magnitude and labeled with each component's dominant ligand-receptor pair,
+       so the components worth interpreting can be read off directly. A hollow
+       marker means the reference p-value is not significant.
+    c. Stability of significance and sign -- how often the association reached
+       p < alpha across rosters, and how often its group-mean difference agreed
+       in direction with the full-cohort fit.
     d. Component identifiability -- the match score every replicate's
        component achieved against the reference fit. This panel is the
-       control for panel a: where scores are low, a wide weight distribution
-       says the CP component could not be re-identified across rosters, not
-       that the regression was unstable.
+       control for panel a: where scores are low, a wide effect-size
+       distribution says the CP component could not be re-identified across
+       rosters, not that the phenotype association was unstable.
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import yaml
 
+from ..factors import DATA_DIR, load_factors_to_anndata
+from ..runners.datasets import DATASETS
+from ..runners.provenance import sidecar_path
+from ..validation.anova_stability import summarize_bootstrap_anova, top_lr_pairs
 from .common import getSetup, load_runner_csv, subplotLabel
 
 # Change this to switch dataset; must match the runner's --dataset. The ranks
 # the bootstrap was conditioned on are recorded in its sidecar.
 SELECTED_DATASET = "alad"
-BOOTSTRAP_WEIGHTS_CSV = f"logreg_bootstrap_weights_{SELECTED_DATASET}.csv"
-BOOTSTRAP_SUMMARY_CSV = f"logreg_bootstrap_summary_{SELECTED_DATASET}.csv"
+BOOTSTRAP_CSV = f"anova_bootstrap_{SELECTED_DATASET}.csv"
 
 # Match score below which a replicate's component is not the reference
 # component in any useful sense.
 MATCH_SCORE_FLOOR = 0.7
 
-# Polarity and status colors, held to one job each: the sign of a weight, and
-# whether its interval clears zero.
-NEGATIVE_COLOR = "tab:red"
-POSITIVE_COLOR = "tab:blue"
+# Polarity and status colors.
 EMPHASIS_COLOR = "#3a6b9c"
 MUTED_COLOR = "0.72"
 INK = "0.25"
@@ -71,28 +68,34 @@ def _component_order(summary: pd.DataFrame) -> list[int]:
 
 
 # =============================================================================
-# Panel a: bootstrap weight distributions
+# Panel a: bootstrap effect size distributions
 # =============================================================================
 
 
-def plot_weight_distributions(
-    df: pd.DataFrame, summary: pd.DataFrame, ax: plt.Axes, title: str
+def plot_effect_size_distributions(
+    df: pd.DataFrame,
+    summary: pd.DataFrame,
+    ax: plt.Axes,
+    title: str,
+    alpha: float = 0.05,
 ) -> None:
-    """Violin per component over the bootstrap replicates, full-cohort weight
+    """Violin per component over the bootstrap replicates, full-cohort eta-squared
     overlaid."""
     order = _component_order(summary)
-    excludes_zero = dict(
-        zip(summary["Component"].astype(int), summary["CIExcludesZero"], strict=True)
+    is_sig = dict(
+        zip(
+            summary["Component"].astype(int), summary["ReferenceP"] < alpha, strict=True
+        )
     )
     palette = {
-        component: EMPHASIS_COLOR if excludes_zero[component] else MUTED_COLOR
+        component: EMPHASIS_COLOR if is_sig[component] else MUTED_COLOR
         for component in order
     }
 
     sns.violinplot(
         data=df,
         x="Component",
-        y="Weight",
+        y="EtaSquared",
         hue="Component",
         order=order,
         hue_order=order,
@@ -107,7 +110,7 @@ def plot_weight_distributions(
     )
 
     positions = np.arange(len(order))
-    reference = summary.set_index("Component").loc[order, "ReferenceWeight"]
+    reference = summary.set_index("Component").loc[order, "ReferenceEtaSquared"]
     ax.scatter(
         positions,
         reference.to_numpy(),
@@ -117,16 +120,19 @@ def plot_weight_distributions(
         zorder=5,
     )
 
-    ax.axhline(0, color="0.85", linewidth=0.8, zorder=0)
     # Headroom so the legend sits over empty space rather than over a violin.
     low, high = ax.get_ylim()
-    ax.set_ylim(low, high + 0.12 * (high - low))
+    ax.set_ylim(bottom=0, top=high + 0.12 * (high - low) if high > 0 else 1.0)
     ax.set_xlabel("CP Component")
-    ax.set_ylabel("Logistic regression weight")
+    ax.set_ylabel(r"Effect size ($\eta^2$)")
     ax.set_title(title)
     handles = [
-        plt.Line2D([0], [0], color=EMPHASIS_COLOR, lw=6, label="Interval excludes 0"),
-        plt.Line2D([0], [0], color=MUTED_COLOR, lw=6, label="Interval covers 0"),
+        plt.Line2D(
+            [0], [0], color=EMPHASIS_COLOR, lw=6, label=f"Reference p < {alpha:g}"
+        ),
+        plt.Line2D(
+            [0], [0], color=MUTED_COLOR, lw=6, label=f"Reference p \u2265 {alpha:g}"
+        ),
         plt.Line2D(
             [0],
             [0],
@@ -134,7 +140,7 @@ def plot_weight_distributions(
             color="black",
             lw=0,
             markersize=4,
-            label="Full-cohort weight",
+            label=r"Full-cohort $\eta^2$",
         ),
     ]
     ax.legend(handles=handles, fontsize=5, ncol=3, loc="upper center")
@@ -145,21 +151,23 @@ def plot_weight_distributions(
 # =============================================================================
 
 
-def plot_weight_intervals(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
+def plot_effect_size_intervals(
+    df: pd.DataFrame, ax: plt.Axes, title: str, alpha: float = 0.05
+) -> None:
     """Bootstrap interval per component, ranked by median magnitude and
     labeled with its dominant LR pair."""
     ranked = df.reindex(
-        df["MedianWeight"].abs().sort_values(ascending=True).index
+        df["MedianEtaSquared"].sort_values(ascending=True).index
     ).reset_index(drop=True)
 
     positions = np.arange(len(ranked))
-    medians = ranked["MedianWeight"].to_numpy()
+    medians = ranked["MedianEtaSquared"].to_numpy()
     lows = ranked["CILow"].to_numpy()
     highs = ranked["CIHigh"].to_numpy()
-    clears_zero = ranked["CIExcludesZero"].to_numpy(dtype=bool)
+    is_sig = (ranked["ReferenceP"] < alpha).to_numpy(dtype=bool)
 
     for pos in positions:
-        color = NEGATIVE_COLOR if medians[pos] < 0 else POSITIVE_COLOR
+        color = EMPHASIS_COLOR if is_sig[pos] else MUTED_COLOR
         ax.plot(
             [lows[pos], highs[pos]],
             [pos, pos],
@@ -172,10 +180,10 @@ def plot_weight_intervals(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
             medians[pos],
             pos,
             s=26,
-            facecolors=color if clears_zero[pos] else "white",
+            facecolors=color if is_sig[pos] else "white",
             edgecolors=color,
             linewidths=0.8,
-            marker="o" if clears_zero[pos] else "s",
+            marker="o" if is_sig[pos] else "s",
             zorder=3,
         )
 
@@ -189,52 +197,59 @@ def plot_weight_intervals(df: pd.DataFrame, ax: plt.Axes, title: str) -> None:
     ]
     ax.set_yticks(positions)
     ax.set_yticklabels(labels, fontsize=5)
-    ax.axvline(0, color="0.85", linewidth=0.8, zorder=0)
-    ax.set_xlabel("Logistic regression weight")
+    ax.set_xlabel(r"Effect size ($\eta^2$)")
     ax.set_title(title)
     handles = [
-        plt.Line2D([0], [0], color=POSITIVE_COLOR, lw=3, label="Positive median"),
-        plt.Line2D([0], [0], color=NEGATIVE_COLOR, lw=3, label="Negative median"),
+        plt.Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=EMPHASIS_COLOR,
+            lw=2,
+            markersize=4,
+            label=f"Reference p < {alpha:g}",
+        ),
         plt.Line2D(
             [0],
             [0],
             marker="s",
-            lw=0,
+            color=MUTED_COLOR,
+            lw=2,
             markersize=4,
             markerfacecolor="white",
-            markeredgecolor="0.4",
-            label="Interval covers 0",
+            markeredgecolor=MUTED_COLOR,
+            label=f"Reference p \u2265 {alpha:g}",
         ),
     ]
     ax.legend(handles=handles, fontsize=5, loc="lower right")
 
 
 # =============================================================================
-# Panel c: selection and sign stability
+# Panel c: significance and sign stability
 # =============================================================================
 
 
-def plot_selection_and_sign_stability(
-    df: pd.DataFrame, ax: plt.Axes, title: str
+def plot_significance_and_sign_stability(
+    df: pd.DataFrame, ax: plt.Axes, title: str, alpha: float = 0.05
 ) -> None:
-    """Fraction of replicates keeping the component, and agreeing with the
-    full-cohort sign."""
+    """Fraction of replicates with p < alpha, and agreeing with the
+    full-cohort group mean difference direction."""
     positions = np.arange(len(df))
     width = 0.38
 
     ax.bar(
         positions - width / 2,
-        df["FracNonzero"],
+        df["FracSignificant"],
         width=width,
         color=EMPHASIS_COLOR,
-        label="Kept by the L1 penalty",
+        label=f"p < {alpha:g} across rosters",
     )
     ax.bar(
         positions + width / 2,
         df["FracSameSignAsReference"],
         width=width,
         color="#c98b3a",
-        label="Same sign as full cohort",
+        label="Same direction as full cohort",
     )
 
     ax.axhline(0.5, color="0.85", linewidth=0.8, zorder=0)
@@ -271,7 +286,7 @@ def plot_match_scores(
     )
     ax.axhline(
         MATCH_SCORE_FLOOR,
-        color=NEGATIVE_COLOR,
+        color="tab:red",
         linewidth=0.9,
         linestyle="--",
         label=f"Weak-match floor ({MATCH_SCORE_FLOOR})",
@@ -289,40 +304,77 @@ def plot_match_scores(
 
 
 def makeFigure():
-    bootstrap_weights = load_runner_csv(BOOTSTRAP_WEIGHTS_CSV)
-    bootstrap_summary = load_runner_csv(BOOTSTRAP_SUMMARY_CSV)
+    bootstrap_anova_df = load_runner_csv(BOOTSTRAP_CSV)
+
+    sidecar = sidecar_path(DATA_DIR / BOOTSTRAP_CSV)
+    with open(sidecar) as handle:
+        metadata = yaml.safe_load(handle)
+
+    n_comp = len(metadata["reference_eta_squared"])
+    alpha = float(metadata.get("alpha", 0.05))
+    ci_level = float(metadata.get("ci_level", 95.0))
+    ref_f = metadata.get("reference_f", [np.nan] * n_comp)
+    ref_diff = metadata.get("reference_group_mean_diff", [np.nan] * n_comp)
+
+    reference_anova = pd.DataFrame(
+        {
+            "Component": np.arange(1, n_comp + 1),
+            "EtaSquared": np.asarray(metadata["reference_eta_squared"], dtype=float),
+            "F": np.asarray(ref_f, dtype=float),
+            "P": np.asarray(metadata["reference_p"], dtype=float),
+            "GroupMeanDiff": np.asarray(ref_diff, dtype=float),
+        }
+    )
+
+    bootstrap_summary = summarize_bootstrap_anova(
+        bootstrap_anova_df, reference_anova, ci_level=ci_level, alpha=alpha
+    )
+
+    factors_path = DATASETS[SELECTED_DATASET].factors_path()
+    factors_ds = load_factors_to_anndata(factors_path)
+    labels = top_lr_pairs(factors_ds.uns["D"], factors_ds.uns["lr_pairs"], top_n=1)
+    bootstrap_summary = bootstrap_summary.merge(
+        labels[["Component", "LRPair", "DLoading"]].rename(
+            columns={"LRPair": "TopLRPair", "DLoading": "TopLRLoading"}
+        ),
+        on="Component",
+        how="left",
+    )
 
     n_components = len(bootstrap_summary)
     panels = [
         (
-            "Bootstrap Weight Distributions",
-            lambda axis: plot_weight_distributions(
-                bootstrap_weights,
+            "Bootstrap Effect Size Distributions",
+            lambda axis: plot_effect_size_distributions(
+                bootstrap_anova_df,
                 bootstrap_summary,
                 axis,
-                f"Bootstrap Weight Distributions ({SELECTED_DATASET.upper()})",
+                f"Bootstrap Effect Size Distributions ({SELECTED_DATASET.upper()})",
+                alpha=alpha,
             ),
         ),
         (
-            "Weight Intervals",
-            lambda axis: plot_weight_intervals(
+            "Effect Size Intervals",
+            lambda axis: plot_effect_size_intervals(
                 bootstrap_summary,
                 axis,
-                f"Weight Intervals ({SELECTED_DATASET.upper()})",
+                f"Effect Size Intervals ({SELECTED_DATASET.upper()})",
+                alpha=alpha,
             ),
         ),
         (
-            "Selection and Sign Stability",
-            lambda axis: plot_selection_and_sign_stability(
+            "Significance and Direction Stability",
+            lambda axis: plot_significance_and_sign_stability(
                 bootstrap_summary,
                 axis,
-                f"Selection and Sign Stability ({SELECTED_DATASET.upper()})",
+                f"Significance and Direction Stability ({SELECTED_DATASET.upper()})",
+                alpha=alpha,
             ),
         ),
         (
             "Component Identifiability",
             lambda axis: plot_match_scores(
-                bootstrap_weights,
+                bootstrap_anova_df,
                 bootstrap_summary,
                 axis,
                 f"Component Identifiability ({SELECTED_DATASET.upper()})",
@@ -342,4 +394,5 @@ def makeFigure():
     for axis in ax[len(panels) :]:
         axis.set_visible(False)
 
+    print(bootstrap_summary.to_string(index=False))
     return f

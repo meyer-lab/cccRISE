@@ -32,9 +32,9 @@ npx jscpd cccrise/ --min-lines 5 --min-tokens 50
 (No install needed beyond Node/npx; jscpd is not a Python dependency.) Flags
 copy-pasted blocks. Most relevant here: repeated statistics/plotting logic
 across `figures/*.py` scripts, and repeated pipeline logic across
-`stability/*.py`. If a new figure script or pipeline function duplicates an
+`validation/*.py`. If a new figure script or pipeline function duplicates an
 existing block of 10+ lines, prefer extracting a shared helper (see
-`figures/commonFuncs/plotGeneral.py` and `tensor.fit_rise_cp_pipeline` for
+`figures/commonFuncs/plotGeneral.py` and `validation.component_stability.fit_rise_cp` for
 examples of helpers extracted this way) instead of copy-pasting.
 
 ### Cyclomatic complexity -- radon + xenon

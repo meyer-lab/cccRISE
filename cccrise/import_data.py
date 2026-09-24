@@ -10,11 +10,16 @@ import pandas as pd
 import vsparse
 from scipy.sparse import csr_array, issparse
 
+from .gene_filters import mito_ribo_mask
+
 DATA_DIR = Path(__file__).parent / "data"
 LR_PAIRS_PATH = DATA_DIR / "Human-2020-Jin-LR-pairs.parquet"
 
-IBD_DATA_DIR = Path("/home/ehurt/ProjectData/IBD")
-IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "Full_cohort.ivcsc.h5ad"
+IBD_DATA_DIR = Path("/opt/IVCSC")
+IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "full_IBD_cohort.ivcsc.h5ad"
+
+# Depth-normalize to the median, scale by gene sum, then log10(1 + 1000x)
+IBD_NORMALIZATION = vsparse.RECIPES["parafac2"]
 
 
 # The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
@@ -117,13 +122,39 @@ def import_ligand_receptor_pairs(
     return df
 
 
+#: ALAD1-HS63 and ALAD1-HS65 each contributed two dsco_id samples; every other
+#: dsco_id is its own patient. Hardcoded rather than parsed out of dsco_id,
+#: since these are the only known pairs -- a regex would silently "find"
+#: pairs in any future dsco_id that happens to share a prefix.
+ALAD_PATIENT_OF: dict[str, str] = {
+    "ALAD1-HS63-E1": "HS63",
+    "ALAD1-HS63-E2": "HS63",
+    "ALAD1-HS65-E1": "HS65",
+    "ALAD1-HS65-E2": "HS65",
+}
+
+
+def add_alad_patient_id(data: anndata.AnnData) -> anndata.AnnData:
+    """Add `patient_id`, pairing dsco_id's two known multi-sample patients.
+
+    Every dsco_id not in `ALAD_PATIENT_OF` is treated as its own patient (its
+    `patient_id` is just its `dsco_id`), so `patient_id` is safe to pass as
+    `validation.component_stability`'s `patient_column` unconditionally: a
+    singleton dsco_id groups to itself and so never gets paired.
+    """
+    dsco_id = data.obs["dsco_id"].astype(str)
+    data.obs["patient_id"] = dsco_id.map(ALAD_PATIENT_OF).fillna(dsco_id)
+    return data
+
+
 def import_alad(
     filename: str | Path = "/opt/IVCSC/BAL-scRNAseq.raw.h5ad",
     gene_threshold: float = 0.001,
     normalize: bool = True,
 ):
     """Generate data for ALAD analysis, filtering and scaling as needed.
-    patient ids: dsco_id
+    patient ids: dsco_id (patient_id pairs its two known multi-sample
+    patients; see `ALAD_PATIENT_OF`)
     """
     if normalize:
         data = vsparse.load_and_normalize(
@@ -131,6 +162,8 @@ def import_alad(
         )
     else:
         data = vsparse.load_packed(filename).to_anndata()
+
+    data = add_alad_patient_id(data)
 
     # Map cell types directly from the metadata column revised_annotations_10_5
     if "revised_annotations_10_5" in data.obs:
@@ -230,6 +263,21 @@ def import_alad_brush(
     )
 
 
+def use_gene_symbols(
+    data: anndata.AnnData, symbol_column: str = "gene_symbols"
+) -> anndata.AnnData:
+    """Re-index an AnnData's genes by HGNC symbol, in place."""
+    if symbol_column not in data.var:
+        return data
+
+    symbols = data.var[symbol_column].astype(str)
+    missing = symbols.isin(["", "nan", "None"])
+    data.var["ensembl_id"] = data.var_names
+    data.var_names = symbols.where(~missing, data.var_names).astype(str).tolist()
+    data.var_names_make_unique()
+    return data
+
+
 def import_ibdverse(
     filename: str | Path = IBD_FULL_COHORT_IVCSC,
     gene_threshold: float = 0.001,
@@ -243,18 +291,39 @@ def import_ibdverse(
         https://doi.org/10.1038/s41588-026-02634-7
     """
     print("Loading IBDverse data...")
-    if normalize:
-        data = vsparse.load_and_normalize(
-            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
-        )
-        data = add_cond_idxs(data, condition_name)
-        data.var["means"] = data.X.mean(axis=0)
-        return data
+    packed = vsparse.load_packed(filename)
+    counts = cast(Any, packed.X)
+    var = cast(pd.DataFrame, packed.var)
 
-    data = vsparse.load_packed(filename).to_anndata()
-    return prepare_dataset(
-        data, condition_name, geneThreshold=gene_threshold, normalize=normalize
+    excluded = mito_ribo_mask(var)
+
+    # Thresholds read the raw counts, before anything is dropped, so the
+    # surviving set does not depend on the order the masks are applied.
+    n_cells = counts.shape[0]
+    keep_cells = np.asarray(counts.sum(axis=1)).reshape(-1) > 10.0
+    keep_genes = np.asarray(counts.sum(axis=0)).reshape(-1) > gene_threshold * n_cells
+    keep_genes &= ~excluded
+    kept = packed[keep_cells, keep_genes]
+    del packed, counts
+
+    if not normalize:
+        data = use_gene_symbols(kept.to_anndata())
+        return prepare_dataset(
+            data, condition_name, geneThreshold=gene_threshold, normalize=normalize
+        )
+
+    # `to_scipy_sparse` leaves the centering term out of `X` so the matrix stays
+    # sparse; `means` is what `condition_matrices` subtracts once a condition
+    # block is densified.
+    view = kept.normalized(IBD_NORMALIZATION)
+    data = anndata.AnnData(
+        X=view.to_scipy_sparse(dtype=np.float32),
+        obs=cast(pd.DataFrame, kept.obs).copy(),
+        var=cast(pd.DataFrame, kept.var).copy(),
     )
+    data.var["means"] = np.asarray(view.means, dtype=np.float64)
+    data = use_gene_symbols(data)
+    return add_cond_idxs(data, condition_name)
 
 
 def add_cond_idxs(X, condition_key):

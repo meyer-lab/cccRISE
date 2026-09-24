@@ -28,11 +28,11 @@ Axes, and what each one asks:
   lr_pairs    The reference tensor's ligand-receptor mode bootstrapped.
               Robustness to which interactions the database contains. Costs
               no PARAFAC2 fit.
-  permuted    The reference tensor's entries permuted: the chance floor an
-              observed FMS has to be read against. Costs no PARAFAC2 fit.
+  seed_only   Identical data refit end to end (RISE -> communication tensor
+              -> CP) from a different random seed. Refits RISE.
 
-    uv run cccrise-stability --dataset alad --rise-rank 25 --cp-rank 4 \
-        --n-replicates 20 --axes cells,conditions,lr_pairs,permuted
+    uv run cccrise-stability --dataset alad --rise-rank 19 --cp-rank 3 \
+        --n-replicates 100
 """
 
 import argparse
@@ -41,10 +41,10 @@ from pathlib import Path
 import pandas as pd
 
 from ..import_data import import_ligand_receptor_pairs
-from ..stability.component_stability import (
+from ..validation.component_stability import (
     DEFAULT_AXES,
-    PERMUTED_AXIS,
     RISE_REFIT_AXES,
+    SEED_AXIS,
     component_stability,
     fit_stability_pipeline,
     metric_interval,
@@ -59,9 +59,6 @@ from ._cli import (
 )
 from .datasets import DATA_DIR, DATASETS, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
-
-#: Every axis the runner knows how to run, in report order.
-ALL_AXES = (*DEFAULT_AXES, PERMUTED_AXIS)
 
 HEADER = """\
 Per-component RISE and CPD stability at fixed ranks under resampling.
@@ -86,6 +83,9 @@ def run_component_stability(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int = 0,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score per-component RISE and CPD stability at fixed ranks.
@@ -107,6 +107,16 @@ def run_component_stability(
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=0
         Base seed for the reference fit and the replicates.
+    backend : str | None, default=None
+        Backend every RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
+        auto-detect); see `tensor.rise_store_r2x`.
+    compress : bool, default=True
+        Fit every CP stage inside a CANDELINC core sized for `cp_rank`
+        instead of the full tensor; see
+        `validation.component_stability._fit_cp`. R2X, core consistency and
+        collinearity are unaffected -- this is strictly a speed optimization.
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
     output_path : Path, optional
         CSV destination; defaults to the registry's stability filename.
 
@@ -125,6 +135,9 @@ def run_component_stability(
     print(f"=== Component stability: {spec.label} ===")
     print(f"    RISE rank {rise_rank}, CP rank {cp_rank}, {n_replicates} replicates")
     print(f"    Axes: {', '.join(axes)}")
+    print(
+        f"    backend={backend or 'auto'}  compress={compress}  oversample={oversample}"
+    )
     print(
         f"    {1 + len(rise_axes) * n_replicates} PARAFAC2 fits, "
         f"{1 + len(axes) * n_replicates} CP fits"
@@ -154,6 +167,9 @@ def run_component_stability(
         hill_k=hill_k,
         random_state=random_state,
         keep_tensor=True,
+        backend=backend,
+        compress=compress,
+        oversample=oversample,
     )
     assert reference["tensor"] is not None
     tensor_shape = tuple(int(dim) for dim in reference["tensor"].shape)
@@ -169,6 +185,7 @@ def run_component_stability(
         rise_rank=rise_rank,
         cp_rank=cp_rank,
         group_column=spec.group_column,
+        patient_column=spec.patient_column,
         axes=axes,
         n_replicates=n_replicates,
         rise_n_iter_max=rise_n_iter_max,
@@ -181,6 +198,9 @@ def run_component_stability(
         communication_score=communication_score,
         hill_k=hill_k,
         random_state=random_state,
+        backend=backend,
+        compress=compress,
+        oversample=oversample,
     )
 
     print("4. Aggregate FMS across replicates, per stage and axis:")
@@ -209,11 +229,16 @@ def run_component_stability(
             "communication_score": communication_score,
             "hill_k": hill_k,
             "random_state": random_state,
+            "backend": backend or "auto",
+            "compress": compress,
+            "oversample": oversample,
             "seed_formula": (
                 "random_state * 1000 + replicate + 1; one seed drives the "
                 "resample, the RISE refit and the CP fit, so a "
                 "replicate's RISE and CPD rows are the same resampled dataset "
-                "(see stability.replicate_seed)"
+                "(see validation.replicate_seed). On the seed_only axis the "
+                "seed is the only thing that differs from the reference: same "
+                "cells, same conditions, same ligand-receptor pairs"
             ),
             "resampling": {
                 "cells": "cells bootstrapped with replacement within each condition",
@@ -224,19 +249,28 @@ def run_component_stability(
                         if spec.group_column
                         else ", unstratified"
                     )
+                    + (
+                        f"; paired by {spec.patient_column}: drawing one of a "
+                        "patient's conditions carries its sibling in and drops "
+                        "one other random draw from the sibling's stratum to "
+                        "keep every stratum's size fixed"
+                        if spec.patient_column
+                        else ""
+                    )
                 ),
                 "lr_pairs": (
                     "reference tensor's ligand-receptor mode bootstrapped "
                     "with replacement; no PARAFAC2 refit"
                 ),
-                PERMUTED_AXIS: (
-                    "reference tensor's entries permuted, giving the chance "
-                    "floor; no PARAFAC2 refit"
+                SEED_AXIS: (
+                    "identical data refit end to end (RISE -> communication "
+                    "tensor -> CP) under a different random seed; one "
+                    "PARAFAC2 refit per replicate"
                 ),
             },
             "condition_mode_alignment": (
                 "reference condition-mode rows expanded onto the replicate's "
-                "roster by draw (see stability.reference_condition_rows)"
+                "roster by draw (see validation.reference_condition_rows)"
             ),
             "lr_mode_alignment": (
                 "reference ligand-receptor mode rows expanded by the drawn LR indices"
@@ -244,7 +278,7 @@ def run_component_stability(
             "fms_definition": (
                 "congruence product across compared modes (Modes 0 and 2 for RISE, "
                 "with Mode 1 held out; Modes 0 and 3 for CPD, with Modes 1 and 2 "
-                "held out), weights ignored (see stability.per_component_fms)"
+                "held out), weights ignored (see validation.per_component_fms)"
             ),
             "component_numbering": ("reference fit after ccc_rise.standardize_cc_pf2"),
             "lr_roster_stable": True,
@@ -285,8 +319,9 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default=",".join(DEFAULT_AXES),
         help=(
-            "Comma-separated resampling axes. Cohort axes draw with "
-            f"replacement. Options: {', '.join(ALL_AXES)}."
+            "Comma-separated axes. The cohort axes draw with replacement; "
+            "seed_only draws nothing and varies only the fits' starting "
+            f"point. Options: {', '.join(DEFAULT_AXES)}."
         ),
     )
     parser.add_argument("--n-replicates", type=int, default=20)
@@ -316,6 +351,26 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hill-k", type=float, default=0.5)
     parser.add_argument("--random-state", type=int, default=0)
     parser.add_argument(
+        "--backend",
+        type=str,
+        default=None,
+        choices=["cpu", "cupy", "mlx"],
+        help="Backend every RISE fit runs on (default: parafac2 auto-detect). "
+        "Use 'cpu' for cohort-scale data, which does not fit on a GPU.",
+    )
+    parser.add_argument(
+        "--no-compress",
+        dest="compress",
+        action="store_false",
+        help="Fit every CP stage on the full tensor instead of a CANDELINC core.",
+    )
+    parser.add_argument(
+        "--oversample",
+        type=int,
+        default=5,
+        help="Extra basis columns per mode beyond --cp-rank, when compressing.",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         default=None,
@@ -343,6 +398,9 @@ def main(argv: list[str] | None = None) -> None:
         communication_score=args.communication_score,
         hill_k=args.hill_k,
         random_state=args.random_state,
+        backend=args.backend,
+        compress=args.compress,
+        oversample=args.oversample,
         output_path=resolve_output(args.output, DATA_DIR, spec.stability_filename()),
     )
 

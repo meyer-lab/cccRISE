@@ -6,9 +6,12 @@ import pandas as pd
 from scipy.sparse import csr_array
 
 from cccrise.import_data import (
+    ALAD_PATIENT_OF,
+    add_alad_patient_id,
     add_cond_idxs,
     import_ligand_receptor_pairs,
     prepare_dataset,
+    use_gene_symbols,
 )
 
 
@@ -127,3 +130,78 @@ def test_import_alad_brush():
         assert adata.n_vars > 0
         assert "condition_unique_idxs" in adata.obs.columns
         assert "means" in adata.var.columns
+
+
+def _ensembl_indexed_adata() -> anndata.AnnData:
+    """An AnnData shaped like IBDverse: Ensembl var_names, symbols in a column."""
+    return anndata.AnnData(
+        X=np.arange(12, dtype=float).reshape(3, 4),
+        var=pd.DataFrame(
+            # Two Ensembl IDs map to the same symbol, and one has no symbol.
+            {"gene_symbols": ["TGFB1", "ACVR1", "TGFB1", "nan"]},
+            index=["ENSG01", "ENSG02", "ENSG03", "ENSG04"],
+        ),
+    )
+
+
+def test_use_gene_symbols_reindexes_and_keeps_the_first_symbol_matchable():
+    """The LR table is keyed by symbol, so the bare symbol must survive."""
+    adata = use_gene_symbols(_ensembl_indexed_adata())
+
+    names = list(adata.var_names)
+    # First occurrence keeps the bare symbol; the duplicate is suffixed.
+    assert names[0] == "TGFB1"
+    assert names[1] == "ACVR1"
+    assert names[2].startswith("TGFB1") and names[2] != "TGFB1"
+    # A gene with no symbol falls back to its own identifier.
+    assert names[3] == "ENSG04"
+    # The original identifiers stay recoverable.
+    assert list(adata.var["ensembl_id"]) == ["ENSG01", "ENSG02", "ENSG03", "ENSG04"]
+
+
+def test_use_gene_symbols_is_a_noop_without_the_column():
+    """Datasets already keyed by symbol, like ALAD, must pass through untouched."""
+    adata = anndata.AnnData(
+        X=np.zeros((2, 2)), var=pd.DataFrame(index=["TGFB1", "ACVR1"])
+    )
+    result = use_gene_symbols(adata)
+    assert list(result.var_names) == ["TGFB1", "ACVR1"]
+    assert "ensembl_id" not in result.var
+
+
+def test_add_alad_patient_id_pairs_the_two_known_multi_sample_patients():
+    """HS63 and HS65 each contributed two dsco_id samples, and must share a
+    `patient_id` so `validation`'s pairing can carry them together."""
+    dsco_ids = [
+        "ALAD1-HS1-E1",
+        "ALAD1-HS63-E1",
+        "ALAD1-HS63-E2",
+        "ALAD1-HS65-E1",
+        "ALAD1-HS65-E2",
+    ]
+    adata = anndata.AnnData(
+        X=np.zeros((len(dsco_ids), 1)),
+        obs=pd.DataFrame({"dsco_id": dsco_ids}),
+    )
+
+    result = add_alad_patient_id(adata)
+
+    patient_id = dict(zip(result.obs["dsco_id"], result.obs["patient_id"], strict=True))
+    assert patient_id["ALAD1-HS63-E1"] == patient_id["ALAD1-HS63-E2"]
+    assert patient_id["ALAD1-HS65-E1"] == patient_id["ALAD1-HS65-E2"]
+    assert patient_id["ALAD1-HS63-E1"] != patient_id["ALAD1-HS65-E1"]
+
+
+def test_add_alad_patient_id_leaves_a_singleton_dsco_id_unpaired():
+    """A dsco_id with no known sibling must map to a `patient_id` no other
+    condition shares, so `_paired_conditions` never groups it with anything."""
+    dsco_ids = ["ALAD1-HS1-E1", "ALAD1-HS2-E1"]
+    adata = anndata.AnnData(
+        X=np.zeros((len(dsco_ids), 1)),
+        obs=pd.DataFrame({"dsco_id": dsco_ids}),
+    )
+
+    result = add_alad_patient_id(adata)
+
+    assert list(result.obs["patient_id"]) == dsco_ids
+    assert set(ALAD_PATIENT_OF) & set(dsco_ids) == set()

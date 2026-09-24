@@ -1,4 +1,4 @@
-"""Tests for cccrise.stability."""
+"""Tests for cccrise.validation."""
 
 import anndata
 import numpy as np
@@ -10,12 +10,21 @@ from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score
 
 from cccrise.ccc import calculate_r2x
-from cccrise.stability.component_stability import (
+from cccrise.utils import (
+    _carry_paired_samples,
+    _paired_conditions,
+    resample_cells,
+    resample_conditions,
+    resample_tensor,
+)
+from cccrise.validation.component_stability import (
     CPD_SKIP_MODES,
-    PERMUTED_AXIS,
+    DEFAULT_AXES,
     RISE_SKIP_MODES,
+    SEED_AXIS,
     STAGE_CPD,
     STAGE_RISE,
+    _fit_cp,
     component_stability,
     fit_stability_pipeline,
     metric_interval,
@@ -23,7 +32,6 @@ from cccrise.stability.component_stability import (
     reference_condition_rows,
     summarize_component_stability,
 )
-from cccrise.utils import resample_cells, resample_conditions, resample_tensor
 
 RISE_RANK = 3
 CP_RANK = 2
@@ -74,7 +82,7 @@ def _lr_pairs() -> pd.DataFrame:
     )
 
 
-from typing import Any
+from typing import Any, cast
 
 
 def _pipeline_kwargs(**overrides: Any) -> dict[str, Any]:
@@ -277,6 +285,134 @@ def test_resample_conditions_keeps_each_stratum_at_its_original_size():
 
 
 # =============================================================================
+# Paired-patient resampling
+# =============================================================================
+
+
+def _simulate_adata_with_paired_patient(
+    n_cond: int = 6, cells_per_cond: int = 8, random_state: int = 0
+) -> anndata.AnnData:
+    """`_simulate_adata`, plus a `patient` column pairing conditions S0 and S1
+    to one patient; every other condition keeps its own distinct patient."""
+    adata = _simulate_adata(
+        n_cond=n_cond, cells_per_cond=cells_per_cond, random_state=random_state
+    )
+    patient_of = {f"S{i}": ("P_pair" if i < 2 else f"P{i}") for i in range(n_cond)}
+    adata.obs["patient"] = adata.obs["sample"].map(patient_of)
+    return adata
+
+
+def test_paired_conditions_maps_only_conditions_sharing_a_multi_sample_patient():
+    obs = pd.DataFrame(
+        {"sample": ["S0", "S1", "S2", "S3"], "patient": ["P0", "P0", "P1", "P2"]}
+    )
+    labels = obs["sample"].to_numpy()
+    pairs = _paired_conditions(obs, "sample", "patient", labels)
+
+    assert pairs == {"S0": "S1", "S1": "S0"}
+
+
+def test_carry_paired_samples_preserves_the_total_draw_count():
+    """The compensating drop is what keeps the final number of patients in the
+    resampling fixed: a carry-in must not grow the resample."""
+    pair_of = {"S0": "S1", "S1": "S0"}
+    drawn = np.array(["S0", "S2", "S3", "S2"])
+    for seed in range(30):
+        rng = np.random.default_rng(seed)
+        result = _carry_paired_samples(drawn, pair_of, rng)
+        assert len(result) == len(drawn)
+
+
+def test_carry_paired_samples_leaves_exactly_one_of_the_pair():
+    """Carrying S0's sibling in and immediately dropping one of the two
+    (nothing else was drawn) must leave exactly one of the pair -- never
+    neither, and never both."""
+    pair_of = {"S0": "S1", "S1": "S0"}
+    for seed in range(30):
+        rng = np.random.default_rng(seed)
+        result = _carry_paired_samples(["S0"], pair_of, rng)
+        assert len(result) == 1
+        assert result[0] in ("S0", "S1")
+
+
+def test_resample_conditions_with_patient_by_keeps_the_condition_count_fixed():
+    """Drawing one of a patient's two conditions carries the sibling in for
+    free unless something else is dropped to compensate; the final resample
+    must still hold exactly as many conditions as an unpaired draw would."""
+    adata = _simulate_adata_with_paired_patient()
+    n_conditions = adata.obs["sample"].nunique()
+
+    for seed in range(20):
+        resampled = resample_conditions(
+            adata, "sample", random_seed=seed, patient_by="patient"
+        )
+        assert resampled.obs["sample"].nunique() == n_conditions
+
+
+def test_resample_conditions_with_patient_by_can_carry_the_sibling_in():
+    """Demonstrates the fix itself: a replicate can hold both of a patient's
+    samples, which an unpaired per-condition bootstrap draws independently."""
+    adata = _simulate_adata_with_paired_patient()
+
+    carried = False
+    for seed in range(50):
+        resampled = resample_conditions(
+            adata, "sample", random_seed=seed, patient_by="patient"
+        )
+        drawn = {label.split("__rep")[0] for label in resampled.obs["sample"]}
+        if {"S0", "S1"} <= drawn:
+            carried = True
+            break
+    assert carried
+
+
+def test_resample_conditions_without_patient_by_is_unaffected():
+    """`patient_by=None` (the default) must reproduce the unpaired behavior
+    exactly, seed for seed."""
+    adata = _simulate_adata_with_paired_patient()
+    a = resample_conditions(adata, "sample", random_seed=5)
+    b = resample_conditions(adata, "sample", random_seed=5, patient_by=None)
+
+    a_obs = cast(pd.DataFrame, a.obs)
+    b_obs = cast(pd.DataFrame, b.obs)
+    pd.testing.assert_frame_equal(
+        a_obs.reset_index(drop=True), b_obs.reset_index(drop=True)
+    )
+
+
+def test_carry_paired_samples_drops_only_from_the_siblings_stratum():
+    """A carried-in sibling grows its own stratum, so the compensating drop
+    must come from that stratum or the strata drift off their sizes."""
+    pair_of = {"S0": "S3", "S3": "S0"}
+    stratum_of = {"S0": "ctrl", "S1": "ctrl", "S2": "ctrl", "S3": "case"}
+    drawn = ["S0", "S1", "S2", "S3"]
+    for seed in range(30):
+        rng = np.random.default_rng(seed)
+        result = _carry_paired_samples(drawn, pair_of, rng, stratum_of)
+        assert sorted(stratum_of[c] for c in result) == sorted(
+            stratum_of[c] for c in drawn
+        )
+
+
+def test_resample_conditions_with_patient_by_keeps_each_stratum_size():
+    """Pairing S0 (ctrl) with S3 (case) puts the pair across strata, the case
+    where a drop from the whole draw would unbalance the groups."""
+    adata = _simulate_adata(n_cond=6)
+    adata.obs["patient"] = adata.obs["sample"].replace({"S3": "S0"})
+    assert isinstance(adata.obs, pd.DataFrame)
+    per_group = adata.obs.drop_duplicates("sample")["group"].value_counts()
+
+    for seed in range(30):
+        resampled = resample_conditions(
+            adata, "sample", stratify_by="group", random_seed=seed, patient_by="patient"
+        )
+        assert isinstance(resampled.obs, pd.DataFrame)
+        drawn = resampled.obs.drop_duplicates("sample")["group"].value_counts()
+        for group, count in per_group.items():
+            assert drawn[group] == count
+
+
+# =============================================================================
 # The replicate loop
 # =============================================================================
 
@@ -294,7 +430,7 @@ def test_component_stability_emits_one_row_per_axis_stage_and_component():
         reference,
         lr_pairs,
         **kwargs,
-        axes=("cells", "conditions", "lr_pairs", PERMUTED_AXIS),
+        axes=("cells", "conditions", "lr_pairs", SEED_AXIS),
         n_replicates=2,
         random_state=0,
     )
@@ -305,7 +441,10 @@ def test_component_stability_emits_one_row_per_axis_stage_and_component():
     assert counts[("conditions", STAGE_RISE)] == 2 * RISE_RANK
     assert counts[("conditions", STAGE_CPD)] == 2 * CP_RANK
     assert counts[("lr_pairs", STAGE_CPD)] == 2 * CP_RANK
-    assert counts[(PERMUTED_AXIS, STAGE_CPD)] == 2 * CP_RANK
+    # The seed axis refits the whole pipeline, so unlike the permutation floor
+    # it replaced it has something to say about RISE components too.
+    assert counts[(SEED_AXIS, STAGE_RISE)] == 2 * RISE_RANK
+    assert counts[(SEED_AXIS, STAGE_CPD)] == 2 * CP_RANK
 
     assert df["FMS"].between(0.0, 1.0 + 1e-9).all()
 
@@ -393,6 +532,191 @@ def test_component_stability_carries_the_per_replicate_fit_diagnostics():
     assert rise["CoreConsistency"].isna().all()
 
 
+# =============================================================================
+# GPU backend and CANDELINC compression (ported from PR #182)
+# =============================================================================
+
+
+def test_fit_cp_diagnostics_match_between_core_and_decompressed_space():
+    """`_fit_cp` computes R2X and diagnostics cheaply in the CANDELINC core,
+    before decompressing the factors it returns. Those values must equal what
+    recomputing them against the decompressed factors and the full tensor
+    would give -- the invariance `rank_selection.candelinc_compress`
+    documents, and the reason it is safe to read them off the core at all."""
+    rng = np.random.default_rng(21)
+    tensor = np.abs(rng.random((20, 9, 9, 30)))
+
+    weights, factors, r2x, diagnostics = _fit_cp(
+        tensor,
+        rank=3,
+        n_iter_max=200,
+        tol=1e-8,
+        init="svd",
+        svd="randomized_svd",
+        random_state=0,
+        compress=True,
+        oversample=5,
+    )
+
+    for f, dim in zip(factors, tensor.shape, strict=True):
+        assert f.shape == (dim, 3)
+
+    assert r2x == pytest.approx(calculate_r2x(weights, factors, tensor), abs=1e-6)
+
+    from cccrise.rank_selection import cp_core_consistency, cpd_component_collinearity
+
+    assert diagnostics["CoreConsistency"] == pytest.approx(
+        cp_core_consistency(tensor, weights, factors), abs=1e-6
+    )
+    recomputed = cpd_component_collinearity({3: (weights, factors)}).iloc[0]
+    assert diagnostics["MaxModesCollinear"] == int(recomputed["MaxModesCollinear"])
+
+
+def test_fit_stability_pipeline_runs_with_compression_disabled():
+    """`compress=False` must still be a supported code path, not just the
+    default's untested complement."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+
+    fit = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, compress=False
+    )
+    assert 0.0 <= fit["r2x_cp"] <= 1.0 + 1e-9
+
+
+def test_fit_stability_pipeline_accepts_an_explicit_cpu_backend():
+    """`backend` must reach `rise_store_r2x` without erroring on a plain CPU
+    box, which is what every CI run and every cohort-scale fit uses."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+
+    fit = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, backend="cpu"
+    )
+    assert 0.0 <= fit["r2x_rise"] <= 1.0 + 1e-9
+
+
+def test_component_stability_runs_with_compression_disabled():
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(),
+        lr_pairs,
+        **kwargs,
+        random_state=0,
+        keep_tensor=True,
+        compress=False,
+    )
+
+    df = component_stability(
+        adata,
+        reference,
+        lr_pairs,
+        **kwargs,
+        axes=("cells", "lr_pairs"),
+        n_replicates=1,
+        compress=False,
+    )
+    assert df["FMS"].between(0.0, 1.0 + 1e-9).all()
+
+
+# =============================================================================
+# The seed-refit ceiling
+# =============================================================================
+
+
+def test_seed_axis_is_run_by_default():
+    """No other axis's FMS is interpretable without the ceiling beside it, and
+    an absent ceiling shows up only as a column of NaNs -- easy to miss."""
+    assert SEED_AXIS in DEFAULT_AXES
+
+
+def test_seed_axis_emits_both_stages_with_real_cohort_sizes():
+    """The axis it replaced decomposed the reference tensor and so could only
+    describe CPD components, with no cell or condition count to report."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
+
+    df = component_stability(
+        adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=2
+    )
+
+    assert set(df["Stage"]) == {STAGE_RISE, STAGE_CPD}
+    assert (df["NCells"] == adata.n_obs).all()
+    assert (df["NConditions"] == adata.obs["sample"].nunique()).all()
+
+
+def test_seed_axis_reproduces_the_reference_when_it_draws_the_reference_seed():
+    """Proves the axis varies the seed and nothing else.
+
+    `replicate_seed(0, 0) == 1`, so a reference fit at `random_state=1` is the
+    fit the first replicate re-derives. If the axis were perturbing the data
+    as well, the two would not land on top of each other.
+    """
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=1, keep_tensor=True
+    )
+
+    df = component_stability(
+        adata,
+        reference,
+        lr_pairs,
+        **kwargs,
+        axes=(SEED_AXIS,),
+        n_replicates=1,
+        random_state=0,
+    )
+
+    assert (df["FMS"] > 0.99).all()
+
+
+def test_seed_axis_leaves_the_callers_adata_untouched():
+    """`import_data.add_cond_idxs` writes into `obs` in place and
+    `parafac2.store_pf2` writes `uns`/`varm`, so the seed axis's identity
+    resampler has to copy. Without the copy the caller's object would carry
+    the first replicate's fit and every later axis would resample from it."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
+
+    component_stability(
+        adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=1
+    )
+
+    assert "Pf2_A" not in adata.uns
+    assert "condition_unique_idxs" not in adata.obs.columns
+
+
+def test_seed_axis_does_not_require_a_retained_tensor():
+    """It refits the pipeline rather than decomposing the reference tensor,
+    so the guard that gates 'lr_pairs' must not gate it."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=False
+    )
+
+    df = component_stability(
+        adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=1
+    )
+
+    assert not df.empty
+
+
 def test_component_stability_rejects_an_unknown_axis():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
@@ -404,6 +728,14 @@ def test_component_stability_rejects_an_unknown_axis():
     with pytest.raises(ValueError, match="Unknown stability axes"):
         component_stability(
             adata, reference, lr_pairs, **kwargs, axes=("genes",), n_replicates=1
+        )
+
+    # The retired permutation floor is an unknown axis now, not a silently
+    # accepted one: a stale command line should fail rather than produce a
+    # table whose baseline column means the opposite of what it used to.
+    with pytest.raises(ValueError, match="Unknown stability axes"):
+        component_stability(
+            adata, reference, lr_pairs, **kwargs, axes=("permuted",), n_replicates=1
         )
 
 
@@ -562,7 +894,17 @@ def test_metric_interval_groups_by_the_keys_it_is_given():
     np.testing.assert_allclose(aggregate["Mean"].iloc[0], 0.65)
 
 
-def _stability_frame(with_floor: bool) -> pd.DataFrame:
+def _stability_frame(with_ceiling: bool) -> pd.DataFrame:
+    """A summary-ready table whose two components need different ceilings.
+
+    Component 1 reseeds almost perfectly but the cell bootstrap moves it well
+    below that, so the perturbation genuinely cost it something. Component 2
+    reseeds worse than component 1 scores under resampling -- it is fuzzy at
+    this rank however it is fit -- so its lower observed FMS is not the data's
+    doing. A ceiling pooled across components would put the band edge at 0.45
+    and call both components fine; matching per component separates them, so
+    these values are what makes that behaviour testable rather than incidental.
+    """
     rows = [
         {
             "Axis": "cells",
@@ -574,59 +916,155 @@ def _stability_frame(with_floor: bool) -> pd.DataFrame:
             "RunnerUpComponent": 3 - component,
             "RunnerUpFMS": 0.1,
         }
-        # Component 1 is reproducible, component 2 hovers near chance.
-        for component, values in [(1, [0.9, 0.92, 0.95]), (2, [0.2, 0.25, 0.3])]
+        for component, values in [(1, [0.9, 0.92, 0.95]), (2, [0.5, 0.55, 0.6])]
         for b, fms in enumerate(values)
     ]
-    if with_floor:
+    if with_ceiling:
         rows += [
             {
-                "Axis": PERMUTED_AXIS,
+                "Axis": SEED_AXIS,
                 "Replicate": b,
                 "Stage": STAGE_CPD,
                 "Component": component,
                 "MatchedComponent": component,
-                "FMS": 0.3,
+                "FMS": fms,
                 "RunnerUpComponent": 3 - component,
                 "RunnerUpFMS": 0.1,
             }
-            for component in (1, 2)
+            for component, fms in [(1, 0.99), (2, 0.45)]
             for b in range(3)
         ]
     return pd.DataFrame(rows)
 
 
-def test_summarize_component_stability_scores_each_component_against_the_floor():
-    summary = summarize_component_stability(_stability_frame(with_floor=True))
+def test_summarize_component_stability_scores_each_component_against_the_seed_band():
+    summary = summarize_component_stability(_stability_frame(with_ceiling=True))
     summary = summary.set_index("Component")
 
     assert set(summary.index) == {1, 2}
-    np.testing.assert_allclose(summary.loc[1, "NullP95FMS"], 0.3)
-    # The reproducible component clears the floor every time; the other never
-    # does, which the aggregate FMS alone would not reveal.
-    assert summary.loc[1, "FracAboveNull"] == 1.0
-    assert summary.loc[2, "FracAboveNull"] == 0.0
+    np.testing.assert_allclose(summary.loc[1, "SeedP5FMS"], 0.99)
+    np.testing.assert_allclose(summary.loc[2, "SeedP5FMS"], 0.45)
+    # Component 1 reseeds better than any bootstrap replicate reproduced it,
+    # so the draw moved it; component 2 never drops below what reseeding alone
+    # costs it, which the aggregate FMS alone would read as the worse result.
+    assert summary.loc[1, "FracWithinSeedBand"] == 0.0
+    assert summary.loc[2, "FracWithinSeedBand"] == 1.0
     np.testing.assert_allclose(summary.loc[1, "MedianFMS"], 0.92)
     np.testing.assert_allclose(summary.loc[1, "MedianRunnerUpFMS"], 0.1)
 
 
-def test_summarize_component_stability_reports_nan_when_no_floor_was_run():
+def test_summarize_component_stability_matches_the_seed_ceiling_per_component():
+    """Pooling the ceiling across components would hide the distinction.
+
+    A single stage-wide band edge here is 0.45, which every observed replicate
+    of both components clears -- so both would read 1.0 and component 1's real
+    sensitivity to the draw would vanish.
+    """
+    df = _stability_frame(with_ceiling=True)
+    pooled_edge = np.percentile(df[df["Axis"] == SEED_AXIS]["FMS"], 5)
+    assert (df[df["Axis"] == "cells"]["FMS"] >= pooled_edge).all()
+
+    summary = summarize_component_stability(df).set_index("Component")
+    assert summary.loc[1, "FracWithinSeedBand"] == 0.0
+
+
+def test_summarize_component_stability_reports_nan_when_no_seed_axis_was_run():
     """0.0 would report every component as having failed a test that was
     never performed."""
-    summary = summarize_component_stability(_stability_frame(with_floor=False))
+    summary = summarize_component_stability(_stability_frame(with_ceiling=False))
 
-    assert summary["NullMedianFMS"].isna().all()
-    assert summary["NullP95FMS"].isna().all()
-    assert summary["FracAboveNull"].isna().all()
+    assert summary["SeedMedianFMS"].isna().all()
+    assert summary["SeedP5FMS"].isna().all()
+    assert summary["FracWithinSeedBand"].isna().all()
 
 
 def test_summarize_component_stability_survives_a_csv_round_trip(tmp_path):
-    """The floor axis is named 'permuted', not 'null', because `read_csv`
-    parses the latter as NaN and silently erases the floor."""
-    path = tmp_path / "stability.csv"
-    _stability_frame(with_floor=True).to_csv(path, index=False)
+    """The baseline axis is named 'seed_only', not 'null', because `read_csv`
+    parses the latter as NaN and silently erases the baseline.
+
+    Asserted at the cause as well as the consequence: a future rename that
+    happens to land on one of pandas' NA strings should fail here rather than
+    downstream, as an unexplained column of NaNs.
+    """
+    from pandas._libs.parsers import STR_NA_VALUES
+
+    assert SEED_AXIS not in STR_NA_VALUES
+
+    path = tmp_path / "validation.csv"
+    _stability_frame(with_ceiling=True).to_csv(path, index=False)
 
     summary = summarize_component_stability(pd.read_csv(path))
 
-    assert summary["NullP95FMS"].notna().all()
-    assert summary["FracAboveNull"].notna().all()
+    assert summary["SeedP5FMS"].notna().all()
+    assert summary["FracWithinSeedBand"].notna().all()
+
+
+def test_reference_condition_rows_matches_on_labels_not_positions():
+    """The map is a label lookup, so a roster whose sorted order permutes the
+    reference's still lands on the right rows.
+
+    `P10` sorts before `P2` as a string but after it as a number, so a roster
+    that reorders the two is exactly the case a positional map would get
+    wrong -- and it would get it wrong quietly, by comparing one patient's
+    factor row against another's.
+    """
+    reference = np.array(["P1", "P2", "P10"])
+    replicate = np.array(["P10", "P1", "P1__rep2", "P2"])
+
+    np.testing.assert_array_equal(
+        reference_condition_rows(reference, replicate), [2, 0, 0, 1]
+    )
+
+
+def test_fit_stability_pipeline_labels_conditions_in_row_order():
+    """`condition_labels` must name mode-0 row for row.
+
+    `add_cond_idxs` orders the rows by a sort in the condition column's own
+    dtype, so an integer column puts row 2 at patient ``10``. Deriving the
+    labels with an independent string sort would instead call that row ``2``,
+    and `reference_condition_rows` -- which reads this array as positionally
+    aligned to the rows -- would then match replicate patients onto the wrong
+    reference rows without raising.
+    """
+    adata = _simulate_adata()
+    # Sample IDs whose numeric and string sorts disagree: [1, 2, 10, 20]
+    # against ['1', '10', '2', '20'].
+    numeric_ids = {"S0": 1, "S1": 2, "S2": 10, "S3": 20}
+    adata.obs["patient"] = adata.obs["sample"].map(numeric_ids).astype(int)
+    kwargs = _pipeline_kwargs(condition_column="patient")
+
+    fit = fit_stability_pipeline(adata, _lr_pairs(), **kwargs, random_state=0)
+
+    # `add_cond_idxs` wrote the row each cell's condition owns; the label of
+    # row i is the patient of any cell carrying index i.
+    rows = adata.obs["condition_unique_idxs"].to_numpy()
+    patients = adata.obs["patient"].to_numpy().astype(str)
+    for row, patient in zip(rows, patients, strict=True):
+        assert fit["condition_labels"][row] == patient
+    assert len(fit["condition_labels"]) == fit["rise_factors"][0].shape[0]
+
+
+def test_fit_stability_pipeline_gives_a_twice_drawn_condition_two_equal_rows():
+    """A repeat draw is fit as its own condition off identical cells, so its
+    two mode-0 rows coincide and both expand from the one reference row."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(adata.copy(), lr_pairs, **kwargs, random_state=0)
+    replicate = fit_stability_pipeline(
+        resample_conditions(adata, "sample", stratify_by="group", random_seed=2),
+        lr_pairs,
+        **kwargs,
+        random_state=0,
+    )
+
+    labels = list(replicate["condition_labels"])
+    assert labels == ["S0", "S0__rep2", "S2", "S3"]
+
+    A = replicate["rise_factors"][0]
+    np.testing.assert_allclose(A[labels.index("S0")], A[labels.index("S0__rep2")])
+
+    rows = reference_condition_rows(
+        reference["condition_labels"], replicate["condition_labels"]
+    )
+    np.testing.assert_array_equal(rows, [0, 0, 2, 3])

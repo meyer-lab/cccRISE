@@ -180,7 +180,7 @@ def save_factors_netcdf(ds: xr.Dataset, filepath: str | Path) -> None:
 
 def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
     """Load an xarray Dataset of factors from a NetCDF file."""
-    return xr.open_dataset(Path(filepath))
+    return xr.load_dataset(Path(filepath))
 
 
 def load_factors_to_anndata(

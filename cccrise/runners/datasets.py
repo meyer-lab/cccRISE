@@ -30,6 +30,14 @@ class DatasetSpec:
     gene_threshold: float = 0.001
     celltype_column: str | None = None
     group_column: str | None = None
+    #: Condition-level patient identity, for conditions the same patient
+    #: contributes more than one sample of (see `validation`'s
+    #: `patient_column`). None where `condition_column` already identifies
+    #: the patient one-to-one.
+    patient_column: str | None = None
+    #: Condition-level outcome the ANOVA bootstrap tests every level of by
+    #: default. None falls back to `group_column` and its registered labels.
+    outcome_column: str | None = None
     notes: str = ""
 
     @property
@@ -57,11 +65,17 @@ class DatasetSpec:
     def stability_filename(self) -> str:
         return f"component_stability_{self.key}.csv"
 
-    def logreg_bootstrap_weights_filename(self) -> str:
-        return f"logreg_bootstrap_weights_{self.key}.csv"
+    def anova_bootstrap_filename(self) -> str:
+        return f"anova_bootstrap_{self.key}.csv"
 
-    def logreg_bootstrap_summary_filename(self) -> str:
-        return f"logreg_bootstrap_summary_{self.key}.csv"
+    def significance_lr_filename(self) -> str:
+        return f"significance_lr_{self.key}.csv"
+
+    def significance_differential_filename(self) -> str:
+        return f"significance_differential_{self.key}.parquet"
+
+    def nichenet_scores_filename(self) -> str:
+        return f"nichenet_scores_{self.key}.csv"
 
 
 DATASETS: dict[str, DatasetSpec] = {
@@ -74,6 +88,8 @@ DATASETS: dict[str, DatasetSpec] = {
         source_file=Path("/opt/IVCSC/BAL-scRNAseq.raw.h5ad"),
         celltype_column="broad_cell_type",
         group_column="ALADstatus",
+        patient_column="patient_id",
+        outcome_column="6monthcondition",
     ),
     "ibd": DatasetSpec(
         key="ibd",

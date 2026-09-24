@@ -52,6 +52,9 @@ Row Alignment
 - When ligand-receptor pairs are resampled with replacement (`lr_pairs` axis),
   reference mode-3 rows ($F$) are expanded using the drawn LR indices to align
   with the replicate's resampled LR roster.
+- The seed axis (`SEED_AXIS`) needs no alignment at all: the roster is the
+  reference's own, so mode 0 already matches row for row. That is what makes
+  its FMS comparable to the reference's on a per-component basis.
 """
 
 from collections.abc import Callable
@@ -64,9 +67,19 @@ from scipy.optimize import linear_sum_assignment
 from tensorly.decomposition import parafac
 
 from ..ccc import calculate_r2x
-from ..ccc_rise import standardize_cc_pf2
-from ..rank_selection import cp_core_consistency, cpd_component_collinearity
-from ..tensor import fit_rise_cp_pipeline
+from ..ccc_rise import standardize_cc_pf2, validate_cp_rank
+from ..factors import clean_memory
+from ..import_data import add_cond_idxs
+from ..rank_selection import (
+    candelinc_compress,
+    candelinc_r2x,
+    cp_core_consistency,
+    cpd_component_collinearity,
+)
+from ..tensor import (
+    calculate_interaction_tensor,
+    rise_store_r2x,
+)
 from ..utils import (
     replicate_seed,
     resample_cells,
@@ -84,29 +97,43 @@ STAGE_CPD = "CPD"
 RISE_SKIP_MODES: tuple[int, ...] = (1,)
 CPD_SKIP_MODES: tuple[int, ...] = (1, 2)
 
-#: Name of the chance-floor axis. Deliberately not "null": pandas' `read_csv`
-#: parses that string as NaN by default, which silently erases the floor.
-PERMUTED_AXIS = "permuted"
+#: Name of the reproducibility-ceiling axis: identical data, a different random
+#: seed, refit end to end. `random_state` genuinely moves both stages: `parafac2_nd`
+#: seeds the Gaussian projection of its randomized-SVD initialization and its
+#: compression stage, and tensorly's ``parafac(init="svd", svd="randomized_svd")`` does
+#: the same, so the axis is not degenerate.
+SEED_AXIS = "seed_only"
 
-#: Axes that resample the cohort and so require a RISE refit. Both draw *with*
-#: replacement; see `utils.resample_cells` / `utils.resample_conditions`.
-RISE_REFIT_AXES = ("cells", "conditions")
+#: Percentile of the seed axis's FMS taken as the reproducibility band's lower
+#: edge.
+SEED_BAND_PERCENTILE = 5.0
 
-#: Axes run by default. 'lr_pairs' bootstraps the reference tensor's
-#: ligand-receptor mode and so costs no PARAFAC2 fit.
-DEFAULT_AXES = ("cells", "conditions", "lr_pairs")
+#: Axes that refit RISE.
+RISE_REFIT_AXES = ("cells", "conditions", SEED_AXIS)
 
-#: How a cohort axis perturbs the data. Each entry takes
-#: ``(adata, condition_column, group_column, seed)``.
+#: Axes run by default.
+DEFAULT_AXES = ("cells", "conditions", "lr_pairs", SEED_AXIS)
+
+#: How an axis prepares the data it is fit on. Each entry takes
+#: ``(adata, condition_column, group_column, patient_column, seed)``.
+#:
+#: `SEED_AXIS`'s entry perturbs nothing -- its perturbation is applied
+#: downstream, by handing `fit_stability_pipeline` a different `random_state`.
 RESAMPLERS: dict[
-    str, Callable[[anndata.AnnData, str, str | None, int], anndata.AnnData]
+    str,
+    Callable[[anndata.AnnData, str, str | None, str | None, int], anndata.AnnData],
 ] = {
-    "cells": lambda adata, col, group, seed: resample_cells(
+    "cells": lambda adata, col, group, patient, seed: resample_cells(
         adata, condition_name=col, random_seed=seed
     ),
-    "conditions": lambda adata, col, group, seed: resample_conditions(
-        adata, condition_name=col, stratify_by=group, random_seed=seed
+    "conditions": lambda adata, col, group, patient, seed: resample_conditions(
+        adata,
+        condition_name=col,
+        stratify_by=group,
+        random_seed=seed,
+        patient_by=patient,
     ),
+    SEED_AXIS: lambda adata, col, group, patient, seed: adata.copy(),
 }
 
 
@@ -266,6 +293,102 @@ def _expand_reference_mode(factors: Factors, mode: int, rows: np.ndarray) -> Fac
 # =============================================================================
 
 
+def _condition_labels(adata: anndata.AnnData, condition_column: str) -> np.ndarray:
+    """Condition labels aligned to the fit's mode-0 rows.
+
+    Read back out of the `condition_unique_idxs` column `add_cond_idxs` wrote,
+    rather than re-derived with an independent `np.unique`, so the labels
+    cannot disagree with the rows they name. The two orderings differ whenever
+    the condition column is not already a string: `add_cond_idxs` sorts in the
+    column's native dtype, so an integer column gives rows in `[1, 2, 10]`
+    order while a string sort of the same labels gives `['1', '10', '2']`.
+    Consumers -- `reference_condition_rows` above all -- treat this array as
+    positionally aligned to mode 0, and a silent disagreement would have
+    `per_component_fms` compare the wrong patients and still return a
+    plausible number.
+    """
+    cond_idx = np.asarray(adata.obs["condition_unique_idxs"]).astype(int)
+    labels = np.asarray(adata.obs[condition_column]).astype(str)
+    order = np.empty(cond_idx.max() + 1, dtype=object)
+    order[cond_idx] = labels
+    assert len(order) == adata.uns["Pf2_A"].shape[0], (
+        f"{len(order)} condition labels for "
+        f"{adata.uns['Pf2_A'].shape[0]} rows of Pf2_A."
+    )
+    return order
+
+
+def fit_rise_cp(
+    adata: anndata.AnnData,
+    lr_pairs: pd.DataFrame,
+    condition_column: str,
+    rise_rank: int,
+    cp_rank: int,
+    rise_n_iter_max: int = 100,
+    rise_tol: float = 1e-6,
+    cp_n_iter_max: int = 100,
+    cp_tol: float = 1e-3,
+    init: str = "svd",
+    svd: str = "randomized_svd",
+    complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    random_state: int | None = None,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
+) -> dict[str, Any]:
+    """RISE -> communication tensor -> CP at fixed ranks: the model-fitting
+    core shared by `fit_stability_pipeline` and
+    `anova_stability.fit_anova_pipeline`, each of which derives its own
+    summary from the fit. Parameters are as in `fit_stability_pipeline`.
+
+    Returns a dict with keys 'adata' (written into by RISE), 'tensor',
+    'filtered_lr_pairs', 'cp_weights', 'cp_factors' (standardized), 'r2x_rise',
+    'r2x_cp', 'diagnostics'.
+    """
+    adata = add_cond_idxs(adata, condition_column)
+    adata, r2x_rise = rise_store_r2x(
+        adata,
+        rank=rise_rank,
+        n_iter_max=rise_n_iter_max,
+        tolerance=rise_tol,
+        random_state=random_state,
+        backend=backend,
+    )
+    tensor, filtered_lr_pairs = calculate_interaction_tensor(
+        adata,
+        lr_pairs,
+        complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
+    )
+    validate_cp_rank(cp_rank, tensor.shape)
+
+    cp_weights, cp_factors, r2x_cp, diagnostics = _fit_cp(
+        tensor,
+        cp_rank,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
+        init=init,
+        svd=svd,
+        random_state=random_state,
+        compress=compress,
+        oversample=oversample,
+    )
+    cp_weights, cp_factors = standardize_cc_pf2(cp_weights, cp_factors)
+    return {
+        "adata": adata,
+        "tensor": tensor,
+        "filtered_lr_pairs": filtered_lr_pairs,
+        "cp_weights": cp_weights,
+        "cp_factors": cp_factors,
+        "r2x_rise": r2x_rise,
+        "r2x_cp": r2x_cp,
+        "diagnostics": diagnostics,
+    }
+
+
 def fit_stability_pipeline(
     adata: anndata.AnnData,
     lr_pairs: pd.DataFrame,
@@ -284,6 +407,9 @@ def fit_stability_pipeline(
     hill_k: float = 0.5,
     random_state: int = 0,
     keep_tensor: bool = False,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> dict[str, Any]:
     """Run RISE, build the communication tensor, and fit CP over `adata`.
 
@@ -313,13 +439,21 @@ def fit_stability_pipeline(
     keep_tensor : bool, default=False
         Retain the communication tensor on the returned fit. Only the
         reference pass needs it.
+    backend : str | None, default=None
+        Backend the RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
+        auto-detect); passed straight through to `tensor.rise_store_r2x`.
+    compress : bool, default=True
+        Fit CP inside a CANDELINC core sized for `cp_rank` instead of the
+        full tensor (see `validation.component_stability._fit_cp`).
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
     dict[str, Any]
         Fitted factors, diagnostics, and metadata.
     """
-    fit = fit_rise_cp_pipeline(
+    fit = fit_rise_cp(
         adata,
         lr_pairs,
         condition_column,
@@ -335,11 +469,14 @@ def fit_stability_pipeline(
         communication_score=communication_score,
         hill_k=hill_k,
         random_state=random_state,
+        backend=backend,
+        compress=compress,
+        oversample=oversample,
     )
-    adata = fit["adata"]
-    tensor, filtered_lr_pairs = fit["tensor"], fit["filtered_lr_pairs"]
+    adata, tensor = fit["adata"], fit["tensor"]
     cp_weights, cp_factors = fit["cp_weights"], fit["cp_factors"]
-    r2x_rise, r2x_cp = fit["r2x_rise"], fit["r2x_cp"]
+    filtered_lr_pairs = fit["filtered_lr_pairs"]
+    r2x_rise, r2x_cp, diagnostics = fit["r2x_rise"], fit["r2x_cp"], fit["diagnostics"]
 
     return {
         "rise_factors": [
@@ -349,15 +486,13 @@ def fit_stability_pipeline(
         ],
         "cp_weights": cp_weights,
         "cp_factors": cp_factors,
-        "condition_labels": np.unique(
-            np.asarray(adata.obs[condition_column]).astype(str)
-        ),
+        "condition_labels": _condition_labels(adata, condition_column),
         "gene_names": np.asarray(adata.var_names),
         "lr_symbols": filtered_lr_pairs["interaction_symbol"].to_numpy(),
         "tensor": tensor if keep_tensor else None,
         "r2x_rise": r2x_rise,
         "r2x_cp": r2x_cp,
-        "cpd_diagnostics": _cpd_diagnostics(tensor, cp_weights, cp_factors, cp_rank),
+        "cpd_diagnostics": diagnostics,
     }
 
 
@@ -380,6 +515,60 @@ def _cpd_diagnostics(
         "MaxModesCollinear": int(collinearity["MaxModesCollinear"]),
         "WorstPairCanceling": collinearity["WorstPairCanceling"],
     }
+
+
+def _fit_cp(
+    tensor: np.ndarray,
+    rank: int,
+    n_iter_max: int,
+    tol: float,
+    init: str,
+    svd: str,
+    random_state: int | None,
+    compress: bool = True,
+    oversample: int = 5,
+) -> tuple[np.ndarray, Factors, float, dict[str, Any]]:
+    """Fit CP at a fixed rank, in a CANDELINC core by default.
+
+    `compress` fits against a core sized for `rank`
+    (`rank_selection.candelinc_compress`) instead of the full tensor, then
+    maps the factors back onto the tensor's own modes with ``A_n = U_n F_n``.
+    R2X (via `rank_selection.candelinc_r2x`), core consistency and
+    collinearity are each proven invariant to that substitution, so this is a
+    speed optimization -- what a replicate's diagnostics and FMS say does not
+    change, only how fast they are computed.
+
+    Returns weights, factors (in `tensor`'s own space, ready for
+    `per_component_fms`), R2X against `tensor`, and the `_cpd_diagnostics`
+    dict -- each computed in the (cheaper) core space when compressed.
+    """
+    fit_target = tensor
+    bases: Factors | None = None
+    lost_sq = 0.0
+    if compress:
+        fit_target, bases, lost_sq = candelinc_compress(
+            tensor, max_rank=rank, oversample=oversample
+        )
+
+    weights, factors = parafac(
+        fit_target,
+        rank,
+        n_iter_max=n_iter_max,
+        tol=tol,
+        init=init,
+        svd=svd,
+        normalize_factors=True,
+        random_state=random_state,
+    )
+    diagnostics = _cpd_diagnostics(fit_target, weights, factors, rank)
+    r2x = candelinc_r2x(
+        calculate_r2x(weights, factors, fit_target), fit_target, lost_sq
+    )
+
+    if bases is not None:
+        factors = [b @ f for b, f in zip(bases, factors, strict=True)]
+
+    return weights, factors, r2x, diagnostics
 
 
 def _tag(
@@ -415,6 +604,7 @@ def component_stability(
     rise_rank: int,
     cp_rank: int,
     group_column: str | None = None,
+    patient_column: str | None = None,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
     rise_n_iter_max: int = 100,
@@ -427,23 +617,29 @@ def component_stability(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int = 0,
+    backend: str | None = None,
+    compress: bool = True,
+    oversample: int = 5,
 ) -> pd.DataFrame:
     """Per-component stability of both stages under resampling, in long form.
 
-    For each cohort axis ('cells', 'conditions') a replicate resamples the
-    data, refits RISE at `rise_rank`, and matches the resulting components
-    onto the reference's with Mode 1 held out (`RISE_SKIP_MODES`); the
-    communication tensor built from that same fit is then decomposed at
-    `cp_rank` and matched in turn with Modes 1 and 2 held out
-    (`CPD_SKIP_MODES`).
+    For each axis in `RISE_REFIT_AXES` a replicate prepares the data, refits
+    RISE at `rise_rank`, and matches the resulting components onto the
+    reference's with Mode 1 held out (`RISE_SKIP_MODES`); the communication
+    tensor built from that same fit is then decomposed at `cp_rank` and
+    matched in turn with Modes 1 and 2 held out (`CPD_SKIP_MODES`). 'cells'
+    and 'conditions' resample; `SEED_AXIS` hands the pipeline the identical
+    cohort and changes only the seed the fits start from, so it measures how
+    far components move under the fitters' own randomness -- the
+    reproducibility ceiling every resampling axis is read against, and the
+    term that would otherwise be confounded with sampling variability.
+    Because its roster is unchanged, its mode-0 rows line up with the
+    reference's directly and no `reference_condition_rows` expansion applies.
 
-    Two axes act on the reference tensor instead:
+    One axis acts on the reference tensor instead:
     - `lr_pairs`: The ligand-receptor mode bootstrapped with replacement,
       matching CPD modes 0 and 3 with reference mode-3 rows expanded by the
-      drawn LR indices.
-    - `permuted`: The tensor's entries randomly permuted, destroying
-      multilinear structure. This provides the empirical chance floor across
-      CPD modes 0 and 3.
+      drawn LR indices. It costs no PARAFAC2 fit and so emits CPD rows only.
 
     Parameters
     ----------
@@ -459,6 +655,11 @@ def component_stability(
         Ranks for the RISE and CP stages.
     group_column : str | None, default=None
         Condition-level phenotype column the condition draw is stratified within.
+    patient_column : str | None, default=None
+        Condition-level patient identity column, for the 'conditions' axis
+        alone. When a patient contributes more than one condition, drawing one
+        of them carries its sibling condition in and drops one other random
+        draw to compensate (see `utils.resample_conditions`).
     axes : tuple[str, ...], default=DEFAULT_AXES
         Which axes to run.
     n_replicates : int, default=20
@@ -471,6 +672,14 @@ def component_stability(
         Communication-tensor options.
     random_state : int, default=0
         Base seed.
+    backend : str | None, default=None
+        Backend each replicate's RISE refit runs on; see
+        `fit_stability_pipeline`.
+    compress : bool, default=True
+        Fit every replicate's CP stage inside a CANDELINC core; see
+        `component_stability._fit_cp`.
+    oversample : int, default=5
+        Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
     Returns
     -------
@@ -478,13 +687,13 @@ def component_stability(
         Long-form table containing per-component FMS matches and per-fit
         diagnostics for each replicate.
     """
-    unknown = set(axes) - set(RISE_REFIT_AXES) - {"lr_pairs", PERMUTED_AXIS}
+    unknown = set(axes) - set(RISE_REFIT_AXES) - {"lr_pairs"}
     if unknown:
         raise ValueError(f"Unknown stability axes: {sorted(unknown)}")
-    if reference.get("tensor") is None and ({"lr_pairs", PERMUTED_AXIS} & set(axes)):
+    if reference.get("tensor") is None and "lr_pairs" in axes:
         raise ValueError(
-            "The 'lr_pairs' and 'permuted' axes resample the reference "
-            "tensor, so the reference fit must be built with keep_tensor=True."
+            "The 'lr_pairs' axis resamples the reference tensor, so the "
+            "reference fit must be built with keep_tensor=True."
         )
 
     frames = []
@@ -494,7 +703,7 @@ def component_stability(
 
             if axis in RISE_REFIT_AXES:
                 resampled = RESAMPLERS[axis](
-                    adata, condition_column, group_column, seed
+                    adata, condition_column, group_column, patient_column, seed
                 )
                 print(
                     f"   {axis} replicate {replicate + 1}/{n_replicates}: "
@@ -517,6 +726,9 @@ def component_stability(
                     communication_score=communication_score,
                     hill_k=hill_k,
                     random_state=seed,
+                    backend=backend,
+                    compress=compress,
+                    oversample=oversample,
                 )
                 _check_rosters(reference, fit)
 
@@ -565,35 +777,35 @@ def component_stability(
                         diagnostics=fit["cpd_diagnostics"],
                     )
                 )
+                # CuPy's pool never returns freed blocks to the driver on its
+                # own, so a long sweep of variably-sized resamples fragments
+                # it until a fit spuriously trips the managed-memory fallback.
+                clean_memory()
                 continue
 
+            # 'lr_pairs' is the only axis left that reaches the reference
+            # tensor rather than refitting RISE; the guard above is exhaustive.
             tensor = cast(np.ndarray, reference["tensor"])
-            if axis == "lr_pairs":
-                perturbed, lr_indices = resample_tensor(
-                    tensor, random_seed=seed, return_indices=True
-                )
-                ref_cp = _expand_reference_mode(
-                    reference["cp_factors"], mode=3, rows=lr_indices
-                )
-            else:
-                rng = np.random.default_rng(seed)
-                perturbed = rng.permutation(tensor.ravel()).reshape(tensor.shape)
-                ref_cp = reference["cp_factors"]
+            perturbed, lr_indices = resample_tensor(
+                tensor, random_seed=seed, return_indices=True
+            )
+            ref_cp = _expand_reference_mode(
+                reference["cp_factors"], mode=3, rows=lr_indices
+            )
             print(f"   {axis} replicate {replicate + 1}/{n_replicates}")
 
-            weights, factors = parafac(
+            weights, factors, r2x, diagnostics = _fit_cp(
                 perturbed,
                 cp_rank,
                 n_iter_max=cp_n_iter_max,
                 tol=cp_tol,
                 init=init,
                 svd=svd,
-                normalize_factors=True,
                 random_state=seed,
+                compress=compress,
+                oversample=oversample,
             )
-            r2x = calculate_r2x(weights, factors, perturbed)
             weights, factors = standardize_cc_pf2(weights, factors)
-            diagnostics = _cpd_diagnostics(perturbed, weights, factors, cp_rank)
             frames.append(
                 _tag(
                     per_component_fms(ref_cp, factors, skip_modes=CPD_SKIP_MODES),
@@ -607,12 +819,13 @@ def component_stability(
                     n_conditions=np.nan,
                 )
             )
+            clean_memory()
 
     return pd.concat(frames, ignore_index=True)
 
 
 def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
-    """Refuse to compare two fits whose gene or LR-pair modes differ.
+    """Refuse to compare two fits whose gene, LR-pair or condition modes differ.
 
     Both rosters are fixed in practice -- gene filtering happens in the loader
     before any resampling, and `ccc.build_context_ccc_tensor` intersects over
@@ -622,6 +835,13 @@ def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
     different interactions row by row and return a perfectly plausible number,
     and intersecting would change the mode length and so the FMS scale
     invisibly.
+
+    The condition mode is checked by length rather than membership: the
+    replicate's roster is *meant* to differ from the reference's on the
+    condition axis. What must hold is that `condition_labels` still names
+    mode-0 row for row, since that is what `reference_condition_rows` matches
+    on. A length mismatch is the loud symptom of the labels having drifted out
+    of step with the rows.
     """
     if not np.array_equal(fit["gene_names"], reference["gene_names"]):
         raise ValueError(
@@ -634,6 +854,18 @@ def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
             "pairs, so their CP ligand-receptor factor rows are not "
             "comparable and component matching would be meaningless."
         )
+    for fit_or_reference in (fit, reference):
+        n_labels = len(fit_or_reference["condition_labels"])
+        for key in ("rise_factors", "cp_factors"):
+            n_rows = fit_or_reference[key][0].shape[0]
+            if n_labels != n_rows:
+                raise ValueError(
+                    f"{n_labels} condition labels for {n_rows} rows of "
+                    f"{key}'s condition mode. The labels are what "
+                    "`reference_condition_rows` matches on, so a length "
+                    "mismatch means they no longer name the rows they are "
+                    "read as naming."
+                )
 
 
 # =============================================================================
@@ -705,33 +937,33 @@ def summarize_component_stability(
     lower: float = 2.5,
     upper: float = 97.5,
 ) -> pd.DataFrame:
-    """Per-component FMS summary with the chance floor beside each component.
+    """Per-component FMS summary with the seed-refit ceiling beside each component.
 
     One row per (Axis, Stage, Component): that component's FMS band across
-    replicates, its median runner-up score, and -- matched on Stage, so the
-    floor compared the same modes -- the permuted axis's median and 95th
-    percentile plus the fraction of replicates in which the component scored
-    above that 95th percentile.
-
-    'FracAboveNull' is the column to read: a component clearing the floor on
-    nearly every replicate is reproducible structure, and one hovering at it is
-    not, regardless of how the aggregate FMS looks.
+    replicates, its median runner-up score, and -- matched on that same
+    component -- the seed axis's median FMS, the lower edge of its
+    reproducibility band, and the fraction of replicates in which the
+    component stayed inside it.
 
     Parameters
     ----------
     df : pd.DataFrame
         Output of `component_stability`.
     lower, upper : float
-        Percentiles reported as the interval.
+        Percentiles reported as the interval for the observed axes. The seed
+        band's own edge is `SEED_BAND_PERCENTILE`, deliberately independent of
+        these.
 
     Returns
     -------
     pd.DataFrame
         The `metric_interval` columns plus 'MedianRunnerUpFMS',
-        'NullMedianFMS', 'NullP95FMS' and 'FracAboveNull'.
+        'SeedMedianFMS', 'SeedP5FMS' and 'FracWithinSeedBand'. The last three
+        are NaN when the seed axis was not run: 0.0 would report every
+        component as having failed a test that was never performed.
     """
     keys = ["Axis", "Stage", "Component"]
-    observed = df[df["Axis"] != PERMUTED_AXIS]
+    observed = df[df["Axis"] != SEED_AXIS]
     summary = metric_interval(
         observed, "FMS", by=tuple(keys), lower=lower, upper=upper
     ).rename(columns={"Mean": "MeanFMS", "Median": "MedianFMS"})
@@ -744,37 +976,39 @@ def summarize_component_stability(
     )
     summary = summary.merge(runner_up, on=keys, how="left")
 
-    floor_df = df[df["Axis"] == PERMUTED_AXIS]
-    if not floor_df.empty:
-        floor = (
-            floor_df.groupby(["Stage"])["FMS"]
+    ceiling_df = df[df["Axis"] == SEED_AXIS]
+    if not ceiling_df.empty:
+        ceiling = (
+            ceiling_df.groupby(["Stage", "Component"])["FMS"]
             .agg(
-                NullMedianFMS="median",
-                NullP95FMS=lambda x: np.percentile(x, 95),
+                SeedMedianFMS="median",
+                SeedP5FMS=lambda x: np.percentile(x, SEED_BAND_PERCENTILE),
             )
             .reset_index()
         )
-        summary = summary.merge(floor, on=["Stage"], how="left")
-        above = observed.merge(floor, on=["Stage"], how="left")
-        above["Above"] = above["FMS"] > above["NullP95FMS"]
+        summary = summary.merge(ceiling, on=["Stage", "Component"], how="left")
+        within = observed.merge(ceiling, on=["Stage", "Component"], how="left")
+        within["Within"] = within["FMS"] >= within["SeedP5FMS"]
         frac = (
-            above.groupby(keys)
+            within.groupby(keys)
             .agg(
-                FracAboveNull=("Above", "mean"),
-                NFloor=("NullP95FMS", "count"),
+                FracWithinSeedBand=("Within", "mean"),
+                NCeiling=("SeedP5FMS", "count"),
                 NRows=("FMS", "count"),
             )
             .reset_index()
         )
-        frac["FracAboveNull"] = frac["FracAboveNull"].where(
-            frac["NFloor"] == frac["NRows"]
+        # A (Stage, Component) the seed axis never covered would otherwise be
+        # scored 0.0 -- indistinguishable from having genuinely failed.
+        frac["FracWithinSeedBand"] = frac["FracWithinSeedBand"].where(
+            frac["NCeiling"] == frac["NRows"]
         )
         summary = summary.merge(
-            frac.drop(columns=["NFloor", "NRows"]), on=keys, how="left"
+            frac.drop(columns=["NCeiling", "NRows"]), on=keys, how="left"
         )
     else:
-        summary["NullMedianFMS"] = np.nan
-        summary["NullP95FMS"] = np.nan
-        summary["FracAboveNull"] = np.nan
+        summary["SeedMedianFMS"] = np.nan
+        summary["SeedP5FMS"] = np.nan
+        summary["FracWithinSeedBand"] = np.nan
 
     return summary
