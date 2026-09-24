@@ -1,3 +1,4 @@
+import math
 from typing import cast
 
 import anndata
@@ -5,6 +6,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+
+from ..common import getSetup
 
 
 def get_sample_to_group(
@@ -57,6 +61,180 @@ def rotate_yaxis(ax, rotation=90):
     """Rotates text by 90 degrees for y-axis"""
     ax.set_yticks(ax.get_yticks())
     ax.set_yticklabels(labels=ax.get_yticklabels(), rotation=rotation)
+
+
+FACTOR_KEYS = {"sender": "sc_B", "receiver": "rc_C"}
+
+
+def plot_wc_histogram(
+    X: anndata.AnnData,
+    cmp: int,
+    ax: Axes,
+    celltype: str,
+    celltype_col: str = "celltype",
+    factor_types: tuple[str, ...] = ("sender", "receiver"),
+    bins: int = 50,
+    top_perc: float = 10,
+    log_y: bool = True,
+    show_stats: bool = True,
+    colors: list | None = None,
+) -> None:
+    """Histogram of one cell type's weights for one component, sender and receiver
+    overlaid.
+
+    Complements the cell type x component summaries
+    (`celltype_component_association`): a mean says nothing about the shape it came
+    from, and a bimodal population whose halves cancel to a mean of zero is
+    indistinguishable there from one that is genuinely unassociated. Bin edges,
+    axis limits, and the top-percentile threshold are all derived from every cell in
+    `X` rather than from the plotted subset, so panels drawn for different cell
+    types are directly comparable.
+
+    Parameters
+    ----------
+    X : anndata.AnnData
+        AnnData carrying per-cell loadings in `obsm["sc_B"]` / `obsm["rc_C"]` and
+        cell type labels in `.obs`.
+    cmp : int
+        Component to plot (1-indexed).
+    celltype : str
+        The cell type whose cells are histogrammed.
+    factor_types : tuple of {"sender", "receiver"}
+        Which loadings to overlay.
+    top_perc : float, default=10
+        A dashed line marks this top percentile of all cells, and the legend reports
+        the share of this cell type falling above it (the `"pct_top"` statistic of
+        `celltype_component_association`).
+    log_y : bool, default=True
+        Log-scale the y axis, which keeps a small high-weight tail visible against a
+        peak near zero.
+    show_stats : bool, default=True
+        Report the mean and top-percentile share in the legend; otherwise label
+        each histogram by factor type only.
+    colors : list, optional
+        One color per entry of `factor_types`; defaults to colorblind blue/red.
+    """
+    labels = np.asarray(cast(pd.DataFrame, X.obs)[celltype_col]).astype(str)
+    mask = labels == celltype
+
+    all_values = [
+        np.asarray(X.obsm[FACTOR_KEYS[factor_type]], dtype=float)[:, cmp - 1]
+        for factor_type in factor_types
+    ]
+    lo = min(float(values.min()) for values in all_values)
+    hi = max(float(values.max()) for values in all_values)
+    # A list rather than an array: matplotlib's stubs type `bins` as Sequence[float]
+    edges = np.linspace(lo, hi, bins + 1).tolist()
+    if colors is None:
+        palette = sns.color_palette("colorblind")
+        colors = [palette[[0, 3][i % 2]] for i in range(len(factor_types))]
+
+    ax.axvline(0.0, color="0.6", lw=0.6, zorder=0)
+    for i, (factor_type, values) in enumerate(
+        zip(factor_types, all_values, strict=True)
+    ):
+        subset = values[mask]
+        color = colors[i]
+        threshold = float(np.percentile(values, 100 - top_perc))
+        pct_top = 100 * float(np.mean(subset > threshold)) if subset.size else np.nan
+
+        ax.hist(
+            subset,
+            bins=edges,
+            weights=np.full(subset.size, 1 / max(subset.size, 1)),
+            histtype="stepfilled",
+            alpha=0.45,
+            color=color,
+            edgecolor=color,
+            lw=0.8,
+            label=(
+                factor_type.capitalize()
+                if not show_stats
+                else f"{factor_type.capitalize()}: "
+                f"$\\mu$={subset.mean():+.3f}, {pct_top:.0f}% in top {top_perc:g}%"
+                if subset.size
+                else f"{factor_type.capitalize()}: no cells"
+            ),
+        )
+        ax.axvline(threshold, color=color, ls="--", lw=0.8)
+
+    if log_y:
+        ax.set_yscale("log")
+    # Headroom so the legend clears the tallest bin
+    ax.set_ylim(top=ax.get_ylim()[1] * (8 if log_y else 1.6))
+    ax.set_xlim(lo, hi)
+    ax.set(xlabel=f"Cmp. {cmp} Weight", ylabel="Fraction of Cells")
+    ax.set_title(f"{celltype} (n={int(mask.sum())})")
+    ax.legend(loc="upper right")
+
+
+def celltype_grid_shape(
+    X: anndata.AnnData, celltype_col: str = "celltype", ncols: int = 4
+) -> tuple[int, int]:
+    """Rows and columns needed to give every cell type its own panel."""
+    n_celltypes = len(np.unique(np.asarray(cast(pd.DataFrame, X.obs)[celltype_col])))
+    ncols = min(ncols, n_celltypes)
+    return math.ceil(n_celltypes / ncols), ncols
+
+
+def plot_wc_histogram_grid(
+    X: anndata.AnnData,
+    cmp: int,
+    axes: list[Axes] | np.ndarray,
+    celltype_col: str = "celltype",
+    factor_types: tuple[str, ...] = ("sender", "receiver"),
+    **kwargs,
+) -> None:
+    """Fill `axes` with one `plot_wc_histogram` panel per cell type, hiding any
+    leftover axes. Remaining keyword arguments go to `plot_wc_histogram`."""
+    celltypes = np.unique(
+        np.asarray(cast(pd.DataFrame, X.obs)[celltype_col]).astype(str)
+    )
+    axes = np.asarray(axes).ravel()
+
+    for axis, celltype in zip(axes, celltypes, strict=False):
+        plot_wc_histogram(
+            X,
+            cmp,
+            axis,
+            celltype,
+            celltype_col=celltype_col,
+            factor_types=factor_types,
+            **kwargs,
+        )
+
+    for axis in axes[len(celltypes) :]:
+        axis.axis("off")
+
+
+def make_wc_histogram_figure(
+    X: anndata.AnnData,
+    cmp: int,
+    celltype_col: str = "celltype",
+    factor_types: tuple[str, ...] = ("sender", "receiver"),
+    ncols: int = 4,
+    panel_size: tuple[float, float] = (4.5, 3.2),
+    **kwargs,
+) -> Figure:
+    """Build a standalone grid of `plot_wc_histogram` panels, one per cell type, for
+    one component."""
+    nrows, ncols = celltype_grid_shape(X, celltype_col, ncols)
+
+    ax, f = getSetup(
+        (panel_size[0] * ncols, panel_size[1] * nrows),
+        (nrows, ncols),
+    )
+    plot_wc_histogram_grid(
+        X,
+        cmp,
+        ax,
+        celltype_col=celltype_col,
+        factor_types=factor_types,
+        **kwargs,
+    )
+    f.suptitle(f"Component {cmp}: Cell Weight Distributions by Cell Type")
+
+    return f
 
 
 DEFAULT_PATIENT_INFO = [

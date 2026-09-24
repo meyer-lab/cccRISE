@@ -9,7 +9,10 @@ the format the figure modules read via `factors.load_factors_to_anndata`.
 
 The ``.nc`` also stores the per-cell RISE projections, so `run_significance`
 can load this fit (``--reference-source``, `utils.load_rise_reference`)
-instead of refitting RISE.
+instead of refitting RISE. It also carries float16 copies of the projections,
+sender/receiver weights and a PaCMAP embedding, so the Shiny explorer can read
+it directly (``--no-embedding`` skips the PaCMAP fit for cohorts where it is
+too slow).
 
 The sidecar's ``rank_selection`` block records which sweep justifies each chosen
 rank -- the sweep CSVs written by `run_rise_rank` / `run_cpd_rank`, plus a
@@ -27,7 +30,7 @@ import numpy as np
 import xarray as xr
 
 from ..ccc_rise import validate_cp_rank
-from ..factors import factors_to_xarray, save_factors_netcdf
+from ..factors import add_cell_projections, factors_to_xarray, save_factors_netcdf
 from ..import_data import import_ligand_receptor_pairs
 from ..tensor import run_ccc_rise_workflow
 from ._cli import (
@@ -84,6 +87,7 @@ def run_pipeline(
     output_path: Path | None = None,
     rise_rank_notes: str | None = None,
     cpd_rank_notes: str | None = None,
+    do_embedding: bool = True,
 ) -> tuple[anndata.AnnData, xr.Dataset, Path, Path]:
     """Run cccRISE end to end and serialize the factor model plus provenance.
 
@@ -114,6 +118,9 @@ def run_pipeline(
         other score.
     rise_rank_notes, cpd_rank_notes : str, optional
         Rationale for each chosen rank, written into the provenance file.
+    do_embedding : bool, default=True
+        Fit a PaCMAP embedding of the per-cell projections and store it with
+        them, for the Shiny explorer's cell projection views.
 
     Returns
     -------
@@ -153,7 +160,7 @@ def run_pipeline(
         tol=tol,
         random_state=random_state,
         complex_sep=complex_sep,
-        doEmbedding=False,
+        doEmbedding=do_embedding,
         svd_init=svd_init,
         communication_score=communication_score,
         hill_k=hill_k,
@@ -183,7 +190,10 @@ def run_pipeline(
         },
     )
 
-    print(f"4. Saving factor model to {output_path}...")
+    print("4. Attaching per-cell projections...")
+    ds = add_cell_projections(ds, adata, obs_columns=spec.cell_obs_columns())
+
+    print(f"5. Saving factor model to {output_path}...")
     save_factors_netcdf(ds, output_path)
 
     rank_selection = _rank_selection_block(
@@ -200,6 +210,7 @@ def run_pipeline(
             "svd_init": svd_init,
             "communication_score": communication_score,
             "hill_k": hill_k,
+            "pacmap_embedding": do_embedding,
             "lr_pairs_annotated": len(lr_pairs),
             "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=n_lr_used),
             "interaction_tensor_shape": [
@@ -258,6 +269,12 @@ def build_parser() -> argparse.ArgumentParser:
         "which the figure modules load).",
     )
     parser.add_argument(
+        "--no-embedding",
+        dest="do_embedding",
+        action="store_false",
+        help="Skip the PaCMAP embedding of per-cell projections.",
+    )
+    parser.add_argument(
         "--rise-rank-notes",
         type=str,
         default=None,
@@ -293,6 +310,7 @@ def main(argv: list[str] | None = None) -> None:
         ),
         rise_rank_notes=args.rise_rank_notes,
         cpd_rank_notes=args.cpd_rank_notes,
+        do_embedding=args.do_embedding,
     )
 
 
