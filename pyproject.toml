@@ -12,13 +12,13 @@ dependencies = [
     "scikit-learn>=1.4.2",
     "anndata>=0.11.3",
     "tensorly>=0.9.0",
-    "matplotlib~=3.10.1",
+    "matplotlib>=3.11",
     "seaborn~=0.13.2",
     "datashader>=0.17.0",
     "pacmap>=0.8.0",
     "tensorly-viz>=0.1.7",
-    "parafac2>=1.7.0",
-    "scrise>=1.4.0",
+    "parafac2>=1.9.0",
+    "scrise>=1.7.0",
     "pyarrow>=15.0.0",
     "xarray>=2024.1.0",
     "netcdf4>=1.6.5",
@@ -39,7 +39,7 @@ readme = "README.md"
 # missing, so backend="cupy" crashed with ModuleNotFoundError on any sparse
 # (i.e. every real ALAD/IBD) fit before touching the GPU at all.
 gpu = [
-    "parafac2[gpu]>=1.7.0",
+    "parafac2[gpu]>=1.9.0",
 ]
 
 [project.urls]
@@ -48,8 +48,8 @@ Repository = "https://github.com/meyer-lab/cellcommunication-Pf2"
 Documentation = "https://meyer-lab.github.io/cellcommunication-Pf2/"
 
 [project.scripts]
-fbuild = "cccrise.figures.common:genFigure"
-factor = "cccrise.imports:factorSave"
+cccrise-fbuild = "cccrise.figures.common:genFigure"
+cccrise-factor = "cccrise.imports:factorSave"
 cccrise-run = "cccrise.runners.run_ccc_rise:main"
 cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"

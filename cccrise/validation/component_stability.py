@@ -324,10 +324,6 @@ def fit_rise_cp(
     condition_column: str,
     rise_rank: int,
     cp_rank: int,
-    rise_n_iter_max: int = 100,
-    rise_tol: float = 1e-6,
-    cp_n_iter_max: int = 100,
-    cp_tol: float = 1e-3,
     init: str = "svd",
     svd: str = "randomized_svd",
     complex_sep: str | None = "&",
@@ -337,6 +333,11 @@ def fit_rise_cp(
     backend: str | None = None,
     compress: bool = True,
     oversample: int = 5,
+    *,
+    rise_n_iter_max: int,
+    cp_n_iter_max: int,
+    rise_tol: float,
+    cp_tol: float,
 ) -> dict[str, Any]:
     """RISE -> communication tensor -> CP at fixed ranks: the model-fitting
     core shared by `fit_stability_pipeline` and
@@ -396,10 +397,6 @@ def fit_stability_pipeline(
     rise_rank: int,
     cp_rank: int,
     group_column: str | None = None,
-    rise_n_iter_max: int = 100,
-    rise_tol: float = 1e-6,
-    cp_n_iter_max: int = 100,
-    cp_tol: float = 1e-3,
     init: str = "svd",
     svd: str = "randomized_svd",
     complex_sep: str | None = "&",
@@ -410,6 +407,11 @@ def fit_stability_pipeline(
     backend: str | None = None,
     compress: bool = True,
     oversample: int = 5,
+    *,
+    rise_n_iter_max: int,
+    cp_n_iter_max: int,
+    rise_tol: float,
+    cp_tol: float,
 ) -> dict[str, Any]:
     """Run RISE, build the communication tensor, and fit CP over `adata`.
 
@@ -607,10 +609,6 @@ def component_stability(
     patient_column: str | None = None,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
-    rise_n_iter_max: int = 100,
-    rise_tol: float = 1e-6,
-    cp_n_iter_max: int = 100,
-    cp_tol: float = 1e-3,
     init: str = "svd",
     svd: str = "randomized_svd",
     complex_sep: str | None = "&",
@@ -620,6 +618,11 @@ def component_stability(
     backend: str | None = None,
     compress: bool = True,
     oversample: int = 5,
+    *,
+    rise_n_iter_max: int,
+    cp_n_iter_max: int,
+    rise_tol: float,
+    cp_tol: float,
 ) -> pd.DataFrame:
     """Per-component stability of both stages under resampling, in long form.
 

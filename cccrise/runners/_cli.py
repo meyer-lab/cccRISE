@@ -13,6 +13,12 @@ DEFAULT_GROUP_LABELS: dict[str, tuple[str, str]] = {
     "ibd": ("healthy", "inflamed"),
 }
 
+# Fit controls shared by every runner's RISE (PARAFAC2) and CP decompositions.
+RISE_TOL = 1e-8
+CP_TOL = 1e-12
+RISE_N_ITER_MAX = 300
+CP_N_ITER_MAX = 4000
+
 
 def parse_ranks(spec: str) -> list[int]:
     """Parse a rank specification into a sorted list of unique ranks.
