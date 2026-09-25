@@ -3,6 +3,7 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
+from pacmap import PaCMAP
 from parafac2.parafac2 import parafac2_nd, store_pf2
 from scipy.sparse import issparse
 from tensorly.cp_tensor import CPTensor
@@ -13,10 +14,13 @@ from .ccc import calculate_r2x
 from .ccc_rise import (
     calc_communication_score,
     calc_communication_score_pseudobulk,
+    ccc_rise,
     pseudobulk_cp_decomposition,
     save_ccc_rise_results,
+    standardize_cc_pf2,
 )
 from .import_data import add_cond_idxs, import_ligand_receptor_pairs
+from .runners._cli import CP_N_ITER_MAX, CP_TOL, RISE_N_ITER_MAX, RISE_TOL
 from .utils import pseudobulk_X, resample_tensor
 
 
@@ -84,6 +88,104 @@ def calculate_fms_rise(A: anndata.AnnData, B: anndata.AnnData):
         )
     )
     return fms(A_CP, B_CP, consider_weights=False, skip_mode=1)
+
+
+def run_ccc_rise_workflow(
+    adata: anndata.AnnData,
+    rise_rank: int,
+    lr_pairs: pd.DataFrame,
+    cp_rank: int | None = None,
+    condition_column: str = "sample",
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    cp_n_iter_max: int = CP_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
+    fix_B_identity: bool = False,
+    cp_tol: float = CP_TOL,
+    random_state: int | None = None,
+    complex_sep: str | None = None,
+    doEmbedding: bool = True,
+    svd_init: str = "svd",
+) -> tuple[anndata.AnnData, float]:
+    """
+    Executes the complete cccRISE workflow: decomposition, standardization,
+    condition factor correction, and result storage.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        The AnnData object with expression data.
+    rise_rank : int
+        The rank for the RISE decomposition.
+    lr_pairs : pd.DataFrame
+        The ligand-receptor pairs used in the decomposition.
+    cp_rank : int, optional
+        The rank for the final CP decomposition. If None, defaults to `rise_rank`.
+    condition_column : str, default="sample"
+        The column in `adata.obs` that defines the conditions.
+    rise_n_iter_max : int, default=RISE_N_ITER_MAX
+        Maximum iterations for the RISE fit.
+    cp_n_iter_max : int, default=CP_N_ITER_MAX
+        Maximum iterations for the CP fit.
+    rise_tol : float, default=RISE_TOL
+        Convergence tolerance for the RISE fit.
+    cp_tol : float, default=CP_TOL
+        Convergence tolerance for the CP fit.
+    fix_B_identity : bool, default=False
+        Hold the RISE B factor at the identity (`parafac2_nd` fix_B_identity).
+    random_state : int | None
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    tuple[anndata.AnnData, float]
+        A tuple containing the updated AnnData object with stored results
+        and the R2X value of the decomposition.
+    """
+    # Ensure condition indices are present before running the model
+    adata = add_cond_idxs(adata, condition_column)
+
+    # 1. Run the CC-RISE decomposition
+    results, r2x, filtered_lr_pairs = ccc_rise(
+        adata,
+        rise_rank,
+        rise_n_iter_max=rise_n_iter_max,
+        cp_n_iter_max=cp_n_iter_max,
+        rise_tol=rise_tol,
+        fix_B_identity=fix_B_identity,
+        cp_tol=cp_tol,
+        cp_rank=cp_rank,
+        random_state=random_state,
+        complex_sep=complex_sep,
+        lr_pairs=lr_pairs,
+        svd_init=svd_init,
+    )
+    (cp_weights, factors), projections = results
+
+    # 2. Standardize the factors for interpretability
+    weights, factors = standardize_cc_pf2(cp_weights, factors)
+
+    # Store factors in AnnData object for easy access by plotting functions
+    adata.uns["A"] = factors[0]  # Condition factor
+    adata.uns["B"] = factors[1]  # Sender cells factor
+    adata.uns["C"] = factors[2]  # Receiver cells factor
+    adata.uns["D"] = factors[3]  # LR pairs factor
+
+    # Store the LR pairs and R2X
+    adata.uns["lr_pairs"] = filtered_lr_pairs["interaction_symbol"].values
+    adata.uns["r2x"] = r2x
+    adata.uns["weights"] = weights
+    sg_index = adata.obs["condition_unique_idxs"]
+    adata.obsm["projections"] = np.zeros((adata.shape[0], rise_rank))
+    for i, p in enumerate(projections):
+        adata.obsm["projections"][sg_index == i, :] = p
+    adata.obsm["sc_B"] = adata.obsm["projections"] @ factors[1]
+    adata.obsm["rc_C"] = adata.obsm["projections"] @ factors[2]
+
+    if doEmbedding:
+        pcm = PaCMAP(random_state=random_state)
+        adata.obsm["PaCMAP"] = pcm.fit_transform(adata.obsm["projections"])
+
+    return adata, r2x
 
 
 def run_pseudobulk_workflow(

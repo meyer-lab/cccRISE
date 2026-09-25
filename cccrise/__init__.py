@@ -25,8 +25,7 @@ from .factors import (
     load_or_compute_dataframe,
     save_factors_netcdf,
 )
-from .runners.run_ccc_rise import run_ccc_rise_workflow
-from .tensor import run_pseudobulk_workflow
+from .tensor import run_ccc_rise_workflow, run_pseudobulk_workflow
 
 __all__ = [
     "ALAD_FACTORS_PATH",

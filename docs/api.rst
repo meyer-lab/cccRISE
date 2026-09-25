@@ -112,7 +112,7 @@ Factorization
 ~~~~~~~~~~~~~
 
 .. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", rise_n_iter_max: int = 300, cp_n_iter_max: int = 4000, rise_tol: float = 1e-8, fix_B_identity: bool = False, cp_tol: float = 1e-12, random_state: int = None, complex_sep: str = None, doEmbedding: bool = True, svd_init: str = "svd")
-   :module: cccrise.runners.run_ccc_rise
+   :module: cccrise.tensor
 
    Execute the complete cccRISE workflow including RISE decomposition, CPD factorization, and result storage.
    

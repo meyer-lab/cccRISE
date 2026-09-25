@@ -199,7 +199,7 @@ Running the Factorization
 
 Based on the rank selection analysis above, choose appropriate RISE and CPD ranks and run the complete cccRISE workflow. This performs the two-step factorization: first extracting latent communication modes from expression data (RISE), then factorizing the resulting interaction tensor (CPD)::
 
-    from cccrise.runners.run_ccc_rise import run_ccc_rise_workflow
+    from cccrise.tensor import run_ccc_rise_workflow
     
     # Select ranks based on FMS/R2X analysis
     rise_rank = 35  # Selected from RISE rank analysis

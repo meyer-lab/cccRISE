@@ -15,8 +15,10 @@ from cccrise.ccc_rise import (
     compute_differential_significance,
     standardize_cc_pf2,
 )
-from cccrise.runners.run_ccc_rise import run_ccc_rise_workflow
-from cccrise.tensor import calculate_fms_rise
+from cccrise.tensor import (
+    calculate_fms_rise,
+    run_ccc_rise_workflow,
+)
 from cccrise.utils import pseudobulk_X
 
 
