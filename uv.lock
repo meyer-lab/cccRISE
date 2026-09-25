@@ -196,8 +196,8 @@ requires-dist = [
     { name = "netcdf4", specifier = ">=1.6.5" },
     { name = "numpy", specifier = ">=2.2" },
     { name = "pacmap", specifier = ">=0.8.0" },
-    { name = "parafac2", specifier = ">=1.9.0" },
-    { name = "parafac2", extras = ["gpu"], marker = "extra == 'gpu'", specifier = ">=1.9.0" },
+    { name = "parafac2", specifier = ">=1.10.0" },
+    { name = "parafac2", extras = ["gpu"], marker = "extra == 'gpu'", specifier = ">=1.10.0" },
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pyreadr", specifier = ">=0.5.6" },
     { name = "pyyaml", specifier = ">=6.0" },
@@ -2122,7 +2122,7 @@ wheels = [
 
 [[package]]
 name = "parafac2"
-version = "1.9.0"
+version = "1.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata" },
@@ -2131,9 +2131,9 @@ dependencies = [
     { name = "tensorly" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/78/ab/73c377c7611cb3a22f22f4de181d4165031b9d97acfb36227153db8dce6c/parafac2-1.9.0.tar.gz", hash = "sha256:b56629cd0f12095ca7799bbf400c28d0d041c45ca2e42ac5de2764b5fac75f85", size = 51597, upload-time = "2026-09-24T05:08:45.536Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/11/0e52db82f765c4200d296d52ed7f991d07e0e702f733602c858f34117e4d/parafac2-1.10.0.tar.gz", hash = "sha256:5175a072a812d38bc8ba1fdc1b8b8c9f1693d29e7f396be0d5f31c1446e6d156", size = 51650, upload-time = "2026-09-25T23:34:06.012Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/a1/9df2f64a7b3f696e539e3d827ef396f9c4fae33492e69d642751c59d35d9/parafac2-1.9.0-py3-none-any.whl", hash = "sha256:cf4ccdef747f51785dc8ef32a55cd8a4e5981ead816d29a2e8caaf3c14e4072e", size = 61554, upload-time = "2026-09-24T05:08:44.131Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/7d/247980580393e723d7dbb68b45b98bd79c22af002deed6511473df8a0367/parafac2-1.10.0-py3-none-any.whl", hash = "sha256:4d8f209ee4cc2a0462bce2691d31d62f6a6c351230d0eccbb9ebff3e6a7dc68f", size = 61618, upload-time = "2026-09-25T23:34:04.766Z" },
 ]
 
 [package.optional-dependencies]

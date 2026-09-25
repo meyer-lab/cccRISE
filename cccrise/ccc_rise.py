@@ -7,7 +7,6 @@ import anndata
 import numpy as np
 import pandas as pd
 from pacmap import PaCMAP
-from parafac2.compress import compress_dataset
 from parafac2.parafac2 import parafac2_nd, store_pf2
 from scipy.sparse import spmatrix
 from tensorly.cp_tensor import cp_flip_sign, cp_normalize
@@ -890,29 +889,19 @@ def fit_rise(
     plus `uns["r2x_pf2"]`.
 
     `backend` is 'cpu', 'cupy', 'mlx', or None to auto-detect. `compress`
-    fits in a compressed gene/cell subspace sized from `rank`, built by
-    `compress_dataset` with `RISE_COMPRESSION_OPTIONS` -- the compression
-    `bicv` applies in `run_rise_rank`. Slice normalization is baked into the
-    compressed data, so it is passed there.
+    fits in a compressed gene/cell subspace sized from `rank`, with
+    `RISE_COMPRESSION_OPTIONS` -- the compression `bicv` applies in
+    `run_rise_rank` (parafac2 ignores those options when `compress` is off).
     """
-    data = X
-    if compress:
-        data = compress_dataset(
-            X,
-            L=True,
-            rank=rank,
-            random_state=random_state,
-            normalize_slices=RISE_FIT_OPTIONS["normalize_slices"],
-            backend=backend,
-            **RISE_COMPRESSION_OPTIONS,
-        )
     pf2_out, r2x = parafac2_nd(
-        data,
+        X,
         rank=rank,
         random_state=random_state,
         tol=tolerance,
         n_iter_max=n_iter_max,
         backend=backend,
+        compress=compress,
+        **RISE_COMPRESSION_OPTIONS,
         **RISE_FIT_OPTIONS,
     )
     X = store_pf2(X, pf2_out)

@@ -535,12 +535,14 @@ def test_calculate_interaction_tensor_matches_per_condition_reference():
 def test_fit_rise_compressed_matches_exact(monkeypatch):
     """Compressed RISE uses `RISE_COMPRESSION_OPTIONS`, returns full-size
     per-cell projections, and fits about as well as exact RISE."""
+    import parafac2.parafac2 as pf2_module
+
     from cccrise import ccc_rise
 
     calls = []
-    real = ccc_rise.compress_dataset
+    real = pf2_module.compress_dataset
     monkeypatch.setattr(
-        ccc_rise,
+        pf2_module,
         "compress_dataset",
         lambda *a, **kw: calls.append(kw) or real(*a, **kw),
     )

@@ -17,7 +17,7 @@ dependencies = [
     "datashader>=0.17.0",
     "pacmap>=0.8.0",
     "tensorly-viz>=0.1.7",
-    "parafac2>=1.9.0",
+    "parafac2>=1.10.0",
     "scrise>=1.7.0",
     "pyarrow>=15.0.0",
     "xarray>=2024.1.0",
@@ -39,7 +39,7 @@ readme = "README.md"
 # missing, so backend="cupy" crashed with ModuleNotFoundError on any sparse
 # (i.e. every real ALAD/IBD) fit before touching the GPU at all.
 gpu = [
-    "parafac2[gpu]>=1.9.0",
+    "parafac2[gpu]>=1.10.0",
 ]
 
 [project.urls]
