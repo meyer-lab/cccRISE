@@ -140,12 +140,12 @@ DEFAULT_ASSOCIATIONS: list[dict[str, Any]] = [
 # Users can modify this dictionary or pass custom boxplot definitions to makeFigure().
 DEFAULT_BOXPLOTS: dict[str, dict[str, Any]] = {
     "6-Month Outcome": {
-        "component": 2,
+        "component": 1,
         "group_column": "6monthcondition",
         "title": "C2: 6-Month Outcome",
     },
     "Acute Rejection": {
-        "component": 2,
+        "component": 1,
         "group_column": "rejection.y",
         "levels": ["no", "yes"],
         "control_label": "no",
