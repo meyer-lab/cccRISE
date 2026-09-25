@@ -23,6 +23,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..ccc_rise import CP_FIT_OPTIONS
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..validation.anova_stability import (
     bootstrap_anova,
@@ -33,6 +34,7 @@ from ..validation.anova_stability import (
 from ._cli import (
     CP_N_ITER_MAX,
     CP_TOL,
+    REPLICATE_BACKEND,
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
@@ -68,8 +70,6 @@ def run_anova_bootstrap(
     cp_tol: float = CP_TOL,
     complex_sep: str | None = "&",
     random_state: int = 42,
-    backend: str | None = None,
-    compress: bool = True,
     oversample: int = 5,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
@@ -107,16 +107,8 @@ def run_anova_bootstrap(
     random_state : int, default=42
         Seed for the full-cohort fit; replicate `b` uses
         ``replicate_seed(random_state, b)`` (``random_state * 1000 + b + 1``).
-    backend : str | None, default=None
-        Backend every RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
-        auto-detect); see `tensor.rise_store_r2x`.
-    compress : bool, default=True
-        Fit every CP stage inside a CANDELINC core sized for `cp_rank`
-        instead of the full tensor; see
-        `validation.component_stability._fit_cp`. R2X, core consistency and
-        collinearity are unaffected -- this is strictly a speed optimization.
     oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
+        Extra CANDELINC basis columns per mode beyond `cp_rank`.
     output_path : Path, optional
         CSV destination; defaults to the registry's anova bootstrap filename.
 
@@ -147,9 +139,7 @@ def run_anova_bootstrap(
         f"group_column={group_column!r}  control={control_label!r}  "
         f"other={other_label!r}"
     )
-    print(
-        f"    backend={backend or 'auto'}  compress={compress}  oversample={oversample}"
-    )
+    print(f"    backend={REPLICATE_BACKEND}  compress=True  oversample={oversample}")
 
     print("1. Loading data...")
     adata = spec.load()
@@ -172,8 +162,8 @@ def run_anova_bootstrap(
         cp_tol=cp_tol,
         complex_sep=complex_sep,
         random_state=random_state,
-        backend=backend,
-        compress=compress,
+        backend=REPLICATE_BACKEND,
+        compress=True,
         oversample=oversample,
     )
     print(f"   Reference CP R2X: {reference['r2x_cp']:.4f}")
@@ -198,8 +188,8 @@ def run_anova_bootstrap(
         stratify=stratify,
         patient_column=spec.patient_column,
         random_state=random_state,
-        backend=backend,
-        compress=compress,
+        backend=REPLICATE_BACKEND,
+        compress=True,
         oversample=oversample,
     )
 
@@ -239,10 +229,11 @@ def run_anova_bootstrap(
             "cp_n_iter_max": cp_n_iter_max,
             "rise_tol": rise_tol,
             "cp_tol": cp_tol,
+            "cp_fit_options": CP_FIT_OPTIONS,
             "complex_sep": complex_sep,
             "random_state": random_state,
-            "backend": backend or "auto",
-            "compress": compress,
+            "backend": REPLICATE_BACKEND,
+            "compress": True,
             "oversample": oversample,
             "match_mode_weights": {"3": 1.0},
             "reference_r2x_cp": float(reference["r2x_cp"]),
@@ -313,24 +304,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
-        "--backend",
-        type=str,
-        default=None,
-        choices=["cpu", "cupy", "mlx"],
-        help="Backend every RISE fit runs on (default: parafac2 auto-detect). "
-        "Use 'cpu' for cohort-scale data, which does not fit on a GPU.",
-    )
-    parser.add_argument(
-        "--no-compress",
-        dest="compress",
-        action="store_false",
-        help="Fit every CP stage on the full tensor instead of a CANDELINC core.",
-    )
-    parser.add_argument(
         "--oversample",
         type=int,
         default=5,
-        help="Extra basis columns per mode beyond --cp-rank, when compressing.",
+        help="Extra CANDELINC basis columns per mode beyond --cp-rank.",
     )
     parser.add_argument(
         "--output",
@@ -361,8 +338,6 @@ def main(argv: list[str] | None = None) -> None:
         cp_tol=args.cp_tol,
         complex_sep=args.complex_sep,
         random_state=args.random_state,
-        backend=args.backend,
-        compress=args.compress,
         oversample=args.oversample,
         output_path=resolve_output(
             args.output, DATA_DIR, spec.anova_bootstrap_filename()

@@ -301,7 +301,7 @@ def test_fit_anova_pipeline_runs_with_compression_disabled():
 
 
 def test_fit_anova_pipeline_accepts_an_explicit_cpu_backend():
-    """`backend` must reach `rise_store_r2x` without erroring on a plain CPU
+    """`backend` must reach `fit_rise` without erroring on a plain CPU
     box, which is what every CI run and every cohort-scale fit uses."""
     fit = fit_anova_pipeline(
         _synthetic_cohort(),

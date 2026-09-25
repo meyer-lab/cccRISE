@@ -111,22 +111,44 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 Factorization
 ~~~~~~~~~~~~~
 
-.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, rise_n_iter_max: int, cp_n_iter_max: int, rise_tol: float, cp_tol: float, cp_rank: int = None, condition_column: str = "sample", random_state: int = None, complex_sep: str = None, doEmbedding: bool = True, svd_init: str = "svd")
-   :module: cccrise.tensor
+.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", random_state: int = None, complex_sep: str = "&", communication_score: str = "expression_product", hill_k: float = 0.5, backend: str = None, compress: bool = False, oversample: int = 5, doEmbedding: bool = False, keep_tensor: bool = False, *, rise_n_iter_max: int, cp_n_iter_max: int, rise_tol: float, cp_tol: float)
+   :module: cccrise.ccc_rise
 
-   Execute the complete cccRISE workflow including RISE decomposition, CPD factorization, and result storage.
+   Execute the complete cccRISE workflow: RISE decomposition, interaction tensor, CPD factorization, and result storage.
    
    This is the main function for performing cccRISE analysis. It executes both the RISE 
    (PARAFAC2) decomposition of expression data and the CPD decomposition of the resulting 
    interaction tensor. The function decomposes cell-cell communication into four interpretable 
    factor matrices representing conditions, sender cells, receiver cells, and ligand-receptor pairs.
    
-   :param adata: AnnData object with preprocessed scRNA-seq data. Must have condition_unique_idxs in adata.obs.
+   :param adata: AnnData object with preprocessed scRNA-seq data.
    :type adata: anndata.AnnData
    :param rise_rank: Number of PARAFAC2 components to extract from expression data. Typically chosen based on FMS and R²X analysis.
    :type rise_rank: int
    :param lr_pairs: DataFrame of ligand-receptor pairs with 'ligand' and 'receptor' columns.
    :type lr_pairs: pd.DataFrame
+   :param cp_rank: Number of CPD components for factorizing the interaction tensor. If None, defaults to rise_rank.
+   :type cp_rank: int, optional
+   :param condition_column: Column name in adata.obs containing condition identifiers.
+   :type condition_column: str, optional
+   :param random_state: Random seed for the RISE fit, the CPD fit and PaCMAP.
+   :type random_state: int, optional
+   :param complex_sep: Separator for protein complexes in L-R pairs.
+   :type complex_sep: str, optional
+   :param communication_score: Scoring strategy for communication (see ``calculate_interaction_tensor``).
+   :type communication_score: str, optional
+   :param hill_k: Half-maximal constant when using Hill kinetics scoring.
+   :type hill_k: float, optional
+   :param backend: RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect).
+   :type backend: str, optional
+   :param compress: Fit CPD inside a CANDELINC core sized for ``cp_rank``.
+   :type compress: bool, optional
+   :param oversample: Extra CANDELINC basis columns per mode beyond ``cp_rank``, when ``compress``.
+   :type oversample: int, optional
+   :param doEmbedding: If True, computes PaCMAP embeddings for visualization and stores in adata.obsm["PaCMAP"].
+   :type doEmbedding: bool, optional
+   :param keep_tensor: If True, the interaction tensor is returned.
+   :type keep_tensor: bool, optional
    :param rise_n_iter_max: Maximum iterations for the RISE fit.
    :type rise_n_iter_max: int
    :param cp_n_iter_max: Maximum iterations for the CP fit.
@@ -135,23 +157,11 @@ Factorization
    :type rise_tol: float
    :param cp_tol: Convergence tolerance for the CP fit.
    :type cp_tol: float
-   :param cp_rank: Number of CPD components for factorizing the interaction tensor. If None, defaults to rise_rank.
-   :type cp_rank: int, optional
-   :param condition_column: Column name in adata.obs containing condition identifiers.
-   :type condition_column: str, optional
-   :param random_state: Random seed for reproducibility of decomposition.
-   :type random_state: int, optional
-   :param complex_sep: Separator for protein complexes in L-R pairs (typically "&").
-   :type complex_sep: str, optional
-   :param doEmbedding: If True, automatically computes PaCMAP embeddings for visualization and stores in adata.obsm["PaCMAP"].
-   :type doEmbedding: bool, optional
-   :param svd_init: Initialization method for CPD ('svd' or 'random').
-   :type svd_init: str, optional
-   :returns: Tuple containing the updated AnnData object with stored results and the R²X value (variance explained).
-   :rtype: tuple[anndata.AnnData, float]
+   :returns: Dict with keys 'adata', 'tensor' (None unless keep_tensor), 'filtered_lr_pairs', 'cp_weights', 'cp_factors', 'r2x_rise', 'r2x_cp' and 'diagnostics' (CPD core consistency and collinearity).
+   :rtype: dict
 
 .. py:function:: calculate_interaction_tensor(adata: anndata.AnnData, lr_pairs: pd.DataFrame, complex_sep: str | None = "&", communication_score: str = "expression_product", hill_k: float = 0.5)
-   :module: cccrise.tensor
+   :module: cccrise.ccc_rise
 
    Calculate the interaction tensor from an AnnData object that has already been processed with RISE.
    

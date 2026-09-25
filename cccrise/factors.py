@@ -10,8 +10,8 @@ import anndata
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pacmap import PaCMAP
 
+from .ccc_rise import add_cell_embeddings
 from .import_data import add_cond_idxs, condition_matrices
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -402,27 +402,21 @@ def load_factors_to_anndata(
         out.obsm["projections"] = np.asarray(
             factors_ds["cell_projections"].values, dtype=np.float32
         )
-        if "cell_sc_B" in factors_ds:
-            out.obsm["sc_B"] = np.asarray(
-                factors_ds["cell_sc_B"].values, dtype=np.float32
-            )
-        else:
-            out.obsm["sc_B"] = out.obsm["projections"] @ B_cp
-        if "cell_rc_C" in factors_ds:
-            out.obsm["rc_C"] = np.asarray(
-                factors_ds["cell_rc_C"].values, dtype=np.float32
-            )
-        else:
-            out.obsm["rc_C"] = out.obsm["projections"] @ C_cp
-
-        if "cell_pacmap" in factors_ds:
-            out.obsm["PaCMAP"] = np.asarray(
-                factors_ds["cell_pacmap"].values, dtype=np.float32
-            )
-        elif do_embedding:
-            pcm = PaCMAP(random_state=random_state)
-            out.obsm["PaCMAP"] = pcm.fit_transform(out.obsm["projections"])
-
+        out = add_cell_embeddings(
+            out,
+            B_cp,
+            C_cp,
+            do_embedding and "cell_pacmap" not in factors_ds,
+            random_state,
+        )
+        # Stored per-cell arrays take precedence over recomputed ones.
+        for key, var in (
+            ("sc_B", "cell_sc_B"),
+            ("rc_C", "cell_rc_C"),
+            ("PaCMAP", "cell_pacmap"),
+        ):
+            if var in factors_ds:
+                out.obsm[key] = np.asarray(factors_ds[var].values, dtype=np.float32)
         return out
 
     # Compute cell projections if PARAFAC2 factors are present
@@ -460,12 +454,7 @@ def load_factors_to_anndata(
             proj = (MV / safe_norms) @ V.T
             out.obsm["projections"][sg_index == i, :] = proj
 
-        out.obsm["sc_B"] = out.obsm["projections"] @ B_cp
-        out.obsm["rc_C"] = out.obsm["projections"] @ C_cp
-
-        if do_embedding:
-            pcm = PaCMAP(random_state=random_state)
-            out.obsm["PaCMAP"] = pcm.fit_transform(out.obsm["projections"])
+        out = add_cell_embeddings(out, B_cp, C_cp, do_embedding, random_state)
 
     return out
 

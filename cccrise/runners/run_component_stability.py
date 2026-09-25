@@ -40,6 +40,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..ccc_rise import CP_FIT_OPTIONS
 from ..import_data import import_ligand_receptor_pairs
 from ..validation.component_stability import (
     DEFAULT_AXES,
@@ -54,6 +55,7 @@ from ..validation.component_stability import (
 from ._cli import (
     CP_N_ITER_MAX,
     CP_TOL,
+    REPLICATE_BACKEND,
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
@@ -81,14 +83,10 @@ def run_component_stability(
     rise_tol: float = RISE_TOL,
     cp_n_iter_max: int = CP_N_ITER_MAX,
     cp_tol: float = CP_TOL,
-    init: str = "svd",
-    svd: str = "randomized_svd",
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int = 0,
-    backend: str | None = None,
-    compress: bool = True,
     oversample: int = 5,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
@@ -105,22 +103,14 @@ def run_component_stability(
         Resampling axes to run; see the module docstring.
     n_replicates : int, default=20
         Replicates per axis.
-    rise_n_iter_max, rise_tol, cp_n_iter_max, cp_tol, init, svd
+    rise_n_iter_max, rise_tol, cp_n_iter_max, cp_tol
         Fitting controls for the RISE and CP fits.
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=0
         Base seed for the reference fit and the replicates.
-    backend : str | None, default=None
-        Backend every RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
-        auto-detect); see `tensor.rise_store_r2x`.
-    compress : bool, default=True
-        Fit every CP stage inside a CANDELINC core sized for `cp_rank`
-        instead of the full tensor; see
-        `validation.component_stability._fit_cp`. R2X, core consistency and
-        collinearity are unaffected -- this is strictly a speed optimization.
     oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
+        Extra CANDELINC basis columns per mode beyond `cp_rank`.
     output_path : Path, optional
         CSV destination; defaults to the registry's stability filename.
 
@@ -139,9 +129,7 @@ def run_component_stability(
     print(f"=== Component stability: {spec.label} ===")
     print(f"    RISE rank {rise_rank}, CP rank {cp_rank}, {n_replicates} replicates")
     print(f"    Axes: {', '.join(axes)}")
-    print(
-        f"    backend={backend or 'auto'}  compress={compress}  oversample={oversample}"
-    )
+    print(f"    backend={REPLICATE_BACKEND}  compress=True  oversample={oversample}")
     print(
         f"    {1 + len(rise_axes) * n_replicates} PARAFAC2 fits, "
         f"{1 + len(axes) * n_replicates} CP fits"
@@ -164,15 +152,13 @@ def run_component_stability(
         rise_tol=rise_tol,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
-        init=init,
-        svd=svd,
         complex_sep=complex_sep,
         communication_score=communication_score,
         hill_k=hill_k,
         random_state=random_state,
         keep_tensor=True,
-        backend=backend,
-        compress=compress,
+        backend=REPLICATE_BACKEND,
+        compress=True,
         oversample=oversample,
     )
     assert reference["tensor"] is not None
@@ -196,14 +182,12 @@ def run_component_stability(
         rise_tol=rise_tol,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
-        init=init,
-        svd=svd,
         complex_sep=complex_sep,
         communication_score=communication_score,
         hill_k=hill_k,
         random_state=random_state,
-        backend=backend,
-        compress=compress,
+        backend=REPLICATE_BACKEND,
+        compress=True,
         oversample=oversample,
     )
 
@@ -227,14 +211,13 @@ def run_component_stability(
             "rise_tol": rise_tol,
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
-            "init": init,
-            "svd": svd,
+            "cp_fit_options": CP_FIT_OPTIONS,
             "complex_sep": complex_sep,
             "communication_score": communication_score,
             "hill_k": hill_k,
             "random_state": random_state,
-            "backend": backend or "auto",
-            "compress": compress,
+            "backend": REPLICATE_BACKEND,
+            "compress": True,
             "oversample": oversample,
             "seed_formula": (
                 "random_state * 1000 + replicate + 1; one seed drives the "
@@ -333,13 +316,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
     parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
     parser.add_argument("--cp-tol", type=float, default=CP_TOL)
-    parser.add_argument("--init", type=str, default="svd", choices=["random", "svd"])
-    parser.add_argument(
-        "--svd",
-        type=str,
-        default="randomized_svd",
-        choices=["randomized_svd", "truncated_svd"],
-    )
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument(
         "--communication-score",
@@ -355,24 +331,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hill-k", type=float, default=0.5)
     parser.add_argument("--random-state", type=int, default=0)
     parser.add_argument(
-        "--backend",
-        type=str,
-        default=None,
-        choices=["cpu", "cupy", "mlx"],
-        help="Backend every RISE fit runs on (default: parafac2 auto-detect). "
-        "Use 'cpu' for cohort-scale data, which does not fit on a GPU.",
-    )
-    parser.add_argument(
-        "--no-compress",
-        dest="compress",
-        action="store_false",
-        help="Fit every CP stage on the full tensor instead of a CANDELINC core.",
-    )
-    parser.add_argument(
         "--oversample",
         type=int,
         default=5,
-        help="Extra basis columns per mode beyond --cp-rank, when compressing.",
+        help="Extra CANDELINC basis columns per mode beyond --cp-rank.",
     )
     parser.add_argument(
         "--output",
@@ -396,14 +358,10 @@ def main(argv: list[str] | None = None) -> None:
         rise_tol=args.rise_tol,
         cp_n_iter_max=args.cp_n_iter_max,
         cp_tol=args.cp_tol,
-        init=args.init,
-        svd=args.svd,
         complex_sep=args.complex_sep,
         communication_score=args.communication_score,
         hill_k=args.hill_k,
         random_state=args.random_state,
-        backend=args.backend,
-        compress=args.compress,
         oversample=args.oversample,
         output_path=resolve_output(args.output, DATA_DIR, spec.stability_filename()),
     )

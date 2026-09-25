@@ -34,6 +34,7 @@ from ..validation.significance import (
     summarize_significance_overview,
 )
 from ._cli import (
+    REPLICATE_BACKEND,
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
@@ -160,10 +161,11 @@ def run_significance(
         complex_agg_method=complex_agg_method,
         hill_k=hill_k,
         max_exact_perms=max_exact_perms,
-        n_iter_max=rise_n_iter_max,
+        rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
         random_state=random_state,
         validate=False,
+        backend=REPLICATE_BACKEND,
     )
     print(f"   RISE fit R2X: {results['r2x_rise']:.4f}")
 
@@ -203,6 +205,7 @@ def run_significance(
             "hill_k": hill_k,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            "backend": REPLICATE_BACKEND,
             "r2x_rise": float(results["r2x_rise"]),
             "random_state": random_state,
             "total_tensor_entries": int(overview_df["TotalEntries"].iloc[0]),

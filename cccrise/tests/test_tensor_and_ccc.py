@@ -1,5 +1,7 @@
 """Unit tests for cccrise tensor and ccc modules."""
 
+from typing import Any, cast
+
 import anndata
 import numpy as np
 import pandas as pd
@@ -11,14 +13,15 @@ from cccrise.ccc import combine_communication_score, compute_ccc_matrix
 from cccrise.ccc_rise import (
     calc_communication_score,
     calc_communication_score_pseudobulk,
+    calculate_interaction_tensor,
     compute_communication_significance,
     compute_differential_significance,
+    fit_rise,
+    run_ccc_rise_workflow,
     standardize_cc_pf2,
 )
-from cccrise.tensor import (
-    calculate_fms_rise,
-    run_ccc_rise_workflow,
-)
+from cccrise.import_data import add_cond_idxs
+from cccrise.tensor import calculate_fms_rise
 from cccrise.utils import pseudobulk_X
 
 
@@ -421,56 +424,143 @@ def test_standardize_cc_pf2_preserves_tensor():
         np.testing.assert_allclose(norms, np.ones(rank), rtol=1e-5)
 
 
-def test_full_ccc_rise_workflow_synthetic():
-    n_cells = 30
-    n_genes = 6
-    rise_rank = 3
-    cp_rank = 2
-    n_cond = 2
-
-    # Create synthetic AnnData with counts
-    rng = np.random.default_rng(42)
-    X_counts = rng.poisson(lam=3.0, size=(n_cells, n_genes)).astype(np.float32)
-    gene_names = ["L1", "R1", "L2", "R2", "L3", "R3"]
+def _synthetic_adata(n_cells=30, n_cond=2, n_pairs=3, seed=42):
+    """Counts AnnData with interleaved conditions, centering means and LR pairs."""
+    rng = np.random.default_rng(seed)
+    gene_names = [f"{kind}{i}" for i in range(1, n_pairs + 1) for kind in ("L", "R")]
+    X = rng.poisson(lam=3.0, size=(n_cells, len(gene_names))).astype(np.float32)
     obs = pd.DataFrame(
-        {
-            "sample": [f"S{i % n_cond}" for i in range(n_cells)],
-            "celltype": ["CT_A" if i % 2 == 0 else "CT_B" for i in range(n_cells)],
-        },
+        {"sample": [f"S{i % n_cond}" for i in range(n_cells)]},
         index=[f"cell_{i}" for i in range(n_cells)],
     )
-    var = pd.DataFrame(index=gene_names)
-    adata = anndata.AnnData(X=csr_array(X_counts), obs=obs, var=var)
-
+    adata = anndata.AnnData(X=csr_array(X), obs=obs, var=pd.DataFrame(index=gene_names))
+    adata.var["means"] = X.mean(axis=0)
     lr_pairs = pd.DataFrame(
         {
-            "ligand": ["L1", "L2"],
-            "receptor": ["R1", "R2"],
-            "interaction_symbol": ["L1^R1", "L2^R2"],
+            "ligand": [f"L{i}" for i in range(1, n_pairs + 1)],
+            "receptor": [f"R{i}" for i in range(1, n_pairs + 1)],
+            "interaction_symbol": [f"L{i}^R{i}" for i in range(1, n_pairs + 1)],
         }
     )
+    return adata, lr_pairs
 
-    out_adata, r2x = run_ccc_rise_workflow(
+
+FIT_KW: dict[str, Any] = {
+    "rise_n_iter_max": 30,
+    "cp_n_iter_max": 30,
+    "rise_tol": 1e-4,
+    "cp_tol": 1e-4,
+}
+
+
+def test_full_ccc_rise_workflow_synthetic():
+    rise_rank, cp_rank, n_cells, n_cond = 3, 2, 30, 2
+    adata, lr_pairs = _synthetic_adata(n_cells=n_cells, n_cond=n_cond, n_pairs=2)
+
+    fit = run_ccc_rise_workflow(
         adata,
         rise_rank=rise_rank,
         cp_rank=cp_rank,
         lr_pairs=lr_pairs,
-        rise_n_iter_max=30,
-        cp_n_iter_max=30,
-        rise_tol=1e-4,
-        cp_tol=1e-4,
-        doEmbedding=False,
+        backend="cpu",
+        keep_tensor=True,
+        **FIT_KW,
     )
+    assert set(fit) == {
+        "adata",
+        "tensor",
+        "filtered_lr_pairs",
+        "cp_weights",
+        "cp_factors",
+        "r2x_rise",
+        "r2x_cp",
+        "diagnostics",
+    }
+    out_adata, r2x = fit["adata"], fit["r2x_cp"]
 
     assert isinstance(r2x, float)
     assert 0.0 <= r2x <= 1.0
+    assert 0.0 <= fit["r2x_rise"] <= 1.0
+    assert out_adata.uns["r2x"] == r2x
+    assert out_adata.uns["r2x_pf2"] == fit["r2x_rise"]
+    assert fit["tensor"].shape == (n_cond, rise_rank, rise_rank, len(lr_pairs))
+    assert set(fit["diagnostics"]) == {
+        "CoreConsistency",
+        "MaxModesCollinear",
+        "WorstPairCanceling",
+    }
+    for factor, stored in zip(fit["cp_factors"], "ABCD", strict=True):
+        np.testing.assert_array_equal(out_adata.uns[stored], factor)
     assert out_adata.uns["A"].shape == (n_cond, cp_rank)
     assert out_adata.uns["B"].shape == (rise_rank, cp_rank)
     assert out_adata.uns["C"].shape == (rise_rank, cp_rank)
     assert out_adata.uns["D"].shape == (len(lr_pairs), cp_rank)
+    assert out_adata.varm["Pf2_C"].shape == (adata.n_vars, rise_rank)
     assert out_adata.obsm["projections"].shape == (n_cells, rise_rank)
     assert out_adata.obsm["sc_B"].shape == (n_cells, cp_rank)
     assert out_adata.obsm["rc_C"].shape == (n_cells, cp_rank)
+    assert "PaCMAP" not in out_adata.obsm
+
+    assert (
+        run_ccc_rise_workflow(adata, 3, lr_pairs, cp_rank=2, **FIT_KW)["tensor"] is None
+    )
+
+
+def test_calculate_interaction_tensor_matches_per_condition_reference():
+    """Densifying every condition at once gives the same tensor as projecting
+    one sparse condition slab at a time."""
+    adata, lr_pairs = _synthetic_adata(n_cells=40, n_cond=3)
+    adata = add_cond_idxs(adata, "sample")
+    adata, _ = fit_rise(adata, rank=3, n_iter_max=30, tolerance=1e-4, backend="cpu")
+
+    tensor, filtered = calculate_interaction_tensor(adata, lr_pairs)
+
+    cond_idx = adata.obs["condition_unique_idxs"].to_numpy()
+    means = adata.var["means"].to_numpy()
+    projected = [
+        adata.obsm["projections"][cond_idx == k].T
+        @ (cast(Any, adata.X)[cond_idx == k].toarray() - means)
+        for k in range(3)
+    ]
+    expected, expected_lr = calc_communication_score(
+        projected,
+        gene_names=list(adata.var_names),
+        lr_pairs=lr_pairs,
+        gene_means=means,
+    )
+    np.testing.assert_allclose(tensor, expected, rtol=1e-10)
+    pd.testing.assert_frame_equal(filtered, expected_lr)
+
+
+def test_workflow_compressed_and_full_cp_agree():
+    """CANDELINC-compressed CP reports the same R2X as the full fit."""
+    adata, lr_pairs = _synthetic_adata(n_cells=80, n_cond=4, n_pairs=12, seed=3)
+    kw: dict[str, Any] = FIT_KW | {"cp_n_iter_max": 500, "cp_tol": 1e-10}
+    r2x = {
+        compress: run_ccc_rise_workflow(
+            adata.copy(),
+            rise_rank=4,
+            lr_pairs=lr_pairs,
+            cp_rank=2,
+            random_state=0,
+            backend="cpu",
+            compress=compress,
+            **kw,
+        )["r2x_cp"]
+        for compress in (True, False)
+    }
+    assert r2x[True] == pytest.approx(r2x[False], abs=2e-3)
+
+
+def test_run_rise_rank_compress_accepts_only_auto_or_an_integer():
+    from cccrise.runners.run_rise_rank import build_parser
+
+    parser = build_parser()
+    assert parser.parse_args(["--dataset", "alad"]).compress == "auto"
+    assert parser.parse_args(["--dataset", "alad", "--compress", "12"]).compress == 12
+    for bad in ("none", "false", "0"):
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--dataset", "alad", "--compress", bad])
 
 
 def test_calculate_fms_rise():

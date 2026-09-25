@@ -14,12 +14,13 @@ import anndata
 import numpy as np
 import pandas as pd
 import xarray as xr
-from parafac2.parafac2 import parafac2_nd
 
 from ..ccc_rise import (
     compute_communication_significance,
     compute_differential_significance,
     condition_matrices,
+    condition_projections,
+    fit_rise,
 )
 from ..import_data import add_cond_idxs
 
@@ -40,8 +41,9 @@ def fit_significance_pipeline(
     max_exact_perms: int = 100_000,
     random_state: int = 42,
     validate: bool = False,
+    backend: str | None = None,
     *,
-    n_iter_max: int,
+    rise_n_iter_max: int,
     rise_tol: float,
 ) -> dict[str, Any]:
     """Fit RISE and compute within-condition and differential communication significance.
@@ -76,7 +78,7 @@ def fit_significance_pipeline(
         Half-saturation constant for Hill communication scoring.
     max_exact_perms : int, default=100_000
         Maximum combinatorial assignments to enumerate exactly for differential test.
-    n_iter_max : int
+    rise_n_iter_max : int
         Maximum iterations for PARAFAC2 fitting.
     rise_tol : float
         Convergence tolerance for PARAFAC2 fitting.
@@ -84,6 +86,8 @@ def fit_significance_pipeline(
         Random seed for permutations and PARAFAC2 initialization.
     validate : bool, default=False
         If True, validates vectorized tensor computation against `calc_communication_score`.
+    backend : str, optional
+        RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect).
 
     Returns
     -------
@@ -102,16 +106,14 @@ def fit_significance_pipeline(
         - 'r2x_rise': float PARAFAC2 fit quality
     """
     adata = add_cond_idxs(adata, condition_column)
-    pf2_output, r2x_rise = parafac2_nd(
+    adata, r2x_rise = fit_rise(
         adata,
         rank=rise_rank,
-        n_iter_max=n_iter_max,
-        tol=rise_tol,
+        n_iter_max=rise_n_iter_max,
+        tolerance=rise_tol,
         random_state=random_state,
-        normalize_slices=True,
-        fix_B_identity=True,
+        backend=backend,
     )
-    dense_P = pf2_output[2]
     condition_names = np.unique(adata.obs[condition_column]).tolist()
 
     # 2. Within-condition permutation significance test
@@ -131,7 +133,7 @@ def fit_significance_pipeline(
         filtered_lr_pairs,
     ) = compute_communication_significance(
         X_list=X_list,
-        projections=dense_P,
+        projections=condition_projections(adata),
         gene_names=gene_names,
         lr_pairs=lr_pairs,
         n_perms=n_perms,

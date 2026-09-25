@@ -34,7 +34,7 @@ copy-pasted blocks. Most relevant here: repeated statistics/plotting logic
 across `figures/*.py` scripts, and repeated pipeline logic across
 `validation/*.py`. If a new figure script or pipeline function duplicates an
 existing block of 10+ lines, prefer extracting a shared helper (see
-`figures/commonFuncs/plotGeneral.py` and `validation.component_stability.fit_rise_cp` for
+`figures/commonFuncs/plotGeneral.py` and `ccc_rise.run_ccc_rise_workflow` for
 examples of helpers extracted this way) instead of copy-pasting.
 
 ### Cyclomatic complexity -- radon + xenon

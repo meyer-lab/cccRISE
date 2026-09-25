@@ -12,6 +12,7 @@ import pytest
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
 
+from cccrise.ccc_rise import CP_FIT_OPTIONS
 from cccrise.rank_selection import (
     calculate_r2x,
     candelinc_compress,
@@ -40,10 +41,8 @@ def _cp_fit(tensor: np.ndarray, rank: int, n_iter_max: int = 2000, tol: float = 
         rank=rank,
         n_iter_max=n_iter_max,
         tol=tol,
-        init="svd",
-        svd="randomized_svd",
-        normalize_factors=True,
         random_state=0,
+        **CP_FIT_OPTIONS,
     )
     return weights, factors, calculate_r2x(weights, factors, tensor)
 
@@ -214,7 +213,7 @@ def test_candelinc_finds_the_true_rank_cliff():
 
 
 def test_runner_compressed_and_uncompressed_agree(tmp_path):
-    """`--no-compress` and the default compressed path must agree where it counts.
+    """`compress=False` and the compressed path the CLI always takes must agree.
 
     Up to the true rank the CP model is identifiable and the two paths must
     report the same metrics. Past it the model is degenerate *by definition*:

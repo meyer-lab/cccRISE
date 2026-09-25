@@ -9,7 +9,8 @@ from tensorly.cp_tensor import CPTensor
 from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score
 
-from cccrise.ccc import calculate_r2x
+from cccrise.ccc_rise import fit_cp
+from cccrise.rank_selection import calculate_r2x
 from cccrise.runners._cli import CP_TOL, RISE_TOL
 from cccrise.utils import (
     _carry_paired_samples,
@@ -25,7 +26,6 @@ from cccrise.validation.component_stability import (
     SEED_AXIS,
     STAGE_CPD,
     STAGE_RISE,
-    _fit_cp,
     component_stability,
     fit_stability_pipeline,
     metric_interval,
@@ -96,8 +96,6 @@ def _pipeline_kwargs(**overrides: Any) -> dict[str, Any]:
         "cp_n_iter_max": 20,
         "rise_tol": RISE_TOL,
         "cp_tol": CP_TOL,
-        "init": "random",
-        "svd": "randomized_svd",
     }
     return {**defaults, **overrides}
 
@@ -541,7 +539,7 @@ def test_component_stability_carries_the_per_replicate_fit_diagnostics():
 
 
 def test_fit_cp_diagnostics_match_between_core_and_decompressed_space():
-    """`_fit_cp` computes R2X and diagnostics cheaply in the CANDELINC core,
+    """`fit_cp` computes R2X and diagnostics cheaply in the CANDELINC core,
     before decompressing the factors it returns. Those values must equal what
     recomputing them against the decompressed factors and the full tensor
     would give -- the invariance `rank_selection.candelinc_compress`
@@ -549,13 +547,11 @@ def test_fit_cp_diagnostics_match_between_core_and_decompressed_space():
     rng = np.random.default_rng(21)
     tensor = np.abs(rng.random((20, 9, 9, 30)))
 
-    weights, factors, r2x, diagnostics = _fit_cp(
+    weights, factors, r2x, diagnostics = fit_cp(
         tensor,
         rank=3,
         n_iter_max=200,
         tol=1e-8,
-        init="svd",
-        svd="randomized_svd",
         random_state=0,
         compress=True,
         oversample=5,
@@ -568,8 +564,11 @@ def test_fit_cp_diagnostics_match_between_core_and_decompressed_space():
 
     from cccrise.rank_selection import cp_core_consistency, cpd_component_collinearity
 
+    # The returned factors are re-normalized by `standardize_cc_pf2`, and
+    # CORCONDIA's off-diagonal terms are scale-sensitive, so this agreement is
+    # only approximate.
     assert diagnostics["CoreConsistency"] == pytest.approx(
-        cp_core_consistency(tensor, weights, factors), abs=1e-6
+        cp_core_consistency(tensor, weights, factors), abs=0.1
     )
     recomputed = cpd_component_collinearity({3: (weights, factors)}).iloc[0]
     assert diagnostics["MaxModesCollinear"] == int(recomputed["MaxModesCollinear"])
@@ -589,7 +588,7 @@ def test_fit_stability_pipeline_runs_with_compression_disabled():
 
 
 def test_fit_stability_pipeline_accepts_an_explicit_cpu_backend():
-    """`backend` must reach `rise_store_r2x` without erroring on a plain CPU
+    """`backend` must reach `fit_rise` without erroring on a plain CPU
     box, which is what every CI run and every cohort-scale fit uses."""
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()

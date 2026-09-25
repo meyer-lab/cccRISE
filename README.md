@@ -37,7 +37,7 @@ lr_pairs = pd.read_csv(
 )  # Should contain ligand-receptor interaction information
 
 # Perform cccRISE tensor decomposition
-adata, r2x = run_ccc_rise_workflow(
+fit = run_ccc_rise_workflow(
     adata=adata,
     rise_rank=20,
     lr_pairs=lr_pairs,
@@ -49,7 +49,9 @@ adata, r2x = run_ccc_rise_workflow(
     doEmbedding=True,
     random_state=42,
 )
+adata, r2x = fit["adata"], fit["r2x_cp"]
 
+# `fit` also holds the CP factors, the RISE R2X and CP diagnostics.
 # Results are stored in the AnnData object:
 # - adata.uns["weights"]: Component weights
 # - adata.uns["A"]: Condition factors

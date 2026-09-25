@@ -30,8 +30,8 @@ import pandas as pd
 from scipy.optimize import linear_sum_assignment
 
 from ..anova import anova_component_associations, prepare_anova_inputs
+from ..ccc_rise import run_ccc_rise_workflow
 from ..utils import replicate_seed, resample_conditions
-from .component_stability import fit_rise_cp
 
 Factors = list[np.ndarray]
 
@@ -186,8 +186,6 @@ def fit_anova_pipeline(
     rise_rank: int = 25,
     cp_rank: int = 10,
     lr_pairs: pd.DataFrame | None = None,
-    init: str = "svd",
-    svd: str = "randomized_svd",
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
@@ -221,7 +219,7 @@ def fit_anova_pipeline(
         Ligand-receptor pairs; loaded from the packaged database if None.
     rise_n_iter_max, rise_tol : int, float
         Fitting controls for the RISE fit.
-    cp_n_iter_max, cp_tol, init, svd : int, float, str, str
+    cp_n_iter_max, cp_tol : int, float
         Fitting controls for the CP fit.
     complex_sep, communication_score, hill_k : str | None, str, float
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
@@ -229,10 +227,10 @@ def fit_anova_pipeline(
         Seed for the RISE fit and the CP fit. The ANOVA is deterministic.
     backend : str | None, default=None
         Backend the RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
-        auto-detect); passed straight through to `tensor.rise_store_r2x`.
+        auto-detect); passed straight through to `ccc_rise.fit_rise`.
     compress : bool, default=True
         Fit CP inside a CANDELINC core sized for `cp_rank` instead of the
-        full tensor (see `validation.component_stability._fit_cp`).
+        full tensor (see `ccc_rise.fit_cp`).
     oversample : int, default=5
         Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
@@ -248,18 +246,16 @@ def fit_anova_pipeline(
 
         lr_pairs = import_ligand_receptor_pairs()
 
-    fit = fit_rise_cp(
+    fit = run_ccc_rise_workflow(
         adata,
-        lr_pairs,
-        condition_column,
         rise_rank,
-        cp_rank,
+        lr_pairs,
+        cp_rank=cp_rank,
+        condition_column=condition_column,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
-        init=init,
-        svd=svd,
         complex_sep=complex_sep,
         communication_score=communication_score,
         hill_k=hill_k,
@@ -318,8 +314,6 @@ def bootstrap_replicate_anova(
     rise_rank: int = 25,
     cp_rank: int = 10,
     lr_pairs: pd.DataFrame | None = None,
-    init: str = "svd",
-    svd: str = "randomized_svd",
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
@@ -357,7 +351,7 @@ def bootstrap_replicate_anova(
         Ligand-receptor pairs; loaded from the packaged database if None.
     rise_n_iter_max, rise_tol : int, float
         Fitting controls for the RISE fit.
-    cp_n_iter_max, cp_tol, init, svd : int, float, str, str
+    cp_n_iter_max, cp_tol : int, float
         Fitting controls for the CP fit.
     complex_sep, communication_score, hill_k : str | None, str, float
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
@@ -374,7 +368,7 @@ def bootstrap_replicate_anova(
         Backend the replicate's RISE refit runs on; see `fit_anova_pipeline`.
     compress : bool, default=True
         Fit the replicate's CP stage inside a CANDELINC core; see
-        `validation.component_stability._fit_cp`.
+        `ccc_rise.fit_cp`.
     oversample : int, default=5
         Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
@@ -406,8 +400,6 @@ def bootstrap_replicate_anova(
         rise_tol=rise_tol,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
-        init=init,
-        svd=svd,
         complex_sep=complex_sep,
         communication_score=communication_score,
         hill_k=hill_k,
@@ -453,8 +445,6 @@ def bootstrap_anova(
     cp_rank: int = 10,
     n_boot: int = 100,
     lr_pairs: pd.DataFrame | None = None,
-    init: str = "svd",
-    svd: str = "randomized_svd",
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
@@ -492,7 +482,7 @@ def bootstrap_anova(
         Ligand-receptor pairs; loaded from the packaged database if None.
     rise_n_iter_max, rise_tol : int, float
         Fitting controls for RISE.
-    cp_n_iter_max, cp_tol, init, svd : int, float, str, str
+    cp_n_iter_max, cp_tol : int, float
         Fitting controls for CP.
     complex_sep, communication_score, hill_k : str | None, str, float
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
@@ -509,7 +499,7 @@ def bootstrap_anova(
         Backend every replicate's RISE refit runs on; see `fit_anova_pipeline`.
     compress : bool, default=True
         Fit every replicate's CP stage inside a CANDELINC core; see
-        `validation.component_stability._fit_cp`.
+        `ccc_rise.fit_cp`.
     oversample : int, default=5
         Extra basis columns per mode beyond `cp_rank`, when `compress`.
 
@@ -537,8 +527,6 @@ def bootstrap_anova(
             rise_tol=rise_tol,
             cp_n_iter_max=cp_n_iter_max,
             cp_tol=cp_tol,
-            init=init,
-            svd=svd,
             complex_sep=complex_sep,
             communication_score=communication_score,
             hill_k=hill_k,

@@ -17,7 +17,9 @@ from pathlib import Path
 import pandas as pd
 from scrise.rank_selection import bicv
 
+from ..ccc_rise import RISE_FIT_OPTIONS
 from ._cli import (
+    REPLICATE_BACKEND,
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
@@ -45,9 +47,8 @@ def run_rise_rank_selection(
     held_out_gene_frac: float = 0.5,
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
-    compress: str | int | bool = "auto",
+    compress: str | int = "auto",
     n_power_iter: int = 2,
-    backend: str | None = None,
     random_state: int = 0,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
@@ -56,9 +57,8 @@ def run_rise_rank_selection(
     `rise_n_iter_max` sits above `bicv`'s own default because an under-converged fit
     reads as a worse rank.
 
-    `backend` is passed to `parafac2` ('cpu', 'cupy', 'mlx', or None to
-    auto-detect). `PARAFAC2_BACKEND` in the environment does the same thing
-    without a flag.
+    Every fold is CANDELINC-compressed (`compress` is 'auto' or an integer
+    dimension) and fit on `REPLICATE_BACKEND`.
 
     `output_path` defaults to the canonical name the figure reads.
 
@@ -97,8 +97,7 @@ def run_rise_rank_selection(
         max_iter=rise_n_iter_max,
         compress=compress,
         compression_kwarg=compression_kwarg,
-        parafac2_kwarg={"normalize_slices": True, "fix_B_identity": True}
-        | ({"backend": backend} if backend else {}),
+        parafac2_kwarg=RISE_FIT_OPTIONS | {"backend": REPLICATE_BACKEND},
         condition_key=spec.condition_column,
     )
 
@@ -116,7 +115,7 @@ def run_rise_rank_selection(
             "rise_tol": rise_tol,
             "compress": compress,
             "n_power_iter": n_power_iter,
-            "backend": backend or "auto",
+            "backend": REPLICATE_BACKEND,
             "random_state": random_state,
             "resulting_dims": resulting_dims(spec, adata),
         },
@@ -124,6 +123,17 @@ def run_rise_rank_selection(
     sidecar = write_metadata(output_path, metadata, header=HEADER)
     print(f"   Wrote provenance to {sidecar}")
     return df, output_path, sidecar
+
+
+def _parse_compress(value: str) -> str | int:
+    """'auto' or a positive integer; BiCV always compresses."""
+    if value == "auto":
+        return value
+    if not value.isdigit() or int(value) < 1:
+        raise argparse.ArgumentTypeError(
+            f"expected 'auto' or a positive integer, got {value!r}"
+        )
+    return int(value)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -147,23 +157,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
     parser.add_argument(
         "--compress",
-        type=str,
+        type=_parse_compress,
         default="auto",
-        help="CANDELINC compression passed to bicv: 'auto', an integer "
-        "dimension, or 'none' to fit the full training block.",
+        help="CANDELINC compression passed to bicv: 'auto' or an integer dimension.",
     )
     parser.add_argument(
         "--n-power-iter",
         type=int,
         default=2,
         help="Power iterations in the compression's randomized range finder.",
-    )
-    parser.add_argument(
-        "--backend",
-        type=str,
-        default=None,
-        choices=["cpu", "cupy", "mlx"],
-        help="parafac2 backend (default: auto-detect; PARAFAC2_BACKEND also works).",
     )
     parser.add_argument("--random-state", type=int, default=0)
     parser.add_argument(
@@ -178,13 +180,6 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     spec = DATASETS[args.dataset]
-    compress: str | int | bool = args.compress
-    if isinstance(compress, str):
-        if compress.lower() in ("none", "false", "no"):
-            compress = False
-        elif compress.isdigit():
-            compress = int(compress)
-
     run_rise_rank_selection(
         spec,
         ranks=parse_ranks(args.ranks),
@@ -193,9 +188,8 @@ def main(argv: list[str] | None = None) -> None:
         held_out_gene_frac=args.held_out_gene_frac,
         rise_n_iter_max=args.rise_n_iter_max,
         rise_tol=args.rise_tol,
-        compress=compress,
+        compress=args.compress,
         n_power_iter=args.n_power_iter,
-        backend=args.backend,
         random_state=args.random_state,
         output_path=resolve_output(args.output, DATA_DIR, spec.rise_rank_filename()),
     )
