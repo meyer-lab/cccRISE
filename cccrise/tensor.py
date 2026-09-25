@@ -20,15 +20,14 @@ from .ccc_rise import (
     standardize_cc_pf2,
 )
 from .import_data import add_cond_idxs, import_ligand_receptor_pairs
-from .runners._cli import CP_N_ITER_MAX, CP_TOL, RISE_N_ITER_MAX, RISE_TOL
 from .utils import pseudobulk_X, resample_tensor
 
 
 def rise_store_r2x(
     X: anndata.AnnData,
     rank: int,
-    n_iter_max: int = 100,
-    tolerance: float = 1e-6,
+    n_iter_max: int,
+    tolerance: float,
     random_state: int | None = None,
     backend: str | None = None,
 ):
@@ -93,12 +92,12 @@ def run_ccc_rise_workflow(
     adata: anndata.AnnData,
     rise_rank: int,
     lr_pairs: pd.DataFrame,
+    rise_n_iter_max: int,
+    cp_n_iter_max: int,
+    rise_tol: float,
+    cp_tol: float,
     cp_rank: int | None = None,
     condition_column: str = "sample",
-    rise_n_iter_max: int = RISE_N_ITER_MAX,
-    cp_n_iter_max: int = CP_N_ITER_MAX,
-    rise_tol: float = RISE_TOL,
-    cp_tol: float = CP_TOL,
     random_state: int | None = None,
     complex_sep: str | None = None,
     doEmbedding: bool = True,
@@ -116,18 +115,18 @@ def run_ccc_rise_workflow(
         The rank for the RISE decomposition.
     lr_pairs : pd.DataFrame
         The ligand-receptor pairs used in the decomposition.
+    rise_n_iter_max : int
+        Maximum iterations for the RISE fit.
+    cp_n_iter_max : int
+        Maximum iterations for the CP fit.
+    rise_tol : float
+        Convergence tolerance for the RISE fit.
+    cp_tol : float
+        Convergence tolerance for the CP fit.
     cp_rank : int, optional
         The rank for the final CP decomposition. If None, defaults to `rise_rank`.
     condition_column : str, default="sample"
         The column in `adata.obs` that defines the conditions.
-    rise_n_iter_max : int, default=RISE_N_ITER_MAX
-        Maximum iterations for the RISE fit.
-    cp_n_iter_max : int, default=CP_N_ITER_MAX
-        Maximum iterations for the CP fit.
-    rise_tol : float, default=RISE_TOL
-        Convergence tolerance for the RISE fit.
-    cp_tol : float, default=CP_TOL
-        Convergence tolerance for the CP fit.
     random_state : int | None
         Random seed for reproducibility.
 

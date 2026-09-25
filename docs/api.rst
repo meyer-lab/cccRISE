@@ -111,7 +111,7 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 Factorization
 ~~~~~~~~~~~~~
 
-.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", rise_n_iter_max: int = 300, cp_n_iter_max: int = 4000, rise_tol: float = 1e-8, cp_tol: float = 1e-12, random_state: int = None, complex_sep: str = None, doEmbedding: bool = True, svd_init: str = "svd")
+.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, rise_n_iter_max: int, cp_n_iter_max: int, rise_tol: float, cp_tol: float, cp_rank: int = None, condition_column: str = "sample", random_state: int = None, complex_sep: str = None, doEmbedding: bool = True, svd_init: str = "svd")
    :module: cccrise.tensor
 
    Execute the complete cccRISE workflow including RISE decomposition, CPD factorization, and result storage.
@@ -127,18 +127,18 @@ Factorization
    :type rise_rank: int
    :param lr_pairs: DataFrame of ligand-receptor pairs with 'ligand' and 'receptor' columns.
    :type lr_pairs: pd.DataFrame
+   :param rise_n_iter_max: Maximum iterations for the RISE fit.
+   :type rise_n_iter_max: int
+   :param cp_n_iter_max: Maximum iterations for the CP fit.
+   :type cp_n_iter_max: int
+   :param rise_tol: Convergence tolerance for the RISE fit.
+   :type rise_tol: float
+   :param cp_tol: Convergence tolerance for the CP fit.
+   :type cp_tol: float
    :param cp_rank: Number of CPD components for factorizing the interaction tensor. If None, defaults to rise_rank.
    :type cp_rank: int, optional
    :param condition_column: Column name in adata.obs containing condition identifiers.
    :type condition_column: str, optional
-   :param rise_n_iter_max: Maximum iterations for the RISE fit.
-   :type rise_n_iter_max: int, optional
-   :param cp_n_iter_max: Maximum iterations for the CP fit.
-   :type cp_n_iter_max: int, optional
-   :param rise_tol: Convergence tolerance for the RISE fit.
-   :type rise_tol: float, optional
-   :param cp_tol: Convergence tolerance for the CP fit.
-   :type cp_tol: float, optional
    :param random_state: Random seed for reproducibility of decomposition.
    :type random_state: int, optional
    :param complex_sep: Separator for protein complexes in L-R pairs (typically "&").

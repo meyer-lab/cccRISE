@@ -211,6 +211,10 @@ Based on the rank selection analysis above, choose appropriate RISE and CPD rank
         rise_rank=rise_rank,
         cp_rank=cp_rank,
         lr_pairs=lr_pairs,
+        rise_n_iter_max=300,
+        cp_n_iter_max=4000,
+        rise_tol=1e-8,
+        cp_tol=1e-12,
         condition_column="condition_column",
         random_state=42,
         complex_sep="&",
@@ -228,8 +232,8 @@ The ``run_ccc_rise_workflow`` function executes the complete cccRISE pipeline:
 - ``cp_rank``: Number of CPD components for factorizing the interaction tensor (if None, defaults to ``rise_rank``)
 - ``lr_pairs``: DataFrame of ligand-receptor pairs with 'ligand' and 'receptor' columns
 - ``condition_column``: Column name in ``adata.obs`` containing condition identifiers (default: "sample")
-- ``rise_n_iter_max``, ``cp_n_iter_max``: Maximum iterations for the RISE and CP fits (default: ``RISE_N_ITER_MAX`` = 300 and ``CP_N_ITER_MAX`` = 4000)
-- ``rise_tol``, ``cp_tol``: Convergence tolerances for the RISE and CP fits (default: ``RISE_TOL`` = 1e-8 and ``CP_TOL`` = 1e-12, defined in ``cccrise.runners._cli``)
+- ``rise_n_iter_max``, ``cp_n_iter_max``: Maximum iterations for the RISE and CP fits (required; the runners use 300 and 4000)
+- ``rise_tol``, ``cp_tol``: Convergence tolerances for the RISE and CP fits (required; the runners use 1e-8 and 1e-12, defined in ``cccrise.runners._cli``)
 - ``random_state``: Random seed for reproducibility (default: None)
 - ``complex_sep``: Separator for protein complexes in L-R pairs (default: None)
 - ``doEmbedding``: If True, computes PaCMAP embeddings for visualization (default: True)
