@@ -107,8 +107,10 @@ Finally, we also evaluated whether the communications tensor should be factored 
 >    Unless rank selection is performed inside the cross-validation folds (nested CV), the reported AUC is optimistically biased.
 >    Please clarify the CV scheme and, if selection was not nested, re-estimate performance with nested CV.
 
+<!-- EDITED -->
+
 We have substantially revised our approach to rank selection to address the overfitting concern and to improve the interpretability of the results.
-In addition to the concerns the reviewers raised, selecting the rank of our decompositions based on an external prediction limited the use of our approach to applications where such a prediction was available.
+In addition to the concerns the reviewers raised, selecting the decomposition rank based on an external prediction limited the use of our approach to applications where such a prediction was available.
 Instead, we now consistently select the rank of our decompositions based on an internal cross-validation scheme, wherein the decomposition is benchmarked in its ability to predict a left-out portion of the tensor.
 In addition to providing a benchmark for the rank selection, this internal cross-validation scheme also provides a more reliable estimate of the classifier's performance, and a more internally consistent framing of the model, since the decomposition is meant to be a reliable representation of the molecular data.
 
@@ -116,6 +118,8 @@ In addition to providing a benchmark for the rank selection, this internal cross
 >    The COVID cohort has 12 samples; fitting an 18-component L1 logistic regression at the patient level is prone to overfitting.
 >    There is no external cohort reproducing the classifier.
 >    The authors' own finding that the components do not predict CLAD or death should be stated more prominently, as it shows limitations of the clinical claims.
+
+<!-- We need to come back to this. -->
 
 We agree on both counts.
 The twelve-sample COVID-19 cohort has been replaced as the primary demonstration by the IBDverse terminal-ileum biopsy cohort (343 samples; 232 healthy and 111 Crohn's disease), which is large enough to support patient-level association testing and to hold out samples for evaluation rather than reporting resubstitution performance (l. XXX).
@@ -133,17 +137,17 @@ We accordingly frame the clinical claims as hypothesis-generating (l. XXX).
 >    Unlike CellPhoneDB/CellChat, CCC-RISE provides no null model or significance assessment for whether a component's communication exceeds chance.
 >    The components are interpreted as biologically real throughout without statistical or systematic biological validation; a permutation-based or otherwise principled null would substantially strengthen these interpretations.
 
-We agree, and have implemented two complementary permutation-based null models for the communication tensor, covering both kinds of significance question CellPhoneDB/CellChat-style tests and dedicated differential-CCC tools such as scDiffCom together provide.
+<!-- EDITED -->
 
-The first (`compute_communication_significance`) asks whether a given tensor entry is unusual at all, the direct analogue of CellPhoneDB/CellChat's own null, which permutes discrete cell-cluster labels and recomputes each cluster pair's mean-expression score.
-RISE has no discrete clusters --- every cell instead carries a continuous loading onto each eigen-state (a row of its condition's PARAFAC2 projection matrix).
-We generalize the permutation accordingly: within each condition, we shuffle which cell's raw expression each eigen-state loading row is paired with, and recompute the communication tensor from these shuffled pairings.
-This breaks the real cell/eigen-state association while holding cell counts, the loading distribution, and LR identity fixed --- exactly what a cluster-label permutation holds fixed in the discrete case --- and gives every tensor entry an empirical p-value (and a z-score, from the same null's mean and standard deviation) against a null of "random" eigen-state assignment.
-This null works with any of the four scoring functions described in our response to Reviewer #2's comment #3, so significance is not tied to one particular choice of score.
+We agree and have implemented two complementary permutation-based null models for the communication tensor covering both kinds of significance questions CellPhoneDB/CellChat and dedicated differential-CCC tools such as scDiffCom together provide.
 
-The second, new test (`compute_differential_significance`) answers a different question this first null cannot: not "is this entry unusual," but "does this entry differ between two groups of samples" (e.g. disease severity, or ALAD status) --- the question scDiffCom's own permutation scheme is specifically built to answer via a second, separate condition-label permutation.
-We adapted this to CCC-RISE's structure directly: since the communication tensor already has one slice per sample along its condition axis (the same axis as the CP condition factor), we permute *which existing sample-slice counts as which group* --- rather than resampling cells and rebuilding the tensor from raw expression, as scDiffCom must --- so every sample's internal eigen-state/LR structure stays completely intact under the null, at a fraction of the computational cost.
-Because our cohorts have few samples (tens, not thousands), we enumerate this null **exactly** whenever the number of possible group splits is small (e.g. 924 ways to split 12 samples into two groups of 6), rather than approximating it by Monte Carlo sampling, giving an exact rather than approximate p-value for our smallest cohort --- directly responsive to the small-sample concern raised in comment #5.
+The first asks whether a given tensor entry is unusual at all, the direct analogue of CellPhoneDB/CellChat's own null, which permutes discrete cell-cluster labels and recomputes each cluster pair's mean-expression score.
+RISE has no discrete clusters and so we generalize the permutation accordingly: within each condition, we shuffle the cell's raw expression each eigen-state loading row is paired with, and recompute the communication tensor from these shuffled pairings.
+This breaks the real cell/eigen-state association while holding cell counts, the loading distribution, and LR identity fixed, giving every tensor entry an empirical p-value (and a z-score, from the same null's mean and standard deviation) against a null of "random" eigen-state assignment.
+This null works across any of the four scoring functions described in our response to Reviewer #2's comment #3.
+
+A second test answers whether an entry differs between two groups of samples, akin to scDiffCom's own permutation scheme.
+We adapted this to CCC-RISE's structure directly: since the communication tensor already has one slice per sample along its condition axis (the same axis as the CP condition factor), we permute *which existing sample-slice counts as which group*, rather than resampling cells and rebuilding the tensor, allowing us to calculate this test exactly and efficiently.
 We report [NEW OBSERVED-VS-NULL PANEL --- TBD]{.placeholder} showing both tests applied to the reported components.
 
 > 7. Missing multi-condition/differential CCC baselines from the literature.
@@ -152,14 +156,9 @@ We report [NEW OBSERVED-VS-NULL PANEL --- TBD]{.placeholder} showing both tests 
 >    - scDiffCom (Lagger et al., Nat Aging 2023), a dedicated differential CCC between conditions with permutation-based significance (c.f. comment #6).
 >    - CrossTalkeR (Nagai et al., Bioinformatics 2021), differential LR-network analysis across conditions.
 
-We have added both methods to the introduction and discussion, and cite them alongside CellPhoneDB/CellChat as the established precedent for permutation-based CCC significance testing.
+<!-- EDITED -->
 
-Beyond citing them, we examined each method's actual significance-testing machinery in detail (by inspecting their source directly), since the reviewer's cross-reference to comment #6 rightly implies our own null model should be held to the same standard.
-This distinguished two materially different designs: scDiffCom runs two separate permutation tests --- a within-condition test (shuffling cell-type labels, as CellPhoneDB/CellChat do) and a separate cross-condition differential-expression test (shuffling condition labels, resampled at the sample level when replicate samples exist, so that a sample's cells are always moved together rather than individually reshuffled).
-CrossTalkeR, by contrast, is not permutation-based at all in its core differential-network construction; the significance tests it ships (a Fisher's exact test on interaction-count contingency tables, and a Mann-Whitney rank-sum test on edge-weight distributions) are closed-form/rank-based tests over already-computed scores, not label permutations.
-
-This comparison directly motivated the second null model described in our response to comment #6: we implemented a cross-condition differential test analogous to scDiffCom's, adapted so that its sample-level permutation --- which scDiffCom achieves by resampling raw cells/samples before rescoring --- is instead performed directly on the communication tensor's existing per-sample slices, since CCC-RISE (unlike scDiffCom) already has one tensor slice per sample.
-We can now say concretely that CCC-RISE implements both kinds of permutation test these methods motivated: a within-condition significance test (comment #6, generalizing the CellPhoneDB/CellChat/scDiffCom approach to continuous eigen-states) and a cross-condition differential test (this comment, generalizing scDiffCom's approach specifically), rather than only the first.
+We have added both methods to the introduction and discussion, and cite them alongside CellPhoneDB/CellChat as the established precedent for permutation-based CCC significance testing (l. XXX). As addressed in response to other comments, we have also added direct comparisons of our results to the approaches taken by these methods.
 
 > 8. Inconsistency between the "label-free" premise and label-dependent interpretation.
 >    Every program is ultimately described through annotated cell types, and annotations are explicitly reused.
