@@ -656,8 +656,10 @@ def validate_cp_rank(cp_rank: int, tensor_shape: tuple[int, ...]) -> None:
 def ccc_rise(
     adata: anndata.AnnData,
     rise_rank: int,
-    n_iter_max: int,
-    tol: float,
+    rise_n_iter_max: int,
+    cp_n_iter_max: int,
+    rise_tol: float,
+    cp_tol: float,
     cp_rank: int | None = None,
     random_state: int | None = None,
     complex_sep: str | None = None,
@@ -674,10 +676,14 @@ def ccc_rise(
         Annotated data object with expression data in `.X`
     rise_rank : int
         Rank for the PARAFAC2 decomposition (RISE)
-    n_iter_max : int
+    rise_n_iter_max : int
         Maximum number of iterations for PARAFAC2
-    tol : float
+    cp_n_iter_max : int
+        Maximum number of iterations for CP
+    rise_tol : float
         Convergence tolerance for PARAFAC2
+    cp_tol : float
+        Convergence tolerance for CP
     cp_rank : int, optional
         Rank for the CP decomposition. If None, defaults to `rise_rank`.
     random_state : int, optional
@@ -696,7 +702,13 @@ def ccc_rise(
 
     # PARAFAC2 decomposition
     pf2_output, r2x_pf2 = parafac2_nd(
-        adata, rank=rise_rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
+        adata,
+        rank=rise_rank,
+        n_iter_max=rise_n_iter_max,
+        tol=rise_tol,
+        random_state=random_state,
+        normalize_slices=True,
+        fix_B_identity=True,
     )
     pf2_weights, pf2_factors, projections = pf2_output
 
@@ -739,8 +751,8 @@ def ccc_rise(
     cp_weights, cp_factors = parafac(
         interaction_tensors,
         cp_rank,
-        n_iter_max=n_iter_max,
-        tol=tol,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
         init=svd_init,  # Use initialization
         svd="randomized_svd",
         normalize_factors=True,

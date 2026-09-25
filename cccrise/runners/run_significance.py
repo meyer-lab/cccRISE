@@ -34,6 +34,8 @@ from ..validation.significance import (
     summarize_significance_overview,
 )
 from ._cli import (
+    RISE_N_ITER_MAX,
+    RISE_TOL,
     add_dataset_argument,
     add_group_arguments,
     dataset_metadata,
@@ -70,8 +72,8 @@ def run_significance(
     complex_agg_method: str = "min",
     hill_k: float = 0.5,
     max_exact_perms: int = 100_000,
-    n_iter_max: int = 100,
-    tol: float = 1e-6,
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
     random_state: int = 42,
     output_path: Path | None = None,
     output_root: Path = DATA_DIR,
@@ -100,9 +102,9 @@ def run_significance(
         Half-saturation constant for Hill scoring.
     max_exact_perms : int, default=100_000
         Threshold for exact vs Monte Carlo differential permutations.
-    n_iter_max : int, default=100
+    rise_n_iter_max : int, default=RISE_N_ITER_MAX
         Max iterations for PARAFAC2 fitting.
-    tol : float, default=1e-6
+    rise_tol : float, default=RISE_TOL
         Convergence tolerance for PARAFAC2.
     random_state : int, default=42
         Seed for permutations and RISE fitting.
@@ -158,8 +160,8 @@ def run_significance(
         complex_agg_method=complex_agg_method,
         hill_k=hill_k,
         max_exact_perms=max_exact_perms,
-        n_iter_max=n_iter_max,
-        tol=tol,
+        n_iter_max=rise_n_iter_max,
+        rise_tol=rise_tol,
         random_state=random_state,
         validate=False,
     )
@@ -199,6 +201,8 @@ def run_significance(
             "complex_sep": complex_sep,
             "complex_agg_method": complex_agg_method,
             "hill_k": hill_k,
+            "rise_n_iter_max": rise_n_iter_max,
+            "rise_tol": rise_tol,
             "r2x_rise": float(results["r2x_rise"]),
             "random_state": random_state,
             "total_tensor_entries": int(overview_df["TotalEntries"].iloc[0]),
@@ -274,16 +278,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Complex subunit aggregation method (default: min).",
     )
     parser.add_argument(
-        "--n-iter-max",
+        "--rise-n-iter-max",
         type=int,
-        default=100,
-        help="Maximum PARAFAC2 iterations (default: 100).",
+        default=RISE_N_ITER_MAX,
+        help=f"Maximum PARAFAC2 iterations (default: {RISE_N_ITER_MAX}).",
     )
     parser.add_argument(
-        "--tol",
+        "--rise-tol",
         type=float,
-        default=1e-6,
-        help="PARAFAC2 convergence tolerance (default: 1e-6).",
+        default=RISE_TOL,
+        help=f"PARAFAC2 convergence tolerance (default: {RISE_TOL:g}).",
     )
     parser.add_argument(
         "--random-state",
@@ -323,8 +327,8 @@ def main(argv: list[str] | None = None) -> None:
         complex_sep=args.complex_sep,
         complex_agg_method=args.complex_agg_method,
         hill_k=args.hill_k,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
+        rise_n_iter_max=args.rise_n_iter_max,
+        rise_tol=args.rise_tol,
         random_state=args.random_state,
         output_path=resolve_output(
             args.output, args.output_root, spec.significance_lr_filename()

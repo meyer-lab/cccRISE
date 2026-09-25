@@ -77,7 +77,10 @@ def makeFigure():
         figsize=(grid_width, grid_height + LR_PANEL_SIZE[1]),
         layout="constrained",
     )
-    top, bottom = f.subfigures(2, 1, height_ratios=[LR_PANEL_SIZE[1], grid_height])
+    grid = f.subfigures(
+        2, 1, squeeze=False, height_ratios=[LR_PANEL_SIZE[1], grid_height]
+    )
+    top, bottom = grid[:, 0]
 
     lr_width = min(LR_PANEL_SIZE[0], grid_width)
     if lr_width < grid_width:

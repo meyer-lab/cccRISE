@@ -52,6 +52,10 @@ from ..validation.component_stability import (
     summarize_component_stability,
 )
 from ._cli import (
+    CP_N_ITER_MAX,
+    CP_TOL,
+    RISE_N_ITER_MAX,
+    RISE_TOL,
     add_dataset_argument,
     dataset_metadata,
     resolve_output,
@@ -73,10 +77,10 @@ def run_component_stability(
     cp_rank: int,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
-    rise_n_iter_max: int = 100,
-    rise_tol: float = 1e-6,
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
+    cp_n_iter_max: int = CP_N_ITER_MAX,
+    cp_tol: float = CP_TOL,
     init: str = "svd",
     svd: str = "randomized_svd",
     complex_sep: str | None = "&",
@@ -101,7 +105,7 @@ def run_component_stability(
         Resampling axes to run; see the module docstring.
     n_replicates : int, default=20
         Replicates per axis.
-    rise_n_iter_max, rise_tol, n_iter_max, tol, init, svd
+    rise_n_iter_max, rise_tol, cp_n_iter_max, cp_tol, init, svd
         Fitting controls for the RISE and CP fits.
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
@@ -158,8 +162,8 @@ def run_component_stability(
         cp_rank=cp_rank,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
-        cp_n_iter_max=n_iter_max,
-        cp_tol=tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
         init=init,
         svd=svd,
         complex_sep=complex_sep,
@@ -190,8 +194,8 @@ def run_component_stability(
         n_replicates=n_replicates,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
-        cp_n_iter_max=n_iter_max,
-        cp_tol=tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
         init=init,
         svd=svd,
         complex_sep=complex_sep,
@@ -221,8 +225,8 @@ def run_component_stability(
             "n_replicates": n_replicates,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
-            "n_iter_max": n_iter_max,
-            "tol": tol,
+            "cp_n_iter_max": cp_n_iter_max,
+            "cp_tol": cp_tol,
             "init": init,
             "svd": svd,
             "complex_sep": complex_sep,
@@ -325,10 +329,10 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--n-replicates", type=int, default=20)
-    parser.add_argument("--rise-n-iter-max", type=int, default=100)
-    parser.add_argument("--rise-tol", type=float, default=1e-6)
-    parser.add_argument("--n-iter-max", type=int, default=100)
-    parser.add_argument("--tol", type=float, default=1e-3)
+    parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
+    parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
+    parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
+    parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--init", type=str, default="svd", choices=["random", "svd"])
     parser.add_argument(
         "--svd",
@@ -390,8 +394,8 @@ def main(argv: list[str] | None = None) -> None:
         n_replicates=args.n_replicates,
         rise_n_iter_max=args.rise_n_iter_max,
         rise_tol=args.rise_tol,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
+        cp_n_iter_max=args.cp_n_iter_max,
+        cp_tol=args.cp_tol,
         init=args.init,
         svd=args.svd,
         complex_sep=args.complex_sep,

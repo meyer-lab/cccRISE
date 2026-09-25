@@ -31,6 +31,10 @@ from ..validation.anova_stability import (
     top_lr_pairs,
 )
 from ._cli import (
+    CP_N_ITER_MAX,
+    CP_TOL,
+    RISE_N_ITER_MAX,
+    RISE_TOL,
     add_dataset_argument,
     add_group_arguments,
     dataset_metadata,
@@ -58,8 +62,10 @@ def run_anova_bootstrap(
     ci_level: float = 95.0,
     alpha: float = 0.05,
     stratify: bool = True,
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    cp_n_iter_max: int = CP_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
+    cp_tol: float = CP_TOL,
     complex_sep: str | None = "&",
     random_state: int = 42,
     backend: str | None = None,
@@ -94,7 +100,7 @@ def run_anova_bootstrap(
     stratify : bool, default=True
         Draw patients within each group, holding the class balance fixed; see
         `utils.resample_conditions`.
-    n_iter_max, tol
+    rise_n_iter_max, cp_n_iter_max, rise_tol, cp_tol
         Fitting controls for the RISE and CP fits.
     complex_sep : str, optional
         Communication-tensor option; see `ccc_rise.calc_communication_score`.
@@ -160,10 +166,10 @@ def run_anova_bootstrap(
         rise_rank=rise_rank,
         cp_rank=cp_rank,
         lr_pairs=lr_pairs,
-        rise_n_iter_max=n_iter_max,
-        rise_tol=tol,
-        cp_n_iter_max=n_iter_max,
-        cp_tol=tol,
+        rise_n_iter_max=rise_n_iter_max,
+        rise_tol=rise_tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
         complex_sep=complex_sep,
         random_state=random_state,
         backend=backend,
@@ -184,10 +190,10 @@ def run_anova_bootstrap(
         cp_rank=cp_rank,
         n_boot=n_boot,
         lr_pairs=lr_pairs,
-        rise_n_iter_max=n_iter_max,
-        rise_tol=tol,
-        cp_n_iter_max=n_iter_max,
-        cp_tol=tol,
+        rise_n_iter_max=rise_n_iter_max,
+        rise_tol=rise_tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
         complex_sep=complex_sep,
         stratify=stratify,
         patient_column=spec.patient_column,
@@ -229,8 +235,10 @@ def run_anova_bootstrap(
             "alpha": alpha,
             "stratify": stratify,
             "patient_column": spec.patient_column,
-            "n_iter_max": n_iter_max,
-            "tol": tol,
+            "rise_n_iter_max": rise_n_iter_max,
+            "cp_n_iter_max": cp_n_iter_max,
+            "rise_tol": rise_tol,
+            "cp_tol": cp_tol,
             "complex_sep": complex_sep,
             "random_state": random_state,
             "backend": backend or "auto",
@@ -298,8 +306,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Draw patients from the whole cohort instead of within each "
         "group, letting the class balance vary between replicates.",
     )
-    parser.add_argument("--n-iter-max", type=int, default=100)
-    parser.add_argument("--tol", type=float, default=1e-3)
+    parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
+    parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
+    parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
+    parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
@@ -345,8 +355,10 @@ def main(argv: list[str] | None = None) -> None:
         ci_level=args.ci_level,
         alpha=args.alpha,
         stratify=args.stratify,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
+        rise_n_iter_max=args.rise_n_iter_max,
+        cp_n_iter_max=args.cp_n_iter_max,
+        rise_tol=args.rise_tol,
+        cp_tol=args.cp_tol,
         complex_sep=args.complex_sep,
         random_state=args.random_state,
         backend=args.backend,
