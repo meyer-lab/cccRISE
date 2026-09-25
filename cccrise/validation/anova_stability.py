@@ -191,8 +191,7 @@ def fit_anova_pipeline(
     hill_k: float = 0.5,
     random_state: int | None = None,
     backend: str | None = None,
-    compress: bool = True,
-    oversample: int = 5,
+    compress: bool = False,
     *,
     rise_n_iter_max: int,
     cp_n_iter_max: int,
@@ -228,11 +227,8 @@ def fit_anova_pipeline(
     backend : str | None, default=None
         Backend the RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
         auto-detect); passed straight through to `ccc_rise.fit_rise`.
-    compress : bool, default=True
-        Fit CP inside a CANDELINC core sized for `cp_rank` instead of the
-        full tensor (see `ccc_rise.fit_cp`).
-    oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
+    compress : bool, default=False
+        Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
 
     Returns
     -------
@@ -262,7 +258,6 @@ def fit_anova_pipeline(
         random_state=random_state,
         backend=backend,
         compress=compress,
-        oversample=oversample,
     )
     adata, filtered_lr_pairs = fit["adata"], fit["filtered_lr_pairs"]
     cp_weights, factors, r2x_cp = fit["cp_weights"], fit["cp_factors"], fit["r2x_cp"]
@@ -321,8 +316,7 @@ def bootstrap_replicate_anova(
     patient_column: str | None = None,
     random_state: int | None = None,
     backend: str | None = None,
-    compress: bool = True,
-    oversample: int = 5,
+    compress: bool = False,
     *,
     rise_n_iter_max: int,
     cp_n_iter_max: int,
@@ -366,11 +360,8 @@ def bootstrap_replicate_anova(
         Seed for the draw and for the replicate's fits.
     backend : str | None, default=None
         Backend the replicate's RISE refit runs on; see `fit_anova_pipeline`.
-    compress : bool, default=True
-        Fit the replicate's CP stage inside a CANDELINC core; see
-        `ccc_rise.fit_cp`.
-    oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
+    compress : bool, default=False
+        Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
 
     Returns
     -------
@@ -406,7 +397,6 @@ def bootstrap_replicate_anova(
         random_state=random_state,
         backend=backend,
         compress=compress,
-        oversample=oversample,
     )
 
     if not np.array_equal(fit["lr_symbols"], reference["lr_symbols"]):
@@ -452,8 +442,7 @@ def bootstrap_anova(
     patient_column: str | None = None,
     random_state: int = 0,
     backend: str | None = None,
-    compress: bool = True,
-    oversample: int = 5,
+    compress: bool = False,
     *,
     rise_n_iter_max: int,
     cp_n_iter_max: int,
@@ -497,11 +486,8 @@ def bootstrap_anova(
         Base seed; replicate ``b`` uses `replicate_seed(random_state, b)`.
     backend : str | None, default=None
         Backend every replicate's RISE refit runs on; see `fit_anova_pipeline`.
-    compress : bool, default=True
-        Fit every replicate's CP stage inside a CANDELINC core; see
-        `ccc_rise.fit_cp`.
-    oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
+    compress : bool, default=False
+        Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
 
     Returns
     -------
@@ -535,7 +521,6 @@ def bootstrap_anova(
             random_state=seed,
             backend=backend,
             compress=compress,
-            oversample=oversample,
         )
         replicate.insert(0, "Replicate", b)
         frames.append(replicate)

@@ -213,7 +213,7 @@ def test_candelinc_finds_the_true_rank_cliff():
 
 
 def test_runner_compressed_and_uncompressed_agree(tmp_path):
-    """`compress=False` and the compressed path the CLI always takes must agree.
+    """`compress=False` and the compressed path the runners take must agree.
 
     Up to the true rank the CP model is identifiable and the two paths must
     report the same metrics. Past it the model is degenerate *by definition*:
@@ -250,11 +250,10 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
                 cp_n_iter_max=2000,
                 cp_tol=1e-12,
                 compress=compress,
-                oversample=3,
                 output_path=tmp_path / f"cpd_{compress}.csv",
             )
         assert csv_path.exists() and sidecar.exists()
-        assert ("compressed: true" in sidecar.read_text()) is compress
+        assert f"compress: {str(compress).lower()}" in sidecar.read_text()
         results[compress] = df
 
     compressed, full = results[True], results[False]

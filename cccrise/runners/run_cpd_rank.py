@@ -11,11 +11,11 @@ Each rank is fit once and we then read off the following three criteria:
 2. Core Consistency (CORCONDIA)
 3. Component-Collinearity Screen
 
-The sweep runs on a CANDELINC core, which has been proven invariant
-to the three criteria.
+With `REPLICATE_COMPRESS`, RISE is fit compressed and the sweep runs on a
+CANDELINC core, which is proven invariant to the three criteria.
 
     uv run cccrise-cpdrank --dataset alad --rise-rank 25 --ranks 1:26
-    uv run cccrise-cpdrank --dataset ibd --rise-rank 70 --ranks 1:26 --oversample 5
+    uv run cccrise-cpdrank --dataset ibd --rise-rank 70 --ranks 1:26
 """
 
 import argparse
@@ -26,7 +26,9 @@ import pandas as pd
 from tensorly.decomposition import parafac
 
 from ..ccc_rise import (
+    CP_COMPRESSION_OPTIONS,
     CP_FIT_OPTIONS,
+    RISE_COMPRESSION_OPTIONS,
     calculate_interaction_tensor,
     fit_rise,
     validate_cp_rank,
@@ -42,7 +44,7 @@ from ..rank_selection import (
 from ._cli import (
     CP_N_ITER_MAX,
     CP_TOL,
-    REPLICATE_BACKEND,
+    REPLICATE_COMPRESS,
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
@@ -72,6 +74,7 @@ def build_interaction_tensor(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     backend: str | None = None,
+    compress: bool = False,
 ) -> tuple[np.ndarray, dict]:
     """Fit RISE at `rise_rank`; return the 4D tensor and sidecar fields."""
     adata = spec.load()
@@ -85,6 +88,7 @@ def build_interaction_tensor(
         tolerance=tol,
         random_state=random_state,
         backend=backend,
+        compress=compress,
     )
     tensor, _ = calculate_interaction_tensor(
         adata,
@@ -135,8 +139,7 @@ def run_cpd_rank_selection(
     rise_tol: float = RISE_TOL,
     cp_n_iter_max: int = CP_N_ITER_MAX,
     cp_tol: float = CP_TOL,
-    compress: bool = True,
-    oversample: int = 5,
+    compress: bool = REPLICATE_COMPRESS,
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
@@ -147,7 +150,8 @@ def run_cpd_rank_selection(
 
         CP rank selection is conditional on the already-selected `rise_rank`.
 
-    RISE runs on `REPLICATE_BACKEND`; the CP stage is CPU-only.
+    RISE runs on `spec.backend`; the CP stage is CPU-only. `compress`
+    compresses both RISE and the CP sweep.
 
         Returns the sweep results, the CSV path, and the sidecar path.
     """
@@ -157,7 +161,7 @@ def run_cpd_rank_selection(
     git_sha()
 
     print(f"=== CPD rank selection: {spec.label} (RISE rank {rise_rank}) ===")
-    print(f"    ranks={ranks}  compress={compress}  oversample={oversample}")
+    print(f"    ranks={ranks}  compress={compress}")
 
     print("1. Loading data and fitting RISE...")
     tensor, tensor_facts = build_interaction_tensor(
@@ -169,7 +173,8 @@ def run_cpd_rank_selection(
         random_state=random_state,
         communication_score=communication_score,
         hill_k=hill_k,
-        backend=REPLICATE_BACKEND,
+        backend=spec.backend,
+        compress=compress,
     )
     print(f"   Interaction tensor shape: {tensor.shape}")
     validate_cp_rank(max(ranks), tensor.shape)
@@ -178,12 +183,12 @@ def run_cpd_rank_selection(
     # compressing, the tensor itself otherwise. Both criteria are invariant to
     # the choice, and `lost_sq` restates R2X against the original tensor.
     lost_sq = 0.0
-    compression_facts: dict = {"compressed": compress}
+    compression_facts: dict = {}
     fit_target = tensor
     if compress:
         print("2. Compressing the interaction tensor (CANDELINC)...")
         fit_target, _bases, lost_sq = candelinc_compress(
-            tensor, max_rank=max(ranks), oversample=oversample
+            tensor, max_rank=max(ranks), **CP_COMPRESSION_OPTIONS
         )
         retained = 1.0 - lost_sq / float(np.sum(tensor**2))
         print(
@@ -191,8 +196,7 @@ def run_cpd_rank_selection(
             f"({tensor.size / fit_target.size:.0f}x smaller), "
             f"retaining {retained:.4%} of the sum of squares"
         )
-        compression_facts |= {
-            "oversample": oversample,
+        compression_facts = {
             "core_shape": list(fit_target.shape),
             "compression_ratio": float(tensor.size / fit_target.size),
             "retained_fraction": float(retained),
@@ -237,7 +241,10 @@ def run_cpd_rank_selection(
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "cp_fit_options": CP_FIT_OPTIONS,
-            "backend": REPLICATE_BACKEND,
+            "backend": spec.backend or "auto",
+            "compress": compress,
+            "rise_compression_options": RISE_COMPRESSION_OPTIONS,
+            "cp_compression_options": CP_COMPRESSION_OPTIONS,
             "complex_sep": complex_sep,
             "communication_score": communication_score,
             "hill_k": hill_k,
@@ -284,12 +291,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cp-tol", type=float, default=CP_TOL, help="CP fit tolerance."
     )
-    parser.add_argument(
-        "--oversample",
-        type=int,
-        default=5,
-        help="Extra basis columns per mode beyond the largest rank swept.",
-    )
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument(
         "--communication-score",
@@ -324,7 +325,6 @@ def main(argv: list[str] | None = None) -> None:
         rise_tol=args.rise_tol,
         cp_n_iter_max=args.cp_n_iter_max,
         cp_tol=args.cp_tol,
-        oversample=args.oversample,
         complex_sep=args.complex_sep,
         communication_score=args.communication_score,
         hill_k=args.hill_k,

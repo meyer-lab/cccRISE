@@ -4,9 +4,9 @@ Runner: RISE (PARAFAC2) rank selection by bi-cross-validation.
 
 BiCV holds out a fraction of the cells and a fraction of the genes, fits
 PARAFAC2 on the remaining block, and scores the prediction of the held-out
-block. Each fold is CANDELINC-compressed once (`--compress`, default `auto`)
-so a rank sweep pays one data traversal per fold rather than one per
-(rank, fold) pair.
+block. Each fold is compressed once (`REPLICATE_COMPRESS`, with
+`RISE_COMPRESSION_OPTIONS`) so a rank sweep pays one data traversal per fold
+rather than one per (rank, fold) pair.
 
     uv run cccrise-riserank --dataset alad --ranks 5:51:5 --n-repeats 3
 """
@@ -17,9 +17,9 @@ from pathlib import Path
 import pandas as pd
 from scrise.rank_selection import bicv
 
-from ..ccc_rise import RISE_FIT_OPTIONS
+from ..ccc_rise import RISE_COMPRESSION_OPTIONS, RISE_FIT_OPTIONS
 from ._cli import (
-    REPLICATE_BACKEND,
+    REPLICATE_COMPRESS,
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
@@ -47,8 +47,6 @@ def run_rise_rank_selection(
     held_out_gene_frac: float = 0.5,
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
-    compress: str | int = "auto",
-    n_power_iter: int = 2,
     random_state: int = 0,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
@@ -57,8 +55,9 @@ def run_rise_rank_selection(
     `rise_n_iter_max` sits above `bicv`'s own default because an under-converged fit
     reads as a worse rank.
 
-    Every fold is CANDELINC-compressed (`compress` is 'auto' or an integer
-    dimension) and fit on `REPLICATE_BACKEND`.
+    Every fold is compressed exactly as `ccc_rise.fit_rise` compresses
+    (`REPLICATE_COMPRESS`, `RISE_COMPRESSION_OPTIONS`) and fit on
+    `spec.backend`.
 
     `output_path` defaults to the canonical name the figure reads.
 
@@ -71,7 +70,7 @@ def run_rise_rank_selection(
     git_sha()
 
     print(f"=== RISE BiCV rank selection: {spec.label} ===")
-    print(f"    ranks={ranks}  n_repeats={n_repeats}  compress={compress}")
+    print(f"    ranks={ranks}  n_repeats={n_repeats}  compress={REPLICATE_COMPRESS}")
     print(
         f"    holdout: {held_out_cell_frac:.0%} of cells, "
         f"{held_out_gene_frac:.0%} of genes"
@@ -80,10 +79,6 @@ def run_rise_rank_selection(
     print("1. Loading data...")
     adata = spec.load()
     print(f"   AnnData shape: {adata.shape}")
-
-    # `compress` is upstream's `L`: "auto" sizes the subspace from the rank,
-    # an integer sets it directly. There is no separate oversample knob.
-    compression_kwarg = {"n_power_iter": n_power_iter}
 
     print("2. Running BiCV sweep...")
     df = bicv(
@@ -95,9 +90,9 @@ def run_rise_rank_selection(
         random_state=random_state,
         tolerance=rise_tol,
         max_iter=rise_n_iter_max,
-        compress=compress,
-        compression_kwarg=compression_kwarg,
-        parafac2_kwarg=RISE_FIT_OPTIONS | {"backend": REPLICATE_BACKEND},
+        compress=REPLICATE_COMPRESS,
+        compression_kwarg=RISE_COMPRESSION_OPTIONS if REPLICATE_COMPRESS else None,
+        parafac2_kwarg=RISE_FIT_OPTIONS | {"backend": spec.backend},
         condition_key=spec.condition_column,
     )
 
@@ -113,9 +108,9 @@ def run_rise_rank_selection(
             "held_out_gene_frac": held_out_gene_frac,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
-            "compress": compress,
-            "n_power_iter": n_power_iter,
-            "backend": REPLICATE_BACKEND,
+            "compress": REPLICATE_COMPRESS,
+            "rise_compression_options": RISE_COMPRESSION_OPTIONS,
+            "backend": spec.backend or "auto",
             "random_state": random_state,
             "resulting_dims": resulting_dims(spec, adata),
         },
@@ -123,17 +118,6 @@ def run_rise_rank_selection(
     sidecar = write_metadata(output_path, metadata, header=HEADER)
     print(f"   Wrote provenance to {sidecar}")
     return df, output_path, sidecar
-
-
-def _parse_compress(value: str) -> str | int:
-    """'auto' or a positive integer; BiCV always compresses."""
-    if value == "auto":
-        return value
-    if not value.isdigit() or int(value) < 1:
-        raise argparse.ArgumentTypeError(
-            f"expected 'auto' or a positive integer, got {value!r}"
-        )
-    return int(value)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -155,18 +139,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--held-out-gene-frac", type=float, default=0.5)
     parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
-    parser.add_argument(
-        "--compress",
-        type=_parse_compress,
-        default="auto",
-        help="CANDELINC compression passed to bicv: 'auto' or an integer dimension.",
-    )
-    parser.add_argument(
-        "--n-power-iter",
-        type=int,
-        default=2,
-        help="Power iterations in the compression's randomized range finder.",
-    )
     parser.add_argument("--random-state", type=int, default=0)
     parser.add_argument(
         "--output",
@@ -188,8 +160,6 @@ def main(argv: list[str] | None = None) -> None:
         held_out_gene_frac=args.held_out_gene_frac,
         rise_n_iter_max=args.rise_n_iter_max,
         rise_tol=args.rise_tol,
-        compress=args.compress,
-        n_power_iter=args.n_power_iter,
         random_state=args.random_state,
         output_path=resolve_output(args.output, DATA_DIR, spec.rise_rank_filename()),
     )

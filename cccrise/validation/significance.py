@@ -42,6 +42,7 @@ def fit_significance_pipeline(
     random_state: int = 42,
     validate: bool = False,
     backend: str | None = None,
+    compress: bool = False,
     *,
     rise_n_iter_max: int,
     rise_tol: float,
@@ -88,6 +89,8 @@ def fit_significance_pipeline(
         If True, validates vectorized tensor computation against `calc_communication_score`.
     backend : str, optional
         RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect).
+    compress : bool, default=False
+        Fit RISE in a compressed subspace; see `ccc_rise.fit_rise`.
 
     Returns
     -------
@@ -113,6 +116,7 @@ def fit_significance_pipeline(
         tolerance=rise_tol,
         random_state=random_state,
         backend=backend,
+        compress=compress,
     )
     condition_names = np.unique(adata.obs[condition_column]).tolist()
 

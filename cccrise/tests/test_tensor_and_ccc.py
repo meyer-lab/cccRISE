@@ -532,35 +532,89 @@ def test_calculate_interaction_tensor_matches_per_condition_reference():
     pd.testing.assert_frame_equal(filtered, expected_lr)
 
 
-def test_workflow_compressed_and_full_cp_agree():
-    """CANDELINC-compressed CP reports the same R2X as the full fit."""
-    adata, lr_pairs = _synthetic_adata(n_cells=80, n_cond=4, n_pairs=12, seed=3)
-    kw: dict[str, Any] = FIT_KW | {"cp_n_iter_max": 500, "cp_tol": 1e-10}
-    r2x = {
+def test_fit_rise_compressed_matches_exact(monkeypatch):
+    """Compressed RISE uses `RISE_COMPRESSION_OPTIONS`, returns full-size
+    per-cell projections, and fits about as well as exact RISE."""
+    from cccrise import ccc_rise
+
+    calls = []
+    real = ccc_rise.compress_dataset
+    monkeypatch.setattr(
+        ccc_rise,
+        "compress_dataset",
+        lambda *a, **kw: calls.append(kw) or real(*a, **kw),
+    )
+    adata, _ = _synthetic_adata(n_cells=160, n_cond=4, n_pairs=30, seed=3)
+    adata = add_cond_idxs(adata, "sample")
+    fits = {
+        compress: ccc_rise.fit_rise(
+            adata.copy(),
+            rank=2,
+            n_iter_max=200,
+            tolerance=1e-8,
+            backend="cpu",
+            compress=compress,
+            random_state=0,
+        )
+        for compress in (True, False)
+    }
+    assert len(calls) == 1
+    assert calls[0]["n_power_iter"] == ccc_rise.RISE_COMPRESSION_OPTIONS["n_power_iter"]
+    assert calls[0]["normalize_slices"] is True
+    compressed, exact = fits[True], fits[False]
+    assert compressed[0].obsm["projections"].shape == (adata.n_obs, 2)
+    assert compressed[1] == pytest.approx(exact[1], abs=0.01)
+
+
+def test_workflow_compressed_and_exact_agree():
+    """One `compress` flag compresses both RISE and CP; the fits stay close to
+    the exact ones."""
+    adata, lr_pairs = _synthetic_adata(n_cells=160, n_cond=4, n_pairs=30, seed=3)
+    kw: dict[str, Any] = FIT_KW | {
+        "rise_n_iter_max": 200,
+        "rise_tol": 1e-8,
+        "cp_n_iter_max": 500,
+        "cp_tol": 1e-10,
+    }
+    fits = {
         compress: run_ccc_rise_workflow(
             adata.copy(),
-            rise_rank=4,
+            rise_rank=3,
             lr_pairs=lr_pairs,
             cp_rank=2,
             random_state=0,
             backend="cpu",
             compress=compress,
             **kw,
-        )["r2x_cp"]
+        )
         for compress in (True, False)
     }
-    assert r2x[True] == pytest.approx(r2x[False], abs=2e-3)
+    for key in ("r2x_rise", "r2x_cp"):
+        assert fits[True][key] == pytest.approx(fits[False][key], abs=0.01), key
 
 
-def test_run_rise_rank_compress_accepts_only_auto_or_an_integer():
-    from cccrise.runners.run_rise_rank import build_parser
+def test_run_rise_rank_hands_bicv_the_shared_rise_settings(monkeypatch, tmp_path):
+    import cccrise.runners.run_rise_rank as runner
+    from cccrise.ccc_rise import RISE_COMPRESSION_OPTIONS, RISE_FIT_OPTIONS
+    from cccrise.runners._cli import REPLICATE_COMPRESS
+    from cccrise.runners.datasets import DATASETS
 
-    parser = build_parser()
-    assert parser.parse_args(["--dataset", "alad"]).compress == "auto"
-    assert parser.parse_args(["--dataset", "alad", "--compress", "12"]).compress == 12
-    for bad in ("none", "false", "0"):
-        with pytest.raises(SystemExit):
-            parser.parse_args(["--dataset", "alad", "--compress", bad])
+    adata, _ = _synthetic_adata()
+    captured = {}
+    monkeypatch.setattr(
+        runner, "bicv", lambda *a, **kw: captured.update(kw) or pd.DataFrame()
+    )
+    monkeypatch.setattr(runner, "dataset_metadata", lambda spec: {})
+    monkeypatch.setattr(runner, "resulting_dims", lambda spec, adata: {})
+    spec = DATASETS["alad"]
+    monkeypatch.setattr(type(spec), "load", lambda self: adata)
+    runner.run_rise_rank_selection(spec, ranks=[2], output_path=tmp_path / "r.csv")
+
+    assert captured["compress"] is REPLICATE_COMPRESS
+    assert captured["compression_kwarg"] == RISE_COMPRESSION_OPTIONS
+    assert captured["parafac2_kwarg"] == RISE_FIT_OPTIONS | {"backend": spec.backend}
+    with pytest.raises(SystemExit):
+        runner.build_parser().parse_args(["--dataset", "alad", "--compress", "none"])
 
 
 def test_calculate_fms_rise():

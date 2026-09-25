@@ -154,6 +154,7 @@ def run_pipeline(
         random_state=random_state,
         complex_sep=complex_sep,
         doEmbedding=do_embedding,
+        backend=spec.backend,
         compress=False,
     )
     adata, r2x_cp, r2x_pf2 = fit["adata"], fit["r2x_cp"], fit["r2x_rise"]
@@ -199,6 +200,7 @@ def run_pipeline(
             "random_state": random_state,
             "complex_sep": complex_sep,
             "cp_fit_options": CP_FIT_OPTIONS,
+            "backend": spec.backend or "auto",
             "pacmap_embedding": do_embedding,
             "lr_pairs_annotated": len(lr_pairs),
             "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=n_lr_used),

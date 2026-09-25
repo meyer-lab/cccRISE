@@ -318,8 +318,7 @@ def fit_stability_pipeline(
     random_state: int = 0,
     keep_tensor: bool = False,
     backend: str | None = None,
-    compress: bool = True,
-    oversample: int = 5,
+    compress: bool = False,
     *,
     rise_n_iter_max: int,
     cp_n_iter_max: int,
@@ -357,11 +356,8 @@ def fit_stability_pipeline(
     backend : str | None, default=None
         Backend the RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
         auto-detect); passed straight through to `ccc_rise.fit_rise`.
-    compress : bool, default=True
-        Fit CP inside a CANDELINC core sized for `cp_rank` instead of the
-        full tensor (see `ccc_rise.fit_cp`).
-    oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
+    compress : bool, default=False
+        Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
 
     Returns
     -------
@@ -385,7 +381,6 @@ def fit_stability_pipeline(
         random_state=random_state,
         backend=backend,
         compress=compress,
-        oversample=oversample,
     )
     adata = fit["adata"]
 
@@ -453,8 +448,7 @@ def component_stability(
     hill_k: float = 0.5,
     random_state: int = 0,
     backend: str | None = None,
-    compress: bool = True,
-    oversample: int = 5,
+    compress: bool = False,
     *,
     rise_n_iter_max: int,
     cp_n_iter_max: int,
@@ -515,11 +509,8 @@ def component_stability(
     backend : str | None, default=None
         Backend each replicate's RISE refit runs on; see
         `fit_stability_pipeline`.
-    compress : bool, default=True
-        Fit every replicate's CP stage inside a CANDELINC core; see
-        `ccc_rise.fit_cp`.
-    oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
+    compress : bool, default=False
+        Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
 
     Returns
     -------
@@ -566,7 +557,6 @@ def component_stability(
                     random_state=seed,
                     backend=backend,
                     compress=compress,
-                    oversample=oversample,
                 )
                 _check_rosters(reference, fit)
 
@@ -639,7 +629,6 @@ def component_stability(
                 tol=cp_tol,
                 random_state=seed,
                 compress=compress,
-                oversample=oversample,
             )
             frames.append(
                 _tag(

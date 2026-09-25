@@ -534,7 +534,7 @@ def test_component_stability_carries_the_per_replicate_fit_diagnostics():
 
 
 # =============================================================================
-# GPU backend and CANDELINC compression (ported from PR #182)
+# GPU backend and compression
 # =============================================================================
 
 
@@ -554,7 +554,6 @@ def test_fit_cp_diagnostics_match_between_core_and_decompressed_space():
         tol=1e-8,
         random_state=0,
         compress=True,
-        oversample=5,
     )
 
     for f, dim in zip(factors, tensor.shape, strict=True):
@@ -574,16 +573,16 @@ def test_fit_cp_diagnostics_match_between_core_and_decompressed_space():
     assert diagnostics["MaxModesCollinear"] == int(recomputed["MaxModesCollinear"])
 
 
-def test_fit_stability_pipeline_runs_with_compression_disabled():
-    """`compress=False` must still be a supported code path, not just the
-    default's untested complement."""
+def test_fit_stability_pipeline_runs_compressed():
+    """`compress=True`, what the runners pass, must be a working code path."""
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
 
     fit = fit_stability_pipeline(
-        adata.copy(), lr_pairs, **kwargs, random_state=0, compress=False
+        adata.copy(), lr_pairs, **kwargs, random_state=0, compress=True
     )
+    assert 0.0 <= fit["r2x_rise"] <= 1.0 + 1e-9
     assert 0.0 <= fit["r2x_cp"] <= 1.0 + 1e-9
 
 
@@ -600,7 +599,7 @@ def test_fit_stability_pipeline_accepts_an_explicit_cpu_backend():
     assert 0.0 <= fit["r2x_rise"] <= 1.0 + 1e-9
 
 
-def test_component_stability_runs_with_compression_disabled():
+def test_component_stability_runs_compressed():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
@@ -610,7 +609,7 @@ def test_component_stability_runs_with_compression_disabled():
         **kwargs,
         random_state=0,
         keep_tensor=True,
-        compress=False,
+        compress=True,
     )
 
     df = component_stability(
@@ -620,7 +619,7 @@ def test_component_stability_runs_with_compression_disabled():
         **kwargs,
         axes=("cells", "lr_pairs"),
         n_replicates=1,
-        compress=False,
+        compress=True,
     )
     assert df["FMS"].between(0.0, 1.0 + 1e-9).all()
 

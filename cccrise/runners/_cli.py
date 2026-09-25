@@ -18,8 +18,9 @@ RISE_TOL = 1e-8
 CP_TOL = 1e-12
 RISE_N_ITER_MAX = 300
 CP_N_ITER_MAX = 4000
-#: Backend every replicate runner fits RISE on (bootstraps, significance, rank sweeps).
-REPLICATE_BACKEND = "cupy"
+#: Every replicate-type runner (bootstraps, significance, rank sweeps) fits RISE
+#: and CP compressed (significance has no CP stage); the core runner never does.
+REPLICATE_COMPRESS = True
 
 
 def parse_ranks(spec: str) -> list[int]:

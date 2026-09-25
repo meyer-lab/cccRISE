@@ -241,7 +241,7 @@ The ``run_ccc_rise_workflow`` function executes the complete cccRISE pipeline:
 - ``communication_score``, ``hill_k``: Communication scoring function and its Hill constant (default: "expression_product", 0.5)
 - ``doEmbedding``: If True, computes PaCMAP embeddings for visualization (default: False)
 - ``backend``: RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect; default: None)
-- ``compress``, ``oversample``: Fit CPD inside a CANDELINC core with ``oversample`` extra basis columns per mode (default: False, 5)
+- ``compress``: Fit RISE in a compressed gene/cell subspace and CPD inside a CANDELINC core (default: False)
 - ``keep_tensor``: Return the interaction tensor (default: False)
 
 **What Gets Stored**

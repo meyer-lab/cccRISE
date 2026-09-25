@@ -111,7 +111,7 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 Factorization
 ~~~~~~~~~~~~~
 
-.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", random_state: int = None, complex_sep: str = "&", communication_score: str = "expression_product", hill_k: float = 0.5, backend: str = None, compress: bool = False, oversample: int = 5, doEmbedding: bool = False, keep_tensor: bool = False, *, rise_n_iter_max: int, cp_n_iter_max: int, rise_tol: float, cp_tol: float)
+.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", random_state: int = None, complex_sep: str = "&", communication_score: str = "expression_product", hill_k: float = 0.5, backend: str = None, compress: bool = False, doEmbedding: bool = False, keep_tensor: bool = False, *, rise_n_iter_max: int, cp_n_iter_max: int, rise_tol: float, cp_tol: float)
    :module: cccrise.ccc_rise
 
    Execute the complete cccRISE workflow: RISE decomposition, interaction tensor, CPD factorization, and result storage.
@@ -141,10 +141,8 @@ Factorization
    :type hill_k: float, optional
    :param backend: RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect).
    :type backend: str, optional
-   :param compress: Fit CPD inside a CANDELINC core sized for ``cp_rank``.
+   :param compress: Fit RISE in a compressed gene/cell subspace and CPD inside a CANDELINC core (see ``fit_rise`` and ``fit_cp``). The replicate runners compress; the core runner does not.
    :type compress: bool, optional
-   :param oversample: Extra CANDELINC basis columns per mode beyond ``cp_rank``, when ``compress``.
-   :type oversample: int, optional
    :param doEmbedding: If True, computes PaCMAP embeddings for visualization and stores in adata.obsm["PaCMAP"].
    :type doEmbedding: bool, optional
    :param keep_tensor: If True, the interaction tensor is returned.

@@ -7,6 +7,7 @@ import anndata
 import numpy as np
 import pandas as pd
 from pacmap import PaCMAP
+from parafac2.compress import compress_dataset
 from parafac2.parafac2 import parafac2_nd, store_pf2
 from scipy.sparse import spmatrix
 from tensorly.cp_tensor import cp_flip_sign, cp_normalize
@@ -33,6 +34,11 @@ from .rank_selection import (
 
 #: PARAFAC2 options every CCC-RISE fit uses, including `bicv` in `run_rise_rank`.
 RISE_FIT_OPTIONS: dict[str, Any] = {"normalize_slices": True, "fix_B_identity": True}
+#: Compression options for runs with `compress=True`. RISE's are parafac2's
+#: default, passed explicitly so `fit_rise` and `bicv` (`compression_kwarg`,
+#: which must be non-empty for `bicv` to compress once per fold) provably match.
+RISE_COMPRESSION_OPTIONS: dict[str, Any] = {"n_power_iter": 20}
+CP_COMPRESSION_OPTIONS: dict[str, Any] = {"oversample": 5}
 #: CP options every CCC-RISE fit uses, including the rank sweep in `run_cpd_rank`.
 CP_FIT_OPTIONS: dict[str, Any] = {
     "init": "svd",
@@ -778,7 +784,6 @@ def run_ccc_rise_workflow(
     hill_k: float = 0.5,
     backend: str | None = None,
     compress: bool = False,
-    oversample: int = 5,
     doEmbedding: bool = False,
     keep_tensor: bool = False,
     *,
@@ -814,9 +819,7 @@ def run_ccc_rise_workflow(
     backend : str, optional
         RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect).
     compress : bool, default=False
-        Fit CP inside a CANDELINC core (see `fit_cp`).
-    oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
+        Fit both RISE and CP compressed (see `fit_rise` and `fit_cp`).
     doEmbedding : bool, default=False
         Fit a PaCMAP embedding of the per-cell projections.
     keep_tensor : bool, default=False
@@ -839,6 +842,7 @@ def run_ccc_rise_workflow(
         tolerance=rise_tol,
         random_state=random_state,
         backend=backend,
+        compress=compress,
     )
     tensor, filtered_lr_pairs = calculate_interaction_tensor(
         adata,
@@ -854,7 +858,6 @@ def run_ccc_rise_workflow(
         tol=cp_tol,
         random_state=random_state,
         compress=compress,
-        oversample=oversample,
     )
     adata = save_ccc_rise_results(adata, cp_factors, cp_weights, filtered_lr_pairs)
     adata.uns["r2x"] = r2x_cp
@@ -880,15 +883,31 @@ def fit_rise(
     tolerance: float,
     random_state: int | None = None,
     backend: str | None = None,
+    compress: bool = False,
 ):
-    """Fit RISE and store it on `X` via `store_pf2` (`uns` Pf2_A/Pf2_B/Pf2_weights,
-    `varm["Pf2_C"]`, `obsm["projections"]`) plus `uns["r2x_pf2"]`.
+    """Fit RISE with `RISE_FIT_OPTIONS` and store it on `X` via `store_pf2`
+    (`uns` Pf2_A/Pf2_B/Pf2_weights, `varm["Pf2_C"]`, `obsm["projections"]`)
+    plus `uns["r2x_pf2"]`.
 
-    `backend` is passed straight to `parafac2_nd` ('cpu', 'cupy', 'mlx', or
-    None to auto-detect).
+    `backend` is 'cpu', 'cupy', 'mlx', or None to auto-detect. `compress`
+    fits in a compressed gene/cell subspace sized from `rank`, built by
+    `compress_dataset` with `RISE_COMPRESSION_OPTIONS` -- the compression
+    `bicv` applies in `run_rise_rank`. Slice normalization is baked into the
+    compressed data, so it is passed there.
     """
+    data = X
+    if compress:
+        data = compress_dataset(
+            X,
+            L=True,
+            rank=rank,
+            random_state=random_state,
+            normalize_slices=RISE_FIT_OPTIONS["normalize_slices"],
+            backend=backend,
+            **RISE_COMPRESSION_OPTIONS,
+        )
     pf2_out, r2x = parafac2_nd(
-        X,
+        data,
         rank=rank,
         random_state=random_state,
         tol=tolerance,
@@ -975,14 +994,14 @@ def fit_cp(
     tol: float,
     random_state: int | None = None,
     compress: bool = False,
-    oversample: int = 5,
 ) -> tuple[np.ndarray, Factors, float, dict[str, Any]]:
     """Fit CP at a fixed rank with `CP_FIT_OPTIONS` and standardize the factors
     (`standardize_cc_pf2`).
 
     `compress` fits against a CANDELINC core sized for `rank`
-    (`rank_selection.candelinc_compress`) instead of the full tensor, then
-    maps the factors back onto the tensor's own modes with ``A_n = U_n F_n``.
+    (`rank_selection.candelinc_compress` with `CP_COMPRESSION_OPTIONS`)
+    instead of the full tensor, then maps the factors back onto the tensor's
+    own modes with ``A_n = U_n F_n``.
     R2X (via `rank_selection.candelinc_r2x`), core consistency and
     collinearity are each invariant to that substitution, so compression is a
     speed optimization only.
@@ -997,7 +1016,7 @@ def fit_cp(
     lost_sq = 0.0
     if compress:
         fit_target, bases, lost_sq = candelinc_compress(
-            tensor, max_rank=rank, oversample=oversample
+            tensor, max_rank=rank, **CP_COMPRESSION_OPTIONS
         )
 
     weights, factors = parafac(
