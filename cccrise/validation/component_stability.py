@@ -340,7 +340,6 @@ def fit_stability_pipeline(
     *,
     rise_tol: float,
     cp_tol: float,
-    fix_B_identity: bool = False,
 ) -> dict[str, Any]:
     """Run RISE, build the communication tensor, and fit CP over `adata`.
 
@@ -392,7 +391,6 @@ def fit_stability_pipeline(
         tolerance=rise_tol,
         random_state=random_state,
         backend=backend,
-        fix_B_identity=fix_B_identity,
     )
     tensor, filtered_lr_pairs = calculate_interaction_tensor(
         adata,
@@ -564,7 +562,6 @@ def component_stability(
     *,
     rise_tol: float,
     cp_tol: float,
-    fix_B_identity: bool = False,
 ) -> pd.DataFrame:
     """Per-component stability of both stages under resampling, in long form.
 
@@ -663,7 +660,6 @@ def component_stability(
                     cp_rank=cp_rank,
                     rise_n_iter_max=rise_n_iter_max,
                     rise_tol=rise_tol,
-                    fix_B_identity=fix_B_identity,
                     cp_n_iter_max=cp_n_iter_max,
                     cp_tol=cp_tol,
                     init=init,

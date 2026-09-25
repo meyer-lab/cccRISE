@@ -57,7 +57,6 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
-    add_fix_b_identity_argument,
     dataset_metadata,
     resolve_output,
     resulting_dims,
@@ -80,7 +79,6 @@ def run_component_stability(
     n_replicates: int = 20,
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
-    fix_B_identity: bool = False,
     cp_n_iter_max: int = CP_N_ITER_MAX,
     cp_tol: float = CP_TOL,
     init: str = "svd",
@@ -164,7 +162,6 @@ def run_component_stability(
         cp_rank=cp_rank,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
-        fix_B_identity=fix_B_identity,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
         init=init,
@@ -197,7 +194,6 @@ def run_component_stability(
         n_replicates=n_replicates,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
-        fix_B_identity=fix_B_identity,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
         init=init,
@@ -229,7 +225,6 @@ def run_component_stability(
             "n_replicates": n_replicates,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
-            "fix_B_identity": fix_B_identity,
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "init": init,
@@ -311,7 +306,6 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_dataset_argument(parser)
-    add_fix_b_identity_argument(parser)
     parser.add_argument(
         "--rise-rank",
         type=int,
@@ -400,7 +394,6 @@ def main(argv: list[str] | None = None) -> None:
         n_replicates=args.n_replicates,
         rise_n_iter_max=args.rise_n_iter_max,
         rise_tol=args.rise_tol,
-        fix_B_identity=args.fix_B_identity,
         cp_n_iter_max=args.cp_n_iter_max,
         cp_tol=args.cp_tol,
         init=args.init,

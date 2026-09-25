@@ -31,7 +31,6 @@ def rise_store_r2x(
     tolerance: float = 1e-6,
     random_state: int | None = None,
     backend: str | None = None,
-    fix_B_identity: bool = False,
 ):
     """Runs RISE and stores the results.
 
@@ -46,7 +45,7 @@ def rise_store_r2x(
         n_iter_max=n_iter_max,
         backend=backend,
         normalize_slices=True,
-        fix_B_identity=fix_B_identity,
+        fix_B_identity=True,
     )
     X = store_pf2(X, pf2_out)
 
@@ -99,7 +98,6 @@ def run_ccc_rise_workflow(
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     cp_n_iter_max: int = CP_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
-    fix_B_identity: bool = False,
     cp_tol: float = CP_TOL,
     random_state: int | None = None,
     complex_sep: str | None = None,
@@ -130,8 +128,6 @@ def run_ccc_rise_workflow(
         Convergence tolerance for the RISE fit.
     cp_tol : float, default=CP_TOL
         Convergence tolerance for the CP fit.
-    fix_B_identity : bool, default=False
-        Hold the RISE B factor at the identity (`parafac2_nd` fix_B_identity).
     random_state : int | None
         Random seed for reproducibility.
 
@@ -151,7 +147,6 @@ def run_ccc_rise_workflow(
         rise_n_iter_max=rise_n_iter_max,
         cp_n_iter_max=cp_n_iter_max,
         rise_tol=rise_tol,
-        fix_B_identity=fix_B_identity,
         cp_tol=cp_tol,
         cp_rank=cp_rank,
         random_state=random_state,

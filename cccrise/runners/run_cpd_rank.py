@@ -41,7 +41,6 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
-    add_fix_b_identity_argument,
     dataset_metadata,
     parse_ranks,
     resolve_output,
@@ -68,7 +67,6 @@ def build_interaction_tensor(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     backend: str | None = None,
-    fix_B_identity: bool = False,
 ) -> tuple[np.ndarray, dict]:
     """Fit RISE at `rise_rank`; return the 4D tensor and sidecar fields."""
     adata = spec.load()
@@ -82,7 +80,6 @@ def build_interaction_tensor(
         tolerance=tol,
         random_state=random_state,
         backend=backend,
-        fix_B_identity=fix_B_identity,
     )
     tensor, _ = calculate_interaction_tensor(
         adata,
@@ -134,7 +131,6 @@ def run_cpd_rank_selection(
     ranks: list[int],
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
-    fix_B_identity: bool = False,
     cp_n_iter_max: int = CP_N_ITER_MAX,
     cp_tol: float = CP_TOL,
     init: str = "svd",
@@ -171,7 +167,6 @@ def run_cpd_rank_selection(
         complex_sep=complex_sep,
         n_iter_max=rise_n_iter_max,
         tol=rise_tol,
-        fix_B_identity=fix_B_identity,
         random_state=random_state,
         communication_score=communication_score,
         hill_k=hill_k,
@@ -241,7 +236,6 @@ def run_cpd_rank_selection(
             "cp_ranks": ranks,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
-            "fix_B_identity": fix_B_identity,
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "init": init,
@@ -265,7 +259,6 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     add_dataset_argument(parser)
-    add_fix_b_identity_argument(parser)
     parser.add_argument(
         "--rise-rank",
         type=int,
@@ -346,7 +339,6 @@ def main(argv: list[str] | None = None) -> None:
         ranks=parse_ranks(args.ranks),
         rise_n_iter_max=args.rise_n_iter_max,
         rise_tol=args.rise_tol,
-        fix_B_identity=args.fix_B_identity,
         cp_n_iter_max=args.cp_n_iter_max,
         cp_tol=args.cp_tol,
         init=args.init,

@@ -203,7 +203,6 @@ def fit_anova_pipeline(
     *,
     rise_tol: float,
     cp_tol: float,
-    fix_B_identity: bool = False,
 ) -> dict[str, Any]:
     """Run RISE, the interaction tensor and CP over `adata`, then test the
     resulting condition factors against the phenotype by one-way ANOVA.
@@ -260,7 +259,6 @@ def fit_anova_pipeline(
         tolerance=rise_tol,
         random_state=random_state,
         backend=backend,
-        fix_B_identity=fix_B_identity,
     )
     tensor, filtered_lr_pairs = calculate_interaction_tensor(
         adata,
@@ -347,7 +345,6 @@ def bootstrap_replicate_anova(
     *,
     rise_tol: float,
     cp_tol: float,
-    fix_B_identity: bool = False,
 ) -> pd.DataFrame:
     """One bootstrap replicate: resample patients, re-run the pipeline, and
     report each reference component's ANOVA against the phenotype from the
@@ -418,7 +415,6 @@ def bootstrap_replicate_anova(
         cp_rank=cp_rank,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
-        fix_B_identity=fix_B_identity,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
         init=init,
@@ -484,7 +480,6 @@ def bootstrap_anova(
     *,
     rise_tol: float,
     cp_tol: float,
-    fix_B_identity: bool = False,
 ) -> pd.DataFrame:
     """Run `n_boot` patient-resampled replicates of the pipeline.
 
@@ -551,7 +546,6 @@ def bootstrap_anova(
             lr_pairs=lr_pairs,
             rise_n_iter_max=rise_n_iter_max,
             rise_tol=rise_tol,
-            fix_B_identity=fix_B_identity,
             cp_n_iter_max=cp_n_iter_max,
             cp_tol=cp_tol,
             init=init,

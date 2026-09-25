@@ -665,7 +665,6 @@ def ccc_rise(
     complex_sep: str | None = None,
     lr_pairs: pd.DataFrame | None = None,
     svd_init: str = "svd",
-    fix_B_identity: bool = False,
 ) -> tuple[tuple, float, pd.DataFrame]:
     """
     Perform RISE on an AnnData object, followed by
@@ -709,7 +708,7 @@ def ccc_rise(
         tol=rise_tol,
         random_state=random_state,
         normalize_slices=True,
-        fix_B_identity=fix_B_identity,
+        fix_B_identity=True,
     )
     pf2_weights, pf2_factors, projections = pf2_output
 
