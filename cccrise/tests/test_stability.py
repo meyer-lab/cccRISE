@@ -10,6 +10,7 @@ from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score
 
 from cccrise.ccc import calculate_r2x
+from cccrise.runners._cli import CP_TOL, RISE_TOL
 from cccrise.utils import (
     _carry_paired_samples,
     _paired_conditions,
@@ -93,6 +94,8 @@ def _pipeline_kwargs(**overrides: Any) -> dict[str, Any]:
         "group_column": "group",
         "rise_n_iter_max": 10,
         "cp_n_iter_max": 20,
+        "rise_tol": RISE_TOL,
+        "cp_tol": CP_TOL,
         "init": "random",
         "svd": "randomized_svd",
     }

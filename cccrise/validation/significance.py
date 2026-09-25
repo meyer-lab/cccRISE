@@ -38,10 +38,11 @@ def fit_significance_pipeline(
     complex_agg_method: str = "min",
     hill_k: float = 0.5,
     max_exact_perms: int = 100_000,
-    n_iter_max: int = 100,
-    tol: float = 1e-6,
     random_state: int = 42,
     validate: bool = False,
+    *,
+    n_iter_max: int,
+    rise_tol: float,
 ) -> dict[str, Any]:
     """Fit RISE and compute within-condition and differential communication significance.
 
@@ -75,9 +76,9 @@ def fit_significance_pipeline(
         Half-saturation constant for Hill communication scoring.
     max_exact_perms : int, default=100_000
         Maximum combinatorial assignments to enumerate exactly for differential test.
-    n_iter_max : int, default=100
+    n_iter_max : int
         Maximum iterations for PARAFAC2 fitting.
-    tol : float, default=1e-6
+    rise_tol : float
         Convergence tolerance for PARAFAC2 fitting.
     random_state : int, default=42
         Random seed for permutations and PARAFAC2 initialization.
@@ -105,8 +106,10 @@ def fit_significance_pipeline(
         adata,
         rank=rise_rank,
         n_iter_max=n_iter_max,
-        tol=tol,
+        tol=rise_tol,
         random_state=random_state,
+        normalize_slices=True,
+        fix_B_identity=True,
     )
     dense_P = pf2_output[2]
     condition_names = np.unique(adata.obs[condition_column]).tolist()

@@ -455,8 +455,10 @@ def test_full_ccc_rise_workflow_synthetic():
         rise_rank=rise_rank,
         cp_rank=cp_rank,
         lr_pairs=lr_pairs,
-        n_iter_max=30,
-        tol=1e-4,
+        rise_n_iter_max=30,
+        cp_n_iter_max=30,
+        rise_tol=1e-4,
+        cp_tol=1e-4,
         doEmbedding=False,
     )
 

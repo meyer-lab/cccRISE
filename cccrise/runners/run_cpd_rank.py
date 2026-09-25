@@ -36,6 +36,10 @@ from ..rank_selection import (
 )
 from ..tensor import calculate_interaction_tensor, rise_store_r2x
 from ._cli import (
+    CP_N_ITER_MAX,
+    CP_TOL,
+    RISE_N_ITER_MAX,
+    RISE_TOL,
     add_dataset_argument,
     dataset_metadata,
     parse_ranks,
@@ -125,10 +129,10 @@ def run_cpd_rank_selection(
     spec: DatasetSpec,
     rise_rank: int,
     ranks: list[int],
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
-    cp_n_iter_max: int = 4000,
-    cp_tol: float = 1e-12,
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
+    cp_n_iter_max: int = CP_N_ITER_MAX,
+    cp_tol: float = CP_TOL,
     init: str = "svd",
     compress: bool = True,
     oversample: int = 5,
@@ -161,8 +165,8 @@ def run_cpd_rank_selection(
         spec,
         rise_rank=rise_rank,
         complex_sep=complex_sep,
-        n_iter_max=n_iter_max,
-        tol=tol,
+        n_iter_max=rise_n_iter_max,
+        tol=rise_tol,
         random_state=random_state,
         communication_score=communication_score,
         hill_k=hill_k,
@@ -230,8 +234,8 @@ def run_cpd_rank_selection(
         | {
             "rise_rank": rise_rank,
             "cp_ranks": ranks,
-            "n_iter_max": n_iter_max,
-            "tol": tol,
+            "rise_n_iter_max": rise_n_iter_max,
+            "rise_tol": rise_tol,
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "init": init,
@@ -268,13 +272,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="CP ranks: comma list and/or start:stop[:step] slices (default: 1:26).",
     )
     parser.add_argument(
-        "--n-iter-max", type=int, default=100, help="RISE fit iteration cap."
+        "--rise-n-iter-max",
+        type=int,
+        default=RISE_N_ITER_MAX,
+        help="RISE fit iteration cap.",
     )
-    parser.add_argument("--tol", type=float, default=1e-3, help="RISE fit tolerance.")
     parser.add_argument(
-        "--cp-n-iter-max", type=int, default=4000, help="CP fit iteration cap."
+        "--rise-tol", type=float, default=RISE_TOL, help="RISE fit tolerance."
     )
-    parser.add_argument("--cp-tol", type=float, default=1e-12, help="CP fit tolerance.")
+    parser.add_argument(
+        "--cp-n-iter-max", type=int, default=CP_N_ITER_MAX, help="CP fit iteration cap."
+    )
+    parser.add_argument(
+        "--cp-tol", type=float, default=CP_TOL, help="CP fit tolerance."
+    )
     parser.add_argument("--init", type=str, default="svd", choices=["random", "svd"])
     parser.add_argument(
         "--no-compress",
@@ -326,8 +337,8 @@ def main(argv: list[str] | None = None) -> None:
         spec,
         rise_rank=args.rise_rank,
         ranks=parse_ranks(args.ranks),
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
+        rise_n_iter_max=args.rise_n_iter_max,
+        rise_tol=args.rise_tol,
         cp_n_iter_max=args.cp_n_iter_max,
         cp_tol=args.cp_tol,
         init=args.init,

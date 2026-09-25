@@ -31,6 +31,10 @@ from ..factors import add_cell_projections, factors_to_xarray, save_factors_netc
 from ..import_data import import_ligand_receptor_pairs
 from ..tensor import run_ccc_rise_workflow
 from ._cli import (
+    CP_N_ITER_MAX,
+    CP_TOL,
+    RISE_N_ITER_MAX,
+    RISE_TOL,
     add_dataset_argument,
     dataset_metadata,
     resolve_output,
@@ -74,8 +78,10 @@ def run_pipeline(
     spec: DatasetSpec,
     rise_rank: int,
     cp_rank: int,
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    cp_n_iter_max: int = CP_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
+    cp_tol: float = CP_TOL,
     random_state: int | None = 42,
     complex_sep: str | None = "&",
     svd_init: str = "svd",
@@ -94,10 +100,10 @@ def run_pipeline(
         Rank for the RISE / PARAFAC2 stage.
     cp_rank : int
         Rank for the CP decomposition of the interaction tensor.
-    n_iter_max : int, default=100
-        Maximum iterations for both fits.
-    tol : float, default=1e-3
-        Convergence tolerance for both fits.
+    rise_n_iter_max, cp_n_iter_max : int, default=RISE_N_ITER_MAX, CP_N_ITER_MAX
+        Maximum iterations for the RISE and CP fits.
+    rise_tol, cp_tol : float, default=RISE_TOL, CP_TOL
+        Convergence tolerances for the RISE and CP fits.
     random_state : int, optional, default=42
         Seed for the decompositions.
     complex_sep : str, optional, default="&"
@@ -145,8 +151,10 @@ def run_pipeline(
         lr_pairs=lr_pairs,
         cp_rank=cp_rank,
         condition_column=spec.condition_column,
-        n_iter_max=n_iter_max,
-        tol=tol,
+        rise_n_iter_max=rise_n_iter_max,
+        cp_n_iter_max=cp_n_iter_max,
+        rise_tol=rise_tol,
+        cp_tol=cp_tol,
         random_state=random_state,
         complex_sep=complex_sep,
         doEmbedding=do_embedding,
@@ -188,8 +196,10 @@ def run_pipeline(
     metadata = build_metadata(
         dataset_metadata(spec)
         | {
-            "n_iter_max": n_iter_max,
-            "tol": tol,
+            "rise_n_iter_max": rise_n_iter_max,
+            "cp_n_iter_max": cp_n_iter_max,
+            "rise_tol": rise_tol,
+            "cp_tol": cp_tol,
             "random_state": random_state,
             "complex_sep": complex_sep,
             "svd_init": svd_init,
@@ -219,8 +229,10 @@ def build_parser() -> argparse.ArgumentParser:
     add_dataset_argument(parser)
     parser.add_argument("--rise-rank", type=int, required=True, help="RISE rank.")
     parser.add_argument("--cp-rank", type=int, required=True, help="CP (CPD) rank.")
-    parser.add_argument("--n-iter-max", type=int, default=100)
-    parser.add_argument("--tol", type=float, default=1e-3)
+    parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
+    parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
+    parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
+    parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument(
@@ -261,8 +273,10 @@ def main(argv: list[str] | None = None) -> None:
         spec,
         rise_rank=args.rise_rank,
         cp_rank=args.cp_rank,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
+        rise_n_iter_max=args.rise_n_iter_max,
+        cp_n_iter_max=args.cp_n_iter_max,
+        rise_tol=args.rise_tol,
+        cp_tol=args.cp_tol,
         random_state=args.random_state,
         complex_sep=args.complex_sep,
         svd_init=args.svd_init,

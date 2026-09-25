@@ -87,7 +87,8 @@ def makeFigure():
     group_col = "condition"
 
     f = plt.figure(figsize=(22, 18), layout="constrained")
-    subfigs = f.subfigures(4, 1, height_ratios=[1.0, 1.0, 1.0, 1.1])
+    grid = f.subfigures(4, 1, squeeze=False, height_ratios=[1.0, 1.0, 1.0, 1.1])
+    subfigs = grid[:, 0]
 
     # ------------------------------------------------------------------
     # Row 1: (a) severity correlation, (b/c) Cmp.3 sender/receiver PaCMAP,

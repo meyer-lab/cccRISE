@@ -8,6 +8,7 @@ import anndata
 import numpy as np
 import pandas as pd
 
+from cccrise.runners._cli import RISE_TOL
 from cccrise.runners.datasets import DatasetSpec
 from cccrise.runners.run_significance import build_parser, output_paths
 from cccrise.validation.significance import (
@@ -63,11 +64,13 @@ def test_fit_significance_pipeline_end_to_end():
         condition_column="sample",
         rise_rank=rise_rank,
         lr_pairs=lr_pairs,
+        n_iter_max=100,
         n_perms=n_perms,
         group_column="status",
         control_label="Control",
         other_label="Disease",
         random_state=42,
+        rise_tol=RISE_TOL,
         validate=True,
     )
 
@@ -98,11 +101,13 @@ def test_summaries_and_xarray_conversion():
         condition_column="sample",
         rise_rank=2,
         lr_pairs=lr_pairs,
+        n_iter_max=100,
         n_perms=10,
         group_column="status",
         control_label="Control",
         other_label="Disease",
         random_state=42,
+        rise_tol=RISE_TOL,
     )
 
     # 1. LR summary

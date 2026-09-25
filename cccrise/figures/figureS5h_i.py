@@ -28,12 +28,14 @@ def compute_alad_rise_stability_data(
 
     rows = []
     for i in rank_list:
-        dataX, r2x = rise_store_r2x(X, rank=i)
+        dataX, r2x = rise_store_r2x(X, rank=i, n_iter_max=100, tolerance=1e-6)
 
         for j in range(runs):
             sampledX, _ = rise_store_r2x(
                 resample(X, condition_name=condition_column),
                 rank=i,
+                n_iter_max=100,
+                tolerance=1e-6,
             )
             fmsScore = calculate_fms_rise(dataX, sampledX)
             rows.append({"Run": j, "Component": i, "FMS": fmsScore, "R2X": r2x})

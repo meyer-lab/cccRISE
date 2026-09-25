@@ -140,16 +140,16 @@ DEFAULT_ASSOCIATIONS: list[dict[str, Any]] = [
 # Users can modify this dictionary or pass custom boxplot definitions to makeFigure().
 DEFAULT_BOXPLOTS: dict[str, dict[str, Any]] = {
     "6-Month Outcome": {
-        "component": 3,
+        "component": 1,
         "group_column": "6monthcondition",
-        "title": "C3: 6-Month Outcome",
+        "title": "C2: 6-Month Outcome",
     },
     "Acute Rejection": {
-        "component": 3,
+        "component": 1,
         "group_column": "rejection.y",
         "levels": ["no", "yes"],
         "control_label": "no",
-        "title": "C3: Acute Rejection",
+        "title": "C2: Acute Rejection",
     },
 }
 
@@ -578,7 +578,7 @@ def plot_association_effect_sizes(
         p_str = _format_pvalue(padj)
         sig_star = " *" if padj < alpha else ""
         ax.text(
-            pos,
+            float(pos),
             val + 0.02 * max(max_val, 0.1),
             f"{val:.3f}\np={p_str}{sig_star}",
             ha="center",

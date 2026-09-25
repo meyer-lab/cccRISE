@@ -16,6 +16,7 @@ from cccrise.anova import (
 )
 from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
 from cccrise.import_data import add_cond_idxs
+from cccrise.runners._cli import CP_TOL, RISE_TOL
 from cccrise.utils import replicate_seed, resample_conditions
 from cccrise.validation.anova_stability import (
     align_to_reference_components,
@@ -227,6 +228,8 @@ def test_fit_anova_pipeline_output_structure():
         lr_pairs=lr_pairs,
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
     )
 
@@ -289,6 +292,8 @@ def test_fit_anova_pipeline_runs_with_compression_disabled():
         lr_pairs=_anova_lr_pairs(),
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
         compress=False,
     )
@@ -309,6 +314,8 @@ def test_fit_anova_pipeline_accepts_an_explicit_cpu_backend():
         lr_pairs=_anova_lr_pairs(),
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
         backend="cpu",
     )
@@ -328,6 +335,8 @@ def test_bootstrap_anova_runs_with_compression_disabled():
         "lr_pairs": lr_pairs,
         "rise_n_iter_max": 10,
         "cp_n_iter_max": 10,
+        "rise_tol": RISE_TOL,
+        "cp_tol": CP_TOL,
     }
     reference = fit_anova_pipeline(adata, **kwargs, random_state=0, compress=False)
 
@@ -363,6 +372,8 @@ def test_bootstrap_anova_forwards_patient_column_to_the_resampler(monkeypatch):
         "lr_pairs": _anova_lr_pairs(),
         "rise_n_iter_max": 10,
         "cp_n_iter_max": 10,
+        "rise_tol": RISE_TOL,
+        "cp_tol": CP_TOL,
     }
     reference = fit_anova_pipeline(adata, **kwargs, random_state=0)
     bootstrap_anova(
@@ -498,6 +509,8 @@ def test_bootstrap_replicate_anova_mismatched_lr_roster():
             lr_pairs=lr_pairs,
             rise_n_iter_max=10,
             cp_n_iter_max=10,
+            rise_tol=RISE_TOL,
+            cp_tol=CP_TOL,
         )
 
 
@@ -525,6 +538,8 @@ def test_end_to_end_synthetic_bootstrap():
         lr_pairs=lr_pairs,
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
     )
     assert len(reference["anova"]) == 2
@@ -543,6 +558,8 @@ def test_end_to_end_synthetic_bootstrap():
         lr_pairs=lr_pairs,
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
     )
     assert len(boot_df) == 4  # 2 replicates * 2 components

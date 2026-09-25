@@ -26,8 +26,8 @@ from .utils import pseudobulk_X, resample_tensor
 def rise_store_r2x(
     X: anndata.AnnData,
     rank: int,
-    n_iter_max: int = 100,
-    tolerance: float = 1e-6,
+    n_iter_max: int,
+    tolerance: float,
     random_state: int | None = None,
     backend: str | None = None,
 ):
@@ -43,6 +43,8 @@ def rise_store_r2x(
         tol=tolerance,
         n_iter_max=n_iter_max,
         backend=backend,
+        normalize_slices=True,
+        fix_B_identity=True,
     )
     X = store_pf2(X, pf2_out)
 
@@ -90,10 +92,12 @@ def run_ccc_rise_workflow(
     adata: anndata.AnnData,
     rise_rank: int,
     lr_pairs: pd.DataFrame,
+    rise_n_iter_max: int,
+    cp_n_iter_max: int,
+    rise_tol: float,
+    cp_tol: float,
     cp_rank: int | None = None,
     condition_column: str = "sample",
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
     random_state: int | None = None,
     complex_sep: str | None = None,
     doEmbedding: bool = True,
@@ -107,18 +111,22 @@ def run_ccc_rise_workflow(
     ----------
     adata : anndata.AnnData
         The AnnData object with expression data.
-    rank : int
-        The rank for the decomposition.
+    rise_rank : int
+        The rank for the RISE decomposition.
     lr_pairs : pd.DataFrame
         The ligand-receptor pairs used in the decomposition.
+    rise_n_iter_max : int
+        Maximum iterations for the RISE fit.
+    cp_n_iter_max : int
+        Maximum iterations for the CP fit.
+    rise_tol : float
+        Convergence tolerance for the RISE fit.
+    cp_tol : float
+        Convergence tolerance for the CP fit.
     cp_rank : int, optional
-        The rank for the final CP decomposition. If None, defaults to `rank`.
+        The rank for the final CP decomposition. If None, defaults to `rise_rank`.
     condition_column : str, default="sample"
         The column in `adata.obs` that defines the conditions.
-    n_iter_max : int
-        Maximum number of iterations for the decomposition.
-    tol : float
-        Convergence tolerance for the decomposition.
     random_state : int | None
         Random seed for reproducibility.
 
@@ -135,8 +143,10 @@ def run_ccc_rise_workflow(
     results, r2x, filtered_lr_pairs = ccc_rise(
         adata,
         rise_rank,
-        n_iter_max=n_iter_max,
-        tol=tol,
+        rise_n_iter_max=rise_n_iter_max,
+        cp_n_iter_max=cp_n_iter_max,
+        rise_tol=rise_tol,
+        cp_tol=cp_tol,
         cp_rank=cp_rank,
         random_state=random_state,
         complex_sep=complex_sep,
@@ -327,7 +337,12 @@ def run_fms_r2x_analysis(
     runs: int = 1,
     svd_init: str = "svd",
 ) -> pd.DataFrame:
-    """Run FMS and R2X analysis across different CP ranks and bootstrap runs."""
+    """
+    Run FMS and R2X analysis across different CP ranks and bootstrap runs.
+
+    **Legacy function**
+    TODO: Remove this function in place of @cccrise/rank_selection.py
+    """
     if rank_list is None:
         rank_list = list(range(1, 4))
 
