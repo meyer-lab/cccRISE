@@ -22,6 +22,24 @@ alpha: 0.05
 read_depth_corrected: true
 complex_sep: '&'
 random_state: 42
+'null':
+  n_permutations: 10000
+  statistic: max eta-squared across components (Westfall-Young maxT)
+  output: cccrise/data/benchmark_anova_null_alad.csv
+  permutation_digests:
+    Control vs. ALAD (All): 4b32358888d75663
+    Control vs. Declined: 8d9b997ce5d3c97a
+    Control vs. Recovered: 6df46685045652fb
+    Declined vs. Recovered: 626837e851634542
+    ALAD Status (3-Way): 9b38a43c1a2a93f6
+    6-Month Outcome (4-Way): 39b095421b0b2859
+    6-Month CLAD/Died vs. No CLAD: aa15d90aa95b10bf
+    1-Year CLAD/Died vs. No CLAD: 8f7b7fc84df63cf2
+    Acute Rejection (Yes vs. No): 68c18bac06f3e322
+    Recovery Trajectory (5-Way): c34fd384582d801d
+    Pre-Tx Diagnosis (ILD vs. Other): 2ba3318d5d04010b
+    CMV Serostatus (IgG+ vs. IgG-): dde82d2ae7c6036b
+    Sex (Male vs. Female): e350db48c180b53c
 resulting_dims:
   conditions: 47
   genes: 16675
@@ -52,13 +70,13 @@ fits:
   corcondia_threshold: 85.0
   core_consistency:
   - 100.0
-  - 99.99943145702227
-  - 99.94344484431103
-  - 99.35651859527576
-  - 92.62886442145877
-  - -11.940190339416468
-  - -4512654189.319607
-  - -24058842797.66241
+  - 99.99943145702233
+  - 99.94344484431801
+  - 99.3565185792884
+  - 98.08530604956722
+  - -5718.168096412937
+  - -6459456.923240314
+  - -14764812709305.96
   max_modes_collinear: [0, 0, 0, 1, 1, 1, 2, 2]
 - method: Tensor-cell2cell
   rank_mode: own
@@ -141,5 +159,5 @@ fits:
   rank_mode: shared
   rank: 2x2x2x2
   core_shape: [2, 2, 2, 2]
-git_sha: 81498c383a8bd665181c82f61d14d89d8c144dab-dirty
-generated: '2026-09-26T03:52:17+00:00'
+git_sha: e621d56f35e02aebb9c2019c1ba4b2952561f201-dirty
+generated: '2026-09-26T07:07:56+00:00'

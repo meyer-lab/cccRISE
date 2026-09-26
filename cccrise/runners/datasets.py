@@ -74,6 +74,9 @@ class DatasetSpec:
     def benchmark_anova_filename(self) -> str:
         return f"benchmark_anova_{self.key}.csv"
 
+    def benchmark_null_filename(self) -> str:
+        return f"benchmark_anova_null_{self.key}.csv"
+
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.key}.csv"
 

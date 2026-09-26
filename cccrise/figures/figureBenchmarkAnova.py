@@ -5,7 +5,9 @@ drawn once per method and comparator rank mode.
 Plots `benchmark_anova_<dataset>.csv`, written by
 `uv run cccrise-benchmark --dataset <dataset>`. Rows are the comparator rank
 modes (each method's own rank selection, then one shared rank); cccRISE's
-published model is repeated in every row as the reference column.
+published model is repeated in every row as the reference column. Cell
+p-values are permutation p-values, family-wise across each method's components
+(`benchmark_null`), when the CSV carries them.
 """
 
 import matplotlib.pyplot as plt
@@ -65,6 +67,8 @@ def makeFigure() -> Figure:
                 ax.axis("off")
                 continue
             panel = row[c]
+            if "PermPAdj" in panel:
+                panel = panel.assign(PAdj=panel["PermPAdj"])
             method, rank = panel["Method"].iloc[0], panel["Rank"].iloc[0]
             mode = (
                 "published"

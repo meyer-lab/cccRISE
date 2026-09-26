@@ -18,9 +18,14 @@ Comparator ranks come from one or both rank modes:
 
 cccRISE is never refit, so its rows are identical under both modes.
 
-Writes the CSV `figureBenchmarkAnova` reads:
+Each fit is also scored against a label-permutation null
+(`benchmark_null`): the maximum eta-squared across its components, per
+association, against the same shuffled labels for every method.
 
-    benchmark_anova_<dataset>.csv   one row per (method, rank mode, association, component)
+Writes the CSVs `figureBenchmarkAnova` and `figureBenchmarkNull` read:
+
+    benchmark_anova_<dataset>.csv       one row per (method, rank mode, association, component)
+    benchmark_anova_null_<dataset>.csv  one row per (method, rank mode, association)
 
     uv run cccrise-benchmark --dataset alad
     uv run cccrise-benchmark --dataset alad --rank-mode shared --shared-rank 4
@@ -43,6 +48,16 @@ from ..benchmark import (
     ComparatorFit,
     fit_comparators,
     pseudobulk_tensor,
+)
+from ..benchmark_null import (
+    N_PERMUTATIONS,
+    association_config,
+    association_labels,
+    association_permutations,
+    bh_across_associations,
+    maxt_null,
+    permutation_digest,
+    summarize_null,
 )
 from ..factors import load_factors_netcdf
 from ..figures.figureAnova import DEFAULT_ASSOCIATIONS
@@ -81,6 +96,15 @@ def _published_cccrise(
     return fit, cp_rank
 
 
+def _condition_patients(adata, spec: DatasetSpec, conditions: np.ndarray) -> pd.Series:
+    """Patient per condition, in `conditions` order; each condition is its own
+    patient when the dataset registers no `patient_column`."""
+    if spec.patient_column is None:
+        return pd.Series(conditions, index=conditions)
+    obs = adata.obs.drop_duplicates(subset=[spec.condition_column])
+    return obs.set_index(spec.condition_column)[spec.patient_column].reindex(conditions)
+
+
 def run_benchmark_anova(
     spec: DatasetSpec,
     rank_modes: Sequence[str] = RANK_MODES,
@@ -93,9 +117,10 @@ def run_benchmark_anova(
     staccato_varexp: float = STACCATO_VAREXP,
     complex_sep: str | None = "&",
     random_state: int = 42,
+    n_permutations: int = N_PERMUTATIONS,
     factors_path: Path | None = None,
     output_path: Path | None = None,
-) -> tuple[pd.DataFrame, Path, Path]:
+) -> tuple[pd.DataFrame, pd.DataFrame, Path, Path]:
     """Run the cccRISE ANOVA on cccRISE and every comparator.
 
     Parameters
@@ -119,7 +144,9 @@ def run_benchmark_anova(
     complex_sep : str, optional
         Communication-tensor option; see `ccc_rise.calc_communication_score`.
     random_state : int, default=42
-        Seed for every comparator fit.
+        Seed for every comparator fit and for the permutations.
+    n_permutations : int, default=N_PERMUTATIONS
+        Label permutations per association, shared by every fit.
     factors_path : Path, optional
         Published cccRISE model. Defaults to the dataset's canonical factors file.
     output_path : Path, optional
@@ -160,11 +187,23 @@ def run_benchmark_anova(
             random_state=random_state,
         )
 
-    tables = []
+    print(f">> Drawing {n_permutations} label permutations per association")
+    patients = _condition_patients(adata, spec, conditions)
+    streams = np.random.SeedSequence(random_state).spawn(len(associations))
+    null_plans = {}
+    for association, stream in zip(associations, streams):
+        name = association_config(association)["name"]
+        labels = association_labels(adata, spec.condition_column, association)
+        null_plans[name] = association_permutations(
+            labels, patients, n_permutations, np.random.default_rng(stream)
+        )
+
+    tables, summaries = [], []
     for fit in fits:
         print(f"   {fit.method} ({fit.rank_mode}, rank {fit.rank})")
         adata.uns["A"] = fit.condition_factor
         adata.uns["A"] = correct_conditions(adata)
+        corrected = np.asarray(adata.uns["A"], dtype=float)
         table = run_multiple_factors_anova(
             adata,
             associations=associations,
@@ -172,6 +211,26 @@ def run_benchmark_anova(
             alpha=alpha,
             correction=correction,
         )
+        table["PermPAdj"] = np.nan
+        for name, (kept, codes, perms) in null_plans.items():
+            observed, p_adj, null_max = maxt_null(corrected, kept, codes, perms)
+            rows = table["Association"] == name
+            # The null must be the ANOVA's own statistic, or its p is meaningless
+            if not np.allclose(
+                observed, table.loc[rows, "EtaSquared"], equal_nan=True, atol=1e-10
+            ):
+                raise RuntimeError(f"Null eta-squared disagrees with the ANOVA: {name}")
+            table.loc[rows, "PermPAdj"] = p_adj
+            summaries.append(
+                {
+                    "Method": fit.method,
+                    "RankMode": fit.rank_mode,
+                    "Rank": fit.rank,
+                    "Association": name,
+                    "NComponents": corrected.shape[1],
+                    **summarize_null(observed, p_adj, null_max),
+                }
+            )
         table.insert(0, "Rank", fit.rank)
         table.insert(0, "RankMode", fit.rank_mode)
         table.insert(0, "Method", fit.method)
@@ -179,6 +238,12 @@ def run_benchmark_anova(
     results = pd.concat(tables, ignore_index=True)
     results.to_csv(output_path, index=False)
     print(f"   Wrote {len(results)} rows to {output_path}")
+
+    summary = pd.DataFrame(summaries)
+    summary["PermPBH"] = bh_across_associations(summary, ["Method", "RankMode"])
+    null_path = output_path.with_name(spec.benchmark_null_filename())
+    summary.to_csv(null_path, index=False)
+    print(f"   Wrote {len(summary)} rows to {null_path}")
 
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -191,6 +256,15 @@ def run_benchmark_anova(
             "read_depth_corrected": True,
             "complex_sep": complex_sep,
             "random_state": random_state,
+            "null": {
+                "n_permutations": n_permutations,
+                "statistic": "max eta-squared across components (Westfall-Young maxT)",
+                "output": relpath(null_path),
+                "permutation_digests": {
+                    name: permutation_digest(perms)
+                    for name, (_kept, _codes, perms) in null_plans.items()
+                },
+            },
             "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=len(lr_pairs)),
             "pseudobulk_tensor_shape": list(tensor.shape),
             "celltypes": [str(c) for c in celltypes],
@@ -211,7 +285,7 @@ def run_benchmark_anova(
     )
     sidecar = write_metadata(output_path, metadata, header=HEADER)
     print(f"   Wrote provenance to {sidecar}")
-    return results, output_path, sidecar
+    return results, summary, output_path, sidecar
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -239,6 +313,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
+        "--n-permutations",
+        type=int,
+        default=N_PERMUTATIONS,
+        help="Label permutations per association for the null (default: 10000).",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         default=None,
@@ -260,6 +340,7 @@ def main(argv: list[str] | None = None) -> None:
         staccato_varexp=args.staccato_varexp,
         complex_sep=args.complex_sep,
         random_state=args.random_state,
+        n_permutations=args.n_permutations,
         output_path=resolve_output(
             args.output, DATA_DIR, spec.benchmark_anova_filename()
         ),
