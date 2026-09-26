@@ -302,6 +302,15 @@ def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
     return xr.load_dataset(Path(filepath), engine="h5netcdf")
 
 
+def _stored_projections(factors_ds: xr.Dataset) -> np.ndarray | None:
+    """Per-cell RISE projections stored in `factors_ds`, preferring the
+    full-precision `pf2_projections` over the float16 `cell_projections`."""
+    for var in ("pf2_projections", "cell_projections"):
+        if var in factors_ds:
+            return np.asarray(factors_ds[var].values, dtype=np.float32)
+    return None
+
+
 def load_factors_to_anndata(
     factors_ds: xr.Dataset | str | Path,
     adata: anndata.AnnData | None = None,
@@ -422,15 +431,10 @@ def load_factors_to_anndata(
     # Ensure condition indexing
     out = add_cond_idxs(out, cond_key)
 
-    # Use stored cell projections if already present in factors dataset,
-    # preferring the full-precision RISE copy over the float16 one
-    stored = next(
-        (v for v in ("pf2_projections", "cell_projections") if v in factors_ds), None
-    )
+    # Use stored cell projections if already present in factors dataset
+    stored = _stored_projections(factors_ds)
     if stored is not None:
-        out.obsm["projections"] = np.asarray(
-            factors_ds[stored].values, dtype=np.float32
-        )
+        out.obsm["projections"] = stored
         out = add_cell_embeddings(
             out,
             B_cp,

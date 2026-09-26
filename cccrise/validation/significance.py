@@ -9,7 +9,7 @@ significance metrics.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import anndata
 import numpy as np
@@ -139,7 +139,11 @@ def fit_significance_pipeline(
     diff_null_std = None
 
     if group_column is not None and group_column in adata.obs:
-        cond_to_group = adata.obs.groupby(condition_column)[group_column].first()
+        cond_to_group = (
+            cast(pd.DataFrame, adata.obs)
+            .groupby(condition_column)[group_column]
+            .first()
+        )
         unique_vals = set(cond_to_group.dropna().unique())
         sample_to_group = None
 

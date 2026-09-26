@@ -241,34 +241,7 @@ def run_component_stability(
                 "seed is the only thing that differs from the reference: same "
                 "cells, same conditions, same ligand-receptor pairs"
             ),
-            "resampling": {
-                "cells": "cells bootstrapped with replacement within each condition",
-                "conditions": (
-                    "whole conditions bootstrapped with replacement"
-                    + (
-                        f", stratified by {spec.group_column}"
-                        if spec.group_column
-                        else ", unstratified"
-                    )
-                    + (
-                        f"; paired by {spec.patient_column}: drawing one of a "
-                        "patient's conditions carries its sibling in and drops "
-                        "one other random draw from the sibling's stratum to "
-                        "keep every stratum's size fixed"
-                        if spec.patient_column
-                        else ""
-                    )
-                ),
-                "lr_pairs": (
-                    "reference tensor's ligand-receptor mode bootstrapped "
-                    "with replacement; no PARAFAC2 refit"
-                ),
-                SEED_AXIS: (
-                    "identical data refit end to end (RISE -> communication "
-                    "tensor -> CP) under a different random seed; one "
-                    "PARAFAC2 refit per replicate"
-                ),
-            },
+            "resampling": _resampling_description(spec),
             "condition_mode_alignment": (
                 "reference condition-mode rows expanded onto the replicate's "
                 "roster by draw (see validation.reference_condition_rows)"
@@ -295,6 +268,38 @@ def run_component_stability(
     print(f"   Wrote provenance to {sidecar}")
 
     return df, output_path, sidecar
+
+
+def _resampling_description(spec: DatasetSpec) -> dict[str, str]:
+    """The sidecar's per-axis description of what each replicate resamples."""
+    return {
+        "cells": "cells bootstrapped with replacement within each condition",
+        "conditions": (
+            "whole conditions bootstrapped with replacement"
+            + (
+                f", stratified by {spec.group_column}"
+                if spec.group_column
+                else ", unstratified"
+            )
+            + (
+                f"; paired by {spec.patient_column}: drawing one of a "
+                "patient's conditions carries its sibling in and drops "
+                "one other random draw from the sibling's stratum to "
+                "keep every stratum's size fixed"
+                if spec.patient_column
+                else ""
+            )
+        ),
+        "lr_pairs": (
+            "reference tensor's ligand-receptor mode bootstrapped "
+            "with replacement; no PARAFAC2 refit"
+        ),
+        SEED_AXIS: (
+            "identical data refit end to end (RISE -> communication "
+            "tensor -> CP) under a different random seed; one "
+            "PARAFAC2 refit per replicate"
+        ),
+    }
 
 
 def build_parser() -> argparse.ArgumentParser:

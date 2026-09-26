@@ -19,8 +19,8 @@ from cccrise.validation.component_stability import (
 
 from .helpers import write_rise_reference
 
-FIT_KWARGS = {"rise_n_iter_max": 100, "rise_tol": 1e-6}
-CP_FIT_KWARGS = {"cp_n_iter_max": 100, "cp_tol": 1e-6}
+N_ITER_MAX = 100
+TOL = 1e-6
 
 
 def _synthetic_cohort(
@@ -106,20 +106,29 @@ def test_shared_rise_fit_reproduces_fit_stability_pipeline():
         rise_rank=3,
         cp_rank=2,
         backend="cpu",
-        **FIT_KWARGS,
-        **CP_FIT_KWARGS,
+        rise_n_iter_max=N_ITER_MAX,
+        rise_tol=TOL,
+        cp_n_iter_max=N_ITER_MAX,
+        cp_tol=TOL,
     )
     rise_adata, _ = fit_rise(
         add_cond_idxs(adata.copy(), "Sample"),
         rank=3,
-        n_iter_max=FIT_KWARGS["rise_n_iter_max"],
-        tolerance=FIT_KWARGS["rise_tol"],
+        n_iter_max=N_ITER_MAX,
+        tolerance=TOL,
         random_state=0,
         backend="cpu",
     )
     split = stability_fit(
         rise_adata,
-        fit_ccc_cp(rise_adata, lr_pairs, 2, random_state=0, **CP_FIT_KWARGS),
+        fit_ccc_cp(
+            rise_adata,
+            lr_pairs,
+            2,
+            random_state=0,
+            cp_n_iter_max=N_ITER_MAX,
+            cp_tol=TOL,
+        ),
         "Sample",
     )
 
@@ -135,14 +144,19 @@ def test_fit_ccc_cp_leaves_shared_rise_fit_untouched():
     rise_adata, _ = fit_rise(
         add_cond_idxs(adata.copy(), "Sample"),
         rank=3,
-        n_iter_max=FIT_KWARGS["rise_n_iter_max"],
-        tolerance=FIT_KWARGS["rise_tol"],
+        n_iter_max=N_ITER_MAX,
+        tolerance=TOL,
         random_state=0,
         backend="cpu",
     )
     before = (set(rise_adata.uns), set(rise_adata.obsm))
     for score in ("expression_product", "expression_hill"):
         fit_ccc_cp(
-            rise_adata, _lr_pairs(), 2, communication_score=score, **CP_FIT_KWARGS
+            rise_adata,
+            _lr_pairs(),
+            2,
+            communication_score=score,
+            cp_n_iter_max=N_ITER_MAX,
+            cp_tol=TOL,
         )
     assert (set(rise_adata.uns), set(rise_adata.obsm)) == before
