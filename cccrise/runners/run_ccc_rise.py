@@ -26,10 +26,9 @@ import anndata
 import numpy as np
 import xarray as xr
 
-from ..ccc_rise import validate_cp_rank
+from ..ccc_rise import CP_FIT_OPTIONS, run_ccc_rise_workflow, validate_cp_rank
 from ..factors import add_cell_projections, factors_to_xarray, save_factors_netcdf
 from ..import_data import import_ligand_receptor_pairs
-from ..tensor import run_ccc_rise_workflow
 from ._cli import (
     CP_N_ITER_MAX,
     CP_TOL,
@@ -84,7 +83,6 @@ def run_pipeline(
     cp_tol: float = CP_TOL,
     random_state: int | None = 42,
     complex_sep: str | None = "&",
-    svd_init: str = "svd",
     output_path: Path | None = None,
     rise_rank_notes: str | None = None,
     cpd_rank_notes: str | None = None,
@@ -108,8 +106,6 @@ def run_pipeline(
         Seed for the decompositions.
     complex_sep : str, optional, default="&"
         Separator for multimeric complexes in the ligand-receptor annotation.
-    svd_init : str, default="svd"
-        Initialization for the CP fit.
     output_path : Path, optional
         NetCDF destination. Defaults to the dataset's canonical factors path,
         which is what the figure modules load.
@@ -139,13 +135,13 @@ def run_pipeline(
     lr_pairs = import_ligand_receptor_pairs()
     print(f"   AnnData shape: {adata.shape}, LR pairs: {len(lr_pairs)}")
 
-    # Fail in seconds rather than after the RISE fit. `ccc_rise` re-checks
+    # Fail in seconds rather than after the RISE fit. `fit_cp` re-checks
     # against the real tensor; this predicts its shape from what we know.
     n_conditions = int(adata.obs[spec.condition_column].nunique())
     validate_cp_rank(cp_rank, (n_conditions, rise_rank, rise_rank))
 
     print("2. Running cccRISE workflow...")
-    adata, r2x_cp = run_ccc_rise_workflow(
+    fit = run_ccc_rise_workflow(
         adata=adata,
         rise_rank=rise_rank,
         lr_pairs=lr_pairs,
@@ -158,9 +154,10 @@ def run_pipeline(
         random_state=random_state,
         complex_sep=complex_sep,
         doEmbedding=do_embedding,
-        svd_init=svd_init,
+        backend=spec.backend,
+        compress=False,
     )
-    r2x_pf2 = adata.uns.get("r2x_pf2")
+    adata, r2x_cp, r2x_pf2 = fit["adata"], fit["r2x_cp"], fit["r2x_rise"]
     print(f"   CP R2X: {r2x_cp:.4f}")
 
     print("3. Converting factors to xarray...")
@@ -171,7 +168,7 @@ def run_pipeline(
         filtered_lr_pairs=adata.uns["lr_pairs"],
         condition_names=condition_names,
         gene_names=list(adata.var_names),
-        pf2_factors=[adata.uns["Pf2_A"], adata.uns["Pf2_B"], adata.uns["Pf2_C"]],
+        pf2_factors=[adata.uns["Pf2_A"], adata.uns["Pf2_B"], adata.varm["Pf2_C"]],
         pf2_weights=adata.uns["Pf2_weights"],
         r2x_cp=r2x_cp,
         r2x_pf2=r2x_pf2,
@@ -202,7 +199,8 @@ def run_pipeline(
             "cp_tol": cp_tol,
             "random_state": random_state,
             "complex_sep": complex_sep,
-            "svd_init": svd_init,
+            "cp_fit_options": CP_FIT_OPTIONS,
+            "backend": spec.backend or "auto",
             "pacmap_embedding": do_embedding,
             "lr_pairs_annotated": len(lr_pairs),
             "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=n_lr_used),
@@ -212,7 +210,7 @@ def run_pipeline(
                 rise_rank,
                 n_lr_used,
             ],
-            "r2x_pf2": None if r2x_pf2 is None else float(r2x_pf2),
+            "r2x_pf2": float(r2x_pf2),
             "r2x_cp": float(r2x_cp),
             "rank_selection": rank_selection,
         },
@@ -235,9 +233,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--complex-sep", type=str, default="&")
-    parser.add_argument(
-        "--svd-init", type=str, default="svd", choices=["svd", "random"]
-    )
     parser.add_argument(
         "--output",
         type=str,
@@ -279,7 +274,6 @@ def main(argv: list[str] | None = None) -> None:
         cp_tol=args.cp_tol,
         random_state=args.random_state,
         complex_sep=args.complex_sep,
-        svd_init=args.svd_init,
         output_path=resolve_output(args.output, DATA_DIR, spec.factors_filename),
         rise_rank_notes=args.rise_rank_notes,
         cpd_rank_notes=args.cpd_rank_notes,

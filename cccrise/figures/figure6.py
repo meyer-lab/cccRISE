@@ -10,9 +10,9 @@ from matplotlib import pyplot as plt
 from tensorly.decomposition import parafac
 from tlviz.model_evaluation import core_consistency
 
-from ..ccc import calculate_r2x
+from ..ccc_rise import CP_FIT_OPTIONS, calculate_interaction_tensor
 from ..import_data import import_ligand_receptor_pairs
-from ..tensor import calculate_interaction_tensor
+from ..rank_selection import calculate_r2x
 from .common import get_covid_data, subplotLabel
 
 
@@ -40,9 +40,8 @@ def compute_cp_rank_sweep(
             rank=cp_rank,
             n_iter_max=n_iter_max,
             tol=tol,
-            normalize_factors=True,
             random_state=random_state,
-            svd="randomized_svd",
+            **CP_FIT_OPTIONS,
         )
         r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
         cc = core_consistency(
