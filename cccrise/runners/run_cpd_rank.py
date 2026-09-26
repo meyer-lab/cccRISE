@@ -43,10 +43,11 @@ from ._cli import (
     add_dataset_argument,
     dataset_metadata,
     parse_ranks,
+    resolve_dataset,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATA_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
 
 DEFAULT_RANKS = list(range(1, 26))
@@ -332,7 +333,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_cpd_rank_selection(
         spec,
         rise_rank=args.rise_rank,

@@ -6,8 +6,9 @@ the loader, the source file, the condition column and the canonical output
 filenames are looked up here.
 """
 
+import inspect
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -39,15 +40,52 @@ class DatasetSpec:
     #: default. None falls back to `group_column` and its registered labels.
     outcome_column: str | None = None
     notes: str = ""
+    #: Per-condition cell cap passed to the loader (see
+    #: `import_data.cap_cells_per_condition`). None loads every cell.
+    max_cells_per_condition: int | None = None
+    cell_cap_seed: int = 0
 
     @property
     def loader_args(self) -> dict[str, Any]:
         """The keyword arguments `load` passes."""
-        return {
+        args: dict[str, Any] = {
             "filename": str(self.source_file),
             "gene_threshold": self.gene_threshold,
             "normalize": True,
         }
+        if self.max_cells_per_condition is not None:
+            args["max_cells_per_condition"] = self.max_cells_per_condition
+            args["cell_cap_seed"] = self.cell_cap_seed
+        return args
+
+    @property
+    def output_key(self) -> str:
+        """`key`, suffixed ``_cap<N>`` (and ``s<seed>`` for a non-default seed)
+        when capped. Every output filename uses it, so a capped run never
+        overwrites the uncapped dataset's results; `key` itself stays the
+        registry key, for lookups such as `_cli.DEFAULT_GROUP_LABELS`."""
+        if self.max_cells_per_condition is None:
+            return self.key
+        seed = f"s{self.cell_cap_seed}" if self.cell_cap_seed else ""
+        return f"{self.key}_cap{self.max_cells_per_condition}{seed}"
+
+    def with_cell_cap(self, max_cells: int, seed: int = 0) -> "DatasetSpec":
+        """This dataset capped at `max_cells` cells per condition."""
+        if "max_cells_per_condition" not in inspect.signature(self.loader).parameters:
+            raise ValueError(
+                f"Dataset {self.key!r}'s loader does not support a cell cap."
+            )
+        capped = replace(
+            self,
+            label=f"{self.label} (<= {max_cells} cells per condition, seed {seed})",
+            max_cells_per_condition=max_cells,
+            cell_cap_seed=seed,
+        )
+        suffix = capped.output_key.removeprefix(self.key)
+        return replace(
+            capped,
+            factors_filename=self.factors_filename.replace(".nc", f"{suffix}.nc"),
+        )
 
     def load(self) -> anndata.AnnData:
         """Load the dataset, normalized."""
@@ -57,22 +95,22 @@ class DatasetSpec:
         return DATA_DIR / self.factors_filename
 
     def rise_rank_filename(self) -> str:
-        return f"rise_rank_{self.key}.csv"
+        return f"rise_rank_{self.output_key}.csv"
 
     def cpd_rank_filename(self) -> str:
-        return f"cpd_rank_{self.key}.csv"
+        return f"cpd_rank_{self.output_key}.csv"
 
     def stability_filename(self) -> str:
-        return f"component_stability_{self.key}.csv"
+        return f"component_stability_{self.output_key}.csv"
 
     def anova_bootstrap_filename(self) -> str:
-        return f"anova_bootstrap_{self.key}.csv"
+        return f"anova_bootstrap_{self.output_key}.csv"
 
     def significance_lr_filename(self) -> str:
-        return f"significance_lr_{self.key}.csv"
+        return f"significance_lr_{self.output_key}.csv"
 
     def significance_differential_filename(self) -> str:
-        return f"significance_differential_{self.key}.parquet"
+        return f"significance_differential_{self.output_key}.parquet"
 
     def cell_obs_columns(self) -> list[str]:
         """`.obs` columns to persist per-cell in the factors file (for the
@@ -89,7 +127,7 @@ class DatasetSpec:
         ]
 
     def nichenet_scores_filename(self) -> str:
-        return f"nichenet_scores_{self.key}.csv"
+        return f"nichenet_scores_{self.output_key}.csv"
 
 
 DATASETS: dict[str, DatasetSpec] = {

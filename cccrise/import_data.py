@@ -1,5 +1,7 @@
 import os
 import urllib.request
+import zlib
+from collections.abc import Iterator
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
@@ -278,13 +280,60 @@ def use_gene_symbols(
     return data
 
 
+def cap_cells_per_condition(
+    conditions: pd.Series | np.ndarray,
+    max_cells: int,
+    seed: int = 0,
+    eligible: np.ndarray | None = None,
+) -> np.ndarray:
+    """Mask keeping at most `max_cells` eligible cells of each condition.
+
+    A condition with no more than `max_cells` eligible cells keeps all of them;
+    a larger one keeps a uniform random subset. Each condition's draw is seeded
+    by `seed` and the condition's own name, never by its position, so a
+    condition's cells do not depend on which other conditions are present. The
+    kept cells are a prefix of one fixed permutation, so for the same `seed`
+    the cells kept under a smaller cap are a subset of those kept under a
+    larger one.
+
+    Returns a boolean mask over all cells; ineligible cells are always False.
+    """
+    if max_cells < 1:
+        raise ValueError(f"max_cells must be at least 1; got {max_cells}.")
+    labels = np.asarray(conditions).astype(str)
+    eligible = (
+        np.ones(labels.size, dtype=bool) if eligible is None else np.asarray(eligible)
+    )
+    keep = np.zeros(labels.size, dtype=bool)
+
+    codes, names = pd.factorize(labels)
+    order = np.argsort(codes, kind="stable")
+    bounds = np.searchsorted(codes[order], np.arange(len(names) + 1))
+    for code, name in enumerate(names):
+        members = order[bounds[code] : bounds[code + 1]]
+        members = members[eligible[members]]
+        if members.size <= max_cells:
+            keep[members] = True
+            continue
+        rng = np.random.default_rng([seed, zlib.crc32(name.encode())])
+        keep[members[rng.permutation(members.size)[:max_cells]]] = True
+    return keep
+
+
 def import_ibdverse(
     filename: str | Path = IBD_FULL_COHORT_IVCSC,
     gene_threshold: float = 0.001,
     normalize: bool = True,
     condition_name: str = "sanger_sample_id",
+    max_cells_per_condition: int | None = None,
+    cell_cap_seed: int = 0,
 ) -> anndata.AnnData:
     """IBDverse terminal-ileum biopsies: 343 samples, 232 healthy and 111 Crohn's.
+
+    `max_cells_per_condition` caps each sample at that many cells, drawn with
+    `cap_cells_per_condition` from the cells passing the count filter. The gene
+    filter is measured on the full, uncapped cohort, so capped and uncapped
+    loads share one gene set; normalization runs on the capped cells.
 
     References:
     [1] Krzak, Alegbe, Taylor, Jones et al. Nat Genet (2026).
@@ -303,6 +352,13 @@ def import_ibdverse(
     keep_cells = np.asarray(counts.sum(axis=1)).reshape(-1) > 10.0
     keep_genes = np.asarray(counts.sum(axis=0)).reshape(-1) > gene_threshold * n_cells
     keep_genes &= ~excluded
+    if max_cells_per_condition is not None:
+        keep_cells = cap_cells_per_condition(
+            cast(pd.DataFrame, packed.obs)[condition_name],
+            max_cells_per_condition,
+            seed=cell_cap_seed,
+            eligible=keep_cells,
+        )
     kept = packed[keep_cells, keep_genes]
     del packed, counts
 
@@ -316,8 +372,18 @@ def import_ibdverse(
     # sparse; `means` is what `condition_matrices` subtracts once a condition
     # block is densified.
     view = kept.normalized(IBD_NORMALIZATION)
+    X = view.to_scipy_sparse(dtype=np.float32)
+    # vsparse hands back its int64 index arrays whatever the size. Once the
+    # nonzeros fit int32 (e.g. under a cell cap), narrowing them saves 4 bytes
+    # per nonzero here and in every row copy BiCV takes, and is what MKL's
+    # default LP64 interface requires.
+    if X.nnz <= np.iinfo(np.int32).max:
+        X = csr_array(
+            (X.data, X.indices.astype(np.int32), X.indptr.astype(np.int32)),
+            shape=X.shape,
+        )
     data = anndata.AnnData(
-        X=view.to_scipy_sparse(dtype=np.float32),
+        X=X,
         obs=cast(pd.DataFrame, kept.obs).copy(),
         var=cast(pd.DataFrame, kept.var).copy(),
     )
@@ -341,26 +407,33 @@ def add_cond_idxs(X, condition_key):
     return X
 
 
-def condition_matrices(X: anndata.AnnData) -> list[np.ndarray]:
-    """Split `X.X` into per-condition, mean-centered dense matrices.
+def iter_condition_matrices(X: anndata.AnnData) -> Iterator[np.ndarray]:
+    """Yield `X.X` one condition at a time, as mean-centered dense matrices.
 
     Centers by `X.var["means"]` (as set by `prepare_dataset`) if present,
     matching the centering `parafac2_nd` applies internally, so that
     projecting these matrices with RISE/PARAFAC2 factors is consistent with
-    the fit.
+    the fit. Only one condition is dense at a time, so a single pass costs
+    one condition's worth of memory rather than the whole dataset's.
     """
     assert X.X is not None
     X_mat = cast(Any, X.X)
     sg_index = X.obs["condition_unique_idxs"].to_numpy().astype(int)
     means = X.var["means"].to_numpy() if "means" in X.var else np.zeros(X_mat.shape[1])
 
-    matrices = []
     for i in range(int(np.amax(sg_index)) + 1):
         slice_mat = X_mat[sg_index == i]
         dense = slice_mat.toarray() if issparse(slice_mat) else np.asarray(slice_mat)
-        matrices.append(dense - means)
+        yield dense - means
 
-    return matrices
+
+def condition_matrices(X: anndata.AnnData) -> list[np.ndarray]:
+    """Every condition of `iter_condition_matrices` at once.
+
+    Holds the whole dataset dense; prefer `iter_condition_matrices` for a
+    single pass over a large cohort.
+    """
+    return list(iter_condition_matrices(X))
 
 
 def prepare_dataset(

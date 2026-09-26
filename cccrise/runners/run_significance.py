@@ -39,11 +39,12 @@ from ._cli import (
     add_dataset_argument,
     add_group_arguments,
     dataset_metadata,
+    resolve_dataset,
     resolve_group_labels,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATA_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, relpath, write_metadata
 
 HEADER = """\
@@ -314,7 +315,7 @@ def main(argv: list[str] | None = None) -> None:
     """Entry point for cccrise-significance."""
     parser = build_parser()
     args = parser.parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
 
     run_significance(
         spec=spec,

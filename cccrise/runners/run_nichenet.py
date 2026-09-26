@@ -30,8 +30,14 @@ from ..validation.nichenet import (
     component_accuracy_scores,
     load_ligand_target_matrix,
 )
-from ._cli import add_dataset_argument, dataset_metadata, resolve_output, resulting_dims
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from ._cli import (
+    add_dataset_argument,
+    dataset_metadata,
+    resolve_dataset,
+    resolve_output,
+    resulting_dims,
+)
+from .datasets import DATA_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, relpath, sha256_file, write_metadata
 
 DEFAULT_RECEIVER_MODES: tuple[ReceiverMode, ...] = ("within_celltype", "vs_rest")
@@ -269,7 +275,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     receiver_modes = cast(
         "tuple[ReceiverMode, ...]",
         tuple(mode.strip() for mode in args.receiver_modes.split(",") if mode.strip()),

@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from .datasets import DATASET_KEYS, DatasetSpec
+from .datasets import DATASET_KEYS, DATASETS, DatasetSpec
 from .provenance import sha256_file
 
 # (control label, other label) for `figures.commonFuncs.plotGeneral.binarize_group`,
@@ -47,6 +47,27 @@ def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
         choices=DATASET_KEYS,
         help="Dataset label from the runner registry.",
     )
+    parser.add_argument(
+        "--max-cells-per-condition",
+        type=int,
+        default=None,
+        help="Randomly cap every condition at this many cells (default: keep all). "
+        "Outputs are named for the capped dataset, e.g. ibd_cap2000.",
+    )
+    parser.add_argument(
+        "--cell-cap-seed",
+        type=int,
+        default=0,
+        help="Seed for --max-cells-per-condition's per-condition draw.",
+    )
+
+
+def resolve_dataset(args: argparse.Namespace) -> DatasetSpec:
+    """The registry entry `add_dataset_argument`'s arguments select."""
+    spec = DATASETS[args.dataset]
+    if args.max_cells_per_condition is not None:
+        spec = spec.with_cell_cap(args.max_cells_per_condition, args.cell_cap_seed)
+    return spec
 
 
 def add_group_arguments(parser: argparse.ArgumentParser) -> None:
