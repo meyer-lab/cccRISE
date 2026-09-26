@@ -318,7 +318,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="CSV destination; defaults to data/anova_bootstrap_<dataset>.csv.",
+        help="CSV destination; defaults to anova_bootstrap_<dataset>.csv in data/ "
+        "(data/alt_score_methods/<score>/ for a non-default score).",
     )
     return parser
 

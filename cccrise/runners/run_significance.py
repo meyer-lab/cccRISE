@@ -86,7 +86,7 @@ def run_significance(
     spec : DatasetSpec
         Dataset registry entry.
     reference_source : str | Path
-        A factors.nc written by `run_ccc_rise`; its RISE fit is loaded
+        A factors.nc written by `run_ccc_rise` or `run_alt_comm_score`; its RISE fit is loaded
         rather than refit.
     n_perms : int, default=1000
         Number of permutations.
@@ -235,7 +235,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--reference-source",
         type=str,
         required=True,
-        help="A factors.nc written by run_ccc_rise, whose RISE fit is reused "
+        help="A factors.nc written by run_ccc_rise or run_alt_comm_score, whose RISE fit is reused "
         "rather than refit.",
     )
     parser.add_argument(
@@ -268,7 +268,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="Primary CSV destination; defaults to data/significance_lr_<dataset>.csv.",
+        help="Primary CSV destination; defaults to significance_lr_<dataset>.csv "
+        "under --output-root.",
     )
     parser.add_argument(
         "--output-root",

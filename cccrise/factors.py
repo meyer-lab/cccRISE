@@ -78,7 +78,7 @@ def _add_pf2_projections(
     pf2_projections: np.ndarray | None,
     cell_ids: np.ndarray | None,
 ) -> None:
-    """Add full-precision per-cell RISE projections, in place, so the file can
+    """Add float32 (not float16) per-cell RISE projections, in place, so the file can
     serve as a RISE reference (`utils.load_rise_reference`)."""
     if pf2_projections is None or cell_ids is None:
         return
@@ -304,7 +304,7 @@ def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
 
 def _stored_projections(factors_ds: xr.Dataset) -> np.ndarray | None:
     """Per-cell RISE projections stored in `factors_ds`, preferring the
-    full-precision `pf2_projections` over the float16 `cell_projections`."""
+    float32 `pf2_projections` over the float16 `cell_projections`."""
     for var in ("pf2_projections", "cell_projections"):
         if var in factors_ds:
             return np.asarray(factors_ds[var].values, dtype=np.float32)

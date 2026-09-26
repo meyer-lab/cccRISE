@@ -54,6 +54,7 @@ from ._cli import (
 from .datasets import COMMUNICATION_SCORES, DATASETS, DatasetSpec, comparison_output_dir
 from .provenance import (
     build_metadata,
+    git_sha,
     read_metadata,
     relpath,
     write_metadata,
@@ -260,6 +261,9 @@ def run_alt_comm_score(
     dict[str, Path]
         Each method's factors.nc path, keyed by `communication_score`.
     """
+    # Pin the code version before writing anything: see `provenance.git_sha`.
+    git_sha()
+
     print(f"=== Alt communication-score generation: {spec.label} ===")
     print(
         f"    RISE rank={rise_rank}  CP rank={cp_rank}  "

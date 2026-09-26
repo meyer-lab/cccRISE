@@ -52,7 +52,7 @@ SCORE_LABELS = {
     "expression_hill": "Hill (CellChat-style)",
 }
 
-# The three alternates' significance/stability results were generated at this
+# All four methods' significance/stability results were generated at this
 # scale; see module docstring.
 N_PERMS_SMOKE = 3
 N_REPLICATES_SMOKE = 3

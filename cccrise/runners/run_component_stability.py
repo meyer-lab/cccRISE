@@ -342,7 +342,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="CSV destination; defaults to data/component_stability_<dataset>.csv.",
+        help="CSV destination; defaults to component_stability_<dataset>.csv in "
+        "data/ (data/alt_score_methods/<score>/ for a non-default score).",
     )
     return parser
 

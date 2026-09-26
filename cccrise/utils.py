@@ -312,15 +312,14 @@ def load_rise_reference(
             f"{reference_path}'s rise_rank={file_rise_rank}."
         )
 
-    cell_ids = ds.coords["cell"].values.astype(str)
-    adata_cell_ids = adata.obs_names.to_numpy().astype(str)
-    if len(cell_ids) != len(adata_cell_ids) or not np.array_equal(
-        cell_ids, adata_cell_ids
-    ):
-        raise ValueError(
-            f"{reference_path}'s cells do not match `adata`'s; reusing a "
-            "RISE fit requires the identical, identically-ordered dataset."
-        )
+    for axis, adata_ids in (("cell", adata.obs_names), ("gene", adata.var_names)):
+        if not np.array_equal(
+            ds.coords[axis].values.astype(str), np.asarray(adata_ids).astype(str)
+        ):
+            raise ValueError(
+                f"{reference_path}'s {axis}s do not match `adata`'s; reusing a "
+                "RISE fit requires the identical, identically-ordered dataset."
+            )
 
     adata = add_cond_idxs(adata, condition_column)
     adata.uns["Pf2_weights"] = ds["pf2_weights"].values
