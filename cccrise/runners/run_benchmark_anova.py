@@ -3,15 +3,16 @@
 Runner: the cccRISE ANOVA, repeated on every tensor comparator's condition factor.
 
 cccRISE's condition factor is read from the published factor model; the
-comparators (`benchmark.fit_comparators`: Tensor-cell2cell and unsupervised
-STACCato) are fit on the cell-type pseudobulk tensor. Every method's condition
+comparators (`benchmark.fit_comparators`: pseudobulk CPD, Tensor-cell2cell and
+unsupervised STACCato) are fit on the cell-type pseudobulk tensor. Every method's condition
 factor is then read-depth corrected and run through the same
 `anova.run_multiple_factors_anova` call with `figureAnova.DEFAULT_ASSOCIATIONS`.
 
 Comparator ranks come from one or both rank modes:
 
 - ``own``: each comparator selects its rank by its own published procedure
-  (Tensor-cell2cell's error elbow, STACCato's 1% explained-variance cut).
+  (pseudobulk CPD by cccRISE's own CORCONDIA / collinearity rule,
+  Tensor-cell2cell's error elbow, STACCato's 1% explained-variance cut).
 - ``shared``: every comparator is fit at ``--shared-rank``, which defaults to
   the published cccRISE model's CP rank.
 

@@ -46,6 +46,20 @@ fits:
   rank: 9/2
   rise_rank: 9
   cp_rank: 2
+- method: Pseudobulk CPD
+  rank_mode: own
+  rank: '3'
+  corcondia_threshold: 85.0
+  core_consistency:
+  - 100.0
+  - 99.99943145702227
+  - 99.94344484431103
+  - 99.35651859527576
+  - 92.62886442145877
+  - -11.940190339416468
+  - -4512654189.319607
+  - -24058842797.66241
+  max_modes_collinear: [0, 0, 0, 1, 1, 1, 2, 2]
 - method: Tensor-cell2cell
   rank_mode: own
   rank: '4'
@@ -117,6 +131,9 @@ fits:
     - 0.0015072934017818086
     - 0.0003909680485633757
   core_shape: [10, 10, 4, 5]
+- method: Pseudobulk CPD
+  rank_mode: shared
+  rank: '2'
 - method: Tensor-cell2cell
   rank_mode: shared
   rank: '2'
@@ -124,5 +141,5 @@ fits:
   rank_mode: shared
   rank: 2x2x2x2
   core_shape: [2, 2, 2, 2]
-git_sha: 5902a90cbbb54d948dba55a6598b076f4dcda3ce-dirty
-generated: '2026-09-26T02:11:47+00:00'
+git_sha: 81498c383a8bd665181c82f61d14d89d8c144dab-dirty
+generated: '2026-09-26T03:52:17+00:00'

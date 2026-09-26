@@ -8,6 +8,7 @@ from cccrise.benchmark import (
     eigen_varexp_rank,
     fit_comparators,
     kneedle_elbow,
+    pseudobulk_cpd_rank,
     staccato_order,
     tensor_cell2cell_elbow,
 )
@@ -46,6 +47,14 @@ def test_tensor_cell2cell_elbow_on_rank_three_tensor():
     assert rank == 3
 
 
+def test_pseudobulk_cpd_rank_stops_before_the_rule_fails():
+    tensor = _nonneg_cp_tensor((10, 5, 5, 15), rank=2, seed=5, noise=1e-3)
+    rank, diagnostics = pseudobulk_cpd_rank(tensor, max_rank=4)
+    assert list(diagnostics["Rank"]) == [1, 2, 3, 4]
+    assert diagnostics.loc[diagnostics["Rank"] <= rank, "CoreConsistency"].min() >= 85
+    assert rank == 2
+
+
 def test_staccato_order_moves_lr_to_mode_two():
     assert staccato_order(np.zeros((4, 3, 3, 9))).shape == (4, 9, 3, 3)
 
@@ -56,15 +65,17 @@ def test_fit_comparators_returns_one_row_per_condition(rank_mode):
     fits = fit_comparators(
         tensor, rank_mode=rank_mode, shared_rank=3, tc2c_upper_rank=5, tc2c_elbow_runs=1
     )
-    assert [fit.method for fit in fits] == ["Tensor-cell2cell", "STACCato"]
+    assert [fit.method for fit in fits] == [
+        "Pseudobulk CPD",
+        "Tensor-cell2cell",
+        "STACCato",
+    ]
     for fit in fits:
         assert fit.rank_mode == rank_mode
         assert fit.condition_factor.shape[0] == 8
     if rank_mode == "shared":
-        assert fits[0].rank == "3"
-        assert fits[1].rank == "3x3x3x3"
-        assert fits[0].condition_factor.shape[1] == 3
-        assert fits[1].condition_factor.shape[1] == 3
+        assert [fit.rank for fit in fits] == ["3", "3", "3x3x3x3"]
+        assert all(fit.condition_factor.shape[1] == 3 for fit in fits)
 
 
 def test_fit_comparators_rejects_unknown_rank_mode():

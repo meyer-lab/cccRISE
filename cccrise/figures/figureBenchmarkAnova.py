@@ -17,7 +17,7 @@ from .figureAnova import plot_anova_summary_heatmap
 
 SELECTED_DATASET = "alad"
 SWEEP_CSV = f"benchmark_anova_{SELECTED_DATASET}.csv"
-METHOD_ORDER = ("cccRISE", "Tensor-cell2cell", "STACCato")
+METHOD_ORDER = ("cccRISE", "Pseudobulk CPD", "Tensor-cell2cell", "STACCato")
 RANK_MODE_LABELS = {"own": "own rank selection", "shared": "shared rank"}
 
 

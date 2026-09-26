@@ -6,11 +6,14 @@ matrix goes through the same `anova.run_multiple_factors_anova` call cccRISE's
 own condition factor does, so the only thing that differs between methods is
 the decomposition.
 
-Both comparators decompose the same cell-type pseudobulk tensor -- mean
+Every comparator decomposes the same cell-type pseudobulk tensor -- mean
 expression per (condition, cell type), scored with the Tensor-cell2cell
 expression-product builder cccRISE already uses (`ccc_rise
 .calc_communication_score_pseudobulk`):
 
+- **Pseudobulk CPD**: the manuscript's own baseline, signed CP exactly as
+  `ccc_rise.pseudobulk_cp_decomposition` fits it, with its rank selected by
+  the criteria cccRISE's CP rank was (CORCONDIA and the collinearity screen).
 - **Tensor-cell2cell**: non-negative CP, with Tensor-cell2cell's own
   ``tf_optimization='regular'`` settings and its elbow rank selection. The
   tensor is the shared one, not upstream's: product rather than mean scoring,
@@ -37,11 +40,19 @@ import pandas as pd
 import tensorly as tl
 from tensorly.decomposition import non_negative_parafac
 
-from .ccc_rise import calc_communication_score_pseudobulk
+from .ccc_rise import calc_communication_score_pseudobulk, pseudobulk_cp_decomposition
 from .comparators.staccato import staccato
+from .rank_selection import cp_core_consistency_sweep, cpd_component_collinearity
 from .utils import pseudobulk_X
 
 RANK_MODES = ("own", "shared")
+
+# `tensor.run_pseudobulk_workflow`'s CP settings, and the rule cccRISE's CP rank
+# was read off by: the last rank before core consistency first drops below 85%
+# or a collinear component pair appears.
+PSEUDOBULK_N_ITER_MAX = 1000
+PSEUDOBULK_TOL = 1e-11
+CORCONDIA_THRESHOLD = 85.0
 
 # Tensor-cell2cell's `run_tensor_cell2cell_pipeline` defaults with
 # tf_optimization='regular': random init, 10 elbow runs per rank up to rank 25,
@@ -91,6 +102,55 @@ def pseudobulk_tensor(
     )
     celltypes = np.unique(adata.obs[celltype_column].unique())
     return tensor, celltypes, filtered_lr_pairs
+
+
+def pseudobulk_cpd_rank(
+    tensor: np.ndarray,
+    max_rank: int | None = None,
+    threshold: float = CORCONDIA_THRESHOLD,
+    random_state: int = 42,
+) -> tuple[int, pd.DataFrame]:
+    """Pseudobulk CPD's rank, by the rule cccRISE's CP rank was selected with.
+
+    Fits ranks ``1..max_rank`` (default: the tensor's smallest mode, the bound
+    `ccc_rise.validate_cp_rank` puts on cccRISE) and returns the last rank
+    before core consistency first drops below `threshold` percent or any
+    component pair turns collinear, with the per-rank diagnostics.
+    """
+    max_rank = max_rank or min(tensor.shape)
+    factors_by_rank = {
+        rank: pseudobulk_cp_decomposition(
+            tensor,
+            rank,
+            n_iter_max=PSEUDOBULK_N_ITER_MAX,
+            tol=PSEUDOBULK_TOL,
+            random_state=random_state,
+        )[:2]
+        for rank in range(1, max_rank + 1)
+    }
+    diagnostics = cp_core_consistency_sweep(tensor, factors_by_rank).merge(
+        cpd_component_collinearity(factors_by_rank), on="Rank"
+    )
+    passes = (diagnostics["CoreConsistency"] >= threshold) & (
+        diagnostics["MaxModesCollinear"] == 0
+    )
+    first_fail = np.flatnonzero(~passes.to_numpy())
+    rank = int(first_fail[0]) if first_fail.size else max_rank
+    return max(rank, 1), diagnostics
+
+
+def pseudobulk_cpd_factor(
+    tensor: np.ndarray, rank: int, random_state: int = 42
+) -> np.ndarray:
+    """Condition factor of one pseudobulk CPD fit at `rank`."""
+    _weights, factors, _r2x = pseudobulk_cp_decomposition(
+        tensor,
+        rank,
+        n_iter_max=PSEUDOBULK_N_ITER_MAX,
+        tol=PSEUDOBULK_TOL,
+        random_state=random_state,
+    )
+    return np.asarray(factors[0])
 
 
 def kneedle_elbow(
@@ -244,6 +304,12 @@ def fit_comparators(
 
     stac_tensor = staccato_order(tensor)
     if rank_mode == "own":
+        pb_rank, diagnostics = pseudobulk_cpd_rank(tensor, random_state=random_state)
+        pb_details: dict[str, Any] = {
+            "corcondia_threshold": CORCONDIA_THRESHOLD,
+            "core_consistency": diagnostics["CoreConsistency"].tolist(),
+            "max_modes_collinear": diagnostics["MaxModesCollinear"].tolist(),
+        }
         tc2c_rank, errors = tensor_cell2cell_elbow(
             tensor,
             upper_rank=tc2c_upper_rank,
@@ -260,12 +326,21 @@ def fit_comparators(
             "top_proportions": [p[:10].tolist() for _, p in selections],
         }
     else:
+        pb_rank = shared_rank
+        pb_details = {}
         tc2c_rank = shared_rank
         tc2c_details = {}
         core_shape = tuple(min(shared_rank, size) for size in stac_tensor.shape)
         stac_details = {}
 
     return [
+        ComparatorFit(
+            method="Pseudobulk CPD",
+            rank_mode=rank_mode,
+            rank=str(pb_rank),
+            condition_factor=pseudobulk_cpd_factor(tensor, pb_rank, random_state),
+            details=pb_details,
+        ),
         ComparatorFit(
             method="Tensor-cell2cell",
             rank_mode=rank_mode,
