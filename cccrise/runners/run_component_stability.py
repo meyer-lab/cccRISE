@@ -37,10 +37,14 @@ Axes, and what each one asks:
 
 import argparse
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 
+from ..ccc_rise import (
+    CP_COMPRESSION_OPTIONS,
+    CP_FIT_OPTIONS,
+    RISE_COMPRESSION_OPTIONS,
+)
 from ..import_data import import_ligand_receptor_pairs
 from ..validation.component_stability import (
     DEFAULT_AXES,
@@ -53,12 +57,17 @@ from ..validation.component_stability import (
     summarize_component_stability,
 )
 from ._cli import (
+    CP_N_ITER_MAX,
+    CP_TOL,
+    REPLICATE_COMPRESS,
+    RISE_N_ITER_MAX,
+    RISE_TOL,
     add_dataset_argument,
     dataset_metadata,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, DatasetSpec, scoring_output_dir
+from .datasets import DATA_DIR, DATASETS, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -74,21 +83,15 @@ def run_component_stability(
     cp_rank: int,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
-    rise_n_iter_max: int = 100,
-    rise_tol: float = 1e-6,
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
-    init: str = "svd",
-    svd: str = "randomized_svd",
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
+    cp_n_iter_max: int = CP_N_ITER_MAX,
+    cp_tol: float = CP_TOL,
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int = 0,
-    backend: str | None = None,
-    compress: bool = True,
-    oversample: int = 5,
     output_path: Path | None = None,
-    reference: dict[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score per-component RISE and CPD stability at fixed ranks.
 
@@ -103,39 +106,21 @@ def run_component_stability(
         Resampling axes to run; see the module docstring.
     n_replicates : int, default=20
         Replicates per axis.
-    rise_n_iter_max, rise_tol, n_iter_max, tol, init, svd
+    rise_n_iter_max, rise_tol, cp_n_iter_max, cp_tol
         Fitting controls for the RISE and CP fits.
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=0
         Base seed for the reference fit and the replicates.
-    backend : str | None, default=None
-        Backend every RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
-        auto-detect); see `tensor.rise_store_r2x`.
-    compress : bool, default=True
-        Fit every CP stage inside a CANDELINC core sized for `cp_rank`
-        instead of the full tensor; see
-        `validation.component_stability._fit_cp`. R2X, core consistency and
-        collinearity are unaffected -- this is strictly a speed optimization.
-    oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
     output_path : Path, optional
-        CSV destination; defaults to the registry's stability filename under
-        `DATA_DIR` for `communication_score="expression_product"`, or
-        `alt_score_methods/<communication_score>/` for any other score.
-    reference : dict[str, Any], optional
-        A full-cohort fit already built with this call's settings, as
-        `fit_stability_pipeline(..., keep_tensor=True)` returns; fit here when
-        None. Lets `run_alt_comm_score` share one RISE fit between scores.
+        CSV destination; defaults to the registry's stability filename.
 
     Returns
     -------
     tuple[pd.DataFrame, Path, Path]
         The long per-component table, the CSV path, and the sidecar path.
     """
-    output_path = output_path or (
-        scoring_output_dir(communication_score) / spec.stability_filename()
-    )
+    output_path = output_path or (DATA_DIR / spec.stability_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -145,9 +130,7 @@ def run_component_stability(
     print(f"=== Component stability: {spec.label} ===")
     print(f"    RISE rank {rise_rank}, CP rank {cp_rank}, {n_replicates} replicates")
     print(f"    Axes: {', '.join(axes)}")
-    print(
-        f"    backend={backend or 'auto'}  compress={compress}  oversample={oversample}"
-    )
+    print(f"    backend={spec.backend or 'auto'}  compress={REPLICATE_COMPRESS}")
     print(
         f"    {1 + len(rise_axes) * n_replicates} PARAFAC2 fits, "
         f"{1 + len(axes) * n_replicates} CP fits"
@@ -159,31 +142,25 @@ def run_component_stability(
     print(f"   AnnData shape: {adata.shape}")
     print(f"   Ligand-receptor pairs: {len(lr_pairs)}")
 
-    if reference is None:
-        print("2. Fitting the reference model on the full cohort...")
-        reference = fit_stability_pipeline(
-            adata.copy(),
-            lr_pairs,
-            condition_column=spec.condition_column,
-            rise_rank=rise_rank,
-            cp_rank=cp_rank,
-            rise_n_iter_max=rise_n_iter_max,
-            rise_tol=rise_tol,
-            cp_n_iter_max=n_iter_max,
-            cp_tol=tol,
-            init=init,
-            svd=svd,
-            complex_sep=complex_sep,
-            communication_score=communication_score,
-            hill_k=hill_k,
-            random_state=random_state,
-            keep_tensor=True,
-            backend=backend,
-            compress=compress,
-            oversample=oversample,
-        )
-    else:
-        print("2. Using the supplied full-cohort reference fit...")
+    print("2. Fitting the reference model on the full cohort...")
+    reference = fit_stability_pipeline(
+        adata.copy(),
+        lr_pairs,
+        condition_column=spec.condition_column,
+        rise_rank=rise_rank,
+        cp_rank=cp_rank,
+        rise_n_iter_max=rise_n_iter_max,
+        rise_tol=rise_tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
+        complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
+        random_state=random_state,
+        keep_tensor=True,
+        backend=spec.backend,
+        compress=REPLICATE_COMPRESS,
+    )
     assert reference["tensor"] is not None
     tensor_shape = tuple(int(dim) for dim in reference["tensor"].shape)
     print(f"   Interaction tensor shape: {tensor_shape}")
@@ -203,17 +180,14 @@ def run_component_stability(
         n_replicates=n_replicates,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
-        cp_n_iter_max=n_iter_max,
-        cp_tol=tol,
-        init=init,
-        svd=svd,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
         complex_sep=complex_sep,
         communication_score=communication_score,
         hill_k=hill_k,
         random_state=random_state,
-        backend=backend,
-        compress=compress,
-        oversample=oversample,
+        backend=spec.backend,
+        compress=REPLICATE_COMPRESS,
     )
 
     print("4. Aggregate FMS across replicates, per stage and axis:")
@@ -234,17 +208,17 @@ def run_component_stability(
             "n_replicates": n_replicates,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
-            "n_iter_max": n_iter_max,
-            "tol": tol,
-            "init": init,
-            "svd": svd,
+            "cp_n_iter_max": cp_n_iter_max,
+            "cp_tol": cp_tol,
+            "cp_fit_options": CP_FIT_OPTIONS,
             "complex_sep": complex_sep,
             "communication_score": communication_score,
             "hill_k": hill_k,
             "random_state": random_state,
-            "backend": backend or "auto",
-            "compress": compress,
-            "oversample": oversample,
+            "backend": spec.backend or "auto",
+            "compress": REPLICATE_COMPRESS,
+            "rise_compression_options": RISE_COMPRESSION_OPTIONS,
+            "cp_compression_options": CP_COMPRESSION_OPTIONS,
             "seed_formula": (
                 "random_state * 1000 + replicate + 1; one seed drives the "
                 "resample, the RISE refit and the CP fit, so a "
@@ -338,17 +312,10 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--n-replicates", type=int, default=20)
-    parser.add_argument("--rise-n-iter-max", type=int, default=100)
-    parser.add_argument("--rise-tol", type=float, default=1e-6)
-    parser.add_argument("--n-iter-max", type=int, default=100)
-    parser.add_argument("--tol", type=float, default=1e-3)
-    parser.add_argument("--init", type=str, default="svd", choices=["random", "svd"])
-    parser.add_argument(
-        "--svd",
-        type=str,
-        default="randomized_svd",
-        choices=["randomized_svd", "truncated_svd"],
-    )
+    parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
+    parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
+    parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
+    parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument(
         "--communication-score",
@@ -363,26 +330,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--hill-k", type=float, default=0.5)
     parser.add_argument("--random-state", type=int, default=0)
-    parser.add_argument(
-        "--backend",
-        type=str,
-        default=None,
-        choices=["cpu", "cupy", "mlx"],
-        help="Backend every RISE fit runs on (default: parafac2 auto-detect). "
-        "Use 'cpu' for cohort-scale data, which does not fit on a GPU.",
-    )
-    parser.add_argument(
-        "--no-compress",
-        dest="compress",
-        action="store_false",
-        help="Fit every CP stage on the full tensor instead of a CANDELINC core.",
-    )
-    parser.add_argument(
-        "--oversample",
-        type=int,
-        default=5,
-        help="Extra basis columns per mode beyond --cp-rank, when compressing.",
-    )
     parser.add_argument(
         "--output",
         type=str,
@@ -403,22 +350,13 @@ def main(argv: list[str] | None = None) -> None:
         n_replicates=args.n_replicates,
         rise_n_iter_max=args.rise_n_iter_max,
         rise_tol=args.rise_tol,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
-        init=args.init,
-        svd=args.svd,
+        cp_n_iter_max=args.cp_n_iter_max,
+        cp_tol=args.cp_tol,
         complex_sep=args.complex_sep,
         communication_score=args.communication_score,
         hill_k=args.hill_k,
         random_state=args.random_state,
-        backend=args.backend,
-        compress=args.compress,
-        oversample=args.oversample,
-        output_path=resolve_output(
-            args.output,
-            scoring_output_dir(args.communication_score),
-            spec.stability_filename(),
-        ),
+        output_path=resolve_output(args.output, DATA_DIR, spec.stability_filename()),
     )
 
 

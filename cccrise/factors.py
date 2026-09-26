@@ -10,14 +10,66 @@ import anndata
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pacmap import PaCMAP
 
+from .ccc_rise import add_cell_embeddings
 from .import_data import add_cond_idxs, condition_matrices
 
 DATA_DIR = Path(__file__).parent / "data"
 COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
 ALAD_FACTORS_PATH = DATA_DIR / "bal_alad_factors.nc"
-IBD_FACTORS_PATH = DATA_DIR / "ibd_ti_factors.nc"
+
+
+def _resolve_lr_symbols(
+    filtered_lr_pairs: pd.DataFrame | list[str] | np.ndarray,
+) -> np.ndarray:
+    """Derive ligand-receptor pair label strings from any of the supported input forms."""
+    if not isinstance(filtered_lr_pairs, pd.DataFrame):
+        return np.asarray(filtered_lr_pairs)
+
+    if "interaction_symbol" in filtered_lr_pairs.columns:
+        return filtered_lr_pairs["interaction_symbol"].values
+    if (
+        "ligand" in filtered_lr_pairs.columns
+        and "receptor" in filtered_lr_pairs.columns
+    ):
+        return (
+            filtered_lr_pairs["ligand"].astype(str)
+            + "_"
+            + filtered_lr_pairs["receptor"].astype(str)
+        ).values
+    return np.array([f"pair_{i}" for i in range(len(filtered_lr_pairs))])
+
+
+def _add_pf2_factors(
+    data_vars: dict[str, tuple[list[str], np.ndarray]],
+    coords: dict[str, Any],
+    pf2_factors: list[np.ndarray] | None,
+    pf2_weights: np.ndarray | None,
+    gene_names: list[str] | np.ndarray | None,
+) -> None:
+    """Add PARAFAC2 factor matrices/weights to data_vars and coords, in place."""
+    if pf2_factors is None or len(pf2_factors) < 3:
+        return
+
+    data_vars["pf2_A"] = (
+        ["condition", "rise_component"],
+        np.asarray(pf2_factors[0], dtype=np.float32),
+    )
+    data_vars["pf2_B"] = (
+        ["rise_component", "rise_component_dim2"],
+        np.asarray(pf2_factors[1], dtype=np.float32),
+    )
+    coords["rise_component_dim2"] = np.arange(1, pf2_factors[1].shape[1] + 1)
+    if gene_names is not None:
+        data_vars["pf2_C"] = (
+            ["gene", "rise_component"],
+            np.asarray(pf2_factors[2], dtype=np.float32),
+        )
+    if pf2_weights is not None:
+        data_vars["pf2_weights"] = (
+            ["rise_component"],
+            np.asarray(pf2_weights, dtype=np.float32),
+        )
 
 
 def factors_to_xarray(
@@ -28,8 +80,6 @@ def factors_to_xarray(
     gene_names: list[str] | np.ndarray | None = None,
     pf2_factors: list[np.ndarray] | None = None,
     pf2_weights: np.ndarray | None = None,
-    pf2_projections: np.ndarray | None = None,
-    cell_ids: np.ndarray | None = None,
     r2x_cp: float | None = None,
     r2x_pf2: float | None = None,
     attrs: dict[str, Any] | None = None,
@@ -53,11 +103,6 @@ def factors_to_xarray(
         List of PARAFAC2 factor matrices [A_pf2, B_pf2, C_pf2].
     pf2_weights : np.ndarray, optional
         PARAFAC2 component weights.
-    pf2_projections : np.ndarray, optional
-        Per-cell PARAFAC2 projections, shape (n_cells, rise_rank), in the
-        same row order as `cell_ids`.
-    cell_ids : np.ndarray, optional
-        Cell barcodes matching `pf2_projections`' row order.
     r2x_cp : float, optional
         Variance explained by CP decomposition.
     r2x_pf2 : float, optional
@@ -70,22 +115,7 @@ def factors_to_xarray(
     xr.Dataset
         A fully-annotated xarray Dataset holding the factor matrices and coordinates.
     """
-    if isinstance(filtered_lr_pairs, pd.DataFrame):
-        if "interaction_symbol" in filtered_lr_pairs.columns:
-            lr_symbols = filtered_lr_pairs["interaction_symbol"].values
-        elif (
-            "ligand" in filtered_lr_pairs.columns
-            and "receptor" in filtered_lr_pairs.columns
-        ):
-            lr_symbols = (
-                filtered_lr_pairs["ligand"].astype(str)
-                + "_"
-                + filtered_lr_pairs["receptor"].astype(str)
-            ).values
-        else:
-            lr_symbols = np.array([f"pair_{i}" for i in range(len(filtered_lr_pairs))])
-    else:
-        lr_symbols = np.asarray(filtered_lr_pairs)
+    lr_symbols = _resolve_lr_symbols(filtered_lr_pairs)
 
     condition_names = np.asarray(condition_names)
     rise_rank = cpd_factors[1].shape[0]
@@ -121,32 +151,7 @@ def factors_to_xarray(
     if gene_names is not None:
         coords["gene"] = np.asarray(gene_names)
 
-    if pf2_factors is not None and len(pf2_factors) >= 3:
-        data_vars["pf2_A"] = (
-            ["condition", "rise_component"],
-            np.asarray(pf2_factors[0], dtype=np.float32),
-        )
-        data_vars["pf2_B"] = (
-            ["rise_component", "rise_component_dim2"],
-            np.asarray(pf2_factors[1], dtype=np.float32),
-        )
-        coords["rise_component_dim2"] = np.arange(1, pf2_factors[1].shape[1] + 1)
-        if gene_names is not None:
-            data_vars["pf2_C"] = (
-                ["gene", "rise_component"],
-                np.asarray(pf2_factors[2], dtype=np.float32),
-            )
-        if pf2_weights is not None:
-            data_vars["pf2_weights"] = (
-                ["rise_component"],
-                np.asarray(pf2_weights, dtype=np.float32),
-            )
-        if pf2_projections is not None and cell_ids is not None:
-            coords["cell"] = np.asarray(cell_ids)
-            data_vars["pf2_projections"] = (
-                ["cell", "rise_component"],
-                np.asarray(pf2_projections, dtype=np.float32),
-            )
+    _add_pf2_factors(data_vars, coords, pf2_factors, pf2_weights, gene_names)
 
     ds_attrs = {
         "rise_rank": rise_rank,
@@ -392,38 +397,26 @@ def load_factors_to_anndata(
     # Ensure condition indexing
     out = add_cond_idxs(out, cond_key)
 
-    # Use stored cell projections if already present in factors dataset,
-    # preferring the full-precision RISE copy over the float16 one
-    if "pf2_projections" in factors_ds:
-        out.obsm["projections"] = factors_ds["pf2_projections"].values
-        out.obsm["sc_B"] = out.obsm["projections"] @ B_cp
-        out.obsm["rc_C"] = out.obsm["projections"] @ C_cp
-    elif "cell_projections" in factors_ds:
+    # Use stored cell projections if already present in factors dataset
+    if "cell_projections" in factors_ds:
         out.obsm["projections"] = np.asarray(
             factors_ds["cell_projections"].values, dtype=np.float32
         )
-        if "cell_sc_B" in factors_ds:
-            out.obsm["sc_B"] = np.asarray(
-                factors_ds["cell_sc_B"].values, dtype=np.float32
-            )
-        else:
-            out.obsm["sc_B"] = out.obsm["projections"] @ B_cp
-        if "cell_rc_C" in factors_ds:
-            out.obsm["rc_C"] = np.asarray(
-                factors_ds["cell_rc_C"].values, dtype=np.float32
-            )
-        else:
-            out.obsm["rc_C"] = out.obsm["projections"] @ C_cp
-
-    if "pf2_projections" in factors_ds or "cell_projections" in factors_ds:
-        if "cell_pacmap" in factors_ds:
-            out.obsm["PaCMAP"] = np.asarray(
-                factors_ds["cell_pacmap"].values, dtype=np.float32
-            )
-        elif do_embedding:
-            pcm = PaCMAP(random_state=random_state)
-            out.obsm["PaCMAP"] = pcm.fit_transform(out.obsm["projections"])
-
+        out = add_cell_embeddings(
+            out,
+            B_cp,
+            C_cp,
+            do_embedding and "cell_pacmap" not in factors_ds,
+            random_state,
+        )
+        # Stored per-cell arrays take precedence over recomputed ones.
+        for key, var in (
+            ("sc_B", "cell_sc_B"),
+            ("rc_C", "cell_rc_C"),
+            ("PaCMAP", "cell_pacmap"),
+        ):
+            if var in factors_ds:
+                out.obsm[key] = np.asarray(factors_ds[var].values, dtype=np.float32)
         return out
 
     # Compute cell projections if PARAFAC2 factors are present
@@ -461,12 +454,7 @@ def load_factors_to_anndata(
             proj = (MV / safe_norms) @ V.T
             out.obsm["projections"][sg_index == i, :] = proj
 
-        out.obsm["sc_B"] = out.obsm["projections"] @ B_cp
-        out.obsm["rc_C"] = out.obsm["projections"] @ C_cp
-
-        if do_embedding:
-            pcm = PaCMAP(random_state=random_state)
-            out.obsm["PaCMAP"] = pcm.fit_transform(out.obsm["projections"])
+        out = add_cell_embeddings(out, B_cp, C_cp, do_embedding, random_state)
 
     return out
 
@@ -482,7 +470,7 @@ def clean_memory() -> None:
 
         cp.get_default_memory_pool().free_all_blocks()
         cp.get_default_pinned_memory_pool().free_all_blocks()
-    except Exception:  # no CuPy, or CuPy installed without a visible GPU
+    except (ImportError, AttributeError):
         return
 
 

@@ -13,6 +13,15 @@ DEFAULT_GROUP_LABELS: dict[str, tuple[str, str]] = {
     "ibd": ("healthy", "inflamed"),
 }
 
+# Fit controls shared by every runner's RISE (PARAFAC2) and CP decompositions.
+RISE_TOL = 1e-8
+CP_TOL = 1e-12
+RISE_N_ITER_MAX = 300
+CP_N_ITER_MAX = 4000
+#: Every replicate-type runner (bootstraps, significance, rank sweeps) fits RISE
+#: and CP compressed (significance has no CP stage); the core runner never does.
+REPLICATE_COMPRESS = True
+
 
 def parse_ranks(spec: str) -> list[int]:
     """Parse a rank specification into a sorted list of unique ranks.
@@ -104,20 +113,6 @@ def resolve_group_labels(
             f"control_label={control_label!r}, other_label={other_label!r}."
         )
     return group_column, control_label, other_label
-
-
-def resolve_anova_labels(
-    spec: DatasetSpec,
-    group_column: str | None,
-    control_label: str | None,
-    other_label: str | None,
-) -> tuple[str, str | None, str | None]:
-    """`resolve_group_labels` for the ANOVA runners: with nothing passed,
-    test every level of `spec.outcome_column` when the dataset registers one.
-    """
-    if spec.outcome_column and not (group_column or control_label or other_label):
-        return spec.outcome_column, None, None
-    return resolve_group_labels(spec, group_column, control_label, other_label)
 
 
 def dataset_metadata(spec: DatasetSpec) -> dict:

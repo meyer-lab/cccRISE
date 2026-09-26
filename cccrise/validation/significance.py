@@ -8,8 +8,7 @@ along with functions to summarize per-LR pair, differential, and global
 significance metrics.
 """
 
-from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import anndata
 import numpy as np
@@ -20,14 +19,16 @@ from ..ccc_rise import (
     compute_communication_significance,
     compute_differential_significance,
     condition_matrices,
+    condition_projections,
+    fit_rise,
 )
-from ..utils import load_rise_reference
+from ..import_data import add_cond_idxs
 
 
 def fit_significance_pipeline(
     adata: anndata.AnnData,
     condition_column: str,
-    reference_path: str | Path,
+    rise_rank: int,
     lr_pairs: pd.DataFrame,
     n_perms: int = 1000,
     group_column: str | None = None,
@@ -40,9 +41,13 @@ def fit_significance_pipeline(
     max_exact_perms: int = 100_000,
     random_state: int = 42,
     validate: bool = False,
+    backend: str | None = None,
+    compress: bool = False,
+    *,
+    rise_n_iter_max: int,
+    rise_tol: float,
 ) -> dict[str, Any]:
-    """Load a shared RISE fit and compute within-condition and differential
-    communication significance.
+    """Fit RISE and compute within-condition and differential communication significance.
 
     Parameters
     ----------
@@ -50,9 +55,8 @@ def fit_significance_pipeline(
         Single-cell count/expression matrix with condition annotations in `.obs`.
     condition_column : str
         Column in `adata.obs` defining patient/sample conditions.
-    reference_path : str | Path
-        A factors.nc written by `run_ccc_rise`, whose RISE fit is loaded
-        rather than refit.
+    rise_rank : int
+        Number of RISE eigen-state components.
     lr_pairs : pd.DataFrame
         Ligand-receptor pairs table with columns 'ligand' and 'receptor'.
     n_perms : int, default=1000
@@ -66,8 +70,7 @@ def fit_significance_pipeline(
         Label indicating the comparison/case group.
     communication_score : str, default='expression_product'
         Scoring function ('expression_product', 'expression_mean',
-        'expression_gmean', 'expression_hill'), independent of whichever
-        score `reference_path` was built with.
+        'expression_gmean', 'expression_hill').
     complex_sep : str, default='&'
         Delimiter for multi-subunit protein complexes.
     complex_agg_method : str, default='min'
@@ -76,10 +79,18 @@ def fit_significance_pipeline(
         Half-saturation constant for Hill communication scoring.
     max_exact_perms : int, default=100_000
         Maximum combinatorial assignments to enumerate exactly for differential test.
+    rise_n_iter_max : int
+        Maximum iterations for PARAFAC2 fitting.
+    rise_tol : float
+        Convergence tolerance for PARAFAC2 fitting.
     random_state : int, default=42
-        Random seed for permutations.
+        Random seed for permutations and PARAFAC2 initialization.
     validate : bool, default=False
         If True, validates vectorized tensor computation against `calc_communication_score`.
+    backend : str, optional
+        RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect).
+    compress : bool, default=False
+        Fit RISE in a compressed subspace; see `ccc_rise.fit_rise`.
 
     Returns
     -------
@@ -95,15 +106,19 @@ def fit_significance_pipeline(
         - 'diff_null_std': 3D ndarray differential null stds (if group_column given)
         - 'filtered_lr_pairs': pd.DataFrame of evaluated LR pairs
         - 'condition_names': list[str] of conditions
-        - 'r2x_rise': float PARAFAC2 fit quality (of the reused reference)
+        - 'r2x_rise': float PARAFAC2 fit quality
     """
-    adata = load_rise_reference(reference_path, adata, condition_column)
-    r2x_rise = adata.uns["r2x_pf2"]
+    adata = add_cond_idxs(adata, condition_column)
+    adata, r2x_rise = fit_rise(
+        adata,
+        rank=rise_rank,
+        n_iter_max=rise_n_iter_max,
+        tolerance=rise_tol,
+        random_state=random_state,
+        backend=backend,
+        compress=compress,
+    )
     condition_names = np.unique(adata.obs[condition_column]).tolist()
-    sg_index = adata.obs["condition_unique_idxs"].to_numpy()
-    dense_P = [
-        adata.obsm["projections"][sg_index == i] for i in range(len(condition_names))
-    ]
 
     # 2. Within-condition permutation significance test
     X_list = condition_matrices(adata)
@@ -122,7 +137,7 @@ def fit_significance_pipeline(
         filtered_lr_pairs,
     ) = compute_communication_significance(
         X_list=X_list,
-        projections=dense_P,
+        projections=condition_projections(adata),
         gene_names=gene_names,
         lr_pairs=lr_pairs,
         n_perms=n_perms,
@@ -142,11 +157,7 @@ def fit_significance_pipeline(
     diff_null_std = None
 
     if group_column is not None and group_column in adata.obs:
-        cond_to_group = (
-            cast(pd.DataFrame, adata.obs)
-            .groupby(condition_column)[group_column]
-            .first()
-        )
+        cond_to_group = adata.obs.groupby(condition_column)[group_column].first()
         unique_vals = set(cond_to_group.dropna().unique())
         sample_to_group = None
 

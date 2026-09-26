@@ -88,35 +88,19 @@ def get_alad_data(
     )
 
 
-def load_runner_csv(
-    filename: str, root: Path = DATA_DIR, hint: str | None = None
-) -> pd.DataFrame:
+def load_runner_csv(filename: str) -> pd.DataFrame:
     """Read a sweep result written by one of the runner scripts.
 
     Figures plot what a runner already produced; they never compute a sweep
     themselves, so a missing file is an error naming the command to run.
-
-    Parameters
-    ----------
-    filename : str
-        The runner's output filename.
-    root : Path, default=DATA_DIR
-        Directory the file lives in -- `DATA_DIR` for a default-settings
-        runner output, or e.g. a `runners.datasets.scoring_output_dir(...)`
-        subdirectory for an alternate-settings one.
-    hint : str, optional
-        Command to suggest in the error when the file is missing. Defaults
-        to the rank-sweep runners' commands.
     """
-    path = root / filename
+    path = DATA_DIR / filename
     if not path.exists():
-        hint = hint or (
+        raise FileNotFoundError(
+            f"{path} not found. Produce it with the matching runner, e.g.\n"
             "    uv run cccrise-riserank --dataset <dataset> --ranks 5:51:5\n"
             "    uv run cccrise-cpdrank  --dataset <dataset> --rise-rank <N>\n"
             "    uv run cccrise-anovaboot --dataset <dataset> --rise-rank <N> --cp-rank <K>"
-        )
-        raise FileNotFoundError(
-            f"{path} not found. Produce it with the matching runner, e.g.\n{hint}"
         )
     return pd.read_csv(path)
 

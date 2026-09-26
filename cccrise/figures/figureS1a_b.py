@@ -4,8 +4,9 @@ Figure S1a_b: FMS across RISE ranks (only) for COVID-19
 
 import pandas as pd
 
+from ..ccc_rise import fit_rise
 from ..import_data import add_cond_idxs, import_balf_covid
-from ..tensor import calculate_fms_rise, rise_store_r2x
+from ..tensor import calculate_fms_rise
 from ..utils import resample
 from .common import getSetup, load_or_compute_dataframe, subplotLabel
 from .commonFuncs.plotGeneral import plot_fms_r2x_stability
@@ -26,12 +27,14 @@ def compute_covid_rise_stability_data(
     rows = []
     for i in ranks:
         print(f"Computing rank {i}")
-        dataX, r2x = rise_store_r2x(X, rank=i)
+        dataX, r2x = fit_rise(X, rank=i, n_iter_max=100, tolerance=1e-6)
 
         for j in range(runs):
-            sampledX, _ = rise_store_r2x(
+            sampledX, _ = fit_rise(
                 resample(X, condition_name=condition_column),
                 rank=i,
+                n_iter_max=100,
+                tolerance=1e-6,
             )
             fmsScore = calculate_fms_rise(dataX, sampledX)
             rows.append({"Run": j, "Component": i, "FMS": fmsScore, "R2X": r2x})

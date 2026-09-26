@@ -17,6 +17,7 @@ output_dir = Path(__file__).parent / "_static" / "tutorial_images"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # Import cccRISE modules
+from cccrise.ccc_rise import calculate_interaction_tensor, fit_rise
 from cccrise.figures.commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
@@ -33,12 +34,7 @@ from cccrise.import_data import (
     import_balf_covid,
     import_ligand_receptor_pairs,
 )
-from cccrise.tensor import (
-    calculate_fms_rise,
-    calculate_interaction_tensor,
-    rise_store_r2x,
-    run_fms_r2x_analysis,
-)
+from cccrise.tensor import calculate_fms_rise, run_fms_r2x_analysis
 from cccrise.utils import (
     binned_expression_product_matrix,
     resample,
@@ -62,11 +58,13 @@ fig, ax = plt.subplots(1, 2, figsize=(12, 4))
 print(f"Testing RISE ranks: {rise_ranks[0]}-{rise_ranks[-1]}, {runs} runs...")
 rows = []
 for i in rise_ranks:
-    dataX, r2x = rise_store_r2x(X, rank=i)
+    dataX, r2x = fit_rise(X, rank=i, n_iter_max=100, tolerance=1e-6)
     for j in range(runs):
-        sampledX, _ = rise_store_r2x(
+        sampledX, _ = fit_rise(
             resample(X, condition_name=condition_column),
             rank=i,
+            n_iter_max=100,
+            tolerance=1e-6,
         )
         fms_score = calculate_fms_rise(dataX, sampledX)
         rows.append({"Run": j, "Component": i, "FMS": fms_score, "R2X": r2x})
@@ -84,7 +82,7 @@ rise_rank_for_cpd = 35
 
 # Process with RISE and calculate interaction tensor
 print(f"Fitting RISE with rank={rise_rank_for_cpd} and building interaction tensor...")
-X, _ = rise_store_r2x(X, rank=rise_rank_for_cpd, n_iter_max=1000, tolerance=1e-9)
+X, _ = fit_rise(X, rank=rise_rank_for_cpd, n_iter_max=1000, tolerance=1e-9)
 interaction_tensor, _ = calculate_interaction_tensor(X, lr_pairs)
 print(f"Interaction tensor shape: {interaction_tensor.shape}")
 

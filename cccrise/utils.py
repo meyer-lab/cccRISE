@@ -1,15 +1,11 @@
 import warnings
 from collections.abc import Sequence
-from pathlib import Path
 from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-
-from .factors import load_factors_netcdf
-from .import_data import add_cond_idxs
 
 
 def resample(
@@ -267,71 +263,6 @@ def replicate_seed(random_state: int, replicate: int) -> int:
     return random_state * 1000 + replicate + 1
 
 
-def load_rise_reference(
-    reference_path: str | Path,
-    adata: anndata.AnnData,
-    condition_column: str,
-    rise_rank: int | None = None,
-) -> anndata.AnnData:
-    """Populate `adata` with a RISE (PARAFAC2) fit loaded from a factors.nc,
-    instead of fitting PARAFAC2.
-
-    Mimics `parafac2.store_pf2`'s effect on `adata` (`Pf2_weights`/`Pf2_A`/
-    `Pf2_B` in `.uns`, `Pf2_C` in `.varm`, `.obsm["projections"]`) using the
-    file's stored per-cell projections, so downstream code that expects a
-    RISE-fit AnnData works unchanged.
-
-    Parameters
-    ----------
-    reference_path : str | Path
-        A factors.nc containing `pf2_projections`.
-    adata : anndata.AnnData
-        The raw dataset the reference was fit on; its cells must match the
-        reference's exactly, in the same order (checked, not assumed).
-    condition_column : str
-        Column in `adata.obs` holding the condition/patient identity.
-    rise_rank : int, optional
-        If given, checked against the reference file's own RISE rank.
-
-    Returns
-    -------
-    anndata.AnnData
-        `adata`, mutated in place and returned.
-    """
-    ds = load_factors_netcdf(reference_path)
-    if "pf2_projections" not in ds:
-        raise ValueError(
-            f"{reference_path} has no stored pf2_projections; regenerate it "
-            "before using it as a reference."
-        )
-
-    file_rise_rank = int(ds.attrs["rise_rank"])
-    if rise_rank is not None and rise_rank != file_rise_rank:
-        raise ValueError(
-            f"Requested rise_rank={rise_rank} does not match "
-            f"{reference_path}'s rise_rank={file_rise_rank}."
-        )
-
-    cell_ids = ds.coords["cell"].values.astype(str)
-    adata_cell_ids = adata.obs_names.to_numpy().astype(str)
-    if len(cell_ids) != len(adata_cell_ids) or not np.array_equal(
-        cell_ids, adata_cell_ids
-    ):
-        raise ValueError(
-            f"{reference_path}'s cells do not match `adata`'s; reusing a "
-            "RISE fit requires the identical, identically-ordered dataset."
-        )
-
-    adata = add_cond_idxs(adata, condition_column)
-    adata.uns["Pf2_weights"] = ds["pf2_weights"].values
-    adata.uns["Pf2_A"] = ds["pf2_A"].values
-    adata.uns["Pf2_B"] = ds["pf2_B"].values
-    adata.varm["Pf2_C"] = ds["pf2_C"].values
-    adata.uns["r2x_pf2"] = float(ds.attrs.get("r2x_pf2", 0.0))
-    adata.obsm["projections"] = ds["pf2_projections"].values
-    return adata
-
-
 def resample_tensor(
     interaction_tensors: np.ndarray,
     random_seed: int | None = None,
@@ -519,25 +450,35 @@ def aggregate_communication_scores_by_group(
     """
     product_matrix = expression_product_matrix(X_sender, X_receiver, ligand, receptor)
 
-    sender_group = (
-        np.full(X_sender.n_obs, "All")
-        if sender_group is None
-        else np.asarray(sender_group)
-    )
-    receiver_group = (
-        np.full(X_receiver.n_obs, "All")
-        if receiver_group is None
-        else np.asarray(receiver_group)
-    )
+    sender_group = _fill_default_group(sender_group, X_sender.n_obs)
+    receiver_group = _fill_default_group(receiver_group, X_receiver.n_obs)
+    agg = _group_aggregator(stat)
 
+    rows = _score_group_blocks(product_matrix.values, sender_group, receiver_group, agg)
+    return pd.DataFrame(rows)
+
+
+def _fill_default_group(group: np.ndarray | pd.Series | None, n_obs: int) -> np.ndarray:
+    """Return `group` as an array, or a single "All" label per cell if omitted."""
+    return np.full(n_obs, "All") if group is None else np.asarray(group)
+
+
+def _group_aggregator(stat: str):
+    """Return the reduction function for a given `stat` option."""
     if stat == "mean":
-        agg = lambda values: values.mean() if values.size else np.nan
-    elif stat == "pct_nonzero":
-        agg = lambda values: 100 * np.mean(values > 0) if values.size else np.nan
-    else:
-        raise ValueError(f"Unknown stat: {stat}")
+        return lambda values: values.mean() if values.size else np.nan
+    if stat == "pct_nonzero":
+        return lambda values: 100 * np.mean(values > 0) if values.size else np.nan
+    raise ValueError(f"Unknown stat: {stat}")
 
-    values = product_matrix.values
+
+def _score_group_blocks(
+    values: np.ndarray,
+    sender_group: np.ndarray,
+    receiver_group: np.ndarray,
+    agg,
+) -> list[dict]:
+    """Aggregate `values` over every present sender-group x receiver-group block."""
     rows = []
     for s_label in np.unique(sender_group):
         s_idx = np.where(sender_group == s_label)[0]
@@ -557,8 +498,7 @@ def aggregate_communication_scores_by_group(
                     "n_interactions": s_idx.size * r_idx.size,
                 }
             )
-
-    return pd.DataFrame(rows)
+    return rows
 
 
 def _binned_means(expr: np.ndarray, n_bins: int) -> np.ndarray:

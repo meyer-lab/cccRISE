@@ -7,12 +7,9 @@ decomposition of the interaction tensor at ``--cp-rank``, and serializes the
 factor model to NetCDF alongside a provenance sidecar. The ``.nc`` is written in
 the format the figure modules read via `factors.load_factors_to_anndata`.
 
-The ``.nc`` also stores the per-cell RISE projections, so `run_significance`
-can load this fit (``--reference-source``, `utils.load_rise_reference`)
-instead of refitting RISE. It also carries float16 copies of the projections,
-sender/receiver weights and a PaCMAP embedding, so the Shiny explorer can read
-it directly (``--no-embedding`` skips the PaCMAP fit for cohorts where it is
-too slow).
+The ``.nc`` also carries per-cell projections, sender/receiver weights and a
+PaCMAP embedding, so the Shiny explorer can read it directly (``--no-embedding``
+skips the PaCMAP fit for cohorts where it is too slow).
 
 The sidecar's ``rank_selection`` block records which sweep justifies each chosen
 rank -- the sweep CSVs written by `run_rise_rank` / `run_cpd_rank`, plus a
@@ -29,17 +26,20 @@ import anndata
 import numpy as np
 import xarray as xr
 
-from ..ccc_rise import validate_cp_rank
+from ..ccc_rise import CP_FIT_OPTIONS, run_ccc_rise_workflow, validate_cp_rank
 from ..factors import add_cell_projections, factors_to_xarray, save_factors_netcdf
 from ..import_data import import_ligand_receptor_pairs
-from ..tensor import run_ccc_rise_workflow
 from ._cli import (
+    CP_N_ITER_MAX,
+    CP_TOL,
+    RISE_N_ITER_MAX,
+    RISE_TOL,
     add_dataset_argument,
     dataset_metadata,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec, scoring_output_dir
+from .datasets import DATA_DIR, DATASETS, DatasetSpec
 from .provenance import build_metadata, git_sha, relpath, write_metadata
 
 HEADER = """\
@@ -77,13 +77,12 @@ def run_pipeline(
     spec: DatasetSpec,
     rise_rank: int,
     cp_rank: int,
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    cp_n_iter_max: int = CP_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
+    cp_tol: float = CP_TOL,
     random_state: int | None = 42,
     complex_sep: str | None = "&",
-    svd_init: str = "svd",
-    communication_score: str = "expression_product",
-    hill_k: float = 0.5,
     output_path: Path | None = None,
     rise_rank_notes: str | None = None,
     cpd_rank_notes: str | None = None,
@@ -99,23 +98,17 @@ def run_pipeline(
         Rank for the RISE / PARAFAC2 stage.
     cp_rank : int
         Rank for the CP decomposition of the interaction tensor.
-    n_iter_max : int, default=100
-        Maximum iterations for both fits.
-    tol : float, default=1e-3
-        Convergence tolerance for both fits.
+    rise_n_iter_max, cp_n_iter_max : int, default=RISE_N_ITER_MAX, CP_N_ITER_MAX
+        Maximum iterations for the RISE and CP fits.
+    rise_tol, cp_tol : float, default=RISE_TOL, CP_TOL
+        Convergence tolerances for the RISE and CP fits.
     random_state : int, optional, default=42
         Seed for the decompositions.
     complex_sep : str, optional, default="&"
         Separator for multimeric complexes in the ligand-receptor annotation.
-    svd_init : str, default="svd"
-        Initialization for the CP fit.
-    communication_score, hill_k : str, float
-        Communication-tensor options; see `ccc_rise.calc_communication_score`.
     output_path : Path, optional
-        NetCDF destination. Defaults to the dataset's canonical factors path
-        for `communication_score="expression_product"` (what the figure
-        modules load), or `alt_score_methods/<communication_score>/` for any
-        other score.
+        NetCDF destination. Defaults to the dataset's canonical factors path,
+        which is what the figure modules load.
     rise_rank_notes, cpd_rank_notes : str, optional
         Rationale for each chosen rank, written into the provenance file.
     do_embedding : bool, default=True
@@ -128,9 +121,7 @@ def run_pipeline(
         The fitted AnnData, the factor Dataset, the ``.nc`` path, and the
         sidecar path.
     """
-    output_path = output_path or (
-        scoring_output_dir(communication_score) / spec.factors_filename
-    )
+    output_path = output_path or spec.factors_path()
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -144,28 +135,29 @@ def run_pipeline(
     lr_pairs = import_ligand_receptor_pairs()
     print(f"   AnnData shape: {adata.shape}, LR pairs: {len(lr_pairs)}")
 
-    # Fail in seconds rather than after the RISE fit. `ccc_rise` re-checks
+    # Fail in seconds rather than after the RISE fit. `fit_cp` re-checks
     # against the real tensor; this predicts its shape from what we know.
     n_conditions = int(adata.obs[spec.condition_column].nunique())
     validate_cp_rank(cp_rank, (n_conditions, rise_rank, rise_rank))
 
     print("2. Running cccRISE workflow...")
-    adata, r2x_cp = run_ccc_rise_workflow(
+    fit = run_ccc_rise_workflow(
         adata=adata,
         rise_rank=rise_rank,
         lr_pairs=lr_pairs,
         cp_rank=cp_rank,
         condition_column=spec.condition_column,
-        n_iter_max=n_iter_max,
-        tol=tol,
+        rise_n_iter_max=rise_n_iter_max,
+        cp_n_iter_max=cp_n_iter_max,
+        rise_tol=rise_tol,
+        cp_tol=cp_tol,
         random_state=random_state,
         complex_sep=complex_sep,
         doEmbedding=do_embedding,
-        svd_init=svd_init,
-        communication_score=communication_score,
-        hill_k=hill_k,
+        backend=spec.backend,
+        compress=False,
     )
-    r2x_pf2 = adata.uns.get("r2x_pf2")
+    adata, r2x_cp, r2x_pf2 = fit["adata"], fit["r2x_cp"], fit["r2x_rise"]
     print(f"   CP R2X: {r2x_cp:.4f}")
 
     print("3. Converting factors to xarray...")
@@ -176,10 +168,8 @@ def run_pipeline(
         filtered_lr_pairs=adata.uns["lr_pairs"],
         condition_names=condition_names,
         gene_names=list(adata.var_names),
-        pf2_factors=[adata.uns["Pf2_A"], adata.uns["Pf2_B"], adata.uns["Pf2_C"]],
+        pf2_factors=[adata.uns["Pf2_A"], adata.uns["Pf2_B"], adata.varm["Pf2_C"]],
         pf2_weights=adata.uns["Pf2_weights"],
-        pf2_projections=np.asarray(adata.obsm["projections"]),
-        cell_ids=adata.obs_names.to_numpy(),
         r2x_cp=r2x_cp,
         r2x_pf2=r2x_pf2,
         attrs={
@@ -203,13 +193,14 @@ def run_pipeline(
     metadata = build_metadata(
         dataset_metadata(spec)
         | {
-            "n_iter_max": n_iter_max,
-            "tol": tol,
+            "rise_n_iter_max": rise_n_iter_max,
+            "cp_n_iter_max": cp_n_iter_max,
+            "rise_tol": rise_tol,
+            "cp_tol": cp_tol,
             "random_state": random_state,
             "complex_sep": complex_sep,
-            "svd_init": svd_init,
-            "communication_score": communication_score,
-            "hill_k": hill_k,
+            "cp_fit_options": CP_FIT_OPTIONS,
+            "backend": spec.backend or "auto",
             "pacmap_embedding": do_embedding,
             "lr_pairs_annotated": len(lr_pairs),
             "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=n_lr_used),
@@ -219,7 +210,7 @@ def run_pipeline(
                 rise_rank,
                 n_lr_used,
             ],
-            "r2x_pf2": None if r2x_pf2 is None else float(r2x_pf2),
+            "r2x_pf2": float(r2x_pf2),
             "r2x_cp": float(r2x_cp),
             "rank_selection": rank_selection,
         },
@@ -236,31 +227,12 @@ def build_parser() -> argparse.ArgumentParser:
     add_dataset_argument(parser)
     parser.add_argument("--rise-rank", type=int, required=True, help="RISE rank.")
     parser.add_argument("--cp-rank", type=int, required=True, help="CP (CPD) rank.")
-    parser.add_argument("--n-iter-max", type=int, default=100)
-    parser.add_argument("--tol", type=float, default=1e-3)
+    parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
+    parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
+    parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
+    parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--complex-sep", type=str, default="&")
-    parser.add_argument(
-        "--svd-init", type=str, default="svd", choices=["svd", "random"]
-    )
-    parser.add_argument(
-        "--communication-score",
-        type=str,
-        default="expression_product",
-        choices=[
-            "expression_product",
-            "expression_mean",
-            "expression_gmean",
-            "expression_hill",
-        ],
-        help="Scoring function for ligand-receptor interactions (default: expression_product).",
-    )
-    parser.add_argument(
-        "--hill-k",
-        type=float,
-        default=0.5,
-        help="Hill function half-saturation constant (default: 0.5).",
-    )
     parser.add_argument(
         "--output",
         type=str,
@@ -296,18 +268,13 @@ def main(argv: list[str] | None = None) -> None:
         spec,
         rise_rank=args.rise_rank,
         cp_rank=args.cp_rank,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
+        rise_n_iter_max=args.rise_n_iter_max,
+        cp_n_iter_max=args.cp_n_iter_max,
+        rise_tol=args.rise_tol,
+        cp_tol=args.cp_tol,
         random_state=args.random_state,
         complex_sep=args.complex_sep,
-        svd_init=args.svd_init,
-        communication_score=args.communication_score,
-        hill_k=args.hill_k,
-        output_path=resolve_output(
-            args.output,
-            scoring_output_dir(args.communication_score),
-            spec.factors_filename,
-        ),
+        output_path=resolve_output(args.output, DATA_DIR, spec.factors_filename),
         rise_rank_notes=args.rise_rank_notes,
         cpd_rank_notes=args.cpd_rank_notes,
         do_embedding=args.do_embedding,

@@ -23,6 +23,11 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..ccc_rise import (
+    CP_COMPRESSION_OPTIONS,
+    CP_FIT_OPTIONS,
+    RISE_COMPRESSION_OPTIONS,
+)
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..validation.anova_stability import (
     bootstrap_anova,
@@ -31,14 +36,19 @@ from ..validation.anova_stability import (
     top_lr_pairs,
 )
 from ._cli import (
+    CP_N_ITER_MAX,
+    CP_TOL,
+    REPLICATE_COMPRESS,
+    RISE_N_ITER_MAX,
+    RISE_TOL,
     add_dataset_argument,
     add_group_arguments,
     dataset_metadata,
-    resolve_anova_labels,
+    resolve_group_labels,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, DatasetSpec, scoring_output_dir
+from .datasets import DATA_DIR, DATASETS, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -58,15 +68,12 @@ def run_anova_bootstrap(
     ci_level: float = 95.0,
     alpha: float = 0.05,
     stratify: bool = True,
-    n_iter_max: int = 100,
-    tol: float = 1e-3,
+    rise_n_iter_max: int = RISE_N_ITER_MAX,
+    cp_n_iter_max: int = CP_N_ITER_MAX,
+    rise_tol: float = RISE_TOL,
+    cp_tol: float = CP_TOL,
     complex_sep: str | None = "&",
-    communication_score: str = "expression_product",
-    hill_k: float = 0.5,
     random_state: int = 42,
-    backend: str | None = None,
-    compress: bool = True,
-    oversample: int = 5,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Bootstrap the patient roster and re-run the pipeline, reporting each CP
@@ -96,23 +103,13 @@ def run_anova_bootstrap(
     stratify : bool, default=True
         Draw patients within each group, holding the class balance fixed; see
         `utils.resample_conditions`.
-    n_iter_max, tol
+    rise_n_iter_max, cp_n_iter_max, rise_tol, cp_tol
         Fitting controls for the RISE and CP fits.
-    complex_sep, communication_score, hill_k : str | None, str, float
-        Communication-tensor options; see `ccc_rise.calc_communication_score`.
+    complex_sep : str, optional
+        Communication-tensor option; see `ccc_rise.calc_communication_score`.
     random_state : int, default=42
         Seed for the full-cohort fit; replicate `b` uses
         ``replicate_seed(random_state, b)`` (``random_state * 1000 + b + 1``).
-    backend : str | None, default=None
-        Backend every RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
-        auto-detect); see `tensor.rise_store_r2x`.
-    compress : bool, default=True
-        Fit every CP stage inside a CANDELINC core sized for `cp_rank`
-        instead of the full tensor; see
-        `validation.component_stability._fit_cp`. R2X, core consistency and
-        collinearity are unaffected -- this is strictly a speed optimization.
-    oversample : int, default=5
-        Extra basis columns per mode beyond `cp_rank`, when `compress`.
     output_path : Path, optional
         CSV destination; defaults to the registry's anova bootstrap filename.
 
@@ -121,13 +118,14 @@ def run_anova_bootstrap(
     tuple[pd.DataFrame, Path, Path]
         The replicate ANOVA table, the CSV path, and the sidecar path.
     """
-    group_column, control_label, other_label = resolve_anova_labels(
-        spec, group_column, control_label, other_label
-    )
+    if spec.outcome_column and not (group_column or control_label or other_label):
+        group_column = spec.outcome_column
+    else:
+        group_column, control_label, other_label = resolve_group_labels(
+            spec, group_column, control_label, other_label
+        )
 
-    output_path = output_path or (
-        scoring_output_dir(communication_score) / spec.anova_bootstrap_filename()
-    )
+    output_path = output_path or (DATA_DIR / spec.anova_bootstrap_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -142,9 +140,7 @@ def run_anova_bootstrap(
         f"group_column={group_column!r}  control={control_label!r}  "
         f"other={other_label!r}"
     )
-    print(
-        f"    backend={backend or 'auto'}  compress={compress}  oversample={oversample}"
-    )
+    print(f"    backend={spec.backend or 'auto'}  compress={REPLICATE_COMPRESS}")
 
     print("1. Loading data...")
     adata = spec.load()
@@ -161,17 +157,14 @@ def run_anova_bootstrap(
         rise_rank=rise_rank,
         cp_rank=cp_rank,
         lr_pairs=lr_pairs,
-        rise_n_iter_max=n_iter_max,
-        rise_tol=tol,
-        cp_n_iter_max=n_iter_max,
-        cp_tol=tol,
+        rise_n_iter_max=rise_n_iter_max,
+        rise_tol=rise_tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
         complex_sep=complex_sep,
-        communication_score=communication_score,
-        hill_k=hill_k,
         random_state=random_state,
-        backend=backend,
-        compress=compress,
-        oversample=oversample,
+        backend=spec.backend,
+        compress=REPLICATE_COMPRESS,
     )
     print(f"   Reference CP R2X: {reference['r2x_cp']:.4f}")
 
@@ -187,19 +180,16 @@ def run_anova_bootstrap(
         cp_rank=cp_rank,
         n_boot=n_boot,
         lr_pairs=lr_pairs,
-        rise_n_iter_max=n_iter_max,
-        rise_tol=tol,
-        cp_n_iter_max=n_iter_max,
-        cp_tol=tol,
+        rise_n_iter_max=rise_n_iter_max,
+        rise_tol=rise_tol,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
         complex_sep=complex_sep,
-        communication_score=communication_score,
-        hill_k=hill_k,
         stratify=stratify,
         patient_column=spec.patient_column,
         random_state=random_state,
-        backend=backend,
-        compress=compress,
-        oversample=oversample,
+        backend=spec.backend,
+        compress=REPLICATE_COMPRESS,
     )
 
     print("4. Summarizing each component's effect-size distribution...")
@@ -234,23 +224,23 @@ def run_anova_bootstrap(
             "alpha": alpha,
             "stratify": stratify,
             "patient_column": spec.patient_column,
-            "n_iter_max": n_iter_max,
-            "tol": tol,
+            "rise_n_iter_max": rise_n_iter_max,
+            "cp_n_iter_max": cp_n_iter_max,
+            "rise_tol": rise_tol,
+            "cp_tol": cp_tol,
+            "cp_fit_options": CP_FIT_OPTIONS,
             "complex_sep": complex_sep,
-            "communication_score": communication_score,
-            "hill_k": hill_k,
             "random_state": random_state,
-            "backend": backend or "auto",
-            "compress": compress,
-            "oversample": oversample,
+            "backend": spec.backend or "auto",
+            "compress": REPLICATE_COMPRESS,
+            "rise_compression_options": RISE_COMPRESSION_OPTIONS,
+            "cp_compression_options": CP_COMPRESSION_OPTIONS,
             "match_mode_weights": {"3": 1.0},
             "reference_r2x_cp": float(reference["r2x_cp"]),
             "reference_eta_squared": reference["anova"]["EtaSquared"].tolist(),
             "reference_f": reference["anova"]["F"].tolist(),
             "reference_p": reference["anova"]["P"].tolist(),
             "reference_group_mean_diff": reference["anova"]["GroupMeanDiff"].tolist(),
-            "reference_top_lr_pair": summary["TopLRPair"].tolist(),
-            "reference_top_lr_loading": summary["TopLRLoading"].astype(float).tolist(),
             "n_components_significant": int((summary["ReferenceP"] < alpha).sum()),
             "min_component_match_score": float(summary["MinMatchScore"].min()),
             "resulting_dims": resulting_dims(
@@ -307,48 +297,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Draw patients from the whole cohort instead of within each "
         "group, letting the class balance vary between replicates.",
     )
-    parser.add_argument("--n-iter-max", type=int, default=100)
-    parser.add_argument("--tol", type=float, default=1e-3)
+    parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
+    parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
+    parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
+    parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--complex-sep", type=str, default="&")
-    parser.add_argument(
-        "--communication-score",
-        type=str,
-        default="expression_product",
-        choices=[
-            "expression_product",
-            "expression_mean",
-            "expression_gmean",
-            "expression_hill",
-        ],
-        help="Scoring function for ligand-receptor interactions (default: expression_product).",
-    )
-    parser.add_argument(
-        "--hill-k",
-        type=float,
-        default=0.5,
-        help="Hill function half-saturation constant (default: 0.5).",
-    )
     parser.add_argument("--random-state", type=int, default=42)
-    parser.add_argument(
-        "--backend",
-        type=str,
-        default=None,
-        choices=["cpu", "cupy", "mlx"],
-        help="Backend every RISE fit runs on (default: parafac2 auto-detect). "
-        "Use 'cpu' for cohort-scale data, which does not fit on a GPU.",
-    )
-    parser.add_argument(
-        "--no-compress",
-        dest="compress",
-        action="store_false",
-        help="Fit every CP stage on the full tensor instead of a CANDELINC core.",
-    )
-    parser.add_argument(
-        "--oversample",
-        type=int,
-        default=5,
-        help="Extra basis columns per mode beyond --cp-rank, when compressing.",
-    )
     parser.add_argument(
         "--output",
         type=str,
@@ -372,19 +326,14 @@ def main(argv: list[str] | None = None) -> None:
         ci_level=args.ci_level,
         alpha=args.alpha,
         stratify=args.stratify,
-        n_iter_max=args.n_iter_max,
-        tol=args.tol,
+        rise_n_iter_max=args.rise_n_iter_max,
+        cp_n_iter_max=args.cp_n_iter_max,
+        rise_tol=args.rise_tol,
+        cp_tol=args.cp_tol,
         complex_sep=args.complex_sep,
-        communication_score=args.communication_score,
-        hill_k=args.hill_k,
         random_state=args.random_state,
-        backend=args.backend,
-        compress=args.compress,
-        oversample=args.oversample,
         output_path=resolve_output(
-            args.output,
-            scoring_output_dir(args.communication_score),
-            spec.anova_bootstrap_filename(),
+            args.output, DATA_DIR, spec.anova_bootstrap_filename()
         ),
     )
 

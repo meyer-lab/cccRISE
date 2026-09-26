@@ -16,6 +16,7 @@ from cccrise.anova import (
 )
 from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
 from cccrise.import_data import add_cond_idxs
+from cccrise.runners._cli import CP_TOL, RISE_TOL
 from cccrise.utils import replicate_seed, resample_conditions
 from cccrise.validation.anova_stability import (
     align_to_reference_components,
@@ -227,6 +228,8 @@ def test_fit_anova_pipeline_output_structure():
         lr_pairs=lr_pairs,
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
     )
 
@@ -261,7 +264,7 @@ def test_fit_anova_pipeline_output_structure():
 
 
 # =============================================================================
-# GPU backend and CANDELINC compression
+# GPU backend and compression
 # =============================================================================
 
 
@@ -275,9 +278,8 @@ def _anova_lr_pairs() -> pd.DataFrame:
     )
 
 
-def test_fit_anova_pipeline_runs_with_compression_disabled():
-    """`compress=False` must still be a supported code path, not just the
-    default's untested complement."""
+def test_fit_anova_pipeline_runs_compressed():
+    """`compress=True`, what the runners pass, must be a working code path."""
     fit = fit_anova_pipeline(
         _synthetic_cohort(),
         condition_column="Sample",
@@ -289,14 +291,16 @@ def test_fit_anova_pipeline_runs_with_compression_disabled():
         lr_pairs=_anova_lr_pairs(),
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
-        compress=False,
+        compress=True,
     )
     assert 0.0 <= fit["r2x_cp"] <= 1.0 + 1e-9
 
 
 def test_fit_anova_pipeline_accepts_an_explicit_cpu_backend():
-    """`backend` must reach `rise_store_r2x` without erroring on a plain CPU
+    """`backend` must reach `fit_rise` without erroring on a plain CPU
     box, which is what every CI run and every cohort-scale fit uses."""
     fit = fit_anova_pipeline(
         _synthetic_cohort(),
@@ -309,13 +313,15 @@ def test_fit_anova_pipeline_accepts_an_explicit_cpu_backend():
         lr_pairs=_anova_lr_pairs(),
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
         backend="cpu",
     )
     assert 0.0 <= fit["r2x_cp"] <= 1.0 + 1e-9
 
 
-def test_bootstrap_anova_runs_with_compression_disabled():
+def test_bootstrap_anova_runs_compressed():
     adata = _synthetic_cohort()
     lr_pairs = _anova_lr_pairs()
     kwargs: dict[str, Any] = {
@@ -328,11 +334,13 @@ def test_bootstrap_anova_runs_with_compression_disabled():
         "lr_pairs": lr_pairs,
         "rise_n_iter_max": 10,
         "cp_n_iter_max": 10,
+        "rise_tol": RISE_TOL,
+        "cp_tol": CP_TOL,
     }
-    reference = fit_anova_pipeline(adata, **kwargs, random_state=0, compress=False)
+    reference = fit_anova_pipeline(adata, **kwargs, random_state=0, compress=True)
 
     df = bootstrap_anova(
-        adata, reference=reference, **kwargs, n_boot=1, random_state=0, compress=False
+        adata, reference=reference, **kwargs, n_boot=1, random_state=0, compress=True
     )
     assert df["EtaSquared"].between(-1e-9, 1.0 + 1e-9).all()
 
@@ -363,6 +371,8 @@ def test_bootstrap_anova_forwards_patient_column_to_the_resampler(monkeypatch):
         "lr_pairs": _anova_lr_pairs(),
         "rise_n_iter_max": 10,
         "cp_n_iter_max": 10,
+        "rise_tol": RISE_TOL,
+        "cp_tol": CP_TOL,
     }
     reference = fit_anova_pipeline(adata, **kwargs, random_state=0)
     bootstrap_anova(
@@ -498,6 +508,8 @@ def test_bootstrap_replicate_anova_mismatched_lr_roster():
             lr_pairs=lr_pairs,
             rise_n_iter_max=10,
             cp_n_iter_max=10,
+            rise_tol=RISE_TOL,
+            cp_tol=CP_TOL,
         )
 
 
@@ -525,6 +537,8 @@ def test_end_to_end_synthetic_bootstrap():
         lr_pairs=lr_pairs,
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
     )
     assert len(reference["anova"]) == 2
@@ -543,6 +557,8 @@ def test_end_to_end_synthetic_bootstrap():
         lr_pairs=lr_pairs,
         rise_n_iter_max=10,
         cp_n_iter_max=10,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
         random_state=0,
     )
     assert len(boot_df) == 4  # 2 replicates * 2 components
@@ -721,7 +737,7 @@ def test_run_saved_factors_anova_and_multiple_associations():
         association_name="Control vs Declined",
     )
     assert isinstance(df, pd.DataFrame)
-    assert len(df) == 3
+    assert len(df) == ds.sizes["cp_component"]
     assert df["Association"].iloc[0] == "Control vs Declined"
     assert {
         "Component",
@@ -761,7 +777,7 @@ def test_run_saved_factors_anova_and_multiple_associations():
         associations=associations_config,
         global_correction=True,
     )
-    assert len(multi_df) == 6
+    assert len(multi_df) == 2 * ds.sizes["cp_component"]
     assert set(multi_df["Association"]) == {"Control vs. ALAD", "Control vs. Declined"}
 
     # Test summary heatmap

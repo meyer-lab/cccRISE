@@ -52,40 +52,12 @@ def cpd_component_collinearity(
     for rank in sorted(factors_by_rank):
         _weights, factors = factors_by_rank[rank]
         if rank < 2:
-            rows.append(
-                {
-                    "Rank": rank,
-                    "MaxModesCollinear": 0,
-                    "WorstPairCanceling": np.nan,
-                    "WorstPairI": -1,
-                    "WorstPairJ": -1,
-                }
-            )
+            rows.append(_no_collinearity_row(rank))
             continue
 
-        # Signed cosine between every component pair, within each mode.
-        cos_by_mode = []
-        for f in factors:
-            norm = f / np.linalg.norm(f, axis=0, keepdims=True)
-            cos_by_mode.append(norm.T @ norm)
-
-        best_count = -1
-        best_pair = (-1, -1)
-        best_signs: list[float] = []
-        for i in range(rank):
-            for j in range(i + 1, rank):
-                signs = [cos_by_mode[m][i, j] for m in range(4)]
-                count = int(sum(abs(s) > threshold for s in signs))
-                if count > best_count:
-                    best_count = count
-                    best_pair = (i + 1, j + 1)
-                    best_signs = signs
-
-        canceling = np.nan
-        if best_count > 0:
-            collinear_signs = [s for s in best_signs if abs(s) > threshold]
-            canceling = bool(np.prod(np.sign(collinear_signs)) < 0)
-
+        best_count, canceling, best_pair = _worst_collinear_pair(
+            factors, rank, threshold
+        )
         rows.append(
             {
                 "Rank": rank,
@@ -97,6 +69,46 @@ def cpd_component_collinearity(
         )
 
     return pd.DataFrame(rows)
+
+
+def _no_collinearity_row(rank: int) -> dict:
+    return {
+        "Rank": rank,
+        "MaxModesCollinear": 0,
+        "WorstPairCanceling": np.nan,
+        "WorstPairI": -1,
+        "WorstPairJ": -1,
+    }
+
+
+def _worst_collinear_pair(
+    factors: Factors, rank: int, threshold: float
+) -> tuple[int, float, tuple[int, int]]:
+    """Find the component pair with the most modes exceeding the collinearity
+    threshold, and whether its collinear modes cancel (net-negative sign)."""
+    cos_by_mode = []
+    for f in factors:
+        norm = f / np.linalg.norm(f, axis=0, keepdims=True)
+        cos_by_mode.append(norm.T @ norm)
+
+    best_count = -1
+    best_pair = (-1, -1)
+    best_signs: list[float] = []
+    for i in range(rank):
+        for j in range(i + 1, rank):
+            signs = [cos_by_mode[m][i, j] for m in range(4)]
+            count = int(sum(abs(s) > threshold for s in signs))
+            if count > best_count:
+                best_count = count
+                best_pair = (i + 1, j + 1)
+                best_signs = signs
+
+    canceling = np.nan
+    if best_count > 0:
+        collinear_signs = [s for s in best_signs if abs(s) > threshold]
+        canceling = bool(np.prod(np.sign(collinear_signs)) < 0)
+
+    return best_count, canceling, best_pair
 
 
 def cp_core_consistency(

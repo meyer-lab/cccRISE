@@ -147,13 +147,14 @@ After RISE, an interaction tensor is computed from cell-cell communication score
 
 First, calculate the interaction tensor using a selected RISE rank, then test different CPD ranks::
 
-    from cccrise.tensor import calculate_interaction_tensor, rise_store_r2x, run_fms_r2x_analysis
+    from cccrise.ccc_rise import calculate_interaction_tensor, fit_rise
+    from cccrise.tensor import run_fms_r2x_analysis
     import seaborn as sns
     import matplotlib.pyplot as plt
     
     # Process dataset with chosen RISE rank
     rise_rank = 35  # Based on RISE analysis above
-    X, _ = rise_store_r2x(X, rank=rise_rank, n_iter_max=1000, tolerance=1e-9)
+    X, _ = fit_rise(X, rank=rise_rank, n_iter_max=1000, tolerance=1e-9)
     
     # Calculate interaction tensor
     interaction_tensor, _ = calculate_interaction_tensor(X, lr_pairs)
@@ -199,25 +200,28 @@ Running the Factorization
 
 Based on the rank selection analysis above, choose appropriate RISE and CPD ranks and run the complete cccRISE workflow. This performs the two-step factorization: first extracting latent communication modes from expression data (RISE), then factorizing the resulting interaction tensor (CPD)::
 
-    from cccrise.tensor import run_ccc_rise_workflow
+    from cccrise import run_ccc_rise_workflow
     
     # Select ranks based on FMS/R2X analysis
     rise_rank = 35  # Selected from RISE rank analysis
     cp_rank = 8     # Selected from CPD rank analysis
     
     # Run the complete workflow
-    X, r2x = run_ccc_rise_workflow(
+    fit = run_ccc_rise_workflow(
         adata=X,
         rise_rank=rise_rank,
         cp_rank=cp_rank,
         lr_pairs=lr_pairs,
+        rise_n_iter_max=300,
+        cp_n_iter_max=4000,
+        rise_tol=1e-8,
+        cp_tol=1e-12,
         condition_column="condition_column",
-        n_iter_max=10000,
-        tol=1e-9,
         random_state=42,
         complex_sep="&",
         doEmbedding=True
     )
+    X, r2x = fit["adata"], fit["r2x_cp"]
     
     print(f"Variance Explained (R²X): {r2x:.4f}")
 
@@ -230,16 +234,19 @@ The ``run_ccc_rise_workflow`` function executes the complete cccRISE pipeline:
 - ``cp_rank``: Number of CPD components for factorizing the interaction tensor (if None, defaults to ``rise_rank``)
 - ``lr_pairs``: DataFrame of ligand-receptor pairs with 'ligand' and 'receptor' columns
 - ``condition_column``: Column name in ``adata.obs`` containing condition identifiers (default: "sample")
-- ``n_iter_max``: Maximum iterations for decomposition (default: 100)
-- ``tol``: Convergence tolerance (default: 1e-3)
+- ``rise_n_iter_max``, ``cp_n_iter_max``: Maximum iterations for the RISE and CP fits (required; the runners use 300 and 4000)
+- ``rise_tol``, ``cp_tol``: Convergence tolerances for the RISE and CP fits (required; the runners use 1e-8 and 1e-12, defined in ``cccrise.runners._cli``)
 - ``random_state``: Random seed for reproducibility (default: None)
-- ``complex_sep``: Separator for protein complexes in L-R pairs (default: None)
-- ``doEmbedding``: If True, computes PaCMAP embeddings for visualization (default: True)
-- ``svd_init``: Initialization method for CPD ('svd' or 'random', default: 'svd')
+- ``complex_sep``: Separator for protein complexes in L-R pairs (default: "&")
+- ``communication_score``, ``hill_k``: Communication scoring function and its Hill constant (default: "expression_product", 0.5)
+- ``doEmbedding``: If True, computes PaCMAP embeddings for visualization (default: False)
+- ``backend``: RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect; default: None)
+- ``compress``: Fit RISE in a compressed gene/cell subspace and CPD inside a CANDELINC core (default: False)
+- ``keep_tensor``: Return the interaction tensor (default: False)
 
 **What Gets Stored**
 
-The function returns the AnnData object with added results and the final R²X value. The following are stored in the AnnData object:
+The function returns a dict with keys ``adata``, ``tensor`` (``None`` unless ``keep_tensor``), ``filtered_lr_pairs``, ``cp_weights``, ``cp_factors``, ``r2x_rise``, ``r2x_cp`` and ``diagnostics`` (CPD core consistency and collinearity). The following are stored in the AnnData object:
 
 **Factor Matrices** (in ``X.uns``):
 

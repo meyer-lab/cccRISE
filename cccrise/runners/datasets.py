@@ -17,39 +17,6 @@ from ..import_data import IBD_FULL_COHORT_IVCSC, import_alad, import_ibdverse
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-#: `communication_score` value every runner defaults to; its results are the
-#: ones manuscript figures and interpretation read, so they stay in `DATA_DIR`
-#: instead of the per-method subdirectory `scoring_output_dir` uses for the rest.
-DEFAULT_COMMUNICATION_SCORE = "expression_product"
-
-ALT_SCORE_METHODS_DIR = "alt_score_methods"
-
-
-def scoring_output_dir(communication_score: str) -> Path:
-    """Where a runner should default its output for `communication_score`.
-
-    The default score's results are canonical and live in `DATA_DIR`; every
-    other score's results land in their own subdirectory under
-    `DATA_DIR/alt_score_methods/` so a scoring-method sweep can't collide with
-    the canonical files or with each other.
-    """
-    if communication_score == DEFAULT_COMMUNICATION_SCORE:
-        return DATA_DIR
-    return DATA_DIR / ALT_SCORE_METHODS_DIR / communication_score
-
-
-def comparison_output_dir(communication_score: str) -> Path:
-    """Where `run_alt_comm_score` writes one method's results.
-
-    Unlike `scoring_output_dir`, this never collapses to `DATA_DIR` for the
-    default score: comparing scoring methods fairly means running all of
-    them -- default included -- at the same (comparison-scale) settings, and
-    that copy of the default's results must not collide with its
-    comprehensive, canonical copy that `scoring_output_dir` resolves to
-    `DATA_DIR` for and that manuscript figures read.
-    """
-    return DATA_DIR / ALT_SCORE_METHODS_DIR / communication_score
-
 
 @dataclass(frozen=True)
 class DatasetSpec:
@@ -68,9 +35,12 @@ class DatasetSpec:
     #: `patient_column`). None where `condition_column` already identifies
     #: the patient one-to-one.
     patient_column: str | None = None
-    #: Condition-level outcome the ANOVA runners test every level of by
+    #: Condition-level outcome the ANOVA bootstrap tests every level of by
     #: default. None falls back to `group_column` and its registered labels.
     outcome_column: str | None = None
+    #: RISE backend every runner fits on ('cpu', 'cupy', 'mlx'); None
+    #: auto-detects, for cohorts too large for the GPU.
+    backend: str | None = None
     notes: str = ""
 
     @property
@@ -100,9 +70,6 @@ class DatasetSpec:
 
     def anova_bootstrap_filename(self) -> str:
         return f"anova_bootstrap_{self.key}.csv"
-
-    def anova_point_estimate_filename(self) -> str:
-        return f"anova_point_estimate_{self.key}.csv"
 
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.key}.csv"
@@ -140,6 +107,7 @@ DATASETS: dict[str, DatasetSpec] = {
         group_column="ALADstatus",
         patient_column="patient_id",
         outcome_column="6monthcondition",
+        backend="cupy",
     ),
     "ibd": DatasetSpec(
         key="ibd",

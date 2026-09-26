@@ -7,10 +7,8 @@ from pathlib import Path
 import anndata
 import numpy as np
 import pandas as pd
-from parafac2.parafac2 import parafac2_nd, store_pf2
 
-from cccrise.factors import factors_to_xarray, save_factors_netcdf
-from cccrise.import_data import add_cond_idxs
+from cccrise.runners._cli import RISE_TOL
 from cccrise.runners.datasets import DatasetSpec
 from cccrise.runners.run_significance import build_parser, output_paths
 from cccrise.validation.significance import (
@@ -20,49 +18,6 @@ from cccrise.validation.significance import (
     summarize_significance_lr,
     summarize_significance_overview,
 )
-
-
-def _write_synthetic_reference(
-    adata: anndata.AnnData,
-    condition_column: str,
-    rise_rank: int,
-    tmp_path: Path,
-    random_state: int = 42,
-) -> Path:
-    """A minimal factors.nc with a real RISE fit (`pf2_projections` included),
-    for `fit_significance_pipeline`'s `reference_path` -- significance never
-    reads the CP portion, so it is filled with rank-1 placeholders."""
-    fit_adata = add_cond_idxs(adata.copy(), condition_column)
-    pf2_out, r2x_pf2 = parafac2_nd(fit_adata, rank=rise_rank, random_state=random_state)
-    fit_adata = store_pf2(fit_adata, pf2_out)
-
-    n_cond = fit_adata.obs[condition_column].nunique()
-    condition_names = np.unique(fit_adata.obs[condition_column])
-    ds = factors_to_xarray(
-        cpd_factors=[
-            np.ones((n_cond, 1)),
-            np.ones((rise_rank, 1)),
-            np.ones((rise_rank, 1)),
-            np.ones((1, 1)),
-        ],
-        cpd_weights=np.ones(1),
-        filtered_lr_pairs=["placeholder"],
-        condition_names=condition_names,
-        gene_names=list(fit_adata.var_names),
-        pf2_factors=[
-            np.asarray(fit_adata.uns["Pf2_A"]),
-            np.asarray(fit_adata.uns["Pf2_B"]),
-            np.asarray(fit_adata.varm["Pf2_C"]),
-        ],
-        pf2_weights=fit_adata.uns["Pf2_weights"],
-        pf2_projections=np.asarray(fit_adata.obsm["projections"]),
-        cell_ids=fit_adata.obs_names.to_numpy(),
-        r2x_pf2=r2x_pf2,
-        attrs={"condition_key": condition_column, "complex_sep": "&"},
-    )
-    path = tmp_path / "reference.nc"
-    save_factors_netcdf(ds, path)
-    return path
 
 
 def _synthetic_cohort_for_significance(
@@ -99,22 +54,23 @@ def _synthetic_cohort_for_significance(
     return adata, lr_pairs
 
 
-def test_fit_significance_pipeline_end_to_end(tmp_path):
+def test_fit_significance_pipeline_end_to_end():
     adata, lr_pairs = _synthetic_cohort_for_significance()
     rise_rank = 3
     n_perms = 20
-    reference_path = _write_synthetic_reference(adata, "sample", rise_rank, tmp_path)
 
     results = fit_significance_pipeline(
         adata=adata,
         condition_column="sample",
-        reference_path=reference_path,
+        rise_rank=rise_rank,
         lr_pairs=lr_pairs,
+        rise_n_iter_max=100,
         n_perms=n_perms,
         group_column="status",
         control_label="Control",
         other_label="Disease",
         random_state=42,
+        rise_tol=RISE_TOL,
         validate=True,
     )
 
@@ -138,19 +94,20 @@ def test_fit_significance_pipeline_end_to_end(tmp_path):
     assert np.all(results["diff_pvalue"] <= 1.0)
 
 
-def test_summaries_and_xarray_conversion(tmp_path):
+def test_summaries_and_xarray_conversion():
     adata, lr_pairs = _synthetic_cohort_for_significance()
-    reference_path = _write_synthetic_reference(adata, "sample", 2, tmp_path)
     results = fit_significance_pipeline(
         adata=adata,
         condition_column="sample",
-        reference_path=reference_path,
+        rise_rank=2,
         lr_pairs=lr_pairs,
+        rise_n_iter_max=100,
         n_perms=10,
         group_column="status",
         control_label="Control",
         other_label="Disease",
         random_state=42,
+        rise_tol=RISE_TOL,
     )
 
     # 1. LR summary
@@ -195,8 +152,8 @@ def test_runner_cli_parser_and_paths():
         [
             "--dataset",
             "alad",
-            "--reference-source",
-            "cccrise/data/bal_alad_factors.nc",
+            "--rise-rank",
+            "25",
             "--n-perms",
             "500",
             "--communication-score",
@@ -204,7 +161,7 @@ def test_runner_cli_parser_and_paths():
         ]
     )
     assert args.dataset == "alad"
-    assert args.reference_source == "cccrise/data/bal_alad_factors.nc"
+    assert args.rise_rank == 25
     assert args.n_perms == 500
 
     dummy_spec = DatasetSpec(
