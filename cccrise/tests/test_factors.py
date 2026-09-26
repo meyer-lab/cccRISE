@@ -6,6 +6,7 @@ import anndata
 import numpy as np
 import pandas as pd
 
+from cccrise.ccc_rise import calculate_interaction_tensor
 from cccrise.factors import (
     factors_to_xarray,
     load_factors_netcdf,
@@ -13,7 +14,6 @@ from cccrise.factors import (
     save_factors_netcdf,
 )
 from cccrise.import_data import import_ligand_receptor_pairs
-from cccrise.tensor import calculate_interaction_tensor
 
 
 def test_factors_to_xarray_and_netcdf_roundtrip():

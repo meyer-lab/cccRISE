@@ -2,8 +2,9 @@
 Figure S5f_g: Decomposition of the communication tensor from Tensorcell2cell on ALAD data
 """
 
+from ..ccc_rise import calculate_interaction_tensor
 from ..import_data import import_ligand_receptor_pairs
-from ..tensor import calculate_interaction_tensor, run_fms_r2x_analysis
+from ..tensor import run_fms_r2x_analysis
 from .common import get_alad_data, getSetup, subplotLabel
 from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 

@@ -38,6 +38,9 @@ class DatasetSpec:
     #: Condition-level outcome the ANOVA bootstrap tests every level of by
     #: default. None falls back to `group_column` and its registered labels.
     outcome_column: str | None = None
+    #: RISE backend every runner fits on ('cpu', 'cupy', 'mlx'); None
+    #: auto-detects, for cohorts too large for the GPU.
+    backend: str | None = None
     notes: str = ""
 
     @property
@@ -104,6 +107,7 @@ DATASETS: dict[str, DatasetSpec] = {
         group_column="ALADstatus",
         patient_column="patient_id",
         outcome_column="6monthcondition",
+        backend="cupy",
     ),
     "ibd": DatasetSpec(
         key="ibd",

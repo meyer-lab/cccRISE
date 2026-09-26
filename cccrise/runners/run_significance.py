@@ -26,6 +26,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..ccc_rise import RISE_COMPRESSION_OPTIONS
 from ..import_data import import_ligand_receptor_pairs
 from ..validation.significance import (
     fit_significance_pipeline,
@@ -34,6 +35,7 @@ from ..validation.significance import (
     summarize_significance_overview,
 )
 from ._cli import (
+    REPLICATE_COMPRESS,
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
@@ -160,10 +162,12 @@ def run_significance(
         complex_agg_method=complex_agg_method,
         hill_k=hill_k,
         max_exact_perms=max_exact_perms,
-        n_iter_max=rise_n_iter_max,
+        rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
         random_state=random_state,
         validate=False,
+        backend=spec.backend,
+        compress=REPLICATE_COMPRESS,
     )
     print(f"   RISE fit R2X: {results['r2x_rise']:.4f}")
 
@@ -203,6 +207,9 @@ def run_significance(
             "hill_k": hill_k,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            "backend": spec.backend or "auto",
+            "compress": REPLICATE_COMPRESS,
+            "rise_compression_options": RISE_COMPRESSION_OPTIONS,
             "r2x_rise": float(results["r2x_rise"]),
             "random_state": random_state,
             "total_tensor_entries": int(overview_df["TotalEntries"].iloc[0]),
