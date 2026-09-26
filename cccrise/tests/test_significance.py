@@ -8,7 +8,6 @@ import anndata
 import numpy as np
 import pandas as pd
 
-from cccrise.runners._cli import RISE_TOL
 from cccrise.runners.datasets import DatasetSpec
 from cccrise.runners.run_significance import build_parser, output_paths
 from cccrise.validation.significance import (
@@ -18,6 +17,8 @@ from cccrise.validation.significance import (
     summarize_significance_lr,
     summarize_significance_overview,
 )
+
+from .helpers import write_rise_reference
 
 
 def _synthetic_cohort_for_significance(
@@ -54,23 +55,23 @@ def _synthetic_cohort_for_significance(
     return adata, lr_pairs
 
 
-def test_fit_significance_pipeline_end_to_end():
+def test_fit_significance_pipeline_end_to_end(tmp_path):
     adata, lr_pairs = _synthetic_cohort_for_significance()
     rise_rank = 3
     n_perms = 20
+    reference_path = tmp_path / "reference.nc"
+    write_rise_reference(adata, "sample", rise_rank, reference_path)
 
     results = fit_significance_pipeline(
         adata=adata,
         condition_column="sample",
-        rise_rank=rise_rank,
+        reference_path=reference_path,
         lr_pairs=lr_pairs,
-        rise_n_iter_max=100,
         n_perms=n_perms,
         group_column="status",
         control_label="Control",
         other_label="Disease",
         random_state=42,
-        rise_tol=RISE_TOL,
         validate=True,
     )
 
@@ -94,20 +95,20 @@ def test_fit_significance_pipeline_end_to_end():
     assert np.all(results["diff_pvalue"] <= 1.0)
 
 
-def test_summaries_and_xarray_conversion():
+def test_summaries_and_xarray_conversion(tmp_path):
     adata, lr_pairs = _synthetic_cohort_for_significance()
+    reference_path = tmp_path / "reference.nc"
+    write_rise_reference(adata, "sample", 2, reference_path)
     results = fit_significance_pipeline(
         adata=adata,
         condition_column="sample",
-        rise_rank=2,
+        reference_path=reference_path,
         lr_pairs=lr_pairs,
-        rise_n_iter_max=100,
         n_perms=10,
         group_column="status",
         control_label="Control",
         other_label="Disease",
         random_state=42,
-        rise_tol=RISE_TOL,
     )
 
     # 1. LR summary
@@ -152,8 +153,8 @@ def test_runner_cli_parser_and_paths():
         [
             "--dataset",
             "alad",
-            "--rise-rank",
-            "25",
+            "--reference-source",
+            "cccrise/data/bal_alad_factors.nc",
             "--n-perms",
             "500",
             "--communication-score",
@@ -161,7 +162,7 @@ def test_runner_cli_parser_and_paths():
         ]
     )
     assert args.dataset == "alad"
-    assert args.rise_rank == 25
+    assert args.reference_source == "cccrise/data/bal_alad_factors.nc"
     assert args.n_perms == 500
 
     dummy_spec = DatasetSpec(

@@ -7,9 +7,12 @@ decomposition of the interaction tensor at ``--cp-rank``, and serializes the
 factor model to NetCDF alongside a provenance sidecar. The ``.nc`` is written in
 the format the figure modules read via `factors.load_factors_to_anndata`.
 
-The ``.nc`` also carries per-cell projections, sender/receiver weights and a
-PaCMAP embedding, so the Shiny explorer can read it directly (``--no-embedding``
-skips the PaCMAP fit for cohorts where it is too slow).
+The ``.nc`` also stores the per-cell RISE projections, so `run_significance`
+can load this fit (``--reference-source``, `utils.load_rise_reference`)
+instead of refitting RISE. It also carries float16 copies of the projections,
+sender/receiver weights and a PaCMAP embedding, so the Shiny explorer can read
+it directly (``--no-embedding`` skips the PaCMAP fit for cohorts where it is
+too slow).
 
 The sidecar's ``rank_selection`` block records which sweep justifies each chosen
 rank -- the sweep CSVs written by `run_rise_rank` / `run_cpd_rank`, plus a
@@ -35,11 +38,12 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
+    add_scoring_arguments,
     dataset_metadata,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATA_DIR, DATASETS, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, relpath, write_metadata
 
 HEADER = """\
@@ -83,6 +87,8 @@ def run_pipeline(
     cp_tol: float = CP_TOL,
     random_state: int | None = 42,
     complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
     output_path: Path | None = None,
     rise_rank_notes: str | None = None,
     cpd_rank_notes: str | None = None,
@@ -106,9 +112,13 @@ def run_pipeline(
         Seed for the decompositions.
     complex_sep : str, optional, default="&"
         Separator for multimeric complexes in the ligand-receptor annotation.
+    communication_score, hill_k : str, float
+        Communication-tensor options; see `ccc_rise.calc_communication_score`.
     output_path : Path, optional
-        NetCDF destination. Defaults to the dataset's canonical factors path,
-        which is what the figure modules load.
+        NetCDF destination. Defaults to the dataset's canonical factors path
+        for `communication_score="expression_product"` (what the figure
+        modules load), or `alt_score_methods/<communication_score>/` for any
+        other score.
     rise_rank_notes, cpd_rank_notes : str, optional
         Rationale for each chosen rank, written into the provenance file.
     do_embedding : bool, default=True
@@ -121,7 +131,9 @@ def run_pipeline(
         The fitted AnnData, the factor Dataset, the ``.nc`` path, and the
         sidecar path.
     """
-    output_path = output_path or spec.factors_path()
+    output_path = output_path or (
+        scoring_output_dir(communication_score) / spec.factors_filename
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -156,6 +168,8 @@ def run_pipeline(
         doEmbedding=do_embedding,
         backend=spec.backend,
         compress=False,
+        communication_score=communication_score,
+        hill_k=hill_k,
     )
     adata, r2x_cp, r2x_pf2 = fit["adata"], fit["r2x_cp"], fit["r2x_rise"]
     print(f"   CP R2X: {r2x_cp:.4f}")
@@ -170,6 +184,8 @@ def run_pipeline(
         gene_names=list(adata.var_names),
         pf2_factors=[adata.uns["Pf2_A"], adata.uns["Pf2_B"], adata.varm["Pf2_C"]],
         pf2_weights=adata.uns["Pf2_weights"],
+        pf2_projections=np.asarray(adata.obsm["projections"]),
+        cell_ids=adata.obs_names.to_numpy(),
         r2x_cp=r2x_cp,
         r2x_pf2=r2x_pf2,
         attrs={
@@ -201,6 +217,8 @@ def run_pipeline(
             "complex_sep": complex_sep,
             "cp_fit_options": CP_FIT_OPTIONS,
             "backend": spec.backend or "auto",
+            "communication_score": communication_score,
+            "hill_k": hill_k,
             "pacmap_embedding": do_embedding,
             "lr_pairs_annotated": len(lr_pairs),
             "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=n_lr_used),
@@ -233,6 +251,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--complex-sep", type=str, default="&")
+    add_scoring_arguments(parser)
     parser.add_argument(
         "--output",
         type=str,
@@ -274,7 +293,13 @@ def main(argv: list[str] | None = None) -> None:
         cp_tol=args.cp_tol,
         random_state=args.random_state,
         complex_sep=args.complex_sep,
-        output_path=resolve_output(args.output, DATA_DIR, spec.factors_filename),
+        communication_score=args.communication_score,
+        hill_k=args.hill_k,
+        output_path=resolve_output(
+            args.output,
+            scoring_output_dir(args.communication_score),
+            spec.factors_filename,
+        ),
         rise_rank_notes=args.rise_rank_notes,
         cpd_rank_notes=args.cpd_rank_notes,
         do_embedding=args.do_embedding,

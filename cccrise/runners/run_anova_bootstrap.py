@@ -43,12 +43,13 @@ from ._cli import (
     RISE_TOL,
     add_dataset_argument,
     add_group_arguments,
+    add_scoring_arguments,
     dataset_metadata,
-    resolve_group_labels,
+    resolve_anova_labels,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -73,6 +74,8 @@ def run_anova_bootstrap(
     rise_tol: float = RISE_TOL,
     cp_tol: float = CP_TOL,
     complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
     random_state: int = 42,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
@@ -105,8 +108,8 @@ def run_anova_bootstrap(
         `utils.resample_conditions`.
     rise_n_iter_max, cp_n_iter_max, rise_tol, cp_tol
         Fitting controls for the RISE and CP fits.
-    complex_sep : str, optional
-        Communication-tensor option; see `ccc_rise.calc_communication_score`.
+    complex_sep, communication_score, hill_k : str | None, str, float
+        Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=42
         Seed for the full-cohort fit; replicate `b` uses
         ``replicate_seed(random_state, b)`` (``random_state * 1000 + b + 1``).
@@ -118,14 +121,13 @@ def run_anova_bootstrap(
     tuple[pd.DataFrame, Path, Path]
         The replicate ANOVA table, the CSV path, and the sidecar path.
     """
-    if spec.outcome_column and not (group_column or control_label or other_label):
-        group_column = spec.outcome_column
-    else:
-        group_column, control_label, other_label = resolve_group_labels(
-            spec, group_column, control_label, other_label
-        )
+    group_column, control_label, other_label = resolve_anova_labels(
+        spec, group_column, control_label, other_label
+    )
 
-    output_path = output_path or (DATA_DIR / spec.anova_bootstrap_filename())
+    output_path = output_path or (
+        scoring_output_dir(communication_score) / spec.anova_bootstrap_filename()
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -162,6 +164,8 @@ def run_anova_bootstrap(
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
         complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
         random_state=random_state,
         backend=spec.backend,
         compress=REPLICATE_COMPRESS,
@@ -185,6 +189,8 @@ def run_anova_bootstrap(
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
         complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
         stratify=stratify,
         patient_column=spec.patient_column,
         random_state=random_state,
@@ -230,6 +236,8 @@ def run_anova_bootstrap(
             "cp_tol": cp_tol,
             "cp_fit_options": CP_FIT_OPTIONS,
             "complex_sep": complex_sep,
+            "communication_score": communication_score,
+            "hill_k": hill_k,
             "random_state": random_state,
             "backend": spec.backend or "auto",
             "compress": REPLICATE_COMPRESS,
@@ -241,6 +249,8 @@ def run_anova_bootstrap(
             "reference_f": reference["anova"]["F"].tolist(),
             "reference_p": reference["anova"]["P"].tolist(),
             "reference_group_mean_diff": reference["anova"]["GroupMeanDiff"].tolist(),
+            "reference_top_lr_pair": summary["TopLRPair"].tolist(),
+            "reference_top_lr_loading": summary["TopLRLoading"].astype(float).tolist(),
             "n_components_significant": int((summary["ReferenceP"] < alpha).sum()),
             "min_component_match_score": float(summary["MinMatchScore"].min()),
             "resulting_dims": resulting_dims(
@@ -302,6 +312,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
     parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--complex-sep", type=str, default="&")
+    add_scoring_arguments(parser)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
         "--output",
@@ -331,9 +342,13 @@ def main(argv: list[str] | None = None) -> None:
         rise_tol=args.rise_tol,
         cp_tol=args.cp_tol,
         complex_sep=args.complex_sep,
+        communication_score=args.communication_score,
+        hill_k=args.hill_k,
         random_state=args.random_state,
         output_path=resolve_output(
-            args.output, DATA_DIR, spec.anova_bootstrap_filename()
+            args.output,
+            scoring_output_dir(args.communication_score),
+            spec.anova_bootstrap_filename(),
         ),
     )
 

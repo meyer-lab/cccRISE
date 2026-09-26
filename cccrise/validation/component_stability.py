@@ -382,8 +382,18 @@ def fit_stability_pipeline(
         backend=backend,
         compress=compress,
     )
-    adata = fit["adata"]
+    return stability_fit(fit["adata"], fit, condition_column)
 
+
+def stability_fit(
+    adata: anndata.AnnData, fit: dict[str, Any], condition_column: str
+) -> dict[str, Any]:
+    """`fit_stability_pipeline`'s result, from a RISE-fit `adata` and a
+    `ccc_rise.fit_ccc_cp` / `run_ccc_rise_workflow` result.
+
+    Lets a caller that shares one RISE fit across several CP fits (e.g.
+    `run_alt_comm_score`) build each CP fit's stability reference.
+    """
     return {
         "rise_factors": [
             adata.uns["Pf2_A"],
@@ -396,7 +406,7 @@ def fit_stability_pipeline(
         "gene_names": np.asarray(adata.var_names),
         "lr_symbols": fit["filtered_lr_pairs"]["interaction_symbol"].to_numpy(),
         "tensor": fit["tensor"],
-        "r2x_rise": fit["r2x_rise"],
+        "r2x_rise": float(adata.uns["r2x_pf2"]),
         "r2x_cp": fit["r2x_cp"],
         "cpd_diagnostics": fit["diagnostics"],
     }

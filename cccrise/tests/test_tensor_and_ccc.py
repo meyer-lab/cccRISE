@@ -21,6 +21,7 @@ from cccrise.ccc_rise import (
     standardize_cc_pf2,
 )
 from cccrise.import_data import add_cond_idxs
+from cccrise.runners.datasets import COMMUNICATION_SCORES
 from cccrise.tensor import calculate_fms_rise
 from cccrise.utils import pseudobulk_X
 
@@ -453,7 +454,8 @@ FIT_KW: dict[str, Any] = {
 }
 
 
-def test_full_ccc_rise_workflow_synthetic():
+@pytest.mark.parametrize("communication_score", COMMUNICATION_SCORES)
+def test_full_ccc_rise_workflow_synthetic(communication_score):
     rise_rank, cp_rank, n_cells, n_cond = 3, 2, 30, 2
     adata, lr_pairs = _synthetic_adata(n_cells=n_cells, n_cond=n_cond, n_pairs=2)
 
@@ -464,6 +466,7 @@ def test_full_ccc_rise_workflow_synthetic():
         lr_pairs=lr_pairs,
         backend="cpu",
         keep_tensor=True,
+        communication_score=communication_score,
         **FIT_KW,
     )
     assert set(fit) == {

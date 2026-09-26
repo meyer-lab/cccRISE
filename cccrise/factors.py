@@ -72,6 +72,23 @@ def _add_pf2_factors(
         )
 
 
+def _add_pf2_projections(
+    data_vars: dict[str, tuple[list[str], np.ndarray]],
+    coords: dict[str, Any],
+    pf2_projections: np.ndarray | None,
+    cell_ids: np.ndarray | None,
+) -> None:
+    """Add full-precision per-cell RISE projections, in place, so the file can
+    serve as a RISE reference (`utils.load_rise_reference`)."""
+    if pf2_projections is None or cell_ids is None:
+        return
+    coords["cell"] = np.asarray(cell_ids)
+    data_vars["pf2_projections"] = (
+        ["cell", "rise_component"],
+        np.asarray(pf2_projections, dtype=np.float32),
+    )
+
+
 def factors_to_xarray(
     cpd_factors: list[np.ndarray],
     cpd_weights: np.ndarray,
@@ -80,6 +97,8 @@ def factors_to_xarray(
     gene_names: list[str] | np.ndarray | None = None,
     pf2_factors: list[np.ndarray] | None = None,
     pf2_weights: np.ndarray | None = None,
+    pf2_projections: np.ndarray | None = None,
+    cell_ids: np.ndarray | None = None,
     r2x_cp: float | None = None,
     r2x_pf2: float | None = None,
     attrs: dict[str, Any] | None = None,
@@ -103,6 +122,11 @@ def factors_to_xarray(
         List of PARAFAC2 factor matrices [A_pf2, B_pf2, C_pf2].
     pf2_weights : np.ndarray, optional
         PARAFAC2 component weights.
+    pf2_projections : np.ndarray, optional
+        Per-cell PARAFAC2 projections, shape (n_cells, rise_rank), in the
+        same row order as `cell_ids`.
+    cell_ids : np.ndarray, optional
+        Cell barcodes matching `pf2_projections`' row order.
     r2x_cp : float, optional
         Variance explained by CP decomposition.
     r2x_pf2 : float, optional
@@ -152,6 +176,7 @@ def factors_to_xarray(
         coords["gene"] = np.asarray(gene_names)
 
     _add_pf2_factors(data_vars, coords, pf2_factors, pf2_weights, gene_names)
+    _add_pf2_projections(data_vars, coords, pf2_projections, cell_ids)
 
     ds_attrs = {
         "rise_rank": rise_rank,
@@ -397,10 +422,14 @@ def load_factors_to_anndata(
     # Ensure condition indexing
     out = add_cond_idxs(out, cond_key)
 
-    # Use stored cell projections if already present in factors dataset
-    if "cell_projections" in factors_ds:
+    # Use stored cell projections if already present in factors dataset,
+    # preferring the full-precision RISE copy over the float16 one
+    stored = next(
+        (v for v in ("pf2_projections", "cell_projections") if v in factors_ds), None
+    )
+    if stored is not None:
         out.obsm["projections"] = np.asarray(
-            factors_ds["cell_projections"].values, dtype=np.float32
+            factors_ds[stored].values, dtype=np.float32
         )
         out = add_cell_embeddings(
             out,
@@ -470,7 +499,7 @@ def clean_memory() -> None:
 
         cp.get_default_memory_pool().free_all_blocks()
         cp.get_default_pinned_memory_pool().free_all_blocks()
-    except (ImportError, AttributeError):
+    except Exception:  # no CuPy, or CuPy installed without a visible GPU
         return
 
 

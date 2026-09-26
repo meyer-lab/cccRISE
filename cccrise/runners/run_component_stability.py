@@ -37,6 +37,7 @@ Axes, and what each one asks:
 
 import argparse
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -63,11 +64,12 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
+    add_scoring_arguments,
     dataset_metadata,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -92,6 +94,7 @@ def run_component_stability(
     hill_k: float = 0.5,
     random_state: int = 0,
     output_path: Path | None = None,
+    reference: dict[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score per-component RISE and CPD stability at fixed ranks.
 
@@ -113,14 +116,22 @@ def run_component_stability(
     random_state : int, default=0
         Base seed for the reference fit and the replicates.
     output_path : Path, optional
-        CSV destination; defaults to the registry's stability filename.
+        CSV destination; defaults to the registry's stability filename under
+        `DATA_DIR` for `communication_score="expression_product"`, or
+        `alt_score_methods/<communication_score>/` for any other score.
+    reference : dict[str, Any], optional
+        A full-cohort fit already built with this call's settings, as
+        `fit_stability_pipeline(..., keep_tensor=True)` returns; fit here when
+        None. Lets `run_alt_comm_score` share one RISE fit between scores.
 
     Returns
     -------
     tuple[pd.DataFrame, Path, Path]
         The long per-component table, the CSV path, and the sidecar path.
     """
-    output_path = output_path or (DATA_DIR / spec.stability_filename())
+    output_path = output_path or (
+        scoring_output_dir(communication_score) / spec.stability_filename()
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -142,25 +153,28 @@ def run_component_stability(
     print(f"   AnnData shape: {adata.shape}")
     print(f"   Ligand-receptor pairs: {len(lr_pairs)}")
 
-    print("2. Fitting the reference model on the full cohort...")
-    reference = fit_stability_pipeline(
-        adata.copy(),
-        lr_pairs,
-        condition_column=spec.condition_column,
-        rise_rank=rise_rank,
-        cp_rank=cp_rank,
-        rise_n_iter_max=rise_n_iter_max,
-        rise_tol=rise_tol,
-        cp_n_iter_max=cp_n_iter_max,
-        cp_tol=cp_tol,
-        complex_sep=complex_sep,
-        communication_score=communication_score,
-        hill_k=hill_k,
-        random_state=random_state,
-        keep_tensor=True,
-        backend=spec.backend,
-        compress=REPLICATE_COMPRESS,
-    )
+    if reference is None:
+        print("2. Fitting the reference model on the full cohort...")
+        reference = fit_stability_pipeline(
+            adata.copy(),
+            lr_pairs,
+            condition_column=spec.condition_column,
+            rise_rank=rise_rank,
+            cp_rank=cp_rank,
+            rise_n_iter_max=rise_n_iter_max,
+            rise_tol=rise_tol,
+            cp_n_iter_max=cp_n_iter_max,
+            cp_tol=cp_tol,
+            complex_sep=complex_sep,
+            communication_score=communication_score,
+            hill_k=hill_k,
+            random_state=random_state,
+            keep_tensor=True,
+            backend=spec.backend,
+            compress=REPLICATE_COMPRESS,
+        )
+    else:
+        print("2. Using the supplied full-cohort reference fit...")
     assert reference["tensor"] is not None
     tensor_shape = tuple(int(dim) for dim in reference["tensor"].shape)
     print(f"   Interaction tensor shape: {tensor_shape}")
@@ -317,18 +331,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
     parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--complex-sep", type=str, default="&")
-    parser.add_argument(
-        "--communication-score",
-        type=str,
-        default="expression_product",
-        choices=[
-            "expression_product",
-            "expression_mean",
-            "expression_gmean",
-            "expression_hill",
-        ],
-    )
-    parser.add_argument("--hill-k", type=float, default=0.5)
+    add_scoring_arguments(parser)
     parser.add_argument("--random-state", type=int, default=0)
     parser.add_argument(
         "--output",
@@ -356,7 +359,11 @@ def main(argv: list[str] | None = None) -> None:
         communication_score=args.communication_score,
         hill_k=args.hill_k,
         random_state=args.random_state,
-        output_path=resolve_output(args.output, DATA_DIR, spec.stability_filename()),
+        output_path=resolve_output(
+            args.output,
+            scoring_output_dir(args.communication_score),
+            spec.stability_filename(),
+        ),
     )
 
 

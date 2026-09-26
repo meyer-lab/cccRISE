@@ -1,11 +1,15 @@
 import warnings
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
+
+from .factors import load_factors_netcdf
+from .import_data import add_cond_idxs
 
 
 def resample(
@@ -261,6 +265,71 @@ def replicate_seed(random_state: int, replicate: int) -> int:
     the reference's starting point.
     """
     return random_state * 1000 + replicate + 1
+
+
+def load_rise_reference(
+    reference_path: str | Path,
+    adata: anndata.AnnData,
+    condition_column: str,
+    rise_rank: int | None = None,
+) -> anndata.AnnData:
+    """Populate `adata` with a RISE (PARAFAC2) fit loaded from a factors.nc,
+    instead of fitting PARAFAC2.
+
+    Mimics `parafac2.store_pf2`'s effect on `adata` (`Pf2_weights`/`Pf2_A`/
+    `Pf2_B` in `.uns`, `Pf2_C` in `.varm`, `.obsm["projections"]`) using the
+    file's stored per-cell projections, so downstream code that expects a
+    RISE-fit AnnData works unchanged.
+
+    Parameters
+    ----------
+    reference_path : str | Path
+        A factors.nc containing `pf2_projections`.
+    adata : anndata.AnnData
+        The raw dataset the reference was fit on; its cells must match the
+        reference's exactly, in the same order (checked, not assumed).
+    condition_column : str
+        Column in `adata.obs` holding the condition/patient identity.
+    rise_rank : int, optional
+        If given, checked against the reference file's own RISE rank.
+
+    Returns
+    -------
+    anndata.AnnData
+        `adata`, mutated in place and returned.
+    """
+    ds = load_factors_netcdf(reference_path)
+    if "pf2_projections" not in ds:
+        raise ValueError(
+            f"{reference_path} has no stored pf2_projections; regenerate it "
+            "before using it as a reference."
+        )
+
+    file_rise_rank = int(ds.attrs["rise_rank"])
+    if rise_rank is not None and rise_rank != file_rise_rank:
+        raise ValueError(
+            f"Requested rise_rank={rise_rank} does not match "
+            f"{reference_path}'s rise_rank={file_rise_rank}."
+        )
+
+    cell_ids = ds.coords["cell"].values.astype(str)
+    adata_cell_ids = adata.obs_names.to_numpy().astype(str)
+    if len(cell_ids) != len(adata_cell_ids) or not np.array_equal(
+        cell_ids, adata_cell_ids
+    ):
+        raise ValueError(
+            f"{reference_path}'s cells do not match `adata`'s; reusing a "
+            "RISE fit requires the identical, identically-ordered dataset."
+        )
+
+    adata = add_cond_idxs(adata, condition_column)
+    adata.uns["Pf2_weights"] = ds["pf2_weights"].values
+    adata.uns["Pf2_A"] = ds["pf2_A"].values
+    adata.uns["Pf2_B"] = ds["pf2_B"].values
+    adata.varm["Pf2_C"] = ds["pf2_C"].values
+    adata.uns["r2x_pf2"] = float(ds.attrs.get("r2x_pf2", 0.0))
+    adata.obsm["projections"] = ds["pf2_projections"].values
+    return adata
 
 
 def resample_tensor(

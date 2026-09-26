@@ -991,7 +991,7 @@ def test_summarize_component_stability_survives_a_csv_round_trip(tmp_path):
 
     assert SEED_AXIS not in STR_NA_VALUES
 
-    path = tmp_path / "validation.csv"
+    path = tmp_path / "stability.csv"
     _stability_frame(with_ceiling=True).to_csv(path, index=False)
 
     summary = summarize_component_stability(pd.read_csv(path))

@@ -8,6 +8,7 @@ along with functions to summarize per-LR pair, differential, and global
 significance metrics.
 """
 
+from pathlib import Path
 from typing import Any
 
 import anndata
@@ -20,15 +21,14 @@ from ..ccc_rise import (
     compute_differential_significance,
     condition_matrices,
     condition_projections,
-    fit_rise,
 )
-from ..import_data import add_cond_idxs
+from ..utils import load_rise_reference
 
 
 def fit_significance_pipeline(
     adata: anndata.AnnData,
     condition_column: str,
-    rise_rank: int,
+    reference_path: str | Path,
     lr_pairs: pd.DataFrame,
     n_perms: int = 1000,
     group_column: str | None = None,
@@ -41,13 +41,9 @@ def fit_significance_pipeline(
     max_exact_perms: int = 100_000,
     random_state: int = 42,
     validate: bool = False,
-    backend: str | None = None,
-    compress: bool = False,
-    *,
-    rise_n_iter_max: int,
-    rise_tol: float,
 ) -> dict[str, Any]:
-    """Fit RISE and compute within-condition and differential communication significance.
+    """Load a shared RISE fit and compute within-condition and differential
+    communication significance.
 
     Parameters
     ----------
@@ -55,8 +51,9 @@ def fit_significance_pipeline(
         Single-cell count/expression matrix with condition annotations in `.obs`.
     condition_column : str
         Column in `adata.obs` defining patient/sample conditions.
-    rise_rank : int
-        Number of RISE eigen-state components.
+    reference_path : str | Path
+        A factors.nc written by `run_ccc_rise` (or `run_alt_comm_score`),
+        whose RISE fit is loaded rather than refit.
     lr_pairs : pd.DataFrame
         Ligand-receptor pairs table with columns 'ligand' and 'receptor'.
     n_perms : int, default=1000
@@ -70,7 +67,8 @@ def fit_significance_pipeline(
         Label indicating the comparison/case group.
     communication_score : str, default='expression_product'
         Scoring function ('expression_product', 'expression_mean',
-        'expression_gmean', 'expression_hill').
+        'expression_gmean', 'expression_hill'), independent of whichever
+        score `reference_path` was built with.
     complex_sep : str, default='&'
         Delimiter for multi-subunit protein complexes.
     complex_agg_method : str, default='min'
@@ -79,18 +77,10 @@ def fit_significance_pipeline(
         Half-saturation constant for Hill communication scoring.
     max_exact_perms : int, default=100_000
         Maximum combinatorial assignments to enumerate exactly for differential test.
-    rise_n_iter_max : int
-        Maximum iterations for PARAFAC2 fitting.
-    rise_tol : float
-        Convergence tolerance for PARAFAC2 fitting.
     random_state : int, default=42
-        Random seed for permutations and PARAFAC2 initialization.
+        Random seed for permutations.
     validate : bool, default=False
         If True, validates vectorized tensor computation against `calc_communication_score`.
-    backend : str, optional
-        RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect).
-    compress : bool, default=False
-        Fit RISE in a compressed subspace; see `ccc_rise.fit_rise`.
 
     Returns
     -------
@@ -106,18 +96,10 @@ def fit_significance_pipeline(
         - 'diff_null_std': 3D ndarray differential null stds (if group_column given)
         - 'filtered_lr_pairs': pd.DataFrame of evaluated LR pairs
         - 'condition_names': list[str] of conditions
-        - 'r2x_rise': float PARAFAC2 fit quality
+        - 'r2x_rise': float PARAFAC2 fit quality (of the loaded reference)
     """
-    adata = add_cond_idxs(adata, condition_column)
-    adata, r2x_rise = fit_rise(
-        adata,
-        rank=rise_rank,
-        n_iter_max=rise_n_iter_max,
-        tolerance=rise_tol,
-        random_state=random_state,
-        backend=backend,
-        compress=compress,
-    )
+    adata = load_rise_reference(reference_path, adata, condition_column)
+    r2x_rise = adata.uns["r2x_pf2"]
     condition_names = np.unique(adata.obs[condition_column]).tolist()
 
     # 2. Within-condition permutation significance test

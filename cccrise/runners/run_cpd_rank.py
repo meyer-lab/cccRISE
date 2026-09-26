@@ -48,6 +48,7 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
+    add_scoring_arguments,
     dataset_metadata,
     parse_ranks,
     resolve_output,
@@ -292,18 +293,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--cp-tol", type=float, default=CP_TOL, help="CP fit tolerance."
     )
     parser.add_argument("--complex-sep", type=str, default="&")
-    parser.add_argument(
-        "--communication-score",
-        type=str,
-        default="expression_product",
-        choices=[
-            "expression_product",
-            "expression_mean",
-            "expression_gmean",
-            "expression_hill",
-        ],
-    )
-    parser.add_argument("--hill-k", type=float, default=0.5)
+    add_scoring_arguments(parser)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
         "--output",
