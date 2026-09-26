@@ -53,7 +53,7 @@ from cccrise.figures.figureAnova import (
 )
 from cccrise.figures.figureCPDrank import plot_collinearity, plot_core_consistency
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
-from cccrise.utils import celltype_component_association
+from cccrise.utils import celltype_component_association, dominant_eigenstate_labels
 
 DATASET_CHOICES = {key: spec.label for key, spec in DATASETS.items()}
 
@@ -64,6 +64,18 @@ LR_HIGHLIGHT_CHOICES = {
     "tukey": "Tukey Outliers (Q3 + 1.5*IQR)",
     "q3": "Q3 (75th Percentile)",
 }
+
+# Statistics offered by `celltype_component_association`.
+ASSOC_STAT_CHOICES = {
+    "mean": "Mean Cell Loading",
+    "effect_size": "Cohen's d vs Other Cells",
+    "enrichment": "log2 Enrichment",
+    "pct_top": "% in Top Percentile",
+}
+
+# Most distinct dominant-eigenstate labels shown on the PaCMAP; tab20 is the
+# largest cell-type palette.
+MAX_EIGENSTATE_LABELS = 20
 
 # Multipliers applied to every plot's text by `scale_fonts`, relative to the
 # sizes the shared plotting functions set for the paper figures.
@@ -624,12 +636,7 @@ def server(input, output, session):
                         ui.input_select(
                             "assoc_stat",
                             "Association Heatmap Stat",
-                            choices={
-                                "mean": "Mean Cell Loading",
-                                "effect_size": "Cohen's d vs Other Cells",
-                                "enrichment": "log2 Enrichment",
-                                "pct_top": "% in Top Percentile",
-                            },
+                            choices=ASSOC_STAT_CHOICES,
                             selected="mean",
                         ),
                     ),
@@ -871,6 +878,45 @@ def server(input, output, session):
             ),
             ui.output_plot("projections_plot", height="500px"),
             ui.hr(),
+            ui.h4("Eigenstates"),
+            ui.markdown(
+                "Each cell is labeled by the RISE eigenstate with its "
+                "largest-magnitude projection, suffixed with that "
+                "projection's sign (opposite ends of an eigenstate describe "
+                "different cells). Labeled Eigenstates sets how many of the "
+                "most frequent labels are shown; the rest are grouped as "
+                "Other. The heatmap below quantifies each cell type's "
+                "association with every eigenstate from the raw per-cell "
+                "projections, independent of the selected component; the "
+                "enrichment and % Top statistics only count the positive "
+                "tail."
+            ),
+            ui.row(
+                ui.column(
+                    4,
+                    ui.input_slider(
+                        "eig_n_labeled",
+                        "Labeled Eigenstates",
+                        min=1,
+                        max=MAX_EIGENSTATE_LABELS,
+                        value=10,
+                        step=1,
+                    ),
+                ),
+                ui.column(
+                    4,
+                    ui.input_select(
+                        "eig_assoc_stat",
+                        "Association Heatmap Stat",
+                        choices=ASSOC_STAT_CHOICES,
+                        selected="mean",
+                    ),
+                ),
+                ui.column(4, top_perc_slider("eig_top_perc")),
+            ),
+            scrollable_plot("eigenstate_pacmap_plot", 650, 550),
+            scrollable_plot("eigenstate_assoc_plot", 1300, 500),
+            ui.hr(),
             ui.h4("Sender/Receiver Strength"),
             ui.markdown(
                 "A cell counts as a strong sender (or receiver) if its "
@@ -1068,6 +1114,43 @@ def server(input, output, session):
             axes[2].set_title(ds.spec.group_col)
         else:
             axes[2].axis("off")
+
+        return fig
+
+    @render.plot
+    @styled_figure()
+    def eigenstate_pacmap_plot():
+        X = dataset().adata
+        labels = dominant_eigenstate_labels(X, n_labeled=input.eig_n_labeled())
+        is_other = labels == "Other"
+        color_key = colors.celltype_colors(labels[~is_other].nunique())
+        if is_other.any():
+            color_key.append(colors.MUTED)
+
+        fig, ax = plt.subplots(figsize=(8, 6.5), layout="tight")
+        plot_categorical_scatter(
+            np.asarray(X.obsm["PaCMAP"]), labels, ax, color_key=color_key
+        )
+        assign_labels(ax)
+        ax.set_title("Dominant Eigenstate")
+        return fig
+
+    @render.plot
+    @styled_figure()
+    def eigenstate_assoc_plot():
+        ds = dataset()
+        fig, ax = plt.subplots(figsize=(16, 6), layout="tight")
+        plot_celltype_association(
+            ds.adata,
+            ax,
+            factor_type="eigenstate",
+            celltype_col=ds.spec.celltype_col,
+            stat=input.eig_assoc_stat(),
+            top_perc=float(input.eig_top_perc()),
+            normalize="global",
+            show_counts=True,
+        )
+        ax.set_title("Cell Type Association with Eigenstates")
 
         return fig
 

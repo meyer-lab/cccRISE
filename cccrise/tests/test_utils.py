@@ -10,6 +10,7 @@ from cccrise.utils import (
     add_obs_cmp_label,
     add_obs_cmp_unique_one,
     celltype_component_association,
+    dominant_eigenstate_labels,
     expression_product_matrix,
     resample,
 )
@@ -151,3 +152,30 @@ def test_celltype_component_association():
         # The planted signal is sender-only for B_cells and receiver-only for C_cells
         assert sender.loc["B_cells", 2] > sender.loc["B_cells", 1]
         assert receiver.loc["B_cells", 2] < sender.loc["B_cells", 2]
+
+    adata.obsm["projections"] = sc_B
+    eigen = celltype_component_association(adata, factor_type="eigenstate")
+    assert eigen.columns.name == "Eigenstate"
+    np.testing.assert_allclose(
+        eigen.to_numpy(), celltype_component_association(adata).to_numpy()
+    )
+
+
+def test_dominant_eigenstate_labels():
+    """Cells take their largest-magnitude eigenstate, signed; rare labels become Other."""
+    projections = np.array(
+        [[0.9, 0.1, 0.0], [0.8, -0.2, 0.1], [0.1, -0.7, 0.2], [0.0, 0.1, -0.5]]
+    )
+    adata = anndata.AnnData(
+        X=np.zeros((4, 1)),
+        obs=pd.DataFrame(index=[f"cell_{i}" for i in range(4)]),
+        var=pd.DataFrame(index=["g1"]),
+    )
+    adata.obsm["projections"] = projections
+
+    labels = dominant_eigenstate_labels(adata, n_labeled=3)
+    assert list(labels) == ["E1+", "E1+", "E2-", "E3-"]
+    assert list(labels.index) == list(adata.obs_names)
+
+    labels = dominant_eigenstate_labels(adata, n_labeled=1)
+    assert list(labels) == ["E1+", "E1+", "Other", "Other"]

@@ -599,6 +599,10 @@ def add_obs_cmp_unique_two(X: anndata.AnnData, cmp1: int, cmp2: int):
     return X
 
 
+# `obsm` key holding the per-cell loadings for each `factor_type`.
+LOADING_KEYS = {"sender": "sc_B", "receiver": "rc_C", "eigenstate": "projections"}
+
+
 def celltype_component_association(
     X: anndata.AnnData,
     factor_type: str = "sender",
@@ -607,7 +611,8 @@ def celltype_component_association(
     top_perc: float = 10,
 ) -> pd.DataFrame:
     """
-    Quantify how strongly each cell type is associated with each CPD component.
+    Quantify how strongly each cell type is associated with each CPD component, or
+    with each RISE eigenstate.
 
     The pseudobulk decomposition aggregates cells by type before factorization, so
     its sender/receiver factors (`uns["B"]`, `uns["C"]`) are already cell type x
@@ -621,8 +626,9 @@ def celltype_component_association(
     X : anndata.AnnData
         AnnData carrying per-cell sender/receiver loadings in
         `obsm["sc_B"]` / `obsm["rc_C"]` and cell type labels in `.obs`.
-    factor_type : {"sender", "receiver"}, default="sender"
-        Whether to use the sender (`sc_B`) or receiver (`rc_C`) loadings.
+    factor_type : {"sender", "receiver", "eigenstate"}, default="sender"
+        Whether to use the sender (`sc_B`) or receiver (`rc_C`) loadings, or the
+        raw per-cell eigenstate projections (`obsm["projections"]`).
     celltype_col : str, default="celltype"
         Column of `.obs` holding cell type labels.
     stat : {"mean", "effect_size", "enrichment", "pct_top"}, default="mean"
@@ -647,14 +653,12 @@ def celltype_component_association(
     Returns
     -------
     pandas.DataFrame
-        Cell types (sorted) as rows, 1-based component numbers as columns.
+        Cell types (sorted) as rows, 1-based component (or eigenstate) numbers as
+        columns.
     """
-    if factor_type == "sender":
-        loadings = np.asarray(X.obsm["sc_B"], dtype=float)
-    elif factor_type == "receiver":
-        loadings = np.asarray(X.obsm["rc_C"], dtype=float)
-    else:
+    if factor_type not in LOADING_KEYS:
         raise ValueError(f"Unknown factor_type: {factor_type}")
+    loadings = np.asarray(X.obsm[LOADING_KEYS[factor_type]], dtype=float)
 
     labels = np.asarray(cast(pd.DataFrame, X.obs)[celltype_col]).astype(str)
     celltypes = np.unique(labels)
@@ -689,5 +693,30 @@ def celltype_component_association(
     return pd.DataFrame(
         np.vstack(rows),
         index=pd.Index(celltypes, name=celltype_col),
-        columns=pd.Index(np.arange(1, loadings.shape[1] + 1), name="Component"),
+        columns=pd.Index(
+            np.arange(1, loadings.shape[1] + 1),
+            name="Eigenstate" if factor_type == "eigenstate" else "Component",
+        ),
     )
+
+
+def dominant_eigenstate_labels(X: anndata.AnnData, n_labeled: int = 10) -> pd.Series:
+    """
+    Label each cell by the RISE eigenstate with its largest-magnitude projection,
+    suffixed with that projection's sign (e.g. "E03-"), since opposite ends of an
+    eigenstate describe different cells. Only the `n_labeled` most frequent labels
+    are kept; every other cell is labeled "Other" (which sorts after the "E" labels).
+    """
+    projections = np.asarray(X.obsm["projections"], dtype=float)
+    dominant = np.abs(projections).argmax(axis=1)
+    negative = projections[np.arange(len(projections)), dominant] < 0
+    width = len(str(projections.shape[1]))
+    labels = pd.Series(
+        [
+            f"E{i + 1:0{width}d}{'-' if neg else '+'}"
+            for i, neg in zip(dominant, negative, strict=True)
+        ],
+        index=X.obs_names,
+    )
+    kept = labels.value_counts().index[:n_labeled]
+    return labels.where(labels.isin(kept), "Other")

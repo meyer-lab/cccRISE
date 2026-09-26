@@ -224,7 +224,7 @@ def plot_celltype_association(
         cbar_kws={"label": cbar_label},
     )
     ax.tick_params(axis="y", rotation=0)
-    ax.set(xlabel="Component", ylabel="")
+    ax.set(xlabel=df.columns.name, ylabel="")
 
     return df
 
