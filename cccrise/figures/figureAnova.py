@@ -179,6 +179,7 @@ def plot_anova_summary_heatmap(
     alpha: float = 0.05,
     title: str | None = None,
     metric: str = "EtaSquared",
+    vmax: float | None = None,
 ) -> None:
     """Plot a comparative heatmap of effect sizes across all associations and components.
 
@@ -194,6 +195,9 @@ def plot_anova_summary_heatmap(
         Optional title for the subplot.
     metric : str, default="EtaSquared"
         Effect size metric to display in heatmap cells ('EtaSquared' or 'F').
+    vmax : float | None, optional
+        Upper end of the color scale, anchored at 0, so several heatmaps can
+        share one scale. Defaults to the data's own range.
     """
     pivot_effect = combined_df.pivot(
         index="Association", columns="Component", values=metric
@@ -225,6 +229,8 @@ def plot_anova_summary_heatmap(
         annot=annot_matrix,
         fmt="",
         cmap="Blues",
+        vmin=None if vmax is None else 0.0,
+        vmax=vmax,
         cbar_kws={
             "label": r"Effect size ($\eta^2$)" if metric == "EtaSquared" else "F",
             "shrink": 0.75,
