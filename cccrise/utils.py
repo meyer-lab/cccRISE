@@ -271,7 +271,6 @@ def load_rise_reference(
     reference_path: str | Path,
     adata: anndata.AnnData,
     condition_column: str,
-    rise_rank: int | None = None,
 ) -> anndata.AnnData:
     """Populate `adata` with a RISE (PARAFAC2) fit loaded from a factors.nc,
     instead of fitting PARAFAC2.
@@ -284,14 +283,13 @@ def load_rise_reference(
     Parameters
     ----------
     reference_path : str | Path
-        A factors.nc containing `pf2_projections`.
+        A factors.nc containing `cell_projections` (see
+        `factors.add_cell_projections`).
     adata : anndata.AnnData
         The raw dataset the reference was fit on; its cells must match the
         reference's exactly, in the same order (checked, not assumed).
     condition_column : str
         Column in `adata.obs` holding the condition/patient identity.
-    rise_rank : int, optional
-        If given, checked against the reference file's own RISE rank.
 
     Returns
     -------
@@ -299,17 +297,16 @@ def load_rise_reference(
         `adata`, mutated in place and returned.
     """
     ds = load_factors_netcdf(reference_path)
-    if "pf2_projections" not in ds:
+    if "cell_projections" not in ds:
         raise ValueError(
-            f"{reference_path} has no stored pf2_projections; regenerate it "
+            f"{reference_path} has no stored cell_projections; regenerate it "
             "before using it as a reference."
         )
-
-    file_rise_rank = int(ds.attrs["rise_rank"])
-    if rise_rank is not None and rise_rank != file_rise_rank:
-        raise ValueError(
-            f"Requested rise_rank={rise_rank} does not match "
-            f"{reference_path}'s rise_rank={file_rise_rank}."
+    if ds["cell_projections"].dtype == np.float16:
+        warnings.warn(
+            f"{reference_path} stores float16 projections; the reused RISE fit "
+            "is only approximately the original.",
+            stacklevel=2,
         )
 
     for axis, adata_ids in (("cell", adata.obs_names), ("gene", adata.var_names)):
@@ -327,7 +324,7 @@ def load_rise_reference(
     adata.uns["Pf2_B"] = ds["pf2_B"].values
     adata.varm["Pf2_C"] = ds["pf2_C"].values
     adata.uns["r2x_pf2"] = float(ds.attrs.get("r2x_pf2", 0.0))
-    adata.obsm["projections"] = ds["pf2_projections"].values
+    adata.obsm["projections"] = ds["cell_projections"].values.astype(np.float32)
     return adata
 
 

@@ -81,6 +81,10 @@ class DatasetSpec:
     #: RISE backend every runner fits on ('cpu', 'cupy', 'mlx'); None
     #: auto-detects, for cohorts too large for the GPU.
     backend: str | None = None
+    #: Storage precision of per-cell arrays in written factors files
+    #: (`factors.add_cell_projections`); "float16" halves them for large
+    #: cohorts, at the cost of an only-approximate RISE reference.
+    cell_dtype: str = "float32"
     notes: str = ""
 
     @property

@@ -6,7 +6,11 @@ import anndata
 import numpy as np
 
 from cccrise.ccc_rise import fit_rise
-from cccrise.factors import factors_to_xarray, save_factors_netcdf
+from cccrise.factors import (
+    add_cell_projections,
+    factors_to_xarray,
+    save_factors_netcdf,
+)
 from cccrise.import_data import add_cond_idxs
 
 
@@ -45,10 +49,8 @@ def write_rise_reference(
             np.asarray(fit_adata.varm["Pf2_C"]),
         ],
         pf2_weights=fit_adata.uns["Pf2_weights"],
-        pf2_projections=np.asarray(fit_adata.obsm["projections"]),
-        cell_ids=fit_adata.obs_names.to_numpy(),
         r2x_pf2=r2x_pf2,
         attrs={"condition_key": condition_column, "complex_sep": "&"},
     )
-    save_factors_netcdf(ds, path)
+    save_factors_netcdf(add_cell_projections(ds, fit_adata, obs_columns=[]), path)
     return fit_adata

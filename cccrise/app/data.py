@@ -73,11 +73,11 @@ class LoadedDataset:
     adata: anndata.AnnData
     spec: DatasetSpec
     #: Per-cell sender/receiver weights (`obsm["sc_B"]`/`obsm["rc_C"]`) are
-    #: stored -- drives the Component Explorer's per-cell views.
+    #: available (recomputed from the stored projections) -- drives the Component Explorer's per-cell views.
     has_projections: bool
     #: 2D PaCMAP coordinates (`obsm["PaCMAP"]`) are stored -- drives the Cell
-    #: Projections tab specifically. `add_cell_projections` always writes
-    #: these together, but a factors file built another way (e.g. a fresh
+    #: Projections tab specifically. `add_cell_projections` writes PaCMAP
+    #: alongside the projections whenever it was fit, but a factors file built another way (e.g. a fresh
     #: factorization run through a different pipeline) could have one
     #: without the other, so they're tracked separately rather than assuming
     #: PaCMAP whenever per-cell weights are present.

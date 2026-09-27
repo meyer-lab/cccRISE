@@ -7,12 +7,11 @@ decomposition of the interaction tensor at ``--cp-rank``, and serializes the
 factor model to NetCDF alongside a provenance sidecar. The ``.nc`` is written in
 the format the figure modules read via `factors.load_factors_to_anndata`.
 
-The ``.nc`` also stores the per-cell RISE projections, so `run_significance`
-can load this fit (``--reference-source``, `utils.load_rise_reference`)
-instead of refitting RISE. It also carries float16 copies of the projections,
-sender/receiver weights and a PaCMAP embedding, so the Shiny explorer can read
-it directly (``--no-embedding`` skips the PaCMAP fit for cohorts where it is
-too slow).
+The ``.nc`` also stores the per-cell RISE projections (at
+`DatasetSpec.cell_dtype`) and a PaCMAP embedding, so `run_significance` can
+load this fit (``--reference-source``, `utils.load_rise_reference`) instead of
+refitting RISE, and the Shiny explorer can read it directly (``--no-embedding``
+skips the PaCMAP fit for cohorts where it is too slow).
 
 The sidecar's ``rank_selection`` block records which sweep justifies each chosen
 rank -- the sweep CSVs written by `run_rise_rank` / `run_cpd_rank`, plus a
@@ -184,8 +183,6 @@ def run_pipeline(
         gene_names=list(adata.var_names),
         pf2_factors=[adata.uns["Pf2_A"], adata.uns["Pf2_B"], adata.varm["Pf2_C"]],
         pf2_weights=adata.uns["Pf2_weights"],
-        pf2_projections=np.asarray(adata.obsm["projections"]),
-        cell_ids=adata.obs_names.to_numpy(),
         r2x_cp=r2x_cp,
         r2x_pf2=r2x_pf2,
         attrs={
@@ -197,7 +194,9 @@ def run_pipeline(
     )
 
     print("4. Attaching per-cell projections...")
-    ds = add_cell_projections(ds, adata, obs_columns=spec.cell_obs_columns())
+    ds = add_cell_projections(
+        ds, adata, obs_columns=spec.cell_obs_columns(), dtype=spec.cell_dtype
+    )
 
     print(f"5. Saving factor model to {output_path}...")
     save_factors_netcdf(ds, output_path)

@@ -27,7 +27,6 @@ from pathlib import Path
 from typing import Any
 
 import anndata
-import numpy as np
 
 from ..anova import anova_component_associations, prepare_anova_inputs
 from ..ccc_rise import (
@@ -37,7 +36,7 @@ from ..ccc_rise import (
     fit_ccc_cp,
     fit_rise,
 )
-from ..factors import factors_to_xarray, save_factors_netcdf
+from ..factors import add_cell_projections, factors_to_xarray, save_factors_netcdf
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..validation.component_stability import SEED_AXIS, stability_fit
 from . import run_component_stability, run_significance
@@ -113,8 +112,6 @@ def _save_factors(
         gene_names=list(rise_adata.var_names),
         pf2_factors=reference["rise_factors"],
         pf2_weights=rise_adata.uns["Pf2_weights"],
-        pf2_projections=np.asarray(rise_adata.obsm["projections"]),
-        cell_ids=rise_adata.obs_names.to_numpy(),
         r2x_cp=reference["r2x_cp"],
         r2x_pf2=float(reference["r2x_rise"]),
         attrs={
@@ -123,6 +120,9 @@ def _save_factors(
             "condition_key": spec.condition_column,
             "complex_sep": "&",
         },
+    )
+    ds = add_cell_projections(
+        ds, rise_adata, obs_columns=spec.cell_obs_columns(), dtype=spec.cell_dtype
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     save_factors_netcdf(ds, output_path)
