@@ -30,14 +30,17 @@ procedure (`rank_mode="own"`) or set to a single rank shared by every method
 BiCV and CORCONDIA and its published factors are read from the cached model.
 """
 
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import anndata
 import numpy as np
 import pandas as pd
 import tensorly as tl
+import xarray as xr
 from tensorly.decomposition import non_negative_parafac
 
 from .ccc_rise import calc_communication_score_pseudobulk, pseudobulk_cp_decomposition
@@ -46,6 +49,10 @@ from .rank_selection import cp_core_consistency_sweep, cpd_component_collinearit
 from .utils import pseudobulk_X
 
 RANK_MODES = ("own", "shared")
+
+# Bump when a change to a comparator's fitting or rank selection should
+# invalidate every cached own-rank fit.
+FIT_CACHE_VERSION = 1
 
 # `tensor.run_pseudobulk_workflow`'s CP settings, and the rule cccRISE's CP rank
 # was read off by: the last rank before core consistency first drops below 85%
@@ -356,3 +363,83 @@ def fit_comparators(
             details=stac_details | {"core_shape": list(core_shape)},
         ),
     ]
+
+
+def fit_settings() -> dict[str, Any]:
+    """Every module-level constant an own-rank fit depends on, for the cache key."""
+    return {
+        "fit_cache_version": FIT_CACHE_VERSION,
+        "pseudobulk_n_iter_max": PSEUDOBULK_N_ITER_MAX,
+        "pseudobulk_tol": PSEUDOBULK_TOL,
+        "corcondia_threshold": CORCONDIA_THRESHOLD,
+        "tc2c_tol": TC2C_TOL,
+        "tc2c_n_iter_max": TC2C_N_ITER_MAX,
+    }
+
+
+def save_fits(
+    path: Path,
+    fits: Sequence[ComparatorFit],
+    conditions: np.ndarray,
+    key: dict[str, Any],
+    tensor_info: dict[str, Any],
+) -> None:
+    """Cache fits' raw (not read-depth corrected) condition factors.
+
+    `key` is everything the fits depend on; `load_fits` refuses the cache when
+    it differs. `tensor_info` describes the tensor they were fit on, so a run
+    served from the cache can still report it without rebuilding it.
+    """
+    data_vars = {
+        f"factor_{i}": xr.DataArray(
+            np.asarray(fit.condition_factor, dtype=float),
+            dims=("condition", f"component_{i}"),
+            attrs={
+                "method": fit.method,
+                "rank_mode": fit.rank_mode,
+                "rank": fit.rank,
+                "details": json.dumps(fit.details),
+            },
+        )
+        for i, fit in enumerate(fits)
+    }
+    ds = xr.Dataset(
+        data_vars,
+        coords={"condition": np.asarray(conditions).astype(str)},
+        attrs={
+            "cache_key": json.dumps(key, sort_keys=True),
+            "tensor_info": json.dumps(tensor_info),
+        },
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ds.to_netcdf(path)
+
+
+def load_fits(
+    path: Path, conditions: np.ndarray, key: dict[str, Any]
+) -> tuple[list[ComparatorFit], dict[str, Any]] | None:
+    """Cached fits and their tensor info, or None when the cache is missing or
+    was made from different data or settings."""
+    if not path.exists():
+        return None
+    with xr.open_dataset(path) as ds:
+        ds = ds.load()
+    if ds.attrs.get("cache_key") != json.dumps(key, sort_keys=True):
+        print(f"   {path.name} was made with different settings; refitting")
+        return None
+    if not np.array_equal(
+        ds.coords["condition"].values, np.asarray(conditions).astype(str)
+    ):
+        print(f"   {path.name} was fit on different conditions; refitting")
+        return None
+    fits = [
+        ComparatorFit(
+            method=var.attrs["method"],
+            rank_mode=var.attrs["rank_mode"],
+            rank=var.attrs["rank"],
+            condition_factor=var.values,
+            details=json.loads(var.attrs["details"]),
+        )
+        for var in (ds[f"factor_{i}"] for i in range(len(ds.data_vars)))
+    ]
+    return fits, json.loads(ds.attrs["tensor_info"])

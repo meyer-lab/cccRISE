@@ -12,7 +12,10 @@ version). Within an association, eta-squared, F and p are monotone in one
 another, so the maximum eta-squared is also the minimum ANOVA p.
 
 Permutations are drawn once per association from one seed and shared by every
-method, so two methods' null draws are paired. They permute only the
+method, so two methods' null draws are paired: `paired_difference` tests one
+method's maximum eta-squared against another's by the difference each shuffle
+produces, which carries whatever advantage a method's extra components give it
+under the null. They permute only the
 conditions an association keeps (its levels and non-missing labels), and move a
 patient's conditions together: patients contributing the same number of
 conditions are exchanged as blocks, and a block's order is shuffled within.
@@ -194,8 +197,45 @@ def summarize_null(
     }
 
 
-def bh_across_associations(summary: pd.DataFrame, by: Sequence[str]) -> pd.Series:
-    """BH over associations within each fit, applied to `PermP`."""
-    return summary.groupby(list(by), sort=False)["PermP"].transform(
+def paired_difference(
+    observed_a: float, null_a: np.ndarray, observed_b: float, null_b: np.ndarray
+) -> dict[str, float]:
+    """Method A's maximum eta-squared against method B's, on shared permutations.
+
+    The null of ``A - B`` is the per-shuffle difference of the two methods'
+    maxima, so it is centred wherever the methods' component counts put it
+    rather than at zero. `PairedP` is one-sided (A exceeds B by more than
+    chance); `PairedPTwoSided` measures distance from the null's centre.
+    """
+    difference = observed_a - observed_b
+    null = np.asarray(null_a) - np.asarray(null_b)
+    if not (np.isfinite(difference) and np.all(np.isfinite(null))):
+        return {
+            "Difference": np.nan,
+            "NullDiffMean": np.nan,
+            "NullDiffQ025": np.nan,
+            "NullDiffQ975": np.nan,
+            "PairedP": np.nan,
+            "PairedPTwoSided": np.nan,
+        }
+    centre = float(null.mean())
+    n = null.size
+    return {
+        "Difference": float(difference),
+        "NullDiffMean": centre,
+        "NullDiffQ025": float(np.quantile(null, 0.025)),
+        "NullDiffQ975": float(np.quantile(null, 0.975)),
+        "PairedP": float((1 + np.sum(null >= difference)) / (1 + n)),
+        "PairedPTwoSided": float(
+            (1 + np.sum(np.abs(null - centre) >= abs(difference - centre))) / (1 + n)
+        ),
+    }
+
+
+def bh_across_associations(
+    summary: pd.DataFrame, by: Sequence[str], column: str = "PermP"
+) -> pd.Series:
+    """BH over associations within each group of `by`, applied to `column`."""
+    return summary.groupby(list(by), sort=False)[column].transform(
         lambda p: adjust_pvalues(p.to_numpy(), method="fdr_bh")
     )

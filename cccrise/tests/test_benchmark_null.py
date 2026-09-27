@@ -12,6 +12,7 @@ from cccrise.benchmark_null import (
     block_permutations,
     eta_squared,
     maxt_null,
+    paired_difference,
     summarize_null,
 )
 
@@ -90,3 +91,23 @@ def test_association_permutations_drop_unkept_conditions():
     assert list(kept) == [0, 1, 3, 4]
     assert list(codes) == [0, 1, 0, 1]
     assert perms.shape == (5, 4)
+
+
+def test_paired_difference_is_centred_on_the_null_not_zero():
+    rng = np.random.default_rng(3)
+    null_a = rng.normal(0.10, 0.02, size=999)
+    null_b = null_a - 0.05  # A always leads by 0.05 under the null
+    at_null = paired_difference(0.30, null_a, 0.25, null_b)
+    assert at_null["NullDiffMean"] == pytest.approx(0.05)
+    assert at_null["PairedP"] == pytest.approx(1.0)
+
+    ahead = paired_difference(0.30, null_a, 0.10, null_b + rng.normal(0, 0.01, 999))
+    assert ahead["Difference"] == pytest.approx(0.20)
+    assert ahead["PairedP"] == pytest.approx(1 / 1000)
+    assert ahead["PairedPTwoSided"] == pytest.approx(1 / 1000)
+    assert ahead["NullDiffQ025"] < ahead["NullDiffMean"] < ahead["NullDiffQ975"]
+
+
+def test_paired_difference_is_nan_without_a_null():
+    out = paired_difference(np.nan, np.full(5, np.nan), 0.1, np.zeros(5))
+    assert np.isnan(out["PairedP"])

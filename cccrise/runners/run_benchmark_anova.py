@@ -20,12 +20,20 @@ cccRISE is never refit, so its rows are identical under both modes.
 
 Each fit is also scored against a label-permutation null
 (`benchmark_null`): the maximum eta-squared across its components, per
-association, against the same shuffled labels for every method.
+association, against the same shuffled labels for every method. Because the
+shuffles are shared, cccRISE is also compared with every other fit directly,
+by the paired difference of their maxima.
 
-Writes the CSVs `figureBenchmarkAnova` and `figureBenchmarkNull` read:
+The own-rank fits -- the slow part, dominated by Tensor-cell2cell's elbow
+sweep -- are cached in ``benchmark_fits_<dataset>.nc`` and reused while the
+data and fit settings are unchanged (``--refit`` forces a refit). Shared-rank
+fits are cheap and always refit.
 
-    benchmark_anova_<dataset>.csv       one row per (method, rank mode, association, component)
-    benchmark_anova_null_<dataset>.csv  one row per (method, rank mode, association)
+Writes the CSVs the benchmark figures read:
+
+    benchmark_anova_<dataset>.csv         one row per (method, rank mode, association, component)
+    benchmark_anova_null_<dataset>.csv    one row per (method, rank mode, association)
+    benchmark_anova_paired_<dataset>.csv  one row per (comparator fit, association)
 
     uv run cccrise-benchmark --dataset alad
     uv run cccrise-benchmark --dataset alad --rank-mode shared --shared-rank 4
@@ -47,7 +55,10 @@ from ..benchmark import (
     TC2C_UPPER_RANK,
     ComparatorFit,
     fit_comparators,
+    fit_settings,
+    load_fits,
     pseudobulk_tensor,
+    save_fits,
 )
 from ..benchmark_null import (
     N_PERMUTATIONS,
@@ -56,6 +67,7 @@ from ..benchmark_null import (
     association_permutations,
     bh_across_associations,
     maxt_null,
+    paired_difference,
     permutation_digest,
     summarize_null,
 )
@@ -118,9 +130,10 @@ def run_benchmark_anova(
     complex_sep: str | None = "&",
     random_state: int = 42,
     n_permutations: int = N_PERMUTATIONS,
+    refit: bool = False,
     factors_path: Path | None = None,
     output_path: Path | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, Path, Path]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Path, Path]:
     """Run the cccRISE ANOVA on cccRISE and every comparator.
 
     Parameters
@@ -147,6 +160,8 @@ def run_benchmark_anova(
         Seed for every comparator fit and for the permutations.
     n_permutations : int, default=N_PERMUTATIONS
         Label permutations per association, shared by every fit.
+    refit : bool, default=False
+        Refit the own-rank comparators even when a matching cache exists.
     factors_path : Path, optional
         Published cccRISE model. Defaults to the dataset's canonical factors file.
     output_path : Path, optional
@@ -164,20 +179,48 @@ def run_benchmark_anova(
     cccrise_fit, cp_rank = _published_cccrise(factors_path, conditions)
     shared_rank = shared_rank or cp_rank
 
-    print(">> Building the cell-type pseudobulk tensor")
-    tensor, celltypes, lr_pairs = pseudobulk_tensor(
-        adata,
-        spec.condition_column,
-        spec.celltype_column,
-        import_ligand_receptor_pairs(),
-        complex_sep=complex_sep,
-    )
-    print(f"   Tensor shape {tensor.shape}")
+    dataset_fields = dataset_metadata(spec)
+    cache_path = output_path.with_name(spec.benchmark_fits_filename())
+    cache_key = {
+        "dataset": spec.key,
+        "source_sha256": dataset_fields["source_sha256"],
+        "celltype_column": spec.celltype_column,
+        "complex_sep": complex_sep,
+        "random_state": random_state,
+        "tc2c_upper_rank": tc2c_upper_rank,
+        "tc2c_elbow_runs": tc2c_elbow_runs,
+        "staccato_varexp": staccato_varexp,
+        **fit_settings(),
+    }
+    cached = None
+    if "own" in rank_modes and not refit:
+        cached = load_fits(cache_path, conditions, cache_key)
+    tensor_info: dict[str, Any] | None = cached[1] if cached else None
+    tensor = None
 
     fits = [cccrise_fit]
     for mode in rank_modes:
+        if mode == "own" and cached:
+            print(f">> Own-rank comparator fits read from {cache_path.name}")
+            fits += cached[0]
+            continue
+        if tensor is None:
+            print(">> Building the cell-type pseudobulk tensor")
+            tensor, celltypes, lr_pairs = pseudobulk_tensor(
+                adata,
+                spec.condition_column,
+                spec.celltype_column,
+                import_ligand_receptor_pairs(),
+                complex_sep=complex_sep,
+            )
+            tensor_info = {
+                "tensor_shape": list(tensor.shape),
+                "celltypes": [str(c) for c in celltypes],
+                "n_lr_pairs": len(lr_pairs),
+            }
+            print(f"   Tensor shape {tensor.shape}")
         print(f">> Fitting comparators, rank mode {mode!r}")
-        fits += fit_comparators(
+        mode_fits = fit_comparators(
             tensor,
             rank_mode=mode,
             shared_rank=shared_rank,
@@ -186,6 +229,12 @@ def run_benchmark_anova(
             staccato_varexp=staccato_varexp,
             random_state=random_state,
         )
+        if mode == "own":
+            assert tensor_info is not None
+            save_fits(cache_path, mode_fits, conditions, cache_key, tensor_info)
+            print(f"   Cached own-rank fits to {cache_path}")
+        fits += mode_fits
+    assert tensor_info is not None
 
     print(f">> Drawing {n_permutations} label permutations per association")
     patients = _condition_patients(adata, spec, conditions)
@@ -199,6 +248,7 @@ def run_benchmark_anova(
         )
 
     tables, summaries = [], []
+    maxima: list[dict[str, tuple[float, np.ndarray]]] = []
     for fit in fits:
         print(f"   {fit.method} ({fit.rank_mode}, rank {fit.rank})")
         adata.uns["A"] = fit.condition_factor
@@ -212,6 +262,7 @@ def run_benchmark_anova(
             correction=correction,
         )
         table["PermPAdj"] = np.nan
+        fit_maxima = {}
         for name, (kept, codes, perms) in null_plans.items():
             observed, p_adj, null_max = maxt_null(corrected, kept, codes, perms)
             rows = table["Association"] == name
@@ -221,6 +272,8 @@ def run_benchmark_anova(
             ):
                 raise RuntimeError(f"Null eta-squared disagrees with the ANOVA: {name}")
             table.loc[rows, "PermPAdj"] = p_adj
+            null_summary = summarize_null(observed, p_adj, null_max)
+            fit_maxima[name] = (null_summary["MaxEtaSquared"], null_max)
             summaries.append(
                 {
                     "Method": fit.method,
@@ -228,9 +281,10 @@ def run_benchmark_anova(
                     "Rank": fit.rank,
                     "Association": name,
                     "NComponents": corrected.shape[1],
-                    **summarize_null(observed, p_adj, null_max),
+                    **null_summary,
                 }
             )
+        maxima.append(fit_maxima)
         table.insert(0, "Rank", fit.rank)
         table.insert(0, "RankMode", fit.rank_mode)
         table.insert(0, "Method", fit.method)
@@ -245,8 +299,33 @@ def run_benchmark_anova(
     summary.to_csv(null_path, index=False)
     print(f"   Wrote {len(summary)} rows to {null_path}")
 
+    # cccRISE against every other fit, on the shuffles they share
+    reference = maxima[0]
+    paired = pd.DataFrame(
+        [
+            {
+                "Reference": fits[0].method,
+                "Comparator": fit.method,
+                "RankMode": fit.rank_mode,
+                "ComparatorRank": fit.rank,
+                "Association": name,
+                "ReferenceMaxEta": reference[name][0],
+                "ComparatorMaxEta": fit_maxima[name][0],
+                **paired_difference(*reference[name], *fit_maxima[name]),
+            }
+            for fit, fit_maxima in zip(fits[1:], maxima[1:])
+            for name in null_plans
+        ]
+    )
+    paired["PairedPBH"] = bh_across_associations(
+        paired, ["Comparator", "RankMode"], column="PairedP"
+    )
+    paired_path = output_path.with_name(spec.benchmark_paired_filename())
+    paired.to_csv(paired_path, index=False)
+    print(f"   Wrote {len(paired)} rows to {paired_path}")
+
     metadata = build_metadata(
-        dataset_metadata(spec)
+        dataset_fields
         | {
             "factors_file": relpath(factors_path),
             "rank_modes": list(rank_modes),
@@ -260,14 +339,22 @@ def run_benchmark_anova(
                 "n_permutations": n_permutations,
                 "statistic": "max eta-squared across components (Westfall-Young maxT)",
                 "output": relpath(null_path),
+                "paired_output": relpath(paired_path),
+                "paired_reference": fits[0].method,
                 "permutation_digests": {
                     name: permutation_digest(perms)
                     for name, (_kept, _codes, perms) in null_plans.items()
                 },
             },
-            "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=len(lr_pairs)),
-            "pseudobulk_tensor_shape": list(tensor.shape),
-            "celltypes": [str(c) for c in celltypes],
+            "fit_cache": {
+                "file": relpath(cache_path),
+                "own_fits_from_cache": bool(cached),
+            },
+            "resulting_dims": resulting_dims(
+                spec, adata, n_lr_pairs=tensor_info["n_lr_pairs"]
+            ),
+            "pseudobulk_tensor_shape": tensor_info["tensor_shape"],
+            "celltypes": tensor_info["celltypes"],
             "tensor_cell2cell": {
                 "upper_rank": tc2c_upper_rank,
                 "elbow_runs": tc2c_elbow_runs,
@@ -285,7 +372,7 @@ def run_benchmark_anova(
     )
     sidecar = write_metadata(output_path, metadata, header=HEADER)
     print(f"   Wrote provenance to {sidecar}")
-    return results, summary, output_path, sidecar
+    return results, summary, paired, output_path, sidecar
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -319,6 +406,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Label permutations per association for the null (default: 10000).",
     )
     parser.add_argument(
+        "--refit",
+        action="store_true",
+        help="Refit the own-rank comparators instead of reading the cached fits.",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         default=None,
@@ -341,6 +433,7 @@ def main(argv: list[str] | None = None) -> None:
         complex_sep=args.complex_sep,
         random_state=args.random_state,
         n_permutations=args.n_permutations,
+        refit=args.refit,
         output_path=resolve_output(
             args.output, DATA_DIR, spec.benchmark_anova_filename()
         ),

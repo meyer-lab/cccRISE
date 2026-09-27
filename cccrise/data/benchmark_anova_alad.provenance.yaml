@@ -26,6 +26,8 @@ random_state: 42
   n_permutations: 10000
   statistic: max eta-squared across components (Westfall-Young maxT)
   output: cccrise/data/benchmark_anova_null_alad.csv
+  paired_output: cccrise/data/benchmark_anova_paired_alad.csv
+  paired_reference: cccRISE
   permutation_digests:
     Control vs. ALAD (All): 4b32358888d75663
     Control vs. Declined: 8d9b997ce5d3c97a
@@ -40,6 +42,9 @@ random_state: 42
     Pre-Tx Diagnosis (ILD vs. Other): 2ba3318d5d04010b
     CMV Serostatus (IgG+ vs. IgG-): dde82d2ae7c6036b
     Sex (Male vs. Female): e350db48c180b53c
+fit_cache:
+  file: cccrise/data/benchmark_fits_alad.nc
+  own_fits_from_cache: true
 resulting_dims:
   conditions: 47
   genes: 16675
@@ -70,13 +75,13 @@ fits:
   corcondia_threshold: 85.0
   core_consistency:
   - 100.0
-  - 99.99943145702233
-  - 99.94344484431801
-  - 99.3565185792884
-  - 98.08530604956722
-  - -5718.168096412937
-  - -6459456.923240314
-  - -14764812709305.96
+  - 99.9994314570223
+  - 99.94344484429661
+  - 99.35651858429259
+  - 98.08531271836894
+  - -5718.170014217684
+  - -11366164.263813468
+  - -145516218.03584105
   max_modes_collinear: [0, 0, 0, 1, 1, 1, 2, 2]
 - method: Tensor-cell2cell
   rank_mode: own
@@ -159,5 +164,5 @@ fits:
   rank_mode: shared
   rank: 2x2x2x2
   core_shape: [2, 2, 2, 2]
-git_sha: e621d56f35e02aebb9c2019c1ba4b2952561f201-dirty
-generated: '2026-09-26T07:07:56+00:00'
+git_sha: e222327b1ee88a28eb2723facfee8418ccff7b2b-dirty
+generated: '2026-09-27T05:11:10+00:00'
