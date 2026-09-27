@@ -26,7 +26,7 @@ import anndata
 import numpy as np
 import xarray as xr
 
-from ..ccc_rise import validate_cp_rank
+from ..ccc_rise import RISE_FIT_OPTIONS, validate_cp_rank
 from ..factors import add_cell_projections, factors_to_xarray, save_factors_netcdf
 from ..import_data import import_ligand_receptor_pairs
 from ..tensor import run_ccc_rise_workflow
@@ -200,6 +200,7 @@ def run_pipeline(
             "rise_n_iter_max": rise_n_iter_max,
             "cp_n_iter_max": cp_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "cp_tol": cp_tol,
             "random_state": random_state,
             "complex_sep": complex_sep,

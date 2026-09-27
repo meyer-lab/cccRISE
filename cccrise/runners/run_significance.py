@@ -26,6 +26,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..ccc_rise import RISE_FIT_OPTIONS
 from ..import_data import import_ligand_receptor_pairs
 from ..validation.significance import (
     fit_significance_pipeline,
@@ -204,6 +205,7 @@ def run_significance(
             "hill_k": hill_k,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "r2x_rise": float(results["r2x_rise"]),
             "random_state": random_state,
             "total_tensor_entries": int(overview_df["TotalEntries"].iloc[0]),

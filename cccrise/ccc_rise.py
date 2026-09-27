@@ -23,6 +23,10 @@ from .import_data import (  # noqa: F401 -- condition_matrices is re-exported
     iter_condition_matrices,
 )
 
+#: PARAFAC2 options every RISE fit in the pipeline uses. Runners record these
+#: in their provenance sidecars, so the sidecar and the fit cannot drift apart.
+RISE_FIT_OPTIONS: dict[str, bool] = {"normalize_slices": True, "fix_B_identity": True}
+
 
 def calc_communication_score(
     projected_matrices: list[np.ndarray],
@@ -710,8 +714,7 @@ def ccc_rise(
         n_iter_max=rise_n_iter_max,
         tol=rise_tol,
         random_state=random_state,
-        normalize_slices=True,
-        fix_B_identity=True,
+        **RISE_FIT_OPTIONS,
     )
     pf2_weights, pf2_factors, projections = pf2_output
 

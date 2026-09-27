@@ -40,6 +40,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..ccc_rise import RISE_FIT_OPTIONS
 from ..import_data import import_ligand_receptor_pairs
 from ..validation.component_stability import (
     DEFAULT_AXES,
@@ -226,6 +227,7 @@ def run_component_stability(
             "n_replicates": n_replicates,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "init": init,

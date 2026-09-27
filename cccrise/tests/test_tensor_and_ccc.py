@@ -494,3 +494,29 @@ def test_calculate_fms_rise():
     # Self-comparison must have perfect FMS = 1.0
     score = calculate_fms_rise(adata1, adata2)
     np.testing.assert_allclose(score, 1.0, atol=1e-5)
+
+
+def test_rise_store_r2x_fits_with_the_recorded_rise_options():
+    """The fit uses exactly the options runners write into their sidecars."""
+    from unittest.mock import patch
+
+    import cccrise.tensor as tensor_mod
+    from cccrise.ccc_rise import RISE_FIT_OPTIONS
+
+    captured = {}
+
+    def fake_fit(X, **kwargs):
+        captured.update(kwargs)
+        raise RuntimeError("stop after capturing the call")
+
+    with (
+        patch.object(tensor_mod, "parafac2_nd", fake_fit),
+        pytest.raises(RuntimeError, match="stop after capturing"),
+    ):
+        tensor_mod.rise_store_r2x(
+            anndata.AnnData(np.zeros((2, 2))), rank=1, n_iter_max=1, tolerance=1e-3
+        )
+
+    assert RISE_FIT_OPTIONS == {"normalize_slices": True, "fix_B_identity": True}
+    for key, value in RISE_FIT_OPTIONS.items():
+        assert captured[key] is value

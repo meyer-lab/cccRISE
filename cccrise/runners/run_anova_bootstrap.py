@@ -23,6 +23,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..ccc_rise import RISE_FIT_OPTIONS
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..validation.anova_stability import (
     bootstrap_anova,
@@ -239,6 +240,7 @@ def run_anova_bootstrap(
             "rise_n_iter_max": rise_n_iter_max,
             "cp_n_iter_max": cp_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "cp_tol": cp_tol,
             "complex_sep": complex_sep,
             "random_state": random_state,

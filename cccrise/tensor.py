@@ -12,6 +12,7 @@ from tlviz.factor_tools import factor_match_score as fms
 
 from .ccc import calculate_r2x
 from .ccc_rise import (
+    RISE_FIT_OPTIONS,
     calc_communication_score,
     calc_communication_score_pseudobulk,
     ccc_rise,
@@ -43,8 +44,7 @@ def rise_store_r2x(
         tol=tolerance,
         n_iter_max=n_iter_max,
         backend=backend,
-        normalize_slices=True,
-        fix_B_identity=True,
+        **RISE_FIT_OPTIONS,
     )
     X = store_pf2(X, pf2_out)
 

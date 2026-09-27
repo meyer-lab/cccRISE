@@ -17,6 +17,7 @@ from pathlib import Path
 import pandas as pd
 from scrise.rank_selection import bicv
 
+from ..ccc_rise import RISE_FIT_OPTIONS
 from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
@@ -98,7 +99,7 @@ def run_rise_rank_selection(
         max_iter=rise_n_iter_max,
         compress=compress,
         compression_kwarg=compression_kwarg,
-        parafac2_kwarg={"normalize_slices": True, "fix_B_identity": True}
+        parafac2_kwarg=dict(RISE_FIT_OPTIONS)
         | ({"backend": backend} if backend else {}),
         condition_key=spec.condition_column,
     )
@@ -115,6 +116,7 @@ def run_rise_rank_selection(
             "held_out_gene_frac": held_out_gene_frac,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "compress": compress,
             "n_power_iter": n_power_iter,
             "backend": backend or "auto",

@@ -17,6 +17,7 @@ import xarray as xr
 from parafac2.parafac2 import parafac2_nd
 
 from ..ccc_rise import (
+    RISE_FIT_OPTIONS,
     compute_communication_significance,
     compute_differential_significance,
     condition_matrices,
@@ -108,8 +109,7 @@ def fit_significance_pipeline(
         n_iter_max=n_iter_max,
         tol=rise_tol,
         random_state=random_state,
-        normalize_slices=True,
-        fix_B_identity=True,
+        **RISE_FIT_OPTIONS,
     )
     dense_P = pf2_output[2]
     condition_names = np.unique(adata.obs[condition_column]).tolist()

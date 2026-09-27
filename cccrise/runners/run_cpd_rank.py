@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from tensorly.decomposition import parafac
 
-from ..ccc_rise import validate_cp_rank
+from ..ccc_rise import RISE_FIT_OPTIONS, validate_cp_rank
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..rank_selection import (
     calculate_r2x,
@@ -237,6 +237,7 @@ def run_cpd_rank_selection(
             "cp_ranks": ranks,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "init": init,
