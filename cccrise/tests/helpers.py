@@ -16,14 +16,9 @@ def write_rise_reference(
     rise_rank: int,
     path: Path,
     random_state: int = 0,
-    with_projections: bool = True,
 ) -> anndata.AnnData:
     """A factors.nc holding a real RISE fit and rank-1 CP placeholders (a RISE
-    reference never reads its CP portion); returns the fitted AnnData.
-
-    `with_projections=False` writes an old-style file without per-cell
-    projections.
-    """
+    reference never reads its CP portion); returns the fitted AnnData."""
     fit_adata, r2x_pf2 = fit_rise(
         add_cond_idxs(adata.copy(), condition_column),
         rank=rise_rank,
@@ -50,9 +45,7 @@ def write_rise_reference(
             np.asarray(fit_adata.varm["Pf2_C"]),
         ],
         pf2_weights=fit_adata.uns["Pf2_weights"],
-        pf2_projections=(
-            np.asarray(fit_adata.obsm["projections"]) if with_projections else None
-        ),
+        pf2_projections=np.asarray(fit_adata.obsm["projections"]),
         cell_ids=fit_adata.obs_names.to_numpy(),
         r2x_pf2=r2x_pf2,
         attrs={"condition_key": condition_column, "complex_sep": "&"},
