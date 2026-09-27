@@ -76,7 +76,7 @@ class LoadedDataset:
     #: available (recomputed from the stored projections) -- drives the Component Explorer's per-cell views.
     has_projections: bool
     #: 2D PaCMAP coordinates (`obsm["PaCMAP"]`) are stored -- drives the Cell
-    #: Projections tab specifically. `add_cell_projections` writes PaCMAP
+    #: Projections tab specifically. `factors.save_ccc_rise_fit` writes PaCMAP
     #: alongside the projections whenever it was fit, but a factors file built another way (e.g. a fresh
     #: factorization run through a different pipeline) could have one
     #: without the other, so they're tracked separately rather than assuming
@@ -87,7 +87,7 @@ class LoadedDataset:
 @lru_cache(maxsize=4)
 def load_dataset(key: str) -> LoadedDataset:
     """Load a dataset's factor matrices, plus per-cell projections/PaCMAP if
-    the `.nc` file was augmented with `add_cell_projections`. This reads
+    the `.nc` file was written by `factors.save_ccc_rise_fit`. This reads
     only the (small) factors file, not the raw single-cell data."""
     spec = DATASETS[key]
     adata = load_factors_to_anndata(spec.factors_path)

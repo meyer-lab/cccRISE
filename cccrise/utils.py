@@ -284,7 +284,7 @@ def load_rise_reference(
     ----------
     reference_path : str | Path
         A factors.nc containing `cell_projections` (see
-        `factors.add_cell_projections`).
+        `factors.save_ccc_rise_fit`).
     adata : anndata.AnnData
         The raw dataset the reference was fit on; its cells must match the
         reference's exactly, in the same order (checked, not assumed).

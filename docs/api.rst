@@ -85,6 +85,11 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 
    Save an xarray Dataset of factors to a compact NetCDF file (< 100 KB - 2 MB).
 
+.. py:function:: save_ccc_rise_fit(path: str | Path, adata: anndata.AnnData, cp_fit: dict, condition_column: str, obs_columns: list[str], dtype: str = "float32", attrs: dict | None = None)
+   :module: cccrise.factors
+
+   Write a CCC-RISE fit (a RISE-fit AnnData and a ``fit_ccc_cp`` / ``run_ccc_rise_workflow`` result) as the factors file ``load_factors_to_anndata`` reads, including per-cell projections stored at ``dtype`` (``"float32"`` or ``"float16"``).
+
 .. py:function:: load_factors_netcdf(filepath: str | Path)
    :module: cccrise.factors
 

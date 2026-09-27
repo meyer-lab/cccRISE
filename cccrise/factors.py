@@ -167,7 +167,7 @@ def factors_to_xarray(
     return xr.Dataset(data_vars=data_vars, coords=coords, attrs=ds_attrs)
 
 
-def add_cell_projections(
+def _add_cell_projections(
     ds: xr.Dataset,
     adata: anndata.AnnData,
     obs_columns: list[str],
@@ -228,7 +228,7 @@ def add_cell_projections(
 def save_factors_netcdf(ds: xr.Dataset, filepath: str | Path) -> None:
     """Save an xarray Dataset of factors to a NetCDF file, ensuring float
     arrays are float32, except for per-cell arrays that
-    `add_cell_projections` was asked to store as float16.
+    `_add_cell_projections` was asked to store as float16.
 
     float16 isn't part of the classic netCDF-4 data model, so if any
     variable was quantized to float16 the file is written via the
@@ -268,6 +268,54 @@ def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
     return xr.load_dataset(Path(filepath), engine="h5netcdf")
 
 
+def save_ccc_rise_fit(
+    path: str | Path,
+    adata: anndata.AnnData,
+    cp_fit: dict[str, Any],
+    condition_column: str,
+    obs_columns: list[str],
+    dtype: str = "float32",
+    attrs: dict[str, Any] | None = None,
+) -> None:
+    """Write a CCC-RISE fit as a factors file -- the file
+    `load_factors_to_anndata` reads.
+
+    Parameters
+    ----------
+    path : str | Path
+        NetCDF destination.
+    adata : anndata.AnnData
+        The RISE-fit AnnData (`ccc_rise.fit_rise` / `run_ccc_rise_workflow`).
+    cp_fit : dict[str, Any]
+        A `ccc_rise.fit_ccc_cp` / `run_ccc_rise_workflow` result on `adata`.
+    condition_column : str
+        Column in `adata.obs` defining the conditions.
+    obs_columns, dtype
+        Per-cell `.obs` columns and storage precision; see
+        `_add_cell_projections`.
+    attrs : dict, optional
+        Extra file attributes (e.g. dataset name, `complex_sep`).
+    """
+    ds = factors_to_xarray(
+        cpd_factors=cp_fit["cp_factors"],
+        cpd_weights=cp_fit["cp_weights"],
+        filtered_lr_pairs=cp_fit["filtered_lr_pairs"],
+        # The row order `add_cond_idxs` gave the fit's condition mode
+        condition_names=np.unique(adata.obs[condition_column].unique()),
+        gene_names=list(adata.var_names),
+        pf2_factors=[
+            adata.uns["Pf2_A"],
+            adata.uns["Pf2_B"],
+            np.asarray(adata.varm["Pf2_C"]),
+        ],
+        pf2_weights=adata.uns["Pf2_weights"],
+        r2x_cp=cp_fit["r2x_cp"],
+        r2x_pf2=adata.uns["r2x_pf2"],
+        attrs={"condition_key": condition_column} | (attrs or {}),
+    )
+    save_factors_netcdf(_add_cell_projections(ds, adata, obs_columns, dtype), path)
+
+
 def _add_stored_cell_data(
     out: anndata.AnnData,
     factors_ds: xr.Dataset,
@@ -277,7 +325,7 @@ def _add_stored_cell_data(
     random_state: int | None,
 ) -> anndata.AnnData:
     """`obsm` projections, sender/receiver loadings and PaCMAP from the
-    per-cell arrays `add_cell_projections` stored."""
+    per-cell arrays `_add_cell_projections` stored."""
     out.obsm["projections"] = np.asarray(
         factors_ds["cell_projections"].values, dtype=np.float32
     )
@@ -305,7 +353,7 @@ def load_factors_to_anndata(
     projections (`obsm["projections"]`), sender loadings (`obsm["sc_B"]`), receiver
     loadings (`obsm["rc_C"]`), and optional 2D PaCMAP coordinates are computed.
 
-    If `adata` is None and `factors_ds` was augmented with `add_cell_projections`,
+    If `adata` is None and `factors_ds` was augmented with `_add_cell_projections`,
     reconstructs a full per-cell AnnData directly from the stored per-cell arrays
     (no raw single-cell data needed).
 

@@ -82,7 +82,7 @@ class DatasetSpec:
     #: auto-detects, for cohorts too large for the GPU.
     backend: str | None = None
     #: Storage precision of per-cell arrays in written factors files
-    #: (`factors.add_cell_projections`); "float16" halves them for large
+    #: (`factors.save_ccc_rise_fit`); "float16" halves them for large
     #: cohorts, at the cost of an only-approximate RISE reference.
     cell_dtype: str = "float32"
     notes: str = ""

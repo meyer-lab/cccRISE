@@ -25,11 +25,9 @@ from pathlib import Path
 from typing import Any
 
 import anndata
-import numpy as np
-import xarray as xr
 
 from ..ccc_rise import CP_FIT_OPTIONS, run_ccc_rise_workflow, validate_cp_rank
-from ..factors import add_cell_projections, factors_to_xarray, save_factors_netcdf
+from ..factors import save_ccc_rise_fit
 from ..import_data import import_ligand_receptor_pairs
 from ._cli import (
     CP_N_ITER_MAX,
@@ -92,7 +90,7 @@ def run_pipeline(
     rise_rank_notes: str | None = None,
     cpd_rank_notes: str | None = None,
     do_embedding: bool = True,
-) -> tuple[anndata.AnnData, xr.Dataset, Path, Path]:
+) -> tuple[anndata.AnnData, Path, Path]:
     """Run cccRISE end to end and serialize the factor model plus provenance.
 
     Parameters
@@ -127,7 +125,7 @@ def run_pipeline(
     Returns
     -------
     tuple[anndata.AnnData, xr.Dataset, Path, Path]
-        The fitted AnnData, the factor Dataset, the ``.nc`` path, and the
+        The fitted AnnData, the ``.nc`` path, and the
         sidecar path.
     """
     output_path = output_path or (
@@ -173,33 +171,20 @@ def run_pipeline(
     adata, r2x_cp, r2x_pf2 = fit["adata"], fit["r2x_cp"], fit["r2x_rise"]
     print(f"   CP R2X: {r2x_cp:.4f}")
 
-    print("3. Converting factors to xarray...")
-    condition_names = np.unique(adata.obs[spec.condition_column].unique())
-    ds = factors_to_xarray(
-        cpd_factors=[adata.uns["A"], adata.uns["B"], adata.uns["C"], adata.uns["D"]],
-        cpd_weights=adata.uns["weights"],
-        filtered_lr_pairs=adata.uns["lr_pairs"],
-        condition_names=condition_names,
-        gene_names=list(adata.var_names),
-        pf2_factors=[adata.uns["Pf2_A"], adata.uns["Pf2_B"], adata.varm["Pf2_C"]],
-        pf2_weights=adata.uns["Pf2_weights"],
-        r2x_cp=r2x_cp,
-        r2x_pf2=r2x_pf2,
+    print(f"3. Saving factor model to {output_path}...")
+    save_ccc_rise_fit(
+        output_path,
+        adata,
+        fit,
+        spec.condition_column,
+        obs_columns=spec.cell_obs_columns(),
+        dtype=spec.cell_dtype,
         attrs={
             "dataset_name": spec.key,
             "dataset_label": spec.label,
-            "condition_key": spec.condition_column,
             "complex_sep": complex_sep or "",
         },
     )
-
-    print("4. Attaching per-cell projections...")
-    ds = add_cell_projections(
-        ds, adata, obs_columns=spec.cell_obs_columns(), dtype=spec.cell_dtype
-    )
-
-    print(f"5. Saving factor model to {output_path}...")
-    save_factors_netcdf(ds, output_path)
 
     rank_selection = _rank_selection_block(
         spec, rise_rank, cp_rank, rise_rank_notes, cpd_rank_notes
@@ -222,7 +207,7 @@ def run_pipeline(
             "lr_pairs_annotated": len(lr_pairs),
             "resulting_dims": resulting_dims(spec, adata, n_lr_pairs=n_lr_used),
             "interaction_tensor_shape": [
-                len(condition_names),
+                n_conditions,
                 rise_rank,
                 rise_rank,
                 n_lr_used,
@@ -234,7 +219,7 @@ def run_pipeline(
     )
     sidecar = write_metadata(output_path, metadata, header=HEADER)
     print(f"   Wrote provenance to {sidecar}")
-    return adata, ds, output_path, sidecar
+    return adata, output_path, sidecar
 
 
 def build_parser() -> argparse.ArgumentParser:

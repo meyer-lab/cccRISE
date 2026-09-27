@@ -36,7 +36,7 @@ from ..ccc_rise import (
     fit_ccc_cp,
     fit_rise,
 )
-from ..factors import add_cell_projections, factors_to_xarray, save_factors_netcdf
+from ..factors import save_ccc_rise_fit
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..validation.component_stability import SEED_AXIS, stability_fit
 from . import run_component_stability, run_significance
@@ -97,43 +97,34 @@ DEFAULT_STABILITY_AXES = ("cells", "lr_pairs", SEED_AXIS)
 def _save_factors(
     spec: DatasetSpec,
     rise_adata: anndata.AnnData,
-    reference: dict[str, Any],
+    cp_fit: dict[str, Any],
     metadata: dict[str, Any],
     output_path: Path,
 ) -> Path:
     """Write one method's full-cohort fit as a factors.nc in `run_ccc_rise`'s
-    format, per-cell RISE projections included so `run_significance` can
-    load the shared RISE fit from it."""
-    ds = factors_to_xarray(
-        cpd_factors=reference["cp_factors"],
-        cpd_weights=reference["cp_weights"],
-        filtered_lr_pairs=reference["lr_symbols"],
-        condition_names=reference["condition_labels"],
-        gene_names=list(rise_adata.var_names),
-        pf2_factors=reference["rise_factors"],
-        pf2_weights=rise_adata.uns["Pf2_weights"],
-        r2x_cp=reference["r2x_cp"],
-        r2x_pf2=float(reference["r2x_rise"]),
+    format (`factors.save_ccc_rise_fit`), so `run_significance` can load the
+    shared RISE fit from it."""
+    save_ccc_rise_fit(
+        output_path,
+        rise_adata,
+        cp_fit,
+        spec.condition_column,
+        obs_columns=spec.cell_obs_columns(),
+        dtype=spec.cell_dtype,
         attrs={
             "dataset_name": spec.key,
             "dataset_label": spec.label,
-            "condition_key": spec.condition_column,
             "complex_sep": "&",
         },
     )
-    ds = add_cell_projections(
-        ds, rise_adata, obs_columns=spec.cell_obs_columns(), dtype=spec.cell_dtype
-    )
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    save_factors_netcdf(ds, output_path)
     write_metadata(
         output_path,
         build_metadata(
             dataset_metadata(spec)
             | metadata
             | {
-                "r2x_pf2": float(reference["r2x_rise"]),
-                "r2x_cp": float(reference["r2x_cp"]),
+                "r2x_pf2": float(rise_adata.uns["r2x_pf2"]),
+                "r2x_cp": float(cp_fit["r2x_cp"]),
             }
         ),
         header=FACTORS_HEADER,
@@ -307,7 +298,7 @@ def run_alt_comm_score(
         factors_path = _save_factors(
             spec,
             rise_adata,
-            reference,
+            cp_fit,
             {
                 "communication_score": method,
                 "hill_k": hill_k,
