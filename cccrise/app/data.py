@@ -54,6 +54,9 @@ DATASETS: dict[str, DatasetSpec] = {
         control_label="Control",
         other_label="COVID-19",
     ),
+    # Registering IBD here: its cap-2000 factor model is committed
+    # xz-compressed; run `xz -dk cccrise/data/ibd_ti_factors_cap2000.nc.xz`
+    # first and point `factors_path` at the decompressed `.nc`.
     "alad": DatasetSpec(
         key="alad",
         label="ALAD Lung Transplant",

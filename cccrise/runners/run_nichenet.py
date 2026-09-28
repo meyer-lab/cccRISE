@@ -114,6 +114,8 @@ def run_nichenet(
             "pass --celltype-col explicitly."
         )
 
+    # IBD's cap-2000 factor model is committed xz-compressed; run
+    # `xz -dk cccrise/data/ibd_ti_factors_cap2000.nc.xz` before this runner.
     factors_path = spec.factors_path()
     if not factors_path.exists():
         raise FileNotFoundError(

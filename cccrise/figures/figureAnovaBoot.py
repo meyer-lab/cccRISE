@@ -330,6 +330,8 @@ def makeFigure():
         bootstrap_anova_df, reference_anova, ci_level=ci_level, alpha=alpha
     )
 
+    # For IBD, the cap-2000 factor model is committed xz-compressed; run
+    # `xz -dk cccrise/data/ibd_ti_factors_cap2000.nc.xz` first.
     factors_path = DATASETS[SELECTED_DATASET].factors_path()
     factors_ds = load_factors_to_anndata(factors_path)
     labels = top_lr_pairs(factors_ds.uns["D"], factors_ds.uns["lr_pairs"], top_n=1)

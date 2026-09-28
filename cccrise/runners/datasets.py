@@ -148,6 +148,11 @@ DATASETS: dict[str, DatasetSpec] = {
         label="IBDverse Crohn's Disease Terminal Ileum",
         loader=import_ibdverse,
         condition_column="sanger_sample_id",
+        # The cap-2000 factor model (`--max-cells-per-condition 2000`)
+        # ships xz-compressed as `cccrise/data/ibd_ti_factors_cap2000.nc.xz` (the
+        # `.nc` is 298 MB, over GitHub's 100 MB limit, and is git-ignored). Decompress
+        # it before use: `xz -dk cccrise/data/ibd_ti_factors_cap2000.nc.xz` (lossless;
+        # sha256 of the `.nc`: ec432831e347a9b1d081d98c4b610e44bb98e8c15de4eadf7b1ce1055c1f6953).
         factors_filename="ibd_ti_factors.nc",
         source_file=IBD_FULL_COHORT_IVCSC,
         celltype_column="broad_cell_type",

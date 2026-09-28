@@ -173,6 +173,8 @@ nohup.out
 data/
 !cccrise/data/
 *.h5ad
+# Over GitHub's 100 MB limit; committed as the lossless `.nc.xz` instead
+cccrise/data/ibd_ti_factors_cap2000.nc
 # Quarto manuscript build outputs
 manuscript/_output/
 manuscript/.quarto/
