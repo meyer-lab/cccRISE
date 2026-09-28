@@ -94,6 +94,9 @@ class DatasetSpec:
     def nichenet_scores_filename(self) -> str:
         return f"nichenet_scores_{self.key}.csv"
 
+    def go_enrichment_filename(self) -> str:
+        return f"go_enrichment_{self.key}.csv"
+
 
 DATASETS: dict[str, DatasetSpec] = {
     "alad": DatasetSpec(
