@@ -76,13 +76,13 @@ ALT_COMM_SCORE_HINT = (
 # =============================================================================
 
 
-def _cp_factors(method: str) -> tuple[list[np.ndarray], np.ndarray]:
+def cp_factors(method: str) -> tuple[list[np.ndarray], np.ndarray]:
     """`method`'s CP factors [A, B, C, D] and the LR-pair labels of D's rows."""
     ds = load_factors_netcdf(comparison_output_dir(method) / SPEC.factors_filename)
     return [ds[f"cp_{mode}"].values for mode in "ABCD"], ds.coords["lr_pair"].values
 
 
-def _celltype_loadings(method: str, adata_raw) -> tuple[pd.DataFrame, pd.DataFrame]:
+def celltype_loadings(method: str, adata_raw) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Mean sender (sc_B) and receiver (rc_C) loading per cell type, per
     component. All four methods share the same RISE eigen-states, so
     aligning CP components on the LR mode makes B/C directly comparable."""
@@ -95,6 +95,20 @@ def _celltype_loadings(method: str, adata_raw) -> tuple[pd.DataFrame, pd.DataFra
     sender = pd.DataFrame(ad.obsm["sc_B"], index=celltypes).groupby(level=0).mean()
     receiver = pd.DataFrame(ad.obsm["rc_C"], index=celltypes).groupby(level=0).mean()
     return sender, receiver
+
+
+def match_components(reference_method: str, method: str) -> pd.DataFrame:
+    """Pair `method`'s CP components with `reference_method`'s on
+    `MATCH_MODES` (`align_to_reference_components`): one row per reference
+    component, with its 'MatchedComponent' and 'MatchScore'."""
+    ref_factors, _ = cp_factors(reference_method)
+    alt_factors, _ = cp_factors(method)
+    return align_to_reference_components(
+        ref_factors,
+        alt_factors,
+        np.arange(1, ref_factors[0].shape[1] + 1),
+        MATCH_MODES,
+    )
 
 
 def _load_method_csv(filename: str, method: str) -> pd.DataFrame:
@@ -146,16 +160,11 @@ def _match_and_compare(
         columns 'Component', 'Kind' ('LR' or 'Celltype', the latter the mean
         of the sender and receiver overlaps), 'K', 'Jaccard'.
     """
-    ref_factors, lr_symbols = _cp_factors(reference_method)
-    alt_factors, _ = _cp_factors(method)
-    matching = align_to_reference_components(
-        ref_factors,
-        alt_factors,
-        np.arange(1, ref_factors[0].shape[1] + 1),
-        MATCH_MODES,
-    )
-    ref_sender, ref_receiver = _celltype_loadings(reference_method, adata_raw)
-    alt_sender, alt_receiver = _celltype_loadings(method, adata_raw)
+    ref_factors, lr_symbols = cp_factors(reference_method)
+    alt_factors, _ = cp_factors(method)
+    matching = match_components(reference_method, method)
+    ref_sender, ref_receiver = celltype_loadings(reference_method, adata_raw)
+    alt_sender, alt_receiver = celltype_loadings(method, adata_raw)
 
     rows, overlaps = [], []
     for _, row in matching.iterrows():
@@ -223,8 +232,8 @@ def _aligned_anova(method: str) -> tuple[pd.Series, pd.Series]:
         df = df.set_index("Component")
         return df["EtaSquared"], df["P"] < 0.05
 
-    ref_factors, _ = _cp_factors(DEFAULT_SCORE)
-    method_factors, _ = _cp_factors(method)
+    ref_factors, _ = cp_factors(DEFAULT_SCORE)
+    method_factors, _ = cp_factors(method)
 
     def align(values: np.ndarray) -> pd.Series:
         return align_to_reference_components(
