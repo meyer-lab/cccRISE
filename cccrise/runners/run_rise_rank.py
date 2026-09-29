@@ -8,7 +8,7 @@ block. Each fold is compressed once (`REPLICATE_COMPRESS`, with
 `RISE_COMPRESSION_OPTIONS`) so a rank sweep pays one data traversal per fold
 rather than one per (rank, fold) pair.
 
-    uv run cccrise-riserank --dataset alad --ranks 5:51:5 --n-repeats 3
+    uv run cccrise-riserank --dataset alad --ranks 1:51 --n-repeats 10
 """
 
 import argparse
@@ -42,12 +42,12 @@ cccrise.runners.run_rise_rank -- do not hand-edit.
 def run_rise_rank_selection(
     spec: DatasetSpec,
     ranks: list[int],
-    n_repeats: int = 3,
+    n_repeats: int = 10,
     held_out_cell_frac: float = 0.5,
     held_out_gene_frac: float = 0.5,
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
-    random_state: int = 0,
+    random_state: int = 42,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Run the BiCV sweep and persist the CSV plus its sidecar.
@@ -133,13 +133,13 @@ def build_parser() -> argparse.ArgumentParser:
         f"(default: {','.join(str(r) for r in DEFAULT_RANKS)}).",
     )
     parser.add_argument(
-        "--n-repeats", type=int, default=3, help="BiCV splits per rank."
+        "--n-repeats", type=int, default=10, help="BiCV splits per rank."
     )
     parser.add_argument("--held-out-cell-frac", type=float, default=0.5)
     parser.add_argument("--held-out-gene-frac", type=float, default=0.5)
     parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
-    parser.add_argument("--random-state", type=int, default=0)
+    parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
         "--output",
         type=str,

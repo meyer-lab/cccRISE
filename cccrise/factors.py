@@ -344,7 +344,7 @@ def load_factors_to_anndata(
     adata: anndata.AnnData | None = None,
     condition_column: str | None = None,
     do_embedding: bool = False,
-    random_state: int | None = 0,
+    random_state: int | None = 42,
 ) -> anndata.AnnData:
     """
     Populate or construct an AnnData object with decomposition factors from an xarray Dataset.

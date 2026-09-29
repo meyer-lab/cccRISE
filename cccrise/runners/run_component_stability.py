@@ -31,7 +31,7 @@ Axes, and what each one asks:
   seed_only   Identical data refit end to end (RISE -> communication tensor
               -> CP) from a different random seed. Refits RISE.
 
-    uv run cccrise-stability --dataset alad --rise-rank 19 --cp-rank 3 \
+    uv run cccrise-stability --dataset alad --rise-rank 18 --cp-rank 6 \
         --n-replicates 100
 """
 
@@ -86,7 +86,7 @@ def run_component_stability(
     rise_rank: int,
     cp_rank: int,
     axes: tuple[str, ...] = DEFAULT_AXES,
-    n_replicates: int = 20,
+    n_replicates: int = 100,
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
     cp_n_iter_max: int = CP_N_ITER_MAX,
@@ -94,7 +94,7 @@ def run_component_stability(
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
-    random_state: int = 0,
+    random_state: int = 42,
     output_path: Path | None = None,
     reference: dict[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
@@ -109,13 +109,13 @@ def run_component_stability(
         model, so both are fixed rather than swept.
     axes : tuple[str, ...], default=DEFAULT_AXES
         Resampling axes to run; see the module docstring.
-    n_replicates : int, default=20
+    n_replicates : int, default=100
         Replicates per axis.
     rise_n_iter_max, rise_tol, cp_n_iter_max, cp_tol
         Fitting controls for the RISE and CP fits.
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
-    random_state : int, default=0
+    random_state : int, default=42
         Base seed for the reference fit and the replicates.
     output_path : Path, optional
         CSV destination; defaults to the registry's stability filename under
@@ -335,14 +335,14 @@ def build_parser() -> argparse.ArgumentParser:
             f"point. Options: {', '.join(DEFAULT_AXES)}."
         ),
     )
-    parser.add_argument("--n-replicates", type=int, default=20)
+    parser.add_argument("--n-replicates", type=int, default=100)
     parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
     parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
     parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--complex-sep", type=str, default="&")
     add_scoring_arguments(parser)
-    parser.add_argument("--random-state", type=int, default=0)
+    parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
         "--output",
         type=str,

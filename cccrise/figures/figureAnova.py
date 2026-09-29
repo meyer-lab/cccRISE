@@ -375,7 +375,7 @@ def plot_category_component_weights(
     )
     # Jittered by hand rather than via sns.stripplot so pairing lines can be
     # drawn through the exact point positions
-    rng = np.random.default_rng(0)
+    rng = np.random.default_rng(42)
     positions = {cat: i for i, cat in enumerate(categories)}
     df_plot["x"] = df_plot["Status"].map(positions).astype(float) + rng.uniform(
         -STRIP_JITTER, STRIP_JITTER, len(df_plot)

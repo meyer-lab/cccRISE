@@ -322,7 +322,7 @@ def fit_stability_pipeline(
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
-    random_state: int = 0,
+    random_state: int = 42,
     keep_tensor: bool = False,
     backend: str | None = None,
     compress: bool = False,
@@ -356,7 +356,7 @@ def fit_stability_pipeline(
         Fitting controls for CP.
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
-    random_state : int, default=0
+    random_state : int, default=42
         Seed for the RISE fit and the CP fit.
     keep_tensor : bool, default=False
         Retain the communication tensor on the returned fit. Only the
@@ -577,7 +577,7 @@ def component_stability(
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
-    random_state: int = 0,
+    random_state: int = 42,
     backend: str | None = None,
     compress: bool = False,
     *,
@@ -635,7 +635,7 @@ def component_stability(
         Fitting controls for CP.
     complex_sep, communication_score, hill_k
         Communication-tensor options.
-    random_state : int, default=0
+    random_state : int, default=42
         Base seed.
     backend : str | None, default=None
         Backend each replicate's RISE refit runs on; see

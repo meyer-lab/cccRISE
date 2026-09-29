@@ -15,7 +15,7 @@ Writes the replicate-level CSV `figureAnovaBoot` reads:
 
     anova_bootstrap_<dataset>.csv   one row per (replicate, component)
 
-    uv run cccrise-anovaboot --dataset alad --rise-rank 25 --cp-rank 10 --n-boot 100
+    uv run cccrise-anovaboot --dataset alad --rise-rank 18 --cp-rank 6 --n-boot 100
 """
 
 import argparse

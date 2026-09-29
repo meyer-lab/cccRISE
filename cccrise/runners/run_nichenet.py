@@ -60,7 +60,7 @@ def run_nichenet(
     celltype_col: str | None = None,
     pool_threshold: float = 0.3,
     n_perm: int = 1000,
-    random_state: int | None = 0,
+    random_state: int | None = 42,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score every CPD component's top ligands against the NicheNet v2 prior,
@@ -255,7 +255,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--random-state",
         type=int,
-        default=0,
+        default=42,
         help="Seed for the permutation null.",
     )
     parser.add_argument(

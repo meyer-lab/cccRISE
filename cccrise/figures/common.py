@@ -111,7 +111,7 @@ def load_runner_csv(
     path = root / filename
     if not path.exists():
         hint = hint or (
-            "    uv run cccrise-riserank --dataset <dataset> --ranks 5:51:5\n"
+            "    uv run cccrise-riserank --dataset <dataset> --ranks 1:51\n"
             "    uv run cccrise-cpdrank  --dataset <dataset> --rise-rank <N>\n"
             "    uv run cccrise-anovaboot --dataset <dataset> --rise-rank <N> --cp-rank <K>"
         )

@@ -14,7 +14,7 @@ Each rank is fit once and we then read off the following three criteria:
 With `REPLICATE_COMPRESS`, RISE is fit compressed and the sweep runs on a
 CANDELINC core, which is proven invariant to the three criteria.
 
-    uv run cccrise-cpdrank --dataset alad --rise-rank 25 --ranks 1:26
+    uv run cccrise-cpdrank --dataset alad --rise-rank 18 --ranks 1:19
     uv run cccrise-cpdrank --dataset ibd --rise-rank 70 --ranks 1:26
 """
 

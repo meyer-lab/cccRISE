@@ -18,8 +18,8 @@ Outputs land under `DATA_DIR/alt_score_methods/<communication-score>/`,
 separate from the default score's canonical results in `DATA_DIR`. Always
 regenerates and overwrites; does not check for existing output first.
 
-    uv run cccrise-altcommscore --dataset alad --rise-rank 9 --cp-rank 4 \
-        --n-perms 3 --n-replicates 3
+    uv run cccrise-altcommscore --dataset alad --rise-rank 18 --cp-rank 6 \
+        --n-perms 200 --n-replicates 20
 """
 
 import argparse
@@ -39,7 +39,7 @@ from ..ccc_rise import (
 from ..factors import load_factors_netcdf, save_ccc_rise_fit
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..validation.component_stability import (
-    SEED_AXIS,
+    DEFAULT_AXES,
     relabel_cp_fit,
     relabel_rise,
     stability_fit,
@@ -103,10 +103,6 @@ FIT_PROVENANCE = {
     "rise_compression_options": RISE_COMPRESSION_OPTIONS,
     "cp_compression_options": CP_COMPRESSION_OPTIONS,
 }
-
-# Skips the expensive `conditions` cohort-resampling axis by default; see
-# `run_component_stability`'s module docstring for what each axis measures.
-DEFAULT_STABILITY_AXES = ("cells", "lr_pairs", SEED_AXIS)
 
 
 def _save_factors(
@@ -239,9 +235,9 @@ def run_alt_comm_score(
     rise_rank: int,
     cp_rank: int,
     hill_k: float = 0.5,
-    n_perms: int = 3,
-    stability_axes: tuple[str, ...] = DEFAULT_STABILITY_AXES,
-    n_replicates: int = 3,
+    n_perms: int = 200,
+    stability_axes: tuple[str, ...] = DEFAULT_AXES,
+    n_replicates: int = 20,
     random_state: int = 42,
 ) -> dict[str, Path]:
     """Generate CPD factors, permutation significance, an ANOVA point
@@ -255,11 +251,11 @@ def run_alt_comm_score(
         Ranks used for the shared RISE fit and every method's CP fit.
     hill_k : float, default=0.5
         Half-saturation constant, used only for `expression_hill`.
-    n_perms : int, default=3
+    n_perms : int, default=200
         Permutations for each method's significance test.
-    stability_axes : tuple[str, ...], default=DEFAULT_STABILITY_AXES
+    stability_axes : tuple[str, ...], default=DEFAULT_AXES
         Resampling axes for each method's stability run.
-    n_replicates : int, default=3
+    n_replicates : int, default=20
         Replicates per stability axis.
     random_state : int, default=42
         Seed for the shared RISE fit, every method's CP fit and permutations,
@@ -416,16 +412,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Hill function half-saturation constant (default: 0.5).",
     )
     parser.add_argument(
-        "--n-perms", type=int, default=3, help="Significance-test permutations."
+        "--n-perms", type=int, default=200, help="Significance-test permutations."
     )
     parser.add_argument(
         "--stability-axes",
         type=str,
-        default=",".join(DEFAULT_STABILITY_AXES),
+        default=",".join(DEFAULT_AXES),
         help="Comma-separated stability resampling axes.",
     )
     parser.add_argument(
-        "--n-replicates", type=int, default=3, help="Stability replicates per axis."
+        "--n-replicates", type=int, default=20, help="Stability replicates per axis."
     )
     parser.add_argument(
         "--random-state",

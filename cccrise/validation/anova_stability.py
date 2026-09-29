@@ -440,7 +440,7 @@ def bootstrap_anova(
     hill_k: float = 0.5,
     stratify: bool = True,
     patient_column: str | None = None,
-    random_state: int = 0,
+    random_state: int = 42,
     backend: str | None = None,
     compress: bool = False,
     *,
@@ -482,7 +482,7 @@ def bootstrap_anova(
         Condition-level patient identity column. Drawing one of a
         multi-sample patient's conditions carries its sibling in too; see
         `utils.resample_conditions`'s `patient_by`.
-    random_state : int, default=0
+    random_state : int, default=42
         Base seed; replicate ``b`` uses `replicate_seed(random_state, b)`.
     backend : str | None, default=None
         Backend every replicate's RISE refit runs on; see `fit_anova_pipeline`.
