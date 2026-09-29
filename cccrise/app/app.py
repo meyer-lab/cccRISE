@@ -566,7 +566,7 @@ def server(input, output, session):
 
         comparisons = DATASET_COMPARISONS.get(ds.spec.key, {})
         sections = [
-            ui.h4("Component Association (ANOVA)"),
+            ui.h4("Condition Associations"),
             ui.markdown(
                 "ANOVA effect sizes and a per-component boxplot for a "
                 "chosen patient status comparison, computed from the raw "
@@ -586,7 +586,7 @@ def server(input, output, session):
 
         sections.extend(
             [
-                ui.h4("Top Ligand-Receptor Pairs"),
+                ui.h4("Ligand-Receptor Pairs"),
                 ui.markdown(
                     "Every LR pair's weight for the selected component, ranked "
                     "from highest to lowest. Highlight Rule sets which pairs "
@@ -625,7 +625,7 @@ def server(input, output, session):
                 ),
                 scrollable_plot("lr_rank_curve_plot", 1100, 450),
                 ui.hr(),
-                ui.h4("Cell Type Association Heatmap"),
+                ui.h4("Sender/Receiver Cells"),
                 ui.markdown(
                     "Heatmap of every cell type's association with every "
                     "component, for sender and receiver. Association Heatmap "
@@ -647,7 +647,7 @@ def server(input, output, session):
                 ),
                 scrollable_plot("assoc_heatmap_plot", 1300, 500),
                 ui.hr(),
-                ui.h4("LR Pair Interaction Heatmap"),
+                ui.h4("LR Pair Interactions"),
             ]
         )
 
@@ -883,7 +883,7 @@ def server(input, output, session):
             ),
             ui.output_plot("projections_plot", height="500px"),
             ui.hr(),
-            ui.h4("Per-Cell-Type Distributions"),
+            ui.h4("Cell-Type Distributions"),
             ui.markdown(
                 "Sender and receiver weight distributions for the selected "
                 "component, by cell type. View Type switches between a "
@@ -914,7 +914,7 @@ def server(input, output, session):
             ),
             scrollable_plot("distributions_plot", 1300, 650),
             ui.hr(),
-            ui.h4("Eigenstates"),
+            ui.h4("Cell-Type–Eigenstate Associations"),
             ui.markdown(
                 "Each cell is labeled by the RISE eigenstate with its "
                 "largest-magnitude projection, suffixed with that "
@@ -953,7 +953,7 @@ def server(input, output, session):
             scrollable_plot("eigenstate_pacmap_plot", 650, 550),
             scrollable_plot("eigenstate_assoc_plot", 1300, 500),
             ui.hr(),
-            ui.h4("Sender/Receiver Strength"),
+            ui.h4("Sender/Receiver Classification"),
             ui.markdown(
                 "A cell counts as a strong sender (or receiver) if its "
                 "weight for the selected component is at or above the "
@@ -1201,7 +1201,7 @@ def server(input, output, session):
                 "(raw single-cell data or projections not found)."
             )
         return ui.TagList(
-            ui.markdown("#### Cell Type Loadings Summary for Selected Component"),
+            ui.markdown("#### Cell Type Loadings Summary"),
             ui.markdown(
                 "Mean sender/receiver loading and % of cells in the top "
                 "percentile, by cell type, for the selected component. Top "
@@ -1211,7 +1211,7 @@ def server(input, output, session):
             top_perc_slider("summary_top_perc"),
             ui.output_data_frame("celltype_summary_table"),
             ui.hr(),
-            ui.markdown("#### Ranked Ligand-Receptor Pairs for Selected Component"),
+            ui.markdown("#### Ranked Ligand-Receptor Pairs"),
             ui.markdown(
                 "Every LR pair's weight for the selected component, ranked "
                 "from highest to lowest."
