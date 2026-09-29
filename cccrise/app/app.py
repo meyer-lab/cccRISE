@@ -10,6 +10,7 @@ import functools
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.collections import EllipseCollection
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
 from matplotlib.rcsetup import cycler
@@ -262,6 +263,31 @@ def plot_celltype_pacmap(ds: LoadedDataset, ax: plt.Axes) -> None:
         color_key=colors.celltype_colors(X.obs[ds.spec.celltype_col].nunique()),
     )
     ax.set_title("Cell Type")
+
+
+def enlarge_points(
+    ax: plt.Axes, points: np.ndarray, point_colors: list[str], scale: float
+) -> None:
+    """Redraw `points` over the axes' datashader image as circles `scale`
+    times the diameter of a circle with one canvas pixel's area. Sized in
+    data units, so they track the image when Shiny resizes the figure."""
+    image = ax.images[0]
+    x0, x1, y0, y1 = image.get_extent()
+    n_rows, n_cols = image.get_size()
+    diameter = scale * 2 / np.sqrt(np.pi)
+    ax.add_collection(
+        EllipseCollection(
+            widths=diameter * abs(x1 - x0) / n_cols,
+            heights=diameter * abs(y1 - y0) / n_rows,
+            angles=0,
+            units="xy",
+            offsets=points,
+            offset_transform=ax.transData,
+            facecolors=point_colors,
+            linewidths=0,
+        ),
+        autolim=False,
+    )
 
 
 def top_perc_slider(input_id: str) -> ui.Tag:
@@ -971,17 +997,19 @@ def server(input, output, session):
                 "A cell counts as a strong sender (or receiver) if its "
                 "weight for the selected component is at or above the "
                 "chosen percentile across all cells. Cell Type selects the "
-                "cell type counted in the truth table below; Strength "
-                "Threshold (percentile) sets that percentile for all three "
-                "panels below."
+                "cell type counted in the truth table and enlarged in the "
+                "PaCMAP and scatter below; Strength Threshold (percentile) "
+                "sets that percentile for all three panels below; Selected "
+                "Cell Type Point Size sets how much larger (in diameter) "
+                "that cell type's points are drawn."
             ),
             ui.row(
                 ui.column(
-                    6,
+                    4,
                     ui.input_select("tt_celltype", "Cell Type", choices=celltypes),
                 ),
                 ui.column(
-                    6,
+                    4,
                     ui.input_slider(
                         "tt_percentile",
                         "Strength Threshold (percentile)",
@@ -989,6 +1017,17 @@ def server(input, output, session):
                         max=99,
                         value=90,
                         step=1,
+                    ),
+                ),
+                ui.column(
+                    4,
+                    ui.input_slider(
+                        "tt_point_size",
+                        "Selected Cell Type Point Size (% increase)",
+                        min=0,
+                        max=300,
+                        value=100,
+                        step=10,
                     ),
                 ),
             ),
@@ -1003,15 +1042,16 @@ def server(input, output, session):
                 "###### Strength Category PaCMAP (All Cell Types)\n"
                 "PaCMAP embedding colored by strength category (Both, "
                 "Sender Only, Receiver Only, Neither), for every cell in "
-                "the dataset."
+                "the dataset, with the selected cell type's points "
+                "enlarged."
             ),
             scrollable_plot("strength_category_pacmap_plot", 650, 550),
             ui.markdown(
                 "###### Sender vs. Receiver Weight (All Cell Types)\n"
                 "Each cell's sender weight plotted against its receiver "
-                "weight for the selected component, colored by cell type. "
-                "Dashed lines mark the current Strength Threshold "
-                "percentile."
+                "weight for the selected component, colored by cell type, "
+                "with the selected cell type's points enlarged. Dashed "
+                "lines mark the current Strength Threshold percentile."
             ),
             scrollable_plot("sender_receiver_scatter_plot", 900, 700),
         )
@@ -1030,13 +1070,16 @@ def server(input, output, session):
             float(np.percentile(receiver, percentile)),
         )
 
+    @reactive.calc
+    def selected_celltype_mask():
+        ds = dataset()
+        return ds.adata.obs[ds.spec.celltype_col].to_numpy() == input.tt_celltype()
+
     @render.data_frame
     def truth_table():
-        ds = dataset()
-        celltype_col = ds.spec.celltype_col
         sender, receiver, sender_threshold, receiver_threshold = strength_weights()
 
-        in_celltype = ds.adata.obs[celltype_col].to_numpy() == input.tt_celltype()
+        in_celltype = selected_celltype_mask()
         is_sender = (sender >= sender_threshold) & in_celltype
         is_receiver = (receiver >= receiver_threshold) & in_celltype
 
@@ -1092,12 +1135,24 @@ def server(input, output, session):
             ),
         )
 
+        points = np.asarray(ds.adata.obsm["PaCMAP"])
         fig, ax = plt.subplots(figsize=(6.5, 5.5), layout="tight")
         plot_categorical_scatter(
-            np.asarray(ds.adata.obsm["PaCMAP"]),
-            pd.Series(categories),
+            points, pd.Series(categories), ax, color_key=STRENGTH_CATEGORY_COLORS
+        )
+
+        # Same category -> color assignment `plot_categorical_scatter` makes
+        category_colors = dict(zip(np.unique(categories), STRENGTH_CATEGORY_COLORS))
+        selected = np.flatnonzero(selected_celltype_mask())
+        # Strong senders/receivers drawn last, over the "Neither" majority
+        selected = selected[
+            np.argsort(categories[selected] != "Neither", kind="stable")
+        ]
+        enlarge_points(
             ax,
-            color_key=STRENGTH_CATEGORY_COLORS,
+            points[selected],
+            [category_colors[c] for c in categories[selected]],
+            scale=1 + input.tt_point_size() / 100,
         )
         assign_labels(ax)
         return fig
@@ -1110,12 +1165,20 @@ def server(input, output, session):
         celltype_col = ds.spec.celltype_col
         sender, receiver, sender_threshold, receiver_threshold = strength_weights()
 
+        points = np.column_stack([sender, receiver])
+        celltypes = ds.adata.obs[celltype_col]
+        color_key = colors.celltype_colors(celltypes.nunique())
         fig, ax = plt.subplots(figsize=(9, 7), layout="tight")
-        plot_categorical_scatter(
-            np.column_stack([sender, receiver]),
-            ds.adata.obs[celltype_col],
+        plot_categorical_scatter(points, celltypes, ax, color_key=color_key)
+
+        # Same cell type -> color assignment `plot_categorical_scatter` makes
+        selected = selected_celltype_mask()
+        celltype_color = dict(zip(np.unique(celltypes), color_key))[input.tt_celltype()]
+        enlarge_points(
             ax,
-            color_key=colors.celltype_colors(ds.adata.obs[celltype_col].nunique()),
+            points[selected],
+            [celltype_color] * int(selected.sum()),
+            scale=1 + input.tt_point_size() / 100,
         )
         ax.axvline(sender_threshold, color="0.3", ls="--", lw=1.0)
         ax.axhline(receiver_threshold, color="0.3", ls="--", lw=1.0)
