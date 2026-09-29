@@ -32,6 +32,7 @@ from ..runners.datasets import (
 )
 from ..runners.provenance import read_metadata
 from ..validation.anova_stability import align_to_reference_components, top_lr_pairs
+from ..validation.component_stability import STAGE_CPD, metric_interval
 from .common import getSetup, load_runner_csv, subplotLabel
 
 DATASET_KEY = "alad"
@@ -282,13 +283,19 @@ def _significance_data() -> tuple[dict[str, float], dict[str, float]]:
     return frac_sig, sig_jaccard
 
 
-def _stability_data() -> pd.DataFrame:
-    """Panel g: median CP component FMS per axis (rows) and method (columns)."""
+def _stability_data() -> tuple[pd.DataFrame, int]:
+    """Panel g: aggregate CP FMS per axis (rows) and method (columns) -- the
+    median over replicates of each replicate's mean over components, as in
+    `figureComponentStability`'s aggregate panel -- and replicates per axis."""
     medians = {}
     for method in ALL_SCORES:
         df = _load_method_csv(SPEC.stability_filename(), method)
-        medians[method] = df[df["Stage"] == "CPD"].groupby("Axis")["FMS"].median()
-    return pd.DataFrame(medians)
+        stats = metric_interval(df[df["Stage"] == STAGE_CPD], "FMS", by=("Axis",))
+        medians[method] = stats.set_index("Axis")["Median"]
+    n_replicates = read_metadata(
+        comparison_output_dir(DEFAULT_SCORE) / SPEC.stability_filename()
+    )["n_replicates"]
+    return pd.DataFrame(medians), n_replicates
 
 
 def _draw_significance(
@@ -317,7 +324,9 @@ def _draw_significance(
     ax.tick_params(axis="x", labelrotation=25)
 
 
-def _draw_stability(ax: plt.Axes, stability_df: pd.DataFrame) -> None:
+def _draw_stability(
+    ax: plt.Axes, stability_df: pd.DataFrame, n_replicates: int
+) -> None:
     x = np.arange(len(stability_df.index))
     width = 0.8 / len(ALL_SCORES)
     for i, method in enumerate(ALL_SCORES):
@@ -330,9 +339,9 @@ def _draw_stability(ax: plt.Axes, stability_df: pd.DataFrame) -> None:
         )
     ax.set_xticks(x + width * (len(ALL_SCORES) - 1) / 2)
     ax.set_xticklabels(stability_df.index)
-    ax.set_ylabel("Median CP component FMS")
+    ax.set_ylabel("Aggregate CP FMS (median over replicates)")
     ax.set_title(
-        f"CP component stability (n={N_REPLICATES_SMOKE} placeholder)", fontsize=8
+        f"CP component stability ({n_replicates} replicates per axis)", fontsize=8
     )
     ax.set_ylim(0, 1.3)
     ax.legend(fontsize=5, loc="upper center", ncol=2)
@@ -367,7 +376,7 @@ def makeFigure():
     factor_tables = _factor_comparison_data(SPEC.load())
     anova_eta_df, anova_sig_df, outcome = _anova_data()
     frac_sig, sig_jaccard = _significance_data()
-    stability_df = _stability_data()
+    stability_df, n_stability_replicates = _stability_data()
 
     axs, fig = getSetup((16, 8), (2, 4))
     factor_panels = [
@@ -394,7 +403,7 @@ def makeFigure():
         sig=anova_sig_df,
     )
     _draw_significance(axs[5], frac_sig, sig_jaccard)
-    _draw_stability(axs[6], stability_df)
+    _draw_stability(axs[6], stability_df, n_stability_replicates)
     _draw_caveats(axs[7])
 
     subplotLabel(axs)

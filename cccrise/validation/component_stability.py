@@ -58,15 +58,22 @@ Row Alignment
 """
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
+import xarray as xr
 from scipy.optimize import linear_sum_assignment
 
-from ..ccc_rise import fit_cp, run_ccc_rise_workflow
-from ..factors import clean_memory
+from ..ccc_rise import (
+    add_cell_embeddings,
+    fit_cp,
+    run_ccc_rise_workflow,
+    save_ccc_rise_results,
+)
+from ..factors import clean_memory, load_factors_netcdf
 from ..utils import (
     replicate_seed,
     resample_cells,
@@ -319,6 +326,7 @@ def fit_stability_pipeline(
     keep_tensor: bool = False,
     backend: str | None = None,
     compress: bool = False,
+    numbering_reference: xr.Dataset | Path | None = None,
     *,
     rise_n_iter_max: int,
     cp_n_iter_max: int,
@@ -358,6 +366,9 @@ def fit_stability_pipeline(
         auto-detect); passed straight through to `ccc_rise.fit_rise`.
     compress : bool, default=False
         Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
+    numbering_reference : xr.Dataset | Path | None, optional
+        Core factors fit to relabel components into (`relabel_workflow_fit`);
+        the reference pass sets it, replicates are matched to that reference.
 
     Returns
     -------
@@ -382,6 +393,8 @@ def fit_stability_pipeline(
         backend=backend,
         compress=compress,
     )
+    if numbering_reference is not None:
+        fit = relabel_workflow_fit(fit, numbering_reference, condition_column)
     return stability_fit(fit["adata"], fit, condition_column)
 
 
@@ -410,6 +423,114 @@ def stability_fit(
         "r2x_cp": fit["r2x_cp"],
         "cpd_diagnostics": fit["diagnostics"],
     }
+
+
+# =============================================================================
+# Core-fit numbering
+# =============================================================================
+#
+# `ccc_rise.standardize_cc_pf2` orders components by a scale-dependent ratio,
+# so two fits of the same data (the core `cccrise-run` fit and a validation
+# runner's compressed reference, say) can number the same components
+# differently. Validation runners relabel their reference fit into the core
+# fit's numbering here, matching components by FMS (RISE on the condition and
+# gene modes, CP on the condition and ligand-receptor modes). Relabeling is a
+# pure permutation; the fits themselves are unchanged.
+
+
+def relabel_workflow_fit(
+    fit: dict[str, Any], core: xr.Dataset | Path, condition_column: str
+) -> dict[str, Any]:
+    """Relabel a `ccc_rise.run_ccc_rise_workflow` result, in place, into the
+    core fit's RISE and CP numbering, and return it."""
+    core = _as_dataset(core)
+    adata = fit["adata"]
+    rise_order = relabel_rise(adata, core, condition_column)
+    relabel_cp_fit(fit, core, rise_order)
+    save_ccc_rise_results(
+        adata, fit["cp_factors"], fit["cp_weights"], fit["filtered_lr_pairs"]
+    )
+    add_cell_embeddings(adata, fit["cp_factors"][1], fit["cp_factors"][2], False, None)
+    return fit
+
+
+def relabel_rise(
+    adata: anndata.AnnData, core: xr.Dataset | Path, condition_column: str
+) -> np.ndarray:
+    """Permute a `ccc_rise.fit_rise` AnnData's RISE components, in place, into
+    the core fit's numbering.
+
+    Returns the order applied: ``order[i]`` is the (0-based) component of this
+    fit now numbered ``i``. `Pf2_B` is the identity under `fix_B_identity`, so
+    projection columns are components and permute with them.
+    """
+    core = _as_dataset(core)
+    _check_core_axis(core, "condition", _condition_labels(adata, condition_column))
+    _check_core_axis(core, "gene", adata.var_names)
+    order = _core_match_order(
+        [core["pf2_A"].values, core["pf2_B"].values, core["pf2_C"].values],
+        [adata.uns["Pf2_A"], adata.uns["Pf2_B"], np.asarray(adata.varm["Pf2_C"])],
+        RISE_SKIP_MODES,
+    )
+    adata.uns["Pf2_A"] = adata.uns["Pf2_A"][:, order]
+    adata.uns["Pf2_B"] = adata.uns["Pf2_B"][np.ix_(order, order)]
+    adata.uns["Pf2_weights"] = adata.uns["Pf2_weights"][order]
+    adata.varm["Pf2_C"] = np.asarray(adata.varm["Pf2_C"])[:, order]
+    for key in ("projections", "weighted_projections"):
+        if key in adata.obsm:
+            adata.obsm[key] = np.asarray(adata.obsm[key])[:, order]
+    return order
+
+
+def relabel_cp_fit(
+    fit: dict[str, Any], core: xr.Dataset | Path, rise_order: np.ndarray | None
+) -> np.ndarray:
+    """Permute a `ccc_rise.fit_ccc_cp` result's CP components, in place, into
+    the core fit's numbering; returns the order applied.
+
+    `rise_order` is a RISE relabeling applied to the fit's AnnData *after* its
+    tensor was built (as in `relabel_workflow_fit`); the tensor's and B/C's
+    eigen-state axes are permuted to follow it. Pass None when the tensor was
+    built from an already-relabeled RISE fit.
+    """
+    core = _as_dataset(core)
+    lr_symbols = fit["filtered_lr_pairs"]["interaction_symbol"].to_numpy()
+    _check_core_axis(core, "lr_pair", lr_symbols)
+    factors = list(fit["cp_factors"])
+    if rise_order is not None:
+        factors[1], factors[2] = factors[1][rise_order], factors[2][rise_order]
+        if fit.get("tensor") is not None:
+            fit["tensor"] = fit["tensor"][:, rise_order][:, :, rise_order]
+    order = _core_match_order(
+        [core[f"cp_{mode}"].values for mode in "ABCD"], factors, CPD_SKIP_MODES
+    )
+    fit["cp_factors"] = [f[:, order] for f in factors]
+    fit["cp_weights"] = fit["cp_weights"][order]
+    return order
+
+
+def _core_match_order(
+    core_factors: Factors, factors: Factors, skip_modes: tuple[int, ...]
+) -> np.ndarray:
+    if core_factors[0].shape[1] != factors[0].shape[1]:
+        raise ValueError(
+            f"Core fit has rank {core_factors[0].shape[1]} but this fit has rank "
+            f"{factors[0].shape[1]}; numbering can only be shared at equal ranks."
+        )
+    matched = per_component_fms(core_factors, factors, skip_modes=skip_modes)
+    return matched["MatchedComponent"].to_numpy() - 1
+
+
+def _check_core_axis(core: xr.Dataset, dim: str, labels) -> None:
+    if not np.array_equal(core[dim].values.astype(str), np.asarray(labels).astype(str)):
+        raise ValueError(
+            f"This fit's {dim!r} axis does not match the core fit's, so its "
+            "components cannot be matched to the core numbering."
+        )
+
+
+def _as_dataset(core: xr.Dataset | Path) -> xr.Dataset:
+    return core if isinstance(core, xr.Dataset) else load_factors_netcdf(core)
 
 
 # =============================================================================

@@ -36,9 +36,14 @@ from ..ccc_rise import (
     fit_ccc_cp,
     fit_rise,
 )
-from ..factors import save_ccc_rise_fit
+from ..factors import load_factors_netcdf, save_ccc_rise_fit
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
-from ..validation.component_stability import SEED_AXIS, stability_fit
+from ..validation.component_stability import (
+    SEED_AXIS,
+    relabel_cp_fit,
+    relabel_rise,
+    stability_fit,
+)
 from . import run_component_stability, run_significance
 from ._cli import (
     CP_N_ITER_MAX,
@@ -47,6 +52,8 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
+    component_numbering,
+    core_numbering_reference,
     dataset_metadata,
     resolve_anova_labels,
 )
@@ -276,6 +283,10 @@ def run_alt_comm_score(
         compress=REPLICATE_COMPRESS,
     )
     print(f"   RISE R2X {r2x_rise:.4f}")
+    core = core_numbering_reference(spec, rise_rank, cp_rank)
+    core_ds = load_factors_netcdf(core) if core else None
+    if core_ds is not None:
+        relabel_rise(rise_adata, core_ds, spec.condition_column)
 
     factors_paths: dict[str, Path] = {}
     for method in COMMUNICATION_SCORES:
@@ -293,6 +304,8 @@ def run_alt_comm_score(
             cp_n_iter_max=CP_N_ITER_MAX,
             cp_tol=CP_TOL,
         )
+        if core_ds is not None:
+            relabel_cp_fit(cp_fit, core_ds, rise_order=None)
         reference = stability_fit(rise_adata, cp_fit, spec.condition_column)
         print(f"   CP R2X {reference['r2x_cp']:.4f}")
         factors_path = _save_factors(
@@ -306,6 +319,7 @@ def run_alt_comm_score(
                 "rise_rank": rise_rank,
                 "cp_rank": cp_rank,
                 "backend": spec.backend or "auto",
+                "component_numbering": component_numbering(core),
             }
             | FIT_PROVENANCE,
             output_dir / spec.factors_filename,

@@ -44,6 +44,8 @@ from ._cli import (
     add_dataset_argument,
     add_group_arguments,
     add_scoring_arguments,
+    component_numbering,
+    core_numbering_reference,
     dataset_metadata,
     resolve_anova_labels,
     resolve_output,
@@ -150,6 +152,7 @@ def run_anova_bootstrap(
     lr_pairs = import_ligand_receptor_pairs()
 
     print("2. Fitting the full-cohort reference pipeline...")
+    core = core_numbering_reference(spec, rise_rank, cp_rank)
     reference = fit_anova_pipeline(
         adata,
         condition_column=spec.condition_column,
@@ -169,6 +172,7 @@ def run_anova_bootstrap(
         random_state=random_state,
         backend=spec.backend,
         compress=REPLICATE_COMPRESS,
+        numbering_reference=core,
     )
     print(f"   Reference CP R2X: {reference['r2x_cp']:.4f}")
 
@@ -244,6 +248,7 @@ def run_anova_bootstrap(
             "rise_compression_options": RISE_COMPRESSION_OPTIONS,
             "cp_compression_options": CP_COMPRESSION_OPTIONS,
             "match_mode_weights": {"3": 1.0},
+            "component_numbering": component_numbering(core),
             "reference_r2x_cp": float(reference["r2x_cp"]),
             "reference_eta_squared": reference["anova"]["EtaSquared"].tolist(),
             "reference_f": reference["anova"]["F"].tolist(),

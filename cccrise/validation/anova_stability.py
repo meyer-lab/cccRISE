@@ -22,16 +22,19 @@ a sign and so is the only column the alignment's sign correction touches; F, P
 and eta-squared are sign-invariant.
 """
 
+from pathlib import Path
 from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
+import xarray as xr
 from scipy.optimize import linear_sum_assignment
 
 from ..anova import anova_component_associations, prepare_anova_inputs
 from ..ccc_rise import run_ccc_rise_workflow
 from ..utils import replicate_seed, resample_conditions
+from .component_stability import relabel_workflow_fit
 
 Factors = list[np.ndarray]
 
@@ -192,6 +195,7 @@ def fit_anova_pipeline(
     random_state: int | None = None,
     backend: str | None = None,
     compress: bool = False,
+    numbering_reference: xr.Dataset | Path | None = None,
     *,
     rise_n_iter_max: int,
     cp_n_iter_max: int,
@@ -229,6 +233,9 @@ def fit_anova_pipeline(
         auto-detect); passed straight through to `ccc_rise.fit_rise`.
     compress : bool, default=False
         Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
+    numbering_reference : xr.Dataset | Path | None, optional
+        Core factors fit to relabel components into before the ANOVA
+        (`component_stability.relabel_workflow_fit`); set on the reference fit.
 
     Returns
     -------
@@ -259,6 +266,8 @@ def fit_anova_pipeline(
         backend=backend,
         compress=compress,
     )
+    if numbering_reference is not None:
+        fit = relabel_workflow_fit(fit, numbering_reference, condition_column)
     adata, filtered_lr_pairs = fit["adata"], fit["filtered_lr_pairs"]
     cp_weights, factors, r2x_cp = fit["cp_weights"], fit["cp_factors"], fit["r2x_cp"]
 

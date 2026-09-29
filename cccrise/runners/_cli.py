@@ -1,13 +1,14 @@
 import argparse
 from pathlib import Path
 
+from ..factors import load_factors_netcdf
 from .datasets import (
     COMMUNICATION_SCORES,
     DATASET_KEYS,
     DEFAULT_COMMUNICATION_SCORE,
     DatasetSpec,
 )
-from .provenance import sha256_file
+from .provenance import relpath, sha256_file
 
 # (control label, other label) for `figures.commonFuncs.plotGeneral.binarize_group`,
 # per dataset. Only datasets with a confirmed binary encoding of `group_column`
@@ -181,6 +182,35 @@ def resulting_dims(spec: DatasetSpec, adata, n_lr_pairs: int | None = None) -> d
     if n_lr_pairs is not None:
         dims["lr_pairs"] = int(n_lr_pairs)
     return dims
+
+
+def core_numbering_reference(
+    spec: DatasetSpec, rise_rank: int, cp_rank: int
+) -> Path | None:
+    """The core fit (``spec.factors_path()``) a validation runner relabels its
+    reference fit's components into, or None -- with a warning, leaving the
+    reference's own numbering -- when it is missing or at other ranks."""
+    path = spec.factors_path()
+    if not path.exists():
+        reason = "it does not exist"
+    else:
+        ds = load_factors_netcdf(path)
+        ranks = (ds.sizes["rise_component"], ds.sizes["cp_component"])
+        if ranks == (rise_rank, cp_rank):
+            return path
+        reason = f"it is at (RISE, CP) ranks {ranks}"
+    print(
+        f"   WARNING: not relabeling components to the core fit {relpath(path)} "
+        f"({reason}); reporting the reference fit's own numbering."
+    )
+    return None
+
+
+def component_numbering(core: Path | None) -> str:
+    """Provenance description of the numbering `core_numbering_reference` chose."""
+    if core is None:
+        return "reference fit's own (ccc_rise.standardize_cc_pf2)"
+    return f"core fit {relpath(core)} (validation.relabel_workflow_fit)"
 
 
 def resolve_output(explicit: str | None, default_dir: Path, default_name: str) -> Path:

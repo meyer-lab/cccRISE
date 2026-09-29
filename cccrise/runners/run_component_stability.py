@@ -65,6 +65,8 @@ from ._cli import (
     RISE_TOL,
     add_dataset_argument,
     add_scoring_arguments,
+    component_numbering,
+    core_numbering_reference,
     dataset_metadata,
     resolve_output,
     resulting_dims,
@@ -121,8 +123,9 @@ def run_component_stability(
         `alt_score_methods/<communication_score>/` for any other score.
     reference : dict[str, Any], optional
         A full-cohort fit already built with this call's settings, as
-        `fit_stability_pipeline(..., keep_tensor=True)` returns; fit here when
-        None. Lets `run_alt_comm_score` share one RISE fit between scores.
+        `fit_stability_pipeline(..., keep_tensor=True)` returns, and already
+        relabeled to `core_numbering_reference`; fit here when None. Lets
+        `run_alt_comm_score` share one RISE fit between scores.
 
     Returns
     -------
@@ -153,6 +156,7 @@ def run_component_stability(
     print(f"   AnnData shape: {adata.shape}")
     print(f"   Ligand-receptor pairs: {len(lr_pairs)}")
 
+    core = core_numbering_reference(spec, rise_rank, cp_rank)
     if reference is None:
         print("2. Fitting the reference model on the full cohort...")
         reference = fit_stability_pipeline(
@@ -172,6 +176,7 @@ def run_component_stability(
             keep_tensor=True,
             backend=spec.backend,
             compress=REPLICATE_COMPRESS,
+            numbering_reference=core,
         )
     else:
         print("2. Using the supplied full-cohort reference fit...")
@@ -254,7 +259,7 @@ def run_component_stability(
                 "with Mode 1 held out; Modes 0 and 3 for CPD, with Modes 1 and 2 "
                 "held out), weights ignored (see validation.per_component_fms)"
             ),
-            "component_numbering": ("reference fit after ccc_rise.standardize_cc_pf2"),
+            "component_numbering": component_numbering(core),
             "lr_roster_stable": True,
             "interaction_tensor_shape": list(tensor_shape),
             "r2x_pf2": float(reference["r2x_rise"]),
