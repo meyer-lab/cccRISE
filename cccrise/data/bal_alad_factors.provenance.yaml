@@ -17,11 +17,14 @@ group_key: ALADstatus
 rise_n_iter_max: 300
 cp_n_iter_max: 4000
 rise_tol: 1.0e-08
-fix_B_identity: true
 cp_tol: 1.0e-12
 random_state: 42
 complex_sep: '&'
-svd_init: svd
+cp_fit_options:
+  init: svd
+  svd: randomized_svd
+  normalize_factors: true
+backend: cpu
 pacmap_embedding: true
 lr_pairs_annotated: 2005
 resulting_dims:
@@ -29,20 +32,19 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-interaction_tensor_shape: [47, 9, 9, 513]
-r2x_pf2: 0.027284062516550245
-r2x_cp: 0.38182223806920434
+interaction_tensor_shape: [47, 18, 18, 513]
+r2x_pf2: 0.031748863679848194
+r2x_cp: 0.4888728730018944
 rank_selection:
   rise:
-    rank: 9
+    rank: 18
     sweep_csv: cccrise/data/rise_rank_alad.csv
-    notes: 'first BiCV plateau: smallest rank whose mean held-out BiCV R2X is within one SEM
-      (at the argmax) of the maximum (10 repeats; argmax 18, rank 8 misses by 0.027 points)'
+    notes: argmax of mean held-out BiCV R2X (0.01840 +/- 0.0014 SD over 10 repeats; ranks
+      19 and 20 within noise at 0.01831 and 0.01828)
   cpd:
-    rank: 2
+    rank: 6
     sweep_csv: cccrise/data/cpd_rank_alad.csv
-    notes: last CP rank before CORCONDIA first drops below 85% (99.99% at CP 2, 83.7% at CP
-      3), and the largest rank with no collinear component pair in any mode (single-mode collinearity
-      from CP 3). CP 4 also passes 85% (86.2%) but follows the CP-3 dip.
-git_sha: 0e05645611e0fa4e36949e92658c407ed05d1ee3
-generated: '2026-09-24T23:42:32+00:00'
+    notes: selected from the CPD sweep conditioned on RISE rank 18 (cpd_rank_alad.csv, CP
+      ranks 1-18)
+git_sha: fdd29f68056e8e7a4ce3d6ab7659a59c7af59bb9-dirty
+generated: '2026-09-28T23:51:37+00:00'
