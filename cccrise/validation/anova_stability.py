@@ -43,7 +43,7 @@ Factors = list[np.ndarray]
 #: its coordinates intact: the condition mode indexes a different patient
 #: roster, and the sender/receiver modes are expressed in that replicate's own
 #: RISE eigen-states.
-BOOTSTRAP_MATCH_MODE_WEIGHTS: dict[int, float] = {3: 1.0}
+BOOTSTRAP_MATCH_MODES: tuple[int, ...] = (3,)
 
 
 def _signed_mode_cosine(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -57,7 +57,7 @@ def align_to_reference_components(
     reference_factors: Factors,
     factors: Factors,
     values: np.ndarray,
-    mode_weights: dict[int, float] | None = None,
+    modes: tuple[int, ...] = BOOTSTRAP_MATCH_MODES,
 ) -> pd.DataFrame:
     """Relabel one CP fit's per-component values by the reference fit's
     component numbering, correcting for sign.
@@ -69,7 +69,9 @@ def align_to_reference_components(
     component's orientation. Optimal assignment gives the relabeling, and
     the matched mode's *signed* cosine gives the sign, so a value carried by a
     gauge-flipped component is negated rather than being recorded as a genuine
-    change of direction.
+    change of direction. Matching on several modes scores a pair by its mean
+    absolute cosine across them and leaves values uncorrected for sign, since
+    each mode can carry its own gauge flip.
 
     Parameters
     ----------
@@ -78,12 +80,12 @@ def align_to_reference_components(
         is the one every aligned fit is expressed in.
     factors : list[np.ndarray]
         The fit being aligned, sharing `reference_factors`' dimensions along
-        every mode in `mode_weights`.
+        every mode in `modes`.
     values : np.ndarray
         One value per component of `factors`, in that fit's own order.
-    mode_weights : dict[int, float] | None, optional
-        Modes the match is computed over. Defaults to `{3: 1.0}` (the
-        ligand-receptor mode).
+    modes : tuple[int, ...], default=BOOTSTRAP_MATCH_MODES
+        Modes the match is computed over; defaults to the ligand-receptor
+        mode alone.
 
     Returns
     -------
@@ -92,22 +94,11 @@ def align_to_reference_components(
         'Component', 'MatchedComponent', 'Value' (sign-corrected),
         'MatchScore', 'SignedCosine', 'RunnerUpScore'.
     """
-    if mode_weights is None:
-        mode_weights = BOOTSTRAP_MATCH_MODE_WEIGHTS
-
     signed_cos_by_mode = {
         mode: _signed_mode_cosine(reference_factors[mode], factors[mode])
-        for mode in mode_weights
+        for mode in modes
     }
-
-    weight_sum = sum(mode_weights.values())
-    combined: np.ndarray = (
-        sum(
-            (w * np.abs(signed_cos_by_mode[mode]) for mode, w in mode_weights.items()),
-            start=np.zeros_like(next(iter(signed_cos_by_mode.values()))),
-        )
-        / weight_sum
-    )
+    combined = np.mean([np.abs(cos) for cos in signed_cos_by_mode.values()], axis=0)
 
     row_ind, col_ind = linear_sum_assignment(-combined)
 
@@ -121,7 +112,7 @@ def align_to_reference_components(
         else:
             runner_up_score = np.nan
 
-        signed_col = next(iter(mode_weights)) if len(mode_weights) == 1 else None
+        signed_col = modes[0] if len(modes) == 1 else None
         signed_cos = (
             signed_cos_by_mode[signed_col][i, j] if signed_col is not None else np.nan
         )
@@ -420,7 +411,7 @@ def bootstrap_replicate_anova(
         reference["factors"],
         fit["factors"],
         anova["GroupMeanDiff"].to_numpy(dtype=float),
-        mode_weights=BOOTSTRAP_MATCH_MODE_WEIGHTS,
+        modes=BOOTSTRAP_MATCH_MODES,
     ).rename(columns={"Value": "GroupMeanDiff"})
 
     # F, P and eta-squared do not change under a gauge flip, so they are read

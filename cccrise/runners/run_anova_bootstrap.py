@@ -30,6 +30,7 @@ from ..ccc_rise import (
 )
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..validation.anova_stability import (
+    BOOTSTRAP_MATCH_MODES,
     bootstrap_anova,
     fit_anova_pipeline,
     summarize_bootstrap_anova,
@@ -247,7 +248,7 @@ def run_anova_bootstrap(
             "compress": REPLICATE_COMPRESS,
             "rise_compression_options": RISE_COMPRESSION_OPTIONS,
             "cp_compression_options": CP_COMPRESSION_OPTIONS,
-            "match_mode_weights": {"3": 1.0},
+            "match_modes": list(BOOTSTRAP_MATCH_MODES),
             "component_numbering": component_numbering(core),
             "reference_r2x_cp": float(reference["r2x_cp"]),
             "reference_eta_squared": reference["anova"]["EtaSquared"].tolist(),

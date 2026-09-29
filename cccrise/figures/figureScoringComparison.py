@@ -23,6 +23,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 from ..factors import load_factors_netcdf, load_factors_to_anndata
 from ..runners.datasets import (
@@ -53,15 +54,16 @@ SCORE_LABELS = {
 }
 
 #: K values the top-K ligand-receptor-pair overlaps are computed at (CP
-#: loadings and significance alike). Cell types are swept over every K short
-#: of the full set, where the overlap is trivially 1.
-LR_TOP_KS = range(5, 101, 5)
+#: loadings and significance alike).
+LR_TOP_KS = range(1, 20, 2)
+#: K values the top-K sender/receiver cell-type overlaps are computed at.
+CELLTYPE_KS = range(1, 4)
 
-#: Offset between methods' points in the top-K panels, as a fraction of the
-#: spacing between K values.
-DODGE_FRACTION = 0.2
-
-MATCH_MODE_WEIGHTS = {3: 1.0}  # match CP components on the LR mode only
+#: Modes CP components are matched across methods on: condition and
+#: ligand-receptor. All four methods share one RISE fit, so every mode shares
+#: its coordinates; sender/receiver (B/C) stay out of the match so panels b
+#: and d, which read them, remain independent checks of it.
+MATCH_MODES = (0, 3)
 
 ALT_COMM_SCORE_HINT = (
     f"    uv run cccrise-altcommscore --dataset {DATASET_KEY} "
@@ -139,8 +141,8 @@ def _match_and_compare(
     Returns
     -------
     tuple[pd.DataFrame, pd.DataFrame]
-        Per reference component, 'MatchScore' and 'MeanBCCosine' (aligned
-        sender/receiver cosine); and a long table of top-K Jaccard overlaps,
+        Per reference component, 'MatchScore' and 'MeanBCCosine' (the matched
+        pair's mean absolute sender/receiver cosine); and a long table of top-K Jaccard overlaps,
         columns 'Component', 'Kind' ('LR' or 'Celltype', the latter the mean
         of the sender and receiver overlaps), 'K', 'Jaccard'.
     """
@@ -150,25 +152,21 @@ def _match_and_compare(
         ref_factors,
         alt_factors,
         np.arange(1, ref_factors[0].shape[1] + 1),
-        MATCH_MODE_WEIGHTS,
+        MATCH_MODES,
     )
     ref_sender, ref_receiver = _celltype_loadings(reference_method, adata_raw)
     alt_sender, alt_receiver = _celltype_loadings(method, adata_raw)
-    celltype_ks = range(1, len(ref_sender.index))
 
     rows, overlaps = [], []
     for _, row in matching.iterrows():
         ref_i, alt_i = int(row["Component"]) - 1, int(row["MatchedComponent"]) - 1
-        sign = np.sign(row["SignedCosine"]) or 1.0
         rows.append(
             {
                 "Component": ref_i + 1,
                 "MatchScore": float(row["MatchScore"]),
                 "MeanBCCosine": np.mean(
                     [
-                        _cosine(
-                            ref_factors[m][:, ref_i], sign * alt_factors[m][:, alt_i]
-                        )
+                        abs(_cosine(ref_factors[m][:, ref_i], alt_factors[m][:, alt_i]))
                         for m in (1, 2)
                     ]
                 ),
@@ -180,10 +178,10 @@ def _match_and_compare(
             LR_TOP_KS,
         )
         sender = _top_k_jaccard(
-            ref_sender.iloc[:, ref_i], alt_sender.iloc[:, alt_i], celltype_ks
+            ref_sender.iloc[:, ref_i], alt_sender.iloc[:, alt_i], CELLTYPE_KS
         )
         receiver = _top_k_jaccard(
-            ref_receiver.iloc[:, ref_i], alt_receiver.iloc[:, alt_i], celltype_ks
+            ref_receiver.iloc[:, ref_i], alt_receiver.iloc[:, alt_i], CELLTYPE_KS
         )
         overlaps += [{"Component": ref_i + 1, "Kind": "LR"} | o for o in lr]
         overlaps += [
@@ -230,7 +228,7 @@ def _aligned_anova(method: str) -> tuple[pd.Series, pd.Series]:
 
     def align(values: np.ndarray) -> pd.Series:
         return align_to_reference_components(
-            ref_factors, method_factors, values, MATCH_MODE_WEIGHTS
+            ref_factors, method_factors, values, MATCH_MODES
         ).set_index("Component")["Value"]
 
     eta = align(df["EtaSquared"].to_numpy())
@@ -334,15 +332,12 @@ def _draw_top_k_overlap(
 ) -> None:
     """One line per alternate method: top-K Jaccard overlap with the default
     against K, as the mean with an SD error bar over the rows (CP components)
-    sharing a K; a single row per K (significance) draws no bar. Methods are
-    dodged along K by a fraction of its spacing so their bars stay apart."""
-    methods = overlaps["Method"].unique()
-    dodge = DODGE_FRACTION * np.diff(np.unique(overlaps["K"])).min()
-    for i, method in enumerate(methods):
+    sharing a K; a single row per K (significance) draws no bar."""
+    for method in overlaps["Method"].unique():
         rows = overlaps[overlaps["Method"] == method]
         stats = rows.groupby("K")["Jaccard"].agg(["mean", "std"])
         ax.errorbar(
-            stats.index + (i - (len(methods) - 1) / 2) * dodge,
+            stats.index,
             stats["mean"],
             yerr=stats["std"] if stats["std"].notna().any() else None,
             marker="o",
@@ -353,6 +348,7 @@ def _draw_top_k_overlap(
             color=SCORE_COLORS[method],
         )
     ax.set_ylim(0, 1.05)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_xlabel(xlabel)
     ax.set_ylabel("Jaccard overlap with default")
     ax.set_title(title, fontsize=8)
@@ -403,13 +399,13 @@ def makeFigure():
     _grouped_bar(
         axs[0],
         factor_tables["MatchScore"],
-        "CP component match quality (LR-mode cosine)",
+        "CP component match quality (condition + LR |cosine|)",
         "Match score",
     )
     _grouped_bar(
         axs[1],
         factor_tables["MeanBCCosine"],
-        "Aligned sender/receiver (B/C) cosine similarity",
+        "Matched sender/receiver (B/C) |cosine|",
         "Cosine similarity",
     )
     for ax, kind, noun, xlabel in (
