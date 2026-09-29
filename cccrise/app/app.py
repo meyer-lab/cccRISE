@@ -25,6 +25,7 @@ from cccrise.anova import run_saved_factors_anova
 from cccrise.app import colors
 from cccrise.app.data import (
     DATASETS,
+    LoadedDataset,
     load_dataset,
     load_rank_selection,
     load_raw_dataset,
@@ -250,6 +251,17 @@ def mark_selected_rank(ax: plt.Axes, rank: int) -> None:
     ax.axvline(
         rank, color="black", ls="--", lw=1.2, zorder=0, label=f"Loaded rank ({rank})"
     )
+
+
+def plot_celltype_pacmap(ds: LoadedDataset, ax: plt.Axes) -> None:
+    X = ds.adata
+    plot_labels_pacmap(
+        X,
+        labelType=ds.spec.celltype_col,
+        ax=ax,
+        color_key=colors.celltype_colors(X.obs[ds.spec.celltype_col].nunique()),
+    )
+    ax.set_title("Cell Type")
 
 
 def top_perc_slider(input_id: str) -> ui.Tag:
@@ -921,7 +933,8 @@ def server(input, output, session):
                 "projection's sign (opposite ends of an eigenstate describe "
                 "different cells). Labeled Eigenstates sets how many of the "
                 "most frequent labels are shown; the rest are grouped as "
-                "Other. The heatmap below quantifies each cell type's "
+                "Other. The cell type PaCMAP is repeated alongside for "
+                "comparison. The heatmap below quantifies each cell type's "
                 "association with every eigenstate from the raw per-cell "
                 "projections, independent of the selected component; the "
                 "enrichment and % Top statistics only count the positive "
@@ -950,7 +963,7 @@ def server(input, output, session):
                 ),
                 ui.column(4, top_perc_slider("eig_top_perc")),
             ),
-            scrollable_plot("eigenstate_pacmap_plot", 650, 550),
+            scrollable_plot("eigenstate_pacmap_plot", 1300, 550),
             scrollable_plot("eigenstate_assoc_plot", 1300, 500),
             ui.hr(),
             ui.h4("Sender/Receiver Classification"),
@@ -1132,13 +1145,7 @@ def server(input, output, session):
         )
         axes[0].set_title(f"Cmp. {cmp} {input.weight_source().capitalize()} Weight")
 
-        plot_labels_pacmap(
-            X,
-            labelType=ds.spec.celltype_col,
-            ax=axes[1],
-            color_key=colors.celltype_colors(X.obs[ds.spec.celltype_col].nunique()),
-        )
-        axes[1].set_title("Cell Type")
+        plot_celltype_pacmap(ds, axes[1])
 
         if ds.spec.group_col is not None and ds.spec.group_col in X.obs:
             plot_labels_pacmap(
@@ -1156,19 +1163,21 @@ def server(input, output, session):
     @render.plot
     @styled_figure()
     def eigenstate_pacmap_plot():
-        X = dataset().adata
+        ds = dataset()
+        X = ds.adata
         labels = dominant_eigenstate_labels(X, n_labeled=input.eig_n_labeled())
         is_other = labels == "Other"
         color_key = colors.celltype_colors(labels[~is_other].nunique())
         if is_other.any():
             color_key.append(colors.MUTED)
 
-        fig, ax = plt.subplots(figsize=(8, 6.5), layout="tight")
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6.5), layout="tight")
         plot_categorical_scatter(
-            np.asarray(X.obsm["PaCMAP"]), labels, ax, color_key=color_key
+            np.asarray(X.obsm["PaCMAP"]), labels, axes[0], color_key=color_key
         )
-        assign_labels(ax)
-        ax.set_title("Dominant Eigenstate")
+        assign_labels(axes[0])
+        axes[0].set_title("Dominant Eigenstate")
+        plot_celltype_pacmap(ds, axes[1])
         return fig
 
     @render.plot
