@@ -625,44 +625,12 @@ def server(input, output, session):
                 ),
                 scrollable_plot("lr_rank_curve_plot", 1100, 450),
                 ui.hr(),
-                ui.h4("Per-Cell-Type Distributions"),
-                ui.markdown(
-                    "Sender and receiver weight distributions for the selected "
-                    "component, by cell type. View Type switches between a "
-                    "histogram grid and boxplots; Log-scale Y axis applies to "
-                    "the histograms; Top Cell % Threshold sets the percentile "
-                    "marked on the histograms and used by the association "
-                    "heatmap below."
-                ),
-                ui.row(
-                    ui.column(
-                        4,
-                        ui.input_radio_buttons(
-                            "dist_view_mode",
-                            "View Type",
-                            choices={
-                                "hist": "Histogram Grid (Sender & Receiver Overlaid)",
-                                "box": "Boxplots (Selected Component)",
-                            },
-                            selected="hist",
-                        ),
-                    ),
-                    ui.column(
-                        4,
-                        ui.input_checkbox(
-                            "dist_log_y", "Log-scale Y axis (Histograms)", value=True
-                        ),
-                    ),
-                    ui.column(4, top_perc_slider("explorer_top_perc")),
-                ),
-                scrollable_plot("distributions_plot", 1300, 650),
-                ui.hr(),
                 ui.h4("Cell Type Association Heatmap"),
                 ui.markdown(
                     "Heatmap of every cell type's association with every "
                     "component, for sender and receiver. Association Heatmap "
-                    "Stat selects the statistic shown; the Top Cell % "
-                    "Threshold above sets the percentile used by the "
+                    "Stat selects the statistic shown; Top Cell % "
+                    "Threshold sets the percentile used by the "
                     "enrichment and % Top statistics."
                 ),
                 ui.row(
@@ -675,6 +643,7 @@ def server(input, output, session):
                             selected="mean",
                         ),
                     ),
+                    ui.column(4, top_perc_slider("assoc_top_perc")),
                 ),
                 scrollable_plot("assoc_heatmap_plot", 1300, 500),
                 ui.hr(),
@@ -756,7 +725,7 @@ def server(input, output, session):
         cmp = input.component()
         celltype_col = ds.spec.celltype_col
         view_mode = input.dist_view_mode()
-        top_perc = float(input.explorer_top_perc())
+        top_perc = float(input.dist_top_perc())
 
         if view_mode == "hist":
             nrows, ncols = celltype_grid_shape(X, celltype_col)
@@ -805,7 +774,7 @@ def server(input, output, session):
         X = ds.adata
         celltype_col = ds.spec.celltype_col
         stat = input.assoc_stat()
-        top_perc = float(input.explorer_top_perc())
+        top_perc = float(input.assoc_top_perc())
 
         fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="tight")
         scale = max(
@@ -897,6 +866,7 @@ def server(input, output, session):
             dataset().adata.obs[dataset().spec.celltype_col].unique().tolist()
         )
         return ui.TagList(
+            ui.h4("PaCMAP Embeddings"),
             ui.markdown(
                 "Three PaCMAP embeddings of individual cells for the "
                 "selected component: weighted by sender or receiver score, "
@@ -912,6 +882,37 @@ def server(input, output, session):
                 inline=True,
             ),
             ui.output_plot("projections_plot", height="500px"),
+            ui.hr(),
+            ui.h4("Per-Cell-Type Distributions"),
+            ui.markdown(
+                "Sender and receiver weight distributions for the selected "
+                "component, by cell type. View Type switches between a "
+                "histogram grid and boxplots; Log-scale Y axis applies to "
+                "the histograms; Top Cell % Threshold sets the percentile "
+                "marked on the histograms."
+            ),
+            ui.row(
+                ui.column(
+                    4,
+                    ui.input_radio_buttons(
+                        "dist_view_mode",
+                        "View Type",
+                        choices={
+                            "hist": "Histogram Grid (Sender & Receiver Overlaid)",
+                            "box": "Boxplots (Selected Component)",
+                        },
+                        selected="hist",
+                    ),
+                ),
+                ui.column(
+                    4,
+                    ui.input_checkbox(
+                        "dist_log_y", "Log-scale Y axis (Histograms)", value=True
+                    ),
+                ),
+                ui.column(4, top_perc_slider("dist_top_perc")),
+            ),
+            scrollable_plot("distributions_plot", 1300, 650),
             ui.hr(),
             ui.h4("Eigenstates"),
             ui.markdown(
