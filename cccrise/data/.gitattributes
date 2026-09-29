@@ -1,2 +1,0 @@
-# Runner outputs are regenerated wholesale, so their line diffs are noise.
-*.csv linguist-generated=true -diff
