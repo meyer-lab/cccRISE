@@ -16,6 +16,9 @@ from matplotlib.rcsetup import cycler
 from matplotlib.text import Text
 from matplotlib.ticker import MaxNLocator
 from scrise.plotting import plot_bicv_r2x
+from scrise.plotting import plot_condition_factors as plot_rise_condition_factors
+from scrise.plotting import plot_eigenstate_factors as plot_rise_eigenstate_factors
+from scrise.plotting import plot_gene_factors as plot_rise_gene_factors
 from shiny import App, reactive, render, ui
 
 from cccrise.anova import run_saved_factors_anova
@@ -25,6 +28,7 @@ from cccrise.app.data import (
     load_dataset,
     load_rank_selection,
     load_raw_dataset,
+    load_rise_factors,
 )
 from cccrise.app.lr_pairs import parse_lr_pairs
 from cccrise.figures.commonFuncs.plotFactors import (
@@ -51,7 +55,7 @@ from cccrise.figures.figureAnova import (
     plot_association_effect_sizes,
     plot_category_component_weights,
 )
-from cccrise.figures.figureCPDrank import plot_collinearity, plot_core_consistency
+from cccrise.figures.figureCPDrank import plot_collinearity, plot_fit_r2x
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.utils import celltype_component_association, dominant_eigenstate_labels
 
@@ -268,7 +272,20 @@ app_ui = ui.page_sidebar(
             ui.output_ui("rank_selection_body"),
         ),
         ui.nav_panel(
-            "Factor Matrices",
+            "RISE Factors",
+            ui.markdown(
+                "Heatmaps of the RISE condition (A), eigenstate (B), and "
+                "gene (C) factor matrices. Condition factors are "
+                "standardized per component. The C panel shows only the "
+                "genes with the largest max |weight| across components."
+            ),
+            ui.input_slider(
+                "n_genes", "Genes shown in C panel", min=10, max=200, value=50, step=5
+            ),
+            scrollable_plot("rise_factor_heatmaps", 1400, 800),
+        ),
+        ui.nav_panel(
+            "CP Factors",
             ui.markdown(
                 "Heatmaps of the condition (A), sender (B), receiver (C), "
                 "and ligand-receptor (D) factor matrices. The trim "
@@ -356,8 +373,7 @@ def server(input, output, session):
         notes = [
             (
                 "Cached rank-selection sweeps: RISE bi-cross-validation (BiCV) "
-                "R2X, and CPD core consistency (CORCONDIA) and component "
-                "collinearity. Dashed lines mark the RISE rank "
+                "R2X, and CPD fit R2X and component collinearity. Dashed lines mark the RISE rank "
                 f"(**{rise_rank()}**) and CP rank (**{cp_rank()}**) of the loaded "
                 "factors used by the remaining tabs."
             )
@@ -392,15 +408,7 @@ def server(input, output, session):
                 ax.axis("off")
                 ax.text(0.5, 0.5, "No cached CPD sweep", ha="center")
         else:
-            plot_core_consistency(
-                sweeps.cpd,
-                axes[1],
-                "CPD Core Consistency (CORCONDIA)",
-                threshold_colors=(colors.GREEN, colors.ORANGE),
-            )
-            # `plot_core_consistency` sets symlog after autoscaling, so rescale
-            # to drop the resulting empty decades above 100%.
-            axes[1].autoscale_view()
+            plot_fit_r2x(sweeps.cpd, axes[1], "CPD Fit $R^2X$")
             plot_collinearity(
                 sweeps.cpd,
                 axes[2],
@@ -411,9 +419,36 @@ def server(input, output, session):
                 mark_selected_rank(ax, cp_rank())
         for ax in axes:
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            if ax.get_legend() is not None:
+            if ax.get_legend_handles_labels()[0]:
                 # Long enough handles for the dashed selected-rank line to read
                 ax.legend(handlelength=2)
+        return fig
+
+    # ------------------------------------------------------------------
+    # RISE Factors
+    # ------------------------------------------------------------------
+    @render.plot
+    @styled_figure(scale_ticks=False)
+    def rise_factor_heatmaps():
+        ds = dataset()
+        X = load_rise_factors(input.dataset())
+        fig, axes = plt.subplots(1, 3, figsize=(20, 8), layout="tight")
+
+        # log10 is undefined for the negative condition weights some fits have
+        plot_rise_condition_factors(
+            X, axes[0], cond=ds.spec.condition_col, log_transform=False
+        )
+        axes[0].set_title("Condition Factor (A)")
+
+        plot_rise_eigenstate_factors(X, axes[1])
+        axes[1].set_title("Eigenstate Factor (B)")
+
+        # Trim threshold that keeps the top `n_genes` genes by max |weight|
+        max_weight = np.sort(np.abs(np.asarray(X.varm["Pf2_C"])).max(axis=1))[::-1]
+        threshold = max_weight[min(input.n_genes(), max_weight.size - 1)]
+        plot_rise_gene_factors(X, axes[2], weight=threshold)
+        axes[2].set_title("Gene Factor (C)")
+
         return fig
 
     # ------------------------------------------------------------------
