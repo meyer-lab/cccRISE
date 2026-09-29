@@ -126,7 +126,12 @@ def sidecar_path(output_path: str | Path) -> Path:
 
 def read_metadata(output_path: str | Path) -> dict[str, Any]:
     """Read the sidecar belonging to `output_path`."""
-    path = sidecar_path(output_path)
+    return read_metadata_at(sidecar_path(output_path))
+
+
+def read_metadata_at(path: str | Path) -> dict[str, Any]:
+    """Read a YAML provenance file at the exact given `path`; the reading
+    counterpart of `write_metadata_at`."""
     with open(path) as handle:
         return yaml.safe_load(handle)
 

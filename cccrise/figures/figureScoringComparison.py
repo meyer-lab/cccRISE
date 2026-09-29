@@ -19,6 +19,8 @@ that every other figure reads. Regenerate with:
         --n-perms 3 --n-replicates 3
 """
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -26,11 +28,12 @@ from matplotlib import pyplot as plt
 from ..factors import load_factors_netcdf, load_factors_to_anndata
 from ..runners.datasets import (
     COMMUNICATION_SCORES,
+    COMPARISON_PROVENANCE_FILENAME,
     DATASETS,
     DEFAULT_COMMUNICATION_SCORE,
     comparison_output_dir,
 )
-from ..runners.provenance import read_metadata
+from ..runners.provenance import read_metadata_at
 from ..validation.anova_stability import align_to_reference_components, top_lr_pairs
 from ..validation.component_stability import STAGE_CPD, metric_interval
 from .common import getSetup, load_runner_csv, subplotLabel
@@ -262,9 +265,7 @@ def _anova_data() -> tuple[pd.DataFrame, pd.DataFrame, str]:
     eta_df = pd.DataFrame({m: eta for m, (eta, _) in aligned.items()})
     eta_df.index.name = "Component"
     sig_df = pd.DataFrame({m: sig for m, (_, sig) in aligned.items()})
-    outcome = read_metadata(
-        comparison_output_dir(DEFAULT_SCORE) / SPEC.anova_point_estimate_filename()
-    )["group_column"]
+    outcome = _default_score_provenance("anova_point_estimate", "group_column")
     return eta_df, sig_df, outcome
 
 
@@ -283,6 +284,16 @@ def _significance_data() -> tuple[dict[str, float], dict[str, float]]:
     return frac_sig, sig_jaccard
 
 
+def _default_score_provenance(section: str, key: str) -> Any:
+    """`key` from `section` of the default score's consolidated provenance
+    (`run_alt_comm_score`), where a field shared between sections is hoisted
+    to the top level."""
+    meta = read_metadata_at(
+        comparison_output_dir(DEFAULT_SCORE) / COMPARISON_PROVENANCE_FILENAME
+    )
+    return meta[key] if key in meta else meta[section][key]
+
+
 def _stability_data() -> tuple[pd.DataFrame, int]:
     """Panel g: aggregate CP FMS per axis (rows) and method (columns) -- the
     median over replicates of each replicate's mean over components, as in
@@ -292,9 +303,7 @@ def _stability_data() -> tuple[pd.DataFrame, int]:
         df = _load_method_csv(SPEC.stability_filename(), method)
         stats = metric_interval(df[df["Stage"] == STAGE_CPD], "FMS", by=("Axis",))
         medians[method] = stats.set_index("Axis")["Median"]
-    n_replicates = read_metadata(
-        comparison_output_dir(DEFAULT_SCORE) / SPEC.stability_filename()
-    )["n_replicates"]
+    n_replicates = _default_score_provenance("stability", "n_replicates")
     return pd.DataFrame(medians), n_replicates
 
 

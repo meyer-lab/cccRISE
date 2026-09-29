@@ -45,6 +45,11 @@ def scoring_output_dir(communication_score: str) -> Path:
     return DATA_DIR / ALT_SCORE_METHODS_DIR / communication_score
 
 
+#: The one provenance file `run_alt_comm_score` leaves in each
+#: `comparison_output_dir`, consolidated from its outputs' sidecars.
+COMPARISON_PROVENANCE_FILENAME = "provenance.yaml"
+
+
 def comparison_output_dir(communication_score: str) -> Path:
     """Where `run_alt_comm_score` writes one method's results.
 
