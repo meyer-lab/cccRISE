@@ -108,6 +108,18 @@ STRENGTH_CATEGORY_COLORS = [
 # Plots that don't set their own colors draw from the shared palette.
 plt.rcParams["axes.prop_cycle"] = cycler(color=colors.categorical_colors(8))
 
+# `figures/common.py` sizes legend handles for 6 pt print figures, and handles
+# are fixed at legend creation (`scale_fonts` only enlarges the text), so build
+# legends at on-screen size with square color boxes instead.
+plt.rcParams.update(
+    {
+        "legend.fontsize": plt.rcParams["xtick.labelsize"],
+        "legend.handlelength": 1.0,
+        "legend.handleheight": 1.0,
+        "legend.markerscale": 1.0,
+    }
+)
+
 # ALAD: figureAnova.py's own curated comparisons, reused as-is (single
 # source of truth) rather than re-hardcoded here.
 ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in DEFAULT_ASSOCIATIONS}
