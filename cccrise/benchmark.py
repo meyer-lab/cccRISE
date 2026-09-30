@@ -52,7 +52,7 @@ RANK_MODES = ("own", "shared")
 
 # Bump when a change to a comparator's fitting or rank selection should
 # invalidate every cached own-rank fit.
-FIT_CACHE_VERSION = 2
+FIT_CACHE_VERSION = 3
 
 # `tensor.run_pseudobulk_workflow`'s CP settings, and the rule cccRISE's CP rank
 # was read off by: the last rank before core consistency first drops below 85%
@@ -212,10 +212,10 @@ def _nonneg_cp(tensor: np.ndarray, rank: int, random_state: int | None):
 
 
 def _normalized_error(tensor: np.ndarray, cp) -> float:
-    """``||T - T_hat||^2 / ||T||^2``, the square of Tensor-cell2cell's elbow
-    metric ``||T - T_hat|| / ||T||``; squaring can move the elbow."""
+    """``||T - T_hat|| / ||T||``, Tensor-cell2cell's elbow metric (tensorly's
+    final reconstruction error when no mask is given)."""
     residual = tensor - tl.cp_to_tensor(cp)
-    return float(np.sum(residual**2) / np.sum(tensor**2))
+    return float(np.sqrt(np.sum(residual**2) / np.sum(tensor**2)))
 
 
 def tensor_cell2cell_elbow(
