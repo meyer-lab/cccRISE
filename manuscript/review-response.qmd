@@ -303,25 +303,15 @@ In the course of this we also caught and corrected a mislabeling in the original
 
 ### Minor Comments
 
-> 1. The authors assume that eigen-states (from PARAFAC2) provide a meaningful basis for computing communication scores.
->    However, the relationship between eigen-state loadings and biological cell states is not fully established.
->    Could a simpler approach-such as canonical correlation analysis (CCA) or other dimensionality reduction methods (e.g., PCA, NMF, VAE)-achieve similar results?
->    What are the advantages of PARAFAC2-derived states in capturing communication-relevant heterogeneity?
+> 1. The authors assume that eigen-states (from PARAFAC2) provide a meaningful basis for computing communication scores. However, the relationship between eigen-state loadings and biological cell states is not fully established. Could a simpler approach-such as canonical correlation analysis (CCA) or other dimensionality reduction methods (e.g., PCA, NMF, VAE)-achieve similar results? What are the advantages of PARAFAC2-derived states in capturing communication-relevant heterogeneity?
 
-In fact, at a high level, a similar approach could indeed be taken using other methods that project single cell RNA-seq data into a lower-dimensional space.
-As described in our previous work (CITE), PARAFAC2 is uniquely suited for multi-condition single-cell analysis because it provides a unique solution for decomposing the data into a low-dimensional representation that captures both cell type heterogeneity and quantitation of the variation across conditions.
-By contrast, PCA is rotationally invariant and so it and VAE models will not provide a unique solution to provide a reliable basis for interpretable communication scoring.
-CCA provides a unique solution, but cannot be easily broken into a description of the differences between conditions, separated from the single-cell variation.
-NMF does provide a unique solution, and it is possible to quantitate the abundance of a pattern within each condition, but non-negativity splits counter-balanced regulatory patterns, such as differentiation programs, into multiple non-negative components.
-We have expanded our introduction to the manuscript to include a more detailed comparison of these methods and the relative advantage of PARAFAC2.
+<!-- EDITED. -->
 
-In unpublished work, we have a more extensive benchmarking between these alternatives.
-In fact, we find that, using the bi-cross-validation strategy described above, that PARAFAC2 consistently outperforms all of these methods in prediction of held-out single cell RNA-seq data, suggesting that it is a better representation of the data.
-Furthermore, we have traced the reason for this to (1) PARAFAC2's ability to emit a unique solution with relatively minimal constraints, (2) its ability to express counter-regulatory patterns by avoiding non-negativity constraints, and (3) that most cellular programs are not sparse, and that this is often a forced constraint of the methods used in justifying sparsity.
-However, this more mechanistic and detailed discussion will have to remain beyond the scope of this manuscript.
+This is an interesting point. In fact, at a high level, a similar approach could indeed be taken using other methods that project single cell RNA-seq data into a lower-dimensional space. As described in our previous work [@pmid:40378843], PARAFAC2 is uniquely suited for multi-condition single-cell analysis because it provides a unique solution for decomposing the data into a low-dimensional representation that captures both cell type heterogeneity and quantitation of the variation across conditions. By contrast, PCA is rotationally invariant and so it and VAE models will not provide a unique solution to provide a reliable basis for interpretable communication scoring. CCA provides a unique solution, but cannot be easily broken into a description of the differences between conditions, separated from the single-cell variation. NMF does provide a unique solution, and it is possible to quantitate the abundance of a pattern within each condition, but non-negativity splits counter-balanced regulatory patterns, such as differentiation programs, into multiple non-negative components. We have expanded our introduction to the manuscript to include a more detailed comparison of these methods and the relative advantage of PARAFAC2.
 
-> 2. The analysis spans multiple patient samples and conditions, but it is unclear how batch effects, patient heterogeneity, or technical variation are handled.
->    Do the RISE and CPD projections inherently correct for such effects?
+In unpublished work, we have a more extensive benchmarking between these alternatives. In fact, we find that, using the bi-cross-validation strategy described above, that PARAFAC2 consistently outperforms all of these methods in prediction of held-out single cell RNA-seq data, suggesting that it is a better representation of the data. Furthermore, we have traced the reason for this to (1) PARAFAC2's ability to emit a unique solution with relatively minimal constraints, (2) its ability to express counter-regulatory patterns by avoiding non-negativity constraints, and (3) that most cellular programs are not sparse, and that this is often a forced constraint of the methods used in justifying sparsity. However, this more mechanistic and detailed discussion will have to remain beyond the scope of this manuscript.
+
+> 2. The analysis spans multiple patient samples and conditions, but it is unclear how batch effects, patient heterogeneity, or technical variation are handled. Do the RISE and CPD projections inherently correct for such effects?
 
 We have added an explicit treatment of this in the Methods (l. XXX).
 
@@ -333,23 +323,20 @@ This is not a complete answer, and we say so.
 Variation that affects genes non-uniformly, or that is confounded with the condition of interest, is not separable by this structure from biological signal, and in the ALAD cohort two recipients contributed two samples each, which we account for by keeping a recipient's samples together in all resampling and cross-validation splits (l. XXX).
 The resampling analysis in major comment #4 is also the relevant empirical check here: a component driven by a single sample or batch shows up as a component whose factor match score collapses when that sample is not drawn, and we report per-component stability for exactly this reason (Fig. XXX).
 
-> 3. How should the LR pairs with negative loadings in each inferred component be interpreted?
->    Why not use a non-negative CPD model for better interpretability?
+> 3. How should the LR pairs with negative loadings in each inferred component be interpreted? Why not use a non-negative CPD model for better interpretability?
 
 As described in our response to Reviewer #1's major comment #3, the communication tensor entering CPD is now constructed to be non-negative by construction (eigen-state loadings are re-expressed as approximate real expression, rather than left as signed deviations, before the outer product is taken), so this no longer requires a separate non-negativity constraint on CPD itself to be interpretable --- the negative-loading ambiguity in LR pairs that motivated this question is resolved upstream, at the level of the input tensor rather than the decomposition.
 We did also evaluate constraining RISE/PARAFAC2 itself to be non-negative, and chose not to adopt it as the primary fix: in a companion investigation on this cohort, we found that the positive/negative loading structure PARAFAC2 recovers is frequently genuine, coordinated biology (e.g., an inflammatory-activation program on one sign and an antagonistic tissue-homeostasis program on the other) rather than noise --- ablating the minority-sign arm of a component measurably degrades held-out reconstruction, and a non-negative factorization (cNMF) run on the same data independently recovers the same pairing as two separate, functionally coherent programs.
 Constraining RISE to be non-negative would suppress this real bidirectional signal rather than clean up an artifact.
 We now state this rationale explicitly in the Methods/Discussion.
 
-> 4. The logistic regression used to identify condition-associated components is not fully described.
->    The input features (e.g., component loadings, sample associations) and the outcome variable (e.g., ALAD status, clinical stability) are not clearly specified.
+> 4. The logistic regression used to identify condition-associated components is not fully described. The input features (e.g., component loadings, sample associations) and the outcome variable (e.g., ALAD status, clinical stability) are not clearly specified.
 
-We have fully specified this in the Methods (l. XXX).
-The features are the rows of the CPD condition factor matrix --- one row per sample, one column per communication component --- with no other covariates; the unit of analysis is the sample, and a recipient's samples are kept within the same fold wherever data are split.
-The outcomes are stated per test: ALAD status, six-month and one-year outcome, CLAD, and death for the lung-transplant cohort, and disease status for the IBDverse cohort.
+<!-- EDITED. -->
 
-As described under major comment #5, the primary association test is now ANOVA across outcome groups with multiple-testing correction across components and outcomes.
-Where a classifier is reported --- for the head-to-head comparisons against Tensor-cell2cell and STACCato requested by Reviewer #1 --- we state the model, the penalty, the cross-validation scheme, and the fact that the same scheme is applied to every method being compared (l. XXX).
+We have fully specified this in the Methods (l. XXX). The features are the rows of the CPD condition factor matrix with one row per sample and one column per communication component. We have included no other covariates; the unit of analysis is the sample, and a recipient's samples are kept within the same fold wherever data are split. The outcomes are stated per test: ALAD status, six-month and one-year outcome, CLAD, and death for the lung-transplant cohort, and disease status for the IBD cohort.
+
+As described under major comment #5, the primary association test is now ANOVA across outcome groups with multiple-testing correction across components and outcomes. Where a classifier is reported, we state the model, the penalty, and the cross-validation scheme (l. XXX).
 
 > 5. All colorbars should clearly indicate whether the displayed values are normalized (e.g., Fig. 2b, 2i, 2m).
 >    How was the normalization performed?
