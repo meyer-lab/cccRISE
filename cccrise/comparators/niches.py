@@ -146,16 +146,59 @@ def niches(
     _, _, _, _, complexes = get_genes_from_complexes(
         lr_pairs, complex_sep=complex_sep, interaction_columns=("ligand", "receptor")
     )
-
-    ligand_names = lr_pairs["ligand"].to_numpy()
-    receptor_names = lr_pairs["receptor"].to_numpy()
-    pair_labels = (
-        lr_pairs["interaction_symbol"].to_numpy()
-        if "interaction_symbol" in lr_pairs.columns
-        else np.array([f"{lg}^{rc}" for lg, rc in zip(ligand_names, receptor_names)])
-    )
+    pair_labels = _lr_pair_labels(lr_pairs)
 
     groups = sorted(adata.obs[groupby].unique())
+    cells_by_group, ligand_mat_by_group, receptor_mat_by_group = (
+        _prepare_group_expression(
+            adata, groupby, groups, lr_pairs, complexes, complex_agg_method
+        )
+    )
+
+    rng = np.random.default_rng(random_state)
+
+    signal_blocks: list[pd.DataFrame] = []
+    meta_blocks: list[pd.DataFrame] = []
+    for sender_type in groups:
+        for receiver_type in groups:
+            edge = _sample_edge_block(
+                sender_type,
+                receiver_type,
+                cells_by_group,
+                ligand_mat_by_group,
+                receptor_mat_by_group,
+                pair_labels,
+                rng,
+            )
+            if edge is None:
+                continue
+            signal_df, meta_df = edge
+            signal_blocks.append(signal_df)
+            meta_blocks.append(meta_df)
+
+    signal_matrix = pd.concat(signal_blocks, axis=1)
+    edge_metadata = pd.concat(meta_blocks, axis=0)
+    return signal_matrix, edge_metadata
+
+
+def _lr_pair_labels(lr_pairs: pd.DataFrame) -> np.ndarray:
+    """Return a display label per LR pair, preferring `interaction_symbol`."""
+    if "interaction_symbol" in lr_pairs.columns:
+        return lr_pairs["interaction_symbol"].to_numpy()
+    ligand_names = lr_pairs["ligand"].to_numpy()
+    receptor_names = lr_pairs["receptor"].to_numpy()
+    return np.array([f"{lg}^{rc}" for lg, rc in zip(ligand_names, receptor_names)])
+
+
+def _prepare_group_expression(
+    adata: anndata.AnnData,
+    groupby: str,
+    groups: list,
+    lr_pairs: pd.DataFrame,
+    complexes,
+    complex_agg_method: str,
+) -> tuple[dict, dict, dict]:
+    """Per-group cell ids and complex-aggregated ligand/receptor expression matrices."""
     cells_by_group = {
         g: adata.obs_names[adata.obs[groupby] == g].to_numpy() for g in groups
     }
@@ -167,6 +210,8 @@ def niches(
         )
         for g in groups
     }
+    ligand_names = lr_pairs["ligand"].to_numpy()
+    receptor_names = lr_pairs["receptor"].to_numpy()
     ligand_mat_by_group = {
         g: expr_by_group[g].reindex(ligand_names).fillna(0.0).to_numpy() for g in groups
     }
@@ -174,46 +219,47 @@ def niches(
         g: expr_by_group[g].reindex(receptor_names).fillna(0.0).to_numpy()
         for g in groups
     }
+    return cells_by_group, ligand_mat_by_group, receptor_mat_by_group
 
-    rng = np.random.default_rng(random_state)
 
-    signal_blocks: list[pd.DataFrame] = []
-    meta_blocks: list[pd.DataFrame] = []
-    for sender_type in groups:
-        sender_pool = cells_by_group[sender_type]
-        lig_mat_full = ligand_mat_by_group[sender_type]
-        for receiver_type in groups:
-            receiver_pool = cells_by_group[receiver_type]
-            rec_mat_full = receptor_mat_by_group[receiver_type]
+def _sample_edge_block(
+    sender_type,
+    receiver_type,
+    cells_by_group: dict,
+    ligand_mat_by_group: dict,
+    receptor_mat_by_group: dict,
+    pair_labels: np.ndarray,
+    rng: np.random.Generator,
+) -> tuple[pd.DataFrame, pd.DataFrame] | None:
+    """Sample a same-size sender/receiver cell subsample and score their signal.
 
-            n_pair_cells = min(len(sender_pool), len(receiver_pool))
-            if n_pair_cells == 0:
-                continue
-            sender_idx = rng.choice(len(sender_pool), size=n_pair_cells, replace=False)
-            receiver_idx = rng.choice(
-                len(receiver_pool), size=n_pair_cells, replace=False
-            )
+    Returns None if either group is empty.
+    """
+    sender_pool = cells_by_group[sender_type]
+    receiver_pool = cells_by_group[receiver_type]
+    n_pair_cells = min(len(sender_pool), len(receiver_pool))
+    if n_pair_cells == 0:
+        return None
 
-            signal = lig_mat_full[:, sender_idx] * rec_mat_full[:, receiver_idx]
-            sender_cells = sender_pool[sender_idx]
-            receiver_cells = receiver_pool[receiver_idx]
-            edge_ids = [f"{s}—{r}" for s, r in zip(sender_cells, receiver_cells)]
+    sender_idx = rng.choice(len(sender_pool), size=n_pair_cells, replace=False)
+    receiver_idx = rng.choice(len(receiver_pool), size=n_pair_cells, replace=False)
 
-            signal_blocks.append(
-                pd.DataFrame(signal, index=pair_labels, columns=edge_ids)
-            )
-            meta_blocks.append(
-                pd.DataFrame(
-                    {
-                        "sending_type": sender_type,
-                        "receiving_type": receiver_type,
-                        "sender_cell": sender_cells,
-                        "receiver_cell": receiver_cells,
-                    },
-                    index=edge_ids,
-                )
-            )
+    signal = (
+        ligand_mat_by_group[sender_type][:, sender_idx]
+        * receptor_mat_by_group[receiver_type][:, receiver_idx]
+    )
+    sender_cells = sender_pool[sender_idx]
+    receiver_cells = receiver_pool[receiver_idx]
+    edge_ids = [f"{s}—{r}" for s, r in zip(sender_cells, receiver_cells)]
 
-    signal_matrix = pd.concat(signal_blocks, axis=1)
-    edge_metadata = pd.concat(meta_blocks, axis=0)
-    return signal_matrix, edge_metadata
+    signal_df = pd.DataFrame(signal, index=pair_labels, columns=edge_ids)
+    meta_df = pd.DataFrame(
+        {
+            "sending_type": sender_type,
+            "receiving_type": receiver_type,
+            "sender_cell": sender_cells,
+            "receiver_cell": receiver_cells,
+        },
+        index=edge_ids,
+    )
+    return signal_df, meta_df

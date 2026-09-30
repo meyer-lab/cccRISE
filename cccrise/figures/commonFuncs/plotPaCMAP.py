@@ -134,6 +134,30 @@ def plot_wc_pacmap(
     )
 
 
+def plot_eigenstate_pacmap(
+    X: anndata.AnnData,
+    eigenstate: int,
+    ax: Axes,
+    span_percentile: float = 99,
+    cbar_match_height: bool = False,
+):
+    """PaCMAP shaded by each cell's projection onto one RISE eigenstate
+    (1-indexed). Projections are heavy-tailed, so the symmetric color span is
+    the `span_percentile` of |projection| rather than its max; cells beyond it
+    saturate."""
+    values = np.asarray(X.obsm["projections"])[:, eigenstate - 1]
+    limit = float(np.percentile(np.abs(values), span_percentile))
+    _plot_shaded_pacmap(
+        np.asarray(X.obsm["PaCMAP"]),
+        values,
+        ax,
+        sns.diverging_palette(240, 10, as_cmap=True),
+        (-limit, limit),
+        f"Eigenstate {eigenstate} Weight",
+        cbar_match_height=cbar_match_height,
+    )
+
+
 def make_wc_pacmap_figure(
     data_or_path: str | Path | anndata.AnnData,
     grid: tuple[int, int],
@@ -163,39 +187,6 @@ def make_wc_pacmap_figure(
     for i in range(cp_rank):
         plot_wc_pacmap(X, i + 1, ax[i + cp_rank], factor_matrix="C", cbarMax=0.3)
         ax[i + cp_rank].set_title(f"Cmp.{i + 1} Receiver Cells")
-
-    return f
-
-
-def make_celltype_condition_pacmap_figure(
-    h5ad_path: str,
-    celltype_col: str,
-    condition_col: str,
-    sample_col: str | None = None,
-) -> Figure:
-    """Build a figure of PaCMAPs colored by cell type, by condition, and
-    optionally by sample."""
-    ax, f = getSetup((6, 6), (2, 2))
-    subplotLabel(ax)
-
-    X = anndata.read_h5ad(h5ad_path)
-
-    celltype_counts = X.obs[celltype_col].value_counts()
-    print("Cell type counts:\n", celltype_counts)
-
-    pal = sns.color_palette(palette="Set3")
-    pal = pal.as_hex()
-    plot_labels_pacmap(X, labelType=celltype_col, ax=ax[0], color_key=pal)
-
-    pal = sns.color_palette("Set2")
-    pal = [pal[0], pal[1], pal[2]]
-    pal = [
-        f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}" for r, g, b in pal
-    ]
-    plot_labels_pacmap(X, labelType=condition_col, ax=ax[1], color_key=pal)
-
-    if sample_col is not None:
-        plot_labels_pacmap(X, labelType=sample_col, ax=ax[2])
 
     return f
 

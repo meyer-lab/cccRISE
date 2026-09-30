@@ -35,7 +35,6 @@ SIGNIFICANCE_DIFF_PARQUET = f"significance_differential_{SELECTED_DATASET}.parqu
 SIGNIFICANCE_DIFF_CSV = f"significance_differential_{SELECTED_DATASET}.csv"
 
 PALETTE_EMPHASIS = "#3a6b9c"
-PALETTE_MUTED = "#b0c4de"
 NULL_LINE_COLOR = "#444444"
 SIG_COLOR_POS = "tab:blue"
 SIG_COLOR_NEG = "tab:red"

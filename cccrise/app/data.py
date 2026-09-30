@@ -12,6 +12,7 @@ import yaml
 from cccrise.factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
+    load_factors_netcdf,
     load_factors_to_anndata,
 )
 from cccrise.figures.common import get_alad_data, get_covid_data
@@ -99,6 +100,23 @@ def load_dataset(key: str) -> LoadedDataset:
     return LoadedDataset(
         adata=adata, spec=spec, has_projections=has_projections, has_pacmap=has_pacmap
     )
+
+
+@lru_cache(maxsize=4)
+def load_rise_factors(key: str) -> anndata.AnnData:
+    """RISE (PARAFAC2) factors in the layout `scrise.plotting` expects: one
+    obs row per condition and one var per gene."""
+    spec = DATASETS[key]
+    ds = load_factors_netcdf(spec.factors_path)
+    conditions = ds.coords["condition"].values.astype(str)
+    out = anndata.AnnData(
+        obs=pd.DataFrame({spec.condition_col: conditions}, index=conditions),
+        var=pd.DataFrame(index=ds.coords["gene"].values.astype(str)),
+    )
+    out.uns["Pf2_A"] = ds["pf2_A"].values
+    out.uns["Pf2_B"] = ds["pf2_B"].values
+    out.varm["Pf2_C"] = ds["pf2_C"].values
+    return out
 
 
 @dataclass(frozen=True)
