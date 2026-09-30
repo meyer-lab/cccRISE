@@ -11,7 +11,7 @@ from ...import_data import (
 )
 from ...tensor import run_fms_r2x_data_percentage_analysis
 from ..common import getSetup, load_or_compute_dataframe, subplotLabel
-from ..commonFuncs.plotGeneral import plot_fms_r2x_stability
+from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 
 
 def compute_fms_r2x_percentage_data(

@@ -12,7 +12,7 @@ from ...import_data import (
 from ...tensor import calculate_fms_rise
 from ...utils import resample
 from ..common import getSetup, load_or_compute_dataframe, subplotLabel
-from ..commonFuncs.plotGeneral import plot_fms_r2x_stability
+from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 
 
 def compute_alad_rise_stability_data(

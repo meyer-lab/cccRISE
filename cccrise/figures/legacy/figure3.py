@@ -20,9 +20,9 @@ from ...utils import (
     aggregate_communication_scores_by_group,
 )
 from ..common import get_covid_data
-from ..commonFuncs.plotFactors import plot_interaction_heatmap, plot_pair_lr_factors
-from ..commonFuncs.plotGeneral import get_sample_to_group, symmetrize_axes
-from ..commonFuncs.plotPaCMAP import plot_wc_pacmap
+from .commonFuncs.plotFactors import plot_interaction_heatmap, plot_pair_lr_factors
+from .commonFuncs.plotGeneral import get_sample_to_group, symmetrize_axes
+from .commonFuncs.plotPaCMAP import plot_wc_pacmap
 
 CMP1 = 3
 CMP2 = 5

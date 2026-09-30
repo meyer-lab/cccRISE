@@ -21,7 +21,8 @@ import pandas as pd
 import xarray as xr
 from scipy.stats import f_oneway, false_discovery_control
 
-from .figures.commonFuncs.plotGeneral import collapse_group, get_sample_to_group
+# TODO: move collapse_group / get_sample_to_group here before figures/legacy is deleted.
+from .figures.legacy.commonFuncs.plotGeneral import collapse_group, get_sample_to_group
 from .utils import correct_conditions
 
 

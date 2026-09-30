@@ -14,7 +14,7 @@ from ..common import (
     getSetup,
     subplotLabel,
 )
-from ..commonFuncs.plotGeneral import rotate_xaxis
+from .commonFuncs.plotGeneral import rotate_xaxis
 
 
 def makeFigure():

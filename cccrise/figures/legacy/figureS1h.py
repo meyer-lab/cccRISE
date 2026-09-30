@@ -13,12 +13,12 @@ from ..common import (
     getSetup,
     subplotLabel,
 )
-from ..commonFuncs.plotFactors import (
+from .commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_lr_factors,
 )
-from ..commonFuncs.plotGeneral import rotate_yaxis
+from .commonFuncs.plotGeneral import rotate_yaxis
 
 
 def makeFigure():

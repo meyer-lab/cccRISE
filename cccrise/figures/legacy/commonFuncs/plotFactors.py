@@ -10,12 +10,12 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.patches import Patch
 
-from ...utils import (
+from ....utils import (
     binned_complex_ligand_product_matrix,
     binned_expression_product_matrix,
     celltype_component_association,
 )
-from ..common import getSetup, subplotLabel
+from ...common import getSetup, subplotLabel
 
 cmap = sns.diverging_palette(240, 10, as_cmap=True)
 
@@ -493,7 +493,7 @@ def make_lr_factors_partial_figure(
     figsize: tuple[int, int] = (12, 12),
 ) -> Figure:
     """Build a grid figure of top/bottom LR factor weights for every component."""
-    from ...factors import load_factors_to_anndata
+    from ....factors import load_factors_to_anndata
 
     ax, f = getSetup(figsize, grid)
     subplotLabel(ax)

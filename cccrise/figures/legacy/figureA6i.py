@@ -27,8 +27,8 @@ from matplotlib import pyplot as plt
 
 from ...utils import celltype_component_association
 from ..common import get_alad_data
-from ..commonFuncs.plotFactors import plot_lr_factor_rank
-from ..commonFuncs.plotGeneral import celltype_grid_shape, plot_wc_histogram_grid
+from .commonFuncs.plotFactors import plot_lr_factor_rank
+from .commonFuncs.plotGeneral import celltype_grid_shape, plot_wc_histogram_grid
 
 DEFAULT_COMPONENT = 1
 CELLTYPE_COL = "broad_cell_type"

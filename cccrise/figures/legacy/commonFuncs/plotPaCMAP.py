@@ -13,7 +13,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.figure import Figure
 from matplotlib.patches import Patch
 
-from ..common import getSetup, subplotLabel
+from ...common import getSetup, subplotLabel
 
 
 def _get_canvas(points: np.ndarray) -> ds.Canvas:
@@ -164,7 +164,7 @@ def make_wc_pacmap_figure(
     figsize: tuple[int, int] = (18, 18),
 ) -> Figure:
     """Build a grid figure of weighted sender/receiver cell PaCMAPs for every component."""
-    from ..common import get_alad_data, get_covid_data
+    from ...common import get_alad_data, get_covid_data
 
     ax, f = getSetup(figsize, grid)
     subplotLabel(ax)

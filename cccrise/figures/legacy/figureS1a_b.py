@@ -9,7 +9,7 @@ from ...import_data import add_cond_idxs, import_balf_covid
 from ...tensor import calculate_fms_rise
 from ...utils import resample
 from ..common import getSetup, load_or_compute_dataframe, subplotLabel
-from ..commonFuncs.plotGeneral import plot_fms_r2x_stability
+from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 
 
 def compute_covid_rise_stability_data(

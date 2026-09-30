@@ -21,7 +21,7 @@ from ..common import (
     getSetup,
     subplotLabel,
 )
-from ..commonFuncs.plotFactors import plot_celltype_association
+from .commonFuncs.plotFactors import plot_celltype_association
 
 CELLTYPE_COL = "broad_cell_type"
 # See `celltype_component_association`: "mean" is the direct analogue of a

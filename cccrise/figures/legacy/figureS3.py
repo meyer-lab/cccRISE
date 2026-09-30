@@ -3,7 +3,7 @@ Figure S3: cccRISE on BALF COVID-19 data. Showing weighted sender and receiver c
 """
 
 from ..common import COVID19_FACTORS_PATH
-from ..commonFuncs.plotPaCMAP import make_wc_pacmap_figure
+from .commonFuncs.plotPaCMAP import make_wc_pacmap_figure
 
 
 def makeFigure():

@@ -11,7 +11,7 @@ from ..common import (
     getSetup,
     subplotLabel,
 )
-from ..commonFuncs.plotGeneral import (
+from .commonFuncs.plotGeneral import (
     DEFAULT_PATIENT_INFO,
     get_alad_patient_factors_df,
 )

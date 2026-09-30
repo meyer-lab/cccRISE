@@ -14,7 +14,7 @@ from cccrise.anova import (
     run_multiple_factors_anova,
     run_saved_factors_anova,
 )
-from cccrise.figures.commonFuncs.plotGeneral import get_sample_to_group
+from cccrise.figures.legacy.commonFuncs.plotGeneral import get_sample_to_group
 from cccrise.import_data import add_cond_idxs
 from cccrise.runners._cli import CP_TOL, RISE_TOL
 from cccrise.utils import replicate_seed, resample_conditions

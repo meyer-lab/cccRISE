@@ -6,7 +6,7 @@ from ...ccc_rise import calculate_interaction_tensor
 from ...import_data import import_ligand_receptor_pairs
 from ...tensor import run_fms_r2x_analysis
 from ..common import get_covid_data, getSetup, subplotLabel
-from ..commonFuncs.plotGeneral import plot_fms_r2x_stability
+from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 
 
 def makeFigure():

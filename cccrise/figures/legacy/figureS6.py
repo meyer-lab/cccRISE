@@ -3,7 +3,7 @@ Figure S6: cccRISE on BALF alad data. Showing ligand-receptor factors.
 """
 
 from ..common import ALAD_FACTORS_PATH
-from ..commonFuncs.plotFactors import make_lr_factors_partial_figure
+from .commonFuncs.plotFactors import make_lr_factors_partial_figure
 
 
 def makeFigure():

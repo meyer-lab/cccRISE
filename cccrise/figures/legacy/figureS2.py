@@ -3,7 +3,7 @@ Figure S2: cccRISE on BALF COVID-19 data. Showing ligand-receptor factors.
 """
 
 from ..common import COVID19_FACTORS_PATH
-from ..commonFuncs.plotFactors import make_lr_factors_partial_figure
+from .commonFuncs.plotFactors import make_lr_factors_partial_figure
 
 
 def makeFigure():

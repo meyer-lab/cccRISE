@@ -10,7 +10,7 @@ from ..common import (
     getSetup,
     subplotLabel,
 )
-from ..commonFuncs.plotGeneral import compute_cell_type_proportions
+from .commonFuncs.plotGeneral import compute_cell_type_proportions
 
 
 def makeFigure():

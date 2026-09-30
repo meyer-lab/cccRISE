@@ -13,7 +13,7 @@ from ..common import (
     getSetup,
     subplotLabel,
 )
-from ..commonFuncs.plotGeneral import (
+from .commonFuncs.plotGeneral import (
     prepare_alad_clinical_metadata,
 )
 

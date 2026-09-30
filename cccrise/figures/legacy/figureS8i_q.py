@@ -11,7 +11,7 @@ from ..common import (
     getSetup,
     subplotLabel,
 )
-from ..commonFuncs.plotGeneral import (
+from .commonFuncs.plotGeneral import (
     annotate_boxplot_n,
     format_p_value,
     get_alad_patient_factors_df,

@@ -7,7 +7,7 @@ from ..common import (
     getSetup,
     subplotLabel,
 )
-from ..commonFuncs.plotFactors import plot_interaction_heatmap
+from .commonFuncs.plotFactors import plot_interaction_heatmap
 
 
 def makeFigure():

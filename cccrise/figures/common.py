@@ -658,8 +658,8 @@ def plot_match_ambiguity(stability: pd.DataFrame, ax: plt.Axes):
 
 
 # =============================================================================
-# Legacy layout helpers, used only by figures/legacy and commonFuncs; removed
-# with them.
+# Legacy layout helpers, used only by figures/legacy (including
+# legacy/commonFuncs); removed with them.
 # =============================================================================
 
 

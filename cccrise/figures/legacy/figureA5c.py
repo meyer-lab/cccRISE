@@ -7,8 +7,8 @@ from ..common import (
     getSetup,
     subplotLabel,
 )
-from ..commonFuncs.plotFactors import plot_pair_lr_factors
-from ..commonFuncs.plotGeneral import symmetrize_axes
+from .commonFuncs.plotFactors import plot_pair_lr_factors
+from .commonFuncs.plotGeneral import symmetrize_axes
 
 
 def makeFigure():

@@ -15,14 +15,14 @@ from scipy.stats import pearsonr
 
 from ...tensor import run_pseudobulk_workflow
 from ..common import get_covid_data
-from ..commonFuncs.plotFactors import (
+from .commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_interaction_heatmap,
     plot_lr_factors,
 )
-from ..commonFuncs.plotGeneral import get_sample_to_group, rotate_yaxis
-from ..commonFuncs.plotPaCMAP import plot_labels_pacmap, plot_wc_pacmap
+from .commonFuncs.plotGeneral import get_sample_to_group, rotate_yaxis
+from .commonFuncs.plotPaCMAP import plot_labels_pacmap, plot_wc_pacmap
 
 CCC_RISE_CMP = 6
 PSEUDOBULK_CMP = 8

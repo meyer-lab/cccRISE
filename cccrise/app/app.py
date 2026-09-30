@@ -33,7 +33,7 @@ from cccrise.app.data import (
     load_rise_factors,
 )
 from cccrise.app.lr_pairs import parse_lr_pairs
-from cccrise.figures.commonFuncs.plotFactors import (
+from cccrise.figures.legacy.commonFuncs.plotFactors import (
     plot_celltype_association,
     plot_condition_factors,
     plot_eigenstate_factors,
@@ -41,11 +41,11 @@ from cccrise.figures.commonFuncs.plotFactors import (
     plot_lr_factor_rank,
     plot_lr_factors,
 )
-from cccrise.figures.commonFuncs.plotGeneral import (
+from cccrise.figures.legacy.commonFuncs.plotGeneral import (
     celltype_grid_shape,
     plot_wc_histogram_grid,
 )
-from cccrise.figures.commonFuncs.plotPaCMAP import (
+from cccrise.figures.legacy.commonFuncs.plotPaCMAP import (
     assign_labels,
     plot_categorical_scatter,
     plot_eigenstate_pacmap,
