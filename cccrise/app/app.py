@@ -79,6 +79,8 @@ ASSOC_STAT_CHOICES = {
     "enrichment": "log2 Enrichment",
     "pct_top": "% in Top Percentile",
 }
+# Association stats that depend on the Top Cell % Threshold.
+TOP_PERC_STATS = ("enrichment", "pct_top")
 
 # Multipliers applied to every plot's text by `scale_fonts`, relative to the
 # sizes the shared plotting functions set for the paper figures.
@@ -965,18 +967,14 @@ def server(input, output, session):
             ui.markdown(
                 "PaCMAP colored by each cell's projection onto the RISE "
                 "eigenstate chosen with Eigenstate; opposite signs describe "
-                "different cells. The color scale spans the 99th percentile "
-                "of |projection|, so the few cells beyond it saturate. The "
-                "cell type PaCMAP is repeated alongside for "
-                "comparison. The heatmap below quantifies each cell type's "
-                "association with every eigenstate from the raw per-cell "
-                "projections, independent of the selected component; the "
-                "enrichment and % Top statistics only count the positive "
-                "tail."
+                "different cells. Color Scale Cap sets the percentile of "
+                "|projection| the color scale spans; the few cells beyond it "
+                "saturate. The cell type PaCMAP is repeated alongside for "
+                "comparison."
             ),
             ui.row(
                 ui.column(
-                    4,
+                    6,
                     ui.input_slider(
                         "eigenstate",
                         "Eigenstate",
@@ -987,6 +985,28 @@ def server(input, output, session):
                     ),
                 ),
                 ui.column(
+                    6,
+                    ui.input_slider(
+                        "eig_span_percentile",
+                        "Color Scale Cap (|projection| percentile)",
+                        min=90,
+                        max=100,
+                        value=99,
+                        step=0.5,
+                    ),
+                ),
+            ),
+            scrollable_plot("eigenstate_pacmap_plot", 1300, 550),
+            ui.markdown(
+                "Each cell type's association with every eigenstate, from "
+                "the raw per-cell projections and independent of the "
+                "selected component. Association Heatmap Stat selects the "
+                "statistic; Top Cell % Threshold, shown only for the "
+                "enrichment and % Top statistics, sets the percentile they "
+                "use (both count only the positive tail)."
+            ),
+            ui.row(
+                ui.column(
                     4,
                     ui.input_select(
                         "eig_assoc_stat",
@@ -995,9 +1015,14 @@ def server(input, output, session):
                         selected="mean",
                     ),
                 ),
-                ui.column(4, top_perc_slider("eig_top_perc")),
+                ui.column(
+                    4,
+                    ui.panel_conditional(
+                        f"{list(TOP_PERC_STATS)}.includes(input.eig_assoc_stat)",
+                        top_perc_slider("eig_top_perc"),
+                    ),
+                ),
             ),
-            scrollable_plot("eigenstate_pacmap_plot", 1300, 550),
             scrollable_plot("eigenstate_assoc_plot", 1300, 500),
             ui.hr(),
             ui.h4("Sender/Receiver Classification"),
@@ -1237,7 +1262,11 @@ def server(input, output, session):
         ds = dataset()
         fig, axes = plt.subplots(1, 2, figsize=(16, 6.5), layout="tight")
         plot_eigenstate_pacmap(
-            ds.adata, input.eigenstate(), axes[0], cbar_match_height=True
+            ds.adata,
+            input.eigenstate(),
+            axes[0],
+            span_percentile=input.eig_span_percentile(),
+            cbar_match_height=True,
         )
         plot_celltype_pacmap(ds, axes[1])
         return fig
