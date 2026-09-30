@@ -26,6 +26,7 @@ from cccrise.anova import run_saved_factors_anova
 from cccrise.app import colors
 from cccrise.app.data import (
     DATASETS,
+    DatasetSpec,
     LoadedDataset,
     load_dataset,
     load_rank_selection,
@@ -133,23 +134,44 @@ ALAD_DEFAULT_COMPARISON = next(
     and not _REGROUPING_KEYS & cfg.keys()
 )
 
-# COVID-19's raw data only has one patient status column, so it gets a single
-# comparison rather than a curated list; built from its DatasetSpec fields
-# instead of repeating those strings here.
-_covid_spec = DATASETS["covid"]
-COVID_COMPARISONS: dict[str, dict] = {
-    "Control vs. COVID-19 (All)": {
-        "group_column": _covid_spec.group_col,
-        "control_label": _covid_spec.control_label,
-        "other_label": _covid_spec.other_label,
+# IBD: every contrast of the three inflammation statuses, built from its
+# DatasetSpec fields; the 3-way test is the default, matching the ANOVA
+# bootstrap's default of testing every level of the group column.
+_ibd_spec = DATASETS["ibd"]
+_IBD_LEVEL_CONTRASTS = [
+    ("Healthy vs. CD Inflamed", ["Healthy", "CD_inflamed"]),
+    ("Healthy vs. CD Uninflamed", ["Healthy", "CD_uninflamed"]),
+    ("CD Uninflamed vs. CD Inflamed", ["CD_uninflamed", "CD_inflamed"]),
+]
+IBD_COMPARISONS: dict[str, dict] = {
+    "Healthy vs. Crohn's (All)": {
+        "group_column": _ibd_spec.group_col,
+        "control_label": _ibd_spec.control_label,
+        "other_label": _ibd_spec.other_label,
     },
+    **{
+        name: {
+            "group_column": _ibd_spec.group_col,
+            "levels": levels,
+            "control_label": levels[0],
+        }
+        for name, levels in _IBD_LEVEL_CONTRASTS
+    },
+    "Inflammation Status (3-Way)": {"group_column": _ibd_spec.group_col},
 }
 
 DATASET_COMPARISONS: dict[str, dict[str, dict]] = {
     "alad": ALAD_COMPARISONS,
-    "covid": COVID_COMPARISONS,
+    "ibd": IBD_COMPARISONS,
 }
-DEFAULT_COMPARISONS: dict[str, str] = {"alad": ALAD_DEFAULT_COMPARISON}
+DEFAULT_COMPARISONS: dict[str, str] = {
+    "alad": ALAD_DEFAULT_COMPARISON,
+    "ibd": "Inflammation Status (3-Way)",
+}
+
+
+def patient_column(spec: DatasetSpec) -> str | None:
+    return spec.runner.patient_column if spec.runner else None
 
 
 def scrollable_plot(output_id: str, width_px: int, height_px: int) -> ui.Tag:
@@ -542,10 +564,10 @@ def server(input, output, session):
         name = input.patient_status_comparison()
         cfg = comparisons.get(name)
         if cfg is None:
-            return None, None, "no comparison selected."
+            return None, None, None, "no comparison selected."
         raw = load_raw_dataset(input.dataset())
         if raw.adata is None:
-            return None, None, raw.error or "raw dataset unavailable."
+            return None, None, None, raw.error or "raw dataset unavailable."
         try:
             df = run_saved_factors_anova(
                 factors=raw.adata,
@@ -559,12 +581,12 @@ def server(input, output, session):
                 association_name=name,
             )
         except ValueError as exc:
-            return None, None, str(exc)
-        return df, cfg, None
+            return None, None, None, str(exc)
+        return df, cfg, raw.adata, None
 
     @render.ui
     def patient_status_ui():
-        _, _, error = patient_status_result()
+        _, _, _, error = patient_status_result()
         if error is not None:
             return ui.markdown(f"_Patient status comparison unavailable: {error}_")
         return scrollable_plot("patient_status_plot", 1200, 500)
@@ -572,14 +594,11 @@ def server(input, output, session):
     @render.plot
     @styled_figure()
     def patient_status_plot():
-        df, cfg, error = patient_status_result()
+        df, cfg, source, error = patient_status_result()
         if error is not None:
             return None
-        raw = load_raw_dataset(input.dataset())
         cmp = input.component()
         name = input.patient_status_comparison()
-        runner_spec = RUNNER_DATASETS.get(input.dataset())
-        patient_column = runner_spec.patient_column if runner_spec else None
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5), layout="tight")
         plot_association_effect_sizes(
@@ -590,7 +609,7 @@ def server(input, output, session):
             muted_color=colors.MUTED,
         )
         plot_category_component_weights(
-            raw.adata,
+            source,
             component=cmp,
             group_column=cfg["group_column"],
             mapping=cfg.get("mapping"),
@@ -600,7 +619,8 @@ def server(input, output, session):
             title=name,
             ax=axes[1],
             anova_df=df,
-            patient_column=patient_column,
+            patient_column=patient_column(dataset().spec),
+            condition_column=dataset().spec.condition_col,
         )
         return fig
 
@@ -697,49 +717,53 @@ def server(input, output, session):
                 scrollable_plot("assoc_heatmap_plot", 1300, 500),
                 ui.hr(),
                 ui.h4("LR Pair Interactions"),
+                # Its own output: it needs the raw expression, which for a
+                # large cohort takes minutes to load, and the sections above
+                # shouldn't wait on it.
+                ui.output_ui("lr_interaction_ui"),
             ]
         )
+        return ui.TagList(*sections)
 
+    @render.ui
+    def lr_interaction_ui():
+        ds = dataset()
         raw = load_raw_dataset(input.dataset())
         if raw.error is not None or raw.adata is None:
-            sections.append(ui.markdown(f"⚠️ {raw.error or 'Raw dataset unavailable.'}"))
-            return ui.TagList(*sections)
+            return ui.markdown(f"⚠️ {raw.error or 'Raw dataset unavailable.'}")
 
         celltypes = sorted(raw.adata.obs[ds.spec.celltype_col].unique().tolist())
         pair_labels = [p.label for p in simple_lr_pairs()]
 
-        sections.extend(
-            [
-                ui.markdown(
-                    "Binned expression-product heatmap for one "
-                    "ligand-receptor pair. Ligand-Receptor Pair selects the "
-                    "pair; Sender/Receiver Cell Type select the two cell "
-                    "populations."
-                ),
-                ui.row(
-                    ui.column(
-                        4,
-                        ui.input_selectize(
-                            "lr_pair", "Ligand-Receptor Pair", choices=pair_labels
-                        ),
-                    ),
-                    ui.column(
-                        4,
-                        ui.input_select(
-                            "sender_celltype", "Sender Cell Type", choices=celltypes
-                        ),
-                    ),
-                    ui.column(
-                        4,
-                        ui.input_select(
-                            "receiver_celltype", "Receiver Cell Type", choices=celltypes
-                        ),
+        return ui.TagList(
+            ui.markdown(
+                "Binned expression-product heatmap for one "
+                "ligand-receptor pair. Ligand-Receptor Pair selects the "
+                "pair; Sender/Receiver Cell Type select the two cell "
+                "populations."
+            ),
+            ui.row(
+                ui.column(
+                    4,
+                    ui.input_selectize(
+                        "lr_pair", "Ligand-Receptor Pair", choices=pair_labels
                     ),
                 ),
-                scrollable_plot("lr_interaction_plot", 700, 500),
-            ]
+                ui.column(
+                    4,
+                    ui.input_select(
+                        "sender_celltype", "Sender Cell Type", choices=celltypes
+                    ),
+                ),
+                ui.column(
+                    4,
+                    ui.input_select(
+                        "receiver_celltype", "Receiver Cell Type", choices=celltypes
+                    ),
+                ),
+            ),
+            scrollable_plot("lr_interaction_plot", 700, 500),
         )
-        return ui.TagList(*sections)
 
     @render.plot
     @styled_figure()

@@ -1,5 +1,9 @@
 """
-Figure S1e_g: Cell type proportions across conditions in BALF COVID-19 data.
+Figure S1e_g: Cell type proportions across conditions.
+
+TODO(IBD): VERIFY. Ported from the retired BALF cohort's severity ranking;
+the IBD ordering Healthy < CD_uninflamed < CD_inflamed in `SEVERITY` is a
+proposal, not a published ranking.
 """
 
 import pandas as pd
@@ -7,20 +11,33 @@ import seaborn as sns
 from scipy.stats import spearmanr
 
 from .common import (
-    get_covid_data,
+    IBD_SPEC,
+    get_ibd_data,
     getSetup,
     subplotLabel,
 )
 from .commonFuncs.plotGeneral import compute_cell_type_proportions
+
+SEVERITY = {"Healthy": 1, "CD_uninflamed": 2, "CD_inflamed": 3}
 
 
 def makeFigure():
     ax, f = getSetup((4, 4), (2, 2))
     subplotLabel(ax)
 
-    X = get_covid_data(project_cells=True)
+    # Only cell metadata is needed, which the factors file stores.
+    X = get_ibd_data(project_cells=False)
     df = compute_cell_type_proportions(
-        X, celltype_col="celltype", sample_col="sample", condition_col="condition"
+        X,
+        celltype_col=IBD_SPEC.celltype_column,
+        sample_col=IBD_SPEC.condition_column,
+        condition_col=IBD_SPEC.group_column,
+    ).rename(
+        columns={
+            IBD_SPEC.celltype_column: "celltype",
+            IBD_SPEC.condition_column: "sample",
+            IBD_SPEC.group_column: "condition",
+        }
     )
     print(df)
 
@@ -31,12 +48,7 @@ def makeFigure():
     ax[0].set_title("Cell Type Proportions by Condition")
     ax[0].set_ylim(0.0001, 1.5)
 
-    condition_severity_map = {
-        "Control": 1,
-        "Moderate COVID-19": 2,
-        "Severe COVID-19": 3,
-    }
-    df["severity"] = df["condition"].map(condition_severity_map)
+    df["severity"] = df["condition"].map(SEVERITY).astype(int)
 
     correlation_results = []
     for celltype in df["celltype"].unique():
@@ -82,7 +94,7 @@ def makeFigure():
         palette=pal,
     )
     ax[3].set_title("Total Cells per Sample")
-    ax[3].tick_params(axis="x", rotation=45)
+    ax[3].set_xticks([])  # hundreds of samples; their IDs aren't legible
     ax[3].set_ylabel("Total Cell Count")
 
     return f

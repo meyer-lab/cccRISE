@@ -1,5 +1,8 @@
 """
-Figure S1h: Decomposition of the pseudobulk communication data and tensor for BAL data.
+Figure S1h: Decomposition of the pseudobulk communication data and tensor for IBD data.
+
+TODO(IBD): VERIFY. The pseudobulk CP rank (`PSEUDOBULK_RANK`) was chosen for the
+retired BALF cohort; re-select it for IBD.
 """
 
 from typing import cast
@@ -9,7 +12,8 @@ import pandas as pd
 
 from ..tensor import run_pseudobulk_workflow
 from .common import (
-    get_covid_data,
+    IBD_SPEC,
+    get_ibd_data,
     getSetup,
     subplotLabel,
 )
@@ -20,16 +24,23 @@ from .commonFuncs.plotFactors import (
 )
 from .commonFuncs.plotGeneral import rotate_yaxis
 
+PSEUDOBULK_RANK = 8
+
 
 def makeFigure():
     ax, f = getSetup((20, 8), (1, 4))
     subplotLabel(ax)
 
-    X = get_covid_data(project_cells=True)
-    X, _ = run_pseudobulk_workflow(X, cp_rank=8)
-    groupby = "celltype"
-    condition_column = "sample"
-    group_col = "condition"
+    X = get_ibd_data(project_cells=True)
+    groupby = IBD_SPEC.celltype_column
+    condition_column = IBD_SPEC.condition_column
+    group_col = IBD_SPEC.group_column
+    X, _ = run_pseudobulk_workflow(
+        X,
+        cp_rank=PSEUDOBULK_RANK,
+        condition_column=condition_column,
+        groupby=groupby,
+    )
     sample_to_group = (
         cast(pd.DataFrame, X.obs)
         .drop_duplicates(subset=[condition_column, group_col])
@@ -39,7 +50,7 @@ def makeFigure():
     plot_condition_factors(
         data=X,
         ax=ax[0],
-        cond="sample",
+        cond=condition_column,
         cond_group_labels=sample_to_group,
         group_cond=True,
     )

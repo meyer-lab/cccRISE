@@ -1,9 +1,15 @@
 """
-Figure 2: cccRISE resolves COVID-19-associated communication patterns to
+Figure 2: cccRISE resolves disease-associated communication patterns to
 specific immune subpopulations.
 
 Panel (a) is a hand-drawn schematic with no corresponding plotting script
 and is left as a placeholder.
+
+TODO(IBD): NEEDS CHANGING OR REMOVAL. This figure was written for the retired
+BALF cohort, which the IBD cohort supersedes. Its data loader now points at
+IBD, but the components (CCC_RISE_CMP, PSEUDOBULK_CMP), group column and cell
+types below were picked for the old cohort and do not carry over: re-pick them
+for IBD, or delete this figure.
 """
 
 import numpy as np
@@ -14,7 +20,7 @@ from matplotlib import pyplot as plt
 from scipy.stats import pearsonr
 
 from ..tensor import run_pseudobulk_workflow
-from .common import get_covid_data
+from .common import get_ibd_data
 from .commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
@@ -41,7 +47,7 @@ def label_panel(ax, letter):
 
 
 def makeFigure():
-    X = get_covid_data(project_cells=True, do_embedding=True)
+    X = get_ibd_data(project_cells=True, do_embedding=True)
     X_pseudo, _ = run_pseudobulk_workflow(X.copy(), cp_rank=PSEUDOBULK_CMP)
 
     condition_column = "sample"

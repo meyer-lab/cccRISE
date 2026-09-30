@@ -1,5 +1,10 @@
 """
-Figure S4m: Violin plot of component 6 values for receiver cells in cccRISE on BALF COVID-19 data.
+Figure S4m: Violin plot of a component's values for its top receiver cells.
+
+TODO(IBD): NEEDS CHANGING OR REMOVAL. This figure was written for the retired
+BALF cohort, which the IBD cohort supersedes. Its data loader now points at
+IBD, but the component and cell-type column below were picked for the old
+cohort and do not carry over: re-pick them for IBD, or delete this figure.
 """
 
 import numpy as np
@@ -10,7 +15,7 @@ from ..utils import (
     add_obs_cmp_unique_one,
 )
 from .common import (
-    get_covid_data,
+    get_ibd_data,
     getSetup,
     subplotLabel,
 )
@@ -21,7 +26,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = get_covid_data(project_cells=True)
+    X = get_ibd_data(project_cells=True)
     ccc_rise_cmp = 6
 
     X_mdc_receiver = add_obs_cmp_label(

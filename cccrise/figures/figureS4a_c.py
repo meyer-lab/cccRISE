@@ -1,5 +1,11 @@
 """
-Figure S4a_c: Heatmaps of ligand-receptor expression products for selected cell types and components in cccRISE on BALF COVID-19 data.
+Figure S4a_c: Percent non-zero interactions per sample for selected LR pairs and cell types.
+
+TODO(IBD): NEEDS CHANGING OR REMOVAL. This figure was written for the retired
+BALF cohort, which the IBD cohort supersedes. Its data loader now points at
+IBD, but the LR pairs, cell types and sample/group columns below were picked
+for the old cohort and do not carry over: re-pick them for IBD, or delete this
+figure.
 """
 
 import pandas as pd
@@ -7,7 +13,7 @@ import seaborn as sns
 
 from ..utils import aggregate_communication_scores_by_group
 from .common import (
-    get_covid_data,
+    get_ibd_data,
     getSetup,
     subplotLabel,
 )
@@ -17,7 +23,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = get_covid_data(project_cells=True)
+    X = get_ibd_data(project_cells=True)
 
     # Create barplot of percent of cell-cell interactions that are non-zero for each sample
     pal = sns.color_palette("Set2")

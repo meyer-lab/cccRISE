@@ -263,6 +263,7 @@ def plot_category_component_weights(
     anova_df: pd.DataFrame | None = None,
     alpha: float = 0.05,
     patient_column: str | None = None,
+    condition_column: str | None = None,
 ) -> None:
     """Plot component loadings across patient status categories as boxplot + stripplot.
 
@@ -293,6 +294,9 @@ def plot_category_component_weights(
     patient_column : str, optional
         Metadata column identifying the patient behind each condition. Points
         of conditions sharing a patient are joined by a line.
+    condition_column : str, optional
+        Metadata column identifying each condition. Defaults to the first of
+        'dsco_id', 'sample' and 'patient' present.
     """
     if not hasattr(factors_adata, "obs"):
         resolved_adata, _, _ = _resolve_factors_and_metadata(factors_adata)
@@ -303,7 +307,7 @@ def plot_category_component_weights(
     comp_idx = component - 1
     loadings = a_mat[:, comp_idx]
 
-    cond_col = (
+    cond_col = condition_column or (
         "dsco_id"
         if "dsco_id" in resolved_adata.obs.columns
         else ("sample" if "sample" in resolved_adata.obs.columns else "patient")

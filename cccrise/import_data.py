@@ -1,5 +1,3 @@
-import os
-import urllib.request
 import zlib
 from collections.abc import Iterator
 from functools import lru_cache
@@ -22,69 +20,6 @@ IBD_FULL_COHORT_IVCSC = IBD_DATA_DIR / "full_IBD_cohort.ivcsc.h5ad"
 
 # Depth-normalize to the median, scale by gene sum, then log10(1 + 1000x)
 IBD_NORMALIZATION = vsparse.RECIPES["parafac2"]
-
-
-# The below code is taken directly from https://github.com/earmingol/cell2cell/blob/master/cell2cell/datasets/anndata.py
-def import_balf_covid(
-    filename: str = str(DATA_DIR / "BALF-COVID19-Liao_et_al-NatMed-2020.h5ad"),
-    gene_threshold: float = 0.001,
-    normalize: bool = True,
-) -> anndata.AnnData:
-    """BALF samples from COVID-19 patients
-    The data consists in 63k immune and epithelial cells in lungs
-    from 3 control, 3 moderate COVID-19, and 6 severe COVID-19 patients.
-
-    This dataset was previously published in [1], and this objects contains
-    the raw counts for the annotated cell types available in:
-    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE145926
-
-    References:
-    [1] Liao, M., Liu, Y., Yuan, J. et al.
-        Single-cell landscape of bronchoalveolar immune cells in patients
-        with COVID-19. Nat Med 26, 842–844 (2020).
-        https://doi.org/10.1038/s41591-020-0901-9
-
-    Parameters
-    ----------
-        filename : str, default='BALF-COVID19-Liao_et_al-NatMed-2020.h5ad'
-            Path to the h5ad file in case it was manually downloaded.
-
-    Returns
-    -------
-        Annotated data matrix with sparse X matrix preserved.
-    """
-    url = "https://ucla.box.com/shared/static/lnirh5vmas4r1fc7xnr7z6ndk2s6tkhq.h5ad"
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    if not os.path.exists(filename):
-        local_file = Path("./BALF-COVID19-Liao_et_al-NatMed-2020.h5ad")
-        if local_file.exists():
-            import shutil
-
-            shutil.copyfile(local_file, filename)
-        else:
-            print("Downloading data from Box...")
-            import shutil
-
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req) as resp, open(filename, "wb") as out_file:
-                shutil.copyfileobj(resp, out_file)
-
-    print("Loading BALF COVID data (preserving sparse format)...")
-    if normalize:
-        adata = vsparse.load_and_normalize(
-            filename, min_cell_counts=10.0, gene_threshold=gene_threshold
-        )
-        adata = add_cond_idxs(adata, "sample")
-        adata.var["means"] = adata.X.mean(axis=0)
-        return adata
-
-    adata = vsparse.load_packed(filename).to_anndata()
-    return prepare_dataset(
-        adata,
-        condition_name="sample",
-        geneThreshold=gene_threshold,
-        normalize=normalize,
-    )
 
 
 @lru_cache(maxsize=1)

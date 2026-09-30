@@ -163,20 +163,16 @@ def make_wc_pacmap_figure(
     grid: tuple[int, int],
     figsize: tuple[int, int] = (18, 18),
 ) -> Figure:
-    """Build a grid figure of weighted sender/receiver cell PaCMAPs for every component."""
-    from ..common import get_alad_data, get_covid_data
+    """Build a grid figure of weighted sender/receiver cell PaCMAPs for every component.
+
+    A `.nc` path must hold per-cell weights and PaCMAP coordinates (as
+    `cccrise-run` stores them).
+    """
+    from ...factors import load_figure_adata
 
     ax, f = getSetup(figsize, grid)
     subplotLabel(ax)
-
-    if isinstance(data_or_path, anndata.AnnData):
-        X = data_or_path
-    elif "covid" in str(data_or_path).lower():
-        X = get_covid_data(project_cells=True, do_embedding=True)
-    elif "alad" in str(data_or_path).lower():
-        X = get_alad_data(project_cells=True, do_embedding=True)
-    else:
-        X = anndata.read_h5ad(data_or_path)
+    X = load_figure_adata(data_or_path)
 
     cp_rank = X.uns["A"].shape[1]
 

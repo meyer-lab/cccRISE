@@ -1,9 +1,15 @@
 """
-Figure S2i_j: Heatmaps of ligand-receptor expression products for selected cell types and components in cccRISE on BALF COVID-19 data.
+Figure S1i_j: Heatmaps of ligand-receptor expression products for selected cell types and components.
+
+TODO(IBD): NEEDS CHANGING OR REMOVAL. This figure was written for the retired
+BALF cohort, which the IBD cohort supersedes. Its data loader now points at
+IBD, but the component, LR pair, cell types and color limits below were picked
+for the old cohort and do not carry over: re-pick them for IBD, or delete this
+figure.
 """
 
 from .common import (
-    get_covid_data,
+    get_ibd_data,
     getSetup,
     subplotLabel,
 )
@@ -14,7 +20,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = get_covid_data(project_cells=True)
+    X = get_ibd_data(project_cells=True)
     ccc_rise_cmp = 6
 
     plot_interaction_heatmap(

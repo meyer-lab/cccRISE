@@ -7,15 +7,16 @@ across eigen-states using projections built directly from the NetCDF factor file
 
 import numpy as np
 
-from .common import get_covid_data, getSetup, subplotLabel
+from .common import IBD_SPEC, get_ibd_data, getSetup, subplotLabel
 
 
 def makeFigure():
     """Generate Figure 7 showing RISE projection boxplots for each cell type."""
-    X = get_covid_data(project_cells=True, do_embedding=False)
+    # The factors file stores each cell's projections; no expression needed.
+    X = get_ibd_data(project_cells=False)
 
     projections = X.obsm["projections"]
-    celltype_labels = X.obs["celltype"].values
+    celltype_labels = X.obs[IBD_SPEC.celltype_column].values
     unique_celltypes = np.unique(celltype_labels)
 
     n_eigenstates = min(30, projections.shape[1])

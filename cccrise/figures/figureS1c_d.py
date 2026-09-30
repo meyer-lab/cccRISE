@@ -1,11 +1,11 @@
 """
-Figure S1c_d: FMS across CPD ranks (only) for COVID-19
+Figure S1c_d: FMS across CPD ranks (only) for IBD
 """
 
 from ..ccc_rise import calculate_interaction_tensor
 from ..import_data import import_ligand_receptor_pairs
 from ..tensor import run_fms_r2x_analysis
-from .common import get_covid_data, getSetup, subplotLabel
+from .common import get_ibd_data, getSetup, subplotLabel
 from .commonFuncs.plotGeneral import plot_fms_r2x_stability
 
 
@@ -13,7 +13,7 @@ def makeFigure():
     ax, f = getSetup((6, 3), (1, 2))
     subplotLabel(ax)
 
-    X = get_covid_data(project_cells=True)
+    X = get_ibd_data(project_cells=True)
     lr_pairs = import_ligand_receptor_pairs()
 
     interaction_tensor, _ = calculate_interaction_tensor(X, lr_pairs)

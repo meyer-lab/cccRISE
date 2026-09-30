@@ -37,43 +37,38 @@ LIGHT_DIVERGING = sns.diverging_palette(240, 10, as_cmap=True)
 
 from ..factors import (
     ALAD_FACTORS_PATH,
-    COVID19_FACTORS_PATH,
     DATA_DIR,
+    IBD_FACTORS_PATH,
     clean_memory,
     load_factors_to_anndata,
     load_or_compute_dataframe,
 )
-from ..import_data import import_alad, import_balf_covid
+from ..import_data import import_alad
+from ..runners.datasets import DATASETS as RUNNER_DATASETS
+from ..runners.datasets import IBD_CELL_CAP
+
+#: The IBD cohort as its factor model (`IBD_FACTORS_PATH`) was fit: capped at
+#: `IBD_CELL_CAP` cells per sample. `.load()` gives those cells' expression.
+IBD_SPEC = RUNNER_DATASETS["ibd"].with_cell_cap(IBD_CELL_CAP)
 
 __all__ = [
     "ALAD_FACTORS_PATH",
-    "COVID19_FACTORS_PATH",
     "DATA_DIR",
     "DEFAULT_CMAP",
     "DIVERGING_CMAP",
+    "IBD_FACTORS_PATH",
+    "IBD_SPEC",
     "LIGHT_DIVERGING",
     "clean_memory",
     "genFigure",
     "getSetup",
     "get_alad_data",
-    "get_covid_data",
+    "get_ibd_data",
     "load_factors_to_anndata",
     "load_or_compute_dataframe",
     "load_runner_csv",
     "subplotLabel",
 ]
-
-
-def get_covid_data(
-    project_cells: bool = False, do_embedding: bool = False
-) -> anndata.AnnData:
-    """Load COVID dataset with factors and optional single-cell projections."""
-    if not project_cells:
-        return load_factors_to_anndata(COVID19_FACTORS_PATH)
-    raw = import_balf_covid(gene_threshold=0.001, normalize=True)
-    return load_factors_to_anndata(
-        COVID19_FACTORS_PATH, adata=raw, do_embedding=do_embedding
-    )
 
 
 def get_alad_data(
@@ -85,6 +80,20 @@ def get_alad_data(
     raw = import_alad(gene_threshold=0.001, normalize=True)
     return load_factors_to_anndata(
         ALAD_FACTORS_PATH, adata=raw, do_embedding=do_embedding
+    )
+
+
+def get_ibd_data(
+    project_cells: bool = False, do_embedding: bool = False
+) -> anndata.AnnData:
+    """Load the IBD dataset (capped at `IBD_CELL_CAP` cells per sample, the
+    cells its factor model was fit on) with factors and optional single-cell
+    expression."""
+    if not project_cells:
+        return load_factors_to_anndata(IBD_FACTORS_PATH)
+    raw = IBD_SPEC.load()
+    return load_factors_to_anndata(
+        IBD_FACTORS_PATH, adata=raw, do_embedding=do_embedding
     )
 
 

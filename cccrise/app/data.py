@@ -11,13 +11,14 @@ import yaml
 
 from cccrise.factors import (
     ALAD_FACTORS_PATH,
-    COVID19_FACTORS_PATH,
+    IBD_FACTORS_PATH,
     load_factors_netcdf,
     load_factors_to_anndata,
 )
-from cccrise.figures.common import get_alad_data, get_covid_data
-from cccrise.runners.datasets import DATA_DIR
+from cccrise.figures.common import get_alad_data, get_ibd_data
+from cccrise.runners.datasets import DATA_DIR, IBD_CELL_CAP
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
+from cccrise.runners.datasets import DatasetSpec as RunnerSpec
 from cccrise.runners.provenance import sidecar_path
 
 
@@ -32,32 +33,17 @@ class DatasetSpec:
     celltype_col: str
     condition_col: str
     group_col: str | None
-    #: Value of `group_col` treated as the reference class for the logistic
-    #: regression weight summary, and the name given to every other value.
-    #: None if no case/control grouping is defined for this dataset.
+    #: Value of `group_col` treated as the reference class for the
+    #: case/control condition association, and the name given to every other
+    #: value. None if no case/control grouping is defined for this dataset.
     control_label: str | None = None
     other_label: str | None = None
+    #: Runner registry entry the factors were fit with; names the cached
+    #: rank-selection sweeps and the patient column.
+    runner: RunnerSpec | None = None
 
 
 DATASETS: dict[str, DatasetSpec] = {
-    "covid": DatasetSpec(
-        key="covid",
-        label="COVID-19 BALF",
-        factors_path=COVID19_FACTORS_PATH,
-        # No embedding: the app only ever reads raw cells for gene-level
-        # heatmaps and the boot-time logreg fit, neither of which touches
-        # PaCMAP coordinates (those come from the factors file instead, via
-        # `load_dataset`, when present).
-        raw_loader=lambda: get_covid_data(project_cells=True, do_embedding=False),
-        celltype_col="celltype",
-        condition_col="sample",
-        group_col="condition",
-        control_label="Control",
-        other_label="COVID-19",
-    ),
-    # Registering IBD here: its cap-2000 factor model is committed
-    # xz-compressed; run `xz -dk cccrise/data/ibd_ti_factors_cap2000.nc.xz`
-    # first and point `factors_path` at the decompressed `.nc`.
     "alad": DatasetSpec(
         key="alad",
         label="ALAD Lung Transplant",
@@ -68,6 +54,20 @@ DATASETS: dict[str, DatasetSpec] = {
         group_col="ALADstatus",
         control_label="control",
         other_label="alad",
+        runner=RUNNER_DATASETS["alad"],
+    ),
+    "ibd": DatasetSpec(
+        key="ibd",
+        label="IBDverse Crohn's Disease Terminal Ileum",
+        factors_path=IBD_FACTORS_PATH,
+        # No embedding: PaCMAP coordinates come from the factors file.
+        raw_loader=lambda: get_ibd_data(project_cells=True, do_embedding=False),
+        celltype_col="broad_cell_type",
+        condition_col="sanger_sample_id",
+        group_col="inflammation_status",
+        control_label="Healthy",
+        other_label="Crohn's",
+        runner=RUNNER_DATASETS["ibd"].with_cell_cap(IBD_CELL_CAP),
     ),
 }
 
@@ -129,15 +129,10 @@ class RawDataset:
 def load_raw_dataset(key: str) -> RawDataset:
     """Load raw single-cell expression for a dataset, cached for the life of
     the process. Needed for gene-level interaction heatmaps (actual
-    expression values) and the boot-time logistic regression fit (which
-    needs real per-cell counts for its read-depth correction), not for the
+    expression values), and for condition associations on `obs` columns the
+    factors file doesn't store (see `app.association_source`); not for the
     per-cell projections/PaCMAP already stored in the factors file. Falls
     back gracefully if the raw file isn't available locally.
-
-    The app's boot-time logreg fit (see `app.py`) calls this for every
-    dataset up front, so in practice it's rarely "lazy" in a running
-    server -- by the time a session opens an interaction heatmap, the raw
-    data is normally already loaded and cached from that.
     """
     spec = DATASETS[key]
     try:
@@ -170,7 +165,7 @@ def _read_sweep(filename: str) -> pd.DataFrame | None:
 
 @lru_cache(maxsize=4)
 def load_rank_selection(key: str) -> RankSelection:
-    runner_spec = RUNNER_DATASETS.get(key)
+    runner_spec = DATASETS[key].runner
     if runner_spec is None:
         return RankSelection(rise=None, cpd=None, cpd_rise_rank=None)
     cpd = _read_sweep(runner_spec.cpd_rank_filename())

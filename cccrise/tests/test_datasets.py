@@ -54,3 +54,14 @@ def test_a_non_default_cap_seed_is_part_of_the_output_name():
 def test_cell_cap_is_refused_for_a_loader_without_one():
     with pytest.raises(ValueError, match="does not support a cell cap"):
         DATASETS["alad"].with_cell_cap(100)
+
+
+def test_ibd_cell_cap_names_the_committed_factor_model():
+    from cccrise.factors import IBD_FACTORS_PATH
+    from cccrise.runners.datasets import IBD_CELL_CAP
+
+    capped = DATASETS["ibd"].with_cell_cap(IBD_CELL_CAP)
+
+    assert capped.factors_path() == IBD_FACTORS_PATH
+    xz = IBD_FACTORS_PATH.with_name(IBD_FACTORS_PATH.name + ".xz")
+    assert IBD_FACTORS_PATH.exists() or xz.exists()

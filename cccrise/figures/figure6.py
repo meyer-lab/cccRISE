@@ -2,7 +2,7 @@
 Figure 6: CP Rank Selection Analysis
 
 This figure demonstrates how R²X changes with increasing CP rank
-for the COVID dataset using cached RISE factors.
+for the IBD dataset using cached RISE factors.
 """
 
 import pandas as pd
@@ -13,7 +13,7 @@ from tlviz.model_evaluation import core_consistency
 from ..ccc_rise import CP_FIT_OPTIONS, calculate_interaction_tensor
 from ..import_data import import_ligand_receptor_pairs
 from ..rank_selection import calculate_r2x
-from .common import get_covid_data, subplotLabel
+from .common import get_ibd_data, subplotLabel
 
 
 def compute_cp_rank_sweep(
@@ -22,11 +22,11 @@ def compute_cp_rank_sweep(
     tol: float = 1e-3,
     random_state: int = 42,
 ) -> pd.DataFrame:
-    """Compute R2X and core consistency across CP ranks for cached RISE factors of the COVID dataset."""
+    """Compute R2X and core consistency across CP ranks for cached RISE factors of the IBD dataset."""
     if cp_ranks is None:
         cp_ranks = list(range(1, 13, 1))
 
-    adata = get_covid_data(project_cells=True)
+    adata = get_ibd_data(project_cells=True)
     lr_pairs = import_ligand_receptor_pairs()
 
     # Calculate interaction tensor ONCE for the cached RISE dataset

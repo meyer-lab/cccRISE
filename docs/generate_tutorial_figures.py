@@ -1,4 +1,12 @@
-"""Generate figures for the cccRISE tutorial documentation."""
+"""Generate figures for the cccRISE tutorial documentation.
+
+TODO(IBD): NEEDS CHANGING. The tutorial was written for the retired BALF
+cohort, which the IBD cohort supersedes. The data loaders now point at IBD,
+but the ranks (RISE 35 / CP rank sweeps), component 6, the mDC cell type and
+the CCL19-CCR7 pair below were picked for the old cohort: re-pick them for IBD
+(and regenerate `_static/tutorial_images/`). IBD is ~636k cells, so the rank
+sweeps here take hours rather than minutes.
+"""
 
 from typing import cast
 
@@ -18,6 +26,7 @@ output_dir.mkdir(parents=True, exist_ok=True)
 
 # Import cccRISE modules
 from cccrise.ccc_rise import calculate_interaction_tensor, fit_rise
+from cccrise.figures.common import IBD_SPEC
 from cccrise.figures.commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
@@ -31,7 +40,6 @@ from cccrise.figures.commonFuncs.plotPaCMAP import (
 )
 from cccrise.import_data import (
     add_cond_idxs,
-    import_balf_covid,
     import_ligand_receptor_pairs,
 )
 from cccrise.tensor import calculate_fms_rise, run_fms_r2x_analysis
@@ -41,11 +49,11 @@ from cccrise.utils import (
 )
 
 print("Loading dataset...")
-X = import_balf_covid(gene_threshold=0.001, normalize=True)
+X = IBD_SPEC.load()
 lr_pairs = import_ligand_receptor_pairs()
 
 # Add numerical indices for each sample (condition)
-condition_column = "sample"
+condition_column = IBD_SPEC.condition_column
 X = add_cond_idxs(X, condition_column)
 
 print("\n=== RISE Rank Selection ===")
@@ -110,17 +118,17 @@ plt.tight_layout()
 plt.savefig(output_dir / "step2_cpd_fms_r2x.png", dpi=150, bbox_inches="tight")
 plt.close()
 
-from cccrise.figures.common import get_covid_data
+from cccrise.figures.common import get_ibd_data
 
 print("\n=== Running cccRISE Factorization ===")
 
-X = get_covid_data(project_cells=True, do_embedding=True)
+X = get_ibd_data(project_cells=True, do_embedding=True)
 
 # Figure 3: Individual Factor Visualizations
 print("Generating Figure 3: Individual factor visualizations...")
 
 # Prepare condition grouping
-group_col = "condition"
+group_col = IBD_SPEC.group_column
 sample_to_group = (
     cast(pd.DataFrame, X.obs)
     .drop_duplicates(subset=[condition_column, group_col])

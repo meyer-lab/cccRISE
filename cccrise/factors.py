@@ -17,8 +17,9 @@ from .ccc_rise import add_cell_embeddings
 from .import_data import add_cond_idxs, iter_condition_matrices
 
 DATA_DIR = Path(__file__).parent / "data"
-COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
 ALAD_FACTORS_PATH = DATA_DIR / "bal_alad_factors.nc"
+#: The IBD model fit on at most 2000 cells per sample (`runners.datasets.IBD_CELL_CAP`).
+IBD_FACTORS_PATH = DATA_DIR / "ibd_ti_factors_cap2000.nc"
 
 
 def _resolve_lr_symbols(
@@ -300,6 +301,16 @@ def ensure_decompressed(filepath: str | Path) -> Path:
             shutil.copyfileobj(src, dst, length=1 << 24)
         partial.replace(path)
     return path
+
+
+def load_figure_adata(data_or_path: str | Path | anndata.AnnData) -> anndata.AnnData:
+    """An AnnData as-is, a factors `.nc` via `load_factors_to_anndata`, or any
+    other path as an `.h5ad`."""
+    if isinstance(data_or_path, anndata.AnnData):
+        return data_or_path
+    if str(data_or_path).endswith(".nc"):
+        return load_factors_to_anndata(data_or_path)
+    return anndata.read_h5ad(data_or_path)
 
 
 def load_factors_to_anndata(

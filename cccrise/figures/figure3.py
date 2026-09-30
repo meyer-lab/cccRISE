@@ -1,9 +1,15 @@
 """
-Figure 3: cccRISE Components 3 and 5 resolve epithelial cell communication
-programs associated with COVID-19 severity.
+Figure 3: cccRISE components resolve epithelial cell communication
+programs associated with disease severity.
 
 Panel letters follow the manuscript figure. All panels are generated from
-data already computed and stored on the COVID-19 BALF AnnData object.
+data already computed and stored on the loaded AnnData object.
+
+TODO(IBD): NEEDS CHANGING OR REMOVAL. This figure was written for the retired
+BALF cohort, which the IBD cohort supersedes. Its data loader now points at
+IBD, but the components (CMP1, CMP2), severity ranking, cell types and LR pairs
+below were picked for the old cohort and do not carry over: re-pick them for
+IBD, or delete this figure.
 """
 
 import numpy as np
@@ -19,7 +25,7 @@ from ..utils import (
     add_obs_cmp_unique_two,
     aggregate_communication_scores_by_group,
 )
-from .common import get_covid_data
+from .common import get_ibd_data
 from .commonFuncs.plotFactors import plot_interaction_heatmap, plot_pair_lr_factors
 from .commonFuncs.plotGeneral import get_sample_to_group, symmetrize_axes
 from .commonFuncs.plotPaCMAP import plot_wc_pacmap
@@ -82,7 +88,7 @@ def _epithelial_weight_violin(X, cmp, ax_sender, ax_receiver):
 
 
 def makeFigure():
-    X = get_covid_data(project_cells=True, do_embedding=True)
+    X = get_ibd_data(project_cells=True, do_embedding=True)
     condition_column = "sample"
     group_col = "condition"
 
@@ -117,7 +123,7 @@ def makeFigure():
         color="black",
     )
     ax_a.set_ylim(-0.1, 1)
-    ax_a.set_title("Condition Factor Vs. COVID-19 Severity")
+    ax_a.set_title("Condition Factor Vs. Severity")
     label_panel(ax_a, "a")
 
     plot_wc_pacmap(X, CMP1, ax_b, cbarMax=0.3, factor_matrix="B")

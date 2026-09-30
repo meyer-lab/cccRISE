@@ -1,9 +1,14 @@
 """
-Figure S4e-i: Heatmaps of ligand-receptor expression products for NK cell to Dendritic Cell interactions in cccRISE on BALF alad data.
+Figure S4e-i: Heatmaps of ligand-receptor expression products for selected cell types.
+
+TODO(IBD): NEEDS CHANGING OR REMOVAL. This figure was written for the retired
+BALF cohort, which the IBD cohort supersedes. Its data loader now points at
+IBD, but the component, LR pairs and cell types below were picked for the old
+cohort and do not carry over: re-pick them for IBD, or delete this figure.
 """
 
 from .common import (
-    get_covid_data,
+    get_ibd_data,
     getSetup,
     subplotLabel,
 )
@@ -14,7 +19,7 @@ def makeFigure():
     ax, f = getSetup((6, 6), (2, 2))
     subplotLabel(ax)
 
-    X = get_covid_data(project_cells=True)
+    X = get_ibd_data(project_cells=True)
     ccc_rise_cmp = 3
 
     pairs = [["PTN", "PTPRZ1"], ["PTN", "SDC1"]]

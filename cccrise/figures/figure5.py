@@ -2,15 +2,15 @@
 Figure 5: RISE Rank Selection Analysis
 
 This figure demonstrates how R²X changes with increasing PARAFAC2 (RISE) rank
-to identify the optimal rank where R²X begins to flatline.
+on the IBD cohort to identify the optimal rank where R²X begins to flatline.
 """
 
 import numpy as np
 import pandas as pd
 from parafac2.parafac2 import parafac2_nd
 
-from ..import_data import add_cond_idxs, import_balf_covid
-from .common import getSetup, load_or_compute_dataframe
+from ..import_data import add_cond_idxs
+from .common import IBD_SPEC, getSetup, load_or_compute_dataframe
 
 
 def compute_rise_rank_sweep(ranks: list[int] | None = None) -> pd.DataFrame:
@@ -18,8 +18,8 @@ def compute_rise_rank_sweep(ranks: list[int] | None = None) -> pd.DataFrame:
     if ranks is None:
         ranks = list(range(1, 41, 5))
 
-    adata = import_balf_covid()
-    adata_filtered = add_cond_idxs(adata, "sample")
+    adata = IBD_SPEC.load()
+    adata_filtered = add_cond_idxs(adata, IBD_SPEC.condition_column)
 
     r2x_results = []
     for rank in ranks:

@@ -493,17 +493,11 @@ def make_lr_factors_partial_figure(
     figsize: tuple[int, int] = (12, 12),
 ) -> Figure:
     """Build a grid figure of top/bottom LR factor weights for every component."""
-    from ...factors import load_factors_to_anndata
+    from ...factors import load_figure_adata
 
     ax, f = getSetup(figsize, grid)
     subplotLabel(ax)
-
-    if isinstance(data_or_path, anndata.AnnData):
-        X = data_or_path
-    elif str(data_or_path).endswith(".nc"):
-        X = load_factors_to_anndata(data_or_path)
-    else:
-        X = anndata.read_h5ad(data_or_path)
+    X = load_figure_adata(data_or_path)
 
     for i in range(X.uns["A"].shape[1]):
         plot_lr_factors_partial(X, i + 1, ax[2 * i], geneAmount=10, top=True)
