@@ -134,6 +134,30 @@ def plot_wc_pacmap(
     )
 
 
+def plot_eigenstate_pacmap(
+    X: anndata.AnnData,
+    eigenstate: int,
+    ax: Axes,
+    span_percentile: float = 99,
+    cbar_match_height: bool = False,
+):
+    """PaCMAP shaded by each cell's projection onto one RISE eigenstate
+    (1-indexed). Projections are heavy-tailed, so the symmetric color span is
+    the `span_percentile` of |projection| rather than its max; cells beyond it
+    saturate."""
+    values = np.asarray(X.obsm["projections"])[:, eigenstate - 1]
+    limit = float(np.percentile(np.abs(values), span_percentile))
+    _plot_shaded_pacmap(
+        np.asarray(X.obsm["PaCMAP"]),
+        values,
+        ax,
+        sns.diverging_palette(240, 10, as_cmap=True),
+        (-limit, limit),
+        f"Eigenstate {eigenstate} Weight",
+        cbar_match_height=cbar_match_height,
+    )
+
+
 def make_wc_pacmap_figure(
     data_or_path: str | Path | anndata.AnnData,
     grid: tuple[int, int],

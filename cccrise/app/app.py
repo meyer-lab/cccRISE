@@ -10,21 +10,27 @@ import functools
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.collections import EllipseCollection
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
 from matplotlib.rcsetup import cycler
 from matplotlib.text import Text
 from matplotlib.ticker import MaxNLocator
 from scrise.plotting import plot_bicv_r2x
+from scrise.plotting import plot_condition_factors as plot_rise_condition_factors
+from scrise.plotting import plot_eigenstate_factors as plot_rise_eigenstate_factors
+from scrise.plotting import plot_gene_factors as plot_rise_gene_factors
 from shiny import App, reactive, render, ui
 
 from cccrise.anova import run_saved_factors_anova
 from cccrise.app import colors
 from cccrise.app.data import (
     DATASETS,
+    LoadedDataset,
     load_dataset,
     load_rank_selection,
     load_raw_dataset,
+    load_rise_factors,
 )
 from cccrise.app.lr_pairs import parse_lr_pairs
 from cccrise.figures.commonFuncs.plotFactors import (
@@ -42,6 +48,7 @@ from cccrise.figures.commonFuncs.plotGeneral import (
 from cccrise.figures.commonFuncs.plotPaCMAP import (
     assign_labels,
     plot_categorical_scatter,
+    plot_eigenstate_pacmap,
     plot_labels_pacmap,
     plot_wc_pacmap,
     plot_wc_per_celltype,
@@ -51,7 +58,7 @@ from cccrise.figures.figureAnova import (
     plot_association_effect_sizes,
     plot_category_component_weights,
 )
-from cccrise.figures.figureCPDrank import plot_collinearity, plot_core_consistency
+from cccrise.figures.figureCPDrank import plot_collinearity, plot_fit_r2x
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.utils import celltype_component_association
 
@@ -64,6 +71,16 @@ LR_HIGHLIGHT_CHOICES = {
     "tukey": "Tukey Outliers (Q3 + 1.5*IQR)",
     "q3": "Q3 (75th Percentile)",
 }
+
+# Statistics offered by `celltype_component_association`.
+ASSOC_STAT_CHOICES = {
+    "mean": "Mean Cell Loading",
+    "effect_size": "Cohen's d vs Other Cells",
+    "enrichment": "log2 Enrichment",
+    "pct_top": "% in Top Percentile",
+}
+# Association stats that depend on the Top Cell % Threshold.
+TOP_PERC_STATS = ("enrichment", "pct_top")
 
 # Multipliers applied to every plot's text by `scale_fonts`, relative to the
 # sizes the shared plotting functions set for the paper figures.
@@ -89,6 +106,18 @@ STRENGTH_CATEGORY_COLORS = [
 
 # Plots that don't set their own colors draw from the shared palette.
 plt.rcParams["axes.prop_cycle"] = cycler(color=colors.categorical_colors(8))
+
+# `figures/common.py` sizes legend handles for 6 pt print figures, and handles
+# are fixed at legend creation (`scale_fonts` only enlarges the text), so build
+# legends at on-screen size with square color boxes instead.
+plt.rcParams.update(
+    {
+        "legend.fontsize": plt.rcParams["xtick.labelsize"],
+        "legend.handlelength": 1.0,
+        "legend.handleheight": 1.0,
+        "legend.markerscale": 1.0,
+    }
+)
 
 # ALAD: figureAnova.py's own curated comparisons, reused as-is (single
 # source of truth) rather than re-hardcoded here.
@@ -236,6 +265,42 @@ def mark_selected_rank(ax: plt.Axes, rank: int) -> None:
     )
 
 
+def plot_celltype_pacmap(ds: LoadedDataset, ax: plt.Axes) -> None:
+    X = ds.adata
+    plot_labels_pacmap(
+        X,
+        labelType=ds.spec.celltype_col,
+        ax=ax,
+        color_key=colors.celltype_colors(X.obs[ds.spec.celltype_col].nunique()),
+    )
+    ax.set_title("Cell Type")
+
+
+def enlarge_points(
+    ax: plt.Axes, points: np.ndarray, point_colors: list[str], scale: float
+) -> None:
+    """Redraw `points` over the axes' datashader image as circles `scale`
+    times the diameter of a circle with one canvas pixel's area. Sized in
+    data units, so they track the image when Shiny resizes the figure."""
+    image = ax.images[0]
+    x0, x1, y0, y1 = image.get_extent()
+    n_rows, n_cols = image.get_size()
+    diameter = scale * 2 / np.sqrt(np.pi)
+    ax.add_collection(
+        EllipseCollection(
+            widths=diameter * abs(x1 - x0) / n_cols,
+            heights=diameter * abs(y1 - y0) / n_rows,
+            angles=0,
+            units="xy",
+            offsets=points,
+            offset_transform=ax.transData,
+            facecolors=point_colors,
+            linewidths=0,
+        ),
+        autolim=False,
+    )
+
+
 def top_perc_slider(input_id: str) -> ui.Tag:
     return ui.input_slider(
         input_id, "Top Cell % Threshold", min=1, max=50, value=10, step=1
@@ -256,7 +321,20 @@ app_ui = ui.page_sidebar(
             ui.output_ui("rank_selection_body"),
         ),
         ui.nav_panel(
-            "Factor Matrices",
+            "RISE Factors",
+            ui.markdown(
+                "Heatmaps of the RISE condition (A), eigenstate (B), and "
+                "gene (C) factor matrices. Condition factors are "
+                "standardized per component. The C panel shows only the "
+                "genes with the largest max |weight| across components."
+            ),
+            ui.input_slider(
+                "n_genes", "Genes shown in C panel", min=10, max=200, value=50, step=5
+            ),
+            scrollable_plot("rise_factor_heatmaps", 1400, 800),
+        ),
+        ui.nav_panel(
+            "CP Factors",
             ui.markdown(
                 "Heatmaps of the condition (A), sender (B), receiver (C), "
                 "and ligand-receptor (D) factor matrices. The trim "
@@ -344,8 +422,7 @@ def server(input, output, session):
         notes = [
             (
                 "Cached rank-selection sweeps: RISE bi-cross-validation (BiCV) "
-                "R2X, and CPD core consistency (CORCONDIA) and component "
-                "collinearity. Dashed lines mark the RISE rank "
+                "R2X, and CPD fit R2X and component collinearity. Dashed lines mark the RISE rank "
                 f"(**{rise_rank()}**) and CP rank (**{cp_rank()}**) of the loaded "
                 "factors used by the remaining tabs."
             )
@@ -380,15 +457,7 @@ def server(input, output, session):
                 ax.axis("off")
                 ax.text(0.5, 0.5, "No cached CPD sweep", ha="center")
         else:
-            plot_core_consistency(
-                sweeps.cpd,
-                axes[1],
-                "CPD Core Consistency (CORCONDIA)",
-                threshold_colors=(colors.GREEN, colors.ORANGE),
-            )
-            # `plot_core_consistency` sets symlog after autoscaling, so rescale
-            # to drop the resulting empty decades above 100%.
-            axes[1].autoscale_view()
+            plot_fit_r2x(sweeps.cpd, axes[1], "CPD Fit $R^2X$")
             plot_collinearity(
                 sweeps.cpd,
                 axes[2],
@@ -399,9 +468,36 @@ def server(input, output, session):
                 mark_selected_rank(ax, cp_rank())
         for ax in axes:
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            if ax.get_legend() is not None:
+            if ax.get_legend_handles_labels()[0]:
                 # Long enough handles for the dashed selected-rank line to read
                 ax.legend(handlelength=2)
+        return fig
+
+    # ------------------------------------------------------------------
+    # RISE Factors
+    # ------------------------------------------------------------------
+    @render.plot
+    @styled_figure(scale_ticks=False)
+    def rise_factor_heatmaps():
+        ds = dataset()
+        X = load_rise_factors(input.dataset())
+        fig, axes = plt.subplots(1, 3, figsize=(20, 8), layout="tight")
+
+        # log10 is undefined for the negative condition weights some fits have
+        plot_rise_condition_factors(
+            X, axes[0], cond=ds.spec.condition_col, log_transform=False
+        )
+        axes[0].set_title("Condition Factor (A)")
+
+        plot_rise_eigenstate_factors(X, axes[1])
+        axes[1].set_title("Eigenstate Factor (B)")
+
+        # Trim threshold that keeps the top `n_genes` genes by max |weight|
+        max_weight = np.sort(np.abs(np.asarray(X.varm["Pf2_C"])).max(axis=1))[::-1]
+        threshold = max_weight[min(input.n_genes(), max_weight.size - 1)]
+        plot_rise_gene_factors(X, axes[2], weight=threshold)
+        axes[2].set_title("Gene Factor (C)")
+
         return fig
 
     # ------------------------------------------------------------------
@@ -519,7 +615,7 @@ def server(input, output, session):
 
         comparisons = DATASET_COMPARISONS.get(ds.spec.key, {})
         sections = [
-            ui.h4("Component Association (ANOVA)"),
+            ui.h4("Condition Associations"),
             ui.markdown(
                 "ANOVA effect sizes and a per-component boxplot for a "
                 "chosen patient status comparison, computed from the raw "
@@ -539,7 +635,7 @@ def server(input, output, session):
 
         sections.extend(
             [
-                ui.h4("Top Ligand-Receptor Pairs"),
+                ui.h4("Ligand-Receptor Pairs"),
                 ui.markdown(
                     "Every LR pair's weight for the selected component, ranked "
                     "from highest to lowest. Highlight Rule sets which pairs "
@@ -578,44 +674,12 @@ def server(input, output, session):
                 ),
                 scrollable_plot("lr_rank_curve_plot", 1100, 450),
                 ui.hr(),
-                ui.h4("Per-Cell-Type Distributions"),
-                ui.markdown(
-                    "Sender and receiver weight distributions for the selected "
-                    "component, by cell type. View Type switches between a "
-                    "histogram grid and boxplots; Log-scale Y axis applies to "
-                    "the histograms; Top Cell % Threshold sets the percentile "
-                    "marked on the histograms and used by the association "
-                    "heatmap below."
-                ),
-                ui.row(
-                    ui.column(
-                        4,
-                        ui.input_radio_buttons(
-                            "dist_view_mode",
-                            "View Type",
-                            choices={
-                                "hist": "Histogram Grid (Sender & Receiver Overlaid)",
-                                "box": "Boxplots (Selected Component)",
-                            },
-                            selected="hist",
-                        ),
-                    ),
-                    ui.column(
-                        4,
-                        ui.input_checkbox(
-                            "dist_log_y", "Log-scale Y axis (Histograms)", value=True
-                        ),
-                    ),
-                    ui.column(4, top_perc_slider("explorer_top_perc")),
-                ),
-                scrollable_plot("distributions_plot", 1300, 650),
-                ui.hr(),
-                ui.h4("Cell Type Association Heatmap"),
+                ui.h4("Sender/Receiver Cells"),
                 ui.markdown(
                     "Heatmap of every cell type's association with every "
                     "component, for sender and receiver. Association Heatmap "
-                    "Stat selects the statistic shown; the Top Cell % "
-                    "Threshold above sets the percentile used by the "
+                    "Stat selects the statistic shown; Top Cell % "
+                    "Threshold sets the percentile used by the "
                     "enrichment and % Top statistics."
                 ),
                 ui.row(
@@ -624,19 +688,15 @@ def server(input, output, session):
                         ui.input_select(
                             "assoc_stat",
                             "Association Heatmap Stat",
-                            choices={
-                                "mean": "Mean Cell Loading",
-                                "effect_size": "Cohen's d vs Other Cells",
-                                "enrichment": "log2 Enrichment",
-                                "pct_top": "% in Top Percentile",
-                            },
+                            choices=ASSOC_STAT_CHOICES,
                             selected="mean",
                         ),
                     ),
+                    ui.column(4, top_perc_slider("assoc_top_perc")),
                 ),
                 scrollable_plot("assoc_heatmap_plot", 1300, 500),
                 ui.hr(),
-                ui.h4("LR Pair Interaction Heatmap"),
+                ui.h4("LR Pair Interactions"),
             ]
         )
 
@@ -714,7 +774,7 @@ def server(input, output, session):
         cmp = input.component()
         celltype_col = ds.spec.celltype_col
         view_mode = input.dist_view_mode()
-        top_perc = float(input.explorer_top_perc())
+        top_perc = float(input.dist_top_perc())
 
         if view_mode == "hist":
             nrows, ncols = celltype_grid_shape(X, celltype_col)
@@ -763,7 +823,7 @@ def server(input, output, session):
         X = ds.adata
         celltype_col = ds.spec.celltype_col
         stat = input.assoc_stat()
-        top_perc = float(input.explorer_top_perc())
+        top_perc = float(input.assoc_top_perc())
 
         fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="tight")
         scale = max(
@@ -855,6 +915,7 @@ def server(input, output, session):
             dataset().adata.obs[dataset().spec.celltype_col].unique().tolist()
         )
         return ui.TagList(
+            ui.h4("PaCMAP Embeddings"),
             ui.markdown(
                 "Three PaCMAP embeddings of individual cells for the "
                 "selected component: weighted by sender or receiver score, "
@@ -871,22 +932,117 @@ def server(input, output, session):
             ),
             ui.output_plot("projections_plot", height="500px"),
             ui.hr(),
-            ui.h4("Sender/Receiver Strength"),
+            ui.h4("Cell-Type Distributions"),
             ui.markdown(
-                "A cell counts as a strong sender (or receiver) if its "
-                "weight for the selected component is at or above the "
-                "chosen percentile across all cells. Cell Type selects the "
-                "cell type counted in the truth table below; Strength "
-                "Threshold (percentile) sets that percentile for all three "
-                "panels below."
+                "Sender and receiver weight distributions for the selected "
+                "component, by cell type. View Type switches between a "
+                "histogram grid and boxplots; Log-scale Y axis applies to "
+                "the histograms; Top Cell % Threshold sets the percentile "
+                "marked on the histograms."
+            ),
+            ui.row(
+                ui.column(
+                    4,
+                    ui.input_radio_buttons(
+                        "dist_view_mode",
+                        "View Type",
+                        choices={
+                            "hist": "Histogram Grid (Sender & Receiver Overlaid)",
+                            "box": "Boxplots (Selected Component)",
+                        },
+                        selected="hist",
+                    ),
+                ),
+                ui.column(
+                    4,
+                    ui.input_checkbox(
+                        "dist_log_y", "Log-scale Y axis (Histograms)", value=True
+                    ),
+                ),
+                ui.column(4, top_perc_slider("dist_top_perc")),
+            ),
+            scrollable_plot("distributions_plot", 1300, 650),
+            ui.hr(),
+            ui.h4("Cell-Type–Eigenstate Associations"),
+            ui.markdown(
+                "PaCMAP colored by each cell's projection onto the RISE "
+                "eigenstate chosen with Eigenstate; opposite signs describe "
+                "different cells. Color Scale Cap sets the percentile of "
+                "|projection| the color scale spans; the few cells beyond it "
+                "saturate. The cell type PaCMAP is repeated alongside for "
+                "comparison."
             ),
             ui.row(
                 ui.column(
                     6,
-                    ui.input_select("tt_celltype", "Cell Type", choices=celltypes),
+                    ui.input_slider(
+                        "eigenstate",
+                        "Eigenstate",
+                        min=1,
+                        max=rise_rank(),
+                        value=1,
+                        step=1,
+                    ),
                 ),
                 ui.column(
                     6,
+                    ui.input_slider(
+                        "eig_span_percentile",
+                        "Color Scale Cap (|projection| percentile)",
+                        min=90,
+                        max=100,
+                        value=99,
+                        step=0.5,
+                    ),
+                ),
+            ),
+            scrollable_plot("eigenstate_pacmap_plot", 1300, 550),
+            ui.markdown(
+                "Each cell type's association with every eigenstate, from "
+                "the raw per-cell projections and independent of the "
+                "selected component. Association Heatmap Stat selects the "
+                "statistic; Top Cell % Threshold, shown only for the "
+                "enrichment and % Top statistics, sets the percentile they "
+                "use (both count only the positive tail)."
+            ),
+            ui.row(
+                ui.column(
+                    4,
+                    ui.input_select(
+                        "eig_assoc_stat",
+                        "Association Heatmap Stat",
+                        choices=ASSOC_STAT_CHOICES,
+                        selected="mean",
+                    ),
+                ),
+                ui.column(
+                    4,
+                    ui.panel_conditional(
+                        f"{list(TOP_PERC_STATS)}.includes(input.eig_assoc_stat)",
+                        top_perc_slider("eig_top_perc"),
+                    ),
+                ),
+            ),
+            scrollable_plot("eigenstate_assoc_plot", 1300, 500),
+            ui.hr(),
+            ui.h4("Sender/Receiver Classification"),
+            ui.markdown(
+                "A cell counts as a strong sender (or receiver) if its "
+                "weight for the selected component is at or above the "
+                "chosen percentile across all cells. Cell Type selects the "
+                "cell type counted in the truth table and enlarged in the "
+                "PaCMAP and scatter below; Strength Threshold (percentile) "
+                "sets that percentile for all three panels below; Selected "
+                "Cell Type Point Size sets how much larger (in diameter) "
+                "that cell type's points are drawn."
+            ),
+            ui.row(
+                ui.column(
+                    4,
+                    ui.input_select("tt_celltype", "Cell Type", choices=celltypes),
+                ),
+                ui.column(
+                    4,
                     ui.input_slider(
                         "tt_percentile",
                         "Strength Threshold (percentile)",
@@ -894,6 +1050,17 @@ def server(input, output, session):
                         max=99,
                         value=90,
                         step=1,
+                    ),
+                ),
+                ui.column(
+                    4,
+                    ui.input_slider(
+                        "tt_point_size",
+                        "Selected Cell Type Point Size (% increase)",
+                        min=0,
+                        max=300,
+                        value=100,
+                        step=10,
                     ),
                 ),
             ),
@@ -908,15 +1075,16 @@ def server(input, output, session):
                 "###### Strength Category PaCMAP (All Cell Types)\n"
                 "PaCMAP embedding colored by strength category (Both, "
                 "Sender Only, Receiver Only, Neither), for every cell in "
-                "the dataset."
+                "the dataset, with the selected cell type's points "
+                "enlarged."
             ),
             scrollable_plot("strength_category_pacmap_plot", 650, 550),
             ui.markdown(
                 "###### Sender vs. Receiver Weight (All Cell Types)\n"
                 "Each cell's sender weight plotted against its receiver "
-                "weight for the selected component, colored by cell type. "
-                "Dashed lines mark the current Strength Threshold "
-                "percentile."
+                "weight for the selected component, colored by cell type, "
+                "with the selected cell type's points enlarged. Dashed "
+                "lines mark the current Strength Threshold percentile."
             ),
             scrollable_plot("sender_receiver_scatter_plot", 900, 700),
         )
@@ -935,13 +1103,16 @@ def server(input, output, session):
             float(np.percentile(receiver, percentile)),
         )
 
+    @reactive.calc
+    def selected_celltype_mask():
+        ds = dataset()
+        return ds.adata.obs[ds.spec.celltype_col].to_numpy() == input.tt_celltype()
+
     @render.data_frame
     def truth_table():
-        ds = dataset()
-        celltype_col = ds.spec.celltype_col
         sender, receiver, sender_threshold, receiver_threshold = strength_weights()
 
-        in_celltype = ds.adata.obs[celltype_col].to_numpy() == input.tt_celltype()
+        in_celltype = selected_celltype_mask()
         is_sender = (sender >= sender_threshold) & in_celltype
         is_receiver = (receiver >= receiver_threshold) & in_celltype
 
@@ -997,12 +1168,24 @@ def server(input, output, session):
             ),
         )
 
+        points = np.asarray(ds.adata.obsm["PaCMAP"])
         fig, ax = plt.subplots(figsize=(6.5, 5.5), layout="tight")
         plot_categorical_scatter(
-            np.asarray(ds.adata.obsm["PaCMAP"]),
-            pd.Series(categories),
+            points, pd.Series(categories), ax, color_key=STRENGTH_CATEGORY_COLORS
+        )
+
+        # Same category -> color assignment `plot_categorical_scatter` makes
+        category_colors = dict(zip(np.unique(categories), STRENGTH_CATEGORY_COLORS))
+        selected = np.flatnonzero(selected_celltype_mask())
+        # Strong senders/receivers drawn last, over the "Neither" majority
+        selected = selected[
+            np.argsort(categories[selected] != "Neither", kind="stable")
+        ]
+        enlarge_points(
             ax,
-            color_key=STRENGTH_CATEGORY_COLORS,
+            points[selected],
+            [category_colors[c] for c in categories[selected]],
+            scale=1 + input.tt_point_size() / 100,
         )
         assign_labels(ax)
         return fig
@@ -1015,12 +1198,20 @@ def server(input, output, session):
         celltype_col = ds.spec.celltype_col
         sender, receiver, sender_threshold, receiver_threshold = strength_weights()
 
+        points = np.column_stack([sender, receiver])
+        celltypes = ds.adata.obs[celltype_col]
+        color_key = colors.celltype_colors(celltypes.nunique())
         fig, ax = plt.subplots(figsize=(9, 7), layout="tight")
-        plot_categorical_scatter(
-            np.column_stack([sender, receiver]),
-            ds.adata.obs[celltype_col],
+        plot_categorical_scatter(points, celltypes, ax, color_key=color_key)
+
+        # Same cell type -> color assignment `plot_categorical_scatter` makes
+        selected = selected_celltype_mask()
+        celltype_color = dict(zip(np.unique(celltypes), color_key))[input.tt_celltype()]
+        enlarge_points(
             ax,
-            color_key=colors.celltype_colors(ds.adata.obs[celltype_col].nunique()),
+            points[selected],
+            [celltype_color] * int(selected.sum()),
+            scale=1 + input.tt_point_size() / 100,
         )
         ax.axvline(sender_threshold, color="0.3", ls="--", lw=1.0)
         ax.axhline(receiver_threshold, color="0.3", ls="--", lw=1.0)
@@ -1050,13 +1241,7 @@ def server(input, output, session):
         )
         axes[0].set_title(f"Cmp. {cmp} {input.weight_source().capitalize()} Weight")
 
-        plot_labels_pacmap(
-            X,
-            labelType=ds.spec.celltype_col,
-            ax=axes[1],
-            color_key=colors.celltype_colors(X.obs[ds.spec.celltype_col].nunique()),
-        )
-        axes[1].set_title("Cell Type")
+        plot_celltype_pacmap(ds, axes[1])
 
         if ds.spec.group_col is not None and ds.spec.group_col in X.obs:
             plot_labels_pacmap(
@@ -1071,6 +1256,40 @@ def server(input, output, session):
 
         return fig
 
+    @render.plot
+    @styled_figure()
+    def eigenstate_pacmap_plot():
+        ds = dataset()
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6.5), layout="tight")
+        plot_eigenstate_pacmap(
+            ds.adata,
+            input.eigenstate(),
+            axes[0],
+            span_percentile=input.eig_span_percentile(),
+            cbar_match_height=True,
+        )
+        plot_celltype_pacmap(ds, axes[1])
+        return fig
+
+    @render.plot
+    @styled_figure()
+    def eigenstate_assoc_plot():
+        ds = dataset()
+        fig, ax = plt.subplots(figsize=(16, 6), layout="tight")
+        plot_celltype_association(
+            ds.adata,
+            ax,
+            factor_type="eigenstate",
+            celltype_col=ds.spec.celltype_col,
+            stat=input.eig_assoc_stat(),
+            top_perc=float(input.eig_top_perc()),
+            normalize="global",
+            show_counts=True,
+        )
+        ax.set_title("Cell Type Association with Eigenstates")
+
+        return fig
+
     # ------------------------------------------------------------------
     # Summary Tables
     # ------------------------------------------------------------------
@@ -1082,7 +1301,7 @@ def server(input, output, session):
                 "(raw single-cell data or projections not found)."
             )
         return ui.TagList(
-            ui.markdown("#### Cell Type Loadings Summary for Selected Component"),
+            ui.markdown("#### Cell Type Loadings Summary"),
             ui.markdown(
                 "Mean sender/receiver loading and % of cells in the top "
                 "percentile, by cell type, for the selected component. Top "
@@ -1092,7 +1311,7 @@ def server(input, output, session):
             top_perc_slider("summary_top_perc"),
             ui.output_data_frame("celltype_summary_table"),
             ui.hr(),
-            ui.markdown("#### Ranked Ligand-Receptor Pairs for Selected Component"),
+            ui.markdown("#### Ranked Ligand-Receptor Pairs"),
             ui.markdown(
                 "Every LR pair's weight for the selected component, ranked "
                 "from highest to lowest."
