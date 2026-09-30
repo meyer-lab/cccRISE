@@ -109,22 +109,22 @@ class DatasetSpec:
         return DATA_DIR / self.factors_filename
 
     def rise_rank_filename(self) -> str:
-        return f"rise_rank_{self.key}.csv"
+        return f"rise_rank_{self.key}.parquet"
 
     def cpd_rank_filename(self) -> str:
-        return f"cpd_rank_{self.key}.csv"
+        return f"cpd_rank_{self.key}.parquet"
 
     def stability_filename(self) -> str:
-        return f"component_stability_{self.key}.csv"
+        return f"component_stability_{self.key}.parquet"
 
     def anova_bootstrap_filename(self) -> str:
-        return f"anova_bootstrap_{self.key}.csv"
+        return f"anova_bootstrap_{self.key}.parquet"
 
     def anova_point_estimate_filename(self) -> str:
-        return f"anova_point_estimate_{self.key}.csv"
+        return f"anova_point_estimate_{self.key}.parquet"
 
     def significance_lr_filename(self) -> str:
-        return f"significance_lr_{self.key}.csv"
+        return f"significance_lr_{self.key}.parquet"
 
     def significance_differential_filename(self) -> str:
         return f"significance_differential_{self.key}.parquet"
@@ -144,7 +144,7 @@ class DatasetSpec:
         ]
 
     def nichenet_scores_filename(self) -> str:
-        return f"nichenet_scores_{self.key}.csv"
+        return f"nichenet_scores_{self.key}.parquet"
 
 
 DATASETS: dict[str, DatasetSpec] = {

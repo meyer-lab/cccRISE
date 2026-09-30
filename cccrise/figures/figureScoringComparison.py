@@ -36,7 +36,7 @@ from ..runners.datasets import (
 from ..runners.provenance import read_metadata_at
 from ..validation.anova_stability import align_to_reference_components
 from ..validation.component_stability import STAGE_CPD, metric_interval
-from .common import getSetup, load_runner_csv, subplotLabel
+from .common import getSetup, load_runner_output, subplotLabel
 
 DATASET_KEY = "alad"
 SPEC = DATASETS[DATASET_KEY]
@@ -111,8 +111,8 @@ def match_components(reference_method: str, method: str) -> pd.DataFrame:
     )
 
 
-def _load_method_csv(filename: str, method: str) -> pd.DataFrame:
-    return load_runner_csv(
+def _load_method_output(filename: str, method: str) -> pd.DataFrame:
+    return load_runner_output(
         filename, root=comparison_output_dir(method), hint=ALT_COMM_SCORE_HINT
     )
 
@@ -227,7 +227,7 @@ def _factor_comparison_data(
 def _aligned_anova(method: str) -> tuple[pd.Series, pd.Series]:
     """`method`'s ANOVA eta-squared and p<0.05 flags per component, in the
     default score's component numbering."""
-    df = _load_method_csv(SPEC.anova_point_estimate_filename(), method)
+    df = _load_method_output(SPEC.anova_point_estimate_filename(), method)
     if method == DEFAULT_SCORE:
         df = df.set_index("Component")
         return df["EtaSquared"], df["P"] < 0.05
@@ -261,7 +261,7 @@ def _significance_data() -> tuple[dict[str, float], pd.DataFrame]:
     overlap with the default's."""
     frac_sig, ranked = {}, {}
     for method in ALL_SCORES:
-        sig_df = _load_method_csv(SPEC.significance_lr_filename(), method)
+        sig_df = _load_method_output(SPEC.significance_lr_filename(), method)
         frac_sig[method] = float(sig_df["FractionSignificant_p05"].mean())
         # The largest positive z-scores are the most significant: rank signed.
         ranked[method] = sig_df.sort_values("MeanZScore", ascending=False)["LRPair"]
@@ -285,7 +285,7 @@ def _stability_data() -> tuple[pd.DataFrame, int]:
     `figureComponentStability`'s aggregate panel -- and replicates per axis."""
     medians = {}
     for method in ALL_SCORES:
-        df = _load_method_csv(SPEC.stability_filename(), method)
+        df = _load_method_output(SPEC.stability_filename(), method)
         stats = metric_interval(df[df["Stage"] == STAGE_CPD], "FMS", by=("Axis",))
         medians[method] = stats.set_index("Axis")["Median"]
     n_replicates = _default_score_provenance("stability", "n_replicates")

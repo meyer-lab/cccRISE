@@ -14,7 +14,7 @@ refitting RISE, and the Shiny explorer can read it directly (``--no-embedding``
 skips the PaCMAP fit for cohorts where it is too slow).
 
 The sidecar's ``rank_selection`` block records which sweep justifies each chosen
-rank -- the sweep CSVs written by `run_rise_rank` / `run_cpd_rank`, plus a
+rank -- the sweep tables written by `run_rise_rank` / `run_cpd_rank`, plus a
 free-text rationale from ``--rise-rank-notes`` / ``--cpd-rank-notes``.
 
     uv run cccrise-run --dataset alad --rise-rank 18 --cp-rank 6
@@ -58,13 +58,13 @@ def _rank_selection_block(
     rise_notes: str | None,
     cpd_notes: str | None,
 ) -> dict[str, Any]:
-    """Record, per stage, the chosen rank, the sweep CSV that justifies it, and
+    """Record, per stage, the chosen rank, the sweep table that justifies it, and
     a free-text rationale."""
 
-    def stage(rank: int, csv: Path, notes: str | None) -> dict[str, Any]:
+    def stage(rank: int, sweep: Path, notes: str | None) -> dict[str, Any]:
         return {
             "rank": rank,
-            "sweep_csv": relpath(csv) if csv.exists() else None,
+            "sweep_file": relpath(sweep) if sweep.exists() else None,
             "notes": notes,
         }
 

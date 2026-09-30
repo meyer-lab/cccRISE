@@ -613,7 +613,7 @@ def test_run_rise_rank_hands_bicv_the_shared_rise_settings(monkeypatch, tmp_path
     monkeypatch.setattr(runner, "resulting_dims", lambda spec, adata: {})
     spec = DATASETS["alad"]
     monkeypatch.setattr(type(spec), "load", lambda self: adata)
-    runner.run_rise_rank_selection(spec, ranks=[2], output_path=tmp_path / "r.csv")
+    runner.run_rise_rank_selection(spec, ranks=[2], output_path=tmp_path / "r.parquet")
 
     assert captured["compress"] is REPLICATE_COMPRESS
     assert captured["compression_kwarg"] == RISE_COMPRESSION_OPTIONS

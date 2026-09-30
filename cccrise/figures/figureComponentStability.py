@@ -22,12 +22,12 @@ from ..validation.component_stability import (
     metric_interval,
     summarize_component_stability,
 )
-from .common import getSetup, load_runner_csv, subplotLabel
+from .common import getSetup, load_runner_output, subplotLabel
 
 # Change this to switch dataset; must match the runner's --dataset. The ranks
 # the run was conditioned on are recorded in the sweep's sidecar.
 SELECTED_DATASET = "alad"
-STABILITY_CSV = f"component_stability_{SELECTED_DATASET}.csv"
+STABILITY_FILE = f"component_stability_{SELECTED_DATASET}.parquet"
 
 #: The axes that perturb the data. `SEED_AXIS` is deliberately kept out: it is
 #: the baseline the others are read against rather than one of them, and
@@ -190,7 +190,7 @@ def makeFigure():
     ax, f = getSetup((16, 3.6), (1, 4))
     subplotLabel(ax)
 
-    df = load_runner_csv(STABILITY_CSV)
+    df = load_runner_output(STABILITY_FILE)
     label = SELECTED_DATASET.upper()
 
     plot_per_component_fms(

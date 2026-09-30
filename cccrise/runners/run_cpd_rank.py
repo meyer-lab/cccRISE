@@ -147,14 +147,14 @@ def run_cpd_rank_selection(
     random_state: int | None = 42,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
-    """Sweep CP ranks over one interaction tensor and persist CSV plus sidecar.
+    """Sweep CP ranks over one interaction tensor and persist the table plus sidecar.
 
         CP rank selection is conditional on the already-selected `rise_rank`.
 
     RISE runs on `spec.backend`; the CP stage is CPU-only. `compress`
     compresses both RISE and the CP sweep.
 
-        Returns the sweep results, the CSV path, and the sidecar path.
+        Returns the sweep results, the output path, and the sidecar path.
     """
     output_path = output_path or (DATA_DIR / spec.cpd_rank_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -230,7 +230,7 @@ def run_cpd_rank_selection(
     )
 
     print(f"6. Writing {output_path}...")
-    df.to_csv(output_path, index=False)
+    df.to_parquet(output_path, index=False)
 
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -299,7 +299,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="CSV output path (default: data/cpd_rank_<dataset>.csv).",
+        help="Parquet output path (default: data/cpd_rank_<dataset>.parquet).",
     )
     return parser
 

@@ -165,7 +165,7 @@ def _anova_point_estimate(
     df = anova_component_associations(X, sample_to_group, control_label=control_label)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output_path, index=False)
+    df.to_parquet(output_path, index=False)
     metadata = build_metadata(
         dataset_metadata(spec)
         | {

@@ -1027,22 +1027,13 @@ def test_summarize_component_stability_reports_nan_when_no_seed_axis_was_run():
     assert summary["FracWithinSeedBand"].isna().all()
 
 
-def test_summarize_component_stability_survives_a_csv_round_trip(tmp_path):
-    """The baseline axis is named 'seed_only', not 'null', because `read_csv`
-    parses the latter as NaN and silently erases the baseline.
+def test_summarize_component_stability_survives_a_parquet_round_trip(tmp_path):
+    """The stability table summarizes identically after being written to and
+    read back from the runner's storage format."""
+    path = tmp_path / "stability.parquet"
+    _stability_frame(with_ceiling=True).to_parquet(path, index=False)
 
-    Asserted at the cause as well as the consequence: a future rename that
-    happens to land on one of pandas' NA strings should fail here rather than
-    downstream, as an unexplained column of NaNs.
-    """
-    from pandas._libs.parsers import STR_NA_VALUES
-
-    assert SEED_AXIS not in STR_NA_VALUES
-
-    path = tmp_path / "stability.csv"
-    _stability_frame(with_ceiling=True).to_csv(path, index=False)
-
-    summary = summarize_component_stability(pd.read_csv(path))
+    summary = summarize_component_stability(pd.read_parquet(path))
 
     assert summary["SeedP5FMS"].notna().all()
     assert summary["FracWithinSeedBand"].notna().all()

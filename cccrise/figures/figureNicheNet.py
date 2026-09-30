@@ -32,7 +32,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 from ..runners.datasets import DATASETS
-from .common import getSetup, load_runner_csv, subplotLabel
+from .common import getSetup, load_runner_output, subplotLabel
 
 # Change this to switch dataset; must be a key in `runners.datasets.DATASETS`
 # with cached scores already produced by `uv run cccrise-nichenet`.
@@ -163,7 +163,7 @@ def plot_component_summary(
 
 def makeFigure():
     spec = DATASETS[SELECTED_DATASET]
-    scores = load_runner_csv(spec.nichenet_scores_filename())
+    scores = load_runner_output(spec.nichenet_scores_filename())
     components = sorted(scores["component"].unique())
     cp_rank = len(components)
 

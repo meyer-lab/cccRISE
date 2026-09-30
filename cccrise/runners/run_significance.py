@@ -17,7 +17,7 @@ than fitting PARAFAC2 itself; see `utils.load_rise_reference`.
 
 Writes the primary significance outputs:
 
-    significance_lr_<dataset>.csv             per-LR pair observed vs null & z-scores
+    significance_lr_<dataset>.parquet           per-LR pair observed vs null & z-scores
     significance_differential_<dataset>.parquet   differential sender-receiver-LR comparisons
 
     uv run cccrise-significance --dataset alad \
@@ -108,7 +108,7 @@ def run_significance(
     random_state : int, default=42
         Seed for permutations.
     output_path : Path, optional
-        Custom path for the primary LR significance CSV.
+        Custom path for the primary LR significance table.
     output_root : Path, optional
         Directory for runner outputs. Defaults to `DATA_DIR` for
         `communication_score="expression_product"` (the canonical location
@@ -174,7 +174,7 @@ def run_significance(
     print(overview_df.to_string(index=False))
 
     print(f"4. Writing {len(lr_df)} LR pairs to {paths['lr']}...")
-    lr_df.to_csv(paths["lr"], index=False)
+    lr_df.to_parquet(paths["lr"], index=False)
 
     written_paths = [paths["lr"]]
 
@@ -182,10 +182,7 @@ def run_significance(
         print(
             f"   Writing {len(diff_df)} differential interactions to {paths['differential']}..."
         )
-        if str(paths["differential"]).endswith(".parquet"):
-            diff_df.to_parquet(paths["differential"], index=False)
-        else:
-            diff_df.to_csv(paths["differential"], index=False)
+        diff_df.to_parquet(paths["differential"], index=False)
         written_paths.append(paths["differential"])
 
     metadata = build_metadata(
@@ -268,7 +265,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="Primary CSV destination; defaults to significance_lr_<dataset>.csv "
+        help="Primary Parquet destination; defaults to significance_lr_<dataset>.parquet "
         "under --output-root.",
     )
     parser.add_argument(

@@ -8,11 +8,11 @@ already-finalized factor fit (``spec.factors_path()``, produced by
 for every CPD component, under every requested receiver-population
 definition. The expensive step is per-component differential expression
 (``scanpy.tl.rank_genes_groups`` over the full single-cell dataset), which
-this caches to a CSV so ``figureNicheNet.py`` can plot without re-running it.
+this caches to a parquet file so ``figureNicheNet.py`` can plot without re-running it.
 
-Writes the long-format CSV `figureNicheNet` reads:
+Writes the long-format table `figureNicheNet` reads:
 
-    nichenet_scores_<dataset>.csv   one row per (receiver_mode, component, ligand)
+    nichenet_scores_<dataset>.parquet   one row per (receiver_mode, component, ligand)
 
     uv run cccrise-nichenet --dataset alad
 """
@@ -93,12 +93,12 @@ def run_nichenet(
     random_state : int, optional
         Seed for the permutation null.
     output_path : Path, optional
-        CSV destination; defaults to the registry's NicheNet scores filename.
+        Parquet destination; defaults to the registry's NicheNet scores filename.
 
     Returns
     -------
     tuple[pd.DataFrame, Path, Path]
-        The long per-(mode, component, ligand) table, the CSV path, and the
+        The long per-(mode, component, ligand) table, the output path, and the
         sidecar path.
     """
     celltype_col = celltype_col or spec.celltype_column
@@ -181,7 +181,7 @@ def run_nichenet(
     print(summary.to_string(index=False))
 
     print(f"5. Writing {len(scores)} rows to {output_path}...")
-    scores.to_csv(output_path, index=False)
+    scores.to_parquet(output_path, index=False)
 
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -262,7 +262,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="CSV destination; defaults to data/nichenet_scores_<dataset>.csv.",
+        help="Parquet destination; defaults to data/nichenet_scores_<dataset>.parquet.",
     )
     return parser
 

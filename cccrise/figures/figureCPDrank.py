@@ -9,11 +9,11 @@ diagnostic, one panel each. Run that first.
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from .common import getSetup, load_runner_csv, subplotLabel
+from .common import getSetup, load_runner_output, subplotLabel
 
 # Change this to switch dataset. The RISErank the sweep was conditioned on is recorded in the sweep's sidecar.
 SELECTED_DATASET = "alad"
-SWEEP_CSV = f"cpd_rank_{SELECTED_DATASET}.csv"
+SWEEP_FILE = f"cpd_rank_{SELECTED_DATASET}.parquet"
 
 PANELS_PER_ROW = 3
 
@@ -104,7 +104,7 @@ def makeFigure():
     ax, f = getSetup((4 * PANELS_PER_ROW, 3.5), (1, PANELS_PER_ROW))
     subplotLabel(ax)
 
-    df = load_runner_csv(SWEEP_CSV)
+    df = load_runner_output(SWEEP_FILE)
     label = SELECTED_DATASET.upper()
 
     plot_fit_r2x(df, ax[0], f"CPD Fit $R^2X$ ({label})")

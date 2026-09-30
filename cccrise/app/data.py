@@ -162,7 +162,7 @@ class RankSelection:
 
 def _read_sweep(filename: str) -> pd.DataFrame | None:
     path = DATA_DIR / filename
-    return pd.read_csv(path) if path.exists() else None
+    return pd.read_parquet(path) if path.exists() else None
 
 
 @lru_cache(maxsize=4)

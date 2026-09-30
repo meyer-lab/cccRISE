@@ -59,7 +59,7 @@ __all__ = [
     "get_covid_data",
     "load_factors_to_anndata",
     "load_or_compute_dataframe",
-    "load_runner_csv",
+    "load_runner_output",
     "subplotLabel",
 ]
 
@@ -88,7 +88,7 @@ def get_alad_data(
     )
 
 
-def load_runner_csv(
+def load_runner_output(
     filename: str, root: Path = DATA_DIR, hint: str | None = None
 ) -> pd.DataFrame:
     """Read a sweep result written by one of the runner scripts.
@@ -118,7 +118,7 @@ def load_runner_csv(
         raise FileNotFoundError(
             f"{path} not found. Produce it with the matching runner, e.g.\n{hint}"
         )
-    return pd.read_csv(path)
+    return pd.read_parquet(path)
 
 
 def getSetup(

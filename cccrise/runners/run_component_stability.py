@@ -118,7 +118,7 @@ def run_component_stability(
     random_state : int, default=42
         Base seed for the reference fit and the replicates.
     output_path : Path, optional
-        CSV destination; defaults to the registry's stability filename under
+        Parquet destination; defaults to the registry's stability filename under
         `DATA_DIR` for `communication_score="expression_product"`, or
         `alt_score_methods/<communication_score>/` for any other score.
     reference : dict[str, Any], optional
@@ -130,7 +130,7 @@ def run_component_stability(
     Returns
     -------
     tuple[pd.DataFrame, Path, Path]
-        The long per-component table, the CSV path, and the sidecar path.
+        The long per-component table, the output path, and the sidecar path.
     """
     output_path = output_path or (
         scoring_output_dir(communication_score) / spec.stability_filename()
@@ -216,7 +216,7 @@ def run_component_stability(
     print(summarize_component_stability(df).to_string(index=False))
 
     print(f"5. Writing {len(df)} rows to {output_path}...")
-    df.to_csv(output_path, index=False)
+    df.to_parquet(output_path, index=False)
 
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -347,7 +347,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="CSV destination; defaults to component_stability_<dataset>.csv in "
+        help="Parquet destination; defaults to component_stability_<dataset>.parquet in "
         "data/ (data/alt_score_methods/<score>/ for a non-default score).",
     )
     return parser

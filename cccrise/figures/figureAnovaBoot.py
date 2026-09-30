@@ -41,12 +41,12 @@ import yaml
 from ..factors import DATA_DIR
 from ..runners.provenance import sidecar_path
 from ..validation.anova_stability import summarize_bootstrap_anova
-from .common import getSetup, load_runner_csv, subplotLabel
+from .common import getSetup, load_runner_output, subplotLabel
 
 # Change this to switch dataset; must match the runner's --dataset. The ranks
 # the bootstrap was conditioned on are recorded in its sidecar.
 SELECTED_DATASET = "alad"
-BOOTSTRAP_CSV = f"anova_bootstrap_{SELECTED_DATASET}.csv"
+BOOTSTRAP_FILE = f"anova_bootstrap_{SELECTED_DATASET}.parquet"
 
 # Match score below which a replicate's component is not the reference
 # component in any useful sense.
@@ -303,9 +303,9 @@ def plot_match_scores(
 
 
 def makeFigure():
-    bootstrap_anova_df = load_runner_csv(BOOTSTRAP_CSV)
+    bootstrap_anova_df = load_runner_output(BOOTSTRAP_FILE)
 
-    sidecar = sidecar_path(DATA_DIR / BOOTSTRAP_CSV)
+    sidecar = sidecar_path(DATA_DIR / BOOTSTRAP_FILE)
     with open(sidecar) as handle:
         metadata = yaml.safe_load(handle)
 

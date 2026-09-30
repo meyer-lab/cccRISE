@@ -11,9 +11,9 @@ ligand-receptor mode and sign-corrected before its statistics are recorded
 (`anova_stability.bootstrap_anova`), so a component's effect sizes across
 replicates form a distribution rather than an unordered pile.
 
-Writes the replicate-level CSV `figureAnovaBoot` reads:
+Writes the replicate-level table `figureAnovaBoot` reads:
 
-    anova_bootstrap_<dataset>.csv   one row per (replicate, component)
+    anova_bootstrap_<dataset>.parquet   one row per (replicate, component)
 
     uv run cccrise-anovaboot --dataset alad --rise-rank 18 --cp-rank 6 --n-boot 100
 """
@@ -117,12 +117,12 @@ def run_anova_bootstrap(
         Seed for the full-cohort fit; replicate `b` uses
         ``replicate_seed(random_state, b)`` (``random_state * 1000 + b + 1``).
     output_path : Path, optional
-        CSV destination; defaults to the registry's anova bootstrap filename.
+        Parquet destination; defaults to the registry's anova bootstrap filename.
 
     Returns
     -------
     tuple[pd.DataFrame, Path, Path]
-        The replicate ANOVA table, the CSV path, and the sidecar path.
+        The replicate ANOVA table, the output path, and the sidecar path.
     """
     group_column, control_label, other_label = resolve_anova_labels(
         spec, group_column, control_label, other_label
@@ -220,7 +220,7 @@ def run_anova_bootstrap(
     print(summary.to_string(index=False))
 
     print(f"5. Writing {len(bootstrap_anova_df)} rows to {output_path}...")
-    bootstrap_anova_df.to_csv(output_path, index=False)
+    bootstrap_anova_df.to_parquet(output_path, index=False)
 
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -324,7 +324,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="CSV destination; defaults to anova_bootstrap_<dataset>.csv in data/ "
+        help="Parquet destination; defaults to anova_bootstrap_<dataset>.parquet in data/ "
         "(data/alt_score_methods/<score>/ for a non-default score).",
     )
     return parser

@@ -50,7 +50,7 @@ def run_rise_rank_selection(
     random_state: int = 42,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
-    """Run the BiCV sweep and persist the CSV plus its sidecar.
+    """Run the BiCV sweep and persist the table plus its sidecar.
 
     `rise_n_iter_max` sits above `bicv`'s own default because an under-converged fit
     reads as a worse rank.
@@ -61,7 +61,7 @@ def run_rise_rank_selection(
 
     `output_path` defaults to the canonical name the figure reads.
 
-    Returns the sweep results, the CSV path, and the sidecar path.
+    Returns the sweep results, the output path, and the sidecar path.
     """
     output_path = output_path or (DATA_DIR / spec.rise_rank_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,7 +97,7 @@ def run_rise_rank_selection(
     )
 
     print(f"3. Writing {output_path}...")
-    df.to_csv(output_path, index=False)
+    df.to_parquet(output_path, index=False)
 
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -144,7 +144,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="CSV output path (default: data/rise_rank_<dataset>.csv).",
+        help="Parquet output path (default: data/rise_rank_<dataset>.parquet).",
     )
     return parser
 

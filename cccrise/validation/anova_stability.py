@@ -283,7 +283,7 @@ def fit_anova_pipeline(
     }
 
 
-#: Column order of one replicate's table, and so of the replicate-level CSV
+#: Column order of one replicate's table, and so of the replicate-level table
 #: once `bootstrap_anova` prepends 'Replicate'.
 REPLICATE_COLUMNS = [
     "Component",
