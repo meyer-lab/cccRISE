@@ -10,7 +10,7 @@ from .provenance import sha256_file
 # explicitly.
 DEFAULT_GROUP_LABELS: dict[str, tuple[str, str]] = {
     "alad": ("control", "alad"),
-    "ibd": ("healthy", "inflamed"),
+    "ibd": ("Healthy", "Crohn's"),
 }
 
 # Fit controls shared by every runner's RISE (PARAFAC2) and CP decompositions.
