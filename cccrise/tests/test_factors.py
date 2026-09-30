@@ -8,6 +8,7 @@ import pandas as pd
 
 from cccrise.ccc_rise import calculate_interaction_tensor
 from cccrise.factors import (
+    add_fit_fingerprint,
     factors_to_xarray,
     load_factors_netcdf,
     load_factors_to_anndata,
@@ -118,7 +119,9 @@ def test_load_factors_with_sc_projection():
         attrs={"condition_key": "sample"},
     )
 
-    out = load_factors_to_anndata(ds, adata=adata, do_embedding=True)
+    out = load_factors_to_anndata(
+        add_fit_fingerprint(ds, adata), adata=adata, do_embedding=True
+    )
 
     assert "projections" in out.obsm
     assert out.obsm["projections"].shape == (n_cells, rise_rank)

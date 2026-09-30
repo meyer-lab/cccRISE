@@ -41,7 +41,13 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec, scoring_output_dir
+from .datasets import (
+    DATASETS,
+    FACTORS_DIR,
+    RANK_SELECTION_DIR,
+    DatasetSpec,
+    scoring_output_dir,
+)
 from .provenance import build_metadata, git_sha, relpath, write_metadata
 
 HEADER = """\
@@ -70,8 +76,10 @@ def _rank_selection_block(
         }
 
     return {
-        "rise": stage(rise_rank, DATA_DIR / spec.rise_rank_filename(), rise_notes),
-        "cpd": stage(cp_rank, DATA_DIR / spec.cpd_rank_filename(), cpd_notes),
+        "rise": stage(
+            rise_rank, RANK_SELECTION_DIR / spec.rise_rank_filename(), rise_notes
+        ),
+        "cpd": stage(cp_rank, RANK_SELECTION_DIR / spec.cpd_rank_filename(), cpd_notes),
     }
 
 
@@ -115,8 +123,8 @@ def run_pipeline(
     output_path : Path, optional
         NetCDF destination. Defaults to the dataset's canonical factors path
         for `communication_score="expression_product"` (what the figure
-        modules load), or `alt_score_methods/<communication_score>/` for any
-        other score.
+        modules load), or `comparison_output_dir(communication_score)`
+        (under `validation_results/alt_score_methods/`) for any other score.
     rise_rank_notes, cpd_rank_notes : str, optional
         Rationale for each chosen rank, written into the provenance file.
     do_embedding : bool, default=True
@@ -130,7 +138,7 @@ def run_pipeline(
         sidecar path.
     """
     output_path = output_path or (
-        scoring_output_dir(communication_score) / spec.factors_filename
+        scoring_output_dir(communication_score, FACTORS_DIR) / spec.factors_filename
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -280,7 +288,7 @@ def main(argv: list[str] | None = None) -> None:
         hill_k=args.hill_k,
         output_path=resolve_output(
             args.output,
-            scoring_output_dir(args.communication_score),
+            scoring_output_dir(args.communication_score, FACTORS_DIR),
             spec.factors_filename,
         ),
         rise_rank_notes=args.rise_rank_notes,

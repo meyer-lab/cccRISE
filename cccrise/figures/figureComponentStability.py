@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
+from ..runners.datasets import VALIDATION_DIR
 from ..validation.component_stability import (
     SEED_AXIS,
     STAGE_CPD,
@@ -190,7 +191,7 @@ def makeFigure():
     ax, f = getSetup((16, 3.6), (1, 4))
     subplotLabel(ax)
 
-    df = load_runner_output(STABILITY_FILE)
+    df = load_runner_output(STABILITY_FILE, VALIDATION_DIR)
     label = SELECTED_DATASET.upper()
 
     plot_per_component_fms(

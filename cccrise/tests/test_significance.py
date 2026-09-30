@@ -188,7 +188,7 @@ def test_runner_cli_parser_and_paths():
             "--dataset",
             "alad",
             "--reference-source",
-            "cccrise/data/bal_alad_factors.nc",
+            "cccrise/data/factors/bal_alad_factors.nc",
             "--n-perms",
             "500",
             "--communication-score",
@@ -196,7 +196,7 @@ def test_runner_cli_parser_and_paths():
         ]
     )
     assert args.dataset == "alad"
-    assert args.reference_source == "cccrise/data/bal_alad_factors.nc"
+    assert args.reference_source == "cccrise/data/factors/bal_alad_factors.nc"
     assert args.n_perms == 500
 
     dummy_spec = DatasetSpec(

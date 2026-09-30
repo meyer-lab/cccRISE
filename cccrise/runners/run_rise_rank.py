@@ -28,7 +28,7 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, RANK_SELECTION_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
 
 DEFAULT_RANKS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
@@ -63,7 +63,7 @@ def run_rise_rank_selection(
 
     Returns the sweep results, the output path, and the sidecar path.
     """
-    output_path = output_path or (DATA_DIR / spec.rise_rank_filename())
+    output_path = output_path or (RANK_SELECTION_DIR / spec.rise_rank_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -144,7 +144,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="Parquet output path (default: data/rise_rank_<dataset>.parquet).",
+        help="Parquet output path (default: data/rank_selection_results/rise_rank_<dataset>.parquet).",
     )
     return parser
 
@@ -161,7 +161,9 @@ def main(argv: list[str] | None = None) -> None:
         rise_n_iter_max=args.rise_n_iter_max,
         rise_tol=args.rise_tol,
         random_state=args.random_state,
-        output_path=resolve_output(args.output, DATA_DIR, spec.rise_rank_filename()),
+        output_path=resolve_output(
+            args.output, RANK_SELECTION_DIR, spec.rise_rank_filename()
+        ),
     )
 
 

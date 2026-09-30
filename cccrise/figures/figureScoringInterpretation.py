@@ -10,7 +10,7 @@ default's. Loadings are divided by their largest magnitude within each
 component and method, keeping sign, so methods compare by pattern rather than
 scale.
 
-Only loads results, from ``DATA_DIR/alt_score_methods/<method>/`` (generated
+Only loads results, from ``VALIDATION_DIR/alt_score_methods/<method>/`` (generated
 by `cccrise-altcommscore`).
 """
 

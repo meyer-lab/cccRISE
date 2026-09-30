@@ -25,7 +25,7 @@ import pandas as pd
 import seaborn as sns
 import yaml
 
-from ..runners.datasets import DATA_DIR
+from ..runners.datasets import VALIDATION_DIR
 from ..runners.provenance import sidecar_path
 from .common import getSetup, load_runner_output, subplotLabel
 
@@ -285,12 +285,12 @@ def plot_differential_volcano(
 
 def makeFigure():
     """Build the 3-panel significance figure."""
-    lr_df = load_runner_output(SIGNIFICANCE_LR_FILE)
+    lr_df = load_runner_output(SIGNIFICANCE_LR_FILE, VALIDATION_DIR)
 
-    diff_parquet_path = DATA_DIR / SIGNIFICANCE_DIFF_PARQUET
+    diff_parquet_path = VALIDATION_DIR / SIGNIFICANCE_DIFF_PARQUET
     diff_df = pd.read_parquet(diff_parquet_path) if diff_parquet_path.exists() else None
 
-    sidecar = sidecar_path(DATA_DIR / SIGNIFICANCE_LR_FILE)
+    sidecar = sidecar_path(VALIDATION_DIR / SIGNIFICANCE_LR_FILE)
     metadata: dict = {}
     if sidecar.exists():
         with open(sidecar) as handle:

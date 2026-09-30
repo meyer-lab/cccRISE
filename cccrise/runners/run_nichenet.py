@@ -31,7 +31,7 @@ from ..validation.nichenet import (
     load_ligand_target_matrix,
 )
 from ._cli import add_dataset_argument, dataset_metadata, resolve_output, resulting_dims
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, relpath, sha256_file, write_metadata
 
 DEFAULT_RECEIVER_MODES: tuple[ReceiverMode, ...] = ("within_celltype", "vs_rest")
@@ -116,7 +116,7 @@ def run_nichenet(
             "--rise-rank <N> --cp-rank <M>"
         )
 
-    output_path = output_path or (DATA_DIR / spec.nichenet_scores_filename())
+    output_path = output_path or (VALIDATION_DIR / spec.nichenet_scores_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -262,7 +262,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="Parquet destination; defaults to data/nichenet_scores_<dataset>.parquet.",
+        help="Parquet destination; defaults to data/validation_results/nichenet_scores_<dataset>.parquet.",
     )
     return parser
 
@@ -285,7 +285,7 @@ def main(argv: list[str] | None = None) -> None:
         n_perm=args.n_perm,
         random_state=args.random_state,
         output_path=resolve_output(
-            args.output, DATA_DIR, spec.nichenet_scores_filename()
+            args.output, VALIDATION_DIR, spec.nichenet_scores_filename()
         ),
     )
 

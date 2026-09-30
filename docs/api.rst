@@ -95,6 +95,11 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 
    Recompute the per-cell RISE projections of ``adata`` (the fit's own data, checked against the file's fingerprints) under a stored RISE fit, without densifying ``adata.X``.
 
+.. py:function:: add_fit_fingerprint(ds: xr.Dataset, adata: anndata.AnnData)
+   :module: cccrise.factors
+
+   Record in a factors Dataset the data its RISE fit was made on (a hash of the cell IDs and the per-gene centering), which ``compute_cell_projections`` requires and checks.
+
 .. py:function:: load_factors_netcdf(filepath: str | Path)
    :module: cccrise.factors
 

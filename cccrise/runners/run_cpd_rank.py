@@ -54,7 +54,7 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, RANK_SELECTION_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
 
 DEFAULT_RANKS = list(range(1, 26))
@@ -156,7 +156,7 @@ def run_cpd_rank_selection(
 
         Returns the sweep results, the output path, and the sidecar path.
     """
-    output_path = output_path or (DATA_DIR / spec.cpd_rank_filename())
+    output_path = output_path or (RANK_SELECTION_DIR / spec.cpd_rank_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     git_sha()
@@ -299,7 +299,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="Parquet output path (default: data/cpd_rank_<dataset>.parquet).",
+        help="Parquet output path (default: data/rank_selection_results/cpd_rank_<dataset>.parquet).",
     )
     return parser
 
@@ -319,7 +319,9 @@ def main(argv: list[str] | None = None) -> None:
         communication_score=args.communication_score,
         hill_k=args.hill_k,
         random_state=args.random_state,
-        output_path=resolve_output(args.output, DATA_DIR, spec.cpd_rank_filename()),
+        output_path=resolve_output(
+            args.output, RANK_SELECTION_DIR, spec.cpd_rank_filename()
+        ),
     )
 
 

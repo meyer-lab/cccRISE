@@ -16,8 +16,8 @@ from cccrise.factors import (
     load_factors_to_anndata,
 )
 from cccrise.figures.common import get_alad_data, get_covid_data
-from cccrise.runners.datasets import DATA_DIR
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
+from cccrise.runners.datasets import RANK_SELECTION_DIR
 from cccrise.runners.provenance import sidecar_path
 
 
@@ -158,7 +158,7 @@ class RankSelection:
 
 
 def _read_sweep(filename: str) -> pd.DataFrame | None:
-    path = DATA_DIR / filename
+    path = RANK_SELECTION_DIR / filename
     return pd.read_parquet(path) if path.exists() else None
 
 
@@ -170,7 +170,7 @@ def load_rank_selection(key: str) -> RankSelection:
     cpd = _read_sweep(runner_spec.cpd_rank_filename())
     cpd_rise_rank = None
     if cpd is not None:
-        sidecar = sidecar_path(DATA_DIR / runner_spec.cpd_rank_filename())
+        sidecar = sidecar_path(RANK_SELECTION_DIR / runner_spec.cpd_rank_filename())
         if sidecar.exists():
             cpd_rise_rank = yaml.safe_load(sidecar.read_text()).get("rise_rank")
     return RankSelection(

@@ -14,8 +14,8 @@ tolerances, `spec.backend`, `REPLICATE_COMPRESS`), so references and
 replicates match. One `--random-state` seeds the RISE fit, every CP fit, the
 permutations, and the stability replicates.
 
-Outputs land under `DATA_DIR/alt_score_methods/<communication-score>/`,
-separate from the default score's canonical results in `DATA_DIR`. Always
+Outputs land under `VALIDATION_DIR/alt_score_methods/<communication-score>/`,
+separate from the default score's canonical results. Always
 regenerates and overwrites; does not check for existing output first.
 
     uv run cccrise-altcommscore --dataset alad --rise-rank 18 --cp-rank 6 \

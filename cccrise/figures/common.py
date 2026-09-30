@@ -89,7 +89,7 @@ def get_alad_data(
 
 
 def load_runner_output(
-    filename: str, root: Path = DATA_DIR, hint: str | None = None
+    filename: str, root: Path, hint: str | None = None
 ) -> pd.DataFrame:
     """Read a sweep result written by one of the runner scripts.
 
@@ -100,10 +100,11 @@ def load_runner_output(
     ----------
     filename : str
         The runner's output filename.
-    root : Path, default=DATA_DIR
-        Directory the file lives in -- `DATA_DIR` for a default-settings
-        runner output, or e.g. a `runners.datasets.scoring_output_dir(...)`
-        subdirectory for an alternate-settings one.
+    root : Path
+        Directory the file lives in -- the runner's analysis directory
+        (`runners.datasets.RANK_SELECTION_DIR` / `VALIDATION_DIR`) for a
+        default-settings output, or a `runners.datasets.comparison_output_dir`
+        for an alternate-score one.
     hint : str, optional
         Command to suggest in the error when the file is missing. Defaults
         to the rank-sweep runners' commands.

@@ -38,7 +38,7 @@ import pandas as pd
 import seaborn as sns
 import yaml
 
-from ..factors import DATA_DIR
+from ..runners.datasets import VALIDATION_DIR
 from ..runners.provenance import sidecar_path
 from ..validation.anova_stability import summarize_bootstrap_anova
 from .common import getSetup, load_runner_output, subplotLabel
@@ -303,9 +303,9 @@ def plot_match_scores(
 
 
 def makeFigure():
-    bootstrap_anova_df = load_runner_output(BOOTSTRAP_FILE)
+    bootstrap_anova_df = load_runner_output(BOOTSTRAP_FILE, VALIDATION_DIR)
 
-    sidecar = sidecar_path(DATA_DIR / BOOTSTRAP_FILE)
+    sidecar = sidecar_path(VALIDATION_DIR / BOOTSTRAP_FILE)
     with open(sidecar) as handle:
         metadata = yaml.safe_load(handle)
 

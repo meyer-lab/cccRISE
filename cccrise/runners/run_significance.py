@@ -21,7 +21,7 @@ Writes the primary significance outputs:
     significance_differential_<dataset>.parquet   differential sender-receiver-LR comparisons
 
     uv run cccrise-significance --dataset alad \
-        --reference-source cccrise/data/bal_alad_factors.nc --n-perms 1000
+        --reference-source cccrise/data/factors/bal_alad_factors.nc --n-perms 1000
 """
 
 import argparse
@@ -45,7 +45,7 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, DatasetSpec, scoring_output_dir
+from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, relpath, write_metadata
 
 HEADER = """\
@@ -110,10 +110,10 @@ def run_significance(
     output_path : Path, optional
         Custom path for the primary LR significance table.
     output_root : Path, optional
-        Directory for runner outputs. Defaults to `DATA_DIR` for
+        Directory for runner outputs. Defaults to `VALIDATION_DIR` for
         `communication_score="expression_product"` (the canonical location
-        figures read), or `alt_score_methods/<communication_score>/` for any
-        other score.
+        figures read), or `comparison_output_dir(communication_score)`
+        (under `validation_results/alt_score_methods/`) for any other score.
 
     Returns
     -------
@@ -124,7 +124,7 @@ def run_significance(
         spec, group_column, control_label, other_label
     )
 
-    output_root = output_root or scoring_output_dir(communication_score)
+    output_root = output_root or scoring_output_dir(communication_score, VALIDATION_DIR)
     paths = output_paths(spec, output_root)
     if output_path is not None:
         paths["lr"] = output_path
@@ -272,8 +272,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--output-root",
         type=Path,
         default=None,
-        help="Root directory for outputs (default: DATA_DIR for "
-        "expression_product, alt_score_methods/<communication-score>/ "
+        help="Root directory for outputs (default: data/validation_results/ "
+        "for expression_product, its alt_score_methods/<communication-score>/ "
         "otherwise).",
     )
     return parser
@@ -284,7 +284,9 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
     spec = DATASETS[args.dataset]
-    output_root = args.output_root or scoring_output_dir(args.communication_score)
+    output_root = args.output_root or scoring_output_dir(
+        args.communication_score, VALIDATION_DIR
+    )
 
     run_significance(
         spec=spec,

@@ -16,10 +16,20 @@ import anndata
 from ..import_data import IBD_FULL_COHORT_IVCSC, import_alad, import_ibdverse
 
 DATA_DIR = Path(__file__).parent.parent / "data"
+#: Core factorizations written by `run_ccc_rise`.
+FACTORS_DIR = DATA_DIR / "factors"
+#: RISE and CP rank-selection sweeps (`run_rise_rank`, `run_cpd_rank`).
+RANK_SELECTION_DIR = DATA_DIR / "rank_selection_results"
+#: Validation experiments: stability, significance, NicheNet, and the
+#: alternate communication-score comparison (`ALT_SCORE_METHODS_DIR`).
+VALIDATION_DIR = DATA_DIR / "validation_results"
+#: One subdirectory per communication score (`comparison_output_dir`).
+ALT_SCORE_METHODS_DIR = VALIDATION_DIR / "alt_score_methods"
 
 #: `communication_score` value every runner defaults to; its results are the
-#: ones manuscript figures and interpretation read, so they stay in `DATA_DIR`
-#: instead of the per-method subdirectory `scoring_output_dir` uses for the rest.
+#: ones manuscript figures and interpretation read, so they stay in their
+#: analysis's directory instead of the per-method subdirectory
+#: `scoring_output_dir` uses for the rest.
 DEFAULT_COMMUNICATION_SCORE = "expression_product"
 #: Every `communication_score` a runner accepts; see `ccc.combine_communication_score`.
 COMMUNICATION_SCORES = (
@@ -29,20 +39,18 @@ COMMUNICATION_SCORES = (
     "expression_hill",
 )
 
-ALT_SCORE_METHODS_DIR = "alt_score_methods"
 
-
-def scoring_output_dir(communication_score: str) -> Path:
+def scoring_output_dir(communication_score: str, default_dir: Path) -> Path:
     """Where a runner should default its output for `communication_score`.
 
-    The default score's results are canonical and live in `DATA_DIR`; every
-    other score's results land in their own subdirectory under
-    `DATA_DIR/alt_score_methods/` so a scoring-method sweep can't collide with
-    the canonical files or with each other.
+    The default score's results are canonical and live in `default_dir`
+    (the runner's analysis directory, e.g. `FACTORS_DIR`); every other
+    score's results land in its `comparison_output_dir`, so a scoring-method
+    sweep can't collide with the canonical files or with each other.
     """
     if communication_score == DEFAULT_COMMUNICATION_SCORE:
-        return DATA_DIR
-    return DATA_DIR / ALT_SCORE_METHODS_DIR / communication_score
+        return default_dir
+    return comparison_output_dir(communication_score)
 
 
 #: The one provenance file `run_alt_comm_score` leaves in each
@@ -53,14 +61,14 @@ COMPARISON_PROVENANCE_FILENAME = "provenance.yaml"
 def comparison_output_dir(communication_score: str) -> Path:
     """Where `run_alt_comm_score` writes one method's results.
 
-    Unlike `scoring_output_dir`, this never collapses to `DATA_DIR` for the
-    default score: comparing scoring methods fairly means running all of
-    them -- default included -- at the same (comparison-scale) settings, and
-    that copy of the default's results must not collide with its
-    comprehensive, canonical copy that `scoring_output_dir` resolves to
-    `DATA_DIR` for and that manuscript figures read.
+    Unlike `scoring_output_dir`, this never collapses to the canonical
+    directory for the default score: comparing scoring methods fairly means
+    running all of them -- default included -- at the same
+    (comparison-scale) settings, and that copy of the default's results must
+    not collide with its comprehensive, canonical copy that manuscript
+    figures read.
     """
-    return DATA_DIR / ALT_SCORE_METHODS_DIR / communication_score
+    return ALT_SCORE_METHODS_DIR / communication_score
 
 
 @dataclass(frozen=True)
@@ -102,7 +110,7 @@ class DatasetSpec:
         return self.loader(**self.loader_args)
 
     def factors_path(self) -> Path:
-        return DATA_DIR / self.factors_filename
+        return FACTORS_DIR / self.factors_filename
 
     def rise_rank_filename(self) -> str:
         return f"rise_rank_{self.key}.parquet"

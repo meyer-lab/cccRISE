@@ -52,7 +52,7 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, DatasetSpec, scoring_output_dir
+from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -129,7 +129,8 @@ def run_anova_bootstrap(
     )
 
     output_path = output_path or (
-        scoring_output_dir(communication_score) / spec.anova_bootstrap_filename()
+        scoring_output_dir(communication_score, VALIDATION_DIR)
+        / spec.anova_bootstrap_filename()
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -324,8 +325,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         type=str,
         default=None,
-        help="Parquet destination; defaults to anova_bootstrap_<dataset>.parquet in data/ "
-        "(data/alt_score_methods/<score>/ for a non-default score).",
+        help="Parquet destination; defaults to anova_bootstrap_<dataset>.parquet in "
+        "data/validation_results/ (its alt_score_methods/<score>/ for a "
+        "non-default score).",
     )
     return parser
 
@@ -354,7 +356,7 @@ def main(argv: list[str] | None = None) -> None:
         random_state=args.random_state,
         output_path=resolve_output(
             args.output,
-            scoring_output_dir(args.communication_score),
+            scoring_output_dir(args.communication_score, VALIDATION_DIR),
             spec.anova_bootstrap_filename(),
         ),
     )

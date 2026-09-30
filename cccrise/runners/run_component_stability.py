@@ -71,7 +71,7 @@ from ._cli import (
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, DatasetSpec, scoring_output_dir
+from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -119,8 +119,9 @@ def run_component_stability(
         Base seed for the reference fit and the replicates.
     output_path : Path, optional
         Parquet destination; defaults to the registry's stability filename under
-        `DATA_DIR` for `communication_score="expression_product"`, or
-        `alt_score_methods/<communication_score>/` for any other score.
+        `VALIDATION_DIR` for `communication_score="expression_product"`, or
+        `comparison_output_dir(communication_score)`
+        (under `validation_results/alt_score_methods/`) for any other score.
     reference : dict[str, Any], optional
         A full-cohort fit already built with this call's settings, as
         `fit_stability_pipeline(..., keep_tensor=True)` returns, and already
@@ -133,7 +134,8 @@ def run_component_stability(
         The long per-component table, the output path, and the sidecar path.
     """
     output_path = output_path or (
-        scoring_output_dir(communication_score) / spec.stability_filename()
+        scoring_output_dir(communication_score, VALIDATION_DIR)
+        / spec.stability_filename()
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -348,7 +350,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help="Parquet destination; defaults to component_stability_<dataset>.parquet in "
-        "data/ (data/alt_score_methods/<score>/ for a non-default score).",
+        "data/validation_results/ (its alt_score_methods/<score>/ for a "
+        "non-default score).",
     )
     return parser
 
@@ -372,7 +375,7 @@ def main(argv: list[str] | None = None) -> None:
         random_state=args.random_state,
         output_path=resolve_output(
             args.output,
-            scoring_output_dir(args.communication_score),
+            scoring_output_dir(args.communication_score, VALIDATION_DIR),
             spec.stability_filename(),
         ),
     )

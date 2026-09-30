@@ -15,10 +15,11 @@ from parafac2.utils import polar_factor
 
 from .ccc_rise import add_cell_embeddings
 from .import_data import add_cond_idxs
+from .runners.datasets import DATASETS
 
 DATA_DIR = Path(__file__).parent / "data"
 COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
-ALAD_FACTORS_PATH = DATA_DIR / "bal_alad_factors.nc"
+ALAD_FACTORS_PATH = DATASETS["alad"].factors_path()
 #: Factors-file attribute fingerprinting the fit's cells (see `save_ccc_rise_fit`).
 CELL_IDS_ATTR = "cell_ids_sha256"
 
@@ -258,19 +259,25 @@ def save_ccc_rise_fit(
         pf2_weights=adata.uns["Pf2_weights"],
         r2x_cp=cp_fit["r2x_cp"],
         r2x_pf2=adata.uns["r2x_pf2"],
-        attrs={
-            "condition_key": condition_column,
-            CELL_IDS_ATTR: _cell_ids_digest(adata),
-        }
-        | (attrs or {}),
+        attrs={"condition_key": condition_column} | (attrs or {}),
     )
-    ds["gene_means"] = (["gene"], _gene_means(adata))
+    ds = add_fit_fingerprint(ds, adata)
     if "PaCMAP" in adata.obsm:
         ds["cell_pacmap"] = (
             ["cell", "pacmap_dim"],
             np.asarray(adata.obsm["PaCMAP"], dtype=np.float16),
         )
     save_factors_netcdf(ds, path)
+
+
+def add_fit_fingerprint(ds: xr.Dataset, adata: anndata.AnnData) -> xr.Dataset:
+    """Record in a factors Dataset which data its RISE fit was made on: a
+    hash of `adata`'s cell IDs (`CELL_IDS_ATTR`) and its per-gene centering
+    (`gene_means`), which `compute_cell_projections` checks."""
+    ds = ds.copy()
+    ds.attrs[CELL_IDS_ATTR] = _cell_ids_digest(adata)
+    ds["gene_means"] = (["gene"], _gene_means(adata))
+    return ds
 
 
 def _cell_ids_digest(adata: anndata.AnnData) -> str:
@@ -285,28 +292,17 @@ def _gene_means(adata: anndata.AnnData) -> np.ndarray:
     return np.zeros(adata.n_vars)
 
 
-def _ids_match(factors_ds: xr.Dataset, coord: str, ids) -> bool:
-    return np.array_equal(
-        factors_ds.coords[coord].values.astype(str), np.asarray(ids).astype(str)
-    )
-
-
 def _check_fit_inputs(factors_ds: xr.Dataset, adata: anndata.AnnData) -> None:
     """Raise unless `adata` has the cells, genes and gene centering the
-    stored RISE fit was made on. Files predating the fingerprints are
-    checked against whatever cell/gene IDs they store."""
-    if not _ids_match(factors_ds, "gene", adata.var_names):
+    stored RISE fit was made on (`add_fit_fingerprint`)."""
+    if not np.array_equal(
+        factors_ds.coords["gene"].values.astype(str),
+        np.asarray(adata.var_names).astype(str),
+    ):
         raise ValueError("`adata`'s genes do not match the RISE fit's.")
-    digest = factors_ds.attrs.get(CELL_IDS_ATTR)
-    cells_match = (
-        digest == _cell_ids_digest(adata)
-        if digest is not None
-        else "cell" not in factors_ds.coords
-        or _ids_match(factors_ds, "cell", adata.obs_names)
-    )
-    if not cells_match:
+    if factors_ds.attrs[CELL_IDS_ATTR] != _cell_ids_digest(adata):
         raise ValueError("`adata`'s cells do not match the RISE fit's (IDs or order).")
-    if "gene_means" in factors_ds and not np.allclose(
+    if not np.allclose(
         factors_ds["gene_means"].values, _gene_means(adata), rtol=1e-5, atol=1e-7
     ):
         raise ValueError(
