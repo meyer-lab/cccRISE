@@ -53,12 +53,12 @@ from cccrise.figures.commonFuncs.plotPaCMAP import (
     plot_wc_pacmap,
     plot_wc_per_celltype,
 )
-from cccrise.figures.figureAnova import (
+from cccrise.figures.legacy.figureAnova import (
     DEFAULT_ASSOCIATIONS,
     plot_association_effect_sizes,
     plot_category_component_weights,
 )
-from cccrise.figures.figureCPDrank import plot_collinearity, plot_fit_r2x
+from cccrise.figures.legacy.figureCPDrank import plot_collinearity, plot_fit_r2x
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.utils import celltype_component_association
 

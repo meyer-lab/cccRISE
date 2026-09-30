@@ -707,7 +707,7 @@ def test_run_saved_factors_anova_and_multiple_associations():
     import matplotlib.pyplot as plt
 
     from cccrise.factors import load_factors_netcdf
-    from cccrise.figures.figureAnova import (
+    from cccrise.figures.legacy.figureAnova import (
         DEFAULT_BOXPLOTS,
         makeFigure,
         plot_anova_summary_heatmap,
