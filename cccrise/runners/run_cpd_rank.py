@@ -180,8 +180,9 @@ def run_cpd_rank_selection(
     validate_cp_rank(max(ranks), tensor.shape)
 
     # Everything downstream runs against `fit_target`: the CANDELINC core when
-    # compressing, the tensor itself otherwise. Both criteria are invariant to
-    # the choice, and `lost_sq` restates R2X against the original tensor.
+    # compressing, the tensor itself otherwise. Core consistency and the
+    # collinearity screen are invariant to the choice, and `lost_sq` restates
+    # R2X against the original tensor.
     lost_sq = 0.0
     compression_facts: dict = {}
     fit_target = tensor

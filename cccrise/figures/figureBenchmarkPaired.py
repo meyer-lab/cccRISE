@@ -7,8 +7,8 @@ mode. Each row is an association; each comparator's marker sits at cccRISE's
 best-component eta-squared minus that comparator's, over a gray bar spanning
 the central 95% of the same difference across the shared label shuffles. The
 bar is centred wherever the two methods' component counts put chance, not at
-zero. A filled marker means cccRISE leads by more than chance (one-sided paired
-permutation p < 0.05). Rows follow `figureBenchmarkNull`: associations cccRISE
+zero. A filled marker means the difference exceeds its paired null (one-sided
+paired permutation p < 0.05). Rows follow `figureBenchmarkNull`: associations cccRISE
 finds against its own null come first, shaded.
 """
 
@@ -172,7 +172,7 @@ def makeFigure() -> Figure:
             marker="o",
             linestyle="none",
             markersize=6,
-            label=f"filled: cccRISE leads, paired p < {ALPHA}",
+            label=f"filled: above paired null, p < {ALPHA}",
         ),
         Line2D(
             [],

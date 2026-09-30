@@ -23,7 +23,9 @@ class StaccatoResult:
     ----------
     W1, W2, W3, W4 : np.ndarray
         Orthonormal factor matrices for modes 1-4 (covariate, LR-pair,
-        sender celltype, receiver celltype), each ``(mode_size, core_shape[i])``.
+        sender celltype, receiver celltype). ``W1`` is ``(p1, core_shape[0])``,
+        ``p1`` being the covariate's column count (``n_samples`` when
+        unsupervised); ``W2``-``W4`` are ``(mode_size, core_shape[i])``.
         ``W2``/``W3``/``W4`` are returned as ``pd.DataFrame`` (index = the
         supplied names) when the corresponding ``*_names`` argument is given,
         else as plain ``np.ndarray``.
@@ -75,11 +77,11 @@ def staccato(
     runtime (this project previously ran the actual R package via an `R/`
     comparator harness, since removed in favor of this module).
 
-    The upstream algorithm fits a Tucker decomposition where each mode may be
-    restricted to the column space of a user-supplied covariate/design
+    The upstream algorithm fits a Tucker decomposition whose first mode may
+    be restricted to the column space of a user-supplied covariate/design
     matrix rather than a freely-estimated orthonormal factor (a supervised,
-    or "envelope", Tucker model). Given per-mode covariate matrices
-    ``X_1..X_4`` (``X_k = I`` for an unsupervised mode), it:
+    or "envelope", Tucker model); the other modes are fixed to ``X_k = I``.
+    Given per-mode covariate matrices ``X_1..X_4``, it:
 
     1. QR-decomposes each ``X_k = Q_k R_k``.
     2. Rotates the tensor into the ``Q``-orthonormal basis and fits an
@@ -92,9 +94,9 @@ def staccato(
     5. Reconstructs the covariate-driven fitted tensor by mode-multiplying
        the coefficient tensor by the original (unrotated) covariate matrices.
 
-    Only mode 1 (typically samples) accepts a supplied covariate here, matching
-    how this project's R harness called STACCato (``run_staccato.R``): modes
-    2-4 (LR-pair, sender, receiver) are always unsupervised (``X_k = I``), so
+    Only mode 1 (typically samples) accepts a supplied covariate, as upstream's
+    ``staccato()`` fixes ``X_covar2..4`` to the identity: modes 2-4 (LR-pair,
+    sender, receiver) are always unsupervised (``X_k = I``), so
     ``core_shape[1:]`` behaves like an ordinary Tucker rank on those modes.
 
     Comparing against cccRISE
@@ -112,18 +114,16 @@ def staccato(
        score cccRISE's condition factor ``A`` (see ``anova.py``), and
        report both effect sizes side by side.
     2. **Per-mode factor congruence (optional, for the concordance figure).**
-       Build the input tensor the same way for both methods -- run
-       ``ccc_rise.calc_communication_score_pseudobulk`` /
-       ``pseudobulk_cp_decomposition`` on the same exported dataset used
-       here, so both sides decompose an (as close as possible) identical
-       sender x receiver x LR-pair x sample/condition tensor. Reindex
-       ``W2``/``W3``/``W4`` (LR-pair, sender, receiver -- already
-       label-indexed via ``lr_names``/``sender_names``/``receiver_names``)
-       against cccRISE's ``D``/``B``/``C`` on shared labels, compute a
+       Only the LR-pair mode shares labels with cccRISE: reindex ``W2``
+       (label-indexed via ``lr_names``) against cccRISE's ``D`` on shared
+       LR pairs. cccRISE's ``B``/``C`` index RISE eigen-states, not cell
+       types, so ``W3``/``W4`` can only be matched against pseudobulk CPD's
+       ``B``/``C`` (``pseudobulk_cp_decomposition`` on the same
+       ``calc_communication_score_pseudobulk`` tensor). Compute a
        cosine/Tucker congruence-coefficient matrix per mode between the two
        methods' columns, and solve the assignment with
        ``scipy.optimize.linear_sum_assignment`` to report each STACCato
-       component's best-matching cccRISE component. Do this per mode
+       component's best-matching component. Do this per mode
        independently -- Tucker's core tensor mixes components across modes,
        so there is no single shared component index to compare like there is
        between two CP decompositions.

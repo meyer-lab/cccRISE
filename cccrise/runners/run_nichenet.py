@@ -7,12 +7,13 @@ already-finalized factor fit (``spec.factors_path()``, produced by
 ``cccrise-run``) and scores it (``cccrise.validation.nichenet.component_accuracy_scores``)
 for every CPD component, under every requested receiver-population
 definition. The expensive step is per-component differential expression
-(``scanpy.tl.rank_genes_groups`` over the full single-cell dataset), which
+(``scanpy.tl.rank_genes_groups`` over the top/bottom ``top_perc``% receiver-loading
+cells) plus the permutation null, which
 this caches to a CSV so ``figureNicheNet.py`` can plot without re-running it.
 
 Writes the long-format CSV `figureNicheNet` reads:
 
-    nichenet_scores_<dataset>.csv   one row per (receiver_mode, component, ligand)
+    nichenet_scores_<dataset>.csv   one row per (receiver_mode, component, LR pair)
 
     uv run cccrise-nichenet --dataset alad
 """
@@ -98,7 +99,7 @@ def run_nichenet(
     Returns
     -------
     tuple[pd.DataFrame, Path, Path]
-        The long per-(mode, component, ligand) table, the CSV path, and the
+        The long per-(mode, component, LR pair) table, the CSV path, and the
         sidecar path.
     """
     celltype_col = celltype_col or spec.celltype_column

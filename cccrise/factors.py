@@ -183,9 +183,10 @@ def add_cell_projections(
     `load_factors_to_anndata(..., do_embedding=...)` or
     `run_ccc_rise_workflow`); `obsm["PaCMAP"]` is included if present.
 
-    Per-cell arrays are stored as float16 to keep file size small -- these
-    are used for exploratory visualization, not for further numerical
-    analysis, so the added quantization is an acceptable tradeoff.
+    Per-cell arrays are stored as float16 to keep file size small.
+    `load_factors_to_anndata` prefers them over recomputation, so downstream
+    per-cell analyses (e.g. NicheNet receiver splits) inherit float16
+    precision.
 
     Parameters
     ----------
@@ -289,7 +290,9 @@ def load_factors_to_anndata(
 
     If `adata` is provided (e.g. raw/filtered single-cell data), single-cell factor
     projections (`obsm["projections"]`), sender loadings (`obsm["sc_B"]`), receiver
-    loadings (`obsm["rc_C"]`), and optional 2D PaCMAP coordinates are computed.
+    loadings (`obsm["rc_C"]`), and optional 2D PaCMAP coordinates are loaded
+    from `factors_ds`'s stored per-cell arrays when present, and otherwise
+    computed from the PF2 factors.
 
     If `adata` is None and `factors_ds` was augmented with `add_cell_projections`,
     reconstructs a full per-cell AnnData directly from the stored per-cell arrays

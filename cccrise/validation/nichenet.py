@@ -4,9 +4,12 @@ NicheNet-style downstream-target validation of cccRISE / CPD components.
 For each CPD component, this module tests whether the literature-curated
 downstream targets of the component's top-loading ligands are differentially
 expressed in the receiver cells the component implicates, reporting a
-per-ligand/per-component AUROC (the standard NicheNet ligand-activity
-statistic) and an empirical permutation p-value against a null built from
-the same receiver population.
+per-LR-pair/per-component AUROC of the receiver DE statistic for recovering
+the ligand's top predicted targets (a NicheNet-inspired variant of its
+ligand-activity score, which instead treats the DE genes as the positive
+class and the ligand's regulatory potential as the score) and a two-sided
+empirical permutation p-value (distance of the AUROC from 0.5) against a
+null built from the same receiver population.
 
 The ligand-target prior is the NicheNet v2 ligand-target matrix (Zenodo
 record 7074291), which is only published as an R `.rds` object; it is read
@@ -65,8 +68,9 @@ def fetch_ligand_target_matrix(
         Ligand gene symbols to keep. If None, keeps every ligand in the
         matrix (much larger cache).
     top_n_targets : int, default=250
-        Number of top-scoring targets to retain per ligand, matching
-        NicheNet's own convention for its ligand-activity analysis.
+        Number of top-scoring targets to retain per ligand, matching the
+        default of NicheNet's `get_weighted_ligand_target_links`
+        (active-target inference).
     cache_path : str or Path, default=NICHENET_LT_CACHE
         Where to write/read the cached long-format parquet.
     url : str, default=NICHENET_LT_URL
@@ -473,7 +477,7 @@ def component_accuracy_scores(
     random_state: int | None = 0,
 ) -> pd.DataFrame:
     """
-    Compute per-ligand NicheNet-style AUROCs, with a permutation null, for
+    Compute per-LR-pair NicheNet-style AUROCs, with a permutation null, for
     each of `components`.
 
     For each component: take its top `top_m_lr` LR pairs
@@ -482,8 +486,11 @@ def component_accuracy_scores(
     == "within_celltype"`, to the cell type(s) implicated by that component
     (`receiver_celltypes_for_component`) -- then score every top ligand's
     downstream targets (`ligand_activity_auroc`) against that single
-    ranking, and an empirical p-value (`permutation_null_aurocs`) against
-    `n_perm` random relabelings of the same receiver population.
+    ranking, and a two-sided empirical p-value (`permutation_null_aurocs`)
+    against `n_perm` random relabelings of the same receiver population. The
+    null always scores genes by a Wilcoxon rank sum, so `p_value` is
+    calibrated only for `de_method="wilcoxon"`. A ligand paired with several
+    top receptors repeats its AUROC/p-value on each of its rows.
 
     Returns
     -------
@@ -493,7 +500,8 @@ def component_accuracy_scores(
         "p_value"]. `auroc`/`p_value` are NaN where they could not be
         computed (see `ligand_activity_auroc`); `celltype` is a single name,
         or several joined by " + " when `receiver_mode == "within_celltype"`
-        pools more than one cell type.
+        pools more than one cell type, and NaN under `vs_rest`. Components
+        with fewer than 2 cells in either group are omitted.
     """
     D = adata.uns["D"]
     rows = []

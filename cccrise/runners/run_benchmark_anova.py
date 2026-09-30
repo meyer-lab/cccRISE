@@ -16,7 +16,8 @@ Comparator ranks come from one or both rank modes:
 - ``shared``: every comparator is fit at ``--shared-rank``, which defaults to
   the published cccRISE model's CP rank.
 
-cccRISE is never refit, so its rows are identical under both modes.
+cccRISE is never refit, so it appears once, under rank mode ``published``, as
+the reference for both modes.
 
 Each fit is also scored against a label-permutation null
 (`benchmark_null`): the maximum eta-squared across its components, per
@@ -155,7 +156,8 @@ def run_benchmark_anova(
     staccato_varexp : float
         STACCato's per-mode explained-variance cut, in percent (``own`` only).
     complex_sep : str, optional
-        Communication-tensor option; see `ccc_rise.calc_communication_score`.
+        Communication-tensor option; see
+        `ccc_rise.calc_communication_score_pseudobulk`.
     random_state : int, default=42
         Seed for every comparator fit and for the permutations.
     n_permutations : int, default=N_PERMUTATIONS

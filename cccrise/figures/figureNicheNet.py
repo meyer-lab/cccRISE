@@ -21,9 +21,9 @@ random relabelings of the same receiver population. Bars are colored by
 significance (p < 0.05) and direction (AUROC above/below chance).
 
 Panels, in order: one per-ligand AUROC panel per component for each mode
-(left column "within_celltype", right column "vs_rest"), followed by a
-per-component summary row (mean AUROC, ligand coverage, and significant-hit
-count).
+(left column "within_celltype", right column "vs_rest"), followed by two
+summary rows (mean AUROC, ligand coverage and significant-hit count; the
+fourth panel is blank).
 """
 
 import numpy as np

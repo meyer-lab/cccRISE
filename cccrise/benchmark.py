@@ -17,8 +17,8 @@ expression-product builder cccRISE already uses (`ccc_rise
 - **Tensor-cell2cell**: non-negative CP, with Tensor-cell2cell's own
   ``tf_optimization='regular'`` settings and its elbow rank selection. The
   tensor is the shared one, not upstream's: product rather than mean scoring,
-  cell types intersected rather than unioned, and an absent cell type
-  zero-filled rather than masked.
+  and every cell type kept, with a condition's absent cell type zero-filled
+  rather than masked.
 - **STACCato**: the `comparators.staccato` Tucker re-implementation, run
   *unsupervised* (no mode-1 covariate). Supplying the phenotype as STACCato's
   covariate would put the labels into the sample scores, and an ANOVA of those
@@ -69,8 +69,9 @@ TC2C_ELBOW_RUNS = 10
 TC2C_TOL = 1e-7
 TC2C_N_ITER_MAX = 100
 
-# STACCato's tutorial keeps every component above 1% explained variance per mode
-# (`cal_eigen_varexp(..., varexp = 1)`).
+# STACCato's tutorial keeps every LR-pair, sender and receiver component above
+# 1% explained variance (`cal_eigen_varexp(..., varexp = 1)`); run
+# unsupervised, the sample mode is cut the same way.
 STACCATO_VAREXP = 1.0
 
 
@@ -211,7 +212,8 @@ def _nonneg_cp(tensor: np.ndarray, rank: int, random_state: int | None):
 
 
 def _normalized_error(tensor: np.ndarray, cp) -> float:
-    """``||T - T_hat||^2 / ||T||^2``, Tensor-cell2cell's elbow metric."""
+    """``||T - T_hat||^2 / ||T||^2``, the square of Tensor-cell2cell's elbow
+    metric ``||T - T_hat|| / ||T||``; squaring can move the elbow."""
     residual = tensor - tl.cp_to_tensor(cp)
     return float(np.sum(residual**2) / np.sum(tensor**2))
 

@@ -5,7 +5,7 @@ import numpy as np
 from scipy.stats.mstats import gmean
 
 """
-This file is entirely methods taken from Tensor Cell2Cell
+Methods adapted from Tensor Cell2Cell, extended with additional scoring options.
 """
 
 
@@ -81,9 +81,10 @@ def combine_communication_score(
         - 'expression_hill' : CellChat-style saturating Hill function,
             `product / (hill_k + product)`.
 
-        Every option other than 'expression_product' clips the raw product
-        at 0 before use, since they assume non-negative expression (as
-        CellChat/CellPhoneDB do) -- inputs derived from signed PARAFAC2/RISE
+        'expression_gmean' and 'expression_hill' clip the raw product at 0
+        before use, since they assume non-negative expression (as
+        CellChat/CellPhoneDB do); 'expression_product' and 'expression_mean'
+        pass signed values through. Inputs derived from signed PARAFAC2/RISE
         eigen-state loadings should be re-centered on real expression first
         (see issue #139) rather than relying on this clip to fix them up.
     hill_k : float, default=0.5
@@ -164,7 +165,7 @@ def get_genes_from_complexes(ppi_data, complex_sep="&", interaction_columns=("A"
         List of protein-protein interactions (or ligand-receptor pairs) used
         for inferring the cell-cell interactions and communication.
 
-    complex_sep : str, default=None
+    complex_sep : str, default='&'
         Symbol that separates the protein subunits in a multimeric complex.
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
@@ -177,27 +178,25 @@ def get_genes_from_complexes(ppi_data, complex_sep="&", interaction_columns=("A"
 
     Returns
     -------
-    col_a_genes : list
-        List of protein/gene names for proteins and subunits in the first column
+    col_a_genes : set
+        Protein/gene names for proteins and subunits in the first column
         of interacting partners.
 
-    complex_a : list
-        List of list of subunits of each complex that were present in the first
-        column of interacting partners and that were returned as subunits in the
-        previous list.
+    complex_a : set
+        Subunit names of the complexes in the first column of interacting
+        partners.
 
-    col_b_genes : list
-        List of protein/gene names for proteins and subunits in the second column
+    col_b_genes : set
+        Protein/gene names for proteins and subunits in the second column
         of interacting partners.
 
-    complex_b : list
-        List of list of subunits of each complex that were present in the second
-        column of interacting partners and that were returned as subunits in the
-        previous list.
+    complex_b : set
+        Subunit names of the complexes in the second column of interacting
+        partners.
 
     complexes : dict
         Dictionary where keys are the complex names in the list of PPIs, while
-        values are list of subunits for the respective complex names.
+        values are sets of subunits for the respective complex names.
     """
     col_a = interaction_columns[0]
     col_b = interaction_columns[1]
@@ -250,7 +249,7 @@ def filter_complex_ppi_by_proteins(
     proteins : list
         A list of protein names to filter PPIs.
 
-    complex_sep : str, default=None
+    complex_sep : str, default='&'
         Symbol that separates the protein subunits in a multimeric complex.
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
@@ -535,7 +534,7 @@ def build_context_ccc_tensor(
         all elements across the samples. When this value is 1, it acts as using
         `how='inner'`.
 
-    communication_score : str, default='expression_mean'
+    communication_score : str, default='expression_product'
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
@@ -562,10 +561,9 @@ def build_context_ccc_tensor(
         where a protein partner could be "CD74&CD44".
 
     upper_letter_comparison : boolean, default=True
-        Whether making uppercase the gene names in the expression matrices and the
-        protein names in the ppi_data to match their names and integrate their
-        respective expression level. Useful when there are inconsistencies in the
-        names between the expression matrix and the ligand-receptor annotations.
+        Whether to uppercase the protein names in the ppi_data (and the gene list
+        used to filter it) before matching. Expression-matrix gene names are not
+        changed, so they must already be uppercase for the lookup to succeed.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a dataframe of
@@ -586,14 +584,13 @@ def build_context_ccc_tensor(
         - 'sum' : Computes the sum of the communication scores among all PPIs of the
                   group for a given pair of cells/tissues/samples
 
-    verbose : boolean, default=False
+    verbose : boolean, default=True
             Whether printing or not steps of the analysis.
 
     Returns
     -------
-    tensors : list
-        List of 3D-Communication tensors for each context. This list corresponds to
-        the 4D-Communication tensor.
+    tensors : numpy.ndarray
+        4D-Communication tensor, shape (contexts, PPIs, cells, cells).
 
     genes : list
         List of genes included in the tensor.
@@ -689,7 +686,7 @@ def generate_ccc_tensor(
         contain at least two columns, one for the first protein partner in the
         interaction as well as the second protein partner.
 
-    communication_score : str, default='expression_mean'
+    communication_score : str, default='expression_product'
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
@@ -717,7 +714,7 @@ def generate_ccc_tensor(
 
     Returns
     -------
-    ccc_tensor : ndarray list
+    ccc_tensor : list of nested lists
         List of directed cell-cell communication matrices, one for each ligand-
         receptor pair in ppi_data. These matrices contain the communication score for
         pairs of cells for the corresponding PPI. This tensor represent a
@@ -785,7 +782,7 @@ def aggregate_ccc_tensor(
 
     Returns
     -------
-    aggregated_tensor : ndarray list
+    aggregated_tensor : list of nested lists
         List of directed cell-cell communication matrices, one for each major group of
         ligand-receptor pair in ppi_data. These matrices contain the communication
         score for pairs of cells for the corresponding PPI group. This tensor

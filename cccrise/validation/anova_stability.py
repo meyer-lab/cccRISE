@@ -546,8 +546,9 @@ def summarize_bootstrap_anova(
 
     There is deliberately no "interval excludes zero" column: eta-squared is a
     variance ratio and cannot be negative, so such a test would be vacuous.
-    `FracSignificant` takes its place -- read as a descriptive tally, per the
-    degrees-of-freedom caveat in this module's docstring.
+    `FracSignificant` takes its place -- read as a descriptive tally, since
+    repeated patients in a resample make per-replicate p-values
+    anti-conservative.
 
     Parameters
     ----------

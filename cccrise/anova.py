@@ -233,7 +233,8 @@ def anova_component_associations(
         - 'EtaSquared': effect size eta^2 (SS_between / SS_total)
         - 'GroupMeanDiff': signed group mean difference (for binary grouping)
         - 'Significant': True if PAdj < alpha (or P < alpha when uncorrected)
-        - 'NGroups': number of distinct groups with >=2 samples
+        - 'NGroups': number of distinct non-null group levels (the test is
+          skipped, NaN, if any has fewer than 2 samples)
         - 'GroupSizes': count of samples in each group
     """
     A = np.asarray(X.uns["A"], dtype=float)

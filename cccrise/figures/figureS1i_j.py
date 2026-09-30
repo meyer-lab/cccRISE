@@ -1,5 +1,5 @@
 """
-Figure S2i_j: Heatmaps of ligand-receptor expression products for selected cell types and components in cccRISE on BALF COVID-19 data.
+Figure S1j-k: Heatmaps of ligand-receptor expression products for selected cell types and components in cccRISE on BALF COVID-19 data.
 """
 
 from .common import (

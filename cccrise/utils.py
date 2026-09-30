@@ -49,8 +49,9 @@ def resample_cells(
     Supersedes `resample`, which draws the same way but seeds the global
     `np.random` state -- perturbing every other draw in the process -- and
     leaves `var["means"]` describing the original cells. That column is
-    load-bearing twice over: `parafac2.anndata_to_list` centers each condition
-    slice with it before the RISE fit, and `ccc_rise.calc_communication_score`
+    load-bearing twice over: `parafac2_nd` (via
+    `parafac2.utils.extract_dataset_info`) centers each condition slice with
+    it before the RISE fit, and `ccc_rise.calc_communication_score`
     adds it back to un-center the projected matrices before scoring. A stale
     column therefore biases both stages of the pipeline in correlated
     directions, which would surface as instability that is really just

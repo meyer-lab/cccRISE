@@ -120,7 +120,7 @@ def cp_core_consistency(
     best-fit core in the CP factors' own basis, then compares that core to the
     super-diagonal core a valid quadrilinear model implies. Near 100 means the
     rank-R model is appropriate and essentially unique. It drops sharply once
-    rank exceeds the tensor's true multilinear rank, because the extra
+    rank exceeds the number of components a valid CP model supports, because the extra
     components start trading off against one another and the projection picks
     up large off-diagonal entries.
 
