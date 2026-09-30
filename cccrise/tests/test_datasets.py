@@ -65,3 +65,10 @@ def test_ibd_cell_cap_names_the_committed_factor_model():
     assert capped.factors_path() == IBD_FACTORS_PATH
     xz = IBD_FACTORS_PATH.with_name(IBD_FACTORS_PATH.name + ".xz")
     assert IBD_FACTORS_PATH.exists() or xz.exists()
+
+
+def test_ibd_fits_on_cpu_capped_or_not():
+    from cccrise.runners.datasets import IBD_CELL_CAP
+
+    assert DATASETS["ibd"].backend == "cpu"
+    assert DATASETS["ibd"].with_cell_cap(IBD_CELL_CAP).backend == "cpu"

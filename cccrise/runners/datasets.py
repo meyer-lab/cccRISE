@@ -40,7 +40,7 @@ class DatasetSpec:
     #: default. None falls back to `group_column` and its registered labels.
     outcome_column: str | None = None
     #: RISE backend every runner fits on ('cpu', 'cupy', 'mlx'); None
-    #: auto-detects, for cohorts too large for the GPU.
+    #: auto-detects, which picks a GPU whenever one is present.
     backend: str | None = None
     notes: str = ""
     #: Per-condition cell cap passed to the loader (see
@@ -162,6 +162,10 @@ DATASETS: dict[str, DatasetSpec] = {
         source_file=IBD_FULL_COHORT_IVCSC,
         celltype_column="broad_cell_type",
         group_column="inflammation_status",
+        # Too large for the GPU: auto-detect would pick CuPy, whose managed-memory
+        # products mismatched SciPy's on the full matrix. MKL speeds up the CPU
+        # products when `MKL_RT` points at libmkl_rt.
+        backend="cpu",
         notes=(
             "Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, "
             "232 healthy and 111 Crohn's (64 inflamed / 47 uninflamed). "
