@@ -23,7 +23,7 @@ from typing import cast, get_args
 
 import pandas as pd
 
-from ..factors import load_factors_to_anndata
+from ..factors import ensure_decompressed, load_factors_to_anndata
 from ..validation.nichenet import (
     DeMethod,
     ReceiverMode,
@@ -114,9 +114,7 @@ def run_nichenet(
             "pass --celltype-col explicitly."
         )
 
-    # IBD's cap-2000 factor model is committed xz-compressed; run
-    # `xz -dk cccrise/data/ibd_ti_factors_cap2000.nc.xz` before this runner.
-    factors_path = spec.factors_path()
+    factors_path = ensure_decompressed(spec.factors_path())
     if not factors_path.exists():
         raise FileNotFoundError(
             f"{factors_path} not found. Produce it with:\n"

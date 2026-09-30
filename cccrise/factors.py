@@ -3,6 +3,8 @@ Module for saving, loading, and projecting cell-cell communication factors
 using xarray NetCDF objects.
 """
 
+import lzma
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -274,11 +276,30 @@ def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
     Dataset stays usable after the underlying file is closed -- needed to
     read a file and then overwrite it in the same process.
 
-    Factor files too large for GitHub are committed xz-compressed (currently
-    `ibd_ti_factors_cap2000.nc.xz`); decompress one first with
-    ``xz -dk <file>.nc.xz``. This reads only the decompressed `.nc`.
+    A file committed only xz-compressed is decompressed first; see
+    `ensure_decompressed`.
     """
-    return xr.load_dataset(Path(filepath), engine="h5netcdf")
+    return xr.load_dataset(ensure_decompressed(filepath), engine="h5netcdf")
+
+
+def ensure_decompressed(filepath: str | Path) -> Path:
+    """`filepath`, first decompressing `<filepath>.xz` next to it if only that
+    exists.
+
+    Factor files over GitHub's 100 MB limit are committed xz-compressed
+    (currently `ibd_ti_factors_cap2000.nc.xz`) with the `.nc` git-ignored, so
+    a fresh clone has only the `.xz`. The `.nc` is written once, through a
+    temporary file so an interrupted run never leaves a truncated one behind.
+    """
+    path = Path(filepath)
+    compressed = path.with_name(path.name + ".xz")
+    if not path.exists() and compressed.exists():
+        print(f"Decompressing {compressed.name} (one-time)...")
+        partial = path.with_name(path.name + ".partial")
+        with lzma.open(compressed) as src, open(partial, "wb") as dst:
+            shutil.copyfileobj(src, dst, length=1 << 24)
+        partial.replace(path)
+    return path
 
 
 def load_factors_to_anndata(

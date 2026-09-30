@@ -176,3 +176,24 @@ def test_import_ligand_receptor_pairs():
     assert df["co_I_receptor"].dtype.name == "category"
     assert df["evidence"].dtype.name == "category"
     assert "interaction_symbol" in df.columns
+
+
+def test_load_factors_netcdf_decompresses_an_xz_only_file(tmp_path):
+    import lzma
+
+    ds = factors_to_xarray(
+        cpd_factors=[np.random.rand(n, 1) for n in (2, 3, 3, 4)],
+        cpd_weights=np.ones(1),
+        filtered_lr_pairs=[f"L{i}_R{i}" for i in range(4)],
+        condition_names=["a", "b"],
+    )
+    path = tmp_path / "factors.nc"
+    save_factors_netcdf(ds, path)
+    (tmp_path / "factors.nc.xz").write_bytes(lzma.compress(path.read_bytes()))
+    path.unlink()
+
+    loaded = load_factors_netcdf(path)
+
+    assert path.exists()
+    assert not (tmp_path / "factors.nc.partial").exists()
+    np.testing.assert_array_equal(loaded["cp_A"].values, ds["cp_A"].values)
