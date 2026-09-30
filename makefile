@@ -1,13 +1,17 @@
 .PHONY: clean test ty profile_cpu manuscript
 
-flist = $(wildcard cccrise/figures/figure*.py)
-allOutput = $(patsubst cccrise/figures/figure%.py, output/figure%.svg, $(flist))
+# One package per figure (cccrise/figures/figure<N>/), built from its master
+# figure<N>.py into output/figure<N>/figure<N>.svg. Build one panel with
+# `uv run cccrise-fbuild <N> <panel>`.
+fdirs = $(patsubst cccrise/figures/%/,%,$(wildcard cccrise/figures/figure*/))
+allOutput = $(foreach d,$(fdirs),output/$(d)/$(d).svg)
+figureDeps = cccrise/figures/common.py cccrise/figures/style.py
 
 all: $(allOutput)
 
-output/figure%.svg: cccrise/figures/figure%.py
-	@ mkdir -p ./output
-	uv run cccrise-fbuild $*
+.SECONDEXPANSION:
+output/%.svg: $$(wildcard cccrise/figures/$$(dir $$*)*.py) $(figureDeps)
+	uv run cccrise-fbuild $(patsubst figure%,%,$(notdir $*))
 
 profile-cpu: .venv
 	@ echo "Profiling figure $(F)..."
