@@ -86,8 +86,8 @@ def run_pseudobulk_workflow(
     groupby : str, default="celltype"
         The column in `adata.obs` that defines the cell types.
     type : str, default="mean"
-        The aggregation method for pseudobulking ('mean' or 'fraction'); any
-        other value yields zero expression (see `utils.pseudobulk_X`).
+        The aggregation method for pseudobulking ('mean' or 'fraction'; see
+        `utils.pseudobulk_X`).
     n_iter_max : int, default=1000
         Maximum number of iterations for CP decomposition.
     tol : float, default=1e-11

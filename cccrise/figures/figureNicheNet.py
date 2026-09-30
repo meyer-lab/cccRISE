@@ -22,8 +22,8 @@ significance (p < 0.05) and direction (AUROC above/below chance).
 
 Panels, in order: one per-ligand AUROC panel per component for each mode
 (left column "within_celltype", right column "vs_rest"), followed by two
-summary rows (mean AUROC, ligand coverage and significant-hit count; the
-fourth panel is blank).
+summary rows (mean AUROC, ligand coverage, and enriched and depleted
+significant-ligand counts; each ligand is counted once per component).
 """
 
 import numpy as np
@@ -32,6 +32,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 from ..runners.datasets import DATASETS
+from ..validation.nichenet import summarize_component_scores
 from .common import getSetup, load_runner_csv, subplotLabel
 
 # Change this to switch dataset; must be a key in `runners.datasets.DATASETS`
@@ -53,18 +54,9 @@ def _significance_color(auroc: float, p_value: float | None) -> str:
 
 
 def _component_summary(scores: pd.DataFrame, components: list[int]) -> pd.DataFrame:
-    summary = (
-        scores.groupby("component")
-        .agg(
-            mean_auroc=("auroc", "mean"),
-            median_auroc=("auroc", "median"),
-            n_scored=("auroc", "count"),
-            n_significant=("p_value", lambda p: int((p < SIG_ALPHA).sum())),
-        )
-        .reindex(components)
-    )
-    summary["n_scored"] = summary["n_scored"].fillna(0).astype(int)
-    summary["n_significant"] = summary["n_significant"].fillna(0).astype(int)
+    summary = summarize_component_scores(scores, alpha=SIG_ALPHA).reindex(components)
+    for column in ("n_scored", "n_enriched", "n_depleted"):
+        summary[column] = summary[column].fillna(0).astype(int)
     return summary
 
 
@@ -206,11 +198,19 @@ def makeFigure():
         summary_vsrest,
         components,
         ax[summary_row + 2],
-        value_col="n_significant",
-        ylabel=f"Ligands significant (p<{SIG_ALPHA})",
-        title=f"Per-component permutation-null hits ({SELECTED_DATASET})",
+        value_col="n_enriched",
+        ylabel=f"Ligands enriched (p<{SIG_ALPHA}, AUROC>0.5)",
+        title=f"Per-component enriched targets ({SELECTED_DATASET})",
     )
-    ax[summary_row + 3].axis("off")
+    plot_component_summary(
+        summary_within,
+        summary_vsrest,
+        components,
+        ax[summary_row + 3],
+        value_col="n_depleted",
+        ylabel=f"Ligands depleted (p<{SIG_ALPHA}, AUROC<0.5)",
+        title=f"Per-component depleted targets ({SELECTED_DATASET})",
+    )
 
     print(f"=== NicheNet component summary: {SELECTED_DATASET}, within_celltype ===")
     print(summary_within.to_string())

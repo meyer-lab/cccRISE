@@ -487,7 +487,8 @@ def component_accuracy_scores(
     (`receiver_celltypes_for_component`) -- then score every top ligand's
     downstream targets (`ligand_activity_auroc`) against that single
     ranking, and a two-sided empirical p-value (`permutation_null_aurocs`)
-    against `n_perm` random relabelings of the same receiver population. The
+    against `n_perm` random relabelings of the same receiver population,
+    ``(k + 1) / (n_perm + 1)`` so it is never 0. The
     null always scores genes by a Wilcoxon rank sum, so `p_value` is
     calibrated only for `de_method="wilcoxon"`. A ligand paired with several
     top receptors repeats its AUROC/p-value on each of its rows.
@@ -551,7 +552,8 @@ def component_accuracy_scores(
             if auroc is not None and null is not None:
                 null_mean = float(np.mean(null))
                 null_sd = float(np.std(null))
-                p_value = float(np.mean(np.abs(null - 0.5) >= abs(auroc - 0.5)))
+                n_extreme = int(np.sum(np.abs(null - 0.5) >= abs(auroc - 0.5)))
+                p_value = (n_extreme + 1) / (len(null) + 1)
             else:
                 null_mean = null_sd = p_value = None
             rows.append(
@@ -571,3 +573,46 @@ def component_accuracy_scores(
             )
 
     return pd.DataFrame(rows)
+
+
+def summarize_component_scores(
+    scores: pd.DataFrame, alpha: float = 0.05, by: tuple[str, ...] = ("component",)
+) -> pd.DataFrame:
+    """
+    Per-component summary of `component_accuracy_scores` rows.
+
+    Each ligand is counted once per group: a ligand paired with several top
+    receptors repeats its AUROC and p-value on each of its rows. Significant
+    ligands are split by direction, since the p-value is two-sided.
+
+    Parameters
+    ----------
+    scores : pd.DataFrame
+        Rows from `component_accuracy_scores` (optionally with a
+        "receiver_mode" column, as the runner writes).
+    alpha : float, default=0.05
+        Significance threshold.
+    by : tuple[str, ...], default=("component",)
+        Columns to group by.
+
+    Returns
+    -------
+    pd.DataFrame
+        Indexed by `by`, columns ["celltype", "mean_auroc", "median_auroc",
+        "n_scored", "n_enriched" (p < alpha, AUROC > 0.5), "n_depleted"
+        (p < alpha, AUROC < 0.5)].
+    """
+    per_ligand = scores.drop_duplicates([*by, "ligand"])
+    significant = per_ligand["p_value"] < alpha
+    per_ligand = per_ligand.assign(
+        enriched=significant & (per_ligand["auroc"] > 0.5),
+        depleted=significant & (per_ligand["auroc"] < 0.5),
+    )
+    return per_ligand.groupby(list(by)).agg(
+        celltype=("celltype", "first"),
+        mean_auroc=("auroc", "mean"),
+        median_auroc=("auroc", "median"),
+        n_scored=("auroc", "count"),
+        n_enriched=("enriched", "sum"),
+        n_depleted=("depleted", "sum"),
+    )

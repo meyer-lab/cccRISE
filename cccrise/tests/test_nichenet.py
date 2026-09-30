@@ -13,6 +13,7 @@ from cccrise.validation.nichenet import (
     permutation_null_aurocs,
     receiver_celltypes_for_component,
     receiver_de_ranking,
+    summarize_component_scores,
     top_lr_pairs_for_component,
 )
 
@@ -338,6 +339,26 @@ def test_component_accuracy_scores_end_to_end():
     liga_row = scores.loc[scores["ligand"] == "LIGA"].iloc[0]
     ligb_row = scores.loc[scores["ligand"] == "LIGB"].iloc[0]
     assert liga_row["auroc"] > 0.9
-    assert liga_row["p_value"] < 0.05
+    assert 0 < liga_row["p_value"] < 0.05
     # LIGB's targets aren't planted as DE, so its AUROC should be near chance.
     assert ligb_row["auroc"] < 0.75
+
+
+def test_summarize_component_scores_counts_each_ligand_once_by_direction():
+    scores = pd.DataFrame(
+        {
+            "component": [1, 1, 1, 1, 2],
+            "ligand": ["L1", "L1", "L2", "L3", "L1"],
+            "receptor": ["R1", "R2", "R3", "R4", "R1"],
+            "celltype": ["T"] * 5,
+            "auroc": [0.8, 0.8, 0.3, 0.55, 0.6],
+            "p_value": [0.01, 0.01, 0.02, 0.4, 0.5],
+        }
+    )
+    summary = summarize_component_scores(scores)
+
+    assert summary.loc[1, "n_scored"] == 3
+    assert summary.loc[1, "n_enriched"] == 1
+    assert summary.loc[1, "n_depleted"] == 1
+    np.testing.assert_allclose(summary.loc[1, "mean_auroc"], (0.8 + 0.3 + 0.55) / 3)
+    assert summary.loc[2, "n_enriched"] == 0

@@ -30,6 +30,7 @@ from ..validation.nichenet import (
     ReceiverMode,
     component_accuracy_scores,
     load_ligand_target_matrix,
+    summarize_component_scores,
 )
 from ._cli import add_dataset_argument, dataset_metadata, resolve_output, resulting_dims
 from .datasets import DATA_DIR, DATASETS, DatasetSpec
@@ -168,17 +169,9 @@ def run_nichenet(
     scores = pd.concat(scored, ignore_index=True)
 
     print("4. Per-component summary:")
-    summary = (
-        scores.groupby(["receiver_mode", "component"])
-        .agg(
-            celltype=("celltype", "first"),
-            mean_auroc=("auroc", "mean"),
-            median_auroc=("auroc", "median"),
-            n_scored=("auroc", "count"),
-            n_significant=("p_value", lambda p: int((p < 0.05).sum())),
-        )
-        .reset_index()
-    )
+    summary = summarize_component_scores(
+        scores, by=("receiver_mode", "component")
+    ).reset_index()
     print(summary.to_string(index=False))
 
     print(f"5. Writing {len(scores)} rows to {output_path}...")

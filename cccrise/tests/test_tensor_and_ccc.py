@@ -452,6 +452,15 @@ def test_parafac_multistart_keeps_the_best_start(monkeypatch):
         np.testing.assert_array_equal(a, b)
 
 
+def test_pseudobulk_X_rejects_unknown_aggregation():
+    adata = anndata.AnnData(
+        X=csr_array(np.ones((2, 2))),
+        obs=pd.DataFrame({"sample": ["a", "b"], "celltype": ["t", "t"]}),
+    )
+    with pytest.raises(ValueError, match="'mean' or 'fraction'"):
+        pseudobulk_X(adata, condition_name="sample", groupby="celltype", type="sum")
+
+
 def test_standardize_cc_pf2_preserves_tensor():
     rank = 3
     rng = np.random.default_rng(123)

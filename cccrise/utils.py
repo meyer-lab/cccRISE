@@ -313,8 +313,14 @@ def pseudobulk_X(
     X: anndata.AnnData, condition_name: str, groupby: str, type: str
 ) -> list[pd.DataFrame]:
     """
-    Calculate average gene expression for each groupby in each sample
+    Calculate average gene expression for each groupby in each sample.
+
+    `type` is 'mean' (mean expression) or 'fraction' (fraction of cells
+    expressing each gene); a (sample, groupby) combination with no cells is
+    zero-filled.
     """
+    if type not in ("mean", "fraction"):
+        raise ValueError(f"type must be 'mean' or 'fraction', got {type!r}")
     # Get unique samples and cell types
     samples = np.unique(X.obs[condition_name].unique())
     groupby_names = np.unique(X.obs[groupby].unique())
