@@ -48,6 +48,7 @@ from cccrise.figures.commonFuncs.plotGeneral import (
 from cccrise.figures.commonFuncs.plotPaCMAP import (
     assign_labels,
     plot_categorical_scatter,
+    plot_eigenstate_pacmap,
     plot_labels_pacmap,
     plot_wc_pacmap,
     plot_wc_per_celltype,
@@ -59,7 +60,7 @@ from cccrise.figures.figureAnova import (
 )
 from cccrise.figures.figureCPDrank import plot_collinearity, plot_fit_r2x
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
-from cccrise.utils import celltype_component_association, dominant_eigenstate_labels
+from cccrise.utils import celltype_component_association
 
 DATASET_CHOICES = {key: spec.label for key, spec in DATASETS.items()}
 
@@ -78,10 +79,6 @@ ASSOC_STAT_CHOICES = {
     "enrichment": "log2 Enrichment",
     "pct_top": "% in Top Percentile",
 }
-
-# Most distinct dominant-eigenstate labels shown on the PaCMAP; tab20 is the
-# largest cell-type palette.
-MAX_EIGENSTATE_LABELS = 20
 
 # Multipliers applied to every plot's text by `scale_fonts`, relative to the
 # sizes the shared plotting functions set for the paper figures.
@@ -966,12 +963,11 @@ def server(input, output, session):
             ui.hr(),
             ui.h4("Cell-Type–Eigenstate Associations"),
             ui.markdown(
-                "Each cell is labeled by the RISE eigenstate with its "
-                "largest-magnitude projection, suffixed with that "
-                "projection's sign (opposite ends of an eigenstate describe "
-                "different cells). Labeled Eigenstates sets how many of the "
-                "most frequent labels are shown; the rest are grouped as "
-                "Other. The cell type PaCMAP is repeated alongside for "
+                "PaCMAP colored by each cell's projection onto the RISE "
+                "eigenstate chosen with Eigenstate; opposite signs describe "
+                "different cells. The color scale spans the 99th percentile "
+                "of |projection|, so the few cells beyond it saturate. The "
+                "cell type PaCMAP is repeated alongside for "
                 "comparison. The heatmap below quantifies each cell type's "
                 "association with every eigenstate from the raw per-cell "
                 "projections, independent of the selected component; the "
@@ -982,11 +978,11 @@ def server(input, output, session):
                 ui.column(
                     4,
                     ui.input_slider(
-                        "eig_n_labeled",
-                        "Labeled Eigenstates",
+                        "eigenstate",
+                        "Eigenstate",
                         min=1,
-                        max=MAX_EIGENSTATE_LABELS,
-                        value=10,
+                        max=rise_rank(),
+                        value=1,
                         step=1,
                     ),
                 ),
@@ -1239,19 +1235,10 @@ def server(input, output, session):
     @styled_figure()
     def eigenstate_pacmap_plot():
         ds = dataset()
-        X = ds.adata
-        labels = dominant_eigenstate_labels(X, n_labeled=input.eig_n_labeled())
-        is_other = labels == "Other"
-        color_key = colors.celltype_colors(labels[~is_other].nunique())
-        if is_other.any():
-            color_key.append(colors.MUTED)
-
         fig, axes = plt.subplots(1, 2, figsize=(16, 6.5), layout="tight")
-        plot_categorical_scatter(
-            np.asarray(X.obsm["PaCMAP"]), labels, axes[0], color_key=color_key
+        plot_eigenstate_pacmap(
+            ds.adata, input.eigenstate(), axes[0], cbar_match_height=True
         )
-        assign_labels(axes[0])
-        axes[0].set_title("Dominant Eigenstate")
         plot_celltype_pacmap(ds, axes[1])
         return fig
 
