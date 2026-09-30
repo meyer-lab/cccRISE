@@ -66,17 +66,19 @@ def _raw_dataset():
 @cache
 def celltype_loadings(method: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Mean sender (sc_B) and receiver (rc_C) loading per cell type (rows)
-    and component (columns)."""
+    and component (columns), rows in `style.CELL_TYPES` order."""
     ad = load_factors_to_anndata(
         comparison_output_dir(method) / SPEC.factors_filename,
         adata=_raw_dataset(),
         condition_column=SPEC.condition_column,
     )
     celltypes = ad.obs[SPEC.celltype_column].to_numpy()
-    return tuple(
+    means = [
         pd.DataFrame(ad.obsm[key], index=celltypes).groupby(level=0).mean()
         for key in ("sc_B", "rc_C")
-    )
+    ]
+    order = [c for c in style.CELL_TYPES[DATASET] if c in means[0].index]
+    return means[0].loc[order], means[1].loc[order]
 
 
 @cache
