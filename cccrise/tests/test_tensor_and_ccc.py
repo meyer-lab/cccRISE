@@ -16,6 +16,7 @@ from cccrise.ccc_rise import (
     calculate_interaction_tensor,
     compute_communication_significance,
     compute_differential_significance,
+    fit_cp,
     fit_rise,
     run_ccc_rise_workflow,
     standardize_cc_pf2,
@@ -399,6 +400,22 @@ def test_pseudobulk_aggregation_mean_and_fraction():
     )
     np.testing.assert_allclose(dfs_frac[0].loc["gene1", "ct_A"], 1.0)
     np.testing.assert_allclose(dfs_frac[0].loc["gene2", "ct_A"], 0.0)
+
+
+def test_fit_cp_is_seeded_independently_of_global_rng():
+    """`random_state` alone fixes the CP fit: its randomized SVD init does not
+    fall back to NumPy's global RNG."""
+    rng = np.random.default_rng(0)
+    tensor = rng.random((6, 5, 5, 20))
+
+    fits = []
+    for global_seed in (0, 1):
+        np.random.seed(global_seed)
+        _, factors, _, _ = fit_cp(tensor, 3, n_iter_max=50, tol=1e-8, random_state=7)
+        fits.append(factors)
+
+    for a, b in zip(*fits, strict=True):
+        np.testing.assert_array_equal(a, b)
 
 
 def test_standardize_cc_pf2_preserves_tensor():

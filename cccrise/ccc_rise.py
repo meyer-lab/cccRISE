@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from functools import partial
 from itertools import combinations
 from math import comb
 from typing import Any, cast
@@ -11,6 +12,7 @@ from parafac2.parafac2 import parafac2_nd, store_pf2
 from scipy.sparse import spmatrix
 from tensorly.cp_tensor import cp_flip_sign, cp_normalize
 from tensorly.decomposition import parafac
+from tensorly.tenalg.svd import randomized_svd
 
 from .ccc import (
     build_context_ccc_tensor,
@@ -44,6 +46,16 @@ CP_FIT_OPTIONS: dict[str, Any] = {
     "svd": "randomized_svd",
     "normalize_factors": True,
 }
+
+
+def seeded_cp_fit_options(random_state: int | None) -> dict[str, Any]:
+    """`CP_FIT_OPTIONS` with its randomized SVD initialization seeded.
+
+    tensorly's `parafac` uses `random_state` only for random initialization
+    and does not forward it to the SVD behind ``init="svd"``, so
+    ``svd="randomized_svd"`` would otherwise draw from NumPy's global RNG.
+    """
+    return CP_FIT_OPTIONS | {"svd": partial(randomized_svd, random_state=random_state)}
 
 
 def _matrices_to_rnaseq_dataframes(
@@ -991,7 +1003,7 @@ def fit_cp(
     random_state: int | None = None,
     compress: bool = False,
 ) -> tuple[np.ndarray, Factors, float, dict[str, Any]]:
-    """Fit CP at a fixed rank with `CP_FIT_OPTIONS` and standardize the factors
+    """Fit CP at a fixed rank with `seeded_cp_fit_options` and standardize the factors
     (`standardize_cc_pf2`).
 
     `compress` fits against a CANDELINC core sized for `rank`
@@ -1021,7 +1033,7 @@ def fit_cp(
         n_iter_max=n_iter_max,
         tol=tol,
         random_state=random_state,
-        **CP_FIT_OPTIONS,
+        **seeded_cp_fit_options(random_state),
     )
     diagnostics = _cpd_diagnostics(fit_target, weights, factors, rank)
     r2x = candelinc_r2x(
@@ -1226,10 +1238,8 @@ def pseudobulk_cp_decomposition(
         cp_rank,
         n_iter_max=n_iter_max,
         tol=tol,
-        init="svd",  # Use SVD initialization
-        svd="randomized_svd",
-        normalize_factors=True,
         random_state=random_state,
+        **seeded_cp_fit_options(random_state),
     )
 
     # Calculate R2X for the CP decomposition of the interaction tensor

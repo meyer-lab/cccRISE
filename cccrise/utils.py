@@ -256,7 +256,7 @@ def replicate_seed(random_state: int, replicate: int) -> int:
     """Seed for one replicate: ``random_state * 1000 + replicate + 1``.
 
     One integer per (axis, replicate) drives the resample, the RISE refit and
-    the CP restarts, so a replicate's RISE and CPD rows describe the same
+    the CP fit, so a replicate's RISE and CPD rows describe the same
     resampled dataset by construction rather than by coincidence. The ``+ 1``
     leaves `random_state` itself to the reference pass, so no replicate reuses
     the reference's starting point.

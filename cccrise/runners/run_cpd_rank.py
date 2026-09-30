@@ -31,6 +31,7 @@ from ..ccc_rise import (
     RISE_COMPRESSION_OPTIONS,
     calculate_interaction_tensor,
     fit_rise,
+    seeded_cp_fit_options,
     validate_cp_rank,
 )
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
@@ -125,7 +126,7 @@ def cp_fits_by_rank(
             n_iter_max=n_iter_max,
             tol=tol,
             random_state=random_state,
-            **CP_FIT_OPTIONS,
+            **seeded_cp_fit_options(random_state),
         )
         fits[rank] = (weights, factors, calculate_r2x(weights, factors, tensor))
     return fits
