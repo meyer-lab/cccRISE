@@ -26,7 +26,12 @@ import anndata
 import numpy as np
 import xarray as xr
 
-from ..ccc_rise import CP_FIT_OPTIONS, run_ccc_rise_workflow, validate_cp_rank
+from ..ccc_rise import (
+    CP_FIT_OPTIONS,
+    CP_N_STARTS,
+    run_ccc_rise_workflow,
+    validate_cp_rank,
+)
 from ..factors import add_cell_projections, factors_to_xarray, save_factors_netcdf
 from ..import_data import import_ligand_receptor_pairs
 from ._cli import (
@@ -200,6 +205,7 @@ def run_pipeline(
             "random_state": random_state,
             "complex_sep": complex_sep,
             "cp_fit_options": CP_FIT_OPTIONS,
+            "cp_n_starts": CP_N_STARTS,
             "backend": spec.backend or "auto",
             "pacmap_embedding": do_embedding,
             "lr_pairs_annotated": len(lr_pairs),

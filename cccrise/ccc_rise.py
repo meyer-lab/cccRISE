@@ -46,6 +46,9 @@ CP_FIT_OPTIONS: dict[str, Any] = {
     "svd": "randomized_svd",
     "normalize_factors": True,
 }
+#: Starts per CP fit; `parafac_multistart` keeps the best. A single start at
+#: the ALAD CP rank lands in a worse local optimum for some seeds.
+CP_N_STARTS = 5
 
 
 def seeded_cp_fit_options(random_state: int | None) -> dict[str, Any]:
@@ -56,6 +59,50 @@ def seeded_cp_fit_options(random_state: int | None) -> dict[str, Any]:
     ``svd="randomized_svd"`` would otherwise draw from NumPy's global RNG.
     """
     return CP_FIT_OPTIONS | {"svd": partial(randomized_svd, random_state=random_state)}
+
+
+def cp_start_seeds(random_state: int | None, n_starts: int) -> list[int | None]:
+    """Seeds for `parafac_multistart`'s starts. The first is `random_state`
+    itself, so one start reproduces a plain seeded fit; the rest are drawn
+    from it rather than offset from it, so they don't collide with the seeds
+    of neighbouring replicates (`utils.replicate_seed`)."""
+    if random_state is None:
+        return [None] * n_starts
+    rng = np.random.default_rng(random_state)
+    return [random_state, *(int(s) for s in rng.integers(2**31 - 1, size=n_starts - 1))]
+
+
+def parafac_multistart(
+    tensor: np.ndarray,
+    rank: int,
+    n_iter_max: int,
+    tol: float | None,
+    random_state: int | None = None,
+    n_starts: int = CP_N_STARTS,
+) -> tuple[np.ndarray, Factors]:
+    """CP fit with `seeded_cp_fit_options`, run from `n_starts` seeds
+    (`cp_start_seeds`), keeping the start with the highest R2X against
+    `tensor` (the first, on ties).
+
+    The randomized SVD initialization differs by seed, and ALS from a given
+    initialization can settle in a local optimum, so a single start is not
+    reliably the best fit.
+    """
+    best: tuple[float, np.ndarray, Factors] | None = None
+    for seed in cp_start_seeds(random_state, n_starts):
+        weights, factors = parafac(
+            tensor,
+            rank,
+            n_iter_max=n_iter_max,
+            tol=tol,
+            random_state=seed,
+            **seeded_cp_fit_options(seed),
+        )
+        r2x = calculate_r2x(weights, factors, tensor)
+        if best is None or r2x > best[0]:
+            best = (r2x, weights, factors)
+    assert best is not None, "n_starts must be at least 1"
+    return best[1], best[2]
 
 
 def _matrices_to_rnaseq_dataframes(
@@ -1003,7 +1050,7 @@ def fit_cp(
     random_state: int | None = None,
     compress: bool = False,
 ) -> tuple[np.ndarray, Factors, float, dict[str, Any]]:
-    """Fit CP at a fixed rank with `seeded_cp_fit_options` and standardize the factors
+    """Fit CP at a fixed rank with `parafac_multistart` and standardize the factors
     (`standardize_cc_pf2`).
 
     `compress` fits against a CANDELINC core sized for `rank`
@@ -1027,13 +1074,8 @@ def fit_cp(
             tensor, max_rank=rank, **CP_COMPRESSION_OPTIONS
         )
 
-    weights, factors = parafac(
-        fit_target,
-        rank,
-        n_iter_max=n_iter_max,
-        tol=tol,
-        random_state=random_state,
-        **seeded_cp_fit_options(random_state),
+    weights, factors = parafac_multistart(
+        fit_target, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
     )
     diagnostics = _cpd_diagnostics(fit_target, weights, factors, rank)
     r2x = candelinc_r2x(
@@ -1213,7 +1255,8 @@ def pseudobulk_cp_decomposition(
     random_state: int | None = None,
 ) -> tuple[np.ndarray, list[np.ndarray], float]:
     """
-    Perform (unconstrained) CP decomposition on the pseudobulk interaction tensors.
+    Perform (unconstrained) CP decomposition on the pseudobulk interaction
+    tensors, best of `CP_N_STARTS` starts (`parafac_multistart`).
     Parameters
     ----------
     interaction_tensors : np.ndarray
@@ -1232,14 +1275,12 @@ def pseudobulk_cp_decomposition(
     tuple[np.ndarray, list[np.ndarray], float]
         A tuple containing the CP weights, CP factors, and the R2X value.
     """
-    # CP decomposition
-    cp_weights, cp_factors = parafac(
+    cp_weights, cp_factors = parafac_multistart(
         interaction_tensors,
         cp_rank,
         n_iter_max=n_iter_max,
         tol=tol,
         random_state=random_state,
-        **seeded_cp_fit_options(random_state),
     )
 
     # Calculate R2X for the CP decomposition of the interaction tensor

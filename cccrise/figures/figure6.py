@@ -7,10 +7,9 @@ for the COVID dataset using cached RISE factors.
 
 import pandas as pd
 from matplotlib import pyplot as plt
-from tensorly.decomposition import parafac
 from tlviz.model_evaluation import core_consistency
 
-from ..ccc_rise import calculate_interaction_tensor, seeded_cp_fit_options
+from ..ccc_rise import calculate_interaction_tensor, parafac_multistart
 from ..import_data import import_ligand_receptor_pairs
 from ..rank_selection import calculate_r2x
 from .common import get_covid_data, subplotLabel
@@ -35,13 +34,12 @@ def compute_cp_rank_sweep(
     r2x_results = []
     for cp_rank in cp_ranks:
         print(f"CP rank: {cp_rank}")
-        cp_weights, cp_factors = parafac(
+        cp_weights, cp_factors = parafac_multistart(
             interaction_tensor,
-            rank=cp_rank,
+            cp_rank,
             n_iter_max=n_iter_max,
             tol=tol,
             random_state=random_state,
-            **seeded_cp_fit_options(random_state),
         )
         r2x = calculate_r2x(cp_weights, cp_factors, interaction_tensor)
         cc = core_consistency(

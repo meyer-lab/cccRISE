@@ -52,7 +52,7 @@ RANK_MODES = ("own", "shared")
 
 # Bump when a change to a comparator's fitting or rank selection should
 # invalidate every cached own-rank fit.
-FIT_CACHE_VERSION = 3
+FIT_CACHE_VERSION = 4
 
 # `tensor.run_pseudobulk_workflow`'s CP settings, and the rule cccRISE's CP rank
 # was read off by: the last rank before core consistency first drops below 85%

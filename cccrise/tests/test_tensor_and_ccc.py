@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 from scipy.sparse import csr_array
 from tensorly.cp_tensor import cp_to_tensor
+from tensorly.decomposition import parafac
 
 from cccrise.ccc import combine_communication_score, compute_ccc_matrix
 from cccrise.ccc_rise import (
@@ -18,7 +19,9 @@ from cccrise.ccc_rise import (
     compute_differential_significance,
     fit_cp,
     fit_rise,
+    parafac_multistart,
     run_ccc_rise_workflow,
+    seeded_cp_fit_options,
     standardize_cc_pf2,
 )
 from cccrise.import_data import add_cond_idxs
@@ -415,6 +418,37 @@ def test_fit_cp_is_seeded_independently_of_global_rng():
         fits.append(factors)
 
     for a, b in zip(*fits, strict=True):
+        np.testing.assert_array_equal(a, b)
+
+
+def test_parafac_multistart_keeps_the_best_start(monkeypatch):
+    """The kept start is the one with the highest R2X; one start is a plain
+    seeded fit."""
+    import cccrise.ccc_rise as ccc_rise_module
+
+    rng = np.random.default_rng(0)
+    tensor = rng.random((6, 5, 5, 20))
+
+    r2x_by_start = []
+    real_r2x = ccc_rise_module.calculate_r2x
+
+    def recording_r2x(weights, factors, target):
+        r2x = real_r2x(weights, factors, target)
+        r2x_by_start.append(r2x)
+        return r2x
+
+    monkeypatch.setattr(ccc_rise_module, "calculate_r2x", recording_r2x)
+    weights, factors = parafac_multistart(
+        tensor, 3, n_iter_max=5, tol=None, random_state=3, n_starts=4
+    )
+    assert len(r2x_by_start) == 4
+    assert real_r2x(weights, factors, tensor) == max(r2x_by_start)
+
+    _, single = parafac_multistart(tensor, 3, 5, None, random_state=3, n_starts=1)
+    _, plain = parafac(
+        tensor, 3, n_iter_max=5, tol=None, random_state=3, **seeded_cp_fit_options(3)
+    )
+    for a, b in zip(single, plain, strict=True):
         np.testing.assert_array_equal(a, b)
 
 

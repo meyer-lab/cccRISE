@@ -26,6 +26,7 @@ import pandas as pd
 from ..ccc_rise import (
     CP_COMPRESSION_OPTIONS,
     CP_FIT_OPTIONS,
+    CP_N_STARTS,
     RISE_COMPRESSION_OPTIONS,
 )
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
@@ -229,6 +230,7 @@ def run_anova_bootstrap(
             "rise_tol": rise_tol,
             "cp_tol": cp_tol,
             "cp_fit_options": CP_FIT_OPTIONS,
+            "cp_n_starts": CP_N_STARTS,
             "complex_sep": complex_sep,
             "random_state": random_state,
             "backend": spec.backend or "auto",
