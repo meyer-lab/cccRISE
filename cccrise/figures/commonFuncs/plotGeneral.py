@@ -30,14 +30,18 @@ def collapse_group(
     The names, rather than codes, are what a test that reports per-group
     statistics needs -- an ANOVA has to be able to say which group loaded
     higher. `binarize_group` is this with the names traded for codes.
+    Missing entries stay missing rather than joining `other_name`.
     """
-    return sample_to_group.map(lambda x: match_name if x == match_value else other_name)
+    return sample_to_group.map(
+        lambda x: match_name if x == match_value else other_name, na_action="ignore"
+    )
 
 
 def binarize_group(
     sample_to_group: pd.Series, match_value: str, match_name: str, other_name: str
 ) -> pd.Series:
-    """Collapse a group Series into two named categories and return integer codes."""
+    """Collapse a group Series into two named categories and return integer codes
+    (-1 for missing entries)."""
     collapsed = collapse_group(sample_to_group, match_value, match_name, other_name)
     return collapsed.astype("category").cat.codes
 

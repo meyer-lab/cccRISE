@@ -693,6 +693,14 @@ def test_prepare_group_labels():
     assert s_collapse["S2"] == "alad"
     assert s_collapse["S3"] == "alad"
 
+    # Collapsing keeps conditions `levels` excluded (and missing labels) out
+    s_both = prepare_group_labels(
+        raw, levels=["control", "declined"], control_label="control", other_label="alad"
+    )
+    assert s_both["S2"] == "alad"
+    assert pd.isna(s_both["S3"])
+    assert pd.isna(s_both["S5"])
+
 
 def test_run_saved_factors_anova_and_multiple_associations():
     """`run_saved_factors_anova`, `run_multiple_factors_anova`, and `figureAnova` work."""
