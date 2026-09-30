@@ -131,6 +131,11 @@ def _carry_paired_samples(
     drop is what keeps the final number of patients in the resampling fixed,
     rather than growing by one every time a pair is hit.
 
+    The drop never takes the draw that triggered a carry or a carried-in
+    sibling (so a carry is not undone, by its own drop or a later one),
+    unless nothing else is left to drop. A draw that an earlier carry
+    dropped triggers no carry of its own.
+
     With `stratum_of` (condition -> stratum), the drop is drawn from the
     carried sibling's own stratum, so every stratum keeps its original count
     even when a patient's two samples fall in different strata.
@@ -138,19 +143,22 @@ def _carry_paired_samples(
     Each of the original draws is visited once, so a condition drawn twice
     triggers two independent carry-and-drop steps.
     """
-    result = list(drawn)
-    for cond in list(result):
-        sibling = pair_of.get(cond)
-        if sibling is None:
+    # [condition, protected]; lists, so entries are told apart by identity
+    entries = [[cond, False] for cond in drawn]
+    for entry in list(entries):
+        sibling = pair_of.get(entry[0])
+        if sibling is None or not any(e is entry for e in entries):
             continue
-        result.append(sibling)
-        pool = [
+        entry[1] = True
+        entries.append([sibling, True])
+        in_stratum = [
             i
-            for i, c in enumerate(result)
+            for i, (c, _) in enumerate(entries)
             if stratum_of is None or stratum_of[c] == stratum_of[sibling]
         ]
-        result.pop(pool[rng.integers(0, len(pool))])
-    return result
+        pool = [i for i in in_stratum if not entries[i][1]] or in_stratum
+        entries.pop(pool[rng.integers(0, len(pool))])
+    return [cond for cond, _ in entries]
 
 
 def resample_conditions(
@@ -196,7 +204,8 @@ def resample_conditions(
         every condition (sample) belonging to the same patient. When given,
         drawing one of a two-sample patient's conditions carries its sibling
         condition in too, and drops one other random draw to compensate --
-        from the sibling's own stratum when `stratify_by` is given (see
+        never the pair itself unless nothing else is left, and from the
+        sibling's own stratum when `stratify_by` is given (see
         `_carry_paired_samples`). Conditions whose patient contributes only
         one of them are unaffected.
 
