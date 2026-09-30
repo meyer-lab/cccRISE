@@ -114,6 +114,7 @@ def test_load_factors_with_sc_projection():
         condition_names=[f"S{i}" for i in range(n_cond)],
         gene_names=[f"G_{i}" for i in range(n_genes)],
         pf2_factors=[A_pf2, B_pf2, C_pf2],
+        pf2_weights=np.ones(rise_rank),
         attrs={"condition_key": "sample"},
     )
 

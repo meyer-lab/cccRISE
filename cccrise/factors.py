@@ -11,6 +11,7 @@ import anndata
 import numpy as np
 import pandas as pd
 import xarray as xr
+from parafac2.utils import polar_factor
 
 from .ccc_rise import add_cell_embeddings
 from .import_data import add_cond_idxs
@@ -294,9 +295,7 @@ def _check_fit_inputs(factors_ds: xr.Dataset, adata: anndata.AnnData) -> None:
     """Raise unless `adata` has the cells, genes and gene centering the
     stored RISE fit was made on. Files predating the fingerprints are
     checked against whatever cell/gene IDs they store."""
-    if "gene" in factors_ds.coords and not _ids_match(
-        factors_ds, "gene", adata.var_names
-    ):
+    if not _ids_match(factors_ds, "gene", adata.var_names):
         raise ValueError("`adata`'s genes do not match the RISE fit's.")
     digest = factors_ds.attrs.get(CELL_IDS_ATTR)
     cells_match = (
@@ -323,15 +322,14 @@ def compute_cell_projections(
     `factors_ds`.
 
     For each condition k this is the projection step `parafac2` ends a fit
-    with: the polar factor of the centered X_k @ C diag(w * A_k) B^T, so it
-    reproduces the fit's own projections. Works on sparse `adata.X` without
+    with: the polar factor (`parafac2.utils.polar_factor`) of the centered
+    X_k @ C diag(w * A_k) B^T, so it reproduces the fit's own projections. Works on sparse `adata.X` without
     densifying it (the centering is applied to the rank-sized product).
 
     Parameters
     ----------
     factors_ds : xr.Dataset
-        A factors file holding `pf2_A`/`pf2_B`/`pf2_C` (and `pf2_weights`,
-        taken as ones if absent).
+        A factors file holding `pf2_A`/`pf2_B`/`pf2_C`/`pf2_weights`.
     adata : anndata.AnnData
         The data the fit was made on, with `obs["condition_unique_idxs"]`
         (`add_cond_idxs`); checked against the file's fingerprints.
@@ -342,11 +340,9 @@ def compute_cell_projections(
         (n_cells, rise_rank) float32 projections, in `adata`'s cell order.
     """
     _check_fit_inputs(factors_ds, adata)
-    A, B, C = (factors_ds[f"pf2_{m}"].values.astype(np.float64) for m in "ABC")
-    weights = (
-        factors_ds["pf2_weights"].values.astype(np.float64)
-        if "pf2_weights" in factors_ds
-        else np.ones(A.shape[1])
+    A, B, C, weights = (
+        factors_ds[f"pf2_{m}"].values.astype(np.float64)
+        for m in ("A", "B", "C", "weights")
     )
     means = _gene_means(adata)
     cond_idx = adata.obs["condition_unique_idxs"].to_numpy().astype(int)
@@ -357,8 +353,7 @@ def compute_cell_projections(
         rows = cond_idx == k
         W = (C * (weights * A[k])) @ B.T
         M = np.asarray(cast(Any, adata.X)[rows] @ W) - means @ W
-        U, _, Vt = np.linalg.svd(M, full_matrices=False)
-        projections[rows] = U @ Vt
+        projections[rows] = polar_factor(M)
     return projections
 
 
@@ -423,16 +418,13 @@ def load_factors_to_anndata(
         return _add_cp_factors(out, factors_ds)
 
     out = add_cond_idxs(_add_cp_factors(adata.copy(), factors_ds), cond_key)
-    if "pf2_C" not in factors_ds:
-        return out
 
     # Subset `adata` to the fit's genes when it holds them all
-    if "gene" in factors_ds.coords:
-        ds_genes = factors_ds.coords["gene"].values
-        if not np.array_equal(out.var_names, ds_genes) and set(ds_genes) <= set(
-            out.var_names
-        ):
-            out = out[:, ds_genes].copy()
+    ds_genes = factors_ds.coords["gene"].values
+    if not np.array_equal(out.var_names, ds_genes) and set(ds_genes) <= set(
+        out.var_names
+    ):
+        out = out[:, ds_genes].copy()
 
     out.obsm["projections"] = compute_cell_projections(factors_ds, out)
     has_pacmap = "cell_pacmap" in factors_ds
