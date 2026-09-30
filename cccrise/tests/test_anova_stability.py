@@ -100,9 +100,10 @@ def test_align_to_reference_components_sign_flip():
     np.testing.assert_allclose(
         aligned.loc[aligned["Component"] == 2, "SignedCosine"].iloc[0], -1.0
     )
-    # Value should be flipped from -3.0 to +3.0 to match reference orientation
+    # The LR mode's sign says nothing about the condition factor's, so the
+    # value is not negated
     np.testing.assert_allclose(
-        aligned.loc[aligned["Component"] == 2, "Value"].iloc[0], 3.0
+        aligned.loc[aligned["Component"] == 2, "Value"].iloc[0], -3.0
     )
 
 

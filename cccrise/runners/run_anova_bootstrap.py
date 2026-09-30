@@ -7,7 +7,7 @@ Fits the whole pipeline once on the full cohort at a fixed, already-selected
 ANOVA on the condition factors -- and then repeats all of it on
 ``--n-boot`` bootstrap resamples of the *patient roster*. Each replicate's
 components are matched back onto the full-cohort fit's components on the
-ligand-receptor mode and sign-corrected before its statistics are recorded
+ligand-receptor mode before its statistics are recorded
 (`anova_stability.bootstrap_anova`), so a component's effect sizes across
 replicates form a distribution rather than an unordered pile.
 

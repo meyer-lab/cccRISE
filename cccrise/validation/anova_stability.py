@@ -10,16 +10,18 @@ component's effect size into a distribution whose spread is exactly that
 sampling variability.
 
 Every replicate refits RISE and CP from scratch, so its components come out in
-an arbitrary order and sign; each replicate is therefore matched back onto the
+an arbitrary order; each replicate is therefore matched back onto the
 full-cohort ("reference") fit's components before its statistics are recorded
 (`align_to_reference_components`). The match is computed on the
 ligand-receptor mode alone, the one mode whose coordinates mean the same thing
 in two fits with separately-fit RISE factors, and its score is kept alongside
 every row: a component that could not be re-identified in a replicate produces
 a wide distribution for a reason that has nothing to do with the phenotype,
-and the two explanations have to stay separable. Only `GroupMeanDiff` carries
-a sign and so is the only column the alignment's sign correction touches; F, P
-and eta-squared are sign-invariant.
+and the two explanations have to stay separable. Component sign needs no
+correction: `ccc_rise.standardize_cc_pf2` gives every fit's condition factor
+a positive column mean, so `GroupMeanDiff`, the only signed column, keeps
+its orientation across fits (the match mode's sign says nothing about the
+condition factor's, since CP can flip any two modes together).
 """
 
 from typing import Any, cast
@@ -57,16 +59,16 @@ def align_to_reference_components(
     mode_weights: dict[int, float] | None = None,
 ) -> pd.DataFrame:
     """Relabel one CP fit's per-component values by the reference fit's
-    component numbering, correcting for sign.
+    component numbering.
 
-    CP fixes neither component order nor component sign across separate fits,
-    so a per-component quantity (a logistic regression weight, say) is not
-    comparable between two fits until each of the second fit's components has
-    been identified with a reference component and re-expressed in that
-    component's orientation. Optimal assignment gives the relabeling, and
-    the matched mode's *signed* cosine gives the sign, so a value carried by a
-    gauge-flipped component is negated rather than being recorded as a genuine
-    change of direction.
+    CP does not fix component order across separate fits, so a per-component
+    quantity is not comparable between two fits until each of the second
+    fit's components has been identified with a reference component. Optimal
+    assignment on the |cosine| of `mode_weights`' modes gives the relabeling.
+    Values are not sign-corrected: CP can flip any two modes together, so the
+    match mode's sign does not determine the sign of the mode a value comes
+    from. Values from the condition factor are already oriented consistently
+    by `ccc_rise.standardize_cc_pf2` (positive column mean).
 
     Parameters
     ----------
@@ -86,8 +88,9 @@ def align_to_reference_components(
     -------
     pd.DataFrame
         One row per reference component matched (1-indexed), columns
-        'Component', 'MatchedComponent', 'Value' (sign-corrected),
-        'MatchScore', 'SignedCosine', 'RunnerUpScore'.
+        'Component', 'MatchedComponent', 'Value', 'MatchScore',
+        'SignedCosine' (a match diagnostic, NaN when matching on several
+        modes), 'RunnerUpScore'.
     """
     if mode_weights is None:
         mode_weights = BOOTSTRAP_MATCH_MODE_WEIGHTS
@@ -122,13 +125,12 @@ def align_to_reference_components(
         signed_cos = (
             signed_cos_by_mode[signed_col][i, j] if signed_col is not None else np.nan
         )
-        sign_flip = np.sign(signed_cos) if signed_col is not None else 1.0
 
         rows.append(
             {
                 "Component": i + 1,
                 "MatchedComponent": j + 1,
-                "Value": float(values[j] * sign_flip),
+                "Value": float(values[j]),
                 "MatchScore": float(combined[i, j]),
                 "SignedCosine": float(signed_cos),
                 "RunnerUpScore": runner_up_score,
@@ -367,9 +369,9 @@ def bootstrap_replicate_anova(
     -------
     pd.DataFrame
         One row per reference component, columns `REPLICATE_COLUMNS`.
-        'GroupMeanDiff' is sign-corrected onto the reference component's
-        orientation; 'EtaSquared', 'F' and 'P' are sign-invariant and are
-        carried across on the matched component alone.
+        Every statistic is read off the matched replicate component;
+        'GroupMeanDiff' keeps its orientation across fits because each
+        condition factor column has a positive mean (`standardize_cc_pf2`).
     """
     resampled = resample_conditions(
         adata,
@@ -414,8 +416,7 @@ def bootstrap_replicate_anova(
         mode_weights=BOOTSTRAP_MATCH_MODE_WEIGHTS,
     ).rename(columns={"Value": "GroupMeanDiff"})
 
-    # F, P and eta-squared do not change under a gauge flip, so they are read
-    # straight off the replicate component the alignment picked out.
+    # Read straight off the replicate component the alignment picked out.
     matched = aligned["MatchedComponent"].to_numpy(dtype=int) - 1
     for column in ("EtaSquared", "F", "P"):
         aligned[column] = anova[column].to_numpy(dtype=float)[matched]

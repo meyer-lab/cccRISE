@@ -324,9 +324,10 @@ def _group_mean_diff(
     levels; NaN otherwise.
 
     This is the only sign-bearing quantity the ANOVA reports, and so the one
-    that carries direction -- which group loads higher -- through the
-    bootstrap's sign correction, exactly as the logistic regression weight
-    did. F, P and eta-squared are sign-invariant by construction.
+    that carries direction -- which group loads higher. Its orientation is
+    comparable across fits because `standardize_cc_pf2` gives each condition
+    factor column a positive mean. F, P and eta-squared are sign-invariant
+    by construction.
     """
     if len(groups) != 2:
         return np.nan
