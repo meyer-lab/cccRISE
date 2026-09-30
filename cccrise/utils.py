@@ -698,25 +698,3 @@ def celltype_component_association(
             name="Eigenstate" if factor_type == "eigenstate" else "Component",
         ),
     )
-
-
-def dominant_eigenstate_labels(X: anndata.AnnData, n_labeled: int = 10) -> pd.Series:
-    """
-    Label each cell by the RISE eigenstate with its largest-magnitude projection,
-    suffixed with that projection's sign (e.g. "E03-"), since opposite ends of an
-    eigenstate describe different cells. Only the `n_labeled` most frequent labels
-    are kept; every other cell is labeled "Other" (which sorts after the "E" labels).
-    """
-    projections = np.asarray(X.obsm["projections"], dtype=float)
-    dominant = np.abs(projections).argmax(axis=1)
-    negative = projections[np.arange(len(projections)), dominant] < 0
-    width = len(str(projections.shape[1]))
-    labels = pd.Series(
-        [
-            f"E{i + 1:0{width}d}{'-' if neg else '+'}"
-            for i, neg in zip(dominant, negative, strict=True)
-        ],
-        index=X.obs_names,
-    )
-    kept = labels.value_counts().index[:n_labeled]
-    return labels.where(labels.isin(kept), "Other")
