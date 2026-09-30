@@ -151,14 +151,25 @@ def _carry_paired_samples(
             continue
         entry[1] = True
         entries.append([sibling, True])
-        in_stratum = [
-            i
-            for i, (c, _) in enumerate(entries)
-            if stratum_of is None or stratum_of[c] == stratum_of[sibling]
-        ]
-        pool = [i for i in in_stratum if not entries[i][1]] or in_stratum
-        entries.pop(pool[rng.integers(0, len(pool))])
+        _drop_one_unprotected(entries, sibling, rng, stratum_of)
     return [cond for cond, _ in entries]
+
+
+def _drop_one_unprotected(
+    entries: list[list[Any]],
+    sibling: str,
+    rng: np.random.Generator,
+    stratum_of: dict[str, Any] | None,
+) -> None:
+    """Drop one random entry from `sibling`'s stratum, preferring entries a
+    carry has not protected (see `_carry_paired_samples`)."""
+    in_stratum = [
+        i
+        for i, (c, _) in enumerate(entries)
+        if stratum_of is None or stratum_of[c] == stratum_of[sibling]
+    ]
+    pool = [i for i in in_stratum if not entries[i][1]] or in_stratum
+    entries.pop(pool[rng.integers(0, len(pool))])
 
 
 def resample_conditions(
@@ -309,6 +320,18 @@ def correct_conditions(X: anndata.AnnData) -> np.ndarray:
     return X.uns["A"] / counts_correct
 
 
+def _group_profile(adata_subset: anndata.AnnData, type: str) -> np.ndarray:
+    """One (sample, groupby) cell subset's per-gene mean expression
+    (`type="mean"`) or fraction of expressing cells (`type="fraction"`);
+    zeros when the subset has no cells."""
+    if adata_subset.n_obs == 0:
+        return np.zeros(adata_subset.n_vars)
+    dense = cast(Any, adata_subset.X).toarray()
+    if type == "mean":
+        return np.mean(dense, axis=0)
+    return (dense > 0).sum(axis=0) / dense.shape[0]
+
+
 def pseudobulk_X(
     X: anndata.AnnData, condition_name: str, groupby: str, type: str
 ) -> list[pd.DataFrame]:
@@ -336,23 +359,8 @@ def pseudobulk_X(
             # Subset to current groupby
             group_mask = X_sample.obs[groupby] == group_name
             adata_subset = X_sample[group_mask, :]
-            result_dict = {}
-            subset_X = cast(Any, adata_subset.X)
-            if adata_subset.n_obs > 0 and type == "mean":
-                mean_expression = np.mean(subset_X.toarray(), axis=0)
-                for i, gene in enumerate(gene_names):
-                    result_dict[gene] = mean_expression[i]
-            elif adata_subset.n_obs > 0 and type == "fraction":
-                ct_df = subset_X.toarray()
-                cell_fraction = (ct_df > 0).sum(axis=0) / ct_df.shape[0]
-                for i, gene in enumerate(gene_names):
-                    result_dict[gene] = cell_fraction[i]
-            else:
-                # Set zero expression for missing combinations
-                for gene in gene_names:
-                    result_dict[gene] = 0.0
-
-            results.append(result_dict)
+            profile = _group_profile(adata_subset, type)
+            results.append(dict(zip(gene_names, profile, strict=True)))
 
         # Dataframe with genes as rows and groupby as columns
         results_df = pd.DataFrame(results, columns=gene_names, index=groupby_names)
