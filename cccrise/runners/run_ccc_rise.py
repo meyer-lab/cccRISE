@@ -7,11 +7,12 @@ decomposition of the interaction tensor at ``--cp-rank``, and serializes the
 factor model to NetCDF alongside a provenance sidecar. The ``.nc`` is written in
 the format the figure modules read via `factors.load_factors_to_anndata`.
 
-The ``.nc`` also stores the per-cell RISE projections (at
-`DatasetSpec.cell_dtype`) and a PaCMAP embedding, so `run_significance` can
-load this fit (``--reference-source``, `utils.load_rise_reference`) instead of
-refitting RISE, and the Shiny explorer can read it directly (``--no-embedding``
-skips the PaCMAP fit for cohorts where it is too slow).
+`run_significance` loads this fit (``--reference-source``,
+`utils.load_rise_reference`) instead of refitting RISE; per-cell projections
+are not stored but recomputed from the RISE factors and the raw data
+(`factors.compute_cell_projections`). The ``.nc`` does store a PaCMAP
+embedding of them (``--no-embedding`` skips the PaCMAP fit for cohorts where
+it is too slow).
 
 The sidecar's ``rank_selection`` block records which sweep justifies each chosen
 rank -- the sweep tables written by `run_rise_rank` / `run_cpd_rank`, plus a
@@ -177,8 +178,6 @@ def run_pipeline(
         adata,
         fit,
         spec.condition_column,
-        obs_columns=spec.cell_obs_columns(),
-        dtype=spec.cell_dtype,
         attrs={
             "dataset_name": spec.key,
             "dataset_label": spec.label,

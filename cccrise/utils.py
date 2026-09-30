@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 
-from .factors import load_factors_netcdf
+from .factors import compute_cell_projections, load_factors_netcdf
 from .import_data import add_cond_idxs
 
 
@@ -276,18 +276,18 @@ def load_rise_reference(
     instead of fitting PARAFAC2.
 
     Mimics `parafac2.store_pf2`'s effect on `adata` (`Pf2_weights`/`Pf2_A`/
-    `Pf2_B` in `.uns`, `Pf2_C` in `.varm`, `.obsm["projections"]`) using the
-    file's stored per-cell projections, so downstream code that expects a
-    RISE-fit AnnData works unchanged.
+    `Pf2_B` in `.uns`, `Pf2_C` in `.varm`, `.obsm["projections"]`), with the
+    per-cell projections recomputed by `factors.compute_cell_projections`, so
+    downstream code that expects a RISE-fit AnnData works unchanged.
 
     Parameters
     ----------
     reference_path : str | Path
-        A factors.nc containing `cell_projections` (see
-        `factors.save_ccc_rise_fit`).
+        A factors.nc holding a RISE fit (see `factors.save_ccc_rise_fit`).
     adata : anndata.AnnData
-        The raw dataset the reference was fit on; its cells must match the
-        reference's exactly, in the same order (checked, not assumed).
+        The raw dataset the reference was fit on; its cells and genes must
+        match the reference's exactly, in the same order (checked, not
+        assumed).
     condition_column : str
         Column in `adata.obs` holding the condition/patient identity.
 
@@ -297,34 +297,13 @@ def load_rise_reference(
         `adata`, mutated in place and returned.
     """
     ds = load_factors_netcdf(reference_path)
-    if "cell_projections" not in ds:
-        raise ValueError(
-            f"{reference_path} has no stored cell_projections; regenerate it "
-            "before using it as a reference."
-        )
-    if ds["cell_projections"].dtype == np.float16:
-        warnings.warn(
-            f"{reference_path} stores float16 projections; the reused RISE fit "
-            "is only approximately the original.",
-            stacklevel=2,
-        )
-
-    for axis, adata_ids in (("cell", adata.obs_names), ("gene", adata.var_names)):
-        if not np.array_equal(
-            ds.coords[axis].values.astype(str), np.asarray(adata_ids).astype(str)
-        ):
-            raise ValueError(
-                f"{reference_path}'s {axis}s do not match `adata`'s; reusing a "
-                "RISE fit requires the identical, identically-ordered dataset."
-            )
-
     adata = add_cond_idxs(adata, condition_column)
+    adata.obsm["projections"] = compute_cell_projections(ds, adata)
     adata.uns["Pf2_weights"] = ds["pf2_weights"].values
     adata.uns["Pf2_A"] = ds["pf2_A"].values
     adata.uns["Pf2_B"] = ds["pf2_B"].values
     adata.varm["Pf2_C"] = ds["pf2_C"].values
     adata.uns["r2x_pf2"] = float(ds.attrs.get("r2x_pf2", 0.0))
-    adata.obsm["projections"] = ds["cell_projections"].values.astype(np.float32)
     return adata
 
 

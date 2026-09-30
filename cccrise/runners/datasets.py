@@ -86,10 +86,6 @@ class DatasetSpec:
     #: RISE backend every runner fits on ('cpu', 'cupy', 'mlx'); None
     #: auto-detects, for cohorts too large for the GPU.
     backend: str | None = None
-    #: Storage precision of per-cell arrays in written factors files
-    #: (`factors.save_ccc_rise_fit`); "float16" halves them for large
-    #: cohorts, at the cost of an only-approximate RISE reference.
-    cell_dtype: str = "float32"
     notes: str = ""
 
     @property
@@ -128,20 +124,6 @@ class DatasetSpec:
 
     def significance_differential_filename(self) -> str:
         return f"significance_differential_{self.key}.parquet"
-
-    def cell_obs_columns(self) -> list[str]:
-        """`.obs` columns to persist per-cell in the factors file (for the
-        Shiny explorer's per-cell projections)."""
-        return [
-            col
-            for col in (
-                "celltype",
-                self.celltype_column,
-                self.condition_column,
-                self.group_column,
-            )
-            if col
-        ]
 
     def nichenet_scores_filename(self) -> str:
         return f"nichenet_scores_{self.key}.parquet"

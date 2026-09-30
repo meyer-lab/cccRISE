@@ -20,6 +20,7 @@ from cccrise.ccc_rise import (
     run_ccc_rise_workflow,
     standardize_cc_pf2,
 )
+from cccrise.factors import load_factors_to_anndata, save_ccc_rise_fit
 from cccrise.import_data import add_cond_idxs
 from cccrise.runners.datasets import COMMUNICATION_SCORES
 from cccrise.tensor import calculate_fms_rise
@@ -643,3 +644,53 @@ def test_calculate_fms_rise():
     # Self-comparison must have perfect FMS = 1.0
     score = calculate_fms_rise(adata1, adata2)
     np.testing.assert_allclose(score, 1.0, atol=1e-5)
+
+
+@pytest.mark.parametrize("compress", [False, True])
+def test_saved_fit_recomputes_its_own_projections(tmp_path, compress):
+    """Projections recomputed from a saved fit and the raw data match the
+    ones the fit itself produced."""
+    adata, lr_pairs = _synthetic_adata(n_cells=160, n_cond=4, n_pairs=30, seed=3)
+    fit = run_ccc_rise_workflow(
+        adata.copy(),
+        rise_rank=3,
+        lr_pairs=lr_pairs,
+        cp_rank=2,
+        random_state=0,
+        backend="cpu",
+        compress=compress,
+        **FIT_KW,
+    )
+    fit["adata"].obsm["PaCMAP"] = np.random.default_rng(0).normal(size=(160, 2))
+    path = tmp_path / "fit.nc"
+    save_ccc_rise_fit(path, fit["adata"], fit, "sample")
+
+    out = load_factors_to_anndata(path, adata=adata)
+    recomputed, original = out.obsm, fit["adata"].obsm
+    for key in ("projections", "sc_B", "rc_C"):
+        np.testing.assert_allclose(
+            np.asarray(recomputed[key]),
+            np.asarray(original[key]),
+            atol=1e-5,
+            err_msg=key,
+        )
+    # PaCMAP is stored, at float16, rather than recomputed
+    np.testing.assert_allclose(
+        np.asarray(recomputed["PaCMAP"]), np.asarray(original["PaCMAP"]), atol=5e-3
+    )
+
+
+def test_projection_recompute_rejects_other_data(tmp_path):
+    """The saved fingerprints catch reordered cells and changed centering."""
+    adata, lr_pairs = _synthetic_adata(n_cells=60, n_cond=2, n_pairs=5)
+    fit = run_ccc_rise_workflow(
+        adata.copy(), 2, lr_pairs, cp_rank=1, backend="cpu", **FIT_KW
+    )
+    path = tmp_path / "fit.nc"
+    save_ccc_rise_fit(path, fit["adata"], fit, "sample")
+
+    shifted = adata.copy()
+    shifted.var["means"] *= 1.01
+    for other in (adata[::-1].copy(), shifted):
+        with pytest.raises(ValueError, match="do not match|differ"):
+            load_factors_to_anndata(path, adata=other)

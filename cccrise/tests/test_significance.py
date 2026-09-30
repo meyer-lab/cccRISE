@@ -51,7 +51,7 @@ def write_rise_reference(
         "filtered_lr_pairs": ["placeholder"],
         "r2x_cp": 0.0,
     }
-    save_ccc_rise_fit(path, fit_adata, placeholder_cp, condition_column, [])
+    save_ccc_rise_fit(path, fit_adata, placeholder_cp, condition_column)
     return fit_adata
 
 

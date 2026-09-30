@@ -120,8 +120,6 @@ def _save_factors(
         rise_adata,
         cp_fit,
         spec.condition_column,
-        obs_columns=spec.cell_obs_columns(),
-        dtype=spec.cell_dtype,
         attrs={
             "dataset_name": spec.key,
             "dataset_label": spec.label,

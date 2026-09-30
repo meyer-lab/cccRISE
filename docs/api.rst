@@ -85,17 +85,22 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 
    Save an xarray Dataset of factors to a compact NetCDF file (< 100 KB - 2 MB).
 
-.. py:function:: save_ccc_rise_fit(path: str | Path, adata: anndata.AnnData, cp_fit: dict, condition_column: str, obs_columns: list[str], dtype: str = "float32", attrs: dict | None = None)
+.. py:function:: save_ccc_rise_fit(path: str | Path, adata: anndata.AnnData, cp_fit: dict, condition_column: str, attrs: dict | None = None)
    :module: cccrise.factors
 
-   Write a CCC-RISE fit (a RISE-fit AnnData and a ``fit_ccc_cp`` / ``run_ccc_rise_workflow`` result) as the factors file ``load_factors_to_anndata`` reads, including per-cell projections stored at ``dtype`` (``"float32"`` or ``"float16"``).
+   Write a CCC-RISE fit (a RISE-fit AnnData and a ``fit_ccc_cp`` / ``run_ccc_rise_workflow`` result) as the factors file ``load_factors_to_anndata`` reads. Per-cell projections are not stored (``compute_cell_projections`` recomputes them); the file fingerprints the fit's cells and gene centering, and stores the PaCMAP embedding (float16) when present.
+
+.. py:function:: compute_cell_projections(factors_ds: xr.Dataset, adata: anndata.AnnData)
+   :module: cccrise.factors
+
+   Recompute the per-cell RISE projections of ``adata`` (the fit's own data, checked against the file's fingerprints) under a stored RISE fit, without densifying ``adata.X``.
 
 .. py:function:: load_factors_netcdf(filepath: str | Path)
    :module: cccrise.factors
 
    Load an xarray Dataset of factors from a NetCDF file.
 
-.. py:function:: load_factors_to_anndata(factors_ds: xr.Dataset | str | Path, adata: anndata.AnnData | None = None, condition_column: str | None = None, do_embedding: bool = False, random_state: int | None = 0)
+.. py:function:: load_factors_to_anndata(factors_ds: xr.Dataset | str | Path, adata: anndata.AnnData | None = None, condition_column: str | None = None, do_embedding: bool = False, random_state: int | None = 42)
    :module: cccrise.factors
 
    Populate or construct an AnnData object with decomposition factors from an xarray Dataset.

@@ -3,8 +3,9 @@ Module for saving, loading, and projecting cell-cell communication factors
 using xarray NetCDF objects.
 """
 
+import hashlib
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import anndata
 import numpy as np
@@ -12,11 +13,13 @@ import pandas as pd
 import xarray as xr
 
 from .ccc_rise import add_cell_embeddings
-from .import_data import add_cond_idxs, condition_matrices
+from .import_data import add_cond_idxs
 
 DATA_DIR = Path(__file__).parent / "data"
 COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
 ALAD_FACTORS_PATH = DATA_DIR / "bal_alad_factors.nc"
+#: Factors-file attribute fingerprinting the fit's cells (see `save_ccc_rise_fit`).
+CELL_IDS_ATTR = "cell_ids_sha256"
 
 
 def _resolve_lr_symbols(
@@ -167,68 +170,10 @@ def factors_to_xarray(
     return xr.Dataset(data_vars=data_vars, coords=coords, attrs=ds_attrs)
 
 
-def _add_cell_projections(
-    ds: xr.Dataset,
-    adata: anndata.AnnData,
-    obs_columns: list[str],
-    dtype: str = "float32",
-) -> xr.Dataset:
-    """
-    Attach per-cell RISE projections, PaCMAP coordinates (if present), and
-    selected `.obs` columns to a factors Dataset -- the one way a factors
-    file stores per-cell data.
-
-    The stored projections let the file serve as a RISE reference
-    (`utils.load_rise_reference`) and drive per-cell views (e.g. the Shiny
-    explorer) without the raw single-cell data; `load_factors_to_anndata`
-    recomputes the CP sender/receiver loadings from them. `adata` must carry
-    `obsm["projections"]` (as `ccc_rise.fit_rise` stores it).
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset produced by `factors_to_xarray`.
-    adata : anndata.AnnData
-        AnnData with per-cell projections computed.
-    obs_columns : list[str]
-        Columns of `adata.obs` to persist per-cell (e.g. cell type,
-        condition/sample). Missing columns are skipped.
-    dtype : {"float32", "float16"}, default="float32"
-        Storage precision of the per-cell arrays. float16 halves their size
-        for large cohorts, at the cost of an only-approximate RISE reference.
-
-    Returns
-    -------
-    xr.Dataset
-        A copy of `ds` augmented with per-cell data.
-    """
-    assert dtype in ("float32", "float16"), dtype
-    ds = ds.copy()
-    ds = ds.assign_coords(cell=np.asarray(adata.obs_names))
-    ds["cell_projections"] = (
-        ["cell", "rise_component"],
-        np.asarray(adata.obsm["projections"], dtype=dtype),
-    )
-
-    if "PaCMAP" in adata.obsm:
-        ds = ds.assign_coords(pacmap_dim=np.array([1, 2]))
-        ds["cell_pacmap"] = (
-            ["cell", "pacmap_dim"],
-            np.asarray(adata.obsm["PaCMAP"], dtype=dtype),
-        )
-
-    for col in obs_columns:
-        if col not in adata.obs:
-            continue
-        ds[f"obs_{col}"] = (["cell"], adata.obs[col].astype(str).to_numpy())
-
-    return ds
-
-
 def save_factors_netcdf(ds: xr.Dataset, filepath: str | Path) -> None:
     """Save an xarray Dataset of factors to a NetCDF file, ensuring float
-    arrays are float32, except for per-cell arrays that
-    `_add_cell_projections` was asked to store as float16.
+    arrays are float32, except for float16 ones (the PaCMAP coordinates
+    `save_ccc_rise_fit` stores).
 
     float16 isn't part of the classic netCDF-4 data model, so if any
     variable was quantized to float16 the file is written via the
@@ -256,7 +201,7 @@ def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
     """Load an xarray Dataset of factors from a NetCDF file.
 
     Always uses the `h5netcdf` engine: it reads both plain netCDF-4 files
-    and ones written with float16 per-cell arrays (see
+    and ones written with float16 arrays (see
     `save_factors_netcdf`). The default `netcdf4` engine can't represent
     float16 and, worse, doesn't fail cleanly when asked to open such a
     file, so it's avoided entirely here rather than used as a fallback.
@@ -273,12 +218,16 @@ def save_ccc_rise_fit(
     adata: anndata.AnnData,
     cp_fit: dict[str, Any],
     condition_column: str,
-    obs_columns: list[str],
-    dtype: str = "float32",
     attrs: dict[str, Any] | None = None,
 ) -> None:
     """Write a CCC-RISE fit as a factors file -- the file
     `load_factors_to_anndata` reads.
+
+    Per-cell projections are not stored: `compute_cell_projections`
+    recomputes them from the RISE factors and the raw data, which the file
+    fingerprints (`CELL_IDS_ATTR`, `gene_means`) so a later recompute can
+    confirm it has the fit's data. PaCMAP coordinates, which cannot be
+    recomputed reproducibly, are stored (float16) when `adata` has them.
 
     Parameters
     ----------
@@ -290,9 +239,6 @@ def save_ccc_rise_fit(
         A `ccc_rise.fit_ccc_cp` / `run_ccc_rise_workflow` result on `adata`.
     condition_column : str
         Column in `adata.obs` defining the conditions.
-    obs_columns, dtype
-        Per-cell `.obs` columns and storage precision; see
-        `_add_cell_projections`.
     attrs : dict, optional
         Extra file attributes (e.g. dataset name, `complex_sep`).
     """
@@ -311,31 +257,118 @@ def save_ccc_rise_fit(
         pf2_weights=adata.uns["Pf2_weights"],
         r2x_cp=cp_fit["r2x_cp"],
         r2x_pf2=adata.uns["r2x_pf2"],
-        attrs={"condition_key": condition_column} | (attrs or {}),
+        attrs={
+            "condition_key": condition_column,
+            CELL_IDS_ATTR: _cell_ids_digest(adata),
+        }
+        | (attrs or {}),
     )
-    save_factors_netcdf(_add_cell_projections(ds, adata, obs_columns, dtype), path)
-
-
-def _add_stored_cell_data(
-    out: anndata.AnnData,
-    factors_ds: xr.Dataset,
-    B_cp: np.ndarray,
-    C_cp: np.ndarray,
-    do_embedding: bool,
-    random_state: int | None,
-) -> anndata.AnnData:
-    """`obsm` projections, sender/receiver loadings and PaCMAP from the
-    per-cell arrays `_add_cell_projections` stored."""
-    out.obsm["projections"] = np.asarray(
-        factors_ds["cell_projections"].values, dtype=np.float32
-    )
-    out = add_cell_embeddings(
-        out, B_cp, C_cp, do_embedding and "cell_pacmap" not in factors_ds, random_state
-    )
-    if "cell_pacmap" in factors_ds:
-        out.obsm["PaCMAP"] = np.asarray(
-            factors_ds["cell_pacmap"].values, dtype=np.float32
+    ds["gene_means"] = (["gene"], _gene_means(adata))
+    if "PaCMAP" in adata.obsm:
+        ds["cell_pacmap"] = (
+            ["cell", "pacmap_dim"],
+            np.asarray(adata.obsm["PaCMAP"], dtype=np.float16),
         )
+    save_factors_netcdf(ds, path)
+
+
+def _cell_ids_digest(adata: anndata.AnnData) -> str:
+    """SHA-256 of `adata`'s cell IDs, in order."""
+    return hashlib.sha256("\n".join(map(str, adata.obs_names)).encode()).hexdigest()
+
+
+def _gene_means(adata: anndata.AnnData) -> np.ndarray:
+    """The per-gene centering `condition_matrices` and `parafac2` apply."""
+    if "means" in adata.var:
+        return adata.var["means"].to_numpy()
+    return np.zeros(adata.n_vars)
+
+
+def _ids_match(factors_ds: xr.Dataset, coord: str, ids) -> bool:
+    return np.array_equal(
+        factors_ds.coords[coord].values.astype(str), np.asarray(ids).astype(str)
+    )
+
+
+def _check_fit_inputs(factors_ds: xr.Dataset, adata: anndata.AnnData) -> None:
+    """Raise unless `adata` has the cells, genes and gene centering the
+    stored RISE fit was made on. Files predating the fingerprints are
+    checked against whatever cell/gene IDs they store."""
+    if "gene" in factors_ds.coords and not _ids_match(
+        factors_ds, "gene", adata.var_names
+    ):
+        raise ValueError("`adata`'s genes do not match the RISE fit's.")
+    digest = factors_ds.attrs.get(CELL_IDS_ATTR)
+    cells_match = (
+        digest == _cell_ids_digest(adata)
+        if digest is not None
+        else "cell" not in factors_ds.coords
+        or _ids_match(factors_ds, "cell", adata.obs_names)
+    )
+    if not cells_match:
+        raise ValueError("`adata`'s cells do not match the RISE fit's (IDs or order).")
+    if "gene_means" in factors_ds and not np.allclose(
+        factors_ds["gene_means"].values, _gene_means(adata), rtol=1e-5, atol=1e-7
+    ):
+        raise ValueError(
+            "`adata`'s gene means differ from the RISE fit's; the raw data or "
+            "its preprocessing changed since the fit."
+        )
+
+
+def compute_cell_projections(
+    factors_ds: xr.Dataset, adata: anndata.AnnData
+) -> np.ndarray:
+    """Per-cell RISE projections of `adata` under the fit stored in
+    `factors_ds`.
+
+    For each condition k this is the projection step `parafac2` ends a fit
+    with: the polar factor of the centered X_k @ C diag(w * A_k) B^T, so it
+    reproduces the fit's own projections. Works on sparse `adata.X` without
+    densifying it (the centering is applied to the rank-sized product).
+
+    Parameters
+    ----------
+    factors_ds : xr.Dataset
+        A factors file holding `pf2_A`/`pf2_B`/`pf2_C` (and `pf2_weights`,
+        taken as ones if absent).
+    adata : anndata.AnnData
+        The data the fit was made on, with `obs["condition_unique_idxs"]`
+        (`add_cond_idxs`); checked against the file's fingerprints.
+
+    Returns
+    -------
+    np.ndarray
+        (n_cells, rise_rank) float32 projections, in `adata`'s cell order.
+    """
+    _check_fit_inputs(factors_ds, adata)
+    A, B, C = (factors_ds[f"pf2_{m}"].values.astype(np.float64) for m in "ABC")
+    weights = (
+        factors_ds["pf2_weights"].values.astype(np.float64)
+        if "pf2_weights" in factors_ds
+        else np.ones(A.shape[1])
+    )
+    means = _gene_means(adata)
+    cond_idx = adata.obs["condition_unique_idxs"].to_numpy().astype(int)
+    assert cond_idx.max() + 1 == A.shape[0], "`adata` has a different condition count"
+
+    projections = np.zeros((adata.n_obs, A.shape[1]), dtype=np.float32)
+    for k in range(A.shape[0]):
+        rows = cond_idx == k
+        W = (C * (weights * A[k])) @ B.T
+        M = np.asarray(cast(Any, adata.X)[rows] @ W) - means @ W
+        U, _, Vt = np.linalg.svd(M, full_matrices=False)
+        projections[rows] = U @ Vt
+    return projections
+
+
+def _add_cp_factors(out: anndata.AnnData, factors_ds: xr.Dataset) -> anndata.AnnData:
+    """CP factors, weights, LR-pair labels and R2X into `out.uns`."""
+    for key in "ABCD":
+        out.uns[key] = factors_ds[f"cp_{key}"].values
+    out.uns["weights"] = factors_ds["cp_weights"].values
+    out.uns["lr_pairs"] = factors_ds.coords["lr_pair"].values
+    out.uns["r2x"] = float(factors_ds.attrs.get("r2x_cp", 0.0))
     return out
 
 
@@ -349,16 +382,14 @@ def load_factors_to_anndata(
     """
     Populate or construct an AnnData object with decomposition factors from an xarray Dataset.
 
-    If `adata` is provided (e.g. raw/filtered single-cell data), single-cell factor
-    projections (`obsm["projections"]`), sender loadings (`obsm["sc_B"]`), receiver
-    loadings (`obsm["rc_C"]`), and optional 2D PaCMAP coordinates are computed.
+    If `adata` is provided (the single-cell data the fit was made on),
+    per-cell RISE projections (`obsm["projections"]`, recomputed by
+    `compute_cell_projections`), sender loadings (`obsm["sc_B"]`), receiver
+    loadings (`obsm["rc_C"]`), and 2D PaCMAP coordinates (stored, or fit when
+    `do_embedding`) are added.
 
-    If `adata` is None and `factors_ds` was augmented with `_add_cell_projections`,
-    reconstructs a full per-cell AnnData directly from the stored per-cell arrays
-    (no raw single-cell data needed).
-
-    If `adata` is None and no per-cell data is stored, creates a lightweight AnnData
-    holding factor matrices in `.uns` and condition annotations in `.obs`.
+    If `adata` is None, creates a lightweight AnnData holding factor matrices
+    in `.uns` and condition annotations in `.obs`.
 
     Parameters
     ----------
@@ -369,7 +400,7 @@ def load_factors_to_anndata(
     condition_column : str, optional
         Condition/sample column in `adata.obs`. If None, uses `factors_ds.attrs.get("condition_key")`.
     do_embedding : bool, default=False
-        Whether to compute PaCMAP 2D embedding on single-cell projections.
+        Whether to fit a PaCMAP 2D embedding when the file stores none.
     random_state : int, optional
         Random seed for PaCMAP.
 
@@ -383,119 +414,39 @@ def load_factors_to_anndata(
 
     cond_key = condition_column or factors_ds.attrs.get("condition_key", "sample")
 
-    A_cp = factors_ds["cp_A"].values
-    B_cp = factors_ds["cp_B"].values
-    C_cp = factors_ds["cp_C"].values
-    D_cp = factors_ds["cp_D"].values
-    weights_cp = factors_ds["cp_weights"].values
-    lr_pairs = factors_ds.coords["lr_pair"].values
-    r2x_cp = float(factors_ds.attrs.get("r2x_cp", 0.0))
-
-    if (
-        adata is None
-        and "cell" in factors_ds.coords
-        and "cell_projections" in factors_ds
-    ):
-        # Reconstruct a full per-cell AnnData from previously-saved per-cell arrays
-        obs_data = {
-            str(col)[len("obs_") :]: factors_ds[col].values
-            for col in factors_ds.data_vars
-            if str(col).startswith("obs_")
-        }
-        cell_ids = factors_ds.coords["cell"].values
-        obs_df = pd.DataFrame(obs_data, index=cell_ids)
-        out = anndata.AnnData(obs=obs_df, shape=(len(cell_ids), 0))
-        out.uns["A"] = A_cp
-        out.uns["B"] = B_cp
-        out.uns["C"] = C_cp
-        out.uns["D"] = D_cp
-        out.uns["weights"] = weights_cp
-        out.uns["lr_pairs"] = lr_pairs
-        out.uns["r2x"] = r2x_cp
-
-        out = _add_stored_cell_data(
-            out, factors_ds, B_cp, C_cp, do_embedding, random_state
-        )
-
-        if cond_key in out.obs:
-            out = add_cond_idxs(out, cond_key)
-
-        return out
-
     if adata is None:
-        # Construct lightweight factor container AnnData
-        obs_df = pd.DataFrame(
-            {cond_key: factors_ds.coords["condition"].values},
-            index=factors_ds.coords["condition"].values,
-        )
+        conditions = factors_ds.coords["condition"].values
         out = anndata.AnnData(
-            obs=obs_df,
-            shape=(len(factors_ds.coords["condition"]), 0),
+            obs=pd.DataFrame({cond_key: conditions}, index=conditions),
+            shape=(len(conditions), 0),
         )
-        out.uns["A"] = A_cp
-        out.uns["B"] = B_cp
-        out.uns["C"] = C_cp
-        out.uns["D"] = D_cp
-        out.uns["weights"] = weights_cp
-        out.uns["lr_pairs"] = lr_pairs
-        out.uns["r2x"] = r2x_cp
+        return _add_cp_factors(out, factors_ds)
+
+    out = add_cond_idxs(_add_cp_factors(adata.copy(), factors_ds), cond_key)
+    if "pf2_C" not in factors_ds:
         return out
 
-    out = adata.copy()
-    out.uns["A"] = A_cp
-    out.uns["B"] = B_cp
-    out.uns["C"] = C_cp
-    out.uns["D"] = D_cp
-    out.uns["weights"] = weights_cp
-    out.uns["lr_pairs"] = lr_pairs
-    out.uns["r2x"] = r2x_cp
+    # Subset `adata` to the fit's genes when it holds them all
+    if "gene" in factors_ds.coords:
+        ds_genes = factors_ds.coords["gene"].values
+        if not np.array_equal(out.var_names, ds_genes) and set(ds_genes) <= set(
+            out.var_names
+        ):
+            out = out[:, ds_genes].copy()
 
-    # Ensure condition indexing
-    out = add_cond_idxs(out, cond_key)
-
-    # Use stored cell projections if already present in factors dataset
-    if "cell_projections" in factors_ds:
-        return _add_stored_cell_data(
-            out, factors_ds, B_cp, C_cp, do_embedding, random_state
+    out.obsm["projections"] = compute_cell_projections(factors_ds, out)
+    has_pacmap = "cell_pacmap" in factors_ds
+    out = add_cell_embeddings(
+        out,
+        factors_ds["cp_B"].values,
+        factors_ds["cp_C"].values,
+        do_embedding and not has_pacmap,
+        random_state,
+    )
+    if has_pacmap:
+        out.obsm["PaCMAP"] = np.asarray(
+            factors_ds["cell_pacmap"].values, dtype=np.float32
         )
-
-    # Compute cell projections if PARAFAC2 factors are present
-    rise_rank = int(factors_ds.attrs.get("rise_rank", B_cp.shape[0]))
-    if "pf2_A" in factors_ds and "pf2_B" in factors_ds and "pf2_C" in factors_ds:
-        A_pf2 = factors_ds["pf2_A"].values
-        B_pf2 = factors_ds["pf2_B"].values
-        C_pf2 = factors_ds["pf2_C"].values
-
-        # Align genes between adata and pf2_C if gene coordinates exist
-        if "gene" in factors_ds.coords:
-            ds_genes = factors_ds.coords["gene"].values
-            if len(ds_genes) == C_pf2.shape[0] and (
-                out.n_vars != len(ds_genes)
-                or not np.array_equal(out.var_names, ds_genes)
-            ):
-                matching_genes = [g for g in ds_genes if g in out.var_names]
-                if len(matching_genes) == len(ds_genes):
-                    out = out[:, ds_genes].copy()
-
-        # Project matrices per condition
-        X_list = condition_matrices(out)
-        lhs_all = np.einsum("ik,gk,rk->igr", A_pf2, C_pf2, B_pf2, optimize=True)
-
-        sg_index = out.obs["condition_unique_idxs"].values
-        out.obsm["projections"] = np.zeros((out.shape[0], rise_rank))
-
-        for i, mat in enumerate(X_list):
-            M = mat @ lhs_all[i]
-            G = M.T @ M
-            _, V = np.linalg.eigh(G)
-            MV = M @ V
-            col_norms = np.linalg.norm(MV, axis=0, keepdims=True)
-            safe_norms = np.where(col_norms > 1e-10, col_norms, 1.0)
-            proj = (MV / safe_norms) @ V.T
-            out.obsm["projections"][sg_index == i, :] = proj
-
-        out = add_cell_embeddings(out, B_cp, C_cp, do_embedding, random_state)
-
     return out
 
 

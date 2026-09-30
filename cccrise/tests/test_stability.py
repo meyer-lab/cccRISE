@@ -196,7 +196,7 @@ def test_relabel_workflow_fit_restores_the_core_numbering(tmp_path):
         cp_tol=CP_TOL,
     )
     core = tmp_path / "core.nc"
-    save_ccc_rise_fit(core, fit["adata"], fit, "sample", [])
+    save_ccc_rise_fit(core, fit["adata"], fit, "sample")
     adata = fit["adata"]
     expected = {
         "Pf2_A": adata.uns["Pf2_A"].copy(),

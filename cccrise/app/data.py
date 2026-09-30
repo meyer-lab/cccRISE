@@ -44,10 +44,8 @@ DATASETS: dict[str, DatasetSpec] = {
         key="covid",
         label="COVID-19 BALF",
         factors_path=COVID19_FACTORS_PATH,
-        # No embedding: the app only ever reads raw cells for gene-level
-        # heatmaps and the boot-time logreg fit, neither of which touches
-        # PaCMAP coordinates (those come from the factors file instead, via
-        # `load_dataset`, when present).
+        # No embedding: PaCMAP coordinates come from the factors file when
+        # it stores them.
         raw_loader=lambda: get_covid_data(project_cells=True, do_embedding=False),
         celltype_col="celltype",
         condition_col="sample",
@@ -74,24 +72,23 @@ class LoadedDataset:
     adata: anndata.AnnData
     spec: DatasetSpec
     #: Per-cell sender/receiver weights (`obsm["sc_B"]`/`obsm["rc_C"]`) are
-    #: available (recomputed from the stored projections) -- drives the Component Explorer's per-cell views.
+    #: available -- recomputed from the raw data, so absent without it.
+    #: Drives the Component Explorer's per-cell views.
     has_projections: bool
-    #: 2D PaCMAP coordinates (`obsm["PaCMAP"]`) are stored -- drives the Cell
-    #: Projections tab specifically. `factors.save_ccc_rise_fit` writes PaCMAP
-    #: alongside the projections whenever it was fit, but a factors file built another way (e.g. a fresh
-    #: factorization run through a different pipeline) could have one
-    #: without the other, so they're tracked separately rather than assuming
-    #: PaCMAP whenever per-cell weights are present.
+    #: 2D PaCMAP coordinates (`obsm["PaCMAP"]`) are available -- drives the
+    #: Cell Projections tab. Stored in the factors file only when the fit ran
+    #: PaCMAP, so tracked separately from `has_projections`.
     has_pacmap: bool
 
 
 @lru_cache(maxsize=4)
 def load_dataset(key: str) -> LoadedDataset:
-    """Load a dataset's factor matrices, plus per-cell projections/PaCMAP if
-    the `.nc` file was written by `factors.save_ccc_rise_fit`. This reads
-    only the (small) factors file, not the raw single-cell data."""
+    """Load a dataset's factor matrices, plus per-cell projections, sender/
+    receiver weights and PaCMAP, which need the raw single-cell data
+    (`load_raw_dataset`) to recompute; without it, only the factor matrices."""
     spec = DATASETS[key]
-    adata = load_factors_to_anndata(spec.factors_path)
+    raw = load_raw_dataset(key).adata
+    adata = raw if raw is not None else load_factors_to_anndata(spec.factors_path)
     has_projections = "sc_B" in adata.obsm
     has_pacmap = "PaCMAP" in adata.obsm
     return LoadedDataset(
@@ -126,10 +123,10 @@ class RawDataset:
 def load_raw_dataset(key: str) -> RawDataset:
     """Load raw single-cell expression for a dataset, cached for the life of
     the process. Needed for gene-level interaction heatmaps (actual
-    expression values) and the boot-time logistic regression fit (which
-    needs real per-cell counts for its read-depth correction), not for the
-    per-cell projections/PaCMAP already stored in the factors file. Falls
-    back gracefully if the raw file isn't available locally.
+    expression values), the boot-time logistic regression fit (which
+    needs real per-cell counts for its read-depth correction), and the
+    per-cell projections `load_dataset` recomputes. Falls back gracefully if
+    the raw file isn't available locally.
 
     The app's boot-time logreg fit (see `app.py`) calls this for every
     dataset up front, so in practice it's rarely "lazy" in a running
