@@ -1,7 +1,8 @@
 """
 Functions shared across manuscript figures: data loading, panel layout, the
 build entry point, and plotting functions used by more than one figure (e.g.
-the same rank-selection panels for ALAD and IBD).
+the same rank-selection panels for ALAD and IBD). Plotting code used by a
+single panel lives in that panel's module instead.
 
 Each figure lives in its own `figures/figure<N>/` package: one module per
 panel, each exposing `plot(fig)` (draws into a Figure or SubFigure) and
@@ -24,7 +25,7 @@ import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure, SubFigure
-from matplotlib.patches import Patch, Rectangle
+from matplotlib.patches import Rectangle
 from matplotlib.ticker import NullLocator
 
 matplotlib.use("AGG")
@@ -39,10 +40,9 @@ from ..factors import (
     load_or_compute_dataframe,
 )
 from ..import_data import import_alad, import_balf_covid
-from ..runners.datasets import DATASETS, VALIDATION_DIR
+from ..runners.datasets import DATASETS
 from ..runners.provenance import read_metadata
 from ..utils import correct_conditions
-from ..validation.component_stability import metric_interval
 from . import style
 
 __all__ = [
@@ -275,25 +275,6 @@ def reference_line(
     )
 
 
-def significance_legend(ax: plt.Axes, alpha: float = SIG_ALPHA, **kwargs) -> None:
-    """One-row legend for the up / down / not-significant coloring."""
-    handles = [
-        Patch(color=style.COLORS["up"], label="Up"),
-        Patch(color=style.COLORS["down"], label="Down"),
-        Patch(color=style.COLORS["not_significant"], label="n.s."),
-    ]
-    ax.legend(handles=handles, title=f"p < {alpha}", ncols=3, **kwargs)
-
-
-def significance_colors(
-    effect: np.ndarray, p_values: np.ndarray, center: float = 0.0, alpha=SIG_ALPHA
-) -> np.ndarray:
-    """Up / down / not-significant color per entry, by sign of `effect - center`."""
-    direction = np.where(effect > center, style.COLORS["up"], style.COLORS["down"])
-    significant = np.nan_to_num(p_values, nan=1.0) < alpha
-    return np.where(significant, direction, style.COLORS["not_significant"])
-
-
 # --- Rank selection (ALAD Fig 2, IBD Figs 4-5) --------------------------------
 
 
@@ -399,216 +380,6 @@ def plot_core_consistency(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = 
     ax.set_ylim(top=150)
     ax.set_xlabel("CP rank")
     ax.set_ylabel("Core consistency (%)")
-
-
-# --- Permutation significance (ALAD Fig 2, IBD Fig 5) ---------------------------
-
-
-def plot_significance_calibration(
-    lr_table: pd.DataFrame, ax: plt.Axes, cohort_rates: dict[str, float] | None = None
-):
-    """Distribution over LR pairs of the fraction of condition x eigenstate
-    entries significant at p < 0.05, against the 5% expected under the null.
-    `cohort_rates` maps a label (e.g. 'p < 0.05') to its cohort-wide rate."""
-    fractions = lr_table["FractionSignificant_p05"].dropna()
-    x_max = max(0.25, np.ceil(fractions.max() * 20) / 20)
-    sns.histplot(
-        fractions,
-        kde=True,
-        ax=ax,
-        color=style.COLORS["emphasis"],
-        bins=np.linspace(0, x_max, 26),
-        stat="density",
-        alpha=0.4,
-        edgecolor="white",
-        linewidth=style.LINE_WIDTH_THIN,
-    )
-    reference_line(ax, SIG_ALPHA, horizontal=False, label="Null (5%)")
-    if cohort_rates:
-        ax.text(
-            0.97,
-            0.75,
-            "\n".join(f"{k}: {v:.1%}" for k, v in cohort_rates.items()),
-            transform=ax.transAxes,
-            ha="right",
-            va="top",
-        )
-    ax.set_xlim(0, x_max)
-    ax.set_xlabel("Fraction of entries significant\nper LR pair (p < 0.05)")
-    ax.set_ylabel("Density")
-    ax.legend(loc="upper right")
-
-
-def plot_observed_vs_null(lr_table: pd.DataFrame, ax: plt.Axes):
-    """Mean observed communication score against the permutation-null mean,
-    per LR pair, colored by mean z-score."""
-    observed, null = lr_table["MeanObserved"], lr_table["MeanNull"]
-    z = lr_table["MeanZScore"]
-    limit = np.abs(z).max()
-    points = ax.scatter(
-        observed,
-        null,
-        c=z,
-        cmap=style.CMAPS["diverging"],
-        vmin=-limit,
-        vmax=limit,
-        s=style.POINT_SIZE_BACKGROUND,
-        edgecolors="none",
-        rasterized=True,
-    )
-    ax.figure.colorbar(points, ax=ax, label="Mean z-score", shrink=0.8)
-    low = min(0.0, observed.min(), null.min())
-    high = max(observed.max(), null.max()) * 1.05
-    ax.plot(
-        [low, high],
-        [low, high],
-        color=style.COLORS["reference"],
-        linestyle=style.LINE_STYLE_REFERENCE,
-        linewidth=style.LINE_WIDTH_THIN,
-    )
-    ax.set_xlim(low, high)
-    ax.set_ylim(low, high)
-    ax.set_xlabel("Mean observed score")
-    ax.set_ylabel("Mean permutation-null score")
-
-
-def plot_differential_volcano(
-    differential: pd.DataFrame,
-    ax: plt.Axes,
-    contrast: str = "Group 1 - Group 0",
-    clip_quantile: float = 0.998,
-):
-    """Cross-group communication difference against -log10 p, per sender x
-    receiver eigenstate x LR pair. Differences beyond the `clip_quantile`
-    magnitude are drawn as arrowheads at the axis edge."""
-    diff = differential["ObservedDiff"].to_numpy()
-    p_values = differential["PValue"].to_numpy()
-    neg_log_p = -np.log10(np.maximum(p_values, 1e-6))
-    limit = max(np.quantile(np.abs(diff), clip_quantile) * 1.15, 1e-12)
-    colors = significance_colors(diff, p_values)
-    clipped = np.abs(diff) > limit
-    x = np.clip(diff, -limit, limit)
-
-    for mask, marker, size in (
-        (~clipped, "o", style.POINT_SIZE_BACKGROUND),
-        (clipped & (diff > 0), ">", style.POINT_SIZE),
-        (clipped & (diff < 0), "<", style.POINT_SIZE),
-    ):
-        ax.scatter(
-            x[mask],
-            neg_log_p[mask],
-            c=colors[mask],
-            marker=marker,
-            s=size,
-            edgecolors="none",
-            rasterized=True,
-        )
-    reference_line(ax, -np.log10(SIG_ALPHA))
-    ax.set_xlim(-limit * 1.05, limit * 1.05)
-    ax.set_ylim(0, neg_log_p.max() * 1.7)  # headroom for the legend
-    ax.set_xlabel(f"Communication difference\n({contrast})")
-    ax.set_ylabel(r"$-\log_{10}\ p$")
-    significance_legend(ax, loc="upper center")
-
-
-# --- NicheNet downstream-target validation (ALAD Fig 2, IBD Fig 5) -------------
-
-NICHENET_MODES = {"within_celltype": "Within cell type", "vs_rest": "Vs. rest"}
-
-
-def nichenet_summary(scores: pd.DataFrame) -> pd.DataFrame:
-    """Per receiver mode and component: mean ligand AUROC, ligands scored,
-    and ligands significant against the permutation null."""
-    return scores.groupby(["receiver_mode", "component"]).agg(
-        mean_auroc=("auroc", "mean"),
-        n_scored=("auroc", "count"),
-        n_significant=("p_value", lambda p: int((p < SIG_ALPHA).sum())),
-    )
-
-
-def plot_nichenet_summary(summary: pd.DataFrame, ax: plt.Axes, value: str, ylabel: str):
-    """One bar per component and receiver mode for `value`, a column of
-    `nichenet_summary`; a chance line is drawn for the AUROC."""
-    table = summary[value].unstack("receiver_mode")[list(NICHENET_MODES)]
-    width = 0.8 / table.shape[1]
-    x = np.arange(len(table))
-    for i, (mode, label) in enumerate(NICHENET_MODES.items()):
-        ax.bar(
-            x + (i - (table.shape[1] - 1) / 2) * width,
-            table[mode],
-            width,
-            color=style.COLORS[mode],
-            label=label,
-        )
-    if value == "mean_auroc":
-        reference_line(ax, 0.5)
-        ax.set_ylim(0, 1)
-    ax.set_xticks(x, table.index)
-    ax.set_xlabel("CP component")
-    ax.set_ylabel(ylabel)
-    ax.legend(title="Receivers")
-
-
-def top_nichenet_ligands(scores: pd.DataFrame, n_top: int = 10) -> pd.DataFrame:
-    """Each component's `n_top` highest-loading ligands, one row per ligand (a
-    ligand's AUROC does not depend on its receptor), with a within-component
-    'rank'. Ligands absent from the NicheNet database keep a NaN AUROC."""
-    by_ligand = scores.sort_values("loading", key=np.abs, ascending=False)
-    by_ligand = by_ligand.drop_duplicates(["component", "ligand"])
-    top = by_ligand.groupby("component").head(n_top).copy()
-    top["rank"] = top.groupby("component").cumcount()
-    return top
-
-
-def plot_nichenet_heatmap(scores: pd.DataFrame, ax: plt.Axes, n_top: int = 10):
-    """Ligand-activity AUROC of each component's top-loading ligands: one
-    column per component, rows by loading rank, each cell labeled with its
-    ligand. Significant ligands (permutation null) are bold with a star;
-    ligands absent from the NicheNet database are grey."""
-    top = top_nichenet_ligands(scores, n_top)
-    auroc = top.pivot(index="rank", columns="component", values="auroc")
-    limit = np.nanmax(np.abs(auroc.to_numpy() - 0.5))
-    image = ax.imshow(
-        auroc.to_numpy(),
-        cmap=style.CMAPS["diverging"],
-        vmin=0.5 - limit,
-        vmax=0.5 + limit,
-        aspect="auto",
-    )
-    columns = {component: i for i, component in enumerate(auroc.columns)}
-    for component, rank, ligand, value, p_value in zip(
-        top["component"],
-        top["rank"],
-        top["ligand"],
-        top["auroc"],
-        top["p_value"],
-        strict=True,
-    ):
-        x = columns[component]
-        if np.isnan(value):
-            ax.add_patch(
-                Rectangle(
-                    (x - 0.5, rank - 0.5), 1, 1, color=style.COLORS["not_significant"]
-                )
-            )
-        significant = p_value < SIG_ALPHA
-        ax.text(
-            x,
-            rank,
-            ligand + ("*" if significant else ""),
-            ha="center",
-            va="center",
-            # Complex ligands (e.g. ITGA4&ITGB7) would overflow their cell.
-            fontsize=style.FONT_SIZE_DENSE - (len(ligand) > 9),
-            fontweight="bold" if significant else "normal",
-        )
-    ax.set_xticks(range(auroc.shape[1]), auroc.columns)
-    ax.set_yticks([])
-    ax.set_xlabel("CP component")
-    ax.set_ylabel(f"Top {n_top} ligands by loading")
-    ax.tick_params(axis="x", length=0)
-    ax.spines[:].set_visible(False)
-    ax.figure.colorbar(image, ax=ax, label="Ligand AUROC", shrink=0.8)
 
 
 # --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------
@@ -830,84 +601,6 @@ def _anova_stats(anova_df: pd.DataFrame | None, component: int) -> str:
         return ""
     f, padj, eta = (float(row[c].iloc[0]) for c in ("F", "PAdj", "EtaSquared"))
     return f"$F$ = {f:.2f}\n$p_{{adj}}$ = {padj:.2g}\n$\\eta^2$ = {eta:.2f}"
-
-
-# --- Component stability (ALAD Fig 2 and supplement) -------------------------------------------
-
-
-def load_stability(dataset: str) -> pd.DataFrame:
-    """Replicate-level component stability table from `cccrise-stability`."""
-    return load_runner_output(DATASETS[dataset].stability_filename(), VALIDATION_DIR)
-
-
-def plot_per_component_fms(stability: pd.DataFrame, ax: plt.Axes, stage: str):
-    """Per-component FMS over resampling replicates, one box per axis, for
-    `stage` ('RISE' or 'CPD'). The grey seed-only box is the reproducibility
-    ceiling for that component: the gap below it is what the data
-    perturbation costs beyond reseeding."""
-    rows = stability[stability["Stage"] == stage]
-    axes = [a for a in style.STABILITY_AXIS_COLORS if a in set(rows["Axis"])]
-    sns.boxplot(
-        data=rows[rows["Axis"].isin(axes)],
-        x="Component",
-        y="FMS",
-        hue="Axis",
-        hue_order=axes,
-        palette=style.STABILITY_AXIS_COLORS,
-        fliersize=1,
-        linewidth=style.LINE_WIDTH_THIN,
-        legend=False,
-        ax=ax,
-    )
-    ax.set_ylim(0, 1.02)
-    ax.set_xlabel(f"{stage} component")
-    ax.set_ylabel("Factor match score")
-
-
-def stability_legend(fig: Figure | SubFigure) -> None:
-    """One legend of the resampling-axis colors, above `fig`."""
-    handles = [
-        Patch(color=color, label=axis)
-        for axis, color in style.STABILITY_AXIS_COLORS.items()
-    ]
-    fig.legend(handles=handles, title="Resampled", loc="outside upper center", ncols=4)
-
-
-def plot_aggregate_fms(stability: pd.DataFrame, ax: plt.Axes):
-    """Aggregate FMS (a replicate's mean over components) per stage and
-    axis: median with a 2.5-97.5 percentile band over replicates."""
-    stats = metric_interval(
-        stability[stability["Axis"].isin(style.STABILITY_AXIS_COLORS)],
-        "FMS",
-        by=("Stage", "Axis"),
-        lower=2.5,
-        upper=97.5,
-    )
-    x = np.arange(len(stats))
-    ax.errorbar(
-        x,
-        stats["Median"],
-        yerr=[stats["Median"] - stats["P2.5"], stats["P97.5"] - stats["Median"]],
-        fmt="none",
-        ecolor=style.COLORS["ink"],
-        capsize=2,
-        linewidth=style.LINE_WIDTH_THIN,
-    )
-    ax.scatter(
-        x,
-        stats["Median"],
-        c=[style.STABILITY_AXIS_COLORS[a] for a in stats["Axis"]],
-        s=style.POINT_SIZE_FOREGROUND,
-        zorder=3,
-    )
-    ax.set_xticks(
-        x,
-        [f"{s}: {a}" for s, a in zip(stats["Stage"], stats["Axis"], strict=True)],
-        rotation=30,
-        ha="right",
-    )
-    ax.set_ylim(0, 1.02)
-    ax.set_ylabel("Aggregate FMS")
 
 
 # =============================================================================

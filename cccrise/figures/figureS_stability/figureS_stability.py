@@ -2,6 +2,7 @@
 resampling."""
 
 from .. import common, style
+from . import _shared as S
 from . import cpd_fms, rise_fms
 
 PANELS = {"rise": rise_fms, "cpd": cpd_fms}
@@ -11,5 +12,5 @@ LAYOUT = [["rise"] * 3 + ["cpd"]]
 
 def makeFigure():
     fig = common.compose((style.FIGURE_WIDTH_DOUBLE, 75 * style.MM), LAYOUT, PANELS)
-    common.stability_legend(fig)
+    S.legend(fig)
     return fig
