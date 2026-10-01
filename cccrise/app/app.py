@@ -105,11 +105,15 @@ STRENGTH_CATEGORY_COLORS = [
     colors.SENDER,
 ]
 
-# Sender/receiver scatter axis selects (x: sender, y: receiver).
+# Sender/receiver scatter component selects (x and y axes).
 SCATTER_COMPONENT_INPUTS = {
-    "scatter_sender_cmp": "Sender Component (x axis)",
-    "scatter_receiver_cmp": "Receiver Component (y axis)",
+    "scatter_x_cmp": "Component X (x axis)",
+    "scatter_y_cmp": "Component Y (y axis)",
 }
+ROLE_WEIGHT_KEYS = {"Sender": "sc_B", "Receiver": "rc_C"}
+# Scatter output size (px): one panel when X == Y, else the 2x2 role grid.
+SCATTER_SINGLE_PX = (900, 700)
+SCATTER_GRID_PX = (1400, 1150)
 
 # Plots that don't set their own colors draw from the shared palette.
 plt.rcParams["axes.prop_cycle"] = cycler(color=colors.categorical_colors(8))
@@ -1079,13 +1083,15 @@ def server(input, output, session):
             scrollable_plot("strength_category_pacmap_plot", 650, 550),
             ui.markdown(
                 "###### Sender vs. Receiver Weight (All Cell Types)\n"
-                "Each cell's sender weight for Sender Component plotted "
-                "against its receiver weight for Receiver Component, "
-                "colored by cell type, with the selected cell type's points "
-                "enlarged. Both default to (and follow) the sidebar CP "
-                "Component; choosing different components compares one "
-                "component's senders with another's receivers. Dashed lines "
-                "mark the current Strength Threshold percentile."
+                "Per-cell weights for Component X (x axis) against "
+                "Component Y (y axis), colored by cell type, with the "
+                "selected cell type's points enlarged. Both default to (and "
+                "follow) the sidebar CP Component. When they match, a single "
+                "panel plots that component's sender against receiver "
+                "weight; when they differ, a 2x2 grid compares every role "
+                "pairing (rows: X sender/receiver; columns: Y "
+                "sender/receiver). Dashed lines mark the current Strength "
+                "Threshold percentile."
             ),
             ui.row(
                 *(
@@ -1098,8 +1104,17 @@ def server(input, output, session):
                     for input_id, label in SCATTER_COMPONENT_INPUTS.items()
                 )
             ),
-            scrollable_plot("sender_receiver_scatter_plot", 900, 700),
+            ui.output_ui("sender_receiver_scatter_ui"),
         )
+
+    def scatter_components() -> tuple[int, int]:
+        return int(input.scatter_x_cmp()), int(input.scatter_y_cmp())
+
+    @render.ui
+    def sender_receiver_scatter_ui():
+        x_cmp, y_cmp = scatter_components()
+        size = SCATTER_SINGLE_PX if x_cmp == y_cmp else SCATTER_GRID_PX
+        return scrollable_plot("sender_receiver_scatter_plot", *size)
 
     @reactive.effect
     @reactive.event(input.component)
@@ -1209,17 +1224,47 @@ def server(input, output, session):
     @render.plot
     @styled_figure()
     def sender_receiver_scatter_plot():
-        ds = dataset()
-        sender_cmp = int(input.scatter_sender_cmp())
-        receiver_cmp = int(input.scatter_receiver_cmp())
-        celltype_col = ds.spec.celltype_col
-        sender, sender_threshold = weights_and_threshold("sc_B", sender_cmp)
-        receiver, receiver_threshold = weights_and_threshold("rc_C", receiver_cmp)
+        x_cmp, y_cmp = scatter_components()
+        if x_cmp == y_cmp:
+            role_grid = [[("Sender", "Receiver")]]
+        else:
+            role_grid = [
+                [(xr, yr) for yr in ROLE_WEIGHT_KEYS] for xr in ROLE_WEIGHT_KEYS
+            ]
+        n = len(role_grid)
+        width_px, height_px = SCATTER_SINGLE_PX if n == 1 else SCATTER_GRID_PX
+        fig, axes = plt.subplots(
+            n,
+            n,
+            figsize=(width_px / 100, height_px / 100),
+            squeeze=False,
+            layout="tight",
+        )
+        for ax_row, role_row in zip(axes, role_grid, strict=True):
+            for ax, (x_role, y_role) in zip(ax_row, role_row, strict=True):
+                plot_weight_scatter(ax, (x_cmp, x_role), (y_cmp, y_role))
+        # Grid panels fill equal cells instead of following each pair's data
+        # aspect; one shared cell type legend, on the top-right panel.
+        for i, ax in enumerate(axes.flat):
+            if n > 1:
+                ax.set_aspect("auto")
+            if i != n - 1:
+                ax.get_legend().remove()
+        return fig
 
-        points = np.column_stack([sender, receiver])
-        celltypes = ds.adata.obs[celltype_col]
+    def plot_weight_scatter(
+        ax: plt.Axes, x: tuple[int, str], y: tuple[int, str]
+    ) -> None:
+        """Cells' (component, role) weights against each other, colored by
+        cell type, with the selected cell type enlarged and Strength
+        Threshold lines."""
+        ds = dataset()
+        (x_weights, x_threshold), (y_weights, y_threshold) = (
+            weights_and_threshold(ROLE_WEIGHT_KEYS[role], cmp) for cmp, role in (x, y)
+        )
+        points = np.column_stack([x_weights, y_weights])
+        celltypes = ds.adata.obs[ds.spec.celltype_col]
         color_key = colors.celltype_colors(celltypes.nunique())
-        fig, ax = plt.subplots(figsize=(9, 7), layout="tight")
         plot_categorical_scatter(points, celltypes, ax, color_key=color_key)
 
         # Same cell type -> color assignment `plot_categorical_scatter` makes
@@ -1231,13 +1276,9 @@ def server(input, output, session):
             [celltype_color] * int(selected.sum()),
             scale=1 + input.tt_point_size() / 100,
         )
-        ax.axvline(sender_threshold, color="0.3", ls="--", lw=1.0)
-        ax.axhline(receiver_threshold, color="0.3", ls="--", lw=1.0)
-        ax.set(
-            xlabel=f"Cmp. {sender_cmp} Sender Weight",
-            ylabel=f"Cmp. {receiver_cmp} Receiver Weight",
-        )
-        return fig
+        ax.axvline(x_threshold, color="0.3", ls="--", lw=1.0)
+        ax.axhline(y_threshold, color="0.3", ls="--", lw=1.0)
+        ax.set(xlabel=f"Cmp. {x[0]} {x[1]} Weight", ylabel=f"Cmp. {y[0]} {y[1]} Weight")
 
     @render.plot
     @styled_figure()
