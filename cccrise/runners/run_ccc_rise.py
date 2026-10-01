@@ -18,7 +18,7 @@ The sidecar's ``rank_selection`` block records which sweep justifies each chosen
 rank -- the sweep tables written by `run_rise_rank` / `run_cpd_rank`, plus a
 free-text rationale from ``--rise-rank-notes`` / ``--cpd-rank-notes``.
 
-    uv run cccrise-run --dataset alad --rise-rank 18 --cp-rank 6
+    uv run cccrise-run --dataset alad --rise-rank 17 --cp-rank 5
 """
 
 import argparse

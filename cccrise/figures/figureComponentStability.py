@@ -7,7 +7,7 @@ conclusions rest on a handful of named components, not on a mean -- with the
 aggregate FMS the Methods define in panel c and the match-ambiguity diagnostic
 in panel d.
 
-    uv run cccrise-stability --dataset alad --rise-rank 18 --cp-rank 6 \
+    uv run cccrise-stability --dataset alad --rise-rank 17 --cp-rank 5 \
         --n-replicates 100
 """
 

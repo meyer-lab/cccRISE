@@ -31,7 +31,7 @@ Axes, and what each one asks:
   seed_only   Identical data refit end to end (RISE -> communication tensor
               -> CP) from a different random seed. Refits RISE.
 
-    uv run cccrise-stability --dataset alad --rise-rank 18 --cp-rank 6 \
+    uv run cccrise-stability --dataset alad --rise-rank 17 --cp-rank 5 \
         --n-replicates 100
 """
 

@@ -15,7 +15,7 @@ Writes the replicate-level table `figureAnovaBoot` reads:
 
     anova_bootstrap_<dataset>.parquet   one row per (replicate, component)
 
-    uv run cccrise-anovaboot --dataset alad --rise-rank 18 --cp-rank 6 --n-boot 100
+    uv run cccrise-anovaboot --dataset alad --rise-rank 17 --cp-rank 5 --n-boot 100
 """
 
 import argparse

@@ -18,7 +18,7 @@ Outputs land under `VALIDATION_DIR/alt_score_methods/<communication-score>/`,
 separate from the default score's canonical results. Always
 regenerates and overwrites; does not check for existing output first.
 
-    uv run cccrise-altcommscore --dataset alad --rise-rank 18 --cp-rank 6 \
+    uv run cccrise-altcommscore --dataset alad --rise-rank 17 --cp-rank 5 \
         --n-perms 200 --n-replicates 20
 """
 
