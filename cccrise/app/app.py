@@ -133,22 +133,7 @@ ALAD_DEFAULT_COMPARISON = next(
     and not _REGROUPING_KEYS & cfg.keys()
 )
 
-# COVID-19's raw data only has one patient status column, so it gets a single
-# comparison rather than a curated list; built from its DatasetSpec fields
-# instead of repeating those strings here.
-_covid_spec = DATASETS["covid"]
-COVID_COMPARISONS: dict[str, dict] = {
-    "Control vs. COVID-19 (All)": {
-        "group_column": _covid_spec.group_col,
-        "control_label": _covid_spec.control_label,
-        "other_label": _covid_spec.other_label,
-    },
-}
-
-DATASET_COMPARISONS: dict[str, dict[str, dict]] = {
-    "alad": ALAD_COMPARISONS,
-    "covid": COVID_COMPARISONS,
-}
+DATASET_COMPARISONS: dict[str, dict[str, dict]] = {"alad": ALAD_COMPARISONS}
 DEFAULT_COMPARISONS: dict[str, str] = {"alad": ALAD_DEFAULT_COMPARISON}
 
 
@@ -398,9 +383,9 @@ def server(input, output, session):
     def projections_notice():
         if not dataset().has_projections:
             return ui.markdown(
-                "⚠️ This dataset's factors file has no stored per-cell "
-                "projections; only factor matrices are available. Re-run "
-                "`uv run cccrise-run`, which stores them."
+                "⚠️ This dataset's raw single-cell data was not found "
+                "locally, so per-cell projections (recomputed from it) are "
+                "unavailable; only factor matrices are shown."
             )
         return None
 
@@ -907,9 +892,9 @@ def server(input, output, session):
     def projections_body():
         if not dataset().has_pacmap:
             return ui.markdown(
-                "Per-cell PaCMAP coordinates are unavailable for this "
-                "dataset's factors file. Re-run `uv run cccrise-run` without "
-                "`--no-embedding`."
+                "Per-cell PaCMAP coordinates are unavailable: they need "
+                "this dataset's raw single-cell data locally, and a factors "
+                "file from `uv run cccrise-run` without `--no-embedding`."
             )
         celltypes = sorted(
             dataset().adata.obs[dataset().spec.celltype_col].unique().tolist()

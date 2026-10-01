@@ -38,16 +38,15 @@ import pandas as pd
 import seaborn as sns
 import yaml
 
-from ..factors import DATA_DIR, load_factors_to_anndata
-from ..runners.datasets import DATASETS
+from ..runners.datasets import VALIDATION_DIR
 from ..runners.provenance import sidecar_path
-from ..validation.anova_stability import summarize_bootstrap_anova, top_lr_pairs
-from .common import getSetup, load_runner_csv, subplotLabel
+from ..validation.anova_stability import summarize_bootstrap_anova
+from .common import getSetup, load_runner_output, subplotLabel
 
 # Change this to switch dataset; must match the runner's --dataset. The ranks
 # the bootstrap was conditioned on are recorded in its sidecar.
 SELECTED_DATASET = "alad"
-BOOTSTRAP_CSV = f"anova_bootstrap_{SELECTED_DATASET}.csv"
+BOOTSTRAP_FILE = f"anova_bootstrap_{SELECTED_DATASET}.parquet"
 
 # Match score below which a replicate's component is not the reference
 # component in any useful sense.
@@ -304,9 +303,9 @@ def plot_match_scores(
 
 
 def makeFigure():
-    bootstrap_anova_df = load_runner_csv(BOOTSTRAP_CSV)
+    bootstrap_anova_df = load_runner_output(BOOTSTRAP_FILE, VALIDATION_DIR)
 
-    sidecar = sidecar_path(DATA_DIR / BOOTSTRAP_CSV)
+    sidecar = sidecar_path(VALIDATION_DIR / BOOTSTRAP_FILE)
     with open(sidecar) as handle:
         metadata = yaml.safe_load(handle)
 
@@ -330,16 +329,10 @@ def makeFigure():
         bootstrap_anova_df, reference_anova, ci_level=ci_level, alpha=alpha
     )
 
-    factors_path = DATASETS[SELECTED_DATASET].factors_path()
-    factors_ds = load_factors_to_anndata(factors_path)
-    labels = top_lr_pairs(factors_ds.uns["D"], factors_ds.uns["lr_pairs"], top_n=1)
-    bootstrap_summary = bootstrap_summary.merge(
-        labels[["Component", "LRPair", "DLoading"]].rename(
-            columns={"LRPair": "TopLRPair", "DLoading": "TopLRLoading"}
-        ),
-        on="Component",
-        how="left",
-    )
+    # Labels come from the bootstrap's own reference fit, whose component
+    # numbering every replicate was aligned onto.
+    bootstrap_summary["TopLRPair"] = metadata["reference_top_lr_pair"]
+    bootstrap_summary["TopLRLoading"] = metadata["reference_top_lr_loading"]
 
     n_components = len(bootstrap_summary)
     panels = [

@@ -21,7 +21,7 @@ def population_gene_logreg_weights(
     factor_type: str,
     pos: bool = True,
     top_perc: float = 10,
-    random_state: int = 0,
+    random_state: int = 42,
 ) -> pd.Series:
     """
     Fit an L1 logistic regression on per-cell gene expression to distinguish the

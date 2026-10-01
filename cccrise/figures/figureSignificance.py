@@ -25,14 +25,13 @@ import pandas as pd
 import seaborn as sns
 import yaml
 
-from ..runners.datasets import DATA_DIR
+from ..runners.datasets import VALIDATION_DIR
 from ..runners.provenance import sidecar_path
-from .common import getSetup, load_runner_csv, subplotLabel
+from .common import getSetup, load_runner_output, subplotLabel
 
 SELECTED_DATASET = "alad"
-SIGNIFICANCE_LR_CSV = f"significance_lr_{SELECTED_DATASET}.csv"
+SIGNIFICANCE_LR_FILE = f"significance_lr_{SELECTED_DATASET}.parquet"
 SIGNIFICANCE_DIFF_PARQUET = f"significance_differential_{SELECTED_DATASET}.parquet"
-SIGNIFICANCE_DIFF_CSV = f"significance_differential_{SELECTED_DATASET}.csv"
 
 PALETTE_EMPHASIS = "#3a6b9c"
 NULL_LINE_COLOR = "#444444"
@@ -286,18 +285,12 @@ def plot_differential_volcano(
 
 def makeFigure():
     """Build the 3-panel significance figure."""
-    lr_df = load_runner_csv(SIGNIFICANCE_LR_CSV)
+    lr_df = load_runner_output(SIGNIFICANCE_LR_FILE, VALIDATION_DIR)
 
-    diff_parquet_path = DATA_DIR / SIGNIFICANCE_DIFF_PARQUET
-    diff_csv_path = DATA_DIR / SIGNIFICANCE_DIFF_CSV
-    if diff_parquet_path.exists():
-        diff_df = pd.read_parquet(diff_parquet_path)
-    elif diff_csv_path.exists():
-        diff_df = pd.read_csv(diff_csv_path)
-    else:
-        diff_df = None
+    diff_parquet_path = VALIDATION_DIR / SIGNIFICANCE_DIFF_PARQUET
+    diff_df = pd.read_parquet(diff_parquet_path) if diff_parquet_path.exists() else None
 
-    sidecar = sidecar_path(DATA_DIR / SIGNIFICANCE_LR_CSV)
+    sidecar = sidecar_path(VALIDATION_DIR / SIGNIFICANCE_LR_FILE)
     metadata: dict = {}
     if sidecar.exists():
         with open(sidecar) as handle:

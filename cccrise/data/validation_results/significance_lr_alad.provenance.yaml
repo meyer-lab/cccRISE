@@ -12,7 +12,7 @@ loader_args:
 condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
-rise_rank: 25
+reference_source: cccrise/data/factors/bal_alad_factors.nc
 n_perms: 1000
 group_column: ALADstatus
 control_label: control
@@ -21,21 +21,20 @@ communication_score: expression_product
 complex_sep: '&'
 complex_agg_method: min
 hill_k: 0.5
-r2x_rise: 0.040389453394234054
+r2x_rise: 0.03151461990700155
 random_state: 42
-backend: auto
-total_tensor_entries: 15069375
-cohort_fraction_significant_p05: 0.09868080129401519
-cohort_fraction_significant_p01: 0.04763216789017461
-cohort_median_zscore: -0.031143471163216783
-cohort_mean_zscore: 0.2510845476069611
+total_tensor_entries: 6968079
+cohort_fraction_significant_p05: 0.09865086202380886
+cohort_fraction_significant_p01: 0.044465052706779015
+cohort_median_zscore: -0.03535967794118733
+cohort_mean_zscore: 0.25789627021944717
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
   lr_pairs: 513
 outputs:
-- cccrise/data/significance_lr_alad.csv
-- cccrise/data/significance_differential_alad.parquet
-git_sha: 7e3cf7677f76c9830ef70dba03421c2b4f298a0a
-generated: '2026-09-16T02:37:43+00:00'
+- cccrise/data/validation_results/significance_lr_alad.parquet
+- cccrise/data/validation_results/significance_differential_alad.parquet
+git_sha: 840d7792ba71d70f424c8baac87a96f809b7cf42
+generated: '2026-10-01T16:57:26+00:00'

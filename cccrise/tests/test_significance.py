@@ -8,7 +8,9 @@ import anndata
 import numpy as np
 import pandas as pd
 
-from cccrise.runners._cli import RISE_TOL
+from cccrise.ccc_rise import fit_rise
+from cccrise.factors import save_ccc_rise_fit
+from cccrise.import_data import add_cond_idxs
 from cccrise.runners.datasets import DatasetSpec
 from cccrise.runners.run_significance import build_parser, output_paths
 from cccrise.validation.significance import (
@@ -18,6 +20,39 @@ from cccrise.validation.significance import (
     summarize_significance_lr,
     summarize_significance_overview,
 )
+
+
+def write_rise_reference(
+    adata: anndata.AnnData,
+    condition_column: str,
+    rise_rank: int,
+    path: Path,
+    random_state: int = 0,
+) -> anndata.AnnData:
+    """A factors.nc holding a real RISE fit and rank-1 CP placeholders (a RISE
+    reference never reads its CP portion); returns the fitted AnnData."""
+    fit_adata, _ = fit_rise(
+        add_cond_idxs(adata.copy(), condition_column),
+        rank=rise_rank,
+        n_iter_max=100,
+        tolerance=1e-6,
+        random_state=random_state,
+        backend="cpu",
+    )
+    n_cond = fit_adata.obs[condition_column].nunique()
+    placeholder_cp = {
+        "cp_factors": [
+            np.ones((n_cond, 1)),
+            np.ones((rise_rank, 1)),
+            np.ones((rise_rank, 1)),
+            np.ones((1, 1)),
+        ],
+        "cp_weights": np.ones(1),
+        "filtered_lr_pairs": ["placeholder"],
+        "r2x_cp": 0.0,
+    }
+    save_ccc_rise_fit(path, fit_adata, placeholder_cp, condition_column)
+    return fit_adata
 
 
 def _synthetic_cohort_for_significance(
@@ -54,23 +89,23 @@ def _synthetic_cohort_for_significance(
     return adata, lr_pairs
 
 
-def test_fit_significance_pipeline_end_to_end():
+def test_fit_significance_pipeline_end_to_end(tmp_path):
     adata, lr_pairs = _synthetic_cohort_for_significance()
     rise_rank = 3
     n_perms = 20
+    reference_path = tmp_path / "reference.nc"
+    write_rise_reference(adata, "sample", rise_rank, reference_path)
 
     results = fit_significance_pipeline(
         adata=adata,
         condition_column="sample",
-        rise_rank=rise_rank,
+        reference_path=reference_path,
         lr_pairs=lr_pairs,
-        rise_n_iter_max=100,
         n_perms=n_perms,
         group_column="status",
         control_label="Control",
         other_label="Disease",
         random_state=42,
-        rise_tol=RISE_TOL,
         validate=True,
     )
 
@@ -94,20 +129,20 @@ def test_fit_significance_pipeline_end_to_end():
     assert np.all(results["diff_pvalue"] <= 1.0)
 
 
-def test_summaries_and_xarray_conversion():
+def test_summaries_and_xarray_conversion(tmp_path):
     adata, lr_pairs = _synthetic_cohort_for_significance()
+    reference_path = tmp_path / "reference.nc"
+    write_rise_reference(adata, "sample", 2, reference_path)
     results = fit_significance_pipeline(
         adata=adata,
         condition_column="sample",
-        rise_rank=2,
+        reference_path=reference_path,
         lr_pairs=lr_pairs,
-        rise_n_iter_max=100,
         n_perms=10,
         group_column="status",
         control_label="Control",
         other_label="Disease",
         random_state=42,
-        rise_tol=RISE_TOL,
     )
 
     # 1. LR summary
@@ -152,8 +187,8 @@ def test_runner_cli_parser_and_paths():
         [
             "--dataset",
             "alad",
-            "--rise-rank",
-            "25",
+            "--reference-source",
+            "cccrise/data/factors/bal_alad_factors.nc",
             "--n-perms",
             "500",
             "--communication-score",
@@ -161,7 +196,7 @@ def test_runner_cli_parser_and_paths():
         ]
     )
     assert args.dataset == "alad"
-    assert args.rise_rank == 25
+    assert args.reference_source == "cccrise/data/factors/bal_alad_factors.nc"
     assert args.n_perms == 500
 
     dummy_spec = DatasetSpec(
@@ -176,7 +211,7 @@ def test_runner_cli_parser_and_paths():
     assert "lr" in paths
     assert "differential" in paths
     assert "tensor" not in paths
-    assert str(paths["lr"]).endswith("significance_lr_test_cohort.csv")
+    assert str(paths["lr"]).endswith("significance_lr_test_cohort.parquet")
     assert str(paths["differential"]).endswith(
         "significance_differential_test_cohort.parquet"
     )
