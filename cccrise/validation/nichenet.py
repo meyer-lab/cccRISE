@@ -392,7 +392,7 @@ def permutation_null_aurocs(
     lt_df: pd.DataFrame,
     ligands: list[str],
     n_perm: int = 1000,
-    random_state: int | None = 0,
+    random_state: int | None = 42,
 ) -> dict[str, np.ndarray]:
     """
     Compute a null distribution of ligand-activity AUROCs for `ligands`, by
@@ -470,7 +470,7 @@ def component_accuracy_scores(
     de_method: DeMethod = "wilcoxon",
     pool_threshold: float = 0.3,
     n_perm: int = 1000,
-    random_state: int | None = 0,
+    random_state: int | None = 42,
 ) -> pd.DataFrame:
     """
     Compute per-ligand NicheNet-style AUROCs, with a permutation null, for

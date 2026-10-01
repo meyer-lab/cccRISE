@@ -8,11 +8,11 @@ already-finalized factor fit (``spec.factors_path()``, produced by
 for every CPD component, under every requested receiver-population
 definition. The expensive step is per-component differential expression
 (``scanpy.tl.rank_genes_groups`` over the full single-cell dataset), which
-this caches to a CSV so ``figureNicheNet.py`` can plot without re-running it.
+this caches to a parquet file so ``figureNicheNet.py`` can plot without re-running it.
 
-Writes the long-format CSV `figureNicheNet` reads:
+Writes the long-format table `figureNicheNet` reads:
 
-    nichenet_scores_<dataset>.csv   one row per (receiver_mode, component, ligand)
+    nichenet_scores_<dataset>.parquet   one row per (receiver_mode, component, ligand)
 
     uv run cccrise-nichenet --dataset alad
 """
@@ -31,7 +31,7 @@ from ..validation.nichenet import (
     load_ligand_target_matrix,
 )
 from ._cli import add_dataset_argument, dataset_metadata, resolve_output, resulting_dims
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, relpath, sha256_file, write_metadata
 
 DEFAULT_RECEIVER_MODES: tuple[ReceiverMode, ...] = ("within_celltype", "vs_rest")
@@ -60,7 +60,7 @@ def run_nichenet(
     celltype_col: str | None = None,
     pool_threshold: float = 0.3,
     n_perm: int = 1000,
-    random_state: int | None = 0,
+    random_state: int | None = 42,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score every CPD component's top ligands against the NicheNet v2 prior,
@@ -93,12 +93,12 @@ def run_nichenet(
     random_state : int, optional
         Seed for the permutation null.
     output_path : Path, optional
-        CSV destination; defaults to the registry's NicheNet scores filename.
+        Parquet destination; defaults to the registry's NicheNet scores filename.
 
     Returns
     -------
     tuple[pd.DataFrame, Path, Path]
-        The long per-(mode, component, ligand) table, the CSV path, and the
+        The long per-(mode, component, ligand) table, the output path, and the
         sidecar path.
     """
     celltype_col = celltype_col or spec.celltype_column
@@ -116,7 +116,7 @@ def run_nichenet(
             "--rise-rank <N> --cp-rank <M>"
         )
 
-    output_path = output_path or (DATA_DIR / spec.nichenet_scores_filename())
+    output_path = output_path or (VALIDATION_DIR / spec.nichenet_scores_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -181,7 +181,7 @@ def run_nichenet(
     print(summary.to_string(index=False))
 
     print(f"5. Writing {len(scores)} rows to {output_path}...")
-    scores.to_csv(output_path, index=False)
+    scores.to_parquet(output_path, index=False)
 
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -255,14 +255,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--random-state",
         type=int,
-        default=0,
+        default=42,
         help="Seed for the permutation null.",
     )
     parser.add_argument(
         "--output",
         type=str,
         default=None,
-        help="CSV destination; defaults to data/nichenet_scores_<dataset>.csv.",
+        help="Parquet destination; defaults to data/validation_results/nichenet_scores_<dataset>.parquet.",
     )
     return parser
 
@@ -285,7 +285,7 @@ def main(argv: list[str] | None = None) -> None:
         n_perm=args.n_perm,
         random_state=args.random_state,
         output_path=resolve_output(
-            args.output, DATA_DIR, spec.nichenet_scores_filename()
+            args.output, VALIDATION_DIR, spec.nichenet_scores_filename()
         ),
     )
 

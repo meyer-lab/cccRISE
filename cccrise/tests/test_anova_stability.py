@@ -716,7 +716,7 @@ def test_run_saved_factors_anova_and_multiple_associations():
         plot_configured_boxplots,
     )
 
-    ds = load_factors_netcdf("cccrise/data/bal_alad_factors.nc")
+    ds = load_factors_netcdf("cccrise/data/factors/bal_alad_factors.nc")
     n_cond = ds.sizes["condition"]
     cond_names = [str(c) for c in ds["condition"].values]
     s2g = pd.Series(
@@ -729,7 +729,7 @@ def test_run_saved_factors_anova_and_multiple_associations():
 
     # Test running ANOVA on bal_alad_factors.nc with kwargs
     df = run_saved_factors_anova(
-        "cccrise/data/bal_alad_factors.nc",
+        "cccrise/data/factors/bal_alad_factors.nc",
         sample_to_group=s2g,
         group_column="ALADstatus",
         levels=["control", "declined"],
@@ -773,7 +773,7 @@ def test_run_saved_factors_anova_and_multiple_associations():
         },
     ]
     multi_df = run_multiple_factors_anova(
-        "cccrise/data/bal_alad_factors.nc",
+        "cccrise/data/factors/bal_alad_factors.nc",
         associations=associations_config,
         global_correction=True,
     )

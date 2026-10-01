@@ -59,7 +59,7 @@ __all__ = [
     "get_covid_data",
     "load_factors_to_anndata",
     "load_or_compute_dataframe",
-    "load_runner_csv",
+    "load_runner_output",
     "subplotLabel",
 ]
 
@@ -88,21 +88,38 @@ def get_alad_data(
     )
 
 
-def load_runner_csv(filename: str) -> pd.DataFrame:
+def load_runner_output(
+    filename: str, root: Path, hint: str | None = None
+) -> pd.DataFrame:
     """Read a sweep result written by one of the runner scripts.
 
     Figures plot what a runner already produced; they never compute a sweep
     themselves, so a missing file is an error naming the command to run.
+
+    Parameters
+    ----------
+    filename : str
+        The runner's output filename.
+    root : Path
+        Directory the file lives in -- the runner's analysis directory
+        (`runners.datasets.RANK_SELECTION_DIR` / `VALIDATION_DIR`) for a
+        default-settings output, or a `runners.datasets.comparison_output_dir`
+        for an alternate-score one.
+    hint : str, optional
+        Command to suggest in the error when the file is missing. Defaults
+        to the rank-sweep runners' commands.
     """
-    path = DATA_DIR / filename
+    path = root / filename
     if not path.exists():
-        raise FileNotFoundError(
-            f"{path} not found. Produce it with the matching runner, e.g.\n"
-            "    uv run cccrise-riserank --dataset <dataset> --ranks 5:51:5\n"
+        hint = hint or (
+            "    uv run cccrise-riserank --dataset <dataset> --ranks 1:51\n"
             "    uv run cccrise-cpdrank  --dataset <dataset> --rise-rank <N>\n"
             "    uv run cccrise-anovaboot --dataset <dataset> --rise-rank <N> --cp-rank <K>"
         )
-    return pd.read_csv(path)
+        raise FileNotFoundError(
+            f"{path} not found. Produce it with the matching runner, e.g.\n{hint}"
+        )
+    return pd.read_parquet(path)
 
 
 def getSetup(
