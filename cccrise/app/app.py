@@ -105,6 +105,12 @@ STRENGTH_CATEGORY_COLORS = [
     colors.SENDER,
 ]
 
+# Sender/receiver scatter axis selects (x: sender, y: receiver).
+SCATTER_COMPONENT_INPUTS = {
+    "scatter_sender_cmp": "Sender Component (x axis)",
+    "scatter_receiver_cmp": "Receiver Component (y axis)",
+}
+
 # Plots that don't set their own colors draw from the shared palette.
 plt.rcParams["axes.prop_cycle"] = cycler(color=colors.categorical_colors(8))
 
@@ -903,6 +909,9 @@ def server(input, output, session):
         celltypes = sorted(
             dataset().adata.obs[dataset().spec.celltype_col].unique().tolist()
         )
+        component_choices = [str(i) for i in range(1, cp_rank() + 1)]
+        with reactive.isolate():
+            cmp = str(input.component())
         return ui.TagList(
             ui.h4("PaCMAP Embeddings"),
             ui.markdown(
@@ -1070,26 +1079,44 @@ def server(input, output, session):
             scrollable_plot("strength_category_pacmap_plot", 650, 550),
             ui.markdown(
                 "###### Sender vs. Receiver Weight (All Cell Types)\n"
-                "Each cell's sender weight plotted against its receiver "
-                "weight for the selected component, colored by cell type, "
-                "with the selected cell type's points enlarged. Dashed "
-                "lines mark the current Strength Threshold percentile."
+                "Each cell's sender weight for Sender Component plotted "
+                "against its receiver weight for Receiver Component, "
+                "colored by cell type, with the selected cell type's points "
+                "enlarged. Both default to (and follow) the sidebar CP "
+                "Component; choosing different components compares one "
+                "component's senders with another's receivers. Dashed lines "
+                "mark the current Strength Threshold percentile."
+            ),
+            ui.row(
+                *(
+                    ui.column(
+                        4,
+                        ui.input_select(
+                            input_id, label, choices=component_choices, selected=cmp
+                        ),
+                    )
+                    for input_id, label in SCATTER_COMPONENT_INPUTS.items()
+                )
             ),
             scrollable_plot("sender_receiver_scatter_plot", 900, 700),
         )
 
+    @reactive.effect
+    @reactive.event(input.component)
+    def _sync_scatter_components():
+        for input_id in SCATTER_COMPONENT_INPUTS:
+            ui.update_select(input_id, selected=str(input.component()))
+
+    def weights_and_threshold(obsm_key: str, cmp: int) -> tuple[np.ndarray, float]:
+        weights = np.asarray(dataset().adata.obsm[obsm_key])[:, cmp - 1]
+        return weights, float(np.percentile(weights, input.tt_percentile()))
+
     @reactive.calc
     def strength_weights():
-        ds = dataset()
         cmp = input.component()
-        sender = np.asarray(ds.adata.obsm["sc_B"])[:, cmp - 1]
-        receiver = np.asarray(ds.adata.obsm["rc_C"])[:, cmp - 1]
-        percentile = input.tt_percentile()
         return (
-            sender,
-            receiver,
-            float(np.percentile(sender, percentile)),
-            float(np.percentile(receiver, percentile)),
+            *weights_and_threshold("sc_B", cmp),
+            *weights_and_threshold("rc_C", cmp),
         )
 
     @reactive.calc
@@ -1183,9 +1210,11 @@ def server(input, output, session):
     @styled_figure()
     def sender_receiver_scatter_plot():
         ds = dataset()
-        cmp = input.component()
+        sender_cmp = int(input.scatter_sender_cmp())
+        receiver_cmp = int(input.scatter_receiver_cmp())
         celltype_col = ds.spec.celltype_col
-        sender, receiver, sender_threshold, receiver_threshold = strength_weights()
+        sender, sender_threshold = weights_and_threshold("sc_B", sender_cmp)
+        receiver, receiver_threshold = weights_and_threshold("rc_C", receiver_cmp)
 
         points = np.column_stack([sender, receiver])
         celltypes = ds.adata.obs[celltype_col]
@@ -1205,8 +1234,8 @@ def server(input, output, session):
         ax.axvline(sender_threshold, color="0.3", ls="--", lw=1.0)
         ax.axhline(receiver_threshold, color="0.3", ls="--", lw=1.0)
         ax.set(
-            xlabel=f"Cmp. {cmp} Sender Weight",
-            ylabel=f"Cmp. {cmp} Receiver Weight",
+            xlabel=f"Cmp. {sender_cmp} Sender Weight",
+            ylabel=f"Cmp. {receiver_cmp} Receiver Weight",
         )
         return fig
 
