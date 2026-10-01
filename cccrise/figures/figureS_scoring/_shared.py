@@ -1,5 +1,5 @@
 """Loaders and comparisons shared by the communication-score comparison
-panels (this figure and `figureS_scoring_interpretation`).
+panels of this figure.
 
 Every method, the default included, is read from
 ``VALIDATION_DIR/alt_score_methods/<method>/`` as written by
@@ -138,13 +138,6 @@ def method_legend(fig) -> None:
         for m in ALL_SCORES
     ]
     fig.legend(handles=handles, loc="outside upper center", ncols=len(handles))
-
-
-def standalone(plot, size):
-    """A panel on its own figure, with the method legend."""
-    fig = common.standalone(plot, size)
-    method_legend(fig)
-    return fig
 
 
 def grouped_bar(

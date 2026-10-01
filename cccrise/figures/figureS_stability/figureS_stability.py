@@ -1,18 +1,17 @@
-"""Supplementary figure: RISE and CPD component stability under resampling."""
+"""Supplementary figure: per-component RISE and CPD stability under
+resampling, and how unambiguously components are re-identified."""
 
 from .. import common, style
-from . import aggregate_fms, match_ambiguity, per_component_fms
+from . import cpd_fms, match_ambiguity, rise_fms
 
-PANELS = {
-    "per_component": per_component_fms,
-    "aggregate": aggregate_fms,
-    "ambiguity": match_ambiguity,
-}
+PANELS = {"rise": rise_fms, "cpd": cpd_fms, "ambiguity": match_ambiguity}
 LAYOUT = [
-    ["per_component"] * 2,
-    ["aggregate", "ambiguity"],
+    ["rise"] * 2,
+    ["cpd", "ambiguity"],
 ]
 
 
 def makeFigure():
-    return common.compose((style.FIGURE_WIDTH_DOUBLE, 120 * style.MM), LAYOUT, PANELS)
+    fig = common.compose((style.FIGURE_WIDTH_DOUBLE, 130 * style.MM), LAYOUT, PANELS)
+    common.stability_legend(fig)
+    return fig

@@ -39,7 +39,7 @@ from ..factors import (
     load_or_compute_dataframe,
 )
 from ..import_data import import_alad, import_balf_covid
-from ..runners.datasets import DATASETS
+from ..runners.datasets import DATASETS, VALIDATION_DIR
 from ..runners.provenance import read_metadata
 from ..validation.component_stability import (
     STAGE_CPD,
@@ -176,11 +176,16 @@ def compose(
 
 
 def standalone(
-    plot: Callable[[Figure | SubFigure], None], size: tuple[float, float]
+    plot: Callable[[Figure | SubFigure], None],
+    size: tuple[float, float],
+    legend: Callable[[Figure], None] | None = None,
 ) -> Figure:
-    """One panel drawn on a figure of its own."""
+    """One panel drawn on a figure of its own, with `legend(fig)` for panels
+    whose master figure shares one legend across panels."""
     fig = plt.figure(figsize=size, layout="constrained")
     plot(fig)
+    if legend is not None:
+        legend(fig)
     return fig
 
 
@@ -340,7 +345,7 @@ def plot_collinearity(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None
     none_found = flag.isna()
     canceling = flag.fillna(False).astype(bool) & ~none_found
     for mask, color, marker, label in (
-        (none_found, style.COLORS["muted"], "o", "None"),
+        (none_found, style.COLORS["muted"], "o", "None collinear"),
         (~canceling & ~none_found, style.COLORS["emphasis"], "o", "Near-duplicate"),
         (canceling, style.COLORS["up"], "D", "Canceling"),
     ):
@@ -355,11 +360,11 @@ def plot_collinearity(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None
         )
     reference_line(ax, 2)
     mark_rank(ax, rank)
-    ax.set_ylim(-0.3, 4.3)
+    ax.set_ylim(-0.3, 7.5)  # headroom for the legend
     ax.set_yticks(range(5))
     ax.set_xlabel("CP rank")
     ax.set_ylabel("Modes collinear (worst pair)")
-    ax.legend(title="Worst pair", loc="lower right")
+    ax.legend(loc="upper left", fontsize=style.FONT_SIZE_DENSE)
 
 
 def plot_core_consistency(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
@@ -488,7 +493,7 @@ def plot_differential_volcano(
         )
     reference_line(ax, -np.log10(SIG_ALPHA))
     ax.set_xlim(-limit * 1.05, limit * 1.05)
-    ax.set_ylim(0, neg_log_p.max() * 1.45)  # headroom for the legend
+    ax.set_ylim(0, neg_log_p.max() * 1.7)  # headroom for the legend
     ax.set_xlabel(f"Communication difference\n({contrast})")
     ax.set_ylabel(r"$-\log_{10}\ p$")
     significance_legend(ax, loc="upper center")
@@ -532,30 +537,61 @@ def plot_nichenet_summary(summary: pd.DataFrame, ax: plt.Axes, value: str, ylabe
     ax.legend(title="Receivers")
 
 
-def plot_nichenet_ligands(scores: pd.DataFrame, component: int, ax: plt.Axes):
-    """Ligand-activity AUROC of one component's top-loading ligands, colored
-    by permutation significance and direction."""
-    rows = scores[scores["component"] == component].dropna(subset=["auroc"])
-    rows = rows.sort_values("auroc")
-    ax.barh(
-        [
-            f"{lig}→{rec}"
-            for lig, rec in zip(rows["ligand"], rows["receptor"], strict=True)
-        ],
-        rows["auroc"],
-        color=significance_colors(
-            rows["auroc"].to_numpy(), rows["p_value"].to_numpy(), center=0.5
-        ),
+def top_nichenet_ligands(scores: pd.DataFrame, n_top: int = 10) -> pd.DataFrame:
+    """Each component's `n_top` highest-loading scored ligands, one row per
+    ligand (a ligand's AUROC does not depend on its receptor), with a
+    within-component 'rank'."""
+    by_ligand = (
+        scores.dropna(subset=["auroc"])
+        .sort_values("loading", key=np.abs, ascending=False)
+        .drop_duplicates(["component", "ligand"])
     )
-    reference_line(ax, 0.5, horizontal=False)
-    ax.set_xlim(0, 1)
-    ax.tick_params(axis="y", labelsize=style.FONT_SIZE_DENSE)
-    ax.set_xlabel("Ligand-activity AUROC")
-    celltypes = rows["celltype"].dropna().unique()
-    ax.set_title(f"Component {component}\n{', '.join(map(str, celltypes))}")
+    top = by_ligand.groupby("component").head(n_top).copy()
+    top["rank"] = top.groupby("component").cumcount()
+    return top
 
 
-# --- Component stability (supplement) -------------------------------------------
+def plot_nichenet_heatmap(scores: pd.DataFrame, ax: plt.Axes, n_top: int = 10):
+    """Ligand-activity AUROC of each component's top-loading ligands: one
+    column per component, rows by loading rank, each cell labeled with its
+    ligand and a star when significant against the permutation null."""
+    top = top_nichenet_ligands(scores, n_top)
+    auroc = top.pivot(index="rank", columns="component", values="auroc")
+    limit = np.nanmax(np.abs(auroc.to_numpy() - 0.5))
+    image = ax.imshow(
+        auroc.to_numpy(),
+        cmap=style.CMAPS["diverging"],
+        vmin=0.5 - limit,
+        vmax=0.5 + limit,
+        aspect="auto",
+    )
+    columns = {component: i for i, component in enumerate(auroc.columns)}
+    for component, rank, ligand, p_value in zip(
+        top["component"], top["rank"], top["ligand"], top["p_value"], strict=True
+    ):
+        ax.text(
+            columns[component],
+            rank,
+            ligand + ("*" if p_value < SIG_ALPHA else ""),
+            ha="center",
+            va="center",
+            fontsize=style.FONT_SIZE_DENSE,
+        )
+    ax.set_xticks(range(auroc.shape[1]), auroc.columns)
+    ax.set_yticks([])
+    ax.set_xlabel("CP component")
+    ax.set_ylabel(f"Top {n_top} ligands by loading")
+    ax.tick_params(axis="x", length=0)
+    ax.spines[:].set_visible(False)
+    ax.figure.colorbar(image, ax=ax, label="Ligand AUROC", shrink=0.8)
+
+
+# --- Component stability (ALAD Fig 2 and supplement) -------------------------------------------
+
+
+def load_stability(dataset: str) -> pd.DataFrame:
+    """Replicate-level component stability table from `cccrise-stability`."""
+    return load_runner_output(DATASETS[dataset].stability_filename(), VALIDATION_DIR)
 
 
 def plot_per_component_fms(stability: pd.DataFrame, ax: plt.Axes, stage: str):
@@ -574,12 +610,21 @@ def plot_per_component_fms(stability: pd.DataFrame, ax: plt.Axes, stage: str):
         palette=style.STABILITY_AXIS_COLORS,
         fliersize=1,
         linewidth=style.LINE_WIDTH_THIN,
+        legend=False,
         ax=ax,
     )
     ax.set_ylim(0, 1.02)
     ax.set_xlabel(f"{stage} component")
     ax.set_ylabel("Factor match score")
-    ax.legend(title="Resampled", loc="upper left", bbox_to_anchor=(1.01, 1))
+
+
+def stability_legend(fig: Figure | SubFigure) -> None:
+    """One legend of the resampling-axis colors, above `fig`."""
+    handles = [
+        Patch(color=color, label=axis)
+        for axis, color in style.STABILITY_AXIS_COLORS.items()
+    ]
+    fig.legend(handles=handles, title="Resampled", loc="outside upper center", ncols=4)
 
 
 def plot_aggregate_fms(stability: pd.DataFrame, ax: plt.Axes):

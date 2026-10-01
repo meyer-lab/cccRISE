@@ -5,7 +5,7 @@ sender/receiver |cosine|, an independent check of the pairing."""
 import numpy as np
 import pandas as pd
 
-from .. import style
+from .. import common, style
 from . import _shared as S
 
 
@@ -43,4 +43,4 @@ def plot(fig):
 
 
 def makeFigure():
-    return S.standalone(plot, style.PANEL_SIZE["half"])
+    return common.standalone(plot, style.PANEL_SIZE["half"], legend=S.method_legend)

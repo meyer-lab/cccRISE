@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .. import common, style
-from ..figureS_scoring import _shared as S
+from . import _shared as S
 
 #: Top LR pairs per method; the dot plot shows their union.
 TOP_N_LR = 3
@@ -79,13 +79,17 @@ def _finish(ax, table: pd.DataFrame) -> None:
 
 def plot(fig):
     tables = component_tables()
-    axs = fig.subplots(len(tables), 3, squeeze=False)
+    axs = fig.subplots(len(tables), 3, squeeze=False, sharex=True)
     for i, (row, component) in enumerate(zip(axs, tables, strict=True), start=1):
         points = _draw_lr_dots(row[0], component["lr"])
         _draw_heatmap(row[1], component["sender"])
         _draw_heatmap(row[2], component["receiver"])
-        for ax, kind in zip(row, ("LR pairs", "Sender", "Receiver"), strict=True):
-            ax.set_title(f"Component {i}: {kind}")
+        row[0].set_ylabel(f"Component {i}", fontweight="bold")
+    # Method labels on the bottom row only, column titles on the top only.
+    for ax in axs[:-1].ravel():
+        ax.tick_params(axis="x", labelbottom=False)
+    for ax, kind in zip(axs[0], ("LR pairs", "Sender", "Receiver"), strict=True):
+        ax.set_title(kind)
     fig.colorbar(points, ax=axs, shrink=0.2, label="Loading / max |loading|")
 
 

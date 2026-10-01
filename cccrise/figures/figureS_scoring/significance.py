@@ -53,4 +53,4 @@ def plot(fig):
 
 
 def makeFigure():
-    return S.standalone(plot, style.PANEL_SIZE["half"])
+    return common.standalone(plot, style.PANEL_SIZE["half"], legend=S.method_legend)
