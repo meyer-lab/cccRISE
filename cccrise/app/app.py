@@ -33,6 +33,13 @@ from cccrise.app.data import (
     load_rise_factors,
 )
 from cccrise.app.lr_pairs import parse_lr_pairs
+from cccrise.figures.common import (
+    plot_association_effect_sizes,
+    plot_category_component_weights,
+    plot_collinearity,
+    plot_cpd_fit_r2x,
+)
+from cccrise.figures.figure3._shared import ASSOCIATIONS
 from cccrise.figures.legacy.commonFuncs.plotFactors import (
     plot_celltype_association,
     plot_condition_factors,
@@ -53,12 +60,6 @@ from cccrise.figures.legacy.commonFuncs.plotPaCMAP import (
     plot_wc_pacmap,
     plot_wc_per_celltype,
 )
-from cccrise.figures.legacy.figureAnova import (
-    DEFAULT_ASSOCIATIONS,
-    plot_association_effect_sizes,
-    plot_category_component_weights,
-)
-from cccrise.figures.legacy.figureCPDrank import plot_collinearity, plot_fit_r2x
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.utils import celltype_component_association
 
@@ -119,9 +120,9 @@ plt.rcParams.update(
     }
 )
 
-# ALAD: figureAnova.py's own curated comparisons, reused as-is (single
-# source of truth) rather than re-hardcoded here.
-ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in DEFAULT_ASSOCIATIONS}
+# ALAD: Figure 3's curated comparisons, reused as-is (single source of
+# truth) rather than re-hardcoded here.
+ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in ASSOCIATIONS}
 
 # ALAD's default comparison tests every level of the dataset spec's outcome
 # column, matching the ANOVA bootstrap's default.
@@ -442,13 +443,12 @@ def server(input, output, session):
                 ax.axis("off")
                 ax.text(0.5, 0.5, "No cached CPD sweep", ha="center")
         else:
-            plot_fit_r2x(sweeps.cpd, axes[1], "CPD Fit $R^2X$")
+            plot_cpd_fit_r2x(sweeps.cpd, axes[1], color=colors.categorical_colors(1)[0])
+            axes[1].set_title("CPD Fit $R^2X$")
             plot_collinearity(
-                sweeps.cpd,
-                axes[2],
-                "CPD Component Collinearity Screen",
-                colors=(colors.GREY, colors.BLUE, colors.ORANGE),
+                sweeps.cpd, axes[2], colors=(colors.GREY, colors.BLUE, colors.ORANGE)
             )
+            axes[2].set_title("CPD Component Collinearity Screen")
             for ax in axes[1:]:
                 mark_selected_rank(ax, cp_rank())
         for ax in axes:
@@ -561,6 +561,8 @@ def server(input, output, session):
         if error is not None:
             return None
         raw = load_raw_dataset(input.dataset())
+        if raw.adata is None:
+            return None
         cmp = input.component()
         name = input.patient_status_comparison()
         runner_spec = RUNNER_DATASETS.get(input.dataset())
@@ -586,6 +588,8 @@ def server(input, output, session):
             ax=axes[1],
             anova_df=df,
             patient_column=patient_column,
+            condition_column=DATASETS[input.dataset()].condition_col,
+            palette=colors.categorical_colors(8),
         )
         return fig
 

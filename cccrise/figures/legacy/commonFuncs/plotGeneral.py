@@ -9,39 +9,6 @@ from matplotlib.axes import Axes
 from scipy.stats import f_oneway, ttest_ind
 
 
-def get_sample_to_group(
-    X: anndata.AnnData, condition_column: str, group_col: str
-) -> pd.Series:
-    """Map each unique sample to its group label, ordered to match
-    np.unique(X.obs[condition_column])."""
-    sample_to_group = (
-        cast(pd.DataFrame, X.obs)
-        .drop_duplicates(subset=[condition_column, group_col])
-        .set_index(condition_column)[group_col]
-    )
-    return sample_to_group.loc[np.unique(X.obs[condition_column], return_index=True)[0]]
-
-
-def collapse_group(
-    sample_to_group: pd.Series, match_value: str, match_name: str, other_name: str
-) -> pd.Series:
-    """Collapse a group Series into two named categories, keeping the names.
-
-    The names, rather than codes, are what a test that reports per-group
-    statistics needs -- an ANOVA has to be able to say which group loaded
-    higher. `binarize_group` is this with the names traded for codes.
-    """
-    return sample_to_group.map(lambda x: match_name if x == match_value else other_name)
-
-
-def binarize_group(
-    sample_to_group: pd.Series, match_value: str, match_name: str, other_name: str
-) -> pd.Series:
-    """Collapse a group Series into two named categories and return integer codes."""
-    collapsed = collapse_group(sample_to_group, match_value, match_name, other_name)
-    return collapsed.astype("category").cat.codes
-
-
 def symmetrize_axes(ax: Axes):
     """Set both x and y limits to +/- the largest absolute limit on either axis."""
     lim = max(np.max(np.abs(ax.get_xlim())), np.max(np.abs(ax.get_ylim())))

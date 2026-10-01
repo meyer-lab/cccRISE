@@ -13,6 +13,7 @@ from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from scipy.stats import pearsonr
 
+from ...anova import get_sample_to_group
 from ...tensor import run_pseudobulk_workflow
 from ..common import get_covid_data
 from .commonFuncs.plotFactors import (
@@ -21,7 +22,7 @@ from .commonFuncs.plotFactors import (
     plot_interaction_heatmap,
     plot_lr_factors,
 )
-from .commonFuncs.plotGeneral import get_sample_to_group, rotate_yaxis
+from .commonFuncs.plotGeneral import rotate_yaxis
 from .commonFuncs.plotPaCMAP import plot_labels_pacmap, plot_wc_pacmap
 
 CCC_RISE_CMP = 6

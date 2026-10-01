@@ -10,11 +10,11 @@ from cccrise.anova import (
     _eta_squared,
     adjust_pvalues,
     anova_component_associations,
+    get_sample_to_group,
     prepare_group_labels,
     run_multiple_factors_anova,
     run_saved_factors_anova,
 )
-from cccrise.figures.legacy.commonFuncs.plotGeneral import get_sample_to_group
 from cccrise.import_data import add_cond_idxs
 from cccrise.runners._cli import CP_TOL, RISE_TOL
 from cccrise.utils import replicate_seed, resample_conditions
@@ -695,7 +695,8 @@ def test_prepare_group_labels():
 
 
 def test_run_saved_factors_anova_and_multiple_associations():
-    """`run_saved_factors_anova`, `run_multiple_factors_anova`, and `figureAnova` work."""
+    """`run_saved_factors_anova`, `run_multiple_factors_anova`, and the Figure 3
+    association plots work."""
     import os
 
     # `_resolve_factors_and_metadata` falls back to loading the real ALAD
@@ -707,14 +708,8 @@ def test_run_saved_factors_anova_and_multiple_associations():
     import matplotlib.pyplot as plt
 
     from cccrise.factors import load_factors_netcdf
-    from cccrise.figures.legacy.figureAnova import (
-        DEFAULT_BOXPLOTS,
-        makeFigure,
-        plot_anova_summary_heatmap,
-        plot_association_effect_sizes,
-        plot_association_significance,
-        plot_configured_boxplots,
-    )
+    from cccrise.figures import common
+    from cccrise.figures.figure3 import _shared as figure3_data
 
     ds = load_factors_netcdf("cccrise/data/factors/bal_alad_factors.nc")
     n_cond = ds.sizes["condition"]
@@ -752,9 +747,8 @@ def test_run_saved_factors_anova_and_multiple_associations():
     }.issubset(df.columns)
 
     # Test plotting subplots
-    fig, (ax0, ax1) = plt.subplots(1, 2)
-    plot_association_effect_sizes(df, ax0)
-    plot_association_significance(df, ax1)
+    fig, ax = plt.subplots()
+    common.plot_association_effect_sizes(df, ax)
     plt.close(fig)
 
     # Test multiple associations with global correction
@@ -781,37 +775,25 @@ def test_run_saved_factors_anova_and_multiple_associations():
     assert set(multi_df["Association"]) == {"Control vs. ALAD", "Control vs. Declined"}
 
     # Test summary heatmap
-    fig_hm, ax_hm = plt.subplots(1, 1)
-    plot_anova_summary_heatmap(multi_df, ax_hm)
+    fig_hm, ax_hm = plt.subplots()
+    common.plot_association_heatmap(multi_df, ax_hm)
     plt.close(fig_hm)
 
-    # Test plot_configured_boxplots with dictionary configuration
-    fig_bp, (ax_bp0, ax_bp1) = plt.subplots(1, 2)
-    plot_configured_boxplots(
-        ds,
-        DEFAULT_BOXPLOTS,
-        [ax_bp0, ax_bp1],
-        combined_anova_df=multi_df,
+    # Test component loadings by outcome, with regrouping and patient pairing
+    fig_bp, ax_bp = plt.subplots()
+    common.plot_category_component_weights(
+        figure3_data.factors_adata(),
+        1,
+        "ALADstatus",
+        ax_bp,
+        anova_df=df,
+        patient_column="patient_id",
+        levels=["control", "declined"],
+        control_label="control",
     )
     plt.close(fig_bp)
 
-    # Test makeFigure with custom associations and custom boxplots
-    custom_boxplots = [
-        {
-            "component": 1,
-            "group_column": "ALADstatus",
-            "levels": ["control", "declined"],
-            "title": "C1: Ctrl vs Dec",
-        }
-    ]
-    fig_custom = makeFigure(
-        associations=associations_config,
-        boxplots=custom_boxplots,
-    )
-    assert isinstance(fig_custom, plt.Figure)
-    plt.close(fig_custom)
-
-    # Test default makeFigure (runs all ALAD status types and default boxplots)
-    fig_default = makeFigure()
-    assert isinstance(fig_default, plt.Figure)
-    plt.close(fig_default)
+    # Test the full Figure 3 build (all ALAD associations)
+    fig_3 = common.build_figure("3")
+    assert isinstance(fig_3, plt.Figure)
+    plt.close(fig_3)

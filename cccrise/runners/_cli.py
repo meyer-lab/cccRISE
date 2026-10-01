@@ -10,7 +10,7 @@ from .datasets import (
 )
 from .provenance import relpath, sha256_file
 
-# (control label, other label) for `figures.legacy.commonFuncs.plotGeneral.binarize_group`,
+# (control label, other label) for `anova.binarize_group`,
 # per dataset. Only datasets with a confirmed binary encoding of `group_column`
 # are listed; an unlisted dataset requires --control-label/--other-label
 # explicitly.

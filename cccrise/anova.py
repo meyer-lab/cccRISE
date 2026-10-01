@@ -13,7 +13,7 @@ specifications on saved decomposition factors (e.g. `bal_alad_factors.nc`).
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import anndata
 import numpy as np
@@ -21,9 +21,40 @@ import pandas as pd
 import xarray as xr
 from scipy.stats import f_oneway, false_discovery_control
 
-# TODO: move collapse_group / get_sample_to_group here before figures/legacy is deleted.
-from .figures.legacy.commonFuncs.plotGeneral import collapse_group, get_sample_to_group
 from .utils import correct_conditions
+
+
+def get_sample_to_group(
+    X: anndata.AnnData, condition_column: str, group_col: str
+) -> pd.Series:
+    """Map each unique sample to its group label, ordered to match
+    np.unique(X.obs[condition_column])."""
+    sample_to_group = (
+        cast(pd.DataFrame, X.obs)
+        .drop_duplicates(subset=[condition_column, group_col])
+        .set_index(condition_column)[group_col]
+    )
+    return sample_to_group.loc[np.unique(X.obs[condition_column], return_index=True)[0]]
+
+
+def collapse_group(
+    sample_to_group: pd.Series, match_value: str, match_name: str, other_name: str
+) -> pd.Series:
+    """Collapse a group Series into two named categories, keeping the names.
+
+    The names, rather than codes, are what a test that reports per-group
+    statistics needs -- an ANOVA has to be able to say which group loaded
+    higher. `binarize_group` is this with the names traded for codes.
+    """
+    return sample_to_group.map(lambda x: match_name if x == match_value else other_name)
+
+
+def binarize_group(
+    sample_to_group: pd.Series, match_value: str, match_name: str, other_name: str
+) -> pd.Series:
+    """Collapse a group Series into two named categories and return integer codes."""
+    collapsed = collapse_group(sample_to_group, match_value, match_name, other_name)
+    return collapsed.astype("category").cat.codes
 
 
 def adjust_pvalues(

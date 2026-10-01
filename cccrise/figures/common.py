@@ -12,7 +12,7 @@ the panels with `panel_grid` and labels them with `label_panels`.
 import importlib
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from string import ascii_letters, ascii_uppercase
 
@@ -29,6 +29,7 @@ from matplotlib.ticker import NullLocator
 
 matplotlib.use("AGG")
 
+from ..anova import get_sample_to_group, prepare_group_labels
 from ..factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
@@ -40,6 +41,7 @@ from ..factors import (
 from ..import_data import import_alad, import_balf_covid
 from ..runners.datasets import DATASETS, VALIDATION_DIR
 from ..runners.provenance import read_metadata
+from ..utils import correct_conditions
 from ..validation.component_stability import metric_interval
 from . import style
 
@@ -315,19 +317,35 @@ def plot_rise_rank(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
     ax.legend()
 
 
-def plot_cpd_fit_r2x(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
+def plot_cpd_fit_r2x(
+    sweep: pd.DataFrame,
+    ax: plt.Axes,
+    rank: int | None = None,
+    color: str = style.COLORS["fit"],
+):
     """Full-tensor CP fit R2X against CP rank, from `cccrise-cpdrank`."""
-    ax.plot(sweep["Rank"], sweep["FitR2X"], marker="o", color=style.COLORS["fit"])
+    ax.plot(sweep["Rank"], sweep["FitR2X"], marker="o", color=color)
     mark_rank(ax, rank)
     ax.set_xlabel("CP rank")
     ax.set_ylabel("Fit $R^2X$")
 
 
-def plot_collinearity(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
+def plot_collinearity(
+    sweep: pd.DataFrame,
+    ax: plt.Axes,
+    rank: int | None = None,
+    colors: tuple[str, str, str] = (
+        style.COLORS["muted"],
+        style.COLORS["emphasis"],
+        style.COLORS["up"],
+    ),
+):
     """Number of modes the most collinear component pair is collinear in, per
     CP rank, marked by whether that pair duplicates or cancels itself. A
     canceling pair (collinear in >= 2 modes with opposing signs) flags a
-    degenerate fit."""
+    degenerate fit. `colors` is (no collinear pair, near-duplicate,
+    canceling)."""
+    none_color, duplicate_color, canceling_color = colors
     ax.plot(
         sweep["Rank"],
         sweep["MaxModesCollinear"],
@@ -339,9 +357,9 @@ def plot_collinearity(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None
     none_found = flag.isna()
     canceling = flag.fillna(False).astype(bool) & ~none_found
     for mask, color, marker, label in (
-        (none_found, style.COLORS["muted"], "o", "None collinear"),
-        (~canceling & ~none_found, style.COLORS["emphasis"], "o", "Near-duplicate"),
-        (canceling, style.COLORS["up"], "D", "Canceling"),
+        (none_found, none_color, "o", "None collinear"),
+        (~canceling & ~none_found, duplicate_color, "o", "Near-duplicate"),
+        (canceling, canceling_color, "D", "Canceling"),
     ):
         ax.scatter(
             sweep.loc[mask, "Rank"],
@@ -591,6 +609,227 @@ def plot_nichenet_heatmap(scores: pd.DataFrame, ax: plt.Axes, n_top: int = 10):
     ax.tick_params(axis="x", length=0)
     ax.spines[:].set_visible(False)
     ax.figure.colorbar(image, ax=ax, label="Ligand AUROC", shrink=0.8)
+
+
+# --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------
+
+#: Outcome levels in reading order (healthy/control first); unlisted levels
+#: follow alphabetically.
+LEVEL_ORDER = [
+    "control",
+    "declined",
+    "recovered",
+    "No CLAD/Stable",
+    "No CLAD/Recovered",
+    "No CLAD",
+    "CLAD",
+    "CLAD/Declined",
+    "CLAD/Stable",
+    "CLAD/Died",
+    "Died",
+    "no",
+    "yes",
+    "stable",
+    "improved",
+    "ILD",
+    "Other",
+    "IgG-",
+    "IgG+",
+    "female",
+    "male",
+]
+
+
+def plot_association_heatmap(table: pd.DataFrame, ax: plt.Axes) -> None:
+    """Eta-squared of each CP component (columns) against each outcome
+    association (rows, in `table` order), from `anova.run_multiple_factors_anova`;
+    bold with a star where the FDR-adjusted p is below `SIG_ALPHA`."""
+    order = list(dict.fromkeys(table["Association"]))
+    effect, padj = (
+        table.pivot(index="Association", columns="Component", values=v).reindex(order)
+        for v in ("EtaSquared", "PAdj")
+    )
+    values = effect.to_numpy(dtype=float)
+    vmax = np.nanmax(values)
+    image = ax.imshow(
+        values, cmap=style.CMAPS["sequential"], vmin=0, vmax=vmax, aspect="auto"
+    )
+    for (i, j), value in np.ndenumerate(values):
+        if not np.isfinite(value):
+            continue
+        significant = padj.iloc[i, j] < SIG_ALPHA
+        ax.text(
+            j,
+            i,
+            f"{value:.2f}" + ("*" if significant else ""),
+            ha="center",
+            va="center",
+            fontsize=style.FONT_SIZE_DENSE,
+            fontweight="bold" if significant else "normal",
+            color="white" if value > 0.6 * vmax else style.COLORS["ink"],
+        )
+    ax.set_xticks(range(effect.shape[1]), effect.columns)
+    ax.set_yticks(range(len(order)), order, fontsize=style.FONT_SIZE_DENSE)
+    ax.set_xlabel("CP component")
+    ax.tick_params(length=0)
+    ax.spines[:].set_visible(False)
+    ax.figure.colorbar(image, ax=ax, label=r"$\eta^2$", shrink=0.8)
+
+
+def plot_association_effect_sizes(
+    table: pd.DataFrame,
+    ax: plt.Axes,
+    highlight_component: int | None = None,
+    emphasis_color: str = style.COLORS["emphasis"],
+    muted_color: str = style.COLORS["muted"],
+) -> None:
+    """Eta-squared per CP component for one association, starred where the
+    adjusted p is below `SIG_ALPHA`. Significant bars are emphasized, or only
+    `highlight_component` when given."""
+    rows = table.sort_values("Component")
+    components = rows["Component"].astype(int).to_numpy()
+    p_values = rows["PAdj" if "PAdj" in rows else "P"].to_numpy(dtype=float)
+    significant = p_values < SIG_ALPHA
+    emphasized = (
+        significant
+        if highlight_component is None
+        else components == highlight_component
+    )
+    values = rows["EtaSquared"].to_numpy(dtype=float)
+    x = np.arange(len(components))
+    ax.bar(x, values, color=np.where(emphasized, emphasis_color, muted_color))
+    for xi, value in zip(x[significant], values[significant], strict=True):
+        ax.text(xi, value, "*", ha="center", va="bottom", fontweight="bold")
+    ax.set_xticks(x, components)
+    ax.set_xlabel("CP component")
+    ax.set_ylabel(r"$\eta^2$")
+    ax.set_ylim(0, np.nanmax(values) * 1.2)
+    if "Association" in rows:
+        ax.set_title(str(rows["Association"].iloc[0]))
+
+
+def group_loadings(
+    adata: anndata.AnnData,
+    component: int,
+    group_column: str,
+    condition_column: str,
+    **regrouping,
+) -> pd.DataFrame:
+    """Read-depth-corrected loading of one CP component per condition, with
+    its (regrouped, see `anova.prepare_group_labels`) outcome level; conditions
+    without a level are dropped."""
+    labels = prepare_group_labels(
+        get_sample_to_group(adata, condition_column, group_column), **regrouping
+    )
+    return pd.DataFrame(
+        {
+            "Condition": labels.index,
+            "Status": labels.to_numpy(),
+            "Loading": correct_conditions(adata)[:, component - 1],
+        }
+    ).dropna(subset=["Status"])
+
+
+def _ordered_levels(levels) -> list:
+    rank = {level: i for i, level in enumerate(LEVEL_ORDER)}
+    return sorted(set(levels), key=lambda level: (rank.get(level, len(rank)), level))
+
+
+def _join_patients(ax, points, adata, condition_column, patient_column) -> None:
+    """Line through the points of conditions that share a patient."""
+    patient = get_sample_to_group(adata, condition_column, patient_column)
+    points = points.assign(Patient=patient.loc[points["Condition"]].to_numpy())
+    for _, samples in points.groupby("Patient"):
+        if len(samples) > 1:
+            ax.plot(
+                samples["x"],
+                samples["Loading"],
+                color=style.COLORS["reference"],
+                linewidth=style.LINE_WIDTH_THIN,
+                zorder=2,
+            )
+
+
+def plot_category_component_weights(
+    adata: anndata.AnnData,
+    component: int,
+    group_column: str,
+    ax: plt.Axes,
+    title: str | None = None,
+    anova_df: pd.DataFrame | None = None,
+    patient_column: str | None = None,
+    condition_column: str = "dsco_id",
+    palette: Sequence[str] = style.CATEGORICAL,
+    **regrouping,
+) -> None:
+    """Box plot of one CP component's condition loadings per outcome level,
+    with the conditions as jittered points, joined per patient when
+    `patient_column` is given. `regrouping` (mapping / levels /
+    control_label / other_label) is passed to `anova.prepare_group_labels`;
+    `anova_df` adds the component's F, adjusted p, and eta-squared to the
+    title."""
+    points = group_loadings(
+        adata, component, group_column, condition_column, **regrouping
+    )
+    levels = _ordered_levels(points["Status"])
+    counts = points["Status"].value_counts()
+    sns.boxplot(
+        data=points,
+        x="Status",
+        y="Loading",
+        order=levels,
+        hue="Status",
+        hue_order=levels,
+        palette=list(palette[: len(levels)]),
+        legend=False,
+        width=0.5,
+        fliersize=0,
+        linewidth=style.LINE_WIDTH_THIN,
+        boxprops={"alpha": 0.8},
+        ax=ax,
+    )
+    # Jittered by hand so patient lines can run through the exact points.
+    rng = np.random.default_rng(0)
+    points["x"] = points["Status"].map({level: i for i, level in enumerate(levels)})
+    points["x"] += rng.uniform(-0.2, 0.2, len(points))
+    ax.scatter(
+        points["x"],
+        points["Loading"],
+        color=style.COLORS["ink"],
+        s=style.POINT_SIZE,
+        zorder=3,
+    )
+    if patient_column is not None:
+        _join_patients(ax, points, adata, condition_column, patient_column)
+
+    # Wrapped at "/" rather than rotated, so long levels stay legible.
+    ax.set_xticks(
+        range(len(levels)),
+        [f"{str(level).replace('/', '/\n')}\n(n={counts[level]})" for level in levels],
+    )
+    ax.set_xlabel("")
+    ax.set_ylabel(f"Component {component} loading")
+    ax.set_title(title or group_column)
+    ax.text(
+        0.03,
+        0.97,
+        _anova_stats(anova_df, component),
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=style.FONT_SIZE_DENSE,
+    )
+
+
+def _anova_stats(anova_df: pd.DataFrame | None, component: int) -> str:
+    """Title suffix with one component's F, adjusted p, and eta-squared."""
+    if anova_df is None:
+        return ""
+    row = anova_df[anova_df["Component"] == component]
+    if row.empty:
+        return ""
+    f, padj, eta = (float(row[c].iloc[0]) for c in ("F", "PAdj", "EtaSquared"))
+    return f"$F$ = {f:.2f}\n$p_{{adj}}$ = {padj:.2g}\n$\\eta^2$ = {eta:.2f}"
 
 
 # --- Component stability (ALAD Fig 2 and supplement) -------------------------------------------

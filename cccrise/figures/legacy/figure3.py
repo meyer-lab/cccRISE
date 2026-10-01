@@ -12,6 +12,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from scipy.stats import spearmanr
 
+from ...anova import get_sample_to_group
 from ...utils import (
     add_obs_cmp_both_label,
     add_obs_cmp_label,
@@ -21,7 +22,7 @@ from ...utils import (
 )
 from ..common import get_covid_data
 from .commonFuncs.plotFactors import plot_interaction_heatmap, plot_pair_lr_factors
-from .commonFuncs.plotGeneral import get_sample_to_group, symmetrize_axes
+from .commonFuncs.plotGeneral import symmetrize_axes
 from .commonFuncs.plotPaCMAP import plot_wc_pacmap
 
 CMP1 = 3

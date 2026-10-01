@@ -9,10 +9,10 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+from ...anova import binarize_group, get_sample_to_group
 from ...utils import correct_conditions
 from ..common import get_alad_data
 from .commonFuncs.plotFactors import plot_interaction_heatmap, plot_lr_factors
-from .commonFuncs.plotGeneral import binarize_group, get_sample_to_group
 from .commonFuncs.plotPaCMAP import plot_labels_pacmap, plot_wc_pacmap
 from .logreg import (
     ccc_rise_logreg_weights,

@@ -10,15 +10,11 @@ import seaborn as sns
 from matplotlib.axes import Axes
 from sklearn.linear_model import LogisticRegression
 
+from ...anova import binarize_group, get_sample_to_group
 from ...import_data import add_cond_idxs
 from ...utils import correct_conditions
 from ..common import get_alad_data, getSetup, subplotLabel
-from .commonFuncs.plotGeneral import (
-    binarize_group,
-    get_sample_to_group,
-    rotate_xaxis,
-    rotate_yaxis,
-)
+from .commonFuncs.plotGeneral import rotate_xaxis, rotate_yaxis
 
 
 def makeFigure():
