@@ -13,8 +13,8 @@ loader_args:
 condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
-rise_rank: 18
-cp_rank: 6
+rise_rank: 17
+cp_rank: 5
 axes:
 - cells
 - conditions
@@ -57,11 +57,11 @@ condition_mode_alignment: reference condition-mode rows expanded onto the replic
 lr_mode_alignment: reference ligand-receptor mode rows expanded by the drawn LR indices
 fms_definition: congruence product across compared modes (Modes 0 and 2 for RISE, with Mode
   1 held out; Modes 0 and 3 for CPD, with Modes 1 and 2 held out), weights ignored (see validation.per_component_fms)
-component_numbering: core fit cccrise/data/bal_alad_factors.nc (validation.relabel_workflow_fit)
+component_numbering: core fit cccrise/data/factors/bal_alad_factors.nc (validation.relabel_workflow_fit)
 lr_roster_stable: true
-interaction_tensor_shape: [47, 18, 18, 513]
-r2x_pf2: 0.031715239450647026
-r2x_cp: 0.4925660224868619
+interaction_tensor_shape: [47, 17, 17, 513]
+r2x_pf2: 0.03148007149850829
+r2x_cp: 0.449892957146672
 reference_seed: 42
 first_replicate_seed: 42001
 resulting_dims:
@@ -69,5 +69,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 32c64d814661e8746929aec93c98b393f912e8b6-dirty
-generated: '2026-09-29T04:46:54+00:00'
+git_sha: 840d7792ba71d70f424c8baac87a96f809b7cf42
+generated: '2026-10-01T19:10:15+00:00'

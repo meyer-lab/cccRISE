@@ -12,30 +12,36 @@ loader_args:
 condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
-rise_rank: 18
+rise_rank: 17
 cp_ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 rise_n_iter_max: 300
 rise_tol: 1.0e-08
 cp_n_iter_max: 4000
 cp_tol: 1.0e-12
-init: svd
-backend: auto
+cp_fit_options:
+  init: svd
+  svd: randomized_svd
+  normalize_factors: true
+backend: cupy
+compress: true
+rise_compression_options:
+  n_power_iter: 20
+cp_compression_options:
+  oversample: 5
 complex_sep: '&'
 communication_score: expression_product
 hill_k: 0.5
 random_state: 42
-interaction_tensor_shape: [47, 18, 18, 513]
-compressed: true
-oversample: 5
-core_shape: [22, 18, 18, 22]
+interaction_tensor_shape: [47, 17, 17, 513]
+core_shape: [22, 17, 17, 22]
 compression_ratio: 49.81611570247934
-retained_fraction: 0.8043684889680944
+retained_fraction: 0.8052524395654935
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
   lr_pairs: 513
 lr_pairs_annotated: 2005
-r2x_pf2: 0.031748863679848194
-git_sha: 3fd1b80be7b6dd41a086310525373d772261058c-dirty
-generated: '2026-09-29T22:05:48+00:00'
+r2x_pf2: 0.03148006608124043
+git_sha: 840d7792ba71d70f424c8baac87a96f809b7cf42
+generated: '2026-10-01T16:45:55+00:00'

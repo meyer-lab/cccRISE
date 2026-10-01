@@ -12,8 +12,8 @@ loader_args:
 condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
-rise_rank: 18
-cp_rank: 6
+rise_rank: 17
+cp_rank: 5
 n_boot: 100
 group_column: 6monthcondition
 control_label: null
@@ -40,33 +40,28 @@ rise_compression_options:
   n_power_iter: 20
 cp_compression_options:
   oversample: 5
-match_mode_weights:
-  '3': 1.0
-component_numbering: core fit cccrise/data/bal_alad_factors.nc (validation.relabel_workflow_fit)
-reference_r2x_cp: 0.4925660227344715
+match_modes: [3]
+component_numbering: core fit cccrise/data/factors/bal_alad_factors.nc (validation.relabel_workflow_fit)
+reference_r2x_cp: 0.44989208823011095
 reference_eta_squared:
-- 0.07572358417768768
-- 0.07828059292978751
-- 0.0622919222559942
-- 0.0683721933820283
-- 0.2991197026318784
-- 0.10441694166829092
+- 0.07612532562325594
+- 0.03725712496207227
+- 0.07534346078988025
+- 0.28984997582024546
+- 0.05230831328140941
 reference_f:
-- 1.1742930519847647
-- 1.2173138846670193
-- 0.9521629458683183
-- 1.0519237741876504
-- 6.117139289675893
-- 1.6711379437735019
+- 1.1810364517273484
+- 0.5546847501748564
+- 1.16791791567364
+- 5.85019528076307
+- 0.7911354514071006
 reference_p:
-- 0.3306559964736906
-- 0.31494561173115976
-- 0.42394595852021155
-- 0.37942380401238085
-- 0.0014672275230405512
-- 0.18734654520344676
+- 0.32814576727097927
+- 0.6477909236798884
+- 0.333045655666746
+- 0.0019197508049683901
+- 0.5055255339365701
 reference_group_mean_diff:
-- .nan
 - .nan
 - .nan
 - .nan
@@ -74,24 +69,22 @@ reference_group_mean_diff:
 - .nan
 reference_top_lr_pair:
 - CEACAM1^CEACAM5
-- CCL17^CCR4
-- BTC^EGFR
 - XCL2^XCR1
+- CCL17^CCR4
 - GZMA^F2R
 - BTC^EGFR
 reference_top_lr_loading:
-- 0.8311494280166153
-- 0.6198138363534355
-- 0.9190753431918528
-- 0.6683464748850949
-- 0.48247801999536866
-- 0.8994197076986339
+- 0.8306845748503847
+- 0.6543466592726879
+- 0.6404813777502474
+- 0.4813583405510163
+- 0.9018990023160137
 n_components_significant: 1
-min_component_match_score: 7.259198103544548e-06
+min_component_match_score: 3.032313505468243e-06
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 32c64d814661e8746929aec93c98b393f912e8b6-dirty
-generated: '2026-09-29T05:37:43+00:00'
+git_sha: 840d7792ba71d70f424c8baac87a96f809b7cf42
+generated: '2026-10-01T17:47:34+00:00'
