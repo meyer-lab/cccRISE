@@ -25,7 +25,7 @@ def plot(fig):
     common.plot_nichenet_heatmap(scores[scores["receiver_mode"] == LIGAND_MODE], axs[2])
     axs[2].set_title(
         f"Top ligands ({common.NICHENET_MODES[LIGAND_MODE].lower()}; "
-        f"* p < {common.SIG_ALPHA})"
+        f"* p < {common.SIG_ALPHA})\ngrey: not in NicheNet"
     )
 
 

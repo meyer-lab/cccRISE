@@ -24,7 +24,6 @@ import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure, SubFigure
-from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.ticker import NullLocator
 
@@ -41,12 +40,7 @@ from ..factors import (
 from ..import_data import import_alad, import_balf_covid
 from ..runners.datasets import DATASETS, VALIDATION_DIR
 from ..runners.provenance import read_metadata
-from ..validation.component_stability import (
-    STAGE_CPD,
-    STAGE_RISE,
-    metric_interval,
-    summarize_component_stability,
-)
+from ..validation.component_stability import metric_interval
 from . import style
 
 __all__ = [
@@ -538,14 +532,11 @@ def plot_nichenet_summary(summary: pd.DataFrame, ax: plt.Axes, value: str, ylabe
 
 
 def top_nichenet_ligands(scores: pd.DataFrame, n_top: int = 10) -> pd.DataFrame:
-    """Each component's `n_top` highest-loading scored ligands, one row per
-    ligand (a ligand's AUROC does not depend on its receptor), with a
-    within-component 'rank'."""
-    by_ligand = (
-        scores.dropna(subset=["auroc"])
-        .sort_values("loading", key=np.abs, ascending=False)
-        .drop_duplicates(["component", "ligand"])
-    )
+    """Each component's `n_top` highest-loading ligands, one row per ligand (a
+    ligand's AUROC does not depend on its receptor), with a within-component
+    'rank'. Ligands absent from the NicheNet database keep a NaN AUROC."""
+    by_ligand = scores.sort_values("loading", key=np.abs, ascending=False)
+    by_ligand = by_ligand.drop_duplicates(["component", "ligand"])
     top = by_ligand.groupby("component").head(n_top).copy()
     top["rank"] = top.groupby("component").cumcount()
     return top
@@ -554,7 +545,8 @@ def top_nichenet_ligands(scores: pd.DataFrame, n_top: int = 10) -> pd.DataFrame:
 def plot_nichenet_heatmap(scores: pd.DataFrame, ax: plt.Axes, n_top: int = 10):
     """Ligand-activity AUROC of each component's top-loading ligands: one
     column per component, rows by loading rank, each cell labeled with its
-    ligand and a star when significant against the permutation null."""
+    ligand. Significant ligands (permutation null) are bold with a star;
+    ligands absent from the NicheNet database are grey."""
     top = top_nichenet_ligands(scores, n_top)
     auroc = top.pivot(index="rank", columns="component", values="auroc")
     limit = np.nanmax(np.abs(auroc.to_numpy() - 0.5))
@@ -566,16 +558,31 @@ def plot_nichenet_heatmap(scores: pd.DataFrame, ax: plt.Axes, n_top: int = 10):
         aspect="auto",
     )
     columns = {component: i for i, component in enumerate(auroc.columns)}
-    for component, rank, ligand, p_value in zip(
-        top["component"], top["rank"], top["ligand"], top["p_value"], strict=True
+    for component, rank, ligand, value, p_value in zip(
+        top["component"],
+        top["rank"],
+        top["ligand"],
+        top["auroc"],
+        top["p_value"],
+        strict=True,
     ):
+        x = columns[component]
+        if np.isnan(value):
+            ax.add_patch(
+                Rectangle(
+                    (x - 0.5, rank - 0.5), 1, 1, color=style.COLORS["not_significant"]
+                )
+            )
+        significant = p_value < SIG_ALPHA
         ax.text(
-            columns[component],
+            x,
             rank,
-            ligand + ("*" if p_value < SIG_ALPHA else ""),
+            ligand + ("*" if significant else ""),
             ha="center",
             va="center",
-            fontsize=style.FONT_SIZE_DENSE,
+            # Complex ligands (e.g. ITGA4&ITGB7) would overflow their cell.
+            fontsize=style.FONT_SIZE_DENSE - (len(ligand) > 9),
+            fontweight="bold" if significant else "normal",
         )
     ax.set_xticks(range(auroc.shape[1]), auroc.columns)
     ax.set_yticks([])
@@ -662,44 +669,6 @@ def plot_aggregate_fms(stability: pd.DataFrame, ax: plt.Axes):
     )
     ax.set_ylim(0, 1.02)
     ax.set_ylabel("Aggregate FMS")
-
-
-def plot_match_ambiguity(stability: pd.DataFrame, ax: plt.Axes):
-    """Median matched FMS against median runner-up FMS, per component. Far
-    above the diagonal: re-identified unambiguously; near it: the replicate
-    could not tell the component apart from another."""
-    summary = summarize_component_stability(stability)
-    ax.plot(
-        [0, 1],
-        [0, 1],
-        color=style.COLORS["reference"],
-        linestyle=style.LINE_STYLE_REFERENCE,
-        linewidth=style.LINE_WIDTH_THIN,
-    )
-    for stage, marker in ((STAGE_RISE, "o"), (STAGE_CPD, "s")):
-        for axis, color in style.STABILITY_AXIS_COLORS.items():
-            rows = summary[(summary["Stage"] == stage) & (summary["Axis"] == axis)]
-            ax.scatter(
-                rows["MedianRunnerUpFMS"],
-                rows["MedianFMS"],
-                marker=marker,
-                color=color,
-                s=style.POINT_SIZE,
-                alpha=0.8,
-            )
-    handles = [
-        Line2D([], [], marker=m, linestyle="", color=style.COLORS["ink"], label=s)
-        for s, m in ((STAGE_RISE, "o"), (STAGE_CPD, "s"))
-    ] + [
-        Patch(color=c, label=a)
-        for a, c in style.STABILITY_AXIS_COLORS.items()
-        if a in set(summary["Axis"])
-    ]
-    ax.set_xlim(0, 1.02)
-    ax.set_ylim(0, 1.02)
-    ax.set_xlabel("Median runner-up FMS")
-    ax.set_ylabel("Median matched FMS")
-    ax.legend(handles=handles, loc="lower right")
 
 
 # =============================================================================

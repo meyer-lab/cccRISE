@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
-from matplotlib.ticker import MaxNLocator
 
 from ...factors import load_factors_netcdf, load_factors_to_anndata
 from ...runners.datasets import (
@@ -43,9 +42,6 @@ SCORE_LABELS = {
 }
 #: Modes CP components are paired across methods on: condition and LR.
 MATCH_MODES = (0, 3)
-#: K values top-K LR-pair and cell-type overlaps are computed at.
-LR_TOP_KS = range(1, 20, 2)
-CELLTYPE_KS = range(1, 4)
 HINT = (
     f"    uv run cccrise-altcommscore --dataset {DATASET} --rise-rank <N> --cp-rank <M>"
 )
@@ -118,19 +114,6 @@ def default_provenance(section: str, key: str) -> Any:
     return meta[key] if key in meta else meta[section][key]
 
 
-def jaccard(a: set, b: set) -> float:
-    return 1.0 if not a and not b else len(a & b) / len(a | b)
-
-
-def top_k_jaccard(ref: pd.Series, alt: pd.Series, ks) -> list[dict]:
-    """Overlap of the `k` largest-magnitude labels of `ref` and `alt`, per k."""
-
-    def top(s, k):
-        return set(s.abs().nlargest(k).index)
-
-    return [{"K": k, "Jaccard": jaccard(top(ref, k), top(alt, k))} for k in ks]
-
-
 def method_legend(fig) -> None:
     """One legend of all methods' colors, above `fig`."""
     handles = [
@@ -165,24 +148,3 @@ def grouped_bar(
     ax.set_xticks(x, data.index)
     ax.set_xlabel("CP component")
     ax.set_ylabel(ylabel)
-
-
-def draw_top_k_overlap(ax: plt.Axes, overlaps: pd.DataFrame, xlabel: str) -> None:
-    """Per alternate method, top-K Jaccard overlap with the default against K
-    (mean +/- SD over components; no bar when there is one row per K)."""
-    for key, rows in overlaps.groupby("Method", sort=False):
-        method = str(key)
-        stats = rows.groupby("K")["Jaccard"].agg(["mean", "std"])
-        ax.errorbar(
-            stats.index,
-            stats["mean"],
-            yerr=stats["std"] if stats["std"].notna().any() else None,
-            marker="o",
-            capsize=2,
-            label=SCORE_LABELS[method],
-            color=style.COMMUNICATION_SCORE_COLORS[method],
-        )
-    ax.set_ylim(0, 1.05)
-    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel("Overlap with default (Jaccard)")
