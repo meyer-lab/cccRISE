@@ -12,7 +12,7 @@ import anndata
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
-from .utils import add_obs_cmp_label
+from ...utils import add_obs_cmp_label
 
 
 def population_gene_logreg_weights(

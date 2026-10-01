@@ -5,10 +5,10 @@ Figure A6d: Logistic regression weights for ALAD vs Control classification based
 import numpy as np
 
 from ...import_data import add_cond_idxs
-from ...logreg import ccc_rise_logreg_weights
 from ...utils import correct_conditions
 from ..common import get_alad_data, getSetup, subplotLabel
 from .commonFuncs.plotGeneral import binarize_group, get_sample_to_group
+from .logreg import ccc_rise_logreg_weights
 
 
 def makeFigure():
