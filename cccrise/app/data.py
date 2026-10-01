@@ -11,11 +11,10 @@ import yaml
 
 from cccrise.factors import (
     ALAD_FACTORS_PATH,
-    COVID19_FACTORS_PATH,
     load_factors_netcdf,
     load_factors_to_anndata,
 )
-from cccrise.figures.common import get_alad_data, get_covid_data
+from cccrise.figures.common import get_alad_data
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.runners.datasets import RANK_SELECTION_DIR
 from cccrise.runners.provenance import sidecar_path
@@ -39,20 +38,9 @@ class DatasetSpec:
     other_label: str | None = None
 
 
+# TODO: COVID-19 is left out while its legacy factors file predates the fit
+# fingerprint; the dataset itself is retired in PR #210.
 DATASETS: dict[str, DatasetSpec] = {
-    "covid": DatasetSpec(
-        key="covid",
-        label="COVID-19 BALF",
-        factors_path=COVID19_FACTORS_PATH,
-        # No embedding: PaCMAP coordinates come from the factors file when
-        # it stores them.
-        raw_loader=lambda: get_covid_data(project_cells=True, do_embedding=False),
-        celltype_col="celltype",
-        condition_col="sample",
-        group_col="condition",
-        control_label="Control",
-        other_label="COVID-19",
-    ),
     "alad": DatasetSpec(
         key="alad",
         label="ALAD Lung Transplant",
