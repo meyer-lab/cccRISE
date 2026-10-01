@@ -8,6 +8,11 @@ per-ligand/per-component AUROC (the standard NicheNet ligand-activity
 statistic) and an empirical permutation p-value against a null built from
 the same receiver population.
 
+`ligand_baseline_scores` / `ligand_baseline_tests` put those top ligands in
+context: every ligand the model sees is scored on the same receiver ranking
+(restricted to genes expressed in the receiver groups), and each component's
+top ligands (`top_pair_ligands`) are compared with all the others.
+
 The ligand-target prior is the NicheNet v2 ligand-target matrix (Zenodo
 record 7074291), which is only published as an R `.rds` object; it is read
 here with `pyreadr` (a pure-Python RDS parser) rather than adding an R/rpy2
@@ -26,7 +31,7 @@ import anndata
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from scipy.stats import rankdata
+from scipy.stats import mannwhitneyu, rankdata
 from sklearn.metrics import roc_auc_score
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -563,3 +568,193 @@ def component_accuracy_scores(
             )
 
     return pd.DataFrame(rows)
+
+
+def expressed_genes(
+    kept: anndata.AnnData, pos_mask: np.ndarray, min_frac: float = 0.1
+) -> pd.Index:
+    """Genes detected (non-zero) in at least `min_frac` of the "high" or of the
+    "low" group of `kept` (`_receiver_population`)."""
+    detected = cast(Any, kept.X) > 0
+    frac_high = np.asarray(detected[pos_mask].mean(axis=0)).ravel()
+    frac_low = np.asarray(detected[~pos_mask].mean(axis=0)).ravel()
+    return kept.var_names[(frac_high >= min_frac) | (frac_low >= min_frac)]
+
+
+def ligand_weights(D: np.ndarray, lr_pairs: pd.DataFrame) -> pd.DataFrame:
+    """Ligand x component (1-indexed columns) weight: the square root of the
+    summed squared loadings of the ligand's LR pairs."""
+    D = np.asarray(D)
+    return np.sqrt(
+        pd.DataFrame(
+            D**2, index=lr_pairs["ligand"].to_numpy(), columns=range(1, D.shape[1] + 1)
+        )
+        .groupby(level=0)
+        .sum()
+    )
+
+
+def top_pair_ligands(
+    D: np.ndarray,
+    lr_pairs: pd.DataFrame,
+    cmp: int,
+    scorable: set[str],
+    rel_cutoff: float = 0.4,
+) -> list[str]:
+    """
+    Ligands of component `cmp`'s LR pairs with |loading| >= `rel_cutoff` x the
+    largest |loading| among its scorable pairs (pairs whose ligand is in
+    `scorable`), ordered by loading. Unscorable pairs neither set the scale
+    nor enter the set.
+    """
+    loading = np.abs(np.asarray(D)[:, cmp - 1])
+    ligand = lr_pairs["ligand"].to_numpy()
+    ok = np.isin(ligand, list(scorable))
+    if not ok.any():
+        return []
+    rel = np.where(ok, loading, 0.0) / loading[ok].max()
+    order = np.argsort(-rel)
+    return list(dict.fromkeys(ligand[i] for i in order if rel[i] >= rel_cutoff))
+
+
+def ligand_baseline_scores(
+    adata: anndata.AnnData,
+    lr_pairs: pd.DataFrame,
+    lt_df: pd.DataFrame,
+    components: list[int],
+    receiver_mode: ReceiverMode = "vs_rest",
+    celltype_col: str = "broad_cell_type",
+    top_perc: float = 10,
+    de_method: DeMethod = "wilcoxon",
+    pool_threshold: float = 0.3,
+    min_expr_frac: float = 0.1,
+    rel_cutoff: float = 0.4,
+) -> pd.DataFrame:
+    """
+    Score every ligand the model sees against each component's receiver DE
+    ranking, restricted to genes expressed in the receiver groups, and flag
+    each component's top ligands.
+
+    For each component: split the receiver population (`_receiver_population`)
+    into "high" and "low" loading cells, rank genes by DE between them
+    (`_run_de`), keep genes expressed in either group (`expressed_genes`), and
+    compute every ligand's AUROC on that ranking (`ligand_activity_auroc`;
+    NaN where undefined, i.e. no expressed targets). The top set is
+    `top_pair_ligands` over the scorable ligands.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per (component, ligand): ["component", "ligand", "auroc",
+        "weight", "rel_weight" (weight / the component's top scorable
+        ligand's), "is_top", "n_pos", "n_neg", "n_expressed_genes"].
+        Components with fewer than 2 cells in either group are omitted.
+    """
+    D = adata.uns["D"]
+    weights = ligand_weights(D, lr_pairs)
+    rows = []
+    for cmp in components:
+        receivers = _expressed_ranking(
+            adata,
+            cmp,
+            receiver_mode,
+            celltype_col,
+            top_perc,
+            de_method,
+            pool_threshold,
+            min_expr_frac,
+        )
+        if receivers is None:
+            continue
+        ranking, n_pos, n_neg = receivers
+        auroc = {
+            lig: ligand_activity_auroc(ranking, lig, lt_df) for lig in weights.index
+        }
+        scorable = {lig for lig, a in auroc.items() if a is not None}
+        top = set(top_pair_ligands(D, lr_pairs, cmp, scorable, rel_cutoff))
+        w = weights[cmp]
+        w_max = w[list(scorable)].max() if scorable else np.nan
+        rows += [
+            {
+                "component": cmp,
+                "ligand": lig,
+                "auroc": np.nan if auroc[lig] is None else auroc[lig],
+                "weight": w[lig],
+                "rel_weight": w[lig] / w_max,
+                "is_top": lig in top,
+                "n_pos": n_pos,
+                "n_neg": n_neg,
+                "n_expressed_genes": len(ranking),
+            }
+            for lig in weights.index
+        ]
+    return pd.DataFrame(rows)
+
+
+def _expressed_ranking(
+    adata: anndata.AnnData,
+    cmp: int,
+    receiver_mode: ReceiverMode,
+    celltype_col: str,
+    top_perc: float,
+    de_method: DeMethod,
+    pool_threshold: float,
+    min_expr_frac: float,
+) -> tuple[pd.Series, int, int] | None:
+    """Component `cmp`'s receiver DE ranking (`_receiver_population` + `_run_de`)
+    restricted to `expressed_genes`, with the group sizes; None if either
+    group has fewer than 2 cells."""
+    celltype = (
+        receiver_celltypes_for_component(
+            adata, cmp, celltype_col=celltype_col, pool_threshold=pool_threshold
+        )
+        if receiver_mode == "within_celltype"
+        else None
+    )
+    kept, pos_mask, n_pos, n_neg = _receiver_population(
+        adata, cmp, celltype_col, celltype, top_perc
+    )
+    if n_pos < 2 or n_neg < 2:
+        return None
+    expressed = expressed_genes(kept, pos_mask, min_expr_frac)
+    ranking = _run_de(kept, pos_mask, cmp, de_method)
+    return ranking[ranking.index.isin(expressed)], n_pos, n_neg
+
+
+def ligand_baseline_tests(
+    scores: pd.DataFrame, correction: str | None = "fdr_bh"
+) -> pd.DataFrame:
+    """
+    Per component, a two-sided Mann-Whitney test of the top ligands' AUROCs
+    against every other scored ligand's (`ligand_baseline_scores` output),
+    with p-values adjusted across components (`anova.adjust_pvalues`, as in
+    the ANOVA analysis).
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per component: ["component", "top_ligands", "n_top",
+        "n_comparison", "top_median", "comparison_median", "direction"
+        ("up"/"down"), "p", "q"].
+    """
+    from ..anova import adjust_pvalues
+
+    rows = []
+    for cmp, c in scores.dropna(subset=["auroc"]).groupby("component"):
+        top = c[c["is_top"]].sort_values("weight", ascending=False)
+        rest = c.loc[~c["is_top"], "auroc"]
+        rows.append(
+            {
+                "component": cmp,
+                "top_ligands": ", ".join(top["ligand"]),
+                "n_top": len(top),
+                "n_comparison": len(rest),
+                "top_median": top["auroc"].median(),
+                "comparison_median": rest.median(),
+                "direction": "up" if top["auroc"].median() > rest.median() else "down",
+                "p": mannwhitneyu(top["auroc"], rest, alternative="two-sided").pvalue,
+            }
+        )
+    out = pd.DataFrame(rows)
+    out["q"] = adjust_pvalues(out["p"].to_numpy(), method=correction)
+    return out

@@ -5,15 +5,20 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from cccrise.anova import adjust_pvalues
 from cccrise.validation.nichenet import (
     _receiver_population,
     component_accuracy_scores,
+    expressed_genes,
     ligand_activity_auroc,
+    ligand_baseline_scores,
+    ligand_baseline_tests,
     load_ligand_target_matrix,
     permutation_null_aurocs,
     receiver_celltypes_for_component,
     receiver_de_ranking,
     top_lr_pairs_for_component,
+    top_pair_ligands,
 )
 
 
@@ -341,3 +346,94 @@ def test_component_accuracy_scores_end_to_end():
     assert liga_row["p_value"] < 0.05
     # LIGB's targets aren't planted as DE, so its AUROC should be near chance.
     assert ligb_row["auroc"] < 0.75
+
+
+def test_expressed_genes_keeps_genes_detected_in_either_group():
+    pos = np.array([True] * 10 + [False] * 10)
+    X = np.zeros((20, 3))
+    X[:2, 0] = 1.0  # 20% of the high group only
+    X[10:12, 1] = 1.0  # 20% of the low group only
+    X[[0, 10], 2] = 1.0  # 10% pooled but only 10% of each group -> kept at 0.1
+    adata = anndata.AnnData(
+        X=X, var=pd.DataFrame(index=["hi_only", "lo_only", "sparse"])
+    )
+    assert list(expressed_genes(adata, pos, min_frac=0.15)) == ["hi_only", "lo_only"]
+    assert list(expressed_genes(adata, pos, min_frac=0.1)) == [
+        "hi_only",
+        "lo_only",
+        "sparse",
+    ]
+
+
+def test_top_pair_ligands_normalizes_to_scorable_pairs():
+    lr_pairs = pd.DataFrame(
+        {"ligand": ["U", "A", "B", "C"], "receptor": ["R1", "R2", "R3", "R4"]}
+    )
+    D = np.array([[1.0], [0.5], [0.3], [0.1]])  # U (unscorable) has the top pair
+    # relative to A (the top scorable pair): A 1.0, B 0.6, C 0.2
+    assert top_pair_ligands(D, lr_pairs, 1, {"A", "B", "C"}, rel_cutoff=0.4) == [
+        "A",
+        "B",
+    ]
+    assert top_pair_ligands(D, lr_pairs, 1, set()) == []
+
+
+def test_ligand_baseline_tests_bh_across_components():
+    rng = np.random.default_rng(0)
+    rows = []
+    for cmp, shift in ((1, 0.2), (2, 0.0), (3, -0.2)):
+        auroc = rng.normal(0.55, 0.02, 40)
+        auroc[:4] += shift
+        rows.append(
+            pd.DataFrame(
+                {
+                    "component": cmp,
+                    "ligand": [f"L{i}" for i in range(40)],
+                    "auroc": auroc,
+                    "weight": np.linspace(1, 0.01, 40),
+                    "is_top": np.arange(40) < 4,
+                }
+            )
+        )
+    tests = ligand_baseline_tests(pd.concat(rows, ignore_index=True))
+    assert tests.loc[0, "direction"] == "up" and tests.loc[2, "direction"] == "down"
+    assert tests.loc[0, "p"] < 0.01 and tests.loc[2, "p"] < 0.01
+    np.testing.assert_allclose(
+        tests["q"], adjust_pvalues(tests["p"].to_numpy(), "fdr_bh")
+    )
+    assert list(tests["n_top"]) == [4, 4, 4] and list(tests["n_comparison"]) == [
+        36,
+        36,
+        36,
+    ]
+
+
+def test_ligand_baseline_scores_end_to_end():
+    target_genes = ["g0", "g1", "g2"]
+    adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
+    # "GZMX" has the top pair but no prior targets, so it neither scores nor
+    # sets the top-set scale; LIGA (planted) is the top scorable pair.
+    lr_pairs = pd.DataFrame(
+        {
+            "ligand": ["GZMX", "LIGA", "LIGB", "LIGC", "LIGD"],
+            "receptor": ["R0", "RA", "RB", "RC", "RD"],
+        }
+    )
+    adata.uns["D"] = np.array([[1.0], [0.9], [0.1], [0.05], [0.02]])
+    lt_df = pd.DataFrame(
+        {
+            "ligand": ["LIGA"] * 3 + ["LIGB"] * 3 + ["LIGC"] * 3 + ["LIGD"] * 3,
+            "target": target_genes
+            + ["g10", "g11", "g12", "g13", "g14", "g15", "g16", "g17", "g18"],
+            "weight": 1.0,
+        }
+    )
+    scores = ligand_baseline_scores(
+        adata, lr_pairs, lt_df, components=[1], receiver_mode="vs_rest", top_perc=20
+    )
+    s = scores.set_index("ligand")
+    assert np.isnan(s.loc["GZMX", "auroc"]) and not s.loc["GZMX", "is_top"]
+    assert list(s.index[s["is_top"]]) == ["LIGA"]
+    assert s.loc["LIGA", "auroc"] > 0.9
+    assert s.loc["LIGA", "rel_weight"] == pytest.approx(1.0)
+    assert (s.loc[["LIGB", "LIGC", "LIGD"], "auroc"] < 0.8).all()
