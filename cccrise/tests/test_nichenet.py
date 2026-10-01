@@ -8,50 +8,15 @@ import pytest
 from cccrise.anova import adjust_pvalues
 from cccrise.validation.nichenet import (
     _receiver_population,
-    component_accuracy_scores,
+    component_ligand_scores,
     expressed_genes,
     ligand_activity_auroc,
-    ligand_baseline_scores,
-    ligand_baseline_tests,
+    ligand_weights,
     load_ligand_target_matrix,
-    permutation_null_aurocs,
-    receiver_celltypes_for_component,
-    receiver_de_ranking,
-    top_lr_pairs_for_component,
+    receiver_ranking,
+    top_ligand_tests,
     top_pair_ligands,
 )
-
-
-def test_top_lr_pairs_for_component_ranks_by_abs_loading():
-    lr_pairs = pd.DataFrame(
-        {
-            "ligand": ["L1", "L2", "L3", "L4"],
-            "receptor": ["R1", "R2", "R3", "R4"],
-        }
-    )
-    # cmp 1 loadings: strongly negative should still rank above a small positive.
-    D = np.array(
-        [
-            [-5.0, 0.1],
-            [1.0, 0.2],
-            [0.5, 0.3],
-            [3.0, 0.4],
-        ]
-    )
-
-    top = top_lr_pairs_for_component(D, lr_pairs, cmp=1, top_m=2)
-
-    assert list(top["ligand"]) == ["L1", "L4"]
-    assert list(top["receptor"]) == ["R1", "R4"]
-    np.testing.assert_allclose(top["loading"].to_numpy(), [-5.0, 3.0])
-
-
-def test_top_lr_pairs_for_component_truncates_to_top_m():
-    lr_pairs = pd.DataFrame({"ligand": ["L1", "L2"], "receptor": ["R1", "R2"]})
-    D = np.array([[1.0], [2.0]])
-
-    top = top_lr_pairs_for_component(D, lr_pairs, cmp=1, top_m=10)
-    assert len(top) == 2
 
 
 def test_ligand_activity_auroc_perfect_separation():
@@ -131,221 +96,28 @@ def _make_synthetic_adata(
 
 def test_receiver_population_excludes_middle():
     adata = _make_synthetic_adata(n_cells=200, n_high=40, random_state=1)
-    kept, pos_mask, n_pos, n_neg = _receiver_population(
-        adata,
-        cmp=1,
-        celltype_col="broad_cell_type",
-        celltype="CT1",
-        top_perc=20,
-    )
-    assert n_pos == pytest.approx(40, abs=2)
-    assert n_neg == pytest.approx(40, abs=2)
-    assert kept.n_obs == n_pos + n_neg
-    assert kept.n_obs < adata.n_obs
-    assert pos_mask.sum() == n_pos
-
-
-def test_receiver_population_with_no_celltype_uses_whole_adata():
-    adata = _make_synthetic_adata(n_cells=200, n_high=40, random_state=1)
-    kept, _pos_mask, n_pos, n_neg = _receiver_population(
-        adata,
-        cmp=1,
-        celltype_col="broad_cell_type",
-        celltype=None,
-        top_perc=20,
-    )
-    assert kept.n_obs == n_pos + n_neg
+    kept, pos_mask = _receiver_population(adata, cmp=1, top_perc=20)
+    assert pos_mask.sum() == pytest.approx(40, abs=2)
+    assert (~pos_mask).sum() == pytest.approx(40, abs=2)
     assert kept.n_obs < adata.n_obs
 
 
-def test_receiver_de_ranking_within_celltype_recovers_target_genes():
+def test_receiver_ranking_recovers_target_genes():
     target_genes = ["g0", "g1", "g2"]
     adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
-
-    de_ranking = receiver_de_ranking(
-        adata,
-        cmp=1,
-        receiver_mode="within_celltype",
-        celltype_col="broad_cell_type",
-        celltype="CT1",
-        top_perc=20,
-    )
-
-    top_genes = set(de_ranking.index[:5])
-    assert set(target_genes).issubset(top_genes)
+    result = receiver_ranking(adata, cmp=1, top_perc=20)
+    assert result is not None
+    ranking, n_pos, n_neg = result
+    assert set(target_genes).issubset(set(ranking.index[:5]))
+    assert n_pos == pytest.approx(40, abs=2) and n_neg == pytest.approx(40, abs=2)
 
 
-def test_receiver_de_ranking_within_celltype_accepts_pooled_celltypes():
-    target_genes = ["g0", "g1", "g2"]
-    adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
-
-    de_ranking = receiver_de_ranking(
-        adata,
-        cmp=1,
-        receiver_mode="within_celltype",
-        celltype_col="broad_cell_type",
-        celltype=["CT1"],
-        top_perc=20,
-    )
-
-    top_genes = set(de_ranking.index[:5])
-    assert set(target_genes).issubset(top_genes)
-
-
-def test_receiver_de_ranking_vs_rest():
-    target_genes = ["g0", "g1", "g2"]
-    adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
-
-    de_ranking = receiver_de_ranking(
-        adata,
-        cmp=1,
-        receiver_mode="vs_rest",
-        top_perc=20,
-    )
-
-    top_genes = set(de_ranking.index[:5])
-    assert set(target_genes).issubset(top_genes)
-
-
-def test_receiver_de_ranking_invalid_mode_raises():
-    adata = _make_synthetic_adata()
-    with pytest.raises(ValueError, match="Unknown receiver_mode"):
-        receiver_de_ranking(adata, cmp=1, receiver_mode="bogus")  # ty: ignore[invalid-argument-type]
-
-
-def test_receiver_de_ranking_within_celltype_requires_celltype():
-    adata = _make_synthetic_adata()
-    with pytest.raises(ValueError, match="celltype.*required"):
-        receiver_de_ranking(adata, cmp=1, receiver_mode="within_celltype")
-
-
-def test_receiver_celltypes_for_component_excludes_dilute_celltypes():
-    n_each = 50
-    obs = pd.DataFrame({"broad_cell_type": ["A"] * n_each + ["B"] * n_each})
-    adata = anndata.AnnData(
-        X=np.zeros((2 * n_each, 2)), obs=obs, var=pd.DataFrame(index=["g0", "g1"])
-    )
-    rc_C = np.zeros((2 * n_each, 1))
-    rc_C[:n_each, 0] = 1.0  # A: strong signal
-    rc_C[n_each:, 0] = 0.01  # B: negligible signal
-    adata.obsm["rc_C"] = rc_C
-
-    result = receiver_celltypes_for_component(
-        adata, cmp=1, celltype_col="broad_cell_type", pool_threshold=0.3
-    )
-    assert result == ["A"]
-
-
-def test_receiver_celltypes_for_component_pools_comparable_celltypes():
-    n_each = 50
-    obs = pd.DataFrame(
-        {"broad_cell_type": ["A"] * n_each + ["B"] * n_each + ["C"] * n_each}
-    )
-    adata = anndata.AnnData(
-        X=np.zeros((3 * n_each, 2)), obs=obs, var=pd.DataFrame(index=["g0", "g1"])
-    )
-    rc_C = np.zeros((3 * n_each, 1))
-    rc_C[:n_each, 0] = 1.0
-    rc_C[n_each : 2 * n_each, 0] = 0.9
-    rc_C[2 * n_each :, 0] = 0.1
-    adata.obsm["rc_C"] = rc_C
-
-    result = receiver_celltypes_for_component(
-        adata, cmp=1, celltype_col="broad_cell_type", pool_threshold=0.3
-    )
-    assert set(result) == {"A", "B"}
-
-
-def test_permutation_null_aurocs_null_centered_near_chance():
-    adata = _make_synthetic_adata(
-        target_genes=["g0", "g1", "g2"], n_high=40, random_state=2
-    )
-    kept, pos_mask, _, _ = _receiver_population(
-        adata,
-        cmp=1,
-        celltype_col="broad_cell_type",
-        celltype="CT1",
-        top_perc=20,
-    )
-    lt_df = pd.DataFrame(
-        {
-            "ligand": ["LIGA"] * 3,
-            "target": ["g0", "g1", "g2"],
-            "weight": [0.9, 0.8, 0.7],
-        }
-    )
-
-    null = permutation_null_aurocs(
-        kept, pos_mask, lt_df, ["LIGA"], n_perm=200, random_state=0
-    )
-
-    assert "LIGA" in null
-    assert null["LIGA"].shape == (200,)
-    assert abs(null["LIGA"].mean() - 0.5) < 0.1
-
-
-def test_permutation_null_aurocs_dedupes_repeated_ligands():
-    adata = _make_synthetic_adata(
-        target_genes=["g0", "g1", "g2"], n_high=40, random_state=2
-    )
-    kept, pos_mask, _, _ = _receiver_population(
-        adata,
-        cmp=1,
-        celltype_col="broad_cell_type",
-        celltype="CT1",
-        top_perc=20,
-    )
-    lt_df = pd.DataFrame(
-        {
-            "ligand": ["LIGA"] * 3,
-            "target": ["g0", "g1", "g2"],
-            "weight": [0.9, 0.8, 0.7],
-        }
-    )
-
-    null = permutation_null_aurocs(
-        kept, pos_mask, lt_df, ["LIGA", "LIGA"], n_perm=50, random_state=0
-    )
-    assert list(null.keys()) == ["LIGA"]
-
-
-def test_component_accuracy_scores_end_to_end():
-    target_genes = ["g0", "g1", "g2"]
-    adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
-    adata.uns["D"] = np.array([[1.0], [0.1]])  # LIGA loads high, LIGB loads low
-
-    lr_pairs = pd.DataFrame({"ligand": ["LIGA", "LIGB"], "receptor": ["RECA", "RECB"]})
-    lt_df = pd.DataFrame(
-        {
-            "ligand": ["LIGA"] * 3 + ["LIGB"] * 3,
-            "target": target_genes + ["g20", "g21", "g22"],
-            "weight": [0.9, 0.8, 0.7, 0.9, 0.8, 0.7],
-        }
-    )
-
-    scores = component_accuracy_scores(
-        adata,
-        lr_pairs=lr_pairs,
-        lt_df=lt_df,
-        components=[1],
-        top_m_lr=2,
-        receiver_mode="within_celltype",
-        top_perc=20,
-        n_perm=200,
-        random_state=0,
-    )
-
-    assert set(scores["ligand"]) == {"LIGA", "LIGB"}
-    assert {"n_pos", "n_neg", "null_mean_auroc", "null_sd_auroc", "p_value"}.issubset(
-        scores.columns
-    )
-
-    liga_row = scores.loc[scores["ligand"] == "LIGA"].iloc[0]
-    ligb_row = scores.loc[scores["ligand"] == "LIGB"].iloc[0]
-    assert liga_row["auroc"] > 0.9
-    assert liga_row["p_value"] < 0.05
-    # LIGB's targets aren't planted as DE, so its AUROC should be near chance.
-    assert ligb_row["auroc"] < 0.75
+def test_ligand_weights_combines_pairs_sharing_a_ligand():
+    lr_pairs = pd.DataFrame({"ligand": ["A", "A", "B"], "receptor": ["R1", "R2", "R3"]})
+    D = np.array([[3.0, 0.0], [4.0, 1.0], [1.0, 2.0]])
+    weights = ligand_weights(D, lr_pairs)
+    np.testing.assert_allclose(weights.loc["A"], [5.0, 1.0])
+    np.testing.assert_allclose(weights.loc["B"], [1.0, 2.0])
 
 
 def test_expressed_genes_keeps_genes_detected_in_either_group():
@@ -378,7 +150,7 @@ def test_top_pair_ligands_normalizes_to_scorable_pairs():
     assert top_pair_ligands(D, lr_pairs, 1, set()) == []
 
 
-def test_ligand_baseline_tests_bh_across_components():
+def test_top_ligand_tests_bh_across_components():
     rng = np.random.default_rng(0)
     rows = []
     for cmp, shift in ((1, 0.2), (2, 0.0), (3, -0.2)):
@@ -395,7 +167,7 @@ def test_ligand_baseline_tests_bh_across_components():
                 }
             )
         )
-    tests = ligand_baseline_tests(pd.concat(rows, ignore_index=True))
+    tests = top_ligand_tests(pd.concat(rows, ignore_index=True))
     assert tests.loc[0, "direction"] == "up" and tests.loc[2, "direction"] == "down"
     assert tests.loc[0, "p"] < 0.01 and tests.loc[2, "p"] < 0.01
     np.testing.assert_allclose(
@@ -408,7 +180,7 @@ def test_ligand_baseline_tests_bh_across_components():
     ]
 
 
-def test_ligand_baseline_scores_end_to_end():
+def test_component_ligand_scores_end_to_end():
     target_genes = ["g0", "g1", "g2"]
     adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
     # "GZMX" has the top pair but no prior targets, so it neither scores nor
@@ -428,8 +200,8 @@ def test_ligand_baseline_scores_end_to_end():
             "weight": 1.0,
         }
     )
-    scores = ligand_baseline_scores(
-        adata, lr_pairs, lt_df, components=[1], receiver_mode="vs_rest", top_perc=20
+    scores = component_ligand_scores(
+        adata, lr_pairs, lt_df, components=[1], top_perc=20
     )
     s = scores.set_index("ligand")
     assert np.isnan(s.loc["GZMX", "auroc"]) and not s.loc["GZMX", "is_top"]

@@ -1,220 +1,144 @@
 """
-Figure: NicheNet-style downstream-target validation of CPD components
-(``cccrise.validation.nichenet``), plotted from the cached scores written by
+Figure: each CPD component's top ligands against every other ligand the model
+sees, plotted from ``nichenet_scores_<dataset>.parquet`` written by
 ``uv run cccrise-nichenet --dataset <dataset>``.
 
-For every CPD component of the selected dataset's finalized factors, scores
-each of its top-loading ligands' curated NicheNet v2 downstream targets for
-differential expression in the component's implicated receiver population
-(``component_accuracy_scores``, run by the ``run_nichenet`` runner -- this
-figure only plots), under both receiver-population definitions:
-
-- "within_celltype": receiver cells restricted to the cell type(s) with
-  comparably high mean receiver-eigenstate loading for that component (see
-  ``nichenet.receiver_celltypes_for_component``) -- one or several cell
-  types may be pooled together.
-- "vs_rest": receiver cells drawn from the whole dataset.
-
-Significance is a permutation test (``nichenet.permutation_null_aurocs``):
-each ligand's AUROC is compared to its empirical null distribution from
-random relabelings of the same receiver population. Bars are colored by
-significance (p < 0.05) and direction (AUROC above/below chance).
-
-Panels, in order: one per-ligand AUROC panel per component for each mode
-(left column "within_celltype", right column "vs_rest"), followed by a
-per-component summary row (mean AUROC, ligand coverage, and significant-hit
-count).
+One box per component: the NicheNet-style AUROC
+(``nichenet.component_ligand_scores``) of every scored ligand on the component's
+receiver ranking, restricted to genes expressed in the receiver groups. Points
+are colored and sized by the ligand's weight in the component; the top
+ligands (``nichenet.top_pair_ligands``) are outlined and labeled. Above each
+box: a two-sided Mann-Whitney test of the top ligands against all the others,
+and its Benjamini-Hochberg q across components (``nichenet.top_ligand_tests``).
 """
 
 import numpy as np
 import pandas as pd
-from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
+from matplotlib.collections import PathCollection
+from matplotlib.colors import LinearSegmentedColormap, LogNorm
 
 from ..runners.datasets import DATASETS, VALIDATION_DIR
-from .common import getSetup, load_runner_output, subplotLabel
+from ..validation.nichenet import top_ligand_tests
+from .common import getSetup, load_runner_output
 
-# Change this to switch dataset; must be a key in `runners.datasets.DATASETS`
-# with cached scores already produced by `uv run cccrise-nichenet`.
 SELECTED_DATASET = "alad"
 
-SIG_ALPHA = 0.05
-SIG_UP_COLOR = "#3a6b9c"
-SIG_DOWN_COLOR = "#b3382c"
-NOT_SIG_COLOR = "0.72"
-VSREST_COLOR = "#c98b3a"
-CHANCE_COLOR = "0.4"
+ALPHA = 0.05
+WEIGHT_FLOOR = 1e-3
+LABEL_GAP = 0.035  # fraction of the y-range between stacked labels
+INK, MUTED = "#2b2b29", "#6f6e69"
+# light until weights are substantial, so only heavy ligands read as dark
+WEIGHT_CMAP = LinearSegmentedColormap.from_list(
+    "weight",
+    [
+        (0, "#eef2f7"),
+        (0.45, "#cde2fb"),
+        (0.7, "#86b6ef"),
+        (0.85, "#2a78d6"),
+        (1, "#0d366b"),
+    ],
+)
 
 
-def _significance_color(auroc: float, p_value: float | None) -> str:
-    if p_value is None or pd.isna(p_value) or p_value >= SIG_ALPHA:
-        return NOT_SIG_COLOR
-    return SIG_UP_COLOR if auroc > 0.5 else SIG_DOWN_COLOR
+def _spread(values: np.ndarray, gap: float) -> np.ndarray:
+    """Label heights at least `gap` apart, in the input order."""
+    order = np.argsort(values)
+    placed = values[order].astype(float).copy()
+    for i in range(1, len(placed)):
+        placed[i] = max(placed[i], placed[i - 1] + gap)
+    out = np.empty_like(placed)
+    out[order] = placed
+    return out
 
 
-def _component_summary(scores: pd.DataFrame, components: list[int]) -> pd.DataFrame:
-    summary = (
-        scores.groupby("component")
-        .agg(
-            mean_auroc=("auroc", "mean"),
-            median_auroc=("auroc", "median"),
-            n_scored=("auroc", "count"),
-            n_significant=("p_value", lambda p: int((p < SIG_ALPHA).sum())),
-        )
-        .reindex(components)
+def plot_component(ax, c: pd.DataFrame, x: int, gap: float, rng) -> PathCollection:
+    """Weight-colored points for one component's ligands, top ligands labeled."""
+    c = c.assign(w=np.clip(c["rel_weight"], WEIGHT_FLOOR, 1)).sort_values("w")
+    jitter = rng.uniform(-0.22, 0.22, len(c))
+    top = c["is_top"].to_numpy()
+    points = ax.scatter(
+        x + jitter,
+        c["auroc"],
+        c=c["w"],
+        cmap=WEIGHT_CMAP,
+        norm=LogNorm(vmin=WEIGHT_FLOOR, vmax=1),
+        s=5 + 60 * c["w"],
+        lw=np.where(top, 1.0, 0.2),
+        edgecolor=np.where(top, INK, "white"),
+        zorder=3,
     )
-    summary["n_scored"] = summary["n_scored"].fillna(0).astype(int)
-    summary["n_significant"] = summary["n_significant"].fillna(0).astype(int)
-    return summary
-
-
-def plot_component_ligands(scores: pd.DataFrame, cmp: int, ax, mode_label: str) -> None:
-    """Per-ligand AUROC bars for one component/receiver-mode combination."""
-    full = scores[scores["component"] == cmp]
-    sub = full.dropna(subset=["auroc"]).sort_values("auroc")
-
-    celltype = None
-    if len(full) and full["celltype"].notna().any():
-        celltype = full["celltype"].iloc[0]
-
-    title_bits = [f"Cmp{cmp}", mode_label]
-    if celltype:
-        title_bits.append(str(celltype))
-    title = " - ".join(title_bits) + f" (n={len(sub)}/{len(full)})"
-
-    if sub.empty:
-        ax.text(
-            0.5,
-            0.5,
-            "No scoreable ligands",
-            ha="center",
-            va="center",
-            transform=ax.transAxes,
-            fontsize=7,
-        )
-        ax.set_title(title, fontsize=7)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        return
-
-    labels = [
-        f"{lig}→{rec}" + (" *" if p < SIG_ALPHA else "")
-        for lig, rec, p in zip(sub["ligand"], sub["receptor"], sub["p_value"])
-    ]
-    colors = [_significance_color(a, p) for a, p in zip(sub["auroc"], sub["p_value"])]
-    ax.barh(labels, sub["auroc"], color=colors)
-    ax.axvline(0.5, color=CHANCE_COLOR, linestyle="--", linewidth=0.8)
-    ax.set_xlim(0, 1)
-    ax.set_xlabel("Ligand-activity AUROC")
-    ax.set_title(title, fontsize=7)
-    ax.tick_params(axis="y", labelsize=6)
-
-    handles = [
-        Patch(facecolor=SIG_UP_COLOR, label=f"p<{SIG_ALPHA}, AUROC>0.5"),
-        Patch(facecolor=SIG_DOWN_COLOR, label=f"p<{SIG_ALPHA}, AUROC<0.5"),
-        Patch(facecolor=NOT_SIG_COLOR, label="not significant"),
-        Line2D(
-            [0], [0], color=CHANCE_COLOR, linestyle="--", linewidth=0.8, label="Chance"
-        ),
-    ]
-    ax.legend(handles=handles, fontsize=5, loc="lower right")
-
-
-def plot_component_summary(
-    summary_within: pd.DataFrame,
-    summary_vsrest: pd.DataFrame,
-    components: list[int],
-    ax,
-    value_col: str,
-    ylabel: str,
-    title: str,
-    chance_line: bool = False,
-) -> None:
-    """Grouped bar chart comparing the two receiver modes, one bar-pair per
-    component."""
-    positions = np.arange(len(components))
-    width = 0.38
-
-    ax.bar(
-        positions - width / 2,
-        summary_within[value_col].to_numpy(dtype=float),
-        width=width,
-        color=SIG_UP_COLOR,
-        label="within_celltype",
-    )
-    ax.bar(
-        positions + width / 2,
-        summary_vsrest[value_col].to_numpy(dtype=float),
-        width=width,
-        color=VSREST_COLOR,
-        label="vs_rest",
-    )
-
-    if chance_line:
-        ax.axhline(0.5, color=CHANCE_COLOR, linestyle="--", linewidth=0.8)
-        ax.set_ylim(0, 1)
-
-    ax.set_xticks(positions)
-    ax.set_xticklabels([f"Cmp{c}" for c in components])
-    ax.set_ylabel(ylabel)
-    ax.set_title(title, fontsize=7)
-    ax.legend(fontsize=6)
+    labeled = c[top]
+    heights = _spread(labeled["auroc"].to_numpy(), gap)
+    for lig, a, xi, y in zip(
+        labeled["ligand"], labeled["auroc"], x + jitter[top], heights
+    ):
+        ax.plot([xi, x + 0.3], [a, y], color=MUTED, lw=0.4, zorder=2)
+        ax.text(x + 0.31, y, lig, fontsize=5.5, va="center", color=INK, zorder=4)
+    return points
 
 
 def makeFigure():
     spec = DATASETS[SELECTED_DATASET]
-    scores = load_runner_output(spec.nichenet_scores_filename(), VALIDATION_DIR)
+    scores = load_runner_output(
+        spec.nichenet_scores_filename(),
+        VALIDATION_DIR,
+        hint=f"    uv run cccrise-nichenet --dataset {SELECTED_DATASET}",
+    ).dropna(subset=["auroc"])
+    tests = top_ligand_tests(scores).set_index("component")
     components = sorted(scores["component"].unique())
-    cp_rank = len(components)
 
-    scores_within = scores[scores["receiver_mode"] == "within_celltype"]
-    scores_vsrest = scores[scores["receiver_mode"] == "vs_rest"]
-
-    summary_within = _component_summary(scores_within, components)
-    summary_vsrest = _component_summary(scores_vsrest, components)
-
-    nrows = cp_rank + 2
-    ax, f = getSetup((11, 3.0 * nrows), (nrows, 2))
-    subplotLabel(ax)
-
-    for i, cmp in enumerate(components):
-        plot_component_ligands(scores_within, cmp, ax[i * 2], "within_celltype")
-        plot_component_ligands(scores_vsrest, cmp, ax[i * 2 + 1], "vs_rest")
-
-    summary_row = cp_rank * 2
-    plot_component_summary(
-        summary_within,
-        summary_vsrest,
-        components,
-        ax[summary_row],
-        value_col="mean_auroc",
-        ylabel="Mean ligand-activity AUROC",
-        title=f"Per-component mean AUROC ({SELECTED_DATASET})",
-        chance_line=True,
+    ax, f = getSetup((8.5, 5.2), (1, 1))
+    ax = ax[0]
+    rng = np.random.default_rng(0)
+    top_y, low_y = scores["auroc"].max(), scores["auroc"].min()
+    span = top_y - low_y
+    for x, cmp in enumerate(components):
+        points = plot_component(
+            ax, scores[scores["component"] == cmp], x, LABEL_GAP * span, rng
+        )
+        t = tests.loc[cmp]
+        sig = t["q"] < ALPHA
+        ax.text(
+            x,
+            top_y + 0.09 * span,
+            f"{'↑' if t['direction'] == 'up' else '↓'} p={t['p']:.2g}\nq={t['q']:.2g}",
+            ha="center",
+            va="center",
+            fontsize=6.5,
+            color=INK if sig else MUTED,
+            fontweight="bold" if sig else "normal",
+        )
+    ax.boxplot(
+        [scores.loc[scores["component"] == cmp, "auroc"] for cmp in components],
+        positions=range(len(components)),
+        widths=0.6,
+        showfliers=False,
+        patch_artist=True,
+        zorder=1,
+        boxprops={"facecolor": "#f2f1ee", "edgecolor": MUTED, "lw": 0.8},
+        medianprops={"color": INK, "lw": 1.2},
+        whiskerprops={"color": MUTED, "lw": 0.8},
+        capprops={"color": MUTED, "lw": 0.8},
     )
-    plot_component_summary(
-        summary_within,
-        summary_vsrest,
-        components,
-        ax[summary_row + 1],
-        value_col="n_scored",
-        ylabel="Ligands scored (of top-loading set)",
-        title=f"Per-component ligand coverage ({SELECTED_DATASET})",
+    ax.axhline(0.5, color=MUTED, ls="--", lw=0.7)
+    ax.set_xticks(
+        range(len(components)),
+        [
+            f"Cmp{c}\n({int(tests.loc[c, 'n_top'])} top / {int(tests.loc[c, 'n_comparison'])})"
+            for c in components
+        ],
     )
-    plot_component_summary(
-        summary_within,
-        summary_vsrest,
-        components,
-        ax[summary_row + 2],
-        value_col="n_significant",
-        ylabel=f"Ligands significant (p<{SIG_ALPHA})",
-        title=f"Per-component permutation-null hits ({SELECTED_DATASET})",
+    ax.set_xlim(-0.6, len(components) - 0.1)
+    ax.set_ylim(top=top_y + 0.16 * span)
+    ax.set_ylabel("Ligand AUROC (receiver-expressed genes)")
+    ax.set_title(
+        "Top ligands (outlined) vs all other ligands; two-sided Mann–Whitney, "
+        f"q = BH across components (bold q<{ALPHA})",
+        fontsize=7,
     )
-    ax[summary_row + 3].axis("off")
+    cbar = f.colorbar(points, ax=ax, shrink=0.8, pad=0.01)
+    cbar.set_label("Ligand weight / component's top scorable ligand", fontsize=7)
 
-    print(f"=== NicheNet component summary: {SELECTED_DATASET}, within_celltype ===")
-    print(summary_within.to_string())
-    print(f"=== NicheNet component summary: {SELECTED_DATASET}, vs_rest ===")
-    print(summary_vsrest.to_string())
-
+    print(f"=== NicheNet top ligands vs all ligands: {SELECTED_DATASET} ===")
+    print(tests.round(4).to_string())
     return f
