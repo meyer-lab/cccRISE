@@ -8,9 +8,9 @@ already-finalized factor fit (``spec.factors_path()``, produced by
 sees on that component's receiver ranking
 (``cccrise.validation.nichenet.component_ligand_scores``). The expensive step
 is the per-component differential expression over the full single-cell
-dataset, so the result is cached for ``figureNicheNet`` to plot.
+dataset, so the result is cached for ``figures/figure2/nichenet.py`` to plot.
 
-Writes the long-format table `figureNicheNet` reads:
+Writes the long-format table `figures/figure2/nichenet.py` reads:
 
     nichenet_scores_<dataset>.parquet   one row per (component, ligand)
 

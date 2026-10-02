@@ -18,14 +18,14 @@ output_dir.mkdir(parents=True, exist_ok=True)
 
 # Import cccRISE modules
 from cccrise.ccc_rise import calculate_interaction_tensor, fit_rise
-from cccrise.figures.commonFuncs.plotFactors import (
+from cccrise.figures.legacy.commonFuncs.plotFactors import (
     plot_condition_factors,
     plot_eigenstate_factors,
     plot_lr_factors,
     plot_lr_factors_partial,
 )
-from cccrise.figures.commonFuncs.plotGeneral import plot_fms_r2x_stability
-from cccrise.figures.commonFuncs.plotPaCMAP import (
+from cccrise.figures.legacy.commonFuncs.plotGeneral import plot_fms_r2x_stability
+from cccrise.figures.legacy.commonFuncs.plotPaCMAP import (
     plot_labels_pacmap,
     plot_wc_pacmap,
 )

@@ -223,7 +223,7 @@ Rank Selection
 ~~~~~~~~~~~~~~
 
 .. py:function:: plot_fms_r2x_diff_ranks(X: anndata.AnnData, condition_name: str, ax1: matplotlib.axes.Axes, ax2: matplotlib.axes.Axes, ranksList: list[int], runs: int)
-   :module: cccrise.figures.commonFuncs.plotGeneral
+   :module: cccrise.figures.legacy.commonFuncs.plotGeneral
 
    Plot Factor Match Score (FMS) and R²X across different RISE ranks for rank selection.
    
@@ -250,7 +250,7 @@ Factor Plotting
 ~~~~~~~~~~~~~~~
 
 .. py:function:: plot_condition_factors(data: anndata.AnnData, ax: matplotlib.axes.Axes, cond: str = "Condition", cond_group_labels: pd.Series = None, color_key: list = None, group_cond: bool = False, normalize: bool = False)
-   :module: cccrise.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.legacy.commonFuncs.plotFactors
 
    Plot Factor A (condition factors) as a heatmap showing how conditions contribute to components.
    
@@ -274,7 +274,7 @@ Factor Plotting
    :type normalize: bool, optional
 
 .. py:function:: plot_eigenstate_factors(data: anndata.AnnData, ax: matplotlib.axes.Axes, factor_type: str)
-   :module: cccrise.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.legacy.commonFuncs.plotFactors
 
    Plot Factor B (sender eigenstates) or Factor C (receiver eigenstates) as a heatmap.
    
@@ -290,7 +290,7 @@ Factor Plotting
    :type factor_type: str
 
 .. py:function:: plot_lr_factors(data: anndata.AnnData, ax: matplotlib.axes.Axes, trim: bool = True, weight: float = 0.08)
-   :module: cccrise.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.legacy.commonFuncs.plotFactors
 
    Plot Factor D (ligand-receptor pairs) as a heatmap showing which L-R pairs drive each component.
    
@@ -308,7 +308,7 @@ Factor Plotting
    :type weight: float, optional
 
 .. py:function:: plot_lr_factors_partial(X: anndata.AnnData, cmp: int, ax: matplotlib.axes.Axes, geneAmount: int = 5, top: bool = True)
-   :module: cccrise.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.legacy.commonFuncs.plotFactors
 
    Plot the top or bottom weighted ligand-receptor pairs for a specific component as a bar plot.
    
@@ -332,7 +332,7 @@ PaCMAP Visualization
 ~~~~~~~~~~~~~~~~~~~~
 
 .. py:function:: plot_labels_pacmap(X: anndata.AnnData, labelType: str, ax: matplotlib.axes.Axes, condition: list = None, cmap: str = "tab20", color_key: list = None)
-   :module: cccrise.figures.commonFuncs.plotPaCMAP
+   :module: cccrise.figures.legacy.commonFuncs.plotPaCMAP
 
    Plot PaCMAP embedding colored by categorical labels (cell type or condition).
    
@@ -354,7 +354,7 @@ PaCMAP Visualization
    :type color_key: list, optional
 
 .. py:function:: plot_wc_pacmap(X: anndata.AnnData, cmp: int, ax: matplotlib.axes.Axes, cbarMax: float = 1.0, factor_matrix: str = None)
-   :module: cccrise.figures.commonFuncs.plotPaCMAP
+   :module: cccrise.figures.legacy.commonFuncs.plotPaCMAP
 
    Plot PaCMAP embedding colored by weighted projections for a specific component.
    
