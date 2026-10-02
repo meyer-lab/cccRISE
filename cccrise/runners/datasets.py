@@ -77,11 +77,11 @@ class DatasetSpec:
     label: str
     loader: Callable[..., anndata.AnnData]
     condition_column: str
+    celltype_column: str
     factors_filename: str
     #: Source file the loader reads
     source_file: Path
     gene_threshold: float = 0.001
-    celltype_column: str | None = None
     group_column: str | None = None
     #: Condition-level patient identity, for conditions the same patient
     #: contributes more than one sample of (see `validation`'s

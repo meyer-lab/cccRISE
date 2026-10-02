@@ -204,6 +204,7 @@ def test_runner_cli_parser_and_paths():
         label="Test Cohort",
         loader=lambda **kwargs: anndata.AnnData(),
         condition_column="sample",
+        celltype_column="celltype",
         factors_filename="test.nc",
         source_file=Path("test.h5ad"),
     )
