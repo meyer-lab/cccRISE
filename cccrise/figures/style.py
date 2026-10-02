@@ -128,8 +128,9 @@ CELL_TYPES = {
         "CD4 T cells",
         "CD8 T cells",
         "NK cells",
-        "Proliferating cells",
         "Epithelial cells",
+        # Last, so this cell state rather than type takes tab10's grey.
+        "Proliferating cells",
     ],
     "ibd": [
         "B cell",

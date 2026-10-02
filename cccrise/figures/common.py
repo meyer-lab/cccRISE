@@ -10,6 +10,7 @@ panel, each exposing `plot(fig)` (draws into a Figure or SubFigure) and
 the panels with `panel_grid` and labels them with `label_panels`.
 """
 
+import functools
 import importlib
 import sys
 import time
@@ -25,7 +26,7 @@ import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure, SubFigure
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Patch, Rectangle
 from matplotlib.ticker import NullLocator
 
 matplotlib.use("AGG")
@@ -42,7 +43,7 @@ from ..factors import (
 from ..import_data import import_alad, import_balf_covid
 from ..runners.datasets import DATASETS
 from ..runners.provenance import read_metadata
-from ..utils import correct_conditions
+from ..utils import celltype_component_association, correct_conditions
 from . import style
 
 __all__ = [
@@ -601,6 +602,133 @@ def _anova_stats(anova_df: pd.DataFrame | None, component: int) -> str:
         return ""
     f, padj, eta = (float(row[c].iloc[0]) for c in ("F", "PAdj", "EtaSquared"))
     return f"$F$ = {f:.2f}\n$p_{{adj}}$ = {padj:.2g}\n$\\eta^2$ = {eta:.2f}"
+
+
+# =============================================================================
+# Cell type granularity: eigenstate and per-cell sender/receiver weights
+# =============================================================================
+
+STRONG_CELL_PERCENTILE = 90  # Shiny explorer's default Strength Threshold
+N_LABELED_EIGENSTATES = 3
+
+
+@functools.cache
+def get_cell_projections(dataset: str) -> anndata.AnnData:
+    """`dataset`'s factors with per-cell eigenstate projections
+    (`obsm["projections"]`) and sender/receiver weights (`obsm["sc_B"]`,
+    `obsm["rc_C"]`), cached so the panels of one figure project once."""
+    spec = DATASETS[dataset]
+    return load_factors_to_anndata(spec.factors_path(), adata=spec.load())
+
+
+def plot_celltype_eigenstate_association(
+    adata: anndata.AnnData,
+    dataset: str,
+    ax: plt.Axes,
+    highlight: Sequence[int] = (),
+) -> None:
+    """Cell type (rows, `style.CELL_TYPES` order) x RISE eigenstate effect
+    size (Cohen's d of a cell type's projections against all other cells),
+    with the `highlight` eigenstates' labels bold."""
+    table = celltype_component_association(
+        adata,
+        factor_type="eigenstate",
+        celltype_col=DATASETS[dataset].celltype_column,
+        stat="effect_size",
+    ).reindex(style.CELL_TYPES[dataset])
+    vmax = np.nanmax(np.abs(table.to_numpy()))
+    image = ax.imshow(
+        table.to_numpy(),
+        cmap=style.CMAPS["diverging"],
+        vmin=-vmax,
+        vmax=vmax,
+        aspect="auto",
+    )
+    ax.set_xticks(range(table.shape[1]), table.columns)
+    ax.set_yticks(range(len(table)), table.index)
+    for label in ax.get_xticklabels():
+        if int(label.get_text()) in highlight:
+            label.set_fontweight("bold")
+    ax.set_xlabel("RISE eigenstate")
+    ax.tick_params(length=0)
+    ax.spines[:].set_visible(False)
+    ax.figure.colorbar(image, ax=ax, label="Cohen's d (vs. other cells)", shrink=0.8)
+
+
+def plot_component_eigenstate_loadings(
+    adata: anndata.AnnData, component: int, ax: plt.Axes
+) -> None:
+    """A CP component's sender (B) and receiver (C) loading on each RISE
+    eigenstate, labeling the `N_LABELED_EIGENSTATES` largest loadings."""
+    sender, receiver = (np.asarray(adata.uns[k])[:, component - 1] for k in "BC")
+    eigenstates = np.arange(1, len(sender) + 1)
+    width = 0.4
+    for offset, loading, role in ((-1, sender, "sender"), (1, receiver, "receiver")):
+        ax.bar(
+            eigenstates + offset * width / 2,
+            loading,
+            width,
+            color=style.COLORS[role],
+            label=f"{role.capitalize()} ({'B' if role == 'sender' else 'C'})",
+        )
+    ax.axhline(0, color=style.COLORS["reference"], linewidth=style.LINE_WIDTH_THIN)
+    largest = np.abs(np.column_stack([sender, receiver])).max(axis=1)
+    labeled = np.sort(eigenstates[np.argsort(-largest)[:N_LABELED_EIGENSTATES]])
+    ax.set_xticks(labeled, labeled, fontweight="bold")
+    ax.set(xlabel="RISE eigenstate", ylabel="Loading")
+    ax.legend(loc="upper left")
+
+
+def plot_celltype_scatter(
+    adata: anndata.AnnData,
+    dataset: str,
+    x: np.ndarray,
+    y: np.ndarray,
+    ax: plt.Axes,
+    highlight: str | None = None,
+) -> None:
+    """Per-cell `x` vs. `y` colored by cell type, the most abundant types
+    drawn beneath, the `highlight` cell type enlarged on top, and dashed lines
+    at each axis's `STRONG_CELL_PERCENTILE`."""
+    celltypes = adata.obs[DATASETS[dataset].celltype_column].astype(str).to_numpy()
+    colors = style.CELL_TYPE_COLORS[dataset]
+    counts = pd.Series(celltypes).value_counts()
+    order = np.argsort(-counts[celltypes].to_numpy(), kind="stable")
+    ax.scatter(
+        x[order],
+        y[order],
+        c=[colors[c] for c in celltypes[order]],
+        s=style.POINT_SIZE_CELL,
+        linewidths=0,
+        rasterized=True,
+    )
+    if highlight is not None:
+        is_highlight = celltypes == highlight
+        ax.scatter(
+            x[is_highlight],
+            y[is_highlight],
+            c=colors[highlight],
+            s=style.POINT_SIZE_BACKGROUND,
+            linewidths=0,
+        )
+    for values, line in ((x, ax.axvline), (y, ax.axhline)):
+        line(
+            np.percentile(values, STRONG_CELL_PERCENTILE),
+            color=style.COLORS["reference"],
+            linestyle=style.LINE_STYLE_REFERENCE,
+            linewidth=style.LINE_WIDTH_THIN,
+        )
+
+
+def celltype_legend(ax: plt.Axes, dataset: str, **kwargs) -> None:
+    """Legend of `dataset`'s cell type colors."""
+    ax.legend(
+        handles=[
+            Patch(color=color, label=celltype)
+            for celltype, color in style.CELL_TYPE_COLORS[dataset].items()
+        ],
+        **kwargs,
+    )
 
 
 # =============================================================================

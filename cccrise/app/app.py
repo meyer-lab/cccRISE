@@ -914,6 +914,7 @@ def server(input, output, session):
             dataset().adata.obs[dataset().spec.celltype_col].unique().tolist()
         )
         component_choices = [str(i) for i in range(1, cp_rank() + 1)]
+        eigenstate_choices = [str(i) for i in range(1, rise_rank() + 1)]
         with reactive.isolate():
             cmp = str(input.component())
         return ui.TagList(
@@ -1026,6 +1027,37 @@ def server(input, output, session):
                 ),
             ),
             scrollable_plot("eigenstate_assoc_plot", 1300, 500),
+            ui.markdown(
+                "Each cell's projection onto Eigenstate X plotted against "
+                "Eigenstate Y, colored by cell type, with Highlighted Cell "
+                "Type's points enlarged (by Selected Cell Type Point Size, "
+                "below). Cells of one type loading on one eigenstate but not "
+                "the other separate along the two axes, marking "
+                "subpopulations within that cell type."
+            ),
+            ui.row(
+                *(
+                    ui.column(
+                        4,
+                        ui.input_select(
+                            input_id, label, choices=eigenstate_choices, selected=value
+                        ),
+                    )
+                    for input_id, label, value in (
+                        ("eig_scatter_x", "Eigenstate X (x axis)", "1"),
+                        ("eig_scatter_y", "Eigenstate Y (y axis)", "2"),
+                    )
+                ),
+                ui.column(
+                    4,
+                    ui.input_select(
+                        "eig_scatter_celltype",
+                        "Highlighted Cell Type",
+                        choices=celltypes,
+                    ),
+                ),
+            ),
+            scrollable_plot("eigenstate_scatter_plot", *SCATTER_SINGLE_PX),
             ui.hr(),
             ui.h4("Sender/Receiver Classification"),
             ui.markdown(
@@ -1255,14 +1287,28 @@ def server(input, output, session):
     def plot_weight_scatter(
         ax: plt.Axes, x: tuple[int, str], y: tuple[int, str]
     ) -> None:
-        """Cells' (component, role) weights against each other, colored by
-        cell type, with the selected cell type enlarged and Strength
-        Threshold lines."""
-        ds = dataset()
+        """Cells' (component, role) weights against each other, with the
+        selected cell type enlarged and Strength Threshold lines."""
         (x_weights, x_threshold), (y_weights, y_threshold) = (
             weights_and_threshold(ROLE_WEIGHT_KEYS[role], cmp) for cmp, role in (x, y)
         )
-        points = np.column_stack([x_weights, y_weights])
+        plot_celltype_scatter(
+            ax,
+            np.column_stack([x_weights, y_weights]),
+            input.tt_celltype(),
+            thresholds=(x_threshold, y_threshold),
+        )
+        ax.set(xlabel=f"Cmp. {x[0]} {x[1]} Weight", ylabel=f"Cmp. {y[0]} {y[1]} Weight")
+
+    def plot_celltype_scatter(
+        ax: plt.Axes,
+        points: np.ndarray,
+        celltype: str,
+        thresholds: tuple[float, float] | None = None,
+    ) -> None:
+        """Per-cell 2D `points` colored by cell type, `celltype`'s points
+        enlarged on top, and optional (x, y) dashed threshold lines."""
+        ds = dataset()
         celltypes = ds.adata.obs[ds.spec.celltype_col]
         color_key = colors.celltype_colors(celltypes.nunique())
         # Most abundant cell type drawn beneath the rest (the selected cell
@@ -1276,17 +1322,37 @@ def server(input, output, session):
         )
 
         # Same cell type -> color assignment `plot_categorical_scatter` makes
-        selected = selected_celltype_mask()
-        celltype_color = dict(zip(np.unique(celltypes), color_key))[input.tt_celltype()]
+        selected = celltypes.to_numpy() == celltype
+        celltype_color = dict(zip(np.unique(celltypes), color_key))[celltype]
         enlarge_points(
             ax,
             points[selected],
             [celltype_color] * int(selected.sum()),
             scale=1 + input.tt_point_size() / 100,
         )
-        ax.axvline(x_threshold, color="0.3", ls="--", lw=1.0)
-        ax.axhline(y_threshold, color="0.3", ls="--", lw=1.0)
-        ax.set(xlabel=f"Cmp. {x[0]} {x[1]} Weight", ylabel=f"Cmp. {y[0]} {y[1]} Weight")
+        if thresholds is not None:
+            ax.axvline(thresholds[0], color="0.3", ls="--", lw=1.0)
+            ax.axhline(thresholds[1], color="0.3", ls="--", lw=1.0)
+
+    @render.plot
+    @styled_figure()
+    def eigenstate_scatter_plot():
+        projections = np.asarray(dataset().adata.obsm["projections"])
+        x_eig, y_eig = int(input.eig_scatter_x()), int(input.eig_scatter_y())
+        width_px, height_px = SCATTER_SINGLE_PX
+        fig, ax = plt.subplots(
+            figsize=(width_px / 100, height_px / 100), layout="tight"
+        )
+        plot_celltype_scatter(
+            ax, projections[:, [x_eig - 1, y_eig - 1]], input.eig_scatter_celltype()
+        )
+        # Fill the panel rather than follow the pair's data aspect
+        ax.set_aspect("auto")
+        ax.set(
+            xlabel=f"Eigenstate {x_eig} Projection",
+            ylabel=f"Eigenstate {y_eig} Projection",
+        )
+        return fig
 
     @render.plot
     @styled_figure()
