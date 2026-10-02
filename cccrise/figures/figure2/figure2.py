@@ -34,7 +34,7 @@ LAYOUT = [
     ["nichenet"] * 6,
 ]
 # mm per row, summing to the full-page height.
-ROW_HEIGHTS = [40, 34, 44, 38, 44]
+ROW_HEIGHTS = [38, 34, 42, 36, 50]
 
 
 def makeFigure():
