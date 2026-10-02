@@ -8,9 +8,9 @@ already-finalized factor fit (``spec.factors_path()``, produced by
 for every CPD component, under every requested receiver-population
 definition. The expensive step is per-component differential expression
 (``scanpy.tl.rank_genes_groups`` over the full single-cell dataset), which
-this caches to a parquet file so ``figureNicheNet.py`` can plot without re-running it.
+this caches to a parquet file so ``figures/figure2/nichenet.py`` can plot without re-running it.
 
-Writes the long-format table `figureNicheNet` reads:
+Writes the long-format table `figures/figure2/nichenet.py` reads:
 
     nichenet_scores_<dataset>.parquet   one row per (receiver_mode, component, ligand)
 
