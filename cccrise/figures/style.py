@@ -15,7 +15,7 @@ figure and app styling can change separately.
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.colors import to_hex
+from matplotlib.colors import LinearSegmentedColormap, to_hex
 
 MM = 1 / 25.4  # inches per millimeter
 
@@ -93,9 +93,6 @@ COLORS = {
     "highlight": _GREEN,
     "fit": _BLUE,  # in-sample fit metrics
     "heldout": _VERMILLION,  # held-out / cross-validated metrics
-    # NicheNet receiver populations
-    "within_celltype": _DARK_BLUE,
-    "vs_rest": _ORANGE,
 }
 
 # Component-stability resampling axes; the seed-only ceiling is a grey
@@ -110,6 +107,17 @@ STABILITY_AXIS_COLORS = {
 CMAPS = {
     "diverging": sns.diverging_palette(240, 10, as_cmap=True),  # signed loadings
     "sequential": sns.color_palette("ch:s=-.2,r=.6", as_cmap=True),  # magnitudes
+    # Relative weights: light until substantial, so only heavy items read dark.
+    "weight": LinearSegmentedColormap.from_list(
+        "weight",
+        [
+            (0, "#eef2f7"),
+            (0.45, "#cde2fb"),
+            (0.7, "#86b6ef"),
+            (0.85, "#2a78d6"),
+            (1, "#0d366b"),
+        ],
+    ),
 }
 
 # Fixed per dataset, so a cell type keeps its color wherever it is plotted.
