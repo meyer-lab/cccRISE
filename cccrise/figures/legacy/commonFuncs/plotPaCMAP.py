@@ -197,9 +197,11 @@ def plot_categorical_scatter(
     ax: Axes,
     cmap: str = "tab20",
     color_key=None,
+    background_label: str | None = None,
 ) -> None:
     """Datashader-aggregated scatter of arbitrary 2D points colored by a
-    categorical label, with a legend.
+    categorical label, with a legend. `background_label`'s points, if given,
+    are drawn beneath all others instead of color-blended with them.
 
     Point clouds here run to tens of thousands of cells; a plain matplotlib
     scatter redrawn on every Shiny interaction is both slow and prone to
@@ -230,12 +232,18 @@ def plot_categorical_scatter(
     legend_elements = [
         Patch(facecolor=color_key[i], label=k) for i, k in enumerate(unique_labels)
     ]
-    result = tf.shade(
-        aggregation,
-        color_key=color_key,
-        how="eq_hist",
-        min_alpha=255,
-    )
+
+    def shade(layer: np.ndarray):
+        keys = [c for c, keep in zip(color_key, layer, strict=True) if keep]
+        return tf.shade(
+            aggregation[..., layer], color_key=keys, how="eq_hist", min_alpha=255
+        )
+
+    if background_label is None:
+        result = shade(np.ones(num_labels, dtype=bool))
+    else:
+        is_background = unique_labels == background_label
+        result = tf.stack(shade(is_background), shade(~is_background))
 
     ds_show(result, ax, canvas)
     ax.legend(handles=legend_elements)

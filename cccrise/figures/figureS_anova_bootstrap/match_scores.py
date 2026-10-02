@@ -6,7 +6,7 @@ its association was unstable."""
 import seaborn as sns
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 #: Match score below which a replicate's component is not the reference one
 #: in any useful sense.

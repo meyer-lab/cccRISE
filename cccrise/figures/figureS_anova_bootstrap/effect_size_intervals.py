@@ -4,7 +4,7 @@ labeled with the component's top LR pair in the reference fit."""
 import numpy as np
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 
 def plot(fig):

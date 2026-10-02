@@ -5,7 +5,7 @@ import pandas as pd
 
 from ...validation.anova_stability import align_to_reference_components
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 
 def aligned_anova(method: str) -> tuple[pd.Series, pd.Series]:

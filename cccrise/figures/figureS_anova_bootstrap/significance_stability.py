@@ -5,7 +5,7 @@ agreeing with the full cohort on which group loads higher."""
 import numpy as np
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 
 def plot(fig):

@@ -3,7 +3,7 @@ how closely each alternate score's CP components match the default's, their
 outcome associations, and what each component represents under each score."""
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 from . import anova, factor_match, interpretation
 
 PANELS = {

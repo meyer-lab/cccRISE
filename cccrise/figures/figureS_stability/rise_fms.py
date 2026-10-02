@@ -3,7 +3,7 @@ against the seed-only reproducibility ceiling."""
 
 from ...validation.component_stability import STAGE_RISE
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 
 def plot(fig):

@@ -162,9 +162,8 @@ def dataset_metadata(spec: DatasetSpec) -> dict:
         "source_sha256": sha256_file(spec.source_file),
         "loader_args": spec.loader_args,
         "condition_key": spec.condition_column,
+        "celltype_key": spec.celltype_column,
     }
-    if spec.celltype_column:
-        meta["celltype_key"] = spec.celltype_column
     if spec.group_column:
         meta["group_key"] = spec.group_column
     if spec.notes:

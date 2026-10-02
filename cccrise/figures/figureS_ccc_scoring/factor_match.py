@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 
 def _cosine(a: np.ndarray, b: np.ndarray) -> float:
