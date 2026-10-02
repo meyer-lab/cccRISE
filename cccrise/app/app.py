@@ -1059,9 +1059,9 @@ def server(input, output, session):
                     ui.input_slider(
                         "tt_point_size",
                         "Selected Cell Type Point Size (% increase)",
-                        min=0,
+                        min=100,
                         max=300,
-                        value=100,
+                        value=250,
                         step=10,
                     ),
                 ),
@@ -1265,7 +1265,15 @@ def server(input, output, session):
         points = np.column_stack([x_weights, y_weights])
         celltypes = ds.adata.obs[ds.spec.celltype_col]
         color_key = colors.celltype_colors(celltypes.nunique())
-        plot_categorical_scatter(points, celltypes, ax, color_key=color_key)
+        # Most abundant cell type drawn beneath the rest (the selected cell
+        # type's enlarged points still go on top)
+        plot_categorical_scatter(
+            points,
+            celltypes,
+            ax,
+            color_key=color_key,
+            background_label=celltypes.value_counts().idxmax(),
+        )
 
         # Same cell type -> color assignment `plot_categorical_scatter` makes
         selected = selected_celltype_mask()
