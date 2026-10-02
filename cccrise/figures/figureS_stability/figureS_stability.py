@@ -2,7 +2,7 @@
 resampling."""
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 from . import cpd_fms, rise_fms
 
 PANELS = {"rise": rise_fms, "cpd": cpd_fms}

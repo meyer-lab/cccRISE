@@ -39,7 +39,7 @@ from cccrise.figures.common import (
     plot_collinearity,
     plot_cpd_fit_r2x,
 )
-from cccrise.figures.figure3._shared import ASSOCIATIONS
+from cccrise.figures.figure3._common import ASSOCIATIONS
 from cccrise.figures.legacy.commonFuncs.plotFactors import (
     plot_celltype_association,
     plot_condition_factors,
@@ -104,6 +104,16 @@ STRENGTH_CATEGORY_COLORS = [
     colors.RECEIVER,
     colors.SENDER,
 ]
+
+# Sender/receiver scatter component selects (x and y axes).
+SCATTER_COMPONENT_INPUTS = {
+    "scatter_x_cmp": "Component X (x axis)",
+    "scatter_y_cmp": "Component Y (y axis)",
+}
+ROLE_WEIGHT_KEYS = {"Sender": "sc_B", "Receiver": "rc_C"}
+# Scatter output size (px): one panel when X == Y, else the 2x2 role grid.
+SCATTER_SINGLE_PX = (900, 700)
+SCATTER_GRID_PX = (1400, 1150)
 
 # Plots that don't set their own colors draw from the shared palette.
 plt.rcParams["axes.prop_cycle"] = cycler(color=colors.categorical_colors(8))
@@ -903,6 +913,10 @@ def server(input, output, session):
         celltypes = sorted(
             dataset().adata.obs[dataset().spec.celltype_col].unique().tolist()
         )
+        component_choices = [str(i) for i in range(1, cp_rank() + 1)]
+        eigenstate_choices = [str(i) for i in range(1, rise_rank() + 1)]
+        with reactive.isolate():
+            cmp = str(input.component())
         return ui.TagList(
             ui.h4("PaCMAP Embeddings"),
             ui.markdown(
@@ -1013,6 +1027,37 @@ def server(input, output, session):
                 ),
             ),
             scrollable_plot("eigenstate_assoc_plot", 1300, 500),
+            ui.markdown(
+                "Each cell's projection onto Eigenstate X plotted against "
+                "Eigenstate Y, colored by cell type, with Highlighted Cell "
+                "Type's points enlarged (by Selected Cell Type Point Size, "
+                "below). Cells of one type loading on one eigenstate but not "
+                "the other separate along the two axes, marking "
+                "subpopulations within that cell type."
+            ),
+            ui.row(
+                *(
+                    ui.column(
+                        4,
+                        ui.input_select(
+                            input_id, label, choices=eigenstate_choices, selected=value
+                        ),
+                    )
+                    for input_id, label, value in (
+                        ("eig_scatter_x", "Eigenstate X (x axis)", "1"),
+                        ("eig_scatter_y", "Eigenstate Y (y axis)", "2"),
+                    )
+                ),
+                ui.column(
+                    4,
+                    ui.input_select(
+                        "eig_scatter_celltype",
+                        "Highlighted Cell Type",
+                        choices=celltypes,
+                    ),
+                ),
+            ),
+            scrollable_plot("eigenstate_scatter_plot", *SCATTER_SINGLE_PX),
             ui.hr(),
             ui.h4("Sender/Receiver Classification"),
             ui.markdown(
@@ -1046,9 +1091,9 @@ def server(input, output, session):
                     ui.input_slider(
                         "tt_point_size",
                         "Selected Cell Type Point Size (% increase)",
-                        min=0,
+                        min=100,
                         max=300,
-                        value=100,
+                        value=250,
                         step=10,
                     ),
                 ),
@@ -1070,26 +1115,55 @@ def server(input, output, session):
             scrollable_plot("strength_category_pacmap_plot", 650, 550),
             ui.markdown(
                 "###### Sender vs. Receiver Weight (All Cell Types)\n"
-                "Each cell's sender weight plotted against its receiver "
-                "weight for the selected component, colored by cell type, "
-                "with the selected cell type's points enlarged. Dashed "
-                "lines mark the current Strength Threshold percentile."
+                "Per-cell weights for Component X (x axis) against "
+                "Component Y (y axis), colored by cell type, with the "
+                "selected cell type's points enlarged. Both default to (and "
+                "follow) the sidebar CP Component. When they match, a single "
+                "panel plots that component's sender against receiver "
+                "weight; when they differ, a 2x2 grid compares every role "
+                "pairing (rows: X sender/receiver; columns: Y "
+                "sender/receiver). Dashed lines mark the current Strength "
+                "Threshold percentile."
             ),
-            scrollable_plot("sender_receiver_scatter_plot", 900, 700),
+            ui.row(
+                *(
+                    ui.column(
+                        4,
+                        ui.input_select(
+                            input_id, label, choices=component_choices, selected=cmp
+                        ),
+                    )
+                    for input_id, label in SCATTER_COMPONENT_INPUTS.items()
+                )
+            ),
+            ui.output_ui("sender_receiver_scatter_ui"),
         )
+
+    def scatter_components() -> tuple[int, int]:
+        return int(input.scatter_x_cmp()), int(input.scatter_y_cmp())
+
+    @render.ui
+    def sender_receiver_scatter_ui():
+        x_cmp, y_cmp = scatter_components()
+        size = SCATTER_SINGLE_PX if x_cmp == y_cmp else SCATTER_GRID_PX
+        return scrollable_plot("sender_receiver_scatter_plot", *size)
+
+    @reactive.effect
+    @reactive.event(input.component)
+    def _sync_scatter_components():
+        for input_id in SCATTER_COMPONENT_INPUTS:
+            ui.update_select(input_id, selected=str(input.component()))
+
+    def weights_and_threshold(obsm_key: str, cmp: int) -> tuple[np.ndarray, float]:
+        weights = np.asarray(dataset().adata.obsm[obsm_key])[:, cmp - 1]
+        return weights, float(np.percentile(weights, input.tt_percentile()))
 
     @reactive.calc
     def strength_weights():
-        ds = dataset()
         cmp = input.component()
-        sender = np.asarray(ds.adata.obsm["sc_B"])[:, cmp - 1]
-        receiver = np.asarray(ds.adata.obsm["rc_C"])[:, cmp - 1]
-        percentile = input.tt_percentile()
         return (
-            sender,
-            receiver,
-            float(np.percentile(sender, percentile)),
-            float(np.percentile(receiver, percentile)),
+            *weights_and_threshold("sc_B", cmp),
+            *weights_and_threshold("rc_C", cmp),
         )
 
     @reactive.calc
@@ -1182,31 +1256,101 @@ def server(input, output, session):
     @render.plot
     @styled_figure()
     def sender_receiver_scatter_plot():
-        ds = dataset()
-        cmp = input.component()
-        celltype_col = ds.spec.celltype_col
-        sender, receiver, sender_threshold, receiver_threshold = strength_weights()
+        x_cmp, y_cmp = scatter_components()
+        if x_cmp == y_cmp:
+            role_grid = [[("Sender", "Receiver")]]
+        else:
+            role_grid = [
+                [(xr, yr) for yr in ROLE_WEIGHT_KEYS] for xr in ROLE_WEIGHT_KEYS
+            ]
+        n = len(role_grid)
+        width_px, height_px = SCATTER_SINGLE_PX if n == 1 else SCATTER_GRID_PX
+        fig, axes = plt.subplots(
+            n,
+            n,
+            figsize=(width_px / 100, height_px / 100),
+            squeeze=False,
+            layout="tight",
+        )
+        for ax_row, role_row in zip(axes, role_grid, strict=True):
+            for ax, (x_role, y_role) in zip(ax_row, role_row, strict=True):
+                plot_weight_scatter(ax, (x_cmp, x_role), (y_cmp, y_role))
+        # Grid panels fill equal cells instead of following each pair's data
+        # aspect; one shared cell type legend, on the top-right panel.
+        for i, ax in enumerate(axes.flat):
+            if n > 1:
+                ax.set_aspect("auto")
+            if i != n - 1:
+                ax.get_legend().remove()
+        return fig
 
-        points = np.column_stack([sender, receiver])
-        celltypes = ds.adata.obs[celltype_col]
+    def plot_weight_scatter(
+        ax: plt.Axes, x: tuple[int, str], y: tuple[int, str]
+    ) -> None:
+        """Cells' (component, role) weights against each other, with the
+        selected cell type enlarged and Strength Threshold lines."""
+        (x_weights, x_threshold), (y_weights, y_threshold) = (
+            weights_and_threshold(ROLE_WEIGHT_KEYS[role], cmp) for cmp, role in (x, y)
+        )
+        plot_celltype_scatter(
+            ax,
+            np.column_stack([x_weights, y_weights]),
+            input.tt_celltype(),
+            thresholds=(x_threshold, y_threshold),
+        )
+        ax.set(xlabel=f"Cmp. {x[0]} {x[1]} Weight", ylabel=f"Cmp. {y[0]} {y[1]} Weight")
+
+    def plot_celltype_scatter(
+        ax: plt.Axes,
+        points: np.ndarray,
+        celltype: str,
+        thresholds: tuple[float, float] | None = None,
+    ) -> None:
+        """Per-cell 2D `points` colored by cell type, `celltype`'s points
+        enlarged on top, and optional (x, y) dashed threshold lines."""
+        ds = dataset()
+        celltypes = ds.adata.obs[ds.spec.celltype_col]
         color_key = colors.celltype_colors(celltypes.nunique())
-        fig, ax = plt.subplots(figsize=(9, 7), layout="tight")
-        plot_categorical_scatter(points, celltypes, ax, color_key=color_key)
+        # Most abundant cell type drawn beneath the rest (the selected cell
+        # type's enlarged points still go on top)
+        plot_categorical_scatter(
+            points,
+            celltypes,
+            ax,
+            color_key=color_key,
+            background_label=celltypes.value_counts().idxmax(),
+        )
 
         # Same cell type -> color assignment `plot_categorical_scatter` makes
-        selected = selected_celltype_mask()
-        celltype_color = dict(zip(np.unique(celltypes), color_key))[input.tt_celltype()]
+        selected = celltypes.to_numpy() == celltype
+        celltype_color = dict(zip(np.unique(celltypes), color_key))[celltype]
         enlarge_points(
             ax,
             points[selected],
             [celltype_color] * int(selected.sum()),
             scale=1 + input.tt_point_size() / 100,
         )
-        ax.axvline(sender_threshold, color="0.3", ls="--", lw=1.0)
-        ax.axhline(receiver_threshold, color="0.3", ls="--", lw=1.0)
+        if thresholds is not None:
+            ax.axvline(thresholds[0], color="0.3", ls="--", lw=1.0)
+            ax.axhline(thresholds[1], color="0.3", ls="--", lw=1.0)
+
+    @render.plot
+    @styled_figure()
+    def eigenstate_scatter_plot():
+        projections = np.asarray(dataset().adata.obsm["projections"])
+        x_eig, y_eig = int(input.eig_scatter_x()), int(input.eig_scatter_y())
+        width_px, height_px = SCATTER_SINGLE_PX
+        fig, ax = plt.subplots(
+            figsize=(width_px / 100, height_px / 100), layout="tight"
+        )
+        plot_celltype_scatter(
+            ax, projections[:, [x_eig - 1, y_eig - 1]], input.eig_scatter_celltype()
+        )
+        # Fill the panel rather than follow the pair's data aspect
+        ax.set_aspect("auto")
         ax.set(
-            xlabel=f"Cmp. {cmp} Sender Weight",
-            ylabel=f"Cmp. {cmp} Receiver Weight",
+            xlabel=f"Eigenstate {x_eig} Projection",
+            ylabel=f"Eigenstate {y_eig} Projection",
         )
         return fig
 

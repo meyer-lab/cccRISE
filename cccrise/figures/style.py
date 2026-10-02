@@ -104,13 +104,6 @@ STABILITY_AXIS_COLORS = {
     "lr_pairs": _GREEN,
 }
 
-COMMUNICATION_SCORE_COLORS = {
-    "expression_product": _BLUE,
-    "expression_mean": _ORANGE,
-    "expression_gmean": _GREEN,
-    "expression_hill": _PINK,
-}
-
 CMAPS = {
     "diverging": sns.diverging_palette(240, 10, as_cmap=True),  # signed loadings
     "sequential": sns.color_palette("ch:s=-.2,r=.6", as_cmap=True),  # magnitudes
@@ -136,8 +129,9 @@ CELL_TYPES = {
         "CD4 T cells",
         "CD8 T cells",
         "NK cells",
-        "Proliferating cells",
         "Epithelial cells",
+        # Last, so this cell state rather than type takes tab10's grey.
+        "Proliferating cells",
     ],
     "ibd": [
         "B cell",

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 #: Top LR pairs per method; the dot plot shows their union.
 TOP_N_LR = 3

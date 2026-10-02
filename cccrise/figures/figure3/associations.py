@@ -2,7 +2,7 @@
 eta-squared, FDR-corrected across components within an association)."""
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 
 def plot(fig):
