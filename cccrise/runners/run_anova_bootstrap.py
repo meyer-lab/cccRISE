@@ -11,7 +11,7 @@ ligand-receptor mode and sign-corrected before its statistics are recorded
 (`anova_stability.bootstrap_anova`), so a component's effect sizes across
 replicates form a distribution rather than an unordered pile.
 
-Writes the replicate-level table `figureAnovaBoot` reads:
+Writes the replicate-level table `figures/figureS_anova_bootstrap` reads:
 
     anova_bootstrap_<dataset>.parquet   one row per (replicate, component)
 

@@ -99,8 +99,8 @@ ignore = [
 # Legacy figures still reference the pre-ANOVA logreg API and will be
 # removed along with the rest of the outdated figure/manuscript files.
 exclude = [
-    "cccrise/figures/figure4.py",
-    "cccrise/figures/figureA6d.py",
+    "cccrise/figures/legacy/figure4.py",
+    "cccrise/figures/legacy/figureA6d.py",
 ]
 
 [tool.ty.rules]
