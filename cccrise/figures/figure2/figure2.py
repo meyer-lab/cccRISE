@@ -4,9 +4,10 @@ from .. import common, style
 from . import (
     cmp_eigenstate_loadings,
     cmp_weight_scatter,
-    coordinated_changes,
     cpd_rank,
     eigenstate_scatter,
+    lr_association,
+    lr_covariation,
     nichenet,
     rise_rank,
     significance,
@@ -22,11 +23,12 @@ PANELS = {
     "stability": stability,
     "significance": significance,
     "nichenet": nichenet,
-    "coordinated": coordinated_changes,
+    "lr_association": lr_association,
+    "lr_covariation": lr_covariation,
 }
 LAYOUT = [
     ["rise_rank"] * 2 + ["cpd_rank"] * 4,
-    ["stability"] * 2 + ["coordinated"] * 4,
+    ["stability"] * 2 + ["lr_association"] * 2 + ["lr_covariation"] * 2,
     ["loadings"] * 2 + ["weights"] * 2 + ["eigenstates"] * 2,
     ["significance"] * 6,
     ["nichenet"] * 6,

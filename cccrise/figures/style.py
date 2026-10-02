@@ -107,6 +107,13 @@ STABILITY_AXIS_COLORS = {
     "lr_pairs": _GREEN,
 }
 
+# Co-variation baselines (`common.covariation_baselines`): (label, color).
+COVARIATION_BASELINES = {
+    "random": ("Random", COLORS["muted"]),
+    "expression_matched": ("Expression-matched", COLORS["receiver"]),
+    "associated": ("Other associated", COLORS["up"]),
+}
+
 COMMUNICATION_SCORE_COLORS = {
     "expression_product": _BLUE,
     "expression_mean": _ORANGE,
