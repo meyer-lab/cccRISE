@@ -40,6 +40,10 @@ SCORE_LABELS = {
     "expression_gmean": "Geometric mean",
     "expression_hill": "Hill",
 }
+# Blue, orange, green, pink from the shared palette
+SCORE_COLORS = dict(
+    zip(SCORE_LABELS, [style.CATEGORICAL[i] for i in (0, 1, 2, 4)], strict=True)
+)
 #: Modes CP components are paired across methods on: condition and LR.
 MATCH_MODES = (0, 3)
 HINT = (
@@ -116,10 +120,7 @@ def default_provenance(section: str, key: str) -> Any:
 
 def method_legend(fig) -> None:
     """One legend of all methods' colors, above `fig`."""
-    handles = [
-        Patch(color=style.COMMUNICATION_SCORE_COLORS[m], label=SCORE_LABELS[m])
-        for m in ALL_SCORES
-    ]
+    handles = [Patch(color=SCORE_COLORS[m], label=SCORE_LABELS[m]) for m in ALL_SCORES]
     fig.legend(handles=handles, loc="outside upper center", ncols=len(handles))
 
 
@@ -138,7 +139,7 @@ def grouped_bar(
             data[method],
             width,
             label=SCORE_LABELS[method],
-            color=style.COMMUNICATION_SCORE_COLORS[method],
+            color=SCORE_COLORS[method],
         )
         if sig is not None:
             for xi, value in zip(

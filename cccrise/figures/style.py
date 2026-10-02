@@ -107,20 +107,6 @@ STABILITY_AXIS_COLORS = {
     "lr_pairs": _GREEN,
 }
 
-# Co-variation baselines (`common.covariation_baselines`): (label, color).
-COVARIATION_BASELINES = {
-    "random": ("Random", COLORS["muted"]),
-    "expression_matched": ("Expression-matched", COLORS["receiver"]),
-    "associated": ("Other associated", COLORS["up"]),
-}
-
-COMMUNICATION_SCORE_COLORS = {
-    "expression_product": _BLUE,
-    "expression_mean": _ORANGE,
-    "expression_gmean": _GREEN,
-    "expression_hill": _PINK,
-}
-
 CMAPS = {
     "diverging": sns.diverging_palette(240, 10, as_cmap=True),  # signed loadings
     "sequential": sns.color_palette("ch:s=-.2,r=.6", as_cmap=True),  # magnitudes

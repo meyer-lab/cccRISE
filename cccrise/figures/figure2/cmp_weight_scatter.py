@@ -1,7 +1,7 @@
 """Per-cell sender vs. receiver weight for the granularity CP component."""
 
 from .. import common, style
-from ._shared import COMPONENT, DATASET, HIGHLIGHT_CELLTYPE
+from ._common import DATASET, GRANULARITY_COMPONENT, HIGHLIGHT_CELLTYPE
 
 
 def plot(fig):
@@ -10,15 +10,15 @@ def plot(fig):
     common.plot_celltype_scatter(
         adata,
         DATASET,
-        adata.obsm["sc_B"][:, COMPONENT - 1],
-        adata.obsm["rc_C"][:, COMPONENT - 1],
+        adata.obsm["sc_B"][:, GRANULARITY_COMPONENT - 1],
+        adata.obsm["rc_C"][:, GRANULARITY_COMPONENT - 1],
         ax,
         highlight=HIGHLIGHT_CELLTYPE,
     )
     ax.set(
-        xlabel=f"Cmp. {COMPONENT} sender weight",
-        ylabel=f"Cmp. {COMPONENT} receiver weight",
-        title=f"Cmp. {COMPONENT} per-cell weights",
+        xlabel=f"Cmp. {GRANULARITY_COMPONENT} sender weight",
+        ylabel=f"Cmp. {GRANULARITY_COMPONENT} receiver weight",
+        title=f"Cmp. {GRANULARITY_COMPONENT} per-cell weights",
     )
 
 

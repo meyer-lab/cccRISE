@@ -1,8 +1,9 @@
 """
 Functions shared across manuscript figures: data loading, panel layout, the
 build entry point, and plotting functions used by more than one figure (e.g.
-the same rank-selection panels for ALAD and IBD). Plotting code used by a
-single panel lives in that panel's module instead.
+the same rank-selection panels for ALAD and IBD). Code used by a single panel
+lives in that panel's module instead, and settings, data, or functions shared
+only by one figure's panels live in that figure's private `_common.py`.
 
 Each figure lives in its own `figures/figure<N>/` package: one module per
 panel, each exposing `plot(fig)` (draws into a Figure or SubFigure) and
@@ -10,7 +11,6 @@ panel, each exposing `plot(fig)` (draws into a Figure or SubFigure) and
 the panels with `panel_grid` and labels them with `label_panels`.
 """
 
-import copy
 import functools
 import importlib
 import sys
@@ -35,25 +35,21 @@ matplotlib.use("AGG")
 from ..anova import (
     get_sample_to_group,
     prepare_group_labels,
-    run_multiple_factors_anova,
 )
-from ..ccc_rise import calculate_interaction_tensor
 from ..factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
     DATA_DIR,
     clean_memory,
-    load_factors_netcdf,
     load_factors_to_anndata,
     load_or_compute_dataframe,
 )
-from ..import_data import import_alad, import_balf_covid, import_ligand_receptor_pairs
+from ..import_data import import_alad, import_balf_covid
 from ..runners.datasets import DATASETS
 from ..runners.provenance import read_metadata
 from ..utils import (
     celltype_component_association,
     correct_conditions,
-    load_rise_reference,
 )
 from . import style
 
@@ -740,147 +736,6 @@ def celltype_legend(ax: plt.Axes, dataset: str, **kwargs) -> None:
         ],
         **kwargs,
     )
-
-
-# =============================================================================
-# Coordinated changes: CP components against raw communication scores
-# =============================================================================
-
-COVARIATION_DRAWS = 2000
-# Beside the axes: these short panels have no empty corner for a legend
-OUTSIDE_LEGEND = {"loc": "center left", "bbox_to_anchor": (1.02, 0.5)}
-N_EXPRESSION_NEIGHBORS = 20  # an expression-matched pair is one of these nearest
-
-
-@functools.cache
-def get_component_lr_scores(dataset: str, component: int) -> np.ndarray:
-    """Each LR pair's per-condition raw communication score in a CP
-    component's own sender (B) and receiver (C) eigenstate context
-    (conditions x LR pairs, in the factors file's order).
-
-    The raw tensor is rebuilt from the saved RISE fit with the scoring the CP
-    was fit on, which reproduces the fit's R2X."""
-    spec = DATASETS[dataset]
-    factors = load_factors_netcdf(spec.factors_path())
-    adata = load_rise_reference(spec.factors_path(), spec.load(), spec.condition_column)
-    tensor, lr_pairs = calculate_interaction_tensor(
-        adata, import_ligand_receptor_pairs(), complex_sep=factors.attrs["complex_sep"]
-    )
-    order = pd.Index(lr_pairs["interaction_symbol"].astype(str)).get_indexer(
-        factors["lr_pair"].values.astype(str)
-    )
-    sender, receiver = (
-        factors[k].values[:, component - 1].astype(float) for k in ("cp_B", "cp_C")
-    )
-    return np.einsum("cijl,i,j->cl", np.asarray(tensor)[..., order], sender, receiver)
-
-
-def column_associations(
-    matrix: np.ndarray,
-    factors_adata: anndata.AnnData,
-    association: dict,
-    condition_column: str,
-) -> pd.DataFrame:
-    """The CP component ANOVA (`anova.run_multiple_factors_anova`) applied to
-    each column of a conditions x features `matrix` instead, FDR-corrected
-    across columns."""
-    adata = copy.copy(factors_adata)
-    adata.uns = {**adata.uns, "A": matrix}
-    return run_multiple_factors_anova(
-        adata, [association], condition_column=condition_column, correction="fdr_bh"
-    )
-
-
-def mean_pairwise_rank_correlation(scores: np.ndarray, columns) -> float:
-    """Mean pairwise Spearman correlation across conditions of `columns`."""
-    ranks = np.argsort(np.argsort(scores[:, columns], axis=0), axis=0)
-    correlations = np.corrcoef(ranks.T)
-    return float(correlations[np.triu_indices(len(columns), 1)].mean())
-
-
-def covariation_baselines(
-    scores: np.ndarray, top: np.ndarray, associated: np.ndarray, seed: int = 0
-) -> dict[str, np.ndarray]:
-    """`mean_pairwise_rank_correlation` of as many LR pairs as `top`, drawn
-    `COVARIATION_DRAWS` times from outside `top`: uniformly at random; matched
-    one-to-one on mean score (each from its top pair's
-    `N_EXPRESSION_NEIGHBORS` nearest in log mean score); and from the
-    `associated` (boolean mask) LR pairs."""
-    rng = np.random.default_rng(seed)
-    pool = np.setdiff1d(np.arange(scores.shape[1]), top)
-    level = np.log10(scores.mean(axis=0) + 1e-12)
-    neighbors = [
-        pool[np.argsort(np.abs(level[pool] - level[t]))[:N_EXPRESSION_NEIGHBORS]]
-        for t in top
-    ]
-
-    def matched_draw():
-        draw = []
-        for candidates in neighbors:
-            draw.append(rng.choice(np.setdiff1d(candidates, draw)))
-        return draw
-
-    associated_pool = np.setdiff1d(np.flatnonzero(associated), top)
-    draws = {
-        "random": lambda: rng.choice(pool, len(top), replace=False),
-        "expression_matched": matched_draw,
-        "associated": lambda: rng.choice(associated_pool, len(top), replace=False),
-    }
-    return {
-        name: np.array(
-            [
-                mean_pairwise_rank_correlation(scores, draw())
-                for _ in range(COVARIATION_DRAWS)
-            ]
-        )
-        for name, draw in draws.items()
-    }
-
-
-def plot_lr_association_distribution(
-    lr_eta: np.ndarray, component_eta: float, top: np.ndarray, component: int, ax
-) -> None:
-    """Every LR pair's own outcome association, the whole component's and its
-    `top` LR pairs' marked."""
-    ax.hist(lr_eta, bins=40, color=style.COLORS["muted"], label="All LR pairs")
-    for i, eta in enumerate(lr_eta[top]):
-        ax.axvline(
-            eta,
-            ymax=0.08,
-            color=style.COLORS["highlight"],
-            linewidth=style.LINE_WIDTH,
-            label=f"Cmp. {component} top {len(top)}" if i == 0 else None,
-        )
-    ax.axvline(
-        component_eta,
-        color=style.COLORS["emphasis"],
-        linewidth=style.LINE_WIDTH,
-        label=f"Cmp. {component}",
-    )
-    ax.set(xlabel=r"Outcome association ($\eta^2$)", ylabel="LR pairs")
-    ax.legend(**OUTSIDE_LEGEND)
-
-
-def plot_lr_covariation(
-    observed: float, baselines: dict[str, np.ndarray], component: int, n_top: int, ax
-) -> None:
-    """The component's top LR pairs' co-variation against
-    `covariation_baselines`."""
-    lowest = min(b.min() for b in baselines.values())
-    bins = np.linspace(
-        lowest, max(observed, *(b.max() for b in baselines.values())), 40
-    )
-    for name, draws in baselines.items():
-        label, color = style.COVARIATION_BASELINES[name]
-        ax.hist(draws, bins=bins, color=color, alpha=0.7, label=label)
-    ax.axvline(
-        observed,
-        color=style.COLORS["emphasis"],
-        linewidth=style.LINE_WIDTH,
-        label=f"Cmp. {component} top {n_top}",
-    )
-    ax.set(xlabel="Mean pairwise rank\ncorrelation across conditions", ylabel="Draws")
-    ax.legend(**OUTSIDE_LEGEND)
 
 
 # =============================================================================

@@ -3,7 +3,7 @@ component's sender (x) and receiver (y) loadings, with the shared cell type
 legend for this row."""
 
 from .. import common, style
-from ._shared import DATASET, HIGHLIGHT_CELLTYPE, RECEIVER_EIGENSTATE, SENDER_EIGENSTATE
+from ._common import DATASET, HIGHLIGHT_CELLTYPE, RECEIVER_EIGENSTATE, SENDER_EIGENSTATE
 
 
 def plot(fig):

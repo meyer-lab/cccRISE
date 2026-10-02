@@ -2,7 +2,7 @@
 Figure 2's granularity component highlighted."""
 
 from .. import common, style
-from ..figure2._shared import DATASET, RECEIVER_EIGENSTATE, SENDER_EIGENSTATE
+from ..figure2._common import DATASET, RECEIVER_EIGENSTATE, SENDER_EIGENSTATE
 
 
 def plot(fig):

@@ -39,7 +39,7 @@ from cccrise.figures.common import (
     plot_collinearity,
     plot_cpd_fit_r2x,
 )
-from cccrise.figures.figure3._shared import ASSOCIATIONS
+from cccrise.figures.figure3._common import ASSOCIATIONS
 from cccrise.figures.legacy.commonFuncs.plotFactors import (
     plot_celltype_association,
     plot_condition_factors,

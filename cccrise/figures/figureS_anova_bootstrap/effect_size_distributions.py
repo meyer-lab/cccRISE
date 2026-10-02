@@ -6,7 +6,7 @@ import seaborn as sns
 from matplotlib.lines import Line2D
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 
 def plot(fig):

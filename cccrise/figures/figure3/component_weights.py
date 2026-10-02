@@ -2,7 +2,7 @@
 outcome, per outcome level, with a patient's paired samples joined."""
 
 from .. import common, style
-from . import _shared as S
+from . import _common as S
 
 #: Associations (by `ASSOCIATIONS` name) shown, each with its most strongly
 #: associated component.

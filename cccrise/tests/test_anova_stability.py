@@ -709,7 +709,7 @@ def test_run_saved_factors_anova_and_multiple_associations():
 
     from cccrise.factors import load_factors_netcdf
     from cccrise.figures import common
-    from cccrise.figures.figure3 import _shared as figure3_data
+    from cccrise.figures.figure3 import _common as figure3_data
 
     ds = load_factors_netcdf("cccrise/data/factors/bal_alad_factors.nc")
     n_cond = ds.sizes["condition"]

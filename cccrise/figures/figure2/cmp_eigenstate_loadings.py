@@ -3,14 +3,14 @@ eigenstate."""
 
 from ...runners.datasets import DATASETS
 from .. import common, style
-from ._shared import COMPONENT, DATASET
+from ._common import DATASET, GRANULARITY_COMPONENT
 
 
 def plot(fig):
     ax = fig.subplots()
     adata = common.load_factors_to_anndata(DATASETS[DATASET].factors_path())
-    common.plot_component_eigenstate_loadings(adata, COMPONENT, ax)
-    ax.set_title(f"Cmp. {COMPONENT} eigenstate loadings")
+    common.plot_component_eigenstate_loadings(adata, GRANULARITY_COMPONENT, ax)
+    ax.set_title(f"Cmp. {GRANULARITY_COMPONENT} eigenstate loadings")
 
 
 def makeFigure():
