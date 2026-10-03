@@ -20,7 +20,7 @@ from .common import subplotLabel
 from .figureBenchmarkNull import load_runner_csv
 
 SELECTED_DATASET = "alad"
-SWEEP_CSV = f"benchmark_anova_{SELECTED_DATASET}.csv"
+SWEEP_CSV = f"benchmark_anova_{SELECTED_DATASET}.parquet"
 METHOD_ORDER = ("cccRISE", "Pseudobulk CPD", "Tensor-cell2cell", "STACCato")
 RANK_MODE_LABELS = {"own": "own rank selection", "shared": "shared rank"}
 

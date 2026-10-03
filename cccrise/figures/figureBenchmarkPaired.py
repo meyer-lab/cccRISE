@@ -31,7 +31,7 @@ from .figureBenchmarkNull import (
     load_runner_csv,
 )
 
-PAIRED_CSV = f"benchmark_anova_paired_{SELECTED_DATASET}.csv"
+PAIRED_CSV = f"benchmark_anova_paired_{SELECTED_DATASET}.parquet"
 
 
 def plot_paired_differences(

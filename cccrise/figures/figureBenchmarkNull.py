@@ -17,11 +17,11 @@ from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-from ..runners.datasets import DATA_DIR
-from .common import getSetup, subplotLabel
+from ..runners.datasets import VALIDATION_DIR
+from .common import getSetup, load_runner_output, subplotLabel
 
 SELECTED_DATASET = "alad"
-NULL_CSV = f"benchmark_anova_null_{SELECTED_DATASET}.csv"
+NULL_CSV = f"benchmark_anova_null_{SELECTED_DATASET}.parquet"
 ALPHA = 0.05
 
 # Categorical slots in fixed order, validated all-pairs for CVD separation
@@ -37,14 +37,11 @@ HIGHLIGHT_COLOR = "#e3ecf9"
 
 
 def load_runner_csv(filename: str) -> pd.DataFrame:
-    """Read a CSV the benchmark runner (`cccrise-benchmark`) wrote to the data
-    directory; a missing file is an error naming the command to run."""
-    path = DATA_DIR / filename
-    if not path.exists():
-        raise FileNotFoundError(
-            f"{path} not found. Produce it with\n    uv run cccrise-benchmark --dataset alad"
-        )
-    return pd.read_csv(path)
+    """A table the benchmark runner (`cccrise-benchmark`) wrote to
+    ``data/validation_results/``."""
+    return load_runner_output(
+        filename, VALIDATION_DIR, hint="    uv run cccrise-benchmark --dataset alad"
+    )
 
 
 def _association_order(df: pd.DataFrame) -> tuple[list[str], set[str]]:

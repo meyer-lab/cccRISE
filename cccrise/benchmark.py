@@ -52,7 +52,7 @@ RANK_MODES = ("own", "shared")
 
 # Bump when a change to a comparator's fitting or rank selection should
 # invalidate every cached own-rank fit.
-FIT_CACHE_VERSION = 4
+FIT_CACHE_VERSION = 5
 
 # `tensor.run_pseudobulk_workflow`'s CP settings, and the rule cccRISE's CP rank
 # was read off by: the last rank before core consistency first drops below 85%
@@ -75,15 +75,34 @@ TC2C_N_ITER_MAX = 100
 STACCATO_VAREXP = 1.0
 
 
+#: Non-condition modes a `ComparatorFit` keeps, in the communication tensor's
+#: ``(condition, sender, receiver, lr)`` order.
+OTHER_MODES = ("sender", "receiver", "lr")
+
+
 @dataclass(frozen=True)
 class ComparatorFit:
-    """One method's condition factor, at the rank it was fit."""
+    """One method's factors, at the rank it was fit.
+
+    `condition_factor` is what the ANOVA benchmark tests. The other modes
+    (`modes`), and the CP `weights` or Tucker `core`, are kept for analyses
+    that compare whole components across methods (NicheNet, subspace
+    agreement). A Tucker `core` is in STACCato's ``(sample, lr, sender,
+    receiver)`` mode order (`staccato_order`).
+    """
 
     method: str
     rank_mode: str
     rank: str
     condition_factor: np.ndarray
     details: dict[str, Any] = field(default_factory=dict)
+    modes: dict[str, np.ndarray] = field(default_factory=dict)
+    weights: np.ndarray | None = None
+    core: np.ndarray | None = None
+
+    @property
+    def kind(self) -> str:
+        return "tucker" if self.core is not None else "cp"
 
 
 def pseudobulk_tensor(
@@ -147,18 +166,19 @@ def pseudobulk_cpd_rank(
     return max(rank, 1), diagnostics
 
 
-def pseudobulk_cpd_factor(
+def pseudobulk_cpd_fit(
     tensor: np.ndarray, rank: int, random_state: int = 42
-) -> np.ndarray:
-    """Condition factor of one pseudobulk CPD fit at `rank`."""
-    _weights, factors, _r2x = pseudobulk_cp_decomposition(
+) -> tuple[np.ndarray, list[np.ndarray]]:
+    """Weights and ``(condition, sender, receiver, lr)`` factors of one
+    pseudobulk CPD fit at `rank`."""
+    weights, factors, _r2x = pseudobulk_cp_decomposition(
         tensor,
         rank,
         n_iter_max=PSEUDOBULK_N_ITER_MAX,
         tol=PSEUDOBULK_TOL,
         random_state=random_state,
     )
-    return np.asarray(factors[0])
+    return np.asarray(weights), [np.asarray(f) for f in factors]
 
 
 def kneedle_elbow(
@@ -246,12 +266,13 @@ def tensor_cell2cell_elbow(
     return kneedle_elbow(ranks, errors), errors
 
 
-def tensor_cell2cell_factor(
+def tensor_cell2cell_fit(
     tensor: np.ndarray, rank: int, random_state: int = 42
-) -> np.ndarray:
-    """Condition factor of one Tensor-cell2cell fit at `rank`."""
+) -> tuple[np.ndarray, list[np.ndarray]]:
+    """Weights and ``(condition, sender, receiver, lr)`` factors of one
+    Tensor-cell2cell fit at `rank`."""
     cp = _nonneg_cp(tensor, rank, random_state)
-    return np.asarray(cp.factors[0])
+    return np.asarray(cp.weights), [np.asarray(f) for f in cp.factors]
 
 
 def eigen_varexp_rank(
@@ -275,14 +296,43 @@ def staccato_order(tensor: np.ndarray) -> np.ndarray:
     return np.transpose(tensor, (0, 3, 1, 2))
 
 
-def staccato_factor(
+def staccato_fit(
     tensor: np.ndarray, core_shape: Sequence[int], random_state: int = 42
-) -> np.ndarray:
-    """Sample-mode factor ``W1`` of an unsupervised STACCato fit.
+) -> tuple[np.ndarray, list[np.ndarray]]:
+    """Core and ``(condition, sender, receiver, lr)`` factors of an
+    unsupervised STACCato fit.
 
-    `tensor` is in STACCato's mode order (see `staccato_order`).
+    `tensor` and the returned core are in STACCato's mode order (see
+    `staccato_order`); the factors are returned in the standard order.
     """
-    return np.asarray(staccato(tensor, core_shape, random_state=random_state).W1)
+    result = staccato(tensor, core_shape, random_state=random_state)
+
+    def _array(w: Any) -> np.ndarray:
+        return w.to_numpy() if isinstance(w, pd.DataFrame) else np.asarray(w)
+
+    factors = [_array(w) for w in (result.W1, result.W3, result.W4, result.W2)]
+    return np.asarray(result.G), factors
+
+
+def _comparator_fit(
+    method: str,
+    rank_mode: str,
+    rank: str,
+    factors: list[np.ndarray],
+    details: dict[str, Any],
+    weights: np.ndarray | None = None,
+    core: np.ndarray | None = None,
+) -> ComparatorFit:
+    return ComparatorFit(
+        method=method,
+        rank_mode=rank_mode,
+        rank=rank,
+        condition_factor=factors[0],
+        details=details,
+        modes=dict(zip(OTHER_MODES, factors[1:], strict=True)),
+        weights=weights,
+        core=core,
+    )
 
 
 def fit_comparators(
@@ -342,27 +392,33 @@ def fit_comparators(
         core_shape = tuple(min(shared_rank, size) for size in stac_tensor.shape)
         stac_details = {}
 
+    pb_weights, pb_factors = pseudobulk_cpd_fit(tensor, pb_rank, random_state)
+    tc_weights, tc_factors = tensor_cell2cell_fit(tensor, tc2c_rank, random_state)
+    core, st_factors = staccato_fit(stac_tensor, core_shape, random_state)
     return [
-        ComparatorFit(
-            method="Pseudobulk CPD",
-            rank_mode=rank_mode,
-            rank=str(pb_rank),
-            condition_factor=pseudobulk_cpd_factor(tensor, pb_rank, random_state),
-            details=pb_details,
+        _comparator_fit(
+            "Pseudobulk CPD",
+            rank_mode,
+            str(pb_rank),
+            pb_factors,
+            pb_details,
+            pb_weights,
         ),
-        ComparatorFit(
-            method="Tensor-cell2cell",
-            rank_mode=rank_mode,
-            rank=str(tc2c_rank),
-            condition_factor=tensor_cell2cell_factor(tensor, tc2c_rank, random_state),
-            details=tc2c_details,
+        _comparator_fit(
+            "Tensor-cell2cell",
+            rank_mode,
+            str(tc2c_rank),
+            tc_factors,
+            tc2c_details,
+            tc_weights,
         ),
-        ComparatorFit(
-            method="STACCato",
-            rank_mode=rank_mode,
-            rank="x".join(str(r) for r in core_shape),
-            condition_factor=staccato_factor(stac_tensor, core_shape, random_state),
-            details=stac_details | {"core_shape": list(core_shape)},
+        _comparator_fit(
+            "STACCato",
+            rank_mode,
+            "x".join(str(r) for r in core_shape),
+            st_factors,
+            stac_details | {"core_shape": list(core_shape)},
+            core=core,
         ),
     ]
 
@@ -386,14 +442,17 @@ def save_fits(
     key: dict[str, Any],
     tensor_info: dict[str, Any],
 ) -> None:
-    """Cache fits' raw (not read-depth corrected) condition factors.
+    """Cache fits' raw (not read-depth corrected) factors: the condition factor
+    as ``factor_<i>``, the other modes as ``<mode>_<i>``, and the CP weights or
+    Tucker core as ``weights_<i>`` / ``core_<i>``.
 
     `key` is everything the fits depend on; `load_fits` refuses the cache when
     it differs. `tensor_info` describes the tensor they were fit on, so a run
     served from the cache can still report it without rebuilding it.
     """
-    data_vars = {
-        f"factor_{i}": xr.DataArray(
+    data_vars: dict[str, xr.DataArray] = {}
+    for i, fit in enumerate(fits):
+        data_vars[f"factor_{i}"] = xr.DataArray(
             np.asarray(fit.condition_factor, dtype=float),
             dims=("condition", f"component_{i}"),
             attrs={
@@ -403,8 +462,7 @@ def save_fits(
                 "details": json.dumps(fit.details),
             },
         )
-        for i, fit in enumerate(fits)
-    }
+        data_vars |= _fit_arrays(i, fit)
     ds = xr.Dataset(
         data_vars,
         coords={"condition": np.asarray(conditions).astype(str)},
@@ -434,14 +492,58 @@ def load_fits(
     ):
         print(f"   {path.name} was fit on different conditions; refitting")
         return None
-    fits = [
-        ComparatorFit(
-            method=var.attrs["method"],
-            rank_mode=var.attrs["rank_mode"],
-            rank=var.attrs["rank"],
-            condition_factor=var.values,
-            details=json.loads(var.attrs["details"]),
+    return _read_all(ds)
+
+
+def read_fits(path: Path) -> tuple[list[ComparatorFit], dict[str, Any], np.ndarray]:
+    """Every cached fit, its tensor info and its condition labels, without the
+    cache-key check: for analyses that consume the runner's fits."""
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} not found. Produce it with\n    uv run cccrise-benchmark --dataset <dataset>"
         )
-        for var in (ds[f"factor_{i}"] for i in range(len(ds.data_vars)))
-    ]
+    with xr.open_dataset(path) as ds:
+        ds = ds.load()
+    fits, info = _read_all(ds)
+    return fits, info, ds.coords["condition"].values.astype(str)
+
+
+def _read_all(ds: xr.Dataset) -> tuple[list[ComparatorFit], dict[str, Any]]:
+    n_fits = sum(1 for name in ds.data_vars if str(name).startswith("factor_"))
+    fits = [_read_fit(ds, i) for i in range(n_fits)]
     return fits, json.loads(ds.attrs["tensor_info"])
+
+
+def _fit_arrays(i: int, fit: ComparatorFit) -> dict[str, xr.DataArray]:
+    """The non-condition arrays of fit `i`, for `save_fits`."""
+    out = {
+        f"{mode}_{i}": xr.DataArray(
+            np.asarray(values, dtype=float),
+            dims=(f"{mode}_row_{i}", f"{mode}_component_{i}"),
+        )
+        for mode, values in fit.modes.items()
+    }
+    if fit.weights is not None:
+        out[f"weights_{i}"] = xr.DataArray(
+            np.asarray(fit.weights, dtype=float), dims=(f"component_{i}",)
+        )
+    if fit.core is not None:
+        out[f"core_{i}"] = xr.DataArray(
+            np.asarray(fit.core, dtype=float),
+            dims=[f"core_{i}_{k}" for k in range(np.ndim(fit.core))],
+        )
+    return out
+
+
+def _read_fit(ds: xr.Dataset, i: int) -> ComparatorFit:
+    var = ds[f"factor_{i}"]
+    return ComparatorFit(
+        method=var.attrs["method"],
+        rank_mode=var.attrs["rank_mode"],
+        rank=var.attrs["rank"],
+        condition_factor=var.values,
+        details=json.loads(var.attrs["details"]),
+        modes={m: ds[f"{m}_{i}"].values for m in OTHER_MODES if f"{m}_{i}" in ds},
+        weights=ds[f"weights_{i}"].values if f"weights_{i}" in ds else None,
+        core=ds[f"core_{i}"].values if f"core_{i}" in ds else None,
+    )

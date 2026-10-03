@@ -79,6 +79,9 @@ def test_fit_comparators_returns_one_row_per_condition(rank_mode):
     if rank_mode == "shared":
         assert [fit.rank for fit in fits] == ["3", "3", "3x3x3x3"]
         assert all(fit.condition_factor.shape[1] == 3 for fit in fits)
+        assert all(set(fit.modes) == {"sender", "receiver", "lr"} for fit in fits)
+        assert all(fit.modes["lr"].shape[0] == 12 for fit in fits)
+        assert all(fit.modes["sender"].shape[0] == 4 for fit in fits)
 
 
 def test_fit_comparators_rejects_unknown_rank_mode():
@@ -95,9 +98,25 @@ def test_fit_cache_round_trips_and_refuses_stale_settings(tmp_path):
             "2",
             np.arange(6.0).reshape(3, 2),
             {"elbow_errors": [0.5, 0.2]},
+            modes={
+                "sender": np.ones((2, 2)),
+                "receiver": np.full((2, 2), 2.0),
+                "lr": np.arange(8.0).reshape(4, 2),
+            },
+            weights=np.array([1.5, 0.5]),
         ),
         ComparatorFit(
-            "STACCato", "own", "3x2x2x2", np.ones((3, 3)), {"core_shape": [3, 2, 2, 2]}
+            "STACCato",
+            "own",
+            "3x2x2x2",
+            np.ones((3, 3)),
+            {"core_shape": [3, 2, 2, 2]},
+            modes={
+                "sender": np.ones((2, 2)),
+                "receiver": np.ones((2, 2)),
+                "lr": np.ones((4, 2)),
+            },
+            core=np.arange(24.0).reshape(3, 2, 2, 2),
         ),
     ]
     info = {"tensor_shape": [3, 2, 2, 4], "celltypes": ["a", "b"], "n_lr_pairs": 4}
@@ -118,6 +137,16 @@ def test_fit_cache_round_trips_and_refuses_stale_settings(tmp_path):
             restored.condition_factor, original.condition_factor
         )
         assert restored.details == original.details
+        assert restored.kind == original.kind
+        for mode, values in original.modes.items():
+            np.testing.assert_array_equal(restored.modes[mode], values)
+        for attr in ("weights", "core"):
+            if getattr(original, attr) is None:
+                assert getattr(restored, attr) is None
+            else:
+                np.testing.assert_array_equal(
+                    getattr(restored, attr), getattr(original, attr)
+                )
 
     assert load_fits(path, conditions, {"seed": 2}) is None
     assert load_fits(path, conditions[::-1], {"seed": 1}) is None

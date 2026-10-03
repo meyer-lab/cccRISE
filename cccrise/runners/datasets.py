@@ -128,16 +128,19 @@ class DatasetSpec:
         return f"anova_point_estimate_{self.key}.parquet"
 
     def benchmark_anova_filename(self) -> str:
-        return f"benchmark_anova_{self.key}.csv"
+        return f"benchmark_anova_{self.key}.parquet"
 
     def benchmark_null_filename(self) -> str:
-        return f"benchmark_anova_null_{self.key}.csv"
+        return f"benchmark_anova_null_{self.key}.parquet"
 
     def benchmark_paired_filename(self) -> str:
-        return f"benchmark_anova_paired_{self.key}.csv"
+        return f"benchmark_anova_paired_{self.key}.parquet"
 
     def benchmark_fits_filename(self) -> str:
         return f"benchmark_fits_{self.key}.nc"
+
+    def nichenet_comparator_scores_filename(self) -> str:
+        return f"nichenet_comparator_scores_{self.key}.parquet"
 
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.key}.parquet"
