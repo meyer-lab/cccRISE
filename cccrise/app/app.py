@@ -94,16 +94,14 @@ TEXT_SCALE = 1.15
 # Section headers, 1.5x Bootstrap's h4 (1.5rem) and h6 (1rem).
 HEADER_CSS = "h4 { font-size: 2.25rem; } h6 { font-size: 1.5rem; }"
 
-# `plot_categorical_scatter` sorts categories alphabetically for its color
-# assignment, so this list has to be in that order: Both, Neither, Receiver
-# Only, Sender Only. "Neither" is usually the majority category, so it's
-# muted rather than drawn from the same accented palette as the other three.
-STRENGTH_CATEGORY_COLORS = [
-    colors.PINK,
-    colors.LIGHT_GREY,
-    colors.RECEIVER,
-    colors.SENDER,
-]
+# "Neither" is usually the majority category, so it's muted rather than drawn
+# from the same accented palette as the other three.
+STRENGTH_CATEGORY_COLORS = {
+    "Both": colors.PINK,
+    "Neither": colors.LIGHT_GREY,
+    "Receiver Only": colors.RECEIVER,
+    "Sender Only": colors.SENDER,
+}
 
 # Sender/receiver scatter component selects (x and y axes).
 SCATTER_COMPONENT_INPUTS = {
@@ -1160,11 +1158,12 @@ def server(input, output, session):
 
     @reactive.calc
     def strength_weights():
+        """(sender weights, receiver weights, sender threshold, receiver
+        threshold) of the selected component."""
         cmp = input.component()
-        return (
-            *weights_and_threshold("sc_B", cmp),
-            *weights_and_threshold("rc_C", cmp),
-        )
+        sender, sender_threshold = weights_and_threshold("sc_B", cmp)
+        receiver, receiver_threshold = weights_and_threshold("rc_C", cmp)
+        return sender, receiver, sender_threshold, receiver_threshold
 
     @reactive.calc
     def selected_celltype_mask():
@@ -1233,12 +1232,14 @@ def server(input, output, session):
 
         points = np.asarray(ds.adata.obsm["PaCMAP"])
         fig, ax = plt.subplots(figsize=(6.5, 5.5), layout="tight")
+        # `plot_categorical_scatter` takes one color per present category, in
+        # sorted order; a category can be empty (e.g. no "Both" cells)
         plot_categorical_scatter(
-            points, pd.Series(categories), ax, color_key=STRENGTH_CATEGORY_COLORS
+            points,
+            pd.Series(categories),
+            ax,
+            color_key=[STRENGTH_CATEGORY_COLORS[c] for c in np.unique(categories)],
         )
-
-        # Same category -> color assignment `plot_categorical_scatter` makes
-        category_colors = dict(zip(np.unique(categories), STRENGTH_CATEGORY_COLORS))
         selected = np.flatnonzero(selected_celltype_mask())
         # Strong senders/receivers drawn last, over the "Neither" majority
         selected = selected[
@@ -1247,7 +1248,7 @@ def server(input, output, session):
         enlarge_points(
             ax,
             points[selected],
-            [category_colors[c] for c in categories[selected]],
+            [STRENGTH_CATEGORY_COLORS[c] for c in categories[selected]],
             scale=1 + input.tt_point_size() / 100,
         )
         assign_labels(ax)
