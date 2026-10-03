@@ -23,14 +23,15 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from tensorly.decomposition import parafac
 
 from ..ccc_rise import (
     CP_COMPRESSION_OPTIONS,
     CP_FIT_OPTIONS,
+    CP_N_STARTS,
     RISE_COMPRESSION_OPTIONS,
     calculate_interaction_tensor,
     fit_rise,
+    parafac_multistart,
     validate_cp_rank,
 )
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
@@ -122,13 +123,8 @@ def cp_fits_by_rank(
     """
     fits = {}
     for rank in ranks:
-        weights, factors = parafac(
-            tensor,
-            rank=rank,
-            n_iter_max=n_iter_max,
-            tol=tol,
-            random_state=random_state,
-            **CP_FIT_OPTIONS,
+        weights, factors = parafac_multistart(
+            tensor, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
         )
         fits[rank] = (weights, factors, calculate_r2x(weights, factors, tensor))
     return fits
@@ -183,8 +179,9 @@ def run_cpd_rank_selection(
     validate_cp_rank(max(ranks), tensor.shape)
 
     # Everything downstream runs against `fit_target`: the CANDELINC core when
-    # compressing, the tensor itself otherwise. Both criteria are invariant to
-    # the choice, and `lost_sq` restates R2X against the original tensor.
+    # compressing, the tensor itself otherwise. Core consistency and the
+    # collinearity screen are invariant to the choice, and `lost_sq` restates
+    # R2X against the original tensor.
     lost_sq = 0.0
     compression_facts: dict = {}
     fit_target = tensor
@@ -244,6 +241,7 @@ def run_cpd_rank_selection(
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "cp_fit_options": CP_FIT_OPTIONS,
+            "cp_n_starts": CP_N_STARTS,
             "backend": spec.backend or "auto",
             "compress": compress,
             "rise_compression_options": RISE_COMPRESSION_OPTIONS,

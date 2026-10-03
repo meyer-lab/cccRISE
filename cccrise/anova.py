@@ -45,14 +45,18 @@ def collapse_group(
     The names, rather than codes, are what a test that reports per-group
     statistics needs -- an ANOVA has to be able to say which group loaded
     higher. `binarize_group` is this with the names traded for codes.
+    Missing entries stay missing rather than joining `other_name`.
     """
-    return sample_to_group.map(lambda x: match_name if x == match_value else other_name)
+    return sample_to_group.map(
+        lambda x: match_name if x == match_value else other_name, na_action="ignore"
+    )
 
 
 def binarize_group(
     sample_to_group: pd.Series, match_value: str, match_name: str, other_name: str
 ) -> pd.Series:
-    """Collapse a group Series into two named categories and return integer codes."""
+    """Collapse a group Series into two named categories and return integer codes
+    (-1 for missing entries)."""
     collapsed = collapse_group(sample_to_group, match_value, match_name, other_name)
     return collapsed.astype("category").cat.codes
 
@@ -265,7 +269,8 @@ def anova_component_associations(
         - 'EtaSquared': effect size eta^2 (SS_between / SS_total)
         - 'GroupMeanDiff': signed group mean difference (for binary grouping)
         - 'Significant': True if PAdj < alpha (or P < alpha when uncorrected)
-        - 'NGroups': number of distinct groups with >=2 samples
+        - 'NGroups': number of distinct non-null group levels (the test is
+          skipped, NaN, if any has fewer than 2 samples)
         - 'GroupSizes': count of samples in each group
     """
     A = np.asarray(X.uns["A"], dtype=float)
@@ -355,9 +360,10 @@ def _group_mean_diff(
     levels; NaN otherwise.
 
     This is the only sign-bearing quantity the ANOVA reports, and so the one
-    that carries direction -- which group loads higher -- through the
-    bootstrap's sign correction, exactly as the logistic regression weight
-    did. F, P and eta-squared are sign-invariant by construction.
+    that carries direction -- which group loads higher. Its orientation is
+    comparable across fits because `standardize_cc_pf2` gives each condition
+    factor column a positive mean. F, P and eta-squared are sign-invariant
+    by construction.
     """
     if len(groups) != 2:
         return np.nan

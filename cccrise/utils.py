@@ -53,8 +53,9 @@ def resample_cells(
     Supersedes `resample`, which draws the same way but seeds the global
     `np.random` state -- perturbing every other draw in the process -- and
     leaves `var["means"]` describing the original cells. That column is
-    load-bearing twice over: `parafac2.anndata_to_list` centers each condition
-    slice with it before the RISE fit, and `ccc_rise.calc_communication_score`
+    load-bearing twice over: `parafac2_nd` (via
+    `parafac2.utils.extract_dataset_info`) centers each condition slice with
+    it before the RISE fit, and `ccc_rise.calc_communication_score`
     adds it back to un-center the projected matrices before scoring. A stale
     column therefore biases both stages of the pipeline in correlated
     directions, which would surface as instability that is really just
@@ -134,6 +135,11 @@ def _carry_paired_samples(
     drop is what keeps the final number of patients in the resampling fixed,
     rather than growing by one every time a pair is hit.
 
+    The drop never takes the draw that triggered a carry or a carried-in
+    sibling (so a carry is not undone, by its own drop or a later one),
+    unless nothing else is left to drop. A draw that an earlier carry
+    dropped triggers no carry of its own.
+
     With `stratum_of` (condition -> stratum), the drop is drawn from the
     carried sibling's own stratum, so every stratum keeps its original count
     even when a patient's two samples fall in different strata.
@@ -141,19 +147,33 @@ def _carry_paired_samples(
     Each of the original draws is visited once, so a condition drawn twice
     triggers two independent carry-and-drop steps.
     """
-    result = list(drawn)
-    for cond in list(result):
-        sibling = pair_of.get(cond)
-        if sibling is None:
+    # [condition, protected]; lists, so entries are told apart by identity
+    entries = [[cond, False] for cond in drawn]
+    for entry in list(entries):
+        sibling = pair_of.get(entry[0])
+        if sibling is None or not any(e is entry for e in entries):
             continue
-        result.append(sibling)
-        pool = [
-            i
-            for i, c in enumerate(result)
-            if stratum_of is None or stratum_of[c] == stratum_of[sibling]
-        ]
-        result.pop(pool[rng.integers(0, len(pool))])
-    return result
+        entry[1] = True
+        entries.append([sibling, True])
+        _drop_one_unprotected(entries, sibling, rng, stratum_of)
+    return [cond for cond, _ in entries]
+
+
+def _drop_one_unprotected(
+    entries: list[list[Any]],
+    sibling: str,
+    rng: np.random.Generator,
+    stratum_of: dict[str, Any] | None,
+) -> None:
+    """Drop one random entry from `sibling`'s stratum, preferring entries a
+    carry has not protected (see `_carry_paired_samples`)."""
+    in_stratum = [
+        i
+        for i, (c, _) in enumerate(entries)
+        if stratum_of is None or stratum_of[c] == stratum_of[sibling]
+    ]
+    pool = [i for i in in_stratum if not entries[i][1]] or in_stratum
+    entries.pop(pool[rng.integers(0, len(pool))])
 
 
 def resample_conditions(
@@ -199,7 +219,8 @@ def resample_conditions(
         every condition (sample) belonging to the same patient. When given,
         drawing one of a two-sample patient's conditions carries its sibling
         condition in too, and drops one other random draw to compensate --
-        from the sibling's own stratum when `stratify_by` is given (see
+        never the pair itself unless nothing else is left, and from the
+        sibling's own stratum when `stratify_by` is given (see
         `_carry_paired_samples`). Conditions whose patient contributes only
         one of them are unaffected.
 
@@ -259,7 +280,7 @@ def replicate_seed(random_state: int, replicate: int) -> int:
     """Seed for one replicate: ``random_state * 1000 + replicate + 1``.
 
     One integer per (axis, replicate) drives the resample, the RISE refit and
-    the CP restarts, so a replicate's RISE and CPD rows describe the same
+    the CP fit, so a replicate's RISE and CPD rows describe the same
     resampled dataset by construction rather than by coincidence. The ``+ 1``
     leaves `random_state` itself to the reference pass, so no replicate reuses
     the reference's starting point.
@@ -343,12 +364,30 @@ def correct_conditions(X: anndata.AnnData) -> np.ndarray:
     return X.uns["A"] / counts_correct
 
 
+def _group_profile(adata_subset: anndata.AnnData, type: str) -> np.ndarray:
+    """One (sample, groupby) cell subset's per-gene mean expression
+    (`type="mean"`) or fraction of expressing cells (`type="fraction"`);
+    zeros when the subset has no cells."""
+    if adata_subset.n_obs == 0:
+        return np.zeros(adata_subset.n_vars)
+    dense = cast(Any, adata_subset.X).toarray()
+    if type == "mean":
+        return np.mean(dense, axis=0)
+    return (dense > 0).sum(axis=0) / dense.shape[0]
+
+
 def pseudobulk_X(
     X: anndata.AnnData, condition_name: str, groupby: str, type: str
 ) -> list[pd.DataFrame]:
     """
-    Calculate average gene expression for each groupby in each sample
+    Calculate average gene expression for each groupby in each sample.
+
+    `type` is 'mean' (mean expression) or 'fraction' (fraction of cells
+    expressing each gene); a (sample, groupby) combination with no cells is
+    zero-filled.
     """
+    if type not in ("mean", "fraction"):
+        raise ValueError(f"type must be 'mean' or 'fraction', got {type!r}")
     # Get unique samples and cell types
     samples = np.unique(X.obs[condition_name].unique())
     groupby_names = np.unique(X.obs[groupby].unique())
@@ -364,23 +403,8 @@ def pseudobulk_X(
             # Subset to current groupby
             group_mask = X_sample.obs[groupby] == group_name
             adata_subset = X_sample[group_mask, :]
-            result_dict = {}
-            subset_X = cast(Any, adata_subset.X)
-            if adata_subset.n_obs > 0 and type == "mean":
-                mean_expression = np.mean(subset_X.toarray(), axis=0)
-                for i, gene in enumerate(gene_names):
-                    result_dict[gene] = mean_expression[i]
-            elif adata_subset.n_obs > 0 and type == "fraction":
-                ct_df = subset_X.toarray()
-                cell_fraction = (ct_df > 0).sum(axis=0) / ct_df.shape[0]
-                for i, gene in enumerate(gene_names):
-                    result_dict[gene] = cell_fraction[i]
-            else:
-                # Set zero expression for missing combinations
-                for gene in gene_names:
-                    result_dict[gene] = 0.0
-
-            results.append(result_dict)
+            profile = _group_profile(adata_subset, type)
+            results.append(dict(zip(gene_names, profile, strict=True)))
 
         # Dataframe with genes as rows and groupby as columns
         results_df = pd.DataFrame(results, columns=gene_names, index=groupby_names)

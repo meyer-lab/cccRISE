@@ -100,9 +100,10 @@ def test_align_to_reference_components_sign_flip():
     np.testing.assert_allclose(
         aligned.loc[aligned["Component"] == 2, "SignedCosine"].iloc[0], -1.0
     )
-    # Value should be flipped from -3.0 to +3.0 to match reference orientation
+    # The LR mode's sign says nothing about the condition factor's, so the
+    # value is not negated
     np.testing.assert_allclose(
-        aligned.loc[aligned["Component"] == 2, "Value"].iloc[0], 3.0
+        aligned.loc[aligned["Component"] == 2, "Value"].iloc[0], -3.0
     )
 
 
@@ -692,6 +693,14 @@ def test_prepare_group_labels():
     assert s_collapse["S1"] == "control"
     assert s_collapse["S2"] == "alad"
     assert s_collapse["S3"] == "alad"
+
+    # Collapsing keeps conditions `levels` excluded (and missing labels) out
+    s_both = prepare_group_labels(
+        raw, levels=["control", "declined"], control_label="control", other_label="alad"
+    )
+    assert s_both["S2"] == "alad"
+    assert pd.isna(s_both["S3"])
+    assert pd.isna(s_both["S5"])
 
 
 def test_run_saved_factors_anova_and_multiple_associations():

@@ -94,8 +94,8 @@ CPD_SKIP_MODES: tuple[int, ...] = (1, 2)
 #: Name of the reproducibility-ceiling axis: identical data, a different random
 #: seed, refit end to end. `random_state` genuinely moves both stages: `parafac2_nd`
 #: seeds the Gaussian projection of its randomized-SVD initialization and its
-#: compression stage, and tensorly's ``parafac(init="svd", svd="randomized_svd")`` does
-#: the same, so the axis is not degenerate.
+#: compression stage, and `ccc_rise.seeded_cp_fit_options` seeds the randomized SVD
+#: behind CP's ``init="svd"``, so the axis is not degenerate.
 SEED_AXIS = "seed_only"
 
 #: Percentile of the seed axis's FMS taken as the reproducibility band's lower

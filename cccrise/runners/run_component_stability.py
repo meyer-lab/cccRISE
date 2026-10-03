@@ -44,6 +44,7 @@ import pandas as pd
 from ..ccc_rise import (
     CP_COMPRESSION_OPTIONS,
     CP_FIT_OPTIONS,
+    CP_N_STARTS,
     RISE_COMPRESSION_OPTIONS,
 )
 from ..import_data import import_ligand_receptor_pairs
@@ -232,6 +233,7 @@ def run_component_stability(
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "cp_fit_options": CP_FIT_OPTIONS,
+            "cp_n_starts": CP_N_STARTS,
             "complex_sep": complex_sep,
             "communication_score": communication_score,
             "hill_k": hill_k,

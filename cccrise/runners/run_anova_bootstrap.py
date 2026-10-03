@@ -7,7 +7,7 @@ Fits the whole pipeline once on the full cohort at a fixed, already-selected
 ANOVA on the condition factors -- and then repeats all of it on
 ``--n-boot`` bootstrap resamples of the *patient roster*. Each replicate's
 components are matched back onto the full-cohort fit's components on the
-ligand-receptor mode and sign-corrected before its statistics are recorded
+ligand-receptor mode before its statistics are recorded
 (`anova_stability.bootstrap_anova`), so a component's effect sizes across
 replicates form a distribution rather than an unordered pile.
 
@@ -26,6 +26,7 @@ import pandas as pd
 from ..ccc_rise import (
     CP_COMPRESSION_OPTIONS,
     CP_FIT_OPTIONS,
+    CP_N_STARTS,
     RISE_COMPRESSION_OPTIONS,
 )
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
@@ -241,6 +242,7 @@ def run_anova_bootstrap(
             "rise_tol": rise_tol,
             "cp_tol": cp_tol,
             "cp_fit_options": CP_FIT_OPTIONS,
+            "cp_n_starts": CP_N_STARTS,
             "complex_sep": complex_sep,
             "communication_score": communication_score,
             "hill_k": hill_k,

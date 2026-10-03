@@ -384,6 +384,37 @@ def test_carry_paired_samples_leaves_exactly_one_of_the_pair():
         assert result[0] in ("S0", "S1")
 
 
+def test_carry_paired_samples_keeps_both_of_the_pair_when_it_can():
+    """With other draws to drop, the compensating drop never undoes the
+    carry: the trigger and its carried-in sibling both survive."""
+    pair_of = {"S0": "S1", "S1": "S0"}
+    drawn = ["S0", "S2", "S3", "S4"]
+    for seed in range(30):
+        rng = np.random.default_rng(seed)
+        result = _carry_paired_samples(drawn, pair_of, rng)
+        assert len(result) == len(drawn)
+        assert {"S0", "S1"} <= set(result)
+
+
+def test_carry_paired_samples_skips_draws_an_earlier_carry_dropped():
+    """A draw removed by an earlier carry's drop must not carry its own
+    sibling in afterwards."""
+    pair_of = {"S0": "S1", "S1": "S0", "S2": "S3", "S3": "S2"}
+    # Enough unpaired draws that no drop ever has to fall back on a pair
+    drawn = ["S0", "S2", "S4", "S5", "S6"]
+    dropped_s2 = 0
+    for seed in range(60):
+        rng = np.random.default_rng(seed)
+        result = _carry_paired_samples(drawn, pair_of, rng)
+        assert len(result) == len(drawn)
+        if "S2" not in result:
+            dropped_s2 += 1
+            assert "S3" not in result
+        else:
+            assert "S3" in result
+    assert dropped_s2 > 0
+
+
 def test_resample_conditions_with_patient_by_keeps_the_condition_count_fixed():
     """Drawing one of a patient's two conditions carries the sibling in for
     free unless something else is dropped to compensate; the final resample

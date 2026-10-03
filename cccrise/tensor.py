@@ -18,7 +18,7 @@ from .utils import pseudobulk_X, resample_tensor
 
 
 def calculate_fms_cpd(weightsA, factorsA, weightsB, factorsB):
-    """Calculates FMS between 2 factors"""
+    """FMS between two CP decompositions, ignoring weights and the LR mode."""
     A_CP = CPTensor(
         (
             weightsA,
@@ -35,7 +35,7 @@ def calculate_fms_cpd(weightsA, factorsA, weightsB, factorsB):
 
 
 def calculate_fms_rise(A: anndata.AnnData, B: anndata.AnnData):
-    """Calculates FMS between 2 factors"""
+    """FMS between two RISE fits, ignoring weights and the B (`Pf2_B`) mode."""
     factors = [A.uns["Pf2_A"], A.uns["Pf2_B"], A.varm["Pf2_C"]]
     A_CP = CPTensor(
         (
@@ -71,6 +71,7 @@ def run_pseudobulk_workflow(
     aggregates single cells into pseudobulk matrices per (condition, groupby),
     computes the 4D cell-cell communication tensor, fits CP decomposition,
     and stores factors, weights, and LR pairs in the AnnData object's `.uns`.
+    The CP fit is unconstrained (signed), not non-negative.
 
     Parameters
     ----------
@@ -85,7 +86,8 @@ def run_pseudobulk_workflow(
     groupby : str, default="celltype"
         The column in `adata.obs` that defines the cell types.
     type : str, default="mean"
-        The aggregation method for pseudobulking ('mean' or 'sum').
+        The aggregation method for pseudobulking ('mean' or 'fraction'; see
+        `utils.pseudobulk_X`).
     n_iter_max : int, default=1000
         Maximum number of iterations for CP decomposition.
     tol : float, default=1e-11

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from functools import partial
 from itertools import combinations
 from math import comb
 from typing import Any, cast
@@ -11,6 +12,7 @@ from parafac2.parafac2 import parafac2_nd, store_pf2
 from scipy.sparse import spmatrix
 from tensorly.cp_tensor import cp_flip_sign, cp_normalize
 from tensorly.decomposition import parafac
+from tensorly.tenalg.svd import randomized_svd
 
 from .ccc import (
     build_context_ccc_tensor,
@@ -44,6 +46,63 @@ CP_FIT_OPTIONS: dict[str, Any] = {
     "svd": "randomized_svd",
     "normalize_factors": True,
 }
+#: Starts per CP fit; `parafac_multistart` keeps the best. A single start at
+#: the ALAD CP rank lands in a worse local optimum for some seeds.
+CP_N_STARTS = 5
+
+
+def seeded_cp_fit_options(random_state: int | None) -> dict[str, Any]:
+    """`CP_FIT_OPTIONS` with its randomized SVD initialization seeded.
+
+    tensorly's `parafac` uses `random_state` only for random initialization
+    and does not forward it to the SVD behind ``init="svd"``, so
+    ``svd="randomized_svd"`` would otherwise draw from NumPy's global RNG.
+    """
+    return CP_FIT_OPTIONS | {"svd": partial(randomized_svd, random_state=random_state)}
+
+
+def cp_start_seeds(random_state: int | None, n_starts: int) -> list[int | None]:
+    """Seeds for `parafac_multistart`'s starts. The first is `random_state`
+    itself, so one start reproduces a plain seeded fit; the rest are drawn
+    from it rather than offset from it, so they don't collide with the seeds
+    of neighbouring replicates (`utils.replicate_seed`)."""
+    if random_state is None:
+        return [None] * n_starts
+    rng = np.random.default_rng(random_state)
+    return [random_state, *(int(s) for s in rng.integers(2**31 - 1, size=n_starts - 1))]
+
+
+def parafac_multistart(
+    tensor: np.ndarray,
+    rank: int,
+    n_iter_max: int,
+    tol: float | None,
+    random_state: int | None = None,
+    n_starts: int = CP_N_STARTS,
+) -> tuple[np.ndarray, Factors]:
+    """CP fit with `seeded_cp_fit_options`, run from `n_starts` seeds
+    (`cp_start_seeds`), keeping the start with the highest R2X against
+    `tensor` (the first, on ties).
+
+    The randomized SVD initialization differs by seed, and ALS from a given
+    initialization can settle in a local optimum, so a single start is not
+    reliably the best fit.
+    """
+    best: tuple[float, np.ndarray, Factors] | None = None
+    for seed in cp_start_seeds(random_state, n_starts):
+        weights, factors = parafac(
+            tensor,
+            rank,
+            n_iter_max=n_iter_max,
+            tol=tol,
+            random_state=seed,
+            **seeded_cp_fit_options(seed),
+        )
+        r2x = calculate_r2x(weights, factors, tensor)
+        if best is None or r2x > best[0]:
+            best = (r2x, weights, factors)
+    assert best is not None, "n_starts must be at least 1"
+    return best[1], best[2]
 
 
 def _matrices_to_rnaseq_dataframes(
@@ -124,6 +183,10 @@ def calc_communication_score(
         List of gene names corresponding to columns in the matrices
     lr_pairs : pd.DataFrame, optional
         DataFrame with 'ligand' and 'receptor' columns
+    complex_sep : str, optional, default=None
+        Separator for multimeric complexes; None drops complex LR entries.
+    complex_agg_method : str, default="min"
+        Method to aggregate subunit expression for complexes.
     gene_means : np.ndarray, optional
         Per-gene mean expression over the full dataset, i.e. the same vector
         that was subtracted from every condition slice before fitting
@@ -255,7 +318,9 @@ def _aggregate_subunit_expression(
 ) -> np.ndarray:
     """
     Reduce subunit expression to a single value per ligand/receptor entry,
-    for every rank, reproducing `add_complexes_to_expression` without pandas.
+    for every rank, reproducing `add_complexes_to_expression` without pandas
+    for non-negative input (unlike it, single genes also pass through
+    `agg_method`, so 'gmean' of a negative single gene gives NaN).
 
     Parameters
     ----------
@@ -372,7 +437,8 @@ def compute_communication_significance(
     Parameters
     ----------
     X_list : list[np.ndarray]
-        Per-condition raw expression matrices, shape (cells, genes).
+        Per-condition mean-centered expression matrices (as from
+        `condition_matrices`), shape (cells, genes).
     projections : list[np.ndarray]
         Per-condition RISE/PARAFAC2 projection matrices, shape (cells, rank).
     gene_names : list[str]
@@ -399,15 +465,13 @@ def compute_communication_significance(
         Half-saturation constant, used only when
         `communication_score='expression_hill'`.
     gene_means : np.ndarray, optional
-        Per-gene mean expression over the full dataset (`adata.var["means"]`).
-        `X_list` here is raw (uncentered) expression, so `P.T @ X` is already
-        a projection of non-negative values -- but its entries can still be
-        negative, since `P`'s columns are signed contrast axes (see #139).
-        When given, `gene_means` is added to each (observed and permuted)
-        projected matrix and clipped at 0, exactly as in
-        `calc_communication_score`, keeping this null model consistent with
-        the sign-safe scoring used by the main pipeline. If None (default),
-        matrices are used unchanged, preserving prior behavior.
+        Per-gene mean expression subtracted from `X_list`
+        (`adata.var["means"]`). When given, it is added back to each
+        (observed and permuted) projected matrix and clipped at 0, exactly as
+        in `calc_communication_score`, keeping this null model consistent
+        with the sign-safe scoring used by the main pipeline (see #139). If
+        None (default), matrices are used unchanged, preserving prior
+        behavior.
     validate : bool, default=True
         Cross-check the vectorized observed tensor against
         `calc_communication_score` and raise if they disagree.
@@ -431,9 +495,8 @@ def compute_communication_significance(
     if lr_pairs is None:
         lr_pairs = import_ligand_receptor_pairs()
 
-    # Only densify legacy scipy sparse matrices; leave other array-likes
-    # (e.g. parafac2's mean-centering `SampleArray`) to handle `@` themselves,
-    # matching the convention used elsewhere in this module (see `ccc_rise`).
+    # Only densify legacy scipy sparse matrices; leave other array-likes to
+    # handle `@` themselves.
     X_arrays = [
         cast(Any, x).toarray() if isinstance(x, spmatrix) else x for x in X_list
     ]
@@ -661,8 +724,9 @@ def compute_differential_significance(
     sample_to_group : Sequence[bool] or np.ndarray
         Boolean (or 0/1) group label per condition/sample, same order and
         length as `interaction_tensor`'s first axis and as the CP condition
-        factor `A` (see `anova.prepare_anova_inputs`, which uses the same
-        `sample_to_group` convention). Must contain both groups.
+        factor `A` (ordered like `anova.get_sample_to_group`, whose
+        string labels must be binarized first, e.g. with
+        `anova.binarize_group`). Must contain both groups.
     n_perms : int, default=1000
         Number of random group-label permutations, used only when the exact
         null (see above) would be larger than `max_exact_perms`.
@@ -931,7 +995,8 @@ def fit_rise(
     compress: bool = False,
 ):
     """Fit RISE with `RISE_FIT_OPTIONS` and store it on `X` via `store_pf2`
-    (`uns` Pf2_A/Pf2_B/Pf2_weights, `varm["Pf2_C"]`, `obsm["projections"]`)
+    (`uns` Pf2_A/Pf2_B/Pf2_weights, `varm["Pf2_C"]`, `obsm["projections"]` /
+    `["weighted_projections"]`)
     plus `uns["r2x_pf2"]`.
 
     `backend` is 'cpu', 'cupy', 'mlx', or None to auto-detect. `compress`
@@ -1004,8 +1069,9 @@ def calculate_interaction_tensor(
             condition_projections(adata), condition_matrices(adata), strict=True
         )
     ]
-    # Per-gene mean subtracted before fitting RISE (see `prepare_dataset`); added
-    # back during scoring to keep communication scores non-negative (issue #139).
+    # Per-gene mean (`var["means"]`, set by `prepare_dataset`) that RISE and
+    # `condition_matrices` subtract; added back during scoring to keep
+    # communication scores non-negative (issue #139).
     gene_means = (
         adata.var["means"].to_numpy()
         if "means" in adata.var
@@ -1030,7 +1096,7 @@ def fit_cp(
     random_state: int | None = None,
     compress: bool = False,
 ) -> tuple[np.ndarray, Factors, float, dict[str, Any]]:
-    """Fit CP at a fixed rank with `CP_FIT_OPTIONS` and standardize the factors
+    """Fit CP at a fixed rank with `parafac_multistart` and standardize the factors
     (`standardize_cc_pf2`).
 
     `compress` fits against a CANDELINC core sized for `rank`
@@ -1054,13 +1120,8 @@ def fit_cp(
             tensor, max_rank=rank, **CP_COMPRESSION_OPTIONS
         )
 
-    weights, factors = parafac(
-        fit_target,
-        rank,
-        n_iter_max=n_iter_max,
-        tol=tol,
-        random_state=random_state,
-        **CP_FIT_OPTIONS,
+    weights, factors = parafac_multistart(
+        fit_target, rank, n_iter_max=n_iter_max, tol=tol, random_state=random_state
     )
     diagnostics = _cpd_diagnostics(fit_target, weights, factors, rank)
     r2x = candelinc_r2x(
@@ -1118,17 +1179,18 @@ def standardize_cc_pf2(
 
     Parameters
     ----------
+    weights : np.ndarray or None
+        Component weights from the CP decomposition. None is treated as ones.
     factors : list[np.ndarray]
         CP factors from the decomposition.
-    weights : np.ndarray, optional
-        Component weights from the CP decomposition. If None, they are initialized to ones.
 
     Returns
     -------
     tuple
         (weights, factors) after standardization.
     """
-    # Order components by condition variance
+    # Order components by ascending variance-to-mean ratio of the condition
+    # factor (before sign flipping, so a negative-mean column sorts first)
     gini = np.var(factors[0], axis=0) / np.mean(factors[0], axis=0)
     gini_idx = np.argsort(gini)
     factors = [f[:, gini_idx] for f in factors]
@@ -1155,7 +1217,7 @@ def calc_communication_score_pseudobulk(
     pseudobulk_matrices_df : list[pd.DataFrame]
         List of dataframes of shape (genes, groupby)
     gene_names : list[str], optional
-        List of gene names corresponding to columns in the matrices
+        Unused; gene names are taken from each DataFrame's index.
     lr_pairs : pd.DataFrame, optional
         DataFrame with 'ligand' and 'receptor' columns
     complex_sep : str, default="&"
@@ -1239,7 +1301,8 @@ def pseudobulk_cp_decomposition(
     random_state: int | None = None,
 ) -> tuple[np.ndarray, list[np.ndarray], float]:
     """
-    Perform non-negative CP decomposition on the pseudobulk interaction tensors.
+    Perform (unconstrained) CP decomposition on the pseudobulk interaction
+    tensors, best of `CP_N_STARTS` starts (`parafac_multistart`).
     Parameters
     ----------
     interaction_tensors : np.ndarray
@@ -1249,7 +1312,8 @@ def pseudobulk_cp_decomposition(
     n_iter_max : int
         The maximum number of iterations for the decomposition.
     tol: float | None
-        Tolerance for convergence.
+        Tolerance for convergence. None disables tensorly's convergence
+        check, so the fit always runs `n_iter_max` iterations.
     random_state : int | None
         Random seed for reproducibility.
     Returns
@@ -1257,15 +1321,11 @@ def pseudobulk_cp_decomposition(
     tuple[np.ndarray, list[np.ndarray], float]
         A tuple containing the CP weights, CP factors, and the R2X value.
     """
-    # CP decomposition
-    cp_weights, cp_factors = parafac(
+    cp_weights, cp_factors = parafac_multistart(
         interaction_tensors,
         cp_rank,
         n_iter_max=n_iter_max,
         tol=tol,
-        init="svd",  # Use SVD initialization
-        svd="randomized_svd",
-        normalize_factors=True,
         random_state=random_state,
     )
 
@@ -1283,8 +1343,8 @@ def save_ccc_rise_results(
 ):
     """Save CPD results in an AnnData object."""
     X.uns["A"] = cpd_factors[0]  # Condition factor
-    X.uns["B"] = cpd_factors[1]  # Sender cell types factor
-    X.uns["C"] = cpd_factors[2]  # Receiver cell types factor
+    X.uns["B"] = cpd_factors[1]  # Sender (eigen-state / cell type) factor
+    X.uns["C"] = cpd_factors[2]  # Receiver (eigen-state / cell type) factor
     X.uns["D"] = cpd_factors[3]  # LR pairs factor
     X.uns["lr_pairs"] = lr_pairs["interaction_symbol"].values  # LR pairs
     X.uns["weights"] = weights  # Component weights
@@ -1295,8 +1355,8 @@ def save_ccc_rise_results(
 def add_complexes_to_expression(rnaseq_data, complexes, agg_method="min"):
     """
     Adds multimeric complexes into the gene expression matrix.
-    Their gene expressions are the minimum expression value
-    among the respective subunits composing them.
+    Their gene expressions aggregate the subunits' expression by
+    `agg_method` (0 if any subunit is missing).
 
     Parameters
     ----------
@@ -1320,8 +1380,8 @@ def add_complexes_to_expression(rnaseq_data, complexes, agg_method="min"):
     -------
     tmp_rna : pandas.DataFrame
         Gene expression data for RNA-seq experiment containing multimeric
-        complex names. Their gene expressions are the minimum expression value
-        among the respective subunits composing them. Columns are
+        complex names, aggregated by `agg_method` (0 if any subunit is
+        missing). Columns are
         cell-types/tissues/samples and rows are genes.
     """
     tmp_rna = rnaseq_data.copy()
