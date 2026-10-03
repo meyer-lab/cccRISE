@@ -15,7 +15,12 @@ comparators, so whole-model agreement is measured there:
 `cell_type_fractions` describes how a cccRISE component's per-cell loadings
 spread over cell types: the fraction of each type's cells that carry it, and
 each type's share of its loading -- whether a component is carried by nearly
-all cells of a type, as a cell-type mean would see it.
+all cells of a type, as a cell-type mean would see it. Per-cell loadings are
+first put on one scale across samples (`sample_scaled`): a sample's RISE
+projection columns are unit-norm over its own cells, so raw per-cell loadings
+shrink as ``1 / sqrt(n_cells)`` and a single threshold would favour cells of
+small samples. `dominant_sample_fractions` repeats the count inside each
+component's dominant sample (its largest condition loading).
 """
 
 from collections.abc import Sequence
@@ -191,29 +196,48 @@ def cell_type_fractions(
     return pd.DataFrame(rows)
 
 
-def dominant_types(fractions: pd.DataFrame) -> pd.DataFrame:
-    """Per component: the type with the largest loading share, its active
-    fractions, and the effective number of types (inverse Simpson of the
-    loading shares)."""
+def sample_scaled(loadings: np.ndarray, samples: Sequence[str]) -> np.ndarray:
+    """Per-cell loadings times ``sqrt(n_cells)`` of the cell's sample, which
+    puts cells of differently sized samples on one scale."""
+    samples = pd.Series(np.asarray(samples).astype(str))
+    n = samples.map(samples.value_counts()).to_numpy(float)
+    return np.asarray(loadings, float) * np.sqrt(n)[:, None]
+
+
+def dominant_sample_fractions(
+    loadings: np.ndarray,
+    cell_types: Sequence[str],
+    samples: Sequence[str],
+    condition_factor: np.ndarray,
+    conditions: Sequence[str],
+    tau_frac: float,
+) -> pd.DataFrame:
+    """Per component: inside the sample with its largest |condition loading|,
+    the fraction of each cell type's cells whose (sample-scaled) loading
+    exceeds ``tau_frac`` x the component's 99th percentile across all cells."""
+    loadings = np.asarray(loadings, float)
+    types = np.asarray(cell_types).astype(str)
+    samples = np.asarray(samples).astype(str)
+    p99 = np.percentile(loadings, 99, axis=0)
+    dominant = np.asarray(conditions).astype(str)[
+        np.argmax(np.abs(np.asarray(condition_factor, float)), axis=0)
+    ]
     rows = []
-    for k, c in fractions.groupby("component"):
-        shares = c["loading_share"].fillna(0).to_numpy()
-        top = c.loc[c["loading_share"].idxmax()]
-        rows.append(
-            {
-                "component": k,
-                "dominant_type": top["celltype"],
-                "dominant_share": float(top["loading_share"]),
-                **{
-                    col: float(top[col])
-                    for col in c.columns
-                    if col.startswith("active_frac_")
-                },
-                "effective_types": float(1 / np.sum(shares**2))
-                if shares.sum()
-                else np.nan,
-            }
-        )
+    for k, sample in enumerate(dominant):
+        cells = samples == sample
+        for t in np.unique(types[cells]):
+            in_type = cells & (types == t)
+            rows.append(
+                {
+                    "component": k + 1,
+                    "sample": sample,
+                    "celltype": t,
+                    "n_cells": int(in_type.sum()),
+                    "active_frac": float(
+                        np.mean(loadings[in_type, k] > tau_frac * p99[k])
+                    ),
+                }
+            )
     return pd.DataFrame(rows)
 
 

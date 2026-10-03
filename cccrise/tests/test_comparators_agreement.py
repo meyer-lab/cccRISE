@@ -6,11 +6,12 @@ from cccrise.comparators.agreement import (
     cell_type_fractions,
     celltype_profiles,
     containment_table,
-    dominant_types,
+    dominant_sample_fractions,
     joint_congruence,
     linear_cka,
     per_column_containment,
     principal_cosines,
+    sample_scaled,
     shared_calls,
     subspace_agreement,
     type_eta_squared,
@@ -70,7 +71,7 @@ def test_joint_congruence_matches_permuted_columns():
     np.testing.assert_allclose(cong[rows, cols], 1.0)
 
 
-def test_cell_type_fractions_and_dominant_type():
+def test_cell_type_fractions():
     types = np.array(["A"] * 10 + ["B"] * 10)
     load = np.column_stack(
         [np.r_[np.ones(10), np.zeros(10)], np.r_[np.zeros(5), np.ones(5), np.zeros(10)]]
@@ -80,8 +81,6 @@ def test_cell_type_fractions_and_dominant_type():
     assert a1["active_frac_0.5"] == 1.0 and a1["loading_share"] == 1.0
     a2 = frac[(frac["component"] == 2) & (frac["celltype"] == "A")].iloc[0]
     assert a2["active_frac_0.5"] == 0.5
-    dom = dominant_types(frac).set_index("component")
-    assert dom.loc[1, "dominant_type"] == "A" and dom.loc[1, "effective_types"] == 1.0
 
 
 def test_type_eta_squared_and_profiles():
@@ -91,3 +90,16 @@ def test_type_eta_squared_and_profiles():
     np.testing.assert_allclose(
         celltype_profiles(-load, types, ["B", "A"]), [[3.0, 1.5], [1.0, 1.5]]
     )
+
+
+def test_sample_scaling_and_dominant_sample_fractions():
+    samples = np.array(["s1"] * 4 + ["s2"] * 16)
+    load = np.r_[np.full(4, 0.5), np.full(16, 0.25)][:, None]
+    scaled = sample_scaled(load, samples)
+    np.testing.assert_allclose(scaled[:, 0], 1.0)  # 0.5*sqrt(4) = 0.25*sqrt(16)
+    types = np.array(["E"] * 4 + ["T"] * 8 + ["M"] * 8)
+    load2 = np.r_[np.ones(4), np.zeros(16)][:, None]
+    cond = np.array([[0.1], [0.9]])  # dominant sample: s2
+    out = dominant_sample_fractions(load2, types, samples, cond, ["s1", "s2"], 0.5)
+    assert set(out["sample"]) == {"s2"} and set(out["celltype"]) == {"T", "M"}
+    assert (out["active_frac"] == 0).all()
