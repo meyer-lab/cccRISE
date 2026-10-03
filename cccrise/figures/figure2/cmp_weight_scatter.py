@@ -1,26 +1,17 @@
-"""Per-cell sender vs. receiver weight for the granularity CP component."""
+"""Per-cell sender vs. receiver weight for the granularity CP component, with
+the shared cell type legend for this row."""
 
-from .. import common, style
+from .. import common
 from ._common import DATASET, GRANULARITY_COMPONENT, HIGHLIGHT_CELLTYPE
 
+AXES = ("square",)
 
-def plot(fig):
-    ax = fig.subplots()
-    adata = common.get_cell_projections(DATASET)
-    common.plot_celltype_scatter(
-        adata,
-        DATASET,
-        adata.obsm["sc_B"][:, GRANULARITY_COMPONENT - 1],
-        adata.obsm["rc_C"][:, GRANULARITY_COMPONENT - 1],
-        ax,
-        highlight=HIGHLIGHT_CELLTYPE,
-    )
-    ax.set(
-        xlabel=f"Cmp. {GRANULARITY_COMPONENT} sender weight",
-        ylabel=f"Cmp. {GRANULARITY_COMPONENT} receiver weight",
-        title=f"Cmp. {GRANULARITY_COMPONENT} per-cell weights",
+
+def plot(axs):
+    common.plot_component_weight_scatter(
+        DATASET, GRANULARITY_COMPONENT, axs[0], highlight=(HIGHLIGHT_CELLTYPE,)
     )
 
 
 def makeFigure():
-    return common.standalone(plot, style.PANEL_SIZE["third"])
+    return common.standalone_fixed(__name__)

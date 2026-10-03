@@ -249,19 +249,34 @@ def top_pair_ligands(
     rel_cutoff: float = 0.4,
 ) -> list[str]:
     """
-    Ligands of component `cmp`'s LR pairs with |loading| >= `rel_cutoff` x the
-    largest |loading| among its scorable pairs (pairs whose ligand is in
+    Ligands of component `cmp`'s top LR pairs (`top_pairs`), ordered by
+    loading.
+    """
+    ligand = lr_pairs["ligand"].to_numpy()
+    top = top_pairs(D, lr_pairs, cmp, scorable, rel_cutoff)
+    return list(dict.fromkeys(ligand[top]))
+
+
+def top_pairs(
+    D: np.ndarray,
+    lr_pairs: pd.DataFrame,
+    cmp: int,
+    scorable: set[str],
+    rel_cutoff: float = 0.4,
+) -> np.ndarray:
+    """
+    Row indices of component `cmp`'s LR pairs with |loading| >= `rel_cutoff`
+    x the largest |loading| among its scorable pairs (pairs whose ligand is in
     `scorable`), ordered by loading. Unscorable pairs neither set the scale
     nor enter the set.
     """
     loading = np.abs(np.asarray(D)[:, cmp - 1])
-    ligand = lr_pairs["ligand"].to_numpy()
-    ok = np.isin(ligand, list(scorable))
+    ok = np.isin(lr_pairs["ligand"].to_numpy(), list(scorable))
     if not ok.any():
-        return []
+        return np.array([], dtype=int)
     rel = np.where(ok, loading, 0.0) / loading[ok].max()
     order = np.argsort(-rel)
-    return list(dict.fromkeys(ligand[i] for i in order if rel[i] >= rel_cutoff))
+    return order[rel[order] >= rel_cutoff]
 
 
 def receiver_ranking(

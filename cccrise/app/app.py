@@ -592,13 +592,14 @@ def server(input, output, session):
             levels=cfg.get("levels"),
             control_label=cfg.get("control_label"),
             other_label=cfg.get("other_label"),
-            title=name,
+            xlabel="",
             ax=axes[1],
             anova_df=df,
             patient_column=patient_column,
             condition_column=DATASETS[input.dataset()].condition_col,
             palette=colors.categorical_colors(8),
         )
+        axes[1].set_title(name)
         return fig
 
     @render.ui
