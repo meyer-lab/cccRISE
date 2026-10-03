@@ -27,7 +27,6 @@ def plot(fig):
     ax.set_yticks(np.linspace(0, 1, 6))
     ax.set_xlabel("CP component")
     ax.set_ylabel("Fraction of replicates")
-    ax.set_title("Significance stability")
     ax.legend(ncols=len(series), loc="upper center")
 
 

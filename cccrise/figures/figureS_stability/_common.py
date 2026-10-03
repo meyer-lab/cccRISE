@@ -1,4 +1,4 @@
-"""The per-component stability box plot shared by this figure's RISE and CPD
+"""The per-component stability box plot shared by this figure's RISE and CP
 panels, from ``uv run cccrise-stability``."""
 
 import seaborn as sns
@@ -8,6 +8,7 @@ from ...runners.datasets import DATASETS, VALIDATION_DIR
 from .. import common, style
 
 DATASET = "alad"
+COMPONENT_NAMES = {"RISE": "RISE", "CPD": "CP"}  # stage -> axis label
 
 
 def plot_stage(fig, stage: str) -> None:
@@ -34,9 +35,8 @@ def plot_stage(fig, stage: str) -> None:
         ax=ax,
     )
     ax.set_ylim(0, 1.02)
-    ax.set_xlabel(f"{stage} component")
+    ax.set_xlabel(f"{COMPONENT_NAMES[stage]} component")
     ax.set_ylabel("Factor match score")
-    ax.set_title(f"{stage} component stability")
 
 
 def legend(fig) -> None:

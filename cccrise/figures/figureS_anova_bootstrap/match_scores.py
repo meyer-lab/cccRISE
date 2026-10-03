@@ -31,7 +31,6 @@ def plot(fig):
     ax.set_ylim(0, 1.02)
     ax.set_xlabel("CP component")
     ax.set_ylabel("Match score vs. full cohort")
-    ax.set_title("Component identifiability")
     ax.legend(loc="lower right")
 
 

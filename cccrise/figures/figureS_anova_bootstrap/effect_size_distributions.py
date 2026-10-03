@@ -39,8 +39,7 @@ def plot(fig):
     )
     ax.set_ylim(0, S.replicates()["EtaSquared"].max() * 1.25)  # legend headroom
     ax.set_xlabel("CP component")
-    ax.set_ylabel(r"$\eta^2$")
-    ax.set_title(f"Bootstrap effect sizes ({S.outcome()})")
+    ax.set_ylabel(rf"Bootstrap $\eta^2$ ({S.outcome()})")
     ax.legend(
         handles=[
             Line2D([], [], color=style.COLORS["emphasis"], lw=4, label="Ref. p < 0.05"),

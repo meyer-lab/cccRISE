@@ -32,7 +32,6 @@ def plot(fig):
         fontsize=style.FONT_SIZE_DENSE,
     )
     ax.set_xlabel(r"$\eta^2$ (median, bootstrap interval)")
-    ax.set_title("Effect size intervals")
 
 
 def makeFigure():

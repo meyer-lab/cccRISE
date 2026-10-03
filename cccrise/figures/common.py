@@ -757,14 +757,14 @@ def plot_celltype_eigenstate_association(
     ax: plt.Axes,
     highlight: Sequence[int] = (),
 ) -> None:
-    """Cell type (rows, `style.CELL_TYPES` order) x RISE eigenstate effect
-    size (Cohen's d of a cell type's projections against all other cells),
+    """Cell type (rows, `style.CELL_TYPES` order) x RISE eigenstate mean
+    projection (mean over the cell type's cells of each eigenstate projection),
     with the `highlight` eigenstates' labels bold."""
     table = celltype_component_association(
         adata,
         factor_type="eigenstate",
         celltype_col=DATASETS[dataset].celltype_column,
-        stat="effect_size",
+        stat="mean",
     ).reindex(style.CELL_TYPES[dataset])
     vmax = np.nanmax(np.abs(table.to_numpy()))
     image = ax.imshow(
@@ -782,7 +782,7 @@ def plot_celltype_eigenstate_association(
     ax.set_xlabel("RISE eigenstate")
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
-    ax.figure.colorbar(image, ax=ax, label="Cohen's d (vs. other cells)", shrink=0.8)
+    ax.figure.colorbar(image, ax=ax, label="Mean projection", shrink=0.8)
 
 
 def plot_component_eigenstate_loadings(

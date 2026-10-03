@@ -1,5 +1,5 @@
-"""Cell type x RISE eigenstate association, with the eigenstates behind
-Figure 2's granularity component highlighted."""
+"""Cell type x RISE eigenstate association (mean projection), with the
+eigenstates behind Figure 2's granularity component highlighted."""
 
 from .. import common, style
 from ..figure2._common import DATASET, RECEIVER_EIGENSTATE, SENDER_EIGENSTATE
@@ -13,7 +13,6 @@ def plot(fig):
         ax,
         highlight=(SENDER_EIGENSTATE, RECEIVER_EIGENSTATE),
     )
-    ax.set_title("Cell type association with RISE eigenstates")
 
 
 def makeFigure():
