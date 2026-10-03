@@ -1,11 +1,26 @@
-"""Supplementary figure: CCC-RISE against comparator methods."""
+"""Supplementary figure: cccRISE against the tensor comparators -- subspace
+agreement (linear CKA), per-component containment and shared components, and
+how cccRISE's components spread over cell types."""
 
 from .. import common, style
-from . import method_comparison
+from . import cell_fractions, containment, shared, subspace
 
-PANELS = {"comparison": method_comparison}
-LAYOUT = [["comparison"]]
+PANELS = {
+    "subspace": subspace,
+    "containment": containment,
+    "shared": shared,
+    "cell_fractions": cell_fractions,
+}
+LAYOUT = [
+    ["subspace"],
+    ["containment"],
+    ["shared"],
+    ["cell_fractions"],
+    ["cell_fractions"],
+]
 
 
 def makeFigure():
-    return common.compose(style.FIGSIZE["double_column"], LAYOUT, PANELS)
+    return common.compose(
+        (style.FIGURE_WIDTH_DOUBLE, 5 * 50 * style.MM), LAYOUT, PANELS
+    )

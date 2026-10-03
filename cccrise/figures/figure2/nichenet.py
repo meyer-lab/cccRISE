@@ -32,7 +32,14 @@ def plot(fig):
         DATASETS[DATASET].nichenet_scores_filename(),
         VALIDATION_DIR,
         hint=f"    uv run cccrise-nichenet --dataset {DATASET}",
-    ).dropna(subset=["auroc"])
+    )
+    plot_scores(fig, scores)
+
+
+def plot_scores(fig, scores, title=None):
+    """The panel for one model's `nichenet.component_ligand_scores` table;
+    `title` replaces the default test description (used for comparators)."""
+    scores = scores.dropna(subset=["auroc"])
     tests = top_ligand_tests(scores).set_index("component")
     components = sorted(scores["component"].unique())
     low, high = scores["auroc"].min(), scores["auroc"].max()
@@ -75,7 +82,8 @@ def plot(fig):
     ax.set_xlabel("CP component")
     ax.set_ylabel("Ligand AUROC")
     ax.set_title(
-        "Top ligands (outlined) vs all other ligands; "
+        title
+        or "Top ligands (outlined) vs all other ligands; "
         f"two-sided Mann-Whitney, BH q (bold q < {common.SIG_ALPHA})"
     )
     fig.colorbar(points, ax=ax, label="Relative ligand weight", shrink=0.8, pad=0.01)
