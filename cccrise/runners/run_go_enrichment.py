@@ -58,7 +58,7 @@ def run_go_enrichment(dataset: str, libraries: list[Library], permutations: int)
             lr_resource_interactions(), load_pathway_per_gene(library)
         )
         result = lr_gsea(loadings, lr_set, permutations=permutations)
-        enriched = result[(result["padj"] < 0.05) & (result["nes"] > 0)]
+        enriched = result[result["padj"] < 0.05]
         print(f"  {len(enriched)} enriched terms with adjusted p < 0.05")
         results.append(result.assign(library=library))
     results = pd.concat(results, ignore_index=True)

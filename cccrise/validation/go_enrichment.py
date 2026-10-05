@@ -5,9 +5,11 @@ Reproduces Tensor-cell2cell's LR-GSEA (`cell2cell.external.gseapy`): each term
 of a gene-set library is converted to the set of LR interactions whose ligand
 and receptor subunits all belong to it (`generate_lr_geneset`), and each
 component's LR loadings are then tested against those sets by preranked GSEA
-(`lr_gsea`). The one departure is 19,999 permutations instead of 999, since a
+(`lr_gsea`). Two departures: 19,999 permutations instead of 999, since a
 permutation p-value cannot fall below ``1 / (permutations + 1)`` and 999 leaves
-BH unable to call any single term across ~500 tests.
+BH unable to call any single term across hundreds of tests; and only enrichment
+is reported, since depletion p-values can't be estimated with non-negative
+loadings.
 """
 
 import urllib.request
@@ -190,8 +192,9 @@ def lr_gsea(
     Returns
     -------
     pd.DataFrame
-        One row per (component, term) with columns `RESULT_COLUMNS`, sorted
-        by ``padj`` (BH across all components and terms).
+        One row per enriched (NES > 0) component and term, with columns
+        `RESULT_COLUMNS`, sorted by ``padj``: the BH-adjusted nominal p-value
+        across every component x term test, depleted ones included.
     """
     per_component = []
     for component in loadings.columns:
@@ -199,9 +202,16 @@ def lr_gsea(
         per_component.append(component_result.assign(component=component))
     results = pd.concat(per_component, ignore_index=True).dropna(subset=["pval"])
 
-    # A permutation p-value is never below 1 / (permutations + 1).
+    # Report gseapy's zero p-values at cell2cell's floor of 1 / (permutations + 1).
     results["pval"] = results["pval"].clip(lower=1.0 / (permutations + 1))
+
+    # Test enrichment only. gseapy compares a depleted term only against null
+    # scores of the same sign, and with non-negative loadings there are too few
+    # of those to estimate its p-value. Depleted terms stay in the BH correction
+    # as non-significant, then are dropped.
+    results.loc[results["nes"] < 0, "pval"] = 1.0
     results["padj"] = adjust_pvalues(results["pval"].to_numpy(), method="fdr_bh")
+    results = results[results["nes"] > 0]
 
     return (
         results[RESULT_COLUMNS]
