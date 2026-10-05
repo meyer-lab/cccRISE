@@ -1,27 +1,29 @@
 """Data shared by Figure 3's panels: the ALAD outcome associations tested
-against every CP component, and the fit they are tested on.
+against every CP component and every RISE component, and the fit they are
+tested on.
 
 `ASSOCIATIONS` is also the Shiny app's list of ALAD comparisons.
 """
 
 from functools import cache
-from typing import Any
+from typing import Any, cast
 
 import anndata
+import numpy as np
 import pandas as pd
 
 from ...anova import _resolve_factors_and_metadata, run_multiple_factors_anova
+from ...factors import load_factors_netcdf
 from ...runners.datasets import DATASETS
 
 DATASET = "alad"
 SPEC = DATASETS[DATASET]
 
-# The CP component associated with the 6-month outcome, the cell types it
-# draws on, and the RISE eigenstate those cell types load on
+# The CP component associated with the 6-month outcome and the cell types it
+# draws on
 COMPONENT = 4
 OUTCOME = "6-Month Outcome (4-Way)"
 COMPONENT_CELLTYPES = ("CD4 T cells", "CD8 T cells", "NK cells")
-EIGENSTATE = 16
 
 #: Outcome associations tested against every CP component: `name` labels the
 #: row, `group_column` is the condition-level `obs` column, and the optional
@@ -147,3 +149,28 @@ def association_table() -> pd.DataFrame:
 
 def association(name: str) -> dict[str, Any]:
     return next(spec for spec in ASSOCIATIONS if spec["name"] == name)
+
+
+@cache
+def rise_conditions_adata() -> anndata.AnnData:
+    """One obs row per condition, carrying the RISE condition factor
+    (`pf2_A`) in `uns["A"]`."""
+    cond = SPEC.condition_column
+    obs = cast(pd.DataFrame, factors_adata().obs).drop_duplicates(cond)
+    pf2_A = load_factors_netcdf(SPEC.factors_path())["pf2_A"]
+    # `get_sample_to_group` orders labels by `np.unique`, so pf2_A rows must too
+    assert np.array_equal(np.unique(obs[cond]).astype(str), pf2_A.condition.astype(str))
+    return anndata.AnnData(obs=obs, uns={"A": pf2_A.values})
+
+
+@cache
+def rise_association_table() -> pd.DataFrame:
+    """ANOVA of every RISE component against every association, as
+    `association_table` tests the CP components, FDR-corrected across
+    components within each association."""
+    return run_multiple_factors_anova(
+        rise_conditions_adata(),
+        ASSOCIATIONS,
+        condition_column=SPEC.condition_column,
+        correction="fdr_bh",
+    )

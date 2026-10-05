@@ -7,12 +7,14 @@ from . import (
     component_weights,
     coordinated_changes,
     pacmaps,
+    rise_genes,
+    rise_outcome_weights,
 )
 
 LAYOUT = [
-    [component_weights, coordinated_changes],
-    [celltype_association, cmp_weight_scatter],
-    [pacmaps],
+    [rise_outcome_weights, component_weights, cmp_weight_scatter],
+    [coordinated_changes, celltype_association],
+    [pacmaps, rise_genes],
 ]
 
 

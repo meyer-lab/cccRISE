@@ -1,17 +1,16 @@
-"""Every cell's PaCMAP embedding, colored by cell type, by its projection on
-the T/NK RISE eigenstate, by its sender and receiver weight on the
-outcome-associated CP component (all three on one color scale), and by its
-sample's 6-month outcome."""
+"""Every cell's PaCMAP embedding, colored by cell type, by its sender weight
+on the outcome-associated CP component, and by its sample's 6-month
+outcome."""
 
 import numpy as np
 from matplotlib.patches import Patch
 
 from .. import common, style
-from ._common import COMPONENT, DATASET, EIGENSTATE, OUTCOME, association
+from ._common import COMPONENT, DATASET, OUTCOME, association
 
 #: Values beyond this percentile of |value| saturate the color scale.
 SATURATION_PERCENTILE = 99
-AXES = ("square",) * 5
+AXES = ("square",) * 3
 
 
 def plot(axs):
@@ -24,23 +23,19 @@ def plot(axs):
     x, y = np.asarray(adata.obsm["PaCMAP"]).T
     common.plot_celltype_scatter(adata, DATASET, x, y, axs[0], thresholds=False)
     axs[0].set_xlabel("Cell type")
+    common.legend(
+        axs[0],
+        "below",
+        handles=common.celltype_handles(DATASET),
+        fontsize=style.FONT_SIZE_DENSE,
+    )
 
-    # The component's sender and receiver loadings are almost all on this
-    # eigenstate, so its projection and the weights share one scale
-    panels = {
-        f"Eigenstate {EIGENSTATE} projection": adata.obsm["projections"][
-            :, EIGENSTATE - 1
-        ],
-        f"Cmp. {COMPONENT} sender weight": adata.obsm["sc_B"][:, COMPONENT - 1],
-        f"Cmp. {COMPONENT} receiver weight": adata.obsm["rc_C"][:, COMPONENT - 1],
-    }
-    vmax = max(_saturation(values) for values in panels.values())
-    for ax, (label, values) in zip(axs[1:4], panels.items(), strict=True):
-        points = _value_scatter(ax, x, y, values, vmax)
-        ax.set_xlabel(label)
-    common.colorbar(axs[3], points, "Projection / weight")
+    sender = adata.obsm["sc_B"][:, COMPONENT - 1]
+    points = _value_scatter(axs[1], x, y, sender, _saturation(sender))
+    axs[1].set_xlabel(f"Cmp. {COMPONENT} sender weight")
+    common.colorbar(axs[1], points, "Weight")
 
-    _outcome_scatter(axs[4], x, y, adata.obs[association(OUTCOME)["group_column"]])
+    _outcome_scatter(axs[2], x, y, adata.obs[association(OUTCOME)["group_column"]])
 
 
 def _saturation(values: np.ndarray) -> float:

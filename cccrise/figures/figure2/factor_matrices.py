@@ -11,11 +11,10 @@ then by that loading."""
 
 import numpy as np
 import pandas as pd
-from matplotlib.patches import Rectangle
 
 from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
-from .. import common, style
+from .. import common
 from ._common import DATASET
 
 MODES = {  # factor matrix: row label, whether to order rows
@@ -26,12 +25,6 @@ MODES = {  # factor matrix: row label, whether to order rows
 }
 EIGENSTATE_TICKS = (1, 5, 10, 15)
 TOP_LR_FRACTION = 0.15
-# LR pair labels overlaid on the heatmap: below FONT_SIZE_DENSE so the names
-# fit inside it, stacked LABEL_GAP apart, each LEADER_LENGTH (columns) from
-# its cell
-LABEL_FONT_SIZE = 5
-LABEL_GAP = 1.9 * style.MM
-LEADER_LENGTH = 0.2
 AXES = ("square",) * len(MODES)
 
 
@@ -45,27 +38,16 @@ def plot(axs):
             rows, labeled = _shown_lr_pairs(adata, loadings)
             loadings = loadings[rows]
             ylabel = f"Top {TOP_LR_FRACTION:.0%} LR pair"
-        order = _dominant_order(loadings) if ordered else np.arange(len(loadings))
-        image = ax.imshow(
-            loadings[order],
-            cmap=style.CMAPS["diverging"],
-            vmin=-1,
-            vmax=1,
-            aspect="auto",
-            interpolation="nearest",
-        )
-        components = np.arange(loadings.shape[1])
-        ax.set_xticks(components, components + 1)
+        order = common.dominant_order(loadings) if ordered else np.arange(len(loadings))
+        image = common.plot_factor_heatmap(ax, loadings[order], "CP component")
         if ordered:
             ax.set_yticks([])
             ylabel += f"s (n={len(loadings)})"
         else:
             ax.set_yticks([t - 1 for t in EIGENSTATE_TICKS], EIGENSTATE_TICKS)
-        ax.set(xlabel="CP component", ylabel=ylabel)
-        ax.tick_params(length=0)
-        ax.spines[:].set_visible(False)
+        ax.set_ylabel(ylabel)
         position = np.argsort(order)  # row index -> drawn row
-        _label_pairs(
+        common.label_heatmap_cells(
             ax,
             [(position[r], c, name) for r, (c, name) in labeled.items()],
             loadings.shape,
@@ -97,59 +79,6 @@ def _top_pairs(D, names: pd.Series) -> dict[int, int]:
         for c in range(1, np.shape(D)[1] + 1)
         for row in top_pairs(D, lr_pairs, c, ligands)
     }
-
-
-def _label_pairs(ax, entries, shape) -> None:
-    """Outline each (drawn row, component, name) cell and label it beside its
-    column, toward the wider blank side: rightward up to the middle
-    component, leftward after it, each side's labels stacked `LABEL_GAP`
-    apart."""
-    n_rows, n_cols = shape
-    gap = LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows  # in rows
-    for rightward in (True, False):
-        side = sorted(e for e in entries if (e[1] <= n_cols // 2) == rightward)
-        heights = _spread([row for row, _, _ in side], gap, n_rows)
-        for (row, col, name), y in zip(side, heights, strict=True):
-            ax.add_patch(
-                Rectangle(
-                    (col - 0.5, row - 0.5),
-                    1,
-                    1,
-                    fill=False,
-                    edgecolor="black",
-                    linewidth=style.LINE_WIDTH_THIN,
-                )
-            )
-            edge = col + (0.5 if rightward else -0.5)
-            x = edge + (LEADER_LENGTH if rightward else -LEADER_LENGTH)
-            ax.plot([edge, x], [row, y], color="black", lw=style.LINE_WIDTH_THIN)
-            ax.text(
-                x,
-                y,
-                name,
-                ha="left" if rightward else "right",
-                va="center",
-                fontsize=LABEL_FONT_SIZE,
-            )
-
-
-def _spread(rows: list[float], gap: float, n_rows: int) -> np.ndarray:
-    """Heights for sorted `rows` at least `gap` apart, centered on them and
-    kept within the heatmap."""
-    placed = np.array(rows, dtype=float)
-    for i in range(1, len(placed)):
-        placed[i] = max(placed[i], placed[i - 1] + gap)
-    if len(placed):
-        placed -= placed.mean() - np.mean(rows)
-        placed -= max(placed[-1] - (n_rows - 1), 0) + min(placed[0], 0)
-    return placed
-
-
-def _dominant_order(loadings: np.ndarray) -> np.ndarray:
-    """Rows grouped by their largest-magnitude component, then by that loading."""
-    dominant = np.abs(loadings).argmax(axis=1)
-    value = np.abs(loadings[np.arange(len(loadings)), dominant])
-    return np.lexsort((-value, dominant))
 
 
 def makeFigure():

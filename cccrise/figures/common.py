@@ -258,7 +258,7 @@ def _pack_rows(grid, natural, width):
         for box in row:
             placements.append((box, x + box.left, y + top, y))
             x += box.left + box.width + box.right + gap
-        y += top + style.AXIS_HEIGHT + max(b.bottom for b in row) + style.ROW_GAP
+        y += top + max(b.height + b.bottom for b in row) + style.ROW_GAP
     return placements, y - style.ROW_GAP + style.PAGE_MARGIN
 
 
@@ -543,8 +543,10 @@ LEVEL_ORDER = [
 ]
 
 
-def plot_association_heatmap(table: pd.DataFrame, ax: plt.Axes) -> None:
-    """Eta-squared of each CP component (columns) against each outcome
+def plot_association_heatmap(
+    table: pd.DataFrame, ax: plt.Axes, xlabel: str = "CP component"
+) -> None:
+    """Eta-squared of each component (columns) against each outcome
     association (rows, in `table` order), from `anova.run_multiple_factors_anova`;
     bold with a star where the FDR-adjusted p is below `SIG_ALPHA`."""
     order = list(dict.fromkeys(table["Association"]))
@@ -573,7 +575,7 @@ def plot_association_heatmap(table: pd.DataFrame, ax: plt.Axes) -> None:
         )
     ax.set_xticks(range(effect.shape[1]), effect.columns)
     ax.set_yticks(range(len(order)), order, fontsize=style.FONT_SIZE_DENSE)
-    ax.set_xlabel("CP component")
+    ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
     colorbar(ax, image, rf"$\eta^2$ (* FDR < {SIG_ALPHA})")
@@ -616,19 +618,22 @@ def group_loadings(
     component: int,
     group_column: str,
     condition_column: str,
+    read_depth_correct: bool = True,
     **regrouping,
 ) -> pd.DataFrame:
-    """Read-depth-corrected loading of one CP component per condition, with
-    its (regrouped, see `anova.prepare_group_labels`) outcome level; conditions
-    without a level are dropped."""
+    """Loading (`uns["A"]`, read-depth-corrected unless `read_depth_correct`
+    is False) of one component per condition, with its (regrouped, see
+    `anova.prepare_group_labels`) outcome level; conditions without a level
+    are dropped."""
     labels = prepare_group_labels(
         get_sample_to_group(adata, condition_column, group_column), **regrouping
     )
+    loadings = correct_conditions(adata) if read_depth_correct else adata.uns["A"]
     return pd.DataFrame(
         {
             "Condition": labels.index,
             "Status": labels.to_numpy(),
-            "Loading": correct_conditions(adata)[:, component - 1],
+            "Loading": loadings[:, component - 1],
         }
     ).dropna(subset=["Status"])
 
@@ -664,16 +669,22 @@ def plot_category_component_weights(
     patient_column: str | None = None,
     condition_column: str = "dsco_id",
     palette: Sequence[str] = style.CATEGORICAL,
+    read_depth_correct: bool = True,
     **regrouping,
 ) -> None:
-    """Box plot of one CP component's condition loadings per outcome level,
+    """Box plot of one component's condition loadings per outcome level,
     with the conditions as jittered points, joined per patient when
     `patient_column` is given. `regrouping` (mapping / levels /
     control_label / other_label) is passed to `anova.prepare_group_labels`;
     `anova_df` adds the component's F, adjusted p, and eta-squared in the
     corner; `xlabel` (default `group_column`, "" for none) names the outcome."""
     points = group_loadings(
-        adata, component, group_column, condition_column, **regrouping
+        adata,
+        component,
+        group_column,
+        condition_column,
+        read_depth_correct,
+        **regrouping,
     )
     levels = ordered_levels(points["Status"])
     counts = points["Status"].value_counts()
@@ -879,6 +890,160 @@ def celltype_handles(dataset: str) -> list[Patch]:
         Patch(color=color, label=celltype)
         for celltype, color in style.CELL_TYPE_COLORS[dataset].items()
     ]
+
+
+# =============================================================================
+# Factor matrix heatmaps (CP: Figure 2; RISE: its factor supplement)
+# =============================================================================
+
+# Row labels overlaid on a factor heatmap: below FONT_SIZE_DENSE so the names
+# fit inside it, stacked LABEL_GAP apart, each LEADER_LENGTH (columns) from
+# its cell
+FACTOR_LABEL_FONT_SIZE = 5
+FACTOR_LABEL_GAP = 1.9 * style.MM
+FACTOR_LEADER_LENGTH = 0.2
+
+
+def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
+    """A factor matrix (rows x components, in the given row order), each
+    component divided by its largest magnitude (keeping sign), on the
+    diverging scale; returns the image for a shared colorbar."""
+    image = ax.imshow(
+        loadings / np.abs(loadings).max(axis=0),
+        cmap=style.CMAPS["diverging"],
+        vmin=-1,
+        vmax=1,
+        aspect="auto",
+        interpolation="nearest",
+    )
+    components = np.arange(loadings.shape[1])
+    ax.set_xticks(components, components + 1)
+    ax.set_xlabel(xlabel)
+    ax.tick_params(length=0)
+    ax.spines[:].set_visible(False)
+    return image
+
+
+def dominant_order(loadings: np.ndarray) -> np.ndarray:
+    """Rows grouped by their largest-magnitude component, then by that loading."""
+    dominant = np.abs(loadings).argmax(axis=1)
+    value = np.abs(loadings[np.arange(len(loadings)), dominant])
+    return np.lexsort((-value, dominant))
+
+
+def label_heatmap_cells(
+    ax: plt.Axes, entries: list[tuple[int, int, str]], shape: tuple[int, int]
+) -> None:
+    """Outline each (drawn row, component column, name) cell of a heatmap of
+    `shape` and label it beside its column, toward the wider blank side:
+    rightward up to the middle component, leftward after it, each side's
+    labels stacked `FACTOR_LABEL_GAP` apart."""
+    n_rows, n_cols = shape
+    gap = FACTOR_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows  # in rows
+    for rightward in (True, False):
+        side = sorted(e for e in entries if (e[1] <= n_cols // 2) == rightward)
+        heights = _spread_labels([row for row, _, _ in side], gap, n_rows)
+        for (row, col, name), y in zip(side, heights, strict=True):
+            _label_cell(ax, row, col, name, y, rightward)
+
+
+def _label_cell(
+    ax: plt.Axes, row: int, col: int, name: str, y: float, rightward: bool
+) -> None:
+    """Outline one heatmap cell and label it at height `y` beside its column."""
+    ax.add_patch(
+        Rectangle(
+            (col - 0.5, row - 0.5),
+            1,
+            1,
+            fill=False,
+            edgecolor="black",
+            linewidth=style.LINE_WIDTH_THIN,
+        )
+    )
+    edge = col + (0.5 if rightward else -0.5)
+    x = edge + (FACTOR_LEADER_LENGTH if rightward else -FACTOR_LEADER_LENGTH)
+    ax.plot([edge, x], [row, y], color="black", lw=style.LINE_WIDTH_THIN)
+    ax.text(
+        x,
+        y,
+        name,
+        ha="left" if rightward else "right",
+        va="center",
+        fontsize=FACTOR_LABEL_FONT_SIZE,
+    )
+
+
+RANKED_LABEL_GAP = 1.9 * style.MM  # between stacked labels on a ranked curve
+# Label columns on a ranked curve: starting this fraction of the ranks past
+# the head, this far apart, filled from the top loading down to this
+# fraction of it (above the curve's flat tail)
+RANKED_LABEL_X = 0.06
+RANKED_COLUMN_WIDTH = 0.2
+RANKED_LABEL_FLOOR = 0.3
+
+
+def plot_ranked_loadings(
+    ax: plt.Axes,
+    loadings: np.ndarray,
+    names: np.ndarray,
+    n_marked: int,
+    n_labeled: int,
+) -> None:
+    """One component's loadings against their rank (largest first): the
+    S-shaped curve with a steep head (the Shiny explorer's rank curve). The
+    `n_marked` largest are marked, and the `n_labeled` largest listed in
+    rank order in columns beside the head."""
+    order = np.argsort(-loadings)
+    ranks = np.arange(1, len(order) + 1)
+    ax.plot(ranks, loadings[order], color=style.COLORS["ink"], lw=style.LINE_WIDTH)
+    reference_line(ax, 0)
+    ax.scatter(
+        ranks[:n_marked],
+        loadings[order[:n_marked]],
+        color=style.COLORS["emphasis"],
+        s=style.POINT_SIZE_BACKGROUND,
+        linewidths=0,
+        zorder=3,
+        clip_on=False,
+    )
+    low, high = float(loadings.min()), float(loadings.max())
+    ax.set_ylim(low - 0.05 * (high - low), high + 0.05 * (high - low))
+    ax.set_xlim(0, len(order) + 1)
+    _ranked_callouts(ax, names[order[:n_labeled]])
+
+
+def _ranked_callouts(ax, names) -> None:
+    """`names` (in rank order) as a ranked list in columns of labels stacked
+    `RANKED_LABEL_GAP` apart from the top loading down to the floor. No
+    leaders: the named genes are packed into the head of the curve."""
+    low, high = ax.get_ylim()
+    gap = RANKED_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * (high - low)
+    top = high - gap
+    per_column = max(int((1 - RANKED_LABEL_FLOOR) * top / gap), 1)
+    n = ax.get_xlim()[1]
+    for i, name in enumerate(names):
+        column, slot = divmod(i, per_column)
+        ax.text(
+            n * (RANKED_LABEL_X + column * RANKED_COLUMN_WIDTH),
+            top - slot * gap,
+            name,
+            va="center",
+            fontsize=FACTOR_LABEL_FONT_SIZE,
+            color=style.COLORS["ink"],
+        )
+
+
+def _spread_labels(rows: list[float], gap: float, n_rows: int) -> np.ndarray:
+    """Heights for sorted `rows` at least `gap` apart, centered on them and
+    kept within the heatmap."""
+    placed = np.array(rows, dtype=float)
+    for i in range(1, len(placed)):
+        placed[i] = max(placed[i], placed[i - 1] + gap)
+    if len(placed):
+        placed -= placed.mean() - np.mean(rows)
+        placed -= max(placed[-1] - (n_rows - 1), 0) + min(placed[0], 0)
+    return placed
 
 
 # =============================================================================
