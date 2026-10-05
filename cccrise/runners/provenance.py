@@ -124,13 +124,28 @@ def sidecar_path(output_path: str | Path) -> Path:
     return path.with_name(path.stem + PROVENANCE_SUFFIX)
 
 
-def write_metadata(
-    output_path: str | Path,
+def read_metadata(output_path: str | Path) -> dict[str, Any]:
+    """Read the sidecar belonging to `output_path`."""
+    return read_metadata_at(sidecar_path(output_path))
+
+
+def read_metadata_at(path: str | Path) -> dict[str, Any]:
+    """Read a YAML provenance file at the exact given `path`; the reading
+    counterpart of `write_metadata_at`."""
+    with open(path) as handle:
+        return yaml.safe_load(handle)
+
+
+def write_metadata_at(
+    path: str | Path,
     metadata: Mapping[str, Any],
     header: str | None = None,
 ) -> Path:
-    """Write a sidecar next to ``output_path`` and return the sidecar's path."""
-    path = sidecar_path(output_path)
+    """Write a YAML provenance file at the exact given `path`, for a file
+    not tied to any single output's stem (`write_metadata` is the usual
+    entry point for a sidecar).
+    """
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as handle:
         if header:
@@ -148,3 +163,12 @@ def write_metadata(
             width=88,
         )
     return path
+
+
+def write_metadata(
+    output_path: str | Path,
+    metadata: Mapping[str, Any],
+    header: str | None = None,
+) -> Path:
+    """Write a sidecar next to ``output_path`` and return the sidecar's path."""
+    return write_metadata_at(sidecar_path(output_path), metadata, header)

@@ -101,7 +101,7 @@ RISE (Reduction and Insight in Single-cell Exploration) is an unsupervised, tens
 
 Test different RISE ranks to find the optimal balance between model complexity and stability::
 
-    from cccrise.figures.commonFuncs.plotGeneral import plot_fms_r2x_diff_ranks
+    from cccrise.figures.legacy.commonFuncs.plotGeneral import plot_fms_r2x_diff_ranks
     import matplotlib.pyplot as plt
     
     # Create figure with two subplots
@@ -310,7 +310,7 @@ The factorization produces four interpretable factor matrices:
 
 Create visualizations for each of the four factor types::
 
-    from cccrise.figures.commonFuncs.plotFactors import (
+    from cccrise.figures.legacy.commonFuncs.plotFactors import (
         plot_condition_factors,
         plot_eigenstate_factors,
         plot_lr_factors
@@ -395,7 +395,7 @@ Create visualizations for each of the four factor types::
 
 Explore how individual cells are positioned in the latent communication space::
 
-    from cccrise.figures.commonFuncs.plotPaCMAP import plot_labels_pacmap
+    from cccrise.figures.legacy.commonFuncs.plotPaCMAP import plot_labels_pacmap
     import matplotlib.pyplot as plt
     import seaborn as sns
     
@@ -435,7 +435,7 @@ Once you've identified components of interest, dig deeper into the specific cell
 
 Use specialized plotting functions to visualize component weightings for a specific component::
 
-    from cccrise.figures.commonFuncs.plotPaCMAP import plot_wc_pacmap
+    from cccrise.figures.legacy.commonFuncs.plotPaCMAP import plot_wc_pacmap
     import matplotlib.pyplot as plt
     
     # Select component to visualize
@@ -498,7 +498,7 @@ This visualization reveals whether a component is broadly active across all cell
 
 Visualize the most important ligand-receptor pairs for a specific component::
 
-    from cccrise.figures.commonFuncs.plotFactors import plot_lr_factors_partial
+    from cccrise.figures.legacy.commonFuncs.plotFactors import plot_lr_factors_partial
     import matplotlib.pyplot as plt
     
     cmp = 6

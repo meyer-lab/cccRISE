@@ -31,12 +31,13 @@ Axes, and what each one asks:
   seed_only   Identical data refit end to end (RISE -> communication tensor
               -> CP) from a different random seed. Refits RISE.
 
-    uv run cccrise-stability --dataset alad --rise-rank 19 --cp-rank 3 \
+    uv run cccrise-stability --dataset alad --rise-rank 17 --cp-rank 5 \
         --n-replicates 100
 """
 
 import argparse
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -63,11 +64,14 @@ from ._cli import (
     RISE_N_ITER_MAX,
     RISE_TOL,
     add_dataset_argument,
+    add_scoring_arguments,
+    component_numbering,
+    core_numbering_reference,
     dataset_metadata,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATA_DIR, DATASETS, DatasetSpec
+from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -82,7 +86,7 @@ def run_component_stability(
     rise_rank: int,
     cp_rank: int,
     axes: tuple[str, ...] = DEFAULT_AXES,
-    n_replicates: int = 20,
+    n_replicates: int = 100,
     rise_n_iter_max: int = RISE_N_ITER_MAX,
     rise_tol: float = RISE_TOL,
     cp_n_iter_max: int = CP_N_ITER_MAX,
@@ -90,8 +94,9 @@ def run_component_stability(
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
-    random_state: int = 0,
+    random_state: int = 42,
     output_path: Path | None = None,
+    reference: dict[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score per-component RISE and CPD stability at fixed ranks.
 
@@ -104,23 +109,34 @@ def run_component_stability(
         model, so both are fixed rather than swept.
     axes : tuple[str, ...], default=DEFAULT_AXES
         Resampling axes to run; see the module docstring.
-    n_replicates : int, default=20
+    n_replicates : int, default=100
         Replicates per axis.
     rise_n_iter_max, rise_tol, cp_n_iter_max, cp_tol
         Fitting controls for the RISE and CP fits.
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
-    random_state : int, default=0
+    random_state : int, default=42
         Base seed for the reference fit and the replicates.
     output_path : Path, optional
-        CSV destination; defaults to the registry's stability filename.
+        Parquet destination; defaults to the registry's stability filename under
+        `VALIDATION_DIR` for `communication_score="expression_product"`, or
+        `comparison_output_dir(communication_score)`
+        (under `validation_results/alt_score_methods/`) for any other score.
+    reference : dict[str, Any], optional
+        A full-cohort fit already built with this call's settings, as
+        `fit_stability_pipeline(..., keep_tensor=True)` returns, and already
+        relabeled to `core_numbering_reference`; fit here when None. Lets
+        `run_alt_comm_score` share one RISE fit between scores.
 
     Returns
     -------
     tuple[pd.DataFrame, Path, Path]
-        The long per-component table, the CSV path, and the sidecar path.
+        The long per-component table, the output path, and the sidecar path.
     """
-    output_path = output_path or (DATA_DIR / spec.stability_filename())
+    output_path = output_path or (
+        scoring_output_dir(communication_score, VALIDATION_DIR)
+        / spec.stability_filename()
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
@@ -142,25 +158,30 @@ def run_component_stability(
     print(f"   AnnData shape: {adata.shape}")
     print(f"   Ligand-receptor pairs: {len(lr_pairs)}")
 
-    print("2. Fitting the reference model on the full cohort...")
-    reference = fit_stability_pipeline(
-        adata.copy(),
-        lr_pairs,
-        condition_column=spec.condition_column,
-        rise_rank=rise_rank,
-        cp_rank=cp_rank,
-        rise_n_iter_max=rise_n_iter_max,
-        rise_tol=rise_tol,
-        cp_n_iter_max=cp_n_iter_max,
-        cp_tol=cp_tol,
-        complex_sep=complex_sep,
-        communication_score=communication_score,
-        hill_k=hill_k,
-        random_state=random_state,
-        keep_tensor=True,
-        backend=spec.backend,
-        compress=REPLICATE_COMPRESS,
-    )
+    core = core_numbering_reference(spec, rise_rank, cp_rank)
+    if reference is None:
+        print("2. Fitting the reference model on the full cohort...")
+        reference = fit_stability_pipeline(
+            adata.copy(),
+            lr_pairs,
+            condition_column=spec.condition_column,
+            rise_rank=rise_rank,
+            cp_rank=cp_rank,
+            rise_n_iter_max=rise_n_iter_max,
+            rise_tol=rise_tol,
+            cp_n_iter_max=cp_n_iter_max,
+            cp_tol=cp_tol,
+            complex_sep=complex_sep,
+            communication_score=communication_score,
+            hill_k=hill_k,
+            random_state=random_state,
+            keep_tensor=True,
+            backend=spec.backend,
+            compress=REPLICATE_COMPRESS,
+            numbering_reference=core,
+        )
+    else:
+        print("2. Using the supplied full-cohort reference fit...")
     assert reference["tensor"] is not None
     tensor_shape = tuple(int(dim) for dim in reference["tensor"].shape)
     print(f"   Interaction tensor shape: {tensor_shape}")
@@ -197,7 +218,7 @@ def run_component_stability(
     print(summarize_component_stability(df).to_string(index=False))
 
     print(f"5. Writing {len(df)} rows to {output_path}...")
-    df.to_csv(output_path, index=False)
+    df.to_parquet(output_path, index=False)
 
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -227,34 +248,7 @@ def run_component_stability(
                 "seed is the only thing that differs from the reference: same "
                 "cells, same conditions, same ligand-receptor pairs"
             ),
-            "resampling": {
-                "cells": "cells bootstrapped with replacement within each condition",
-                "conditions": (
-                    "whole conditions bootstrapped with replacement"
-                    + (
-                        f", stratified by {spec.group_column}"
-                        if spec.group_column
-                        else ", unstratified"
-                    )
-                    + (
-                        f"; paired by {spec.patient_column}: drawing one of a "
-                        "patient's conditions carries its sibling in and drops "
-                        "one other random draw from the sibling's stratum to "
-                        "keep every stratum's size fixed"
-                        if spec.patient_column
-                        else ""
-                    )
-                ),
-                "lr_pairs": (
-                    "reference tensor's ligand-receptor mode bootstrapped "
-                    "with replacement; no PARAFAC2 refit"
-                ),
-                SEED_AXIS: (
-                    "identical data refit end to end (RISE -> communication "
-                    "tensor -> CP) under a different random seed; one "
-                    "PARAFAC2 refit per replicate"
-                ),
-            },
+            "resampling": _resampling_description(spec),
             "condition_mode_alignment": (
                 "reference condition-mode rows expanded onto the replicate's "
                 "roster by draw (see validation.reference_condition_rows)"
@@ -267,7 +261,7 @@ def run_component_stability(
                 "with Mode 1 held out; Modes 0 and 3 for CPD, with Modes 1 and 2 "
                 "held out), weights ignored (see validation.per_component_fms)"
             ),
-            "component_numbering": ("reference fit after ccc_rise.standardize_cc_pf2"),
+            "component_numbering": component_numbering(core),
             "lr_roster_stable": True,
             "interaction_tensor_shape": list(tensor_shape),
             "r2x_pf2": float(reference["r2x_rise"]),
@@ -281,6 +275,38 @@ def run_component_stability(
     print(f"   Wrote provenance to {sidecar}")
 
     return df, output_path, sidecar
+
+
+def _resampling_description(spec: DatasetSpec) -> dict[str, str]:
+    """The sidecar's per-axis description of what each replicate resamples."""
+    return {
+        "cells": "cells bootstrapped with replacement within each condition",
+        "conditions": (
+            "whole conditions bootstrapped with replacement"
+            + (
+                f", stratified by {spec.group_column}"
+                if spec.group_column
+                else ", unstratified"
+            )
+            + (
+                f"; paired by {spec.patient_column}: drawing one of a "
+                "patient's conditions carries its sibling in and drops "
+                "one other random draw from the sibling's stratum to "
+                "keep every stratum's size fixed"
+                if spec.patient_column
+                else ""
+            )
+        ),
+        "lr_pairs": (
+            "reference tensor's ligand-receptor mode bootstrapped "
+            "with replacement; no PARAFAC2 refit"
+        ),
+        SEED_AXIS: (
+            "identical data refit end to end (RISE -> communication "
+            "tensor -> CP) under a different random seed; one "
+            "PARAFAC2 refit per replicate"
+        ),
+    }
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -311,30 +337,21 @@ def build_parser() -> argparse.ArgumentParser:
             f"point. Options: {', '.join(DEFAULT_AXES)}."
         ),
     )
-    parser.add_argument("--n-replicates", type=int, default=20)
+    parser.add_argument("--n-replicates", type=int, default=100)
     parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
     parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
     parser.add_argument("--cp-tol", type=float, default=CP_TOL)
     parser.add_argument("--complex-sep", type=str, default="&")
-    parser.add_argument(
-        "--communication-score",
-        type=str,
-        default="expression_product",
-        choices=[
-            "expression_product",
-            "expression_mean",
-            "expression_gmean",
-            "expression_hill",
-        ],
-    )
-    parser.add_argument("--hill-k", type=float, default=0.5)
-    parser.add_argument("--random-state", type=int, default=0)
+    add_scoring_arguments(parser)
+    parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
         "--output",
         type=str,
         default=None,
-        help="CSV destination; defaults to data/component_stability_<dataset>.csv.",
+        help="Parquet destination; defaults to component_stability_<dataset>.parquet in "
+        "data/validation_results/ (its alt_score_methods/<score>/ for a "
+        "non-default score).",
     )
     return parser
 
@@ -356,7 +373,11 @@ def main(argv: list[str] | None = None) -> None:
         communication_score=args.communication_score,
         hill_k=args.hill_k,
         random_state=args.random_state,
-        output_path=resolve_output(args.output, DATA_DIR, spec.stability_filename()),
+        output_path=resolve_output(
+            args.output,
+            scoring_output_dir(args.communication_score, VALIDATION_DIR),
+            spec.stability_filename(),
+        ),
     )
 
 

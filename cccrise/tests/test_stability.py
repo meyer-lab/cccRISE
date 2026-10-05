@@ -9,7 +9,8 @@ from tensorly.cp_tensor import CPTensor
 from tensorly.decomposition import parafac
 from tlviz.factor_tools import factor_match_score
 
-from cccrise.ccc_rise import fit_cp
+from cccrise.ccc_rise import fit_cp, run_ccc_rise_workflow
+from cccrise.factors import save_ccc_rise_fit
 from cccrise.rank_selection import calculate_r2x
 from cccrise.runners._cli import CP_TOL, RISE_TOL
 from cccrise.utils import (
@@ -31,6 +32,7 @@ from cccrise.validation.component_stability import (
     metric_interval,
     per_component_fms,
     reference_condition_rows,
+    relabel_workflow_fit,
     summarize_component_stability,
 )
 
@@ -176,6 +178,52 @@ def test_per_component_fms_signed_cosines_are_nan_on_skipped_modes():
     np.testing.assert_allclose(df["SignedCosMode3"], 1.0, atol=1e-9)
     assert df["SignedCosMode1"].isna().all()
     assert df["SignedCosMode2"].isna().all()
+
+
+def test_relabel_workflow_fit_restores_the_core_numbering(tmp_path):
+    fit = run_ccc_rise_workflow(
+        _simulate_adata(),
+        RISE_RANK,
+        _lr_pairs(),
+        cp_rank=CP_RANK,
+        condition_column="sample",
+        random_state=0,
+        backend="cpu",
+        keep_tensor=True,
+        rise_n_iter_max=10,
+        cp_n_iter_max=20,
+        rise_tol=RISE_TOL,
+        cp_tol=CP_TOL,
+    )
+    core = tmp_path / "core.nc"
+    save_ccc_rise_fit(core, fit["adata"], fit, "sample")
+    adata = fit["adata"]
+    expected = {
+        "Pf2_A": adata.uns["Pf2_A"].copy(),
+        "projections": np.asarray(adata.obsm["projections"]).copy(),
+        "tensor": fit["tensor"].copy(),
+        "cp_factors": [f.copy() for f in fit["cp_factors"]],
+    }
+
+    # Scramble both stages' numbering the way a separate fit could.
+    rise_p, cp_p = np.arange(RISE_RANK)[::-1], np.arange(CP_RANK)[::-1]
+    adata.uns["Pf2_A"] = adata.uns["Pf2_A"][:, rise_p]
+    adata.uns["Pf2_B"] = adata.uns["Pf2_B"][np.ix_(rise_p, rise_p)]
+    adata.uns["Pf2_weights"] = adata.uns["Pf2_weights"][rise_p]
+    adata.varm["Pf2_C"] = np.asarray(adata.varm["Pf2_C"])[:, rise_p]
+    adata.obsm["projections"] = np.asarray(adata.obsm["projections"])[:, rise_p]
+    fit["tensor"] = fit["tensor"][:, rise_p][:, :, rise_p]
+    A, B, C, D = fit["cp_factors"]
+    fit["cp_factors"] = [f[:, cp_p] for f in (A, B[rise_p], C[rise_p], D)]
+    fit["cp_weights"] = fit["cp_weights"][cp_p]
+
+    relabel_workflow_fit(fit, core, "sample")
+
+    np.testing.assert_allclose(adata.uns["Pf2_A"], expected["Pf2_A"])
+    np.testing.assert_allclose(adata.obsm["projections"], expected["projections"])
+    np.testing.assert_allclose(fit["tensor"], expected["tensor"])
+    for got, want in zip(fit["cp_factors"], expected["cp_factors"], strict=True):
+        np.testing.assert_allclose(got, want)
 
 
 # =============================================================================
@@ -979,22 +1027,13 @@ def test_summarize_component_stability_reports_nan_when_no_seed_axis_was_run():
     assert summary["FracWithinSeedBand"].isna().all()
 
 
-def test_summarize_component_stability_survives_a_csv_round_trip(tmp_path):
-    """The baseline axis is named 'seed_only', not 'null', because `read_csv`
-    parses the latter as NaN and silently erases the baseline.
+def test_summarize_component_stability_survives_a_parquet_round_trip(tmp_path):
+    """The stability table summarizes identically after being written to and
+    read back from the runner's storage format."""
+    path = tmp_path / "stability.parquet"
+    _stability_frame(with_ceiling=True).to_parquet(path, index=False)
 
-    Asserted at the cause as well as the consequence: a future rename that
-    happens to land on one of pandas' NA strings should fail here rather than
-    downstream, as an unexplained column of NaNs.
-    """
-    from pandas._libs.parsers import STR_NA_VALUES
-
-    assert SEED_AXIS not in STR_NA_VALUES
-
-    path = tmp_path / "validation.csv"
-    _stability_frame(with_ceiling=True).to_csv(path, index=False)
-
-    summary = summarize_component_stability(pd.read_csv(path))
+    summary = summarize_component_stability(pd.read_parquet(path))
 
     assert summary["SeedP5FMS"].notna().all()
     assert summary["FracWithinSeedBand"].notna().all()

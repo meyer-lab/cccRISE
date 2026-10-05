@@ -16,6 +16,59 @@ import anndata
 from ..import_data import IBD_FULL_COHORT_IVCSC, import_alad, import_ibdverse
 
 DATA_DIR = Path(__file__).parent.parent / "data"
+#: Core factorizations written by `run_ccc_rise`.
+FACTORS_DIR = DATA_DIR / "factors"
+#: RISE and CP rank-selection sweeps (`run_rise_rank`, `run_cpd_rank`).
+RANK_SELECTION_DIR = DATA_DIR / "rank_selection_results"
+#: Validation experiments: stability, significance, NicheNet, and the
+#: alternate communication-score comparison (`ALT_SCORE_METHODS_DIR`).
+VALIDATION_DIR = DATA_DIR / "validation_results"
+#: One subdirectory per communication score (`comparison_output_dir`).
+ALT_SCORE_METHODS_DIR = VALIDATION_DIR / "alt_score_methods"
+
+#: `communication_score` value every runner defaults to; its results are the
+#: ones manuscript figures and interpretation read, so they stay in their
+#: analysis's directory instead of the per-method subdirectory
+#: `scoring_output_dir` uses for the rest.
+DEFAULT_COMMUNICATION_SCORE = "expression_product"
+#: Every `communication_score` a runner accepts; see `ccc.combine_communication_score`.
+COMMUNICATION_SCORES = (
+    "expression_product",
+    "expression_mean",
+    "expression_gmean",
+    "expression_hill",
+)
+
+
+def scoring_output_dir(communication_score: str, default_dir: Path) -> Path:
+    """Where a runner should default its output for `communication_score`.
+
+    The default score's results are canonical and live in `default_dir`
+    (the runner's analysis directory, e.g. `FACTORS_DIR`); every other
+    score's results land in its `comparison_output_dir`, so a scoring-method
+    sweep can't collide with the canonical files or with each other.
+    """
+    if communication_score == DEFAULT_COMMUNICATION_SCORE:
+        return default_dir
+    return comparison_output_dir(communication_score)
+
+
+#: The one provenance file `run_alt_comm_score` leaves in each
+#: `comparison_output_dir`, consolidated from its outputs' sidecars.
+COMPARISON_PROVENANCE_FILENAME = "provenance.yaml"
+
+
+def comparison_output_dir(communication_score: str) -> Path:
+    """Where `run_alt_comm_score` writes one method's results.
+
+    Unlike `scoring_output_dir`, this never collapses to the canonical
+    directory for the default score: comparing scoring methods fairly means
+    running all of them -- default included -- at the same
+    (comparison-scale) settings, and that copy of the default's results must
+    not collide with its comprehensive, canonical copy that manuscript
+    figures read.
+    """
+    return ALT_SCORE_METHODS_DIR / communication_score
 
 
 @dataclass(frozen=True)
@@ -24,18 +77,18 @@ class DatasetSpec:
     label: str
     loader: Callable[..., anndata.AnnData]
     condition_column: str
+    celltype_column: str
     factors_filename: str
     #: Source file the loader reads
     source_file: Path
     gene_threshold: float = 0.001
-    celltype_column: str | None = None
     group_column: str | None = None
     #: Condition-level patient identity, for conditions the same patient
     #: contributes more than one sample of (see `validation`'s
     #: `patient_column`). None where `condition_column` already identifies
     #: the patient one-to-one.
     patient_column: str | None = None
-    #: Condition-level outcome the ANOVA bootstrap tests every level of by
+    #: Condition-level outcome the ANOVA runners test every level of by
     #: default. None falls back to `group_column` and its registered labels.
     outcome_column: str | None = None
     #: RISE backend every runner fits on ('cpu', 'cupy', 'mlx'); None
@@ -57,45 +110,34 @@ class DatasetSpec:
         return self.loader(**self.loader_args)
 
     def factors_path(self) -> Path:
-        return DATA_DIR / self.factors_filename
+        return FACTORS_DIR / self.factors_filename
 
     def rise_rank_filename(self) -> str:
-        return f"rise_rank_{self.key}.csv"
+        return f"rise_rank_{self.key}.parquet"
 
     def cpd_rank_filename(self) -> str:
-        return f"cpd_rank_{self.key}.csv"
+        return f"cpd_rank_{self.key}.parquet"
 
     def stability_filename(self) -> str:
-        return f"component_stability_{self.key}.csv"
+        return f"component_stability_{self.key}.parquet"
 
     def anova_bootstrap_filename(self) -> str:
-        return f"anova_bootstrap_{self.key}.csv"
+        return f"anova_bootstrap_{self.key}.parquet"
+
+    def anova_point_estimate_filename(self) -> str:
+        return f"anova_point_estimate_{self.key}.parquet"
 
     def significance_lr_filename(self) -> str:
-        return f"significance_lr_{self.key}.csv"
+        return f"significance_lr_{self.key}.parquet"
 
     def significance_differential_filename(self) -> str:
         return f"significance_differential_{self.key}.parquet"
 
-    def cell_obs_columns(self) -> list[str]:
-        """`.obs` columns to persist per-cell in the factors file (for the
-        Shiny explorer's per-cell projections)."""
-        return [
-            col
-            for col in (
-                "celltype",
-                self.celltype_column,
-                self.condition_column,
-                self.group_column,
-            )
-            if col
-        ]
-
     def nichenet_scores_filename(self) -> str:
-        return f"nichenet_scores_{self.key}.csv"
+        return f"nichenet_scores_{self.key}.parquet"
 
     def go_enrichment_filename(self) -> str:
-        return f"go_enrichment_{self.key}.csv"
+        return f"go_enrichment_{self.key}.parquet"
 
 
 DATASETS: dict[str, DatasetSpec] = {

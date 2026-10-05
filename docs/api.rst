@@ -85,12 +85,27 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 
    Save an xarray Dataset of factors to a compact NetCDF file (< 100 KB - 2 MB).
 
+.. py:function:: save_ccc_rise_fit(path: str | Path, adata: anndata.AnnData, cp_fit: dict, condition_column: str, attrs: dict | None = None)
+   :module: cccrise.factors
+
+   Write a CCC-RISE fit (a RISE-fit AnnData and a ``fit_ccc_cp`` / ``run_ccc_rise_workflow`` result) as the factors file ``load_factors_to_anndata`` reads. Per-cell projections are not stored (``compute_cell_projections`` recomputes them); the file fingerprints the fit's cells and gene centering, and stores the PaCMAP embedding (float16) when present.
+
+.. py:function:: compute_cell_projections(factors_ds: xr.Dataset, adata: anndata.AnnData)
+   :module: cccrise.factors
+
+   Recompute the per-cell RISE projections of ``adata`` (the fit's own data, checked against the file's fingerprints) under a stored RISE fit, without densifying ``adata.X``.
+
+.. py:function:: add_fit_fingerprint(ds: xr.Dataset, adata: anndata.AnnData)
+   :module: cccrise.factors
+
+   Record in a factors Dataset the data its RISE fit was made on (a hash of the cell IDs and the per-gene centering), which ``compute_cell_projections`` requires and checks.
+
 .. py:function:: load_factors_netcdf(filepath: str | Path)
    :module: cccrise.factors
 
    Load an xarray Dataset of factors from a NetCDF file.
 
-.. py:function:: load_factors_to_anndata(factors_ds: xr.Dataset | str | Path, adata: anndata.AnnData | None = None, condition_column: str | None = None, do_embedding: bool = False, random_state: int | None = 0)
+.. py:function:: load_factors_to_anndata(factors_ds: xr.Dataset | str | Path, adata: anndata.AnnData | None = None, condition_column: str | None = None, do_embedding: bool = False, random_state: int | None = 42)
    :module: cccrise.factors
 
    Populate or construct an AnnData object with decomposition factors from an xarray Dataset.
@@ -208,7 +223,7 @@ Rank Selection
 ~~~~~~~~~~~~~~
 
 .. py:function:: plot_fms_r2x_diff_ranks(X: anndata.AnnData, condition_name: str, ax1: matplotlib.axes.Axes, ax2: matplotlib.axes.Axes, ranksList: list[int], runs: int)
-   :module: cccrise.figures.commonFuncs.plotGeneral
+   :module: cccrise.figures.legacy.commonFuncs.plotGeneral
 
    Plot Factor Match Score (FMS) and R²X across different RISE ranks for rank selection.
    
@@ -235,7 +250,7 @@ Factor Plotting
 ~~~~~~~~~~~~~~~
 
 .. py:function:: plot_condition_factors(data: anndata.AnnData, ax: matplotlib.axes.Axes, cond: str = "Condition", cond_group_labels: pd.Series = None, color_key: list = None, group_cond: bool = False, normalize: bool = False)
-   :module: cccrise.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.legacy.commonFuncs.plotFactors
 
    Plot Factor A (condition factors) as a heatmap showing how conditions contribute to components.
    
@@ -259,7 +274,7 @@ Factor Plotting
    :type normalize: bool, optional
 
 .. py:function:: plot_eigenstate_factors(data: anndata.AnnData, ax: matplotlib.axes.Axes, factor_type: str)
-   :module: cccrise.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.legacy.commonFuncs.plotFactors
 
    Plot Factor B (sender eigenstates) or Factor C (receiver eigenstates) as a heatmap.
    
@@ -275,7 +290,7 @@ Factor Plotting
    :type factor_type: str
 
 .. py:function:: plot_lr_factors(data: anndata.AnnData, ax: matplotlib.axes.Axes, trim: bool = True, weight: float = 0.08)
-   :module: cccrise.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.legacy.commonFuncs.plotFactors
 
    Plot Factor D (ligand-receptor pairs) as a heatmap showing which L-R pairs drive each component.
    
@@ -293,7 +308,7 @@ Factor Plotting
    :type weight: float, optional
 
 .. py:function:: plot_lr_factors_partial(X: anndata.AnnData, cmp: int, ax: matplotlib.axes.Axes, geneAmount: int = 5, top: bool = True)
-   :module: cccrise.figures.commonFuncs.plotFactors
+   :module: cccrise.figures.legacy.commonFuncs.plotFactors
 
    Plot the top or bottom weighted ligand-receptor pairs for a specific component as a bar plot.
    
@@ -317,7 +332,7 @@ PaCMAP Visualization
 ~~~~~~~~~~~~~~~~~~~~
 
 .. py:function:: plot_labels_pacmap(X: anndata.AnnData, labelType: str, ax: matplotlib.axes.Axes, condition: list = None, cmap: str = "tab20", color_key: list = None)
-   :module: cccrise.figures.commonFuncs.plotPaCMAP
+   :module: cccrise.figures.legacy.commonFuncs.plotPaCMAP
 
    Plot PaCMAP embedding colored by categorical labels (cell type or condition).
    
@@ -339,7 +354,7 @@ PaCMAP Visualization
    :type color_key: list, optional
 
 .. py:function:: plot_wc_pacmap(X: anndata.AnnData, cmp: int, ax: matplotlib.axes.Axes, cbarMax: float = 1.0, factor_matrix: str = None)
-   :module: cccrise.figures.commonFuncs.plotPaCMAP
+   :module: cccrise.figures.legacy.commonFuncs.plotPaCMAP
 
    Plot PaCMAP embedding colored by weighted projections for a specific component.
    

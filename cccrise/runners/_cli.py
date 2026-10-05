@@ -1,10 +1,16 @@
 import argparse
 from pathlib import Path
 
-from .datasets import DATASET_KEYS, DatasetSpec
-from .provenance import sha256_file
+from ..factors import load_factors_netcdf
+from .datasets import (
+    COMMUNICATION_SCORES,
+    DATASET_KEYS,
+    DEFAULT_COMMUNICATION_SCORE,
+    DatasetSpec,
+)
+from .provenance import relpath, sha256_file
 
-# (control label, other label) for `figures.commonFuncs.plotGeneral.binarize_group`,
+# (control label, other label) for `anova.binarize_group`,
 # per dataset. Only datasets with a confirmed binary encoding of `group_column`
 # are listed; an unlisted dataset requires --control-label/--other-label
 # explicitly.
@@ -18,8 +24,8 @@ RISE_TOL = 1e-8
 CP_TOL = 1e-12
 RISE_N_ITER_MAX = 300
 CP_N_ITER_MAX = 4000
-#: Every replicate-type runner (bootstraps, significance, rank sweeps) fits RISE
-#: and CP compressed (significance has no CP stage); the core runner never does.
+#: Every replicate-type runner (bootstraps, alt-score comparison, rank sweeps) fits
+#: RISE and CP compressed (significance loads its RISE fit); the core runner never does.
 REPLICATE_COMPRESS = True
 
 
@@ -115,6 +121,38 @@ def resolve_group_labels(
     return group_column, control_label, other_label
 
 
+def add_scoring_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add ``--communication-score`` and ``--hill-k``."""
+    parser.add_argument(
+        "--communication-score",
+        type=str,
+        default=DEFAULT_COMMUNICATION_SCORE,
+        choices=COMMUNICATION_SCORES,
+        help="Scoring function for ligand-receptor interactions "
+        f"(default: {DEFAULT_COMMUNICATION_SCORE}).",
+    )
+    parser.add_argument(
+        "--hill-k",
+        type=float,
+        default=0.5,
+        help="Hill function half-saturation constant (default: 0.5).",
+    )
+
+
+def resolve_anova_labels(
+    spec: DatasetSpec,
+    group_column: str | None,
+    control_label: str | None,
+    other_label: str | None,
+) -> tuple[str, str | None, str | None]:
+    """`resolve_group_labels` for the ANOVA runners: with nothing passed,
+    test every level of `spec.outcome_column` when the dataset registers one.
+    """
+    if spec.outcome_column and not (group_column or control_label or other_label):
+        return spec.outcome_column, None, None
+    return resolve_group_labels(spec, group_column, control_label, other_label)
+
+
 def dataset_metadata(spec: DatasetSpec) -> dict:
     """The dataset-identity head of a sidecar."""
     meta: dict = {
@@ -124,9 +162,8 @@ def dataset_metadata(spec: DatasetSpec) -> dict:
         "source_sha256": sha256_file(spec.source_file),
         "loader_args": spec.loader_args,
         "condition_key": spec.condition_column,
+        "celltype_key": spec.celltype_column,
     }
-    if spec.celltype_column:
-        meta["celltype_key"] = spec.celltype_column
     if spec.group_column:
         meta["group_key"] = spec.group_column
     if spec.notes:
@@ -144,6 +181,35 @@ def resulting_dims(spec: DatasetSpec, adata, n_lr_pairs: int | None = None) -> d
     if n_lr_pairs is not None:
         dims["lr_pairs"] = int(n_lr_pairs)
     return dims
+
+
+def core_numbering_reference(
+    spec: DatasetSpec, rise_rank: int, cp_rank: int
+) -> Path | None:
+    """The core fit (``spec.factors_path()``) a validation runner relabels its
+    reference fit's components into, or None -- with a warning, leaving the
+    reference's own numbering -- when it is missing or at other ranks."""
+    path = spec.factors_path()
+    if not path.exists():
+        reason = "it does not exist"
+    else:
+        ds = load_factors_netcdf(path)
+        ranks = (ds.sizes["rise_component"], ds.sizes["cp_component"])
+        if ranks == (rise_rank, cp_rank):
+            return path
+        reason = f"it is at (RISE, CP) ranks {ranks}"
+    print(
+        f"   WARNING: not relabeling components to the core fit {relpath(path)} "
+        f"({reason}); reporting the reference fit's own numbering."
+    )
+    return None
+
+
+def component_numbering(core: Path | None) -> str:
+    """Provenance description of the numbering `core_numbering_reference` chose."""
+    if core is None:
+        return "reference fit's own (ccc_rise.standardize_cc_pf2)"
+    return f"core fit {relpath(core)} (validation.relabel_workflow_fit)"
 
 
 def resolve_output(explicit: str | None, default_dir: Path, default_name: str) -> Path:

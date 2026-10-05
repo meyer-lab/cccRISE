@@ -58,6 +58,7 @@ cccrise-anovaboot = "cccrise.runners.run_anova_bootstrap:main"
 cccrise-stability = "cccrise.runners.run_component_stability:main"
 cccrise-significance = "cccrise.runners.run_significance:main"
 cccrise-nichenet = "cccrise.runners.run_nichenet:main"
+cccrise-altcommscore = "cccrise.runners.run_alt_comm_score:main"
 cccrise-go = "cccrise.runners.run_go_enrichment:main"
 
 [build-system]
@@ -100,8 +101,8 @@ ignore = [
 # Legacy figures still reference the pre-ANOVA logreg API and will be
 # removed along with the rest of the outdated figure/manuscript files.
 exclude = [
-    "cccrise/figures/figure4.py",
-    "cccrise/figures/figureA6d.py",
+    "cccrise/figures/legacy/figure4.py",
+    "cccrise/figures/legacy/figureA6d.py",
 ]
 
 [tool.ty.rules]

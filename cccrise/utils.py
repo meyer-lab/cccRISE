@@ -1,11 +1,15 @@
 import warnings
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any, cast
 
 import anndata
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
+
+from .factors import compute_cell_projections, load_factors_netcdf
+from .import_data import add_cond_idxs
 
 
 def resample(
@@ -261,6 +265,46 @@ def replicate_seed(random_state: int, replicate: int) -> int:
     the reference's starting point.
     """
     return random_state * 1000 + replicate + 1
+
+
+def load_rise_reference(
+    reference_path: str | Path,
+    adata: anndata.AnnData,
+    condition_column: str,
+) -> anndata.AnnData:
+    """Populate `adata` with a RISE (PARAFAC2) fit loaded from a factors.nc,
+    instead of fitting PARAFAC2.
+
+    Mimics `parafac2.store_pf2`'s effect on `adata` (`Pf2_weights`/`Pf2_A`/
+    `Pf2_B` in `.uns`, `Pf2_C` in `.varm`, `.obsm["projections"]`), with the
+    per-cell projections recomputed by `factors.compute_cell_projections`, so
+    downstream code that expects a RISE-fit AnnData works unchanged.
+
+    Parameters
+    ----------
+    reference_path : str | Path
+        A factors.nc holding a RISE fit (see `factors.save_ccc_rise_fit`).
+    adata : anndata.AnnData
+        The raw dataset the reference was fit on; its cells and genes must
+        match the reference's exactly, in the same order (checked, not
+        assumed).
+    condition_column : str
+        Column in `adata.obs` holding the condition/patient identity.
+
+    Returns
+    -------
+    anndata.AnnData
+        `adata`, mutated in place and returned.
+    """
+    ds = load_factors_netcdf(reference_path)
+    adata = add_cond_idxs(adata, condition_column)
+    adata.obsm["projections"] = compute_cell_projections(ds, adata)
+    adata.uns["Pf2_weights"] = ds["pf2_weights"].values
+    adata.uns["Pf2_A"] = ds["pf2_A"].values
+    adata.uns["Pf2_B"] = ds["pf2_B"].values
+    adata.varm["Pf2_C"] = ds["pf2_C"].values
+    adata.uns["r2x_pf2"] = float(ds.attrs.get("r2x_pf2", 0.0))
+    return adata
 
 
 def resample_tensor(
@@ -608,6 +652,10 @@ def add_obs_cmp_unique_two(X: anndata.AnnData, cmp1: int, cmp2: int):
     return X
 
 
+# `obsm` key holding the per-cell loadings for each `factor_type`.
+LOADING_KEYS = {"sender": "sc_B", "receiver": "rc_C", "eigenstate": "projections"}
+
+
 def celltype_component_association(
     X: anndata.AnnData,
     factor_type: str = "sender",
@@ -616,7 +664,8 @@ def celltype_component_association(
     top_perc: float = 10,
 ) -> pd.DataFrame:
     """
-    Quantify how strongly each cell type is associated with each CPD component.
+    Quantify how strongly each cell type is associated with each CPD component, or
+    with each RISE eigenstate.
 
     The pseudobulk decomposition aggregates cells by type before factorization, so
     its sender/receiver factors (`uns["B"]`, `uns["C"]`) are already cell type x
@@ -630,8 +679,9 @@ def celltype_component_association(
     X : anndata.AnnData
         AnnData carrying per-cell sender/receiver loadings in
         `obsm["sc_B"]` / `obsm["rc_C"]` and cell type labels in `.obs`.
-    factor_type : {"sender", "receiver"}, default="sender"
-        Whether to use the sender (`sc_B`) or receiver (`rc_C`) loadings.
+    factor_type : {"sender", "receiver", "eigenstate"}, default="sender"
+        Whether to use the sender (`sc_B`) or receiver (`rc_C`) loadings, or the
+        raw per-cell eigenstate projections (`obsm["projections"]`).
     celltype_col : str, default="celltype"
         Column of `.obs` holding cell type labels.
     stat : {"mean", "effect_size", "enrichment", "pct_top"}, default="mean"
@@ -656,14 +706,12 @@ def celltype_component_association(
     Returns
     -------
     pandas.DataFrame
-        Cell types (sorted) as rows, 1-based component numbers as columns.
+        Cell types (sorted) as rows, 1-based component (or eigenstate) numbers as
+        columns.
     """
-    if factor_type == "sender":
-        loadings = np.asarray(X.obsm["sc_B"], dtype=float)
-    elif factor_type == "receiver":
-        loadings = np.asarray(X.obsm["rc_C"], dtype=float)
-    else:
+    if factor_type not in LOADING_KEYS:
         raise ValueError(f"Unknown factor_type: {factor_type}")
+    loadings = np.asarray(X.obsm[LOADING_KEYS[factor_type]], dtype=float)
 
     labels = np.asarray(cast(pd.DataFrame, X.obs)[celltype_col]).astype(str)
     celltypes = np.unique(labels)
@@ -698,5 +746,8 @@ def celltype_component_association(
     return pd.DataFrame(
         np.vstack(rows),
         index=pd.Index(celltypes, name=celltype_col),
-        columns=pd.Index(np.arange(1, loadings.shape[1] + 1), name="Component"),
+        columns=pd.Index(
+            np.arange(1, loadings.shape[1] + 1),
+            name="Eigenstate" if factor_type == "eigenstate" else "Component",
+        ),
     )

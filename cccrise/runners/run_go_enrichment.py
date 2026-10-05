@@ -8,7 +8,7 @@ library with `cccrise.validation.go_enrichment`.
 
 Writes:
 
-    go_enrichment_<dataset>.csv   one row per (library, component, term)
+    go_enrichment_<dataset>.parquet   one row per (library, component, term)
 
     uv run cccrise-go --dataset alad
     uv run cccrise-go --dataset alad --libraries GOBP KEGG Reactome
@@ -29,7 +29,7 @@ from ..validation.go_enrichment import (
     lr_resource_interactions,
 )
 from ._cli import add_dataset_argument
-from .datasets import DATA_DIR, DATASETS
+from .datasets import DATASETS, VALIDATION_DIR
 from .provenance import build_metadata, git_sha, relpath, sha256_file, write_metadata
 
 HEADER = """\
@@ -41,7 +41,7 @@ cccrise.runners.run_go_enrichment -- do not hand-edit.
 def run_go_enrichment(dataset: str, libraries: list[Library], permutations: int):
     spec = DATASETS[dataset]
     factors_path = spec.factors_path()
-    output_path = DATA_DIR / spec.go_enrichment_filename()
+    output_path = VALIDATION_DIR / spec.go_enrichment_filename()
     git_sha()
 
     factors = load_factors_netcdf(factors_path)
@@ -63,7 +63,7 @@ def run_go_enrichment(dataset: str, libraries: list[Library], permutations: int)
         results.append(result.assign(library=library))
     results = pd.concat(results, ignore_index=True)
 
-    results.to_csv(output_path, index=False)
+    results.to_parquet(output_path, index=False)
     print(f"Wrote {len(results)} rows to {output_path}")
 
     metadata = build_metadata(

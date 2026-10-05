@@ -791,7 +791,8 @@ def run_ccc_rise_workflow(
     rise_tol: float,
     cp_tol: float,
 ) -> dict[str, Any]:
-    """The CCC-RISE pipeline: RISE -> communication tensor -> CP.
+    """The CCC-RISE pipeline: RISE (`fit_rise`) -> communication tensor -> CP
+    (`fit_ccc_cp`).
 
     Writes into `adata` (callers wanting it pristine pass a copy): the RISE
     factors via `fit_rise`, the standardized CP factors via
@@ -843,6 +844,58 @@ def run_ccc_rise_workflow(
         backend=backend,
         compress=compress,
     )
+    fit = fit_ccc_cp(
+        adata,
+        lr_pairs,
+        cp_rank if cp_rank is not None else rise_rank,
+        complex_sep=complex_sep,
+        communication_score=communication_score,
+        hill_k=hill_k,
+        random_state=random_state,
+        compress=compress,
+        cp_n_iter_max=cp_n_iter_max,
+        cp_tol=cp_tol,
+    )
+    cp_weights, cp_factors = fit["cp_weights"], fit["cp_factors"]
+    adata = save_ccc_rise_results(
+        adata, cp_factors, cp_weights, fit["filtered_lr_pairs"]
+    )
+    adata.uns["r2x"] = fit["r2x_cp"]
+    adata = add_cell_embeddings(
+        adata, cp_factors[1], cp_factors[2], doEmbedding, random_state
+    )
+    return fit | {
+        "adata": adata,
+        "tensor": fit["tensor"] if keep_tensor else None,
+        "r2x_rise": r2x_rise,
+    }
+
+
+def fit_ccc_cp(
+    adata: anndata.AnnData,
+    lr_pairs: pd.DataFrame,
+    cp_rank: int,
+    complex_sep: str | None = "&",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    random_state: int | None = None,
+    compress: bool = False,
+    *,
+    cp_n_iter_max: int,
+    cp_tol: float,
+) -> dict[str, Any]:
+    """The post-RISE half of `run_ccc_rise_workflow`: communication tensor ->
+    CP, on an AnnData already fit by `fit_rise`.
+
+    `adata` is only read, so one RISE fit can back several CP fits (e.g. one
+    per communication score).
+
+    Returns
+    -------
+    dict[str, Any]
+        'tensor', 'filtered_lr_pairs', 'cp_weights', 'cp_factors'
+        (standardized), 'r2x_cp', 'diagnostics' (see `fit_cp`).
+    """
     tensor, filtered_lr_pairs = calculate_interaction_tensor(
         adata,
         lr_pairs,
@@ -852,24 +905,17 @@ def run_ccc_rise_workflow(
     )
     cp_weights, cp_factors, r2x_cp, diagnostics = fit_cp(
         tensor,
-        cp_rank if cp_rank is not None else rise_rank,
+        cp_rank,
         n_iter_max=cp_n_iter_max,
         tol=cp_tol,
         random_state=random_state,
         compress=compress,
     )
-    adata = save_ccc_rise_results(adata, cp_factors, cp_weights, filtered_lr_pairs)
-    adata.uns["r2x"] = r2x_cp
-    adata = add_cell_embeddings(
-        adata, cp_factors[1], cp_factors[2], doEmbedding, random_state
-    )
     return {
-        "adata": adata,
-        "tensor": tensor if keep_tensor else None,
+        "tensor": tensor,
         "filtered_lr_pairs": filtered_lr_pairs,
         "cp_weights": cp_weights,
         "cp_factors": cp_factors,
-        "r2x_rise": r2x_rise,
         "r2x_cp": r2x_cp,
         "diagnostics": diagnostics,
     }

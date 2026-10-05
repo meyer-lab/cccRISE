@@ -243,16 +243,16 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
             # above should matter here, so stub out the hash of that file.
             patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
         ):
-            df, csv_path, sidecar = runner.run_cpd_rank_selection(
+            df, out_path, sidecar = runner.run_cpd_rank_selection(
                 DATASETS["alad"],
                 rise_rank=5,
                 ranks=[1, 2, 3, 4, 5],
                 cp_n_iter_max=2000,
                 cp_tol=1e-12,
                 compress=compress,
-                output_path=tmp_path / f"cpd_{compress}.csv",
+                output_path=tmp_path / f"cpd_{compress}.parquet",
             )
-        assert csv_path.exists() and sidecar.exists()
+        assert out_path.exists() and sidecar.exists()
         assert f"compress: {str(compress).lower()}" in sidecar.read_text()
         results[compress] = df
 

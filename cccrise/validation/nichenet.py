@@ -1,12 +1,16 @@
 """
 NicheNet-style downstream-target validation of cccRISE / CPD components.
 
-For each CPD component, this module tests whether the literature-curated
-downstream targets of the component's top-loading ligands are differentially
-expressed in the receiver cells the component implicates, reporting a
-per-ligand/per-component AUROC (the standard NicheNet ligand-activity
-statistic) and an empirical permutation p-value against a null built from
-the same receiver population.
+For each CPD component, the cells with the highest and lowest
+receiver-eigenstate loading (`obsm["rc_C"]`) are contrasted by differential
+expression, and every ligand the model sees is scored by how well that
+ranking -- restricted to genes expressed in the two groups -- recovers the
+ligand's literature-curated downstream targets (a NicheNet-style AUROC;
+`component_ligand_scores`). Each component's top ligands (`top_pair_ligands`)
+are then compared with all the other ligands on the same ranking
+(`top_ligand_tests`): the question is whether the ligands the component
+weights most are better supported by downstream evidence than ligands it
+barely uses, not whether any ligand beats a shuffled-cell null.
 
 The ligand-target prior is the NicheNet v2 ligand-target matrix (Zenodo
 record 7074291), which is only published as an R `.rds` object; it is read
@@ -26,7 +30,7 @@ import anndata
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from scipy.stats import rankdata
+from scipy.stats import mannwhitneyu
 from sklearn.metrics import roc_auc_score
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -35,7 +39,6 @@ NICHENET_LT_URL = (
 )
 NICHENET_LT_CACHE = DATA_DIR / "nichenet_ligand_target_matrix.parquet"
 
-ReceiverMode = Literal["within_celltype", "vs_rest"]
 DeMethod = Literal["logreg", "t-test", "wilcoxon", "t-test_overestim_var"]
 
 
@@ -133,139 +136,26 @@ def load_ligand_target_matrix(
     return pd.read_parquet(cache_path)
 
 
-def top_lr_pairs_for_component(
-    D: np.ndarray,
-    lr_pairs: pd.DataFrame,
-    cmp: int,
-    top_m: int = 10,
-) -> pd.DataFrame:
+def _receiver_population(
+    adata: anndata.AnnData, cmp: int, top_perc: float
+) -> tuple[anndata.AnnData, np.ndarray]:
     """
-    Return the top `top_m` ligand-receptor pairs loading onto CPD component `cmp`.
-
-    Ranks by absolute loading magnitude rather than signed loading.
-
-    Parameters
-    ----------
-    D : np.ndarray
-        LR-pair CPD factor matrix, shape (n_lr_pairs, cp_rank) (`adata.uns["D"]`).
-    lr_pairs : pd.DataFrame
-        LR pairs corresponding to the rows of `D`, with "ligand"/"receptor" columns
-        (the `filtered_lr_pairs` returned alongside `D` from the cccRISE workflow).
-    cmp : int
-        1-indexed component number.
-    top_m : int, default=10
-        Number of top LR pairs to return.
+    Split `adata` into the cells above the `100 - top_perc` percentile
+    ("high") and below the `top_perc` percentile ("low") of component `cmp`'s
+    receiver-eigenstate loading (`adata.obsm["rc_C"][:, cmp - 1]`), discarding
+    every other cell.
 
     Returns
     -------
-    pd.DataFrame
-        Columns ["ligand", "receptor", "loading"], sorted by descending
-        `abs(loading)`, of length `min(top_m, n_lr_pairs)`.
-    """
-    loadings = np.asarray(D)[:, cmp - 1]
-    order = np.argsort(-np.abs(loadings))[:top_m]
-
-    out = lr_pairs.iloc[order][["ligand", "receptor"]].reset_index(drop=True)
-    out["loading"] = loadings[order]
-    return out
-
-
-def receiver_celltypes_for_component(
-    adata: anndata.AnnData,
-    cmp: int,
-    celltype_col: str = "broad_cell_type",
-    pool_threshold: float = 0.3,
-) -> list[str]:
-    """
-    Return the receiver cell type(s) implicated by CPD component `cmp`.
-
-    Cell types are ranked by mean receiver-eigenstate loading
-    (`adata.obsm["rc_C"][:, cmp - 1]`). The top-ranked cell type is always
-    included; any other cell type whose mean loading is at least
-    `pool_threshold` of the top cell type's mean loading is pooled in too.
-
-    Parameters
-    ----------
-    adata : anndata.AnnData
-        AnnData with `obsm["rc_C"]` populated.
-    cmp : int
-        1-indexed component number.
-    celltype_col : str, default="broad_cell_type"
-    pool_threshold : float, default=0.3
-        Minimum mean loading, as a fraction of the top cell type's mean
-        loading, for another cell type to be pooled in.
-
-    Returns
-    -------
-    list[str]
-        Cell types, descending by mean loading; always length >= 1.
+    tuple[anndata.AnnData, np.ndarray]
+        (kept, pos_mask): the cells in either group, and a boolean array
+        aligned to `kept` marking the "high" group.
     """
     loadings = np.asarray(adata.obsm["rc_C"])[:, cmp - 1]
-    means = (
-        pd.Series(loadings, index=adata.obs.index)
-        .groupby(adata.obs[celltype_col])
-        .mean()
-        .sort_values(ascending=False)
-    )
-    top_mean = means.iloc[0]
-    if top_mean <= 0:
-        # No cell type has positive mean loading for this component -- fall
-        # back to just the (least-negative) top one rather than pooling.
-        return [cast(str, means.index[0])]
-    pooled = means[means >= pool_threshold * top_mean]
-    return cast(list[str], pooled.index.tolist())
-
-
-def _receiver_population(
-    adata: anndata.AnnData,
-    cmp: int,
-    celltype_col: str,
-    celltype: str | list[str] | None,
-    top_perc: float,
-) -> tuple[anndata.AnnData, np.ndarray, int, int]:
-    """
-    Restrict `adata` to `celltype` (if given) and split it into the cells
-    above the `100 - top_perc` percentile ("high") and below the `top_perc`
-    percentile ("low") of component `cmp`'s receiver-eigenstate loading
-    (`adata.obsm["rc_C"][:, cmp - 1]`), discarding every other cell.
-
-    Parameters
-    ----------
-    adata : anndata.AnnData
-        AnnData with `obsm["rc_C"]` populated.
-    cmp : int
-        1-indexed component number.
-    celltype_col : str
-        Column in `adata.obs` naming cell types.
-    celltype : str, list[str], or None
-        If given, `adata` is restricted to this cell type (or these cell
-        types) before splitting into groups. If None, all of `adata` is used.
-    top_perc : float
-        Percentile threshold defining the "high" and "low" groups.
-
-    Returns
-    -------
-    tuple[anndata.AnnData, np.ndarray, int, int]
-        (kept, pos_mask, n_pos, n_neg): `kept` is the cells in the "high" or
-        "low" group (union), `pos_mask` is a boolean array aligned to `kept`
-        marking the "high" group, and `n_pos`/`n_neg` are the two group sizes.
-    """
-    if celltype is None:
-        X = adata
-    else:
-        celltypes = [celltype] if isinstance(celltype, str) else list(celltype)
-        X = adata[adata.obs[celltype_col].isin(celltypes)]
-
-    loadings = np.asarray(X.obsm["rc_C"])[:, cmp - 1]
-    hi_thr = np.percentile(loadings, 100 - top_perc)
-    lo_thr = np.percentile(loadings, top_perc)
-    pos_idx = loadings > hi_thr
-    neg_idx = loadings < lo_thr
-
+    pos_idx = loadings > np.percentile(loadings, 100 - top_perc)
+    neg_idx = loadings < np.percentile(loadings, top_perc)
     kept_idx = pos_idx | neg_idx
-    kept = X[kept_idx].copy()
-    pos_mask = pos_idx[kept_idx]
-    return kept, pos_mask, int(pos_mask.sum()), int((~pos_mask).sum())
+    return adata[kept_idx].copy(), pos_idx[kept_idx]
 
 
 def _run_de(
@@ -274,73 +164,14 @@ def _run_de(
     cmp: int,
     method: DeMethod,
 ) -> pd.Series:
-    """Run `scanpy.tl.rank_genes_groups` for `pos_mask` vs. the rest of `kept`."""
+    """Rank `kept`'s genes by `scanpy.tl.rank_genes_groups` (`pos_mask` vs. the
+    rest of `kept`), highest score first."""
     kept.obs["Label"] = np.where(pos_mask, f"Cmp{cmp}", "NoLabel")
     sc.tl.rank_genes_groups(kept, "Label", groups=[f"Cmp{cmp}"], method=method)
     results = kept.uns["rank_genes_groups"]
     names = results["names"][f"Cmp{cmp}"]
     scores = results["scores"][f"Cmp{cmp}"]
     return pd.Series(scores, index=names).sort_values(ascending=False)
-
-
-def receiver_de_ranking(
-    adata: anndata.AnnData,
-    cmp: int,
-    receiver_mode: ReceiverMode = "within_celltype",
-    celltype_col: str = "broad_cell_type",
-    celltype: str | list[str] | None = None,
-    top_perc: float = 10,
-    method: DeMethod = "wilcoxon",
-) -> pd.Series:
-    """
-    Rank genes by a differential-expression statistic between the "high" and
-    "low" component-loading groups defined by `_receiver_population`.
-
-    Parameters
-    ----------
-    adata : anndata.AnnData
-        AnnData with `obsm["rc_C"]` populated (i.e. already processed by the
-        cccRISE workflow / `load_factors_to_anndata`).
-    cmp : int
-        1-indexed component number.
-    receiver_mode : {"within_celltype", "vs_rest"}, default="within_celltype"
-        "within_celltype" restricts to `celltype` before grouping;
-        "vs_rest" uses all of `adata`.
-    celltype_col : str, default="broad_cell_type"
-        Column in `adata.obs` naming cell types. Used only when
-        `receiver_mode == "within_celltype"`.
-    celltype : str or list[str], optional
-        Required when `receiver_mode == "within_celltype"`.
-    top_perc : float, default=10
-        Percentile threshold defining the "high"/"low" groups; see
-        `_receiver_population`.
-    method : str, default="wilcoxon"
-        `scanpy.tl.rank_genes_groups` method.
-
-    Returns
-    -------
-    pd.Series
-        Gene -> DE test statistic, sorted descending (most "high-group-up" first).
-    """
-    if receiver_mode == "within_celltype":
-        if celltype is None:
-            raise ValueError(
-                "`celltype` is required when receiver_mode='within_celltype'"
-            )
-    elif receiver_mode == "vs_rest":
-        celltype = None
-    else:
-        raise ValueError(f"Unknown receiver_mode: {receiver_mode!r}")
-
-    kept, pos_mask, n_pos, n_neg = _receiver_population(
-        adata, cmp, celltype_col, celltype, top_perc
-    )
-    if n_pos < 2 or n_neg < 2:
-        raise ValueError(
-            f"Too few cells to test (n_pos={n_pos}, n_neg={n_neg}) for "
-            f"cmp={cmp}, receiver_mode={receiver_mode!r}, celltype={celltype!r}."
-        )
-    return _run_de(kept, pos_mask, cmp, method)
 
 
 def ligand_activity_auroc(
@@ -359,7 +190,7 @@ def ligand_activity_auroc(
     Parameters
     ----------
     de_ranking : pd.Series
-        Gene -> DE test statistic (from `receiver_de_ranking`), covering the
+        Gene -> DE test statistic (from `receiver_ranking`), covering the
         receiver population's expressed/tested genes.
     ligand : str
         Ligand gene symbol.
@@ -386,180 +217,191 @@ def ligand_activity_auroc(
     return float(roc_auc_score(y_true, de_ranking.to_numpy()))
 
 
-def permutation_null_aurocs(
-    kept: anndata.AnnData,
-    pos_mask: np.ndarray,
-    lt_df: pd.DataFrame,
-    ligands: list[str],
-    n_perm: int = 1000,
-    random_state: int | None = 0,
-) -> dict[str, np.ndarray]:
+def expressed_genes(
+    kept: anndata.AnnData, pos_mask: np.ndarray, min_frac: float = 0.1
+) -> pd.Index:
+    """Genes detected (non-zero) in at least `min_frac` of the "high" or of the
+    "low" group of `kept` (`_receiver_population`)."""
+    detected = cast(Any, kept.X) > 0
+    frac_high = np.asarray(detected[pos_mask].mean(axis=0)).ravel()
+    frac_low = np.asarray(detected[~pos_mask].mean(axis=0)).ravel()
+    return kept.var_names[(frac_high >= min_frac) | (frac_low >= min_frac)]
+
+
+def ligand_weights(D: np.ndarray, lr_pairs: pd.DataFrame) -> pd.DataFrame:
+    """Ligand x component (1-indexed columns) weight: the square root of the
+    summed squared loadings of the ligand's LR pairs."""
+    D = np.asarray(D)
+    return np.sqrt(
+        pd.DataFrame(
+            D**2, index=lr_pairs["ligand"].to_numpy(), columns=range(1, D.shape[1] + 1)
+        )
+        .groupby(level=0)
+        .sum()
+    )
+
+
+def top_pair_ligands(
+    D: np.ndarray,
+    lr_pairs: pd.DataFrame,
+    cmp: int,
+    scorable: set[str],
+    rel_cutoff: float = 0.4,
+) -> list[str]:
     """
-    Compute a null distribution of ligand-activity AUROCs for `ligands`, by
-    repeatedly reassigning which cells in `kept` are in the positive group.
+    Ligands of component `cmp`'s LR pairs with |loading| >= `rel_cutoff` x the
+    largest |loading| among its scorable pairs (pairs whose ligand is in
+    `scorable`), ordered by loading. Unscorable pairs neither set the scale
+    nor enter the set.
+    """
+    loading = np.abs(np.asarray(D)[:, cmp - 1])
+    ligand = lr_pairs["ligand"].to_numpy()
+    ok = np.isin(ligand, list(scorable))
+    if not ok.any():
+        return []
+    rel = np.where(ok, loading, 0.0) / loading[ok].max()
+    order = np.argsort(-rel)
+    return list(dict.fromkeys(ligand[i] for i in order if rel[i] >= rel_cutoff))
 
-    Each of `n_perm` iterations draws `pos_mask.sum()` cells (without
-    replacement, from all cells in `kept`) as the positive group and treats
-    the remaining cells as the negative group. Per-gene ranks across cells
-    are computed once and reused for every iteration; each iteration's
-    per-gene score is the sum of positive-group ranks for that gene, and
-    each ligand's AUROC is computed from that score against its target set,
-    as in `ligand_activity_auroc`.
 
-    Parameters
-    ----------
-    kept : anndata.AnnData
-        Cell population to draw the positive/negative relabeling from.
-    pos_mask : np.ndarray[bool]
-        Aligned to `kept`; only `pos_mask.sum()` (the positive group size)
-        is used.
-    lt_df : pd.DataFrame
-        Long-format ligand-target matrix, as in `ligand_activity_auroc`.
-    ligands : list[str]
-        Ligand gene symbols to compute null distributions for. Duplicates
-        are computed once and reused.
-    n_perm : int, default=1000
-        Number of relabelings.
-    random_state : int, optional
-        Seed for the relabeling draws.
+def receiver_ranking(
+    adata: anndata.AnnData,
+    cmp: int,
+    top_perc: float = 10,
+    de_method: DeMethod = "wilcoxon",
+    min_expr_frac: float = 0.1,
+) -> tuple[pd.Series, int, int] | None:
+    """
+    Component `cmp`'s receiver DE ranking: "high" vs "low" loading cells
+    (`_receiver_population`), genes ranked by `_run_de`, restricted to
+    `expressed_genes`.
 
     Returns
     -------
-    dict[str, np.ndarray]
-        ligand -> array of `n_perm` null AUROCs. Ligands with no targets
-        overlapping `kept.var_names`, or whose overlap is entirely positive
-        or negative, are omitted (matching `ligand_activity_auroc`).
+    tuple[pd.Series, int, int] or None
+        (ranking, n_high, n_low), or None if either group has fewer than 2
+        cells.
     """
-    rng = np.random.default_rng(random_state)
-    genes = kept.var_names
-    X = cast(Any, kept.X)
-    dense = np.asarray(X.toarray() if hasattr(X, "toarray") else X, dtype=np.float32)
-    ranks = rankdata(dense, axis=0).astype(np.float32)
-
-    n_cells = kept.n_obs
-    n_pos = int(pos_mask.sum())
-    perm_pos = np.zeros((n_perm, n_cells), dtype=np.float32)
-    for i in range(n_perm):
-        idx = rng.choice(n_cells, size=n_pos, replace=False)
-        perm_pos[i, idx] = 1.0
-    null_scores = perm_pos @ ranks  # (n_perm, n_genes)
-    score_ranks = rankdata(null_scores, axis=1)  # (n_perm, n_genes)
-
-    out: dict[str, np.ndarray] = {}
-    for ligand in dict.fromkeys(ligands):  # dedupe, preserve order
-        targets = set(lt_df.loc[lt_df["ligand"] == ligand, "target"])
-        y_true = genes.isin(targets)
-        n_target = int(y_true.sum())
-        n_bg = len(y_true) - n_target
-        if not targets or n_target == 0 or n_bg == 0:
-            continue
-        r_pos = score_ranks[:, y_true].sum(axis=1)
-        out[ligand] = (r_pos - n_target * (n_target + 1) / 2) / (n_target * n_bg)
-    return out
+    kept, pos_mask = _receiver_population(adata, cmp, top_perc)
+    n_pos, n_neg = int(pos_mask.sum()), int((~pos_mask).sum())
+    if n_pos < 2 or n_neg < 2:
+        return None
+    expressed = expressed_genes(kept, pos_mask, min_expr_frac)
+    ranking = _run_de(kept, pos_mask, cmp, de_method)
+    return ranking[ranking.index.isin(expressed)], n_pos, n_neg
 
 
-def component_accuracy_scores(
+def component_ligand_scores(
     adata: anndata.AnnData,
     lr_pairs: pd.DataFrame,
     lt_df: pd.DataFrame,
     components: list[int],
-    top_m_lr: int = 10,
-    receiver_mode: ReceiverMode = "within_celltype",
-    celltype_col: str = "broad_cell_type",
     top_perc: float = 10,
     de_method: DeMethod = "wilcoxon",
-    pool_threshold: float = 0.3,
-    n_perm: int = 1000,
-    random_state: int | None = 0,
+    min_expr_frac: float = 0.1,
+    rel_cutoff: float = 0.4,
 ) -> pd.DataFrame:
     """
-    Compute per-ligand NicheNet-style AUROCs, with a permutation null, for
-    each of `components`.
+    Score every ligand the model sees on each component's receiver ranking
+    (`receiver_ranking`) and flag each component's top ligands.
 
-    For each component: take its top `top_m_lr` LR pairs
-    (`top_lr_pairs_for_component`); build one receiver DE ranking
-    (`_receiver_population` + `_run_de`) -- restricted, when `receiver_mode
-    == "within_celltype"`, to the cell type(s) implicated by that component
-    (`receiver_celltypes_for_component`) -- then score every top ligand's
-    downstream targets (`ligand_activity_auroc`) against that single
-    ranking, and an empirical p-value (`permutation_null_aurocs`) against
-    `n_perm` random relabelings of the same receiver population.
+    A ligand's AUROC (`ligand_activity_auroc`) is NaN where undefined, i.e.
+    when none of its prior targets is expressed. The top set is
+    `top_pair_ligands` over the scorable ligands.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        Dataset with the finalized fit loaded (`obsm["rc_C"]`, `uns["D"]`).
+    lr_pairs : pd.DataFrame
+        "ligand"/"receptor" columns in the row order of `uns["D"]`.
+    lt_df : pd.DataFrame
+        Long-format ligand-target prior (`load_ligand_target_matrix`).
+    components : list[int]
+        1-indexed CPD components to score.
+    top_perc : float, default=10
+        Percentile defining the "high"/"low" receiver groups.
+    de_method : str, default="wilcoxon"
+        `scanpy.tl.rank_genes_groups` method.
+    min_expr_frac : float, default=0.1
+        Minimum detection fraction in either group for a gene to be kept.
+    rel_cutoff : float, default=0.4
+        Top-set threshold, relative to the component's largest scorable pair.
 
     Returns
     -------
     pd.DataFrame
-        Columns: ["component", "ligand", "receptor", "loading", "celltype",
-        "auroc", "n_pos", "n_neg", "null_mean_auroc", "null_sd_auroc",
-        "p_value"]. `auroc`/`p_value` are NaN where they could not be
-        computed (see `ligand_activity_auroc`); `celltype` is a single name,
-        or several joined by " + " when `receiver_mode == "within_celltype"`
-        pools more than one cell type.
+        One row per (component, ligand): ["component", "ligand", "auroc",
+        "weight", "rel_weight" (weight / the component's top scorable
+        ligand's), "is_top", "n_pos", "n_neg", "n_expressed_genes"].
+        Components with fewer than 2 cells in either group are omitted.
     """
     D = adata.uns["D"]
+    weights = ligand_weights(D, lr_pairs)
     rows = []
-
     for cmp in components:
-        top_pairs = top_lr_pairs_for_component(D, lr_pairs, cmp, top_m=top_m_lr)
-
-        celltype = (
-            receiver_celltypes_for_component(
-                adata, cmp, celltype_col=celltype_col, pool_threshold=pool_threshold
-            )
-            if receiver_mode == "within_celltype"
-            else None
-        )
-
-        try:
-            kept, pos_mask, n_pos, n_neg = _receiver_population(
-                adata, cmp, celltype_col, celltype, top_perc
-            )
-            if n_pos < 2 or n_neg < 2:
-                raise ValueError(
-                    f"Too few cells to test (n_pos={n_pos}, n_neg={n_neg}) for "
-                    f"cmp={cmp}, receiver_mode={receiver_mode!r}, celltype={celltype!r}."
-                )
-        except ValueError:
+        receivers = receiver_ranking(adata, cmp, top_perc, de_method, min_expr_frac)
+        if receivers is None:
             continue
-
-        de_ranking = _run_de(kept, pos_mask, cmp, de_method)
-        ligands = top_pairs["ligand"].tolist()
-        null_aurocs = permutation_null_aurocs(
-            kept,
-            pos_mask,
-            lt_df,
-            ligands,
-            n_perm=n_perm,
-            random_state=None if random_state is None else random_state + cmp,
-        )
-        celltype_label = (
-            " + ".join(celltype) if isinstance(celltype, list) else celltype
-        )
-
-        for _, pair in top_pairs.iterrows():
-            ligand = cast(str, pair["ligand"])
-            receptor = cast(str, pair["receptor"])
-            auroc = ligand_activity_auroc(de_ranking, ligand, lt_df)
-            null = null_aurocs.get(ligand)
-            if auroc is not None and null is not None:
-                null_mean = float(np.mean(null))
-                null_sd = float(np.std(null))
-                p_value = float(np.mean(np.abs(null - 0.5) >= abs(auroc - 0.5)))
-            else:
-                null_mean = null_sd = p_value = None
-            rows.append(
-                {
-                    "component": cmp,
-                    "ligand": ligand,
-                    "receptor": receptor,
-                    "loading": pair["loading"],
-                    "celltype": celltype_label,
-                    "auroc": auroc,
-                    "n_pos": n_pos,
-                    "n_neg": n_neg,
-                    "null_mean_auroc": null_mean,
-                    "null_sd_auroc": null_sd,
-                    "p_value": p_value,
-                }
-            )
-
+        ranking, n_pos, n_neg = receivers
+        auroc = {
+            lig: ligand_activity_auroc(ranking, lig, lt_df) for lig in weights.index
+        }
+        scorable = {lig for lig, a in auroc.items() if a is not None}
+        top = set(top_pair_ligands(D, lr_pairs, cmp, scorable, rel_cutoff))
+        w = weights[cmp]
+        w_max = w[list(scorable)].max() if scorable else np.nan
+        rows += [
+            {
+                "component": cmp,
+                "ligand": lig,
+                "auroc": np.nan if auroc[lig] is None else auroc[lig],
+                "weight": w[lig],
+                "rel_weight": w[lig] / w_max,
+                "is_top": lig in top,
+                "n_pos": n_pos,
+                "n_neg": n_neg,
+                "n_expressed_genes": len(ranking),
+            }
+            for lig in weights.index
+        ]
     return pd.DataFrame(rows)
+
+
+def top_ligand_tests(
+    scores: pd.DataFrame, correction: str | None = "fdr_bh"
+) -> pd.DataFrame:
+    """
+    Per component, a two-sided Mann-Whitney test of the top ligands' AUROCs
+    against every other scored ligand's (`component_ligand_scores` output),
+    with p-values adjusted across components (`anova.adjust_pvalues`, as in
+    the ANOVA analysis).
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per component: ["component", "top_ligands", "n_top",
+        "n_comparison", "top_median", "comparison_median", "direction"
+        ("up"/"down"), "p", "q"].
+    """
+    from ..anova import adjust_pvalues
+
+    rows = []
+    for cmp, c in scores.dropna(subset=["auroc"]).groupby("component"):
+        top = c[c["is_top"]].sort_values("weight", ascending=False)
+        rest = c.loc[~c["is_top"], "auroc"]
+        rows.append(
+            {
+                "component": cmp,
+                "top_ligands": ", ".join(top["ligand"]),
+                "n_top": len(top),
+                "n_comparison": len(rest),
+                "top_median": top["auroc"].median(),
+                "comparison_median": rest.median(),
+                "direction": "up" if top["auroc"].median() > rest.median() else "down",
+                "p": mannwhitneyu(top["auroc"], rest, alternative="two-sided").pvalue,
+            }
+        )
+    out = pd.DataFrame(rows)
+    out["q"] = adjust_pvalues(out["p"].to_numpy(), method=correction)
+    return out
