@@ -5,11 +5,8 @@ Reproduces Tensor-cell2cell's LR-GSEA (`cell2cell.external.gseapy`): each term
 of a gene-set library is converted to the set of LR interactions whose ligand
 and receptor subunits all belong to it (`generate_lr_geneset`), and each
 component's LR loadings are then tested against those sets by preranked GSEA
-(`lr_gsea`). Two departures: 19,999 permutations instead of 999, since a
-permutation p-value cannot fall below ``1 / (permutations + 1)`` and 999 leaves
-BH unable to call any single term across hundreds of tests; and only enrichment
-is reported, since depletion p-values can't be estimated with non-negative
-loadings.
+(`lr_gsea`). The one departure is that only enrichment is reported, since
+depletion p-values can't be estimated with non-negative loadings.
 """
 
 import urllib.request
@@ -30,8 +27,8 @@ LIBRARY_URL = (
 )
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-# GSEA settings; all but PERMUTATIONS are cell2cell's `run_gsea` defaults.
-PERMUTATIONS = 19_999
+# GSEA settings, as in cell2cell's `run_gsea`.
+PERMUTATIONS = 999
 MIN_SIZE = 15
 WEIGHT = 1.0
 SEED = 6
