@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from cccrise.validation.eigenstate_celltypes import (
+    BIMODAL,
     active,
     bimodality_coefficient,
     classify,
@@ -61,7 +62,7 @@ def test_score_units_and_null_run():
 def test_fraction_checks_separate_a_subset_from_a_graded_program():
     graded = RNG.normal(1.0, 0.3, 2000)
     two_modes = np.r_[RNG.normal(0, 0.1, 1000), RNG.normal(3, 0.1, 1000)]
-    assert bimodality_coefficient(two_modes) > 5 / 9 > bimodality_coefficient(graded)
+    assert bimodality_coefficient(two_modes) > BIMODAL > bimodality_coefficient(graded)
     fine = np.array(["f"] * 2000)
     subset = fraction_checks(two_modes, fine, "f")
     # A subset's active fraction holds as the cut moves; a gradient's does not.
