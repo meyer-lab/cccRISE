@@ -3,15 +3,15 @@
 from .. import common, style
 from . import (
     celltype_association,
-    cmp_weight_scatter,
-    component_weights,
     coordinated_changes,
     lr_loadings,
+    outcome_association,
     pacmaps,
+    sender_receiver_scatter,
 )
 
 LAYOUT = [
-    [component_weights, celltype_association, cmp_weight_scatter],
+    [outcome_association, celltype_association, sender_receiver_scatter],
     [lr_loadings, coordinated_changes],
     [pacmaps],
 ]

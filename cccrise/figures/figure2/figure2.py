@@ -2,22 +2,22 @@
 
 from .. import common, style
 from . import (
-    composition,
-    cpd_rank,
-    factor_matrices,
-    group_scatter,
-    identity_markers,
+    aggregate_fms,
+    celltype_composition,
+    cp_factor_matrices,
+    cp_rank_selection,
+    epithelial_markers,
     nichenet,
-    rise_rank,
-    significance,
-    stability,
+    permutation_lr_significance,
+    rise_rank_selection,
+    sender_receiver_strata,
 )
 
 LAYOUT = [
-    [rise_rank, cpd_rank, stability],
-    [factor_matrices],
-    [group_scatter, [identity_markers, composition]],
-    [significance, nichenet],
+    [rise_rank_selection, cp_rank_selection, aggregate_fms],
+    [cp_factor_matrices],
+    [sender_receiver_strata, [epithelial_markers, celltype_composition]],
+    [permutation_lr_significance, nichenet],
 ]
 
 
