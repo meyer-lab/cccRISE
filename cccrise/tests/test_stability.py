@@ -20,19 +20,21 @@ from cccrise.utils import (
     resample_conditions,
     resample_tensor,
 )
-from cccrise.validation.component_stability import (
+from cccrise.validation.stability import (
+    ANOVA_COLUMNS,
     CPD_SKIP_MODES,
     DEFAULT_AXES,
     RISE_SKIP_MODES,
     SEED_AXIS,
     STAGE_CPD,
     STAGE_RISE,
-    component_stability,
+    _attach_anova,
     fit_stability_pipeline,
     metric_interval,
     per_component_fms,
     reference_condition_rows,
     relabel_workflow_fit,
+    stability_replicates,
     summarize_component_stability,
 )
 
@@ -466,7 +468,7 @@ def test_resample_conditions_with_patient_by_keeps_each_stratum_size():
 # =============================================================================
 
 
-def test_component_stability_emits_one_row_per_axis_stage_and_component():
+def test_stability_replicates_emits_one_row_per_axis_stage_and_component():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
@@ -474,7 +476,7 @@ def test_component_stability_emits_one_row_per_axis_stage_and_component():
         adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
     )
 
-    df = component_stability(
+    df = stability_replicates(
         adata,
         reference,
         lr_pairs,
@@ -498,7 +500,7 @@ def test_component_stability_emits_one_row_per_axis_stage_and_component():
     assert df["FMS"].between(0.0, 1.0 + 1e-9).all()
 
 
-def test_component_stability_gives_the_lr_pairs_axis_no_rise_rows():
+def test_stability_replicates_gives_the_lr_pairs_axis_no_rise_rows():
     """Bootstrapping the tensor's ligand-receptor mode leaves RISE untouched,
     so there is nothing to say about RISE components on that axis."""
     adata = _simulate_adata()
@@ -508,14 +510,14 @@ def test_component_stability_gives_the_lr_pairs_axis_no_rise_rows():
         adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
     )
 
-    df = component_stability(
+    df = stability_replicates(
         adata, reference, lr_pairs, **kwargs, axes=("lr_pairs",), n_replicates=1
     )
 
     assert set(df["Stage"]) == {STAGE_CPD}
 
 
-def test_component_stability_shares_one_seed_between_a_replicates_two_stages():
+def test_stability_replicates_shares_one_seed_between_a_replicates_two_stages():
     """The point of the shared loop: a replicate's RISE and CPD rows have to
     describe the same resampled dataset, not two independent draws."""
     adata = _simulate_adata()
@@ -525,7 +527,7 @@ def test_component_stability_shares_one_seed_between_a_replicates_two_stages():
         adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
     )
 
-    df = component_stability(
+    df = stability_replicates(
         adata,
         reference,
         lr_pairs,
@@ -540,7 +542,7 @@ def test_component_stability_shares_one_seed_between_a_replicates_two_stages():
     assert sorted(df["Seed"].unique()) == [7 * 1000 + 1, 7 * 1000 + 2]
 
 
-def test_component_stability_is_reproducible_from_its_random_state():
+def test_stability_replicates_is_reproducible_from_its_random_state():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
@@ -549,13 +551,13 @@ def test_component_stability_is_reproducible_from_its_random_state():
     )
 
     run_kwargs = {"axes": ("cells",), "n_replicates": 1, "random_state": 0}
-    a = component_stability(adata, reference, lr_pairs, **kwargs, **run_kwargs)
-    b = component_stability(adata, reference, lr_pairs, **kwargs, **run_kwargs)
+    a = stability_replicates(adata, reference, lr_pairs, **kwargs, **run_kwargs)
+    b = stability_replicates(adata, reference, lr_pairs, **kwargs, **run_kwargs)
 
     pd.testing.assert_frame_equal(a, b)
 
 
-def test_component_stability_carries_the_per_replicate_fit_diagnostics():
+def test_stability_replicates_carries_the_per_replicate_fit_diagnostics():
     """A wide FMS spread traceable to a poor or degenerate fit has to be
     distinguishable from genuine component instability."""
     adata = _simulate_adata()
@@ -565,7 +567,7 @@ def test_component_stability_carries_the_per_replicate_fit_diagnostics():
         adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
     )
 
-    df = component_stability(
+    df = stability_replicates(
         adata, reference, lr_pairs, **kwargs, axes=("cells",), n_replicates=1
     )
 
@@ -647,7 +649,7 @@ def test_fit_stability_pipeline_accepts_an_explicit_cpu_backend():
     assert 0.0 <= fit["r2x_rise"] <= 1.0 + 1e-9
 
 
-def test_component_stability_runs_compressed():
+def test_stability_replicates_runs_compressed():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
@@ -660,7 +662,7 @@ def test_component_stability_runs_compressed():
         compress=True,
     )
 
-    df = component_stability(
+    df = stability_replicates(
         adata,
         reference,
         lr_pairs,
@@ -693,7 +695,7 @@ def test_seed_axis_emits_both_stages_with_real_cohort_sizes():
         adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
     )
 
-    df = component_stability(
+    df = stability_replicates(
         adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=2
     )
 
@@ -716,7 +718,7 @@ def test_seed_axis_reproduces_the_reference_when_it_draws_the_reference_seed():
         adata.copy(), lr_pairs, **kwargs, random_state=1, keep_tensor=True
     )
 
-    df = component_stability(
+    df = stability_replicates(
         adata,
         reference,
         lr_pairs,
@@ -741,7 +743,7 @@ def test_seed_axis_leaves_the_callers_adata_untouched():
         adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
     )
 
-    component_stability(
+    stability_replicates(
         adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=1
     )
 
@@ -759,14 +761,14 @@ def test_seed_axis_does_not_require_a_retained_tensor():
         adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=False
     )
 
-    df = component_stability(
+    df = stability_replicates(
         adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=1
     )
 
     assert not df.empty
 
 
-def test_component_stability_rejects_an_unknown_axis():
+def test_stability_replicates_rejects_an_unknown_axis():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
@@ -775,7 +777,7 @@ def test_component_stability_rejects_an_unknown_axis():
     )
 
     with pytest.raises(ValueError, match="Unknown stability axes"):
-        component_stability(
+        stability_replicates(
             adata, reference, lr_pairs, **kwargs, axes=("genes",), n_replicates=1
         )
 
@@ -783,12 +785,12 @@ def test_component_stability_rejects_an_unknown_axis():
     # accepted one: a stale command line should fail rather than produce a
     # table whose baseline column means the opposite of what it used to.
     with pytest.raises(ValueError, match="Unknown stability axes"):
-        component_stability(
+        stability_replicates(
             adata, reference, lr_pairs, **kwargs, axes=("permuted",), n_replicates=1
         )
 
 
-def test_component_stability_requires_a_retained_tensor_for_tensor_only_axes():
+def test_stability_replicates_requires_a_retained_tensor_for_tensor_only_axes():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
@@ -797,12 +799,12 @@ def test_component_stability_requires_a_retained_tensor_for_tensor_only_axes():
     )
 
     with pytest.raises(ValueError, match="keep_tensor=True"):
-        component_stability(
+        stability_replicates(
             adata, reference, lr_pairs, **kwargs, axes=("lr_pairs",), n_replicates=1
         )
 
 
-def test_component_stability_rejects_a_replicate_with_a_different_lr_roster():
+def test_stability_replicates_rejects_a_replicate_with_a_different_lr_roster():
     """A silent roster difference is the dangerous case: matching would line
     up different interactions row by row and return a plausible number."""
     adata = _simulate_adata()
@@ -814,12 +816,12 @@ def test_component_stability_rejects_a_replicate_with_a_different_lr_roster():
     shortened = {**reference, "lr_symbols": reference["lr_symbols"][:-1]}
 
     with pytest.raises(ValueError, match="different ligand-receptor"):
-        component_stability(
+        stability_replicates(
             adata, shortened, lr_pairs, **kwargs, axes=("cells",), n_replicates=1
         )
 
 
-def test_component_stability_rejects_a_replicate_with_a_different_gene_roster():
+def test_stability_replicates_rejects_a_replicate_with_a_different_gene_roster():
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
@@ -829,12 +831,12 @@ def test_component_stability_rejects_a_replicate_with_a_different_gene_roster():
     shortened = {**reference, "gene_names": reference["gene_names"][:-1]}
 
     with pytest.raises(ValueError, match="different genes"):
-        component_stability(
+        stability_replicates(
             adata, shortened, lr_pairs, **kwargs, axes=("cells",), n_replicates=1
         )
 
 
-def test_component_stability_holds_out_expected_modes():
+def test_stability_replicates_holds_out_expected_modes():
     """RISE holds out Mode 1 (B basis); CPD holds out Modes 1 and 2 (D, E)."""
     assert RISE_SKIP_MODES == (1,)
     assert CPD_SKIP_MODES == (1, 2)
@@ -846,7 +848,7 @@ def test_component_stability_holds_out_expected_modes():
         adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
     )
 
-    df = component_stability(
+    df = stability_replicates(
         adata, reference, lr_pairs, **kwargs, axes=("cells",), n_replicates=1
     )
 
@@ -1108,3 +1110,131 @@ def test_fit_stability_pipeline_gives_a_twice_drawn_condition_two_equal_rows():
         reference["condition_labels"], replicate["condition_labels"]
     )
     np.testing.assert_array_equal(rows, [0, 0, 2, 3])
+
+
+# =============================================================================
+# Component--phenotype association
+# =============================================================================
+
+
+def test_fit_stability_pipeline_runs_the_anova_only_when_given_a_group():
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+
+    fit = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **_pipeline_kwargs(), random_state=0
+    )
+    assert list(fit["anova"]["Component"]) == list(range(1, CP_RANK + 1))
+    assert set(ANOVA_COLUMNS).issubset(fit["anova"].columns)
+    assert fit["anova_data"].n_obs == adata.n_obs
+
+    no_group = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **_pipeline_kwargs(group_column=None), random_state=0
+    )
+    assert no_group["anova"] is None and no_group["anova_data"] is None
+
+
+def test_stability_replicates_carries_the_anova_onto_cpd_rows_only():
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
+
+    df = stability_replicates(
+        adata,
+        reference,
+        lr_pairs,
+        **kwargs,
+        axes=("cells", "lr_pairs", SEED_AXIS),
+        n_replicates=1,
+    )
+
+    cpd = df[df["Stage"] == STAGE_CPD]
+    assert set(cpd["Axis"]) == {"cells", "lr_pairs", SEED_AXIS}
+    assert cpd["EtaSquared"].between(0.0, 1.0 + 1e-9).all()
+    assert cpd["P"].notna().all()
+    assert df.loc[df["Stage"] == STAGE_RISE, list(ANOVA_COLUMNS)].isna().all().all()
+
+
+def test_seed_axis_anova_reproduces_the_reference_when_it_draws_the_reference_seed():
+    """The replicate's ANOVA is the reference's when the fit is the same,
+    so the match carries each statistic back onto the right component."""
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs(control_label="ctrl", other_label="case")
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=1, keep_tensor=True
+    )
+
+    df = stability_replicates(
+        adata, reference, lr_pairs, **kwargs, axes=(SEED_AXIS,), n_replicates=1
+    )
+
+    cpd = df[df["Stage"] == STAGE_CPD].set_index("Component")
+    ref = reference["anova"].set_index("Component")
+    np.testing.assert_allclose(cpd["EtaSquared"], ref["EtaSquared"], rtol=1e-6)
+    np.testing.assert_allclose(cpd["GroupMeanDiff"], ref["GroupMeanDiff"], rtol=1e-6)
+
+
+def test_attach_anova_reads_the_matched_component_and_corrects_the_sign():
+    block = pd.DataFrame(
+        {
+            "Component": [1, 2],
+            "MatchedComponent": [2, 1],
+            "SignedCosMode0": [-0.9, 0.8],
+        }
+    )
+    anova = pd.DataFrame(
+        {
+            "Component": [1, 2],
+            "EtaSquared": [0.1, 0.5],
+            "F": [1.0, 5.0],
+            "P": [0.4, 0.01],
+            "GroupMeanDiff": [-1.0, 3.0],
+        }
+    )
+
+    out = _attach_anova(block, anova)
+
+    np.testing.assert_allclose(out["EtaSquared"], [0.5, 0.1])
+    np.testing.assert_allclose(out["P"], [0.01, 0.4])
+    # Reference component 1 is replicate component 2, gauge-flipped.
+    np.testing.assert_allclose(out["GroupMeanDiff"], [-3.0, -1.0])
+
+
+@pytest.mark.parametrize("stratify", [True, False])
+def test_conditions_axis_stratifies_by_the_anova_group_and_pairs_patients(
+    monkeypatch, stratify
+):
+    """The patient bootstrap draws within the outcome the ANOVA tests, so no
+    replicate loses an outcome level, and carries paired patients together."""
+    from cccrise.validation import stability
+
+    seen = []
+    real = stability.resample_conditions
+
+    def spy(*args, **kwargs):
+        seen.append((kwargs["stratify_by"], kwargs["patient_by"]))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(stability, "resample_conditions", spy)
+
+    adata = _simulate_adata()
+    adata.obs["patient"] = adata.obs["sample"].replace({"S1": "S0"})
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(adata.copy(), lr_pairs, **kwargs, random_state=0)
+    stability_replicates(
+        adata,
+        reference,
+        lr_pairs,
+        **kwargs,
+        axes=("conditions",),
+        n_replicates=1,
+        patient_column="patient",
+        stratify=stratify,
+    )
+
+    assert seen == [("group" if stratify else None, "patient")]

@@ -1,7 +1,7 @@
 """Per-component RISE stability under resampling of cells and conditions,
 against the seed-only reproducibility ceiling."""
 
-from ...validation.component_stability import STAGE_RISE
+from ...validation.stability import STAGE_RISE
 from .. import common, style
 from . import _common as S
 

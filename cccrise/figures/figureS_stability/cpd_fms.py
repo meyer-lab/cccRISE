@@ -1,7 +1,7 @@
 """Per-component CPD stability under resampling of cells, conditions, and LR
 pairs, against the seed-only reproducibility ceiling."""
 
-from ...validation.component_stability import STAGE_CPD
+from ...validation.stability import STAGE_CPD
 from .. import common, style
 from . import _common as S
 

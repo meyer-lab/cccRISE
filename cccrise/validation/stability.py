@@ -1,11 +1,24 @@
 """
-Component stability of the CCC-RISE pipeline at fixed RISE and CP ranks.
+Component and association stability of the CCC-RISE pipeline at fixed RISE and
+CP ranks.
 
 Everything here is *conditional on* ranks that have already been chosen (see
 `rank_selection` for the rules that choose them). The goal is to evaluate
 whether the identified components recovered at those fixed ranks are stable and
 reproducible under data resampling -- directly addressing Reviewer 2's major
-comment #4.
+comment #4 -- and whether each CP component's association with the phenotype
+survives the same resampling.
+
+One replicate loop serves all three analyses: a replicate resamples the data
+once, refits RISE and CP once, scores RISE and CPD component stability from
+those fits, and then re-runs the component--phenotype ANOVA on the same CP fit.
+Each replicate's ANOVA statistics are carried over onto the reference
+component its CP component was matched to by the CPD factor match score, so a
+component's association statistics and its FMS always describe the same
+replicate component. A component that could not be re-identified (low FMS)
+produces a wide association distribution for a reason that has nothing to do
+with the phenotype, and keeping both on one row keeps the two explanations
+separable.
 
 Distinction between Per-Fit Diagnostics and Cross-Fit Stability Metrics
 ----------------------------------------------------------------------
@@ -67,6 +80,7 @@ import pandas as pd
 import xarray as xr
 from scipy.optimize import linear_sum_assignment
 
+from ..anova import anova_component_associations, prepare_anova_inputs
 from ..ccc_rise import (
     add_cell_embeddings,
     fit_cp,
@@ -90,6 +104,14 @@ STAGE_CPD = "CPD"
 #: Modes held out during factor match score (FMS) calculations.
 RISE_SKIP_MODES: tuple[int, ...] = (1,)
 CPD_SKIP_MODES: tuple[int, ...] = (1, 2)
+
+#: Modes `align_to_reference_components` matches two CP fits over by default:
+#: the ligand-receptor mode alone, the one mode whose coordinates mean the same
+#: thing in two fits with separately-fit RISE factors and different rosters.
+LR_MATCH_MODES: tuple[int, ...] = (3,)
+
+#: Per-component ANOVA columns carried onto a replicate's CPD rows.
+ANOVA_COLUMNS = ("EtaSquared", "F", "P", "GroupMeanDiff")
 
 #: Name of the reproducibility-ceiling axis: identical data, a different random
 #: seed, refit end to end. `random_state` genuinely moves both stages: `parafac2_nd`
@@ -282,6 +304,207 @@ def _expand_reference_mode(factors: Factors, mode: int, rows: np.ndarray) -> Fac
     return [factors[m][rows] if m == mode else factors[m] for m in range(len(factors))]
 
 
+def _signed_mode_cosine(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Signed cosine similarity between every column of `a` and every column of `b`."""
+    a_norm = a / np.linalg.norm(a, axis=0, keepdims=True)
+    b_norm = b / np.linalg.norm(b, axis=0, keepdims=True)
+    return a_norm.T @ b_norm
+
+
+def align_to_reference_components(
+    reference_factors: Factors,
+    factors: Factors,
+    values: np.ndarray,
+    modes: tuple[int, ...] = LR_MATCH_MODES,
+) -> pd.DataFrame:
+    """Relabel one CP fit's per-component values by the reference fit's
+    component numbering, correcting for sign.
+
+    CP fixes neither component order nor component sign across separate fits,
+    so a per-component quantity is not comparable between two fits until each
+    of the second fit's components has been identified with a reference
+    component and re-expressed in that component's orientation. Optimal
+    assignment gives the relabeling, and the matched mode's *signed* cosine
+    gives the sign, so a value carried by a gauge-flipped component is negated
+    rather than being recorded as a genuine change of direction. Matching on
+    several modes scores a pair by its mean absolute cosine across them and
+    leaves values uncorrected for sign, since each mode can carry its own gauge
+    flip.
+
+    The replicate loop does not use this -- it matches by the CPD FMS (see
+    `_attach_anova`); it relabels per-component values between communication
+    scores' fits (`figures.figureS_ccc_scoring`).
+
+    Parameters
+    ----------
+    reference_factors : list[np.ndarray]
+        The reference fit's CP factors [A, B, C, D]; its component numbering
+        is the one every aligned fit is expressed in.
+    factors : list[np.ndarray]
+        The fit being aligned, sharing `reference_factors`' dimensions along
+        every mode in `modes`.
+    values : np.ndarray
+        One value per component of `factors`, in that fit's own order.
+    modes : tuple[int, ...], default=LR_MATCH_MODES
+        Modes the match is computed over; defaults to the ligand-receptor
+        mode alone.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per reference component matched (1-indexed), columns
+        'Component', 'MatchedComponent', 'Value' (sign-corrected),
+        'MatchScore', 'SignedCosine', 'RunnerUpScore'.
+    """
+    signed_cos_by_mode = {
+        mode: _signed_mode_cosine(reference_factors[mode], factors[mode])
+        for mode in modes
+    }
+    combined = np.mean([np.abs(cos) for cos in signed_cos_by_mode.values()], axis=0)
+
+    row_ind, col_ind = linear_sum_assignment(-combined)
+
+    rows = []
+    for i, j in zip(row_ind, col_ind, strict=True):
+        if combined.shape[1] > 1:
+            alt_scores = combined[i].copy()
+            alt_scores[j] = -np.inf
+            runner_up_j = int(np.argmax(alt_scores))
+            runner_up_score: float = float(alt_scores[runner_up_j])
+        else:
+            runner_up_score = np.nan
+
+        signed_col = modes[0] if len(modes) == 1 else None
+        signed_cos = (
+            signed_cos_by_mode[signed_col][i, j] if signed_col is not None else np.nan
+        )
+        sign_flip = np.sign(signed_cos) if signed_col is not None else 1.0
+
+        rows.append(
+            {
+                "Component": i + 1,
+                "MatchedComponent": j + 1,
+                "Value": float(values[j] * sign_flip),
+                "MatchScore": float(combined[i, j]),
+                "SignedCosine": float(signed_cos),
+                "RunnerUpScore": runner_up_score,
+            }
+        )
+
+    return pd.DataFrame(rows).sort_values("Component").reset_index(drop=True)
+
+
+def top_lr_pairs(
+    lr_factor: np.ndarray, lr_symbols: np.ndarray, top_n: int = 3
+) -> pd.DataFrame:
+    """The ligand-receptor pairs each component of one CP fit loads onto most
+    strongly -- a human-readable label for what a component "is", without
+    hand-picking an example pair up front.
+
+    Parameters
+    ----------
+    lr_factor : np.ndarray
+        The CP fit's LR-pair factor matrix (D), shape (n_lr_pairs, rank).
+    lr_symbols : np.ndarray
+        LR pair symbols matching `lr_factor`'s row order.
+    top_n : int, default=3
+        Number of pairs, by absolute loading, to report per component.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per (component, top-N slot), columns 'Component', 'LRPair',
+        'DLoading' (signed), 'TopRank' (1 = largest magnitude).
+    """
+    lr_symbols = np.asarray(lr_symbols)
+    rows = []
+    for component in range(1, lr_factor.shape[1] + 1):
+        loadings = lr_factor[:, component - 1]
+        top_idx = np.argsort(np.abs(loadings))[::-1][:top_n]
+        rows.extend(
+            {
+                "Component": component,
+                "LRPair": str(lr_symbols[idx]),
+                "DLoading": float(loadings[idx]),
+                "TopRank": slot,
+            }
+            for slot, idx in enumerate(top_idx, start=1)
+        )
+    return pd.DataFrame(rows)
+
+
+# =============================================================================
+# Component--phenotype association
+# =============================================================================
+
+
+def anova_data(
+    adata: anndata.AnnData, condition_column: str, group_column: str
+) -> anndata.AnnData:
+    """The slice of a fitted AnnData the component ANOVA reads.
+
+    `anova.prepare_anova_inputs` needs only each cell's condition index and
+    group label and its total counts (for `utils.correct_conditions`' read
+    depth correction), so this keeps those as a one-column AnnData. A fit can
+    then carry it cheaply, and a CP refit of the reference tensor (the
+    'lr_pairs' axis) can be tested against the reference's cohort.
+    """
+    totals = np.asarray(cast(Any, adata.X).sum(axis=1), dtype=float).reshape(-1, 1)
+    obs = cast(pd.DataFrame, adata.obs)
+    return anndata.AnnData(
+        X=totals,
+        obs=obs[[condition_column, group_column, "condition_unique_idxs"]].copy(),
+    )
+
+
+def component_anova(
+    data: anndata.AnnData,
+    cp_factors: Factors,
+    condition_column: str,
+    group_column: str,
+    control_label: str | None = None,
+    other_label: str | None = None,
+) -> pd.DataFrame:
+    """One-way ANOVA of each CP component's condition loading against
+    `group_column`; see `anova.anova_component_associations`.
+
+    Parameters
+    ----------
+    data : anndata.AnnData
+        `anova_data` of the cohort the CP fit's condition mode indexes.
+    cp_factors : list[np.ndarray]
+        CP factors [A, B, C, D].
+    condition_column, group_column : str
+        Columns in `obs` holding the condition identity and its group label.
+    control_label, other_label : str | None, optional
+        Values of `group_column` collapsed to the reference and other level.
+        Both None -- the default -- tests every level of `group_column`; see
+        `anova.prepare_anova_inputs`.
+    """
+    X, sample_to_group = prepare_anova_inputs(
+        data, cp_factors, condition_column, group_column, control_label, other_label
+    )
+    return anova_component_associations(X, sample_to_group, control_label=control_label)
+
+
+def _attach_anova(block: pd.DataFrame, anova: pd.DataFrame | None) -> pd.DataFrame:
+    """Carry a replicate's ANOVA statistics onto the CPD rows of
+    `per_component_fms`, by the reference component each was matched to.
+
+    F, P and eta-squared do not change under a gauge flip and are read straight
+    off the matched replicate component. `GroupMeanDiff` is a difference of
+    condition-mode loadings, so it is sign-corrected by the condition mode's
+    own signed cosine (`SignedCosMode0`).
+    """
+    if anova is None:
+        return block
+    matched = block["MatchedComponent"].to_numpy(dtype=int) - 1
+    for column in ANOVA_COLUMNS:
+        block[column] = anova[column].to_numpy(dtype=float)[matched]
+    block["GroupMeanDiff"] *= np.sign(block["SignedCosMode0"].to_numpy())
+    return block
+
+
 # =============================================================================
 # One pipeline pass
 # =============================================================================
@@ -319,6 +542,8 @@ def fit_stability_pipeline(
     rise_rank: int,
     cp_rank: int,
     group_column: str | None = None,
+    control_label: str | None = None,
+    other_label: str | None = None,
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
@@ -350,6 +575,12 @@ def fit_stability_pipeline(
         Column in `obs` holding the condition (patient) identity.
     rise_rank, cp_rank : int
         Ranks for the RISE and CP stages.
+    group_column : str | None, default=None
+        Condition-level phenotype column the CP components are tested against
+        (`component_anova`); no ANOVA is run when None.
+    control_label, other_label : str | None, optional
+        Values of `group_column` collapsed to the reference and other level;
+        both None tests every level. See `anova.prepare_anova_inputs`.
     rise_n_iter_max, rise_tol : int, float
         Fitting controls for RISE.
     cp_n_iter_max, cp_tol
@@ -357,7 +588,7 @@ def fit_stability_pipeline(
     complex_sep, communication_score, hill_k
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=42
-        Seed for the RISE fit and the CP fit.
+        Seed for the RISE fit and the CP fit. The ANOVA is deterministic.
     keep_tensor : bool, default=False
         Retain the communication tensor on the returned fit. Only the
         reference pass needs it.
@@ -373,7 +604,7 @@ def fit_stability_pipeline(
     Returns
     -------
     dict[str, Any]
-        Fitted factors, diagnostics, and metadata.
+        Fitted factors, diagnostics, metadata, and the ANOVA; see `stability_fit`.
     """
     fit = run_ccc_rise_workflow(
         adata,
@@ -395,18 +626,38 @@ def fit_stability_pipeline(
     )
     if numbering_reference is not None:
         fit = relabel_workflow_fit(fit, numbering_reference, condition_column)
-    return stability_fit(fit["adata"], fit, condition_column)
+    return stability_fit(
+        fit["adata"], fit, condition_column, group_column, control_label, other_label
+    )
 
 
 def stability_fit(
-    adata: anndata.AnnData, fit: dict[str, Any], condition_column: str
+    adata: anndata.AnnData,
+    fit: dict[str, Any],
+    condition_column: str,
+    group_column: str | None = None,
+    control_label: str | None = None,
+    other_label: str | None = None,
 ) -> dict[str, Any]:
     """`fit_stability_pipeline`'s result, from a RISE-fit `adata` and a
     `ccc_rise.fit_ccc_cp` / `run_ccc_rise_workflow` result.
 
     Lets a caller that shares one RISE fit across several CP fits (e.g.
-    `run_alt_comm_score`) build each CP fit's stability reference.
+    `run_alt_comm_score`) build each CP fit's stability reference. With
+    `group_column`, also carries the fit's `anova_data` and its per-component
+    `component_anova` table ('anova_data' and 'anova' are None otherwise).
     """
+    data = anova = None
+    if group_column is not None:
+        data = anova_data(adata, condition_column, group_column)
+        anova = component_anova(
+            data,
+            fit["cp_factors"],
+            condition_column,
+            group_column,
+            control_label,
+            other_label,
+        )
     return {
         "rise_factors": [
             adata.uns["Pf2_A"],
@@ -422,6 +673,8 @@ def stability_fit(
         "r2x_rise": float(adata.uns["r2x_pf2"]),
         "r2x_cp": fit["r2x_cp"],
         "cpd_diagnostics": fit["diagnostics"],
+        "anova_data": data,
+        "anova": anova,
     }
 
 
@@ -538,32 +791,7 @@ def _as_dataset(core: xr.Dataset | Path) -> xr.Dataset:
 # =============================================================================
 
 
-def _tag(
-    block: pd.DataFrame,
-    axis: str,
-    replicate: int,
-    seed: int,
-    stage: str,
-    r2x: float,
-    n_cells: float,
-    n_conditions: float,
-    diagnostics: dict[str, Any] | None = None,
-) -> pd.DataFrame:
-    """Prefix a `per_component_fms` block with its keys and per-fit diagnostics."""
-    block = block.copy()
-    block.insert(0, "Stage", stage)
-    block.insert(0, "Seed", seed)
-    block.insert(0, "Replicate", replicate)
-    block.insert(0, "Axis", axis)
-    block["R2X"] = r2x
-    for column in ("CoreConsistency", "MaxModesCollinear", "WorstPairCanceling"):
-        block[column] = (diagnostics or {}).get(column, np.nan)
-    block["NCells"] = n_cells
-    block["NConditions"] = n_conditions
-    return block
-
-
-def component_stability(
+def stability_replicates(
     adata: anndata.AnnData,
     reference: dict[str, Any],
     lr_pairs: pd.DataFrame,
@@ -571,6 +799,9 @@ def component_stability(
     rise_rank: int,
     cp_rank: int,
     group_column: str | None = None,
+    control_label: str | None = None,
+    other_label: str | None = None,
+    stratify: bool = True,
     patient_column: str | None = None,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
@@ -586,32 +817,37 @@ def component_stability(
     rise_tol: float,
     cp_tol: float,
 ) -> pd.DataFrame:
-    """Per-component stability of both stages under resampling, in long form.
+    """Per-component stability of both stages, and of the CP components'
+    phenotype associations, under resampling, in long form.
 
     For each axis in `RISE_REFIT_AXES` a replicate prepares the data, refits
     RISE at `rise_rank`, and matches the resulting components onto the
     reference's with Mode 1 held out (`RISE_SKIP_MODES`); the communication
     tensor built from that same fit is then decomposed at `cp_rank` and
-    matched in turn with Modes 1 and 2 held out (`CPD_SKIP_MODES`). 'cells'
-    and 'conditions' resample; `SEED_AXIS` hands the pipeline the identical
-    cohort and changes only the seed the fits start from, so it measures how
-    far components move under the fitters' own randomness -- the
-    reproducibility ceiling every resampling axis is read against, and the
-    term that would otherwise be confounded with sampling variability.
-    Because its roster is unchanged, its mode-0 rows line up with the
-    reference's directly and no `reference_condition_rows` expansion applies.
+    matched in turn with Modes 1 and 2 held out (`CPD_SKIP_MODES`), and the
+    same CP fit's ANOVA against `group_column` is carried onto its matched
+    components (`_attach_anova`). 'cells' and 'conditions' resample;
+    `SEED_AXIS` hands the pipeline the identical cohort and changes only the
+    seed the fits start from, so it measures how far components move under the
+    fitters' own randomness -- the reproducibility ceiling every resampling
+    axis is read against, and the term that would otherwise be confounded with
+    sampling variability. The reference's condition-mode rows are expanded
+    onto each replicate's roster (`reference_condition_rows`), which is the
+    identity on every axis but 'conditions'.
 
     One axis acts on the reference tensor instead:
     - `lr_pairs`: The ligand-receptor mode bootstrapped with replacement,
       matching CPD modes 0 and 3 with reference mode-3 rows expanded by the
-      drawn LR indices. It costs no PARAFAC2 fit and so emits CPD rows only.
+      drawn LR indices. It costs no PARAFAC2 fit and so emits CPD rows only;
+      its ANOVA is run on the reference cohort.
 
     Parameters
     ----------
     adata : anndata.AnnData
         Full-cohort data to resample from.
     reference : dict[str, Any]
-        The full-cohort fit, produced by ``fit_stability_pipeline(..., keep_tensor=True)``.
+        The full-cohort fit, produced by ``fit_stability_pipeline(..., keep_tensor=True)``
+        with the same `group_column`, `control_label` and `other_label`.
     lr_pairs : pd.DataFrame
         Ligand-receptor pairs to score.
     condition_column : str
@@ -619,7 +855,15 @@ def component_stability(
     rise_rank, cp_rank : int
         Ranks for the RISE and CP stages.
     group_column : str | None, default=None
-        Condition-level phenotype column the condition draw is stratified within.
+        Condition-level phenotype column the CP components are tested against,
+        and that the condition draw is stratified within. No ANOVA is run, and
+        the draw is unstratified, when None.
+    control_label, other_label : str | None, optional
+        Values of `group_column` collapsed to the reference and other level;
+        both None tests every level. See `anova.prepare_anova_inputs`.
+    stratify : bool, default=True
+        Draw conditions within each `group_column` stratum, holding the class
+        balance fixed; see `utils.resample_conditions`.
     patient_column : str | None, default=None
         Condition-level patient identity column, for the 'conditions' axis
         alone. When a patient contributes more than one condition, drawing one
@@ -636,7 +880,8 @@ def component_stability(
     complex_sep, communication_score, hill_k
         Communication-tensor options.
     random_state : int, default=42
-        Base seed.
+        Base seed; replicate ``r`` of every axis uses
+        `replicate_seed(random_state, r)` for its draw and its fits.
     backend : str | None, default=None
         Backend each replicate's RISE refit runs on; see
         `fit_stability_pipeline`.
@@ -646,8 +891,10 @@ def component_stability(
     Returns
     -------
     pd.DataFrame
-        Long-form table containing per-component FMS matches and per-fit
-        diagnostics for each replicate.
+        Long-form table with one row per (axis, replicate, stage, reference
+        component): the `per_component_fms` match, per-fit diagnostics, and --
+        on CPD rows, when `group_column` is given -- the matched component's
+        `ANOVA_COLUMNS`.
     """
     unknown = set(axes) - set(RISE_REFIT_AXES) - {"lr_pairs"}
     if unknown:
@@ -658,125 +905,144 @@ def component_stability(
             "reference fit must be built with keep_tensor=True."
         )
 
+    anova_kwargs: dict[str, Any] = {
+        "condition_column": condition_column,
+        "group_column": group_column,
+        "control_label": control_label,
+        "other_label": other_label,
+    }
+    fit_kwargs: dict[str, Any] = anova_kwargs | {
+        "lr_pairs": lr_pairs,
+        "rise_rank": rise_rank,
+        "cp_rank": cp_rank,
+        "rise_n_iter_max": rise_n_iter_max,
+        "rise_tol": rise_tol,
+        "cp_n_iter_max": cp_n_iter_max,
+        "cp_tol": cp_tol,
+        "complex_sep": complex_sep,
+        "communication_score": communication_score,
+        "hill_k": hill_k,
+        "backend": backend,
+        "compress": compress,
+    }
+    strata = group_column if stratify else None
+
     frames = []
     for axis in axes:
         for replicate in range(n_replicates):
             seed = replicate_seed(random_state, replicate)
-
-            if axis in RISE_REFIT_AXES:
+            print(f"   {axis} replicate {replicate + 1}/{n_replicates}")
+            if axis == "lr_pairs":
+                block = _lr_pairs_replicate(
+                    reference,
+                    cp_rank,
+                    seed,
+                    compress,
+                    cp_n_iter_max,
+                    cp_tol,
+                    anova_kwargs,
+                )
+                n_cells = n_conditions = np.nan
+            else:
                 resampled = RESAMPLERS[axis](
-                    adata, condition_column, group_column, patient_column, seed
+                    adata, condition_column, strata, patient_column, seed
                 )
-                print(
-                    f"   {axis} replicate {replicate + 1}/{n_replicates}: "
-                    f"{resampled.n_obs:,} cells, "
-                    f"{resampled.obs[condition_column].nunique()} conditions"
-                )
-                fit = fit_stability_pipeline(
-                    resampled,
-                    lr_pairs,
-                    condition_column=condition_column,
-                    rise_rank=rise_rank,
-                    cp_rank=cp_rank,
-                    rise_n_iter_max=rise_n_iter_max,
-                    rise_tol=rise_tol,
-                    cp_n_iter_max=cp_n_iter_max,
-                    cp_tol=cp_tol,
-                    complex_sep=complex_sep,
-                    communication_score=communication_score,
-                    hill_k=hill_k,
-                    random_state=seed,
-                    backend=backend,
-                    compress=compress,
-                )
-                _check_rosters(reference, fit)
-
-                if axis == "conditions":
-                    rows = reference_condition_rows(
-                        reference["condition_labels"], fit["condition_labels"]
-                    )
-                    ref_rise = _expand_reference_mode(
-                        reference["rise_factors"], mode=0, rows=rows
-                    )
-                    ref_cp = _expand_reference_mode(
-                        reference["cp_factors"], mode=0, rows=rows
-                    )
-                else:
-                    ref_rise = reference["rise_factors"]
-                    ref_cp = reference["cp_factors"]
-
+                fit = fit_stability_pipeline(resampled, random_state=seed, **fit_kwargs)
+                block = _refit_replicate(reference, fit)
                 n_cells = float(resampled.n_obs)
                 n_conditions = float(len(fit["condition_labels"]))
-                frames.append(
-                    _tag(
-                        per_component_fms(
-                            ref_rise, fit["rise_factors"], skip_modes=RISE_SKIP_MODES
-                        ),
-                        axis=axis,
-                        replicate=replicate,
-                        seed=seed,
-                        stage=STAGE_RISE,
-                        r2x=fit["r2x_rise"],
-                        n_cells=n_cells,
-                        n_conditions=n_conditions,
-                    )
-                )
-                frames.append(
-                    _tag(
-                        per_component_fms(
-                            ref_cp, fit["cp_factors"], skip_modes=CPD_SKIP_MODES
-                        ),
-                        axis=axis,
-                        replicate=replicate,
-                        seed=seed,
-                        stage=STAGE_CPD,
-                        r2x=fit["r2x_cp"],
-                        n_cells=n_cells,
-                        n_conditions=n_conditions,
-                        diagnostics=fit["cpd_diagnostics"],
-                    )
-                )
-                # CuPy's pool never returns freed blocks to the driver on its
-                # own, so a long sweep of variably-sized resamples fragments
-                # it until a fit spuriously trips the managed-memory fallback.
-                clean_memory()
-                continue
-
-            # 'lr_pairs' is the only axis left that reaches the reference
-            # tensor rather than refitting RISE; the guard above is exhaustive.
-            tensor = cast(np.ndarray, reference["tensor"])
-            perturbed, lr_indices = resample_tensor(
-                tensor, random_seed=seed, return_indices=True
-            )
-            ref_cp = _expand_reference_mode(
-                reference["cp_factors"], mode=3, rows=lr_indices
-            )
-            print(f"   {axis} replicate {replicate + 1}/{n_replicates}")
-
-            _weights, factors, r2x, diagnostics = fit_cp(
-                perturbed,
-                cp_rank,
-                n_iter_max=cp_n_iter_max,
-                tol=cp_tol,
-                random_state=seed,
-                compress=compress,
-            )
-            frames.append(
-                _tag(
-                    per_component_fms(ref_cp, factors, skip_modes=CPD_SKIP_MODES),
-                    axis=axis,
-                    replicate=replicate,
-                    seed=seed,
-                    stage=STAGE_CPD,
-                    r2x=r2x,
-                    diagnostics=diagnostics,
-                    n_cells=np.nan,
-                    n_conditions=np.nan,
-                )
-            )
+            block.insert(0, "Seed", seed)
+            block.insert(0, "Replicate", replicate)
+            block.insert(0, "Axis", axis)
+            block["NCells"] = n_cells
+            block["NConditions"] = n_conditions
+            frames.append(block)
+            # CuPy's pool never returns freed blocks to the driver on its own,
+            # so a long sweep of variably-sized resamples fragments it until a
+            # fit spuriously trips the managed-memory fallback.
             clean_memory()
 
     return pd.concat(frames, ignore_index=True)
+
+
+def _stage_block(
+    reference_factors: Factors,
+    factors: Factors,
+    stage: str,
+    r2x: float,
+    diagnostics: dict[str, Any] | None = None,
+    anova: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """One fit's `per_component_fms` rows for `stage`, with its per-fit
+    diagnostics and, on CPD rows, its matched ANOVA statistics."""
+    skip_modes = RISE_SKIP_MODES if stage == STAGE_RISE else CPD_SKIP_MODES
+    block = per_component_fms(reference_factors, factors, skip_modes=skip_modes)
+    block.insert(0, "Stage", stage)
+    block["R2X"] = r2x
+    for column in ("CoreConsistency", "MaxModesCollinear", "WorstPairCanceling"):
+        block[column] = (diagnostics or {}).get(column, np.nan)
+    return _attach_anova(block, anova)
+
+
+def _refit_replicate(reference: dict[str, Any], fit: dict[str, Any]) -> pd.DataFrame:
+    """RISE and CPD rows of a replicate that refit the whole pipeline, with the
+    reference's condition-mode rows expanded onto the replicate's roster."""
+    _check_rosters(reference, fit)
+    rows = reference_condition_rows(
+        reference["condition_labels"], fit["condition_labels"]
+    )
+    rise = _stage_block(
+        _expand_reference_mode(reference["rise_factors"], mode=0, rows=rows),
+        fit["rise_factors"],
+        STAGE_RISE,
+        fit["r2x_rise"],
+    )
+    cpd = _stage_block(
+        _expand_reference_mode(reference["cp_factors"], mode=0, rows=rows),
+        fit["cp_factors"],
+        STAGE_CPD,
+        fit["r2x_cp"],
+        fit["cpd_diagnostics"],
+        fit["anova"],
+    )
+    return pd.concat([rise, cpd], ignore_index=True)
+
+
+def _lr_pairs_replicate(
+    reference: dict[str, Any],
+    cp_rank: int,
+    seed: int,
+    compress: bool,
+    cp_n_iter_max: int,
+    cp_tol: float,
+    anova_kwargs: dict[str, Any],
+) -> pd.DataFrame:
+    """CPD rows of a CP refit on the reference tensor with its ligand-receptor
+    mode bootstrapped; the ANOVA is run on the reference cohort."""
+    perturbed, lr_indices = resample_tensor(
+        cast(np.ndarray, reference["tensor"]), random_seed=seed, return_indices=True
+    )
+    _weights, factors, r2x, diagnostics = fit_cp(
+        perturbed,
+        cp_rank,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
+        random_state=seed,
+        compress=compress,
+    )
+    anova = (
+        None
+        if reference["anova_data"] is None
+        else component_anova(reference["anova_data"], factors, **anova_kwargs)
+    )
+    return _stage_block(
+        _expand_reference_mode(reference["cp_factors"], mode=3, rows=lr_indices),
+        factors,
+        STAGE_CPD,
+        r2x,
+        diagnostics,
+        anova,
+    )
 
 
 def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
@@ -967,3 +1233,93 @@ def summarize_component_stability(
         summary["FracWithinSeedBand"] = np.nan
 
     return summary
+
+
+def summarize_anova_stability(
+    df: pd.DataFrame,
+    reference_anova: pd.DataFrame,
+    axis: str = "conditions",
+    ci_level: float = 95.0,
+    alpha: float = 0.05,
+) -> pd.DataFrame:
+    """One row per CP component: its effect-size distribution on one axis, and
+    how reliably the association and its direction survive resampling.
+
+    Three things are reported side by side rather than collapsed into one
+    number, because they call for different conclusions: how large the effect
+    is and how tightly the resamples pin it down (the eta-squared interval);
+    how often the association reaches `alpha` at all (`FracSignificant`); and
+    whether the component was even re-identifiable across replicates
+    (`MedianFMS`/`MinFMS`), which is a CP identifiability question rather than
+    a question about the phenotype.
+
+    There is deliberately no "interval excludes zero" column: eta-squared is a
+    variance ratio and cannot be negative, so such a test would be vacuous.
+    `FracSignificant` takes its place -- read as a descriptive tally.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Output of `stability_replicates`, run with a `group_column`.
+    reference_anova : pd.DataFrame
+        The full-cohort fit's per-component ANOVA table -- `stability_fit`'s
+        ``result["anova"]`` -- carrying 'Component', 'EtaSquared', 'F', 'P' and
+        'GroupMeanDiff'.
+    axis : str, default="conditions"
+        Axis to summarize; the patient bootstrap by default.
+    ci_level : float, default=95.0
+        Central percentile interval width, in percent, taken on eta-squared.
+    alpha : float, default=0.05
+        Threshold `FracSignificant` counts replicates against.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per component, sorted by component, with columns 'Component',
+        'ReferenceEtaSquared', 'ReferenceF', 'ReferenceP', 'MeanEtaSquared',
+        'MedianEtaSquared', 'SDEtaSquared', 'CILow', 'CIHigh', 'MedianP',
+        'FracSignificant', 'ReferenceGroupMeanDiff', 'MedianGroupMeanDiff',
+        'FracSameSignAsReference' (NaN when the reference group-mean
+        difference is exactly zero, i.e. has no direction to agree with),
+        'MedianFMS', 'MinFMS', 'NReplicates'.
+    """
+    tail = (100.0 - ci_level) / 2.0
+    on_axis = df[(df["Axis"] == axis) & (df["Stage"] == STAGE_CPD)]
+    reference_by_component = reference_anova.set_index("Component")
+    rows = []
+    for component_key, group in on_axis.groupby("Component"):
+        component = cast(int, component_key)
+        eta = group["EtaSquared"].to_numpy(dtype=float)
+        p_values = group["P"].to_numpy(dtype=float)
+        diffs = group["GroupMeanDiff"].to_numpy(dtype=float)
+        reference = reference_by_component.loc[component]
+        reference_diff = float(reference["GroupMeanDiff"])
+        ci_low, ci_high = np.nanpercentile(eta, [tail, 100.0 - tail])
+        rows.append(
+            {
+                "Component": component,
+                "ReferenceEtaSquared": float(reference["EtaSquared"]),
+                "ReferenceF": float(reference["F"]),
+                "ReferenceP": float(reference["P"]),
+                "MeanEtaSquared": float(np.nanmean(eta)),
+                "MedianEtaSquared": float(np.nanmedian(eta)),
+                "SDEtaSquared": float(np.nanstd(eta, ddof=1)) if len(eta) > 1 else 0.0,
+                "CILow": float(ci_low),
+                "CIHigh": float(ci_high),
+                "MedianP": float(np.nanmedian(p_values)),
+                # A replicate whose ANOVA came back degenerate (NaN p) counts
+                # as not significant rather than dropping out of the tally.
+                "FracSignificant": float(np.mean(p_values < alpha)),
+                "ReferenceGroupMeanDiff": reference_diff,
+                "MedianGroupMeanDiff": float(np.nanmedian(diffs)),
+                "FracSameSignAsReference": (
+                    float(np.mean(np.sign(diffs) == np.sign(reference_diff)))
+                    if np.isfinite(reference_diff) and reference_diff != 0
+                    else np.nan
+                ),
+                "MedianFMS": float(np.median(group["FMS"])),
+                "MinFMS": float(np.min(group["FMS"])),
+                "NReplicates": len(eta),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("Component").reset_index(drop=True)

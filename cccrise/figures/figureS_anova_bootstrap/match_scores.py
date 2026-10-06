@@ -18,7 +18,7 @@ def plot(fig):
     sns.boxplot(
         data=S.replicates(),
         x="Component",
-        y="MatchScore",
+        y="FMS",
         order=S.summary()["Component"].astype(int).tolist(),
         color=style.COLORS["muted"],
         linewidth=style.LINE_WIDTH_THIN,
@@ -30,7 +30,7 @@ def plot(fig):
     )
     ax.set_ylim(0, 1.02)
     ax.set_xlabel("CP component")
-    ax.set_ylabel("Match score vs. full cohort")
+    ax.set_ylabel("CPD FMS vs. full cohort")
     ax.set_title("Component identifiability")
     ax.legend(loc="lower right")
 

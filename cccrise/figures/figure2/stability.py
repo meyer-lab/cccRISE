@@ -5,7 +5,7 @@ a 2.5-97.5 percentile band over replicates, from ``uv run cccrise-stability``.""
 import numpy as np
 
 from ...runners.datasets import DATASETS, VALIDATION_DIR
-from ...validation.component_stability import metric_interval
+from ...validation.stability import metric_interval
 from .. import common, style
 
 DATASET = "alad"

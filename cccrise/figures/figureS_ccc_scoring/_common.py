@@ -26,7 +26,7 @@ from ...runners.datasets import (
     comparison_output_dir,
 )
 from ...runners.provenance import read_metadata_at
-from ...validation.anova_stability import align_to_reference_components
+from ...validation.stability import align_to_reference_components
 from .. import common, style
 
 DATASET = "alad"

@@ -1,10 +1,11 @@
 """The patient-resampled ANOVA bootstrap shared by this figure's panels,
-from ``uv run cccrise-anovaboot``.
+from ``uv run cccrise-stability``.
 
-Each replicate refits RISE and CP on a resampled patient roster, matches its
-components back onto the full-cohort reference, and records their ANOVA
-statistics, so every component's effect size comes with a distribution over
-rosters. Components keep the reference's numbering.
+Each 'conditions'-axis replicate refits RISE and CP on a resampled patient
+roster, matches its components back onto the full-cohort reference by the CPD
+factor match score, and records their ANOVA statistics, so every component's
+effect size comes with a distribution over rosters. Components keep the
+reference's numbering.
 """
 
 from functools import cache
@@ -14,11 +15,12 @@ import pandas as pd
 
 from ...runners.datasets import DATASETS, VALIDATION_DIR
 from ...runners.provenance import read_metadata
-from ...validation.anova_stability import summarize_bootstrap_anova
+from ...validation.stability import STAGE_CPD, summarize_anova_stability
 from .. import common, style
 
 DATASET = "alad"
-FILENAME = DATASETS[DATASET].anova_bootstrap_filename()
+FILENAME = DATASETS[DATASET].stability_filename()
+AXIS = "conditions"
 
 
 @cache
@@ -27,8 +29,15 @@ def metadata() -> dict:
 
 
 @cache
-def replicates() -> pd.DataFrame:
+def stability() -> pd.DataFrame:
     return common.load_runner_output(FILENAME, VALIDATION_DIR)
+
+
+@cache
+def replicates() -> pd.DataFrame:
+    """CPD rows of the patient bootstrap, one per (replicate, component)."""
+    df = stability()
+    return df[(df["Axis"] == AXIS) & (df["Stage"] == STAGE_CPD)]
 
 
 @cache
@@ -41,13 +50,13 @@ def summary() -> pd.DataFrame:
         {
             "Component": np.arange(1, n + 1),
             "EtaSquared": meta["reference_eta_squared"],
-            "F": meta.get("reference_f", [np.nan] * n),
+            "F": meta["reference_f"],
             "P": meta["reference_p"],
-            "GroupMeanDiff": meta.get("reference_group_mean_diff", [np.nan] * n),
+            "GroupMeanDiff": meta["reference_group_mean_diff"],
         }
     )
-    table = summarize_bootstrap_anova(
-        replicates(), reference, ci_level=meta["ci_level"], alpha=alpha()
+    table = summarize_anova_stability(
+        stability(), reference, AXIS, ci_level=meta["ci_level"], alpha=alpha()
     )
     table["TopLRPair"] = meta["reference_top_lr_pair"]
     return table
