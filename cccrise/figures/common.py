@@ -28,7 +28,6 @@ from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.patches import Patch, Rectangle
-from matplotlib.ticker import NullLocator
 
 matplotlib.use("AGG")
 
@@ -368,26 +367,18 @@ def plot_collinearity(
     ax.legend(loc="upper left", fontsize=style.FONT_SIZE_DENSE)
 
 
-def plot_core_consistency(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
-    """CORCONDIA core consistency against CP rank, with the 90% and 50%
-    conventional thresholds."""
-    ax.plot(
-        sweep["Rank"], sweep["CoreConsistency"], marker="o", color=style.COLORS["fit"]
-    )
-    reference_line(ax, 90)
-    reference_line(ax, 50, linestyle=":")
-    mark_rank(ax, rank)
-    # Core consistency collapses by orders of magnitude past the valid-model
-    # rank; symlog keeps the 0-100% range readable while showing the collapse,
-    # with a handful of evenly spaced negative decades as ticks.
-    ax.set_yscale("symlog", linthresh=100)
-    lowest = int(np.ceil(np.log10(max(-sweep["CoreConsistency"].min(), 100))))
-    step = max(1, int(np.ceil((lowest - 2) / 4)))
-    ax.set_yticks([100] + [-(10.0**k) for k in range(2 + step, lowest + 1, step)])
-    ax.yaxis.set_minor_locator(NullLocator())
-    ax.set_ylim(top=150)
-    ax.set_xlabel("CP rank")
-    ax.set_ylabel("Core consistency (%)")
+def plot_cpd_imputation_r2x(sweep: pd.DataFrame, ax: plt.Axes):
+    """Overlay held-out entry imputation R2X (mean +/- SD over masks) on a
+    `plot_cpd_fit_r2x` axis, from `cccrise-cpdrank`."""
+    ax.get_lines()[0].set_label("Fit")
+    color = style.COLORS["heldout"]
+    mean, sd = sweep["ImputationR2X"], sweep["ImputationR2XSD"]
+    ax.plot(sweep["Rank"], mean, marker="o", color=color, label="Imputation")
+    for bound in (mean - sd, mean + sd):
+        ax.plot(sweep["Rank"], bound, color=color, linewidth=style.LINE_WIDTH_THIN)
+        ax.fill_between(sweep["Rank"], mean, bound, color=color, alpha=0.25, lw=0)
+    ax.set_ylabel("$R^2X$")
+    ax.legend(frameon=True)  # sits over the SD band at most ranks
 
 
 # --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------
