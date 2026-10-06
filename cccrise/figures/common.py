@@ -13,6 +13,7 @@ the panels with `panel_grid` and labels them with `label_panels`.
 
 import functools
 import importlib
+import itertools
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -24,6 +25,7 @@ import anndata
 import matplotlib
 import numpy as np
 import pandas as pd
+import scanpy as sc
 import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
@@ -51,6 +53,7 @@ from ..utils import (
     celltype_component_association,
     correct_conditions,
 )
+from ..validation.nichenet import top_pairs
 from . import style
 
 __all__ = [
@@ -197,7 +200,8 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
     """A figure of fixed-size axes, each lettered at its top left.
 
     Each row lists panel modules, each declaring its axes' `style.AXIS_SIZE`
-    kinds in `AXES` and drawing into them with `plot(axs)`. Axes are drawn at
+    kinds in `AXES` and drawing into them with `plot(axs)`; a list of modules
+    in a row is stacked top to bottom in one slot (`_Stack`). Axes are drawn at
     their final size, then each one's margins (ticks, labels, legends, inset
     colorbars) are measured and set the space around it, so they never shrink
     the axes. Rows are centered, spreading leftover width into the gaps up
@@ -207,7 +211,7 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
         figsize=(FIXED_MEASURE_SIZE, FIXED_MEASURE_SIZE),
         dpi=plt.rcParams["savefig.dpi"],
     )
-    grid = [[box for module in row for box in _draw_fixed(fig, module)] for row in rows]
+    grid = [_draw_row(fig, row) for row in rows]
     natural = [sum(b.left + b.width + b.right for b in row) for row in grid]
     width = width or max(
         n + 2 * style.PAGE_MARGIN + (len(row) - 1) * style.PANEL_GAP_MIN
@@ -256,7 +260,10 @@ def _pack_rows(grid, natural, width):
             print(f"Warning: row {i} has {slack / style.MM:.1f} mm to spare")
         x = (width - row_width - gap * (len(row) - 1)) / 2  # centered
         for box in row:
-            placements.append((box, x + box.left, y + top, y))
+            if isinstance(box, _Stack):
+                placements += box.placements(x + box.left, y + top, y)
+            else:
+                placements.append((box, x + box.left, y + top, y))
             x += box.left + box.width + box.right + gap
         y += top + max(b.height + b.bottom for b in row) + style.ROW_GAP
     return placements, y - style.ROW_GAP + style.PAGE_MARGIN
@@ -284,12 +291,69 @@ class _AxesBox:
     bottom: float = 0
 
 
+class _Stack:
+    """Axes drawn one above another in one slot of a row, left-aligned and
+    `style.ROW_GAP` apart beyond their margins (and at least
+    `style.PANEL_LABEL_SPACE` for each one's letter); it packs as a single
+    box."""
+
+    def __init__(self, boxes: list[_AxesBox]):
+        self.boxes = boxes
+        # Each axes' top below the first's
+        self.offsets = np.cumsum(
+            [0]
+            + [
+                a.height
+                + a.bottom
+                + style.ROW_GAP
+                + max(b.top, style.PANEL_LABEL_SPACE)
+                for a, b in itertools.pairwise(boxes)
+            ]
+        )
+        self.width = max(b.width for b in boxes)
+        self.left = max(b.left for b in boxes)
+        self.right = max(b.width + b.right for b in boxes) - self.width
+        self.top, self.bottom = boxes[0].top, boxes[-1].bottom
+        self.height = self.offsets[-1] + boxes[-1].height
+
+    def placements(self, x: float, y: float, row_top: float) -> list[tuple]:
+        """(box, x, y, label y) of each axes, the first lettered at the row's
+        top and the rest at their own."""
+        return [
+            (
+                b,
+                x,
+                y + dy,
+                row_top if i == 0 else y + dy - max(b.top, style.PANEL_LABEL_SPACE),
+            )
+            for i, (b, dy) in enumerate(zip(self.boxes, self.offsets, strict=True))
+        ]
+
+
+def _draw_row(fig: Figure, row: list) -> list:
+    """The boxes of a row's modules, each list of modules one `_Stack`."""
+    boxes = []
+    for item in row:
+        if isinstance(item, list):
+            boxes.append(_Stack([b for m in item for b in _draw_fixed(fig, m)]))
+        else:
+            boxes += _draw_fixed(fig, item)
+    return boxes
+
+
+def panel_axes(fig: Figure, panel: str) -> plt.Axes:
+    """The axes `compose_fixed` drew panel module `panel` (its name) into,
+    for adjustments spanning panels once the figure is laid out."""
+    return next(ax for ax in fig.axes if ax.get_label() == panel)
+
+
 def _draw_fixed(fig: Figure, module) -> list[_AxesBox]:
     """Draw `module` into its fixed-size axes and measure their margins."""
     boxes = []
     for kind in module.AXES:
         w, h = style.AXIS_SIZE[kind]
         ax = fig.add_axes((0.4, 0.4, w / FIXED_MEASURE_SIZE, h / FIXED_MEASURE_SIZE))
+        ax.set_label(module.__name__.rsplit(".", 1)[-1])  # found by `panel_axes`
         boxes.append(_AxesBox(ax, w, h))
     module.plot([b.ax for b in boxes])
     for b in boxes:
@@ -890,6 +954,285 @@ def celltype_handles(dataset: str) -> list[Patch]:
         Patch(color=color, label=celltype)
         for celltype, color in style.CELL_TYPE_COLORS[dataset].items()
     ]
+
+
+# =============================================================================
+# Granularity component: label-free sender and receiver groups (ALAD Figure 2
+# and its cmp. 5 supplements)
+# =============================================================================
+
+# The CP component that splits a cell type into sender and receiver
+# subpopulations, and the RISE eigenstates of its largest sender (B) and
+# receiver (C) loadings
+GRANULARITY_DATASET = "alad"
+GRANULARITY_COMPONENT = 5
+GRANULARITY_SENDER_EIGENSTATE, GRANULARITY_RECEIVER_EIGENSTATE = 17, 15
+# Cells are split on their per-cell sender (`obsm["sc_B"]`) and receiver
+# (`obsm["rc_C"]`) weights on the component alone (`split_cells`), each
+# cutoff a fraction GROUP_TAU of that weight's largest value, then compared by
+# gene expression
+GROUP_TAU = 0.3
+GROUP_COLORS = {"sender": style.COLORS["sender"], "receiver": style.COLORS["receiver"]}
+GROUPS = (*GROUP_COLORS, "rest")
+DE_GROUPS = tuple(GROUP_COLORS)  # each tested against "rest"
+DOT_SIZE_MAX = 30  # pt^2, a gene detected in every cell of a group
+DOT_FRACTIONS = (0.25, 0.5, 1.0)  # size legend entries
+# Dot plot section names wider than this fraction of their genes' span are
+# abbreviated (`label_sections`), keeping neighbors apart
+SECTION_FILL = 0.9
+SECTION_ABBREVIATIONS = {
+    "Macrophages": "Mac.",
+    "Monocytes": "Mono.",
+    "Dendritic Cells": "DC",
+    "CD4 T cells": "CD4 T",
+    "CD8 T cells": "CD8 T",
+    "NK cells": "NK",
+    "Epithelial cells": "Epithelial",
+    "Proliferating cells": "Prolif.",
+    "Pan-epithelial": "Pan-epi.",
+    "Secretory": "Secr.",
+    "Top LR pairs": "LR pairs",
+}
+# Canonical markers of the annotated broad cell types, from the human lung
+# cell atlas (Travaglini et al. 2020, Nature), chosen to be specific within
+# these eight types (e.g. no pan-T genes shared by the CD4 and CD8 sets).
+# Only the gene names come from the literature; the annotations themselves
+# are not used.
+CELLTYPE_MARKERS = {
+    "Macrophages": ["MARCO", "FABP4", "C1QB", "CD68"],
+    "Monocytes": ["CD14", "FCN1", "VCAN", "S100A8"],
+    "Dendritic Cells": ["CD1C", "FCER1A", "CLEC10A"],
+    "CD4 T cells": ["CD4", "IL7R", "CD40LG"],
+    "CD8 T cells": ["CD8A", "CD8B", "GZMK"],
+    "NK cells": ["KLRF1", "NCAM1", "GNLY"],
+    "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "CDH1"],
+    "Proliferating cells": ["MKI67", "TOP2A"],
+}
+
+
+def component_weights() -> tuple[np.ndarray, np.ndarray]:
+    """Per-cell (sender, receiver) weight on the granularity component."""
+    adata = get_cell_projections(GRANULARITY_DATASET)
+    return (
+        adata.obsm["sc_B"][:, GRANULARITY_COMPONENT - 1],
+        adata.obsm["rc_C"][:, GRANULARITY_COMPONENT - 1],
+    )
+
+
+def split_cells(
+    sender: np.ndarray, receiver: np.ndarray, tau: float = GROUP_TAU
+) -> dict[str, np.ndarray]:
+    """{group: cell mask}: the cells passing the sender cutoff (`tau` x the
+    largest sender weight) or the receiver cutoff, each assigned to the role
+    of its larger weight relative to that weight's maximum."""
+    relative_sender, relative_receiver = (
+        sender / sender.max(),
+        receiver / receiver.max(),
+    )
+    high = (relative_sender >= tau) | (relative_receiver >= tau)
+    sends = relative_sender > relative_receiver
+    return {"sender": high & sends, "receiver": high & ~sends}
+
+
+def top_pair_genes() -> list[str]:
+    """Ligand then receptor genes (complexes split) of the component's top LR
+    pairs: those `factor_matrices` labels (NicheNet's relative-loading rule
+    over every pair)."""
+    adata = get_cell_projections(GRANULARITY_DATASET)
+    names = pd.Series(np.asarray(adata.uns["lr_pairs"]).astype(str)).str.split("^")
+    lr_pairs = pd.DataFrame({"ligand": names.str[0]})
+    rows = top_pairs(
+        adata.uns["D"], lr_pairs, GRANULARITY_COMPONENT, set(lr_pairs["ligand"])
+    )
+    top = names[rows]
+    return present(g for side in (0, 1) for g in top.str[side].str.split("&").explode())
+
+
+@functools.cache
+def cell_groups() -> pd.Series:
+    """Each cell's group at `GROUP_TAU`, "rest" if in none."""
+    groups = split_cells(*component_weights())
+    labels = np.full(len(groups["sender"]), "rest", dtype=object)
+    for group, mask in groups.items():
+        labels[mask] = group
+    return pd.Series(pd.Categorical(labels, categories=GROUPS))
+
+
+@functools.cache
+def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFrame]:
+    """{group: Wilcoxon score and BH q per gene, highest score first} of each
+    of `groups` against `reference`. Only the scores and q are used: scanpy's
+    fold changes assume natural-log data."""
+    adata = get_cell_projections(GRANULARITY_DATASET)
+    test = anndata.AnnData(
+        X=adata.X,
+        obs=pd.DataFrame({"group": cell_groups().to_numpy()}, index=adata.obs_names),
+        var=pd.DataFrame(index=adata.var_names),
+    )
+    sc.tl.rank_genes_groups(
+        test, "group", groups=list(groups), reference=reference, method="wilcoxon"
+    )
+    result = test.uns["rank_genes_groups"]
+    return {
+        g: pd.DataFrame(
+            {"score": result["scores"][g], "q": result["pvals_adj"][g]},
+            index=result["names"][g],
+        )
+        for g in groups
+    }
+
+
+def group_expression(genes: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(fraction of cells detecting, mean expression) of `genes` (rows) in
+    each group (columns)."""
+    adata = get_cell_projections(GRANULARITY_DATASET)
+    X = adata[:, genes].to_df().to_numpy()
+    groups = cell_groups().to_numpy()
+    detected, mean = (
+        pd.DataFrame(
+            {g: stat(X[groups == g]) for g in GROUPS}, index=genes, dtype=float
+        )
+        for stat in (lambda x: (x > 0).mean(axis=0), lambda x: x.mean(axis=0))
+    )
+    return detected, mean
+
+
+def present(genes) -> list[str]:
+    """`genes` in the fit's gene set, in order, without repeats."""
+    var_names = set(get_cell_projections(GRANULARITY_DATASET).var_names)
+    return [g for g in dict.fromkeys(genes) if g in var_names]
+
+
+def plot_dotplot(
+    ax,
+    sections: dict[str, list[str]],
+    show_legend: bool = False,
+    fontsize: float | None = None,
+):
+    """Groups (rows) x genes (columns, under their `sections` names): dot
+    size the fraction of the group's cells detecting the gene, color its mean
+    expression relative to the gene's largest group mean, every label
+    `fontsize` (default `FACTOR_LABEL_FONT_SIZE`). With `show_legend`, the colorbar and size legend beside it.
+    Returns the dots."""
+    fontsize = fontsize or FACTOR_LABEL_FONT_SIZE
+    columns = label_sections(ax, sections, fontsize)
+    detected, mean = group_expression(list(columns))
+    relative = mean / mean.max(axis=1).to_numpy()[:, None]
+    x, y = np.meshgrid(list(columns.values()), np.arange(len(GROUPS)), indexing="ij")
+    points = ax.scatter(
+        x.ravel(),
+        y.ravel(),
+        s=DOT_SIZE_MAX * detected.to_numpy().ravel(),
+        c=relative.to_numpy().ravel(),
+        cmap=style.CMAPS["weight"],
+        vmin=0,
+        vmax=1,
+        linewidths=0,
+    )
+    ax.set_yticks(
+        range(len(GROUPS)), [g.capitalize() for g in GROUPS], fontsize=fontsize
+    )
+    ax.set_ylim(len(GROUPS) - 0.5, -0.5)
+    if show_legend:
+        colorbar(ax, points, "Mean expr.\n/ max group")
+        legend(
+            ax,
+            "right",
+            handles=[
+                ax.scatter([], [], s=DOT_SIZE_MAX * f, color=style.COLORS["ink"])
+                for f in DOT_FRACTIONS
+            ],
+            labels=[f"{f:.0%}" for f in DOT_FRACTIONS],
+            title="Detected",
+        )
+    return points
+
+
+def plot_markers(ax, markers: dict[str, list[str]], **kwargs):
+    """`plot_dotplot` of literature `markers` ({section: genes}), keeping the
+    genes in the fit's gene set."""
+    return plot_dotplot(
+        ax, {name: present(genes) for name, genes in markers.items()}, **kwargs
+    )
+
+
+def label_sections(
+    ax, sections: dict[str, list[str]], fontsize: float
+) -> dict[str, int]:
+    """Gene tick labels along x at 45 degrees, each section's name above its
+    genes (its `SECTION_ABBREVIATIONS` entry if the name would overrun them)
+    and thin lines between sections, all `fontsize`; returns {gene: column}."""
+    genes = [g for section in sections.values() for g in section]
+    ax.set_xticks(
+        range(len(genes)),
+        genes,
+        fontsize=fontsize,
+        rotation=45,
+        ha="right",
+        rotation_mode="anchor",
+    )
+    ax.set_xlim(-0.5, len(genes) - 0.5)
+    ax.tick_params(length=0)
+    renderer = ax.figure.canvas.get_renderer()
+    column_width = ax.bbox.width / len(genes)
+    columns, start = {}, 0
+    for name, section in sections.items():
+        end = start + len(section)
+        text = ax.text(
+            (start + end - 1) / 2,
+            1.03,
+            name,
+            transform=ax.get_xaxis_transform(),
+            ha="center",
+            va="bottom",
+            fontsize=fontsize,
+        )
+        if (
+            text.get_window_extent(renderer).width
+            > SECTION_FILL * len(section) * column_width
+        ):
+            text.set_text(SECTION_ABBREVIATIONS.get(name, name))
+        if end < len(genes):
+            ax.axvline(end - 0.5, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN)
+        columns |= {gene: start + i for i, gene in enumerate(section)}
+        start = end
+    return columns
+
+
+def plot_weight_scatter(
+    ax,
+    groups: dict[str, np.ndarray],
+    colors: dict[str, str],
+    rest_label: str | None = None,
+):
+    """Per-cell component sender vs. receiver weight, the cells of each of
+    `groups` ({legend label: mask}) colored `colors[label]`, the rest grey
+    (in the legend as `rest_label`, if given)."""
+    sender, receiver = component_weights()
+    rest = ~np.logical_or.reduce(list(groups.values()))
+    ax.scatter(
+        sender[rest],
+        receiver[rest],
+        c=style.COLORS["muted"],
+        s=style.POINT_SIZE_CELL,
+        linewidths=0,
+        rasterized=True,
+        label=f"{rest_label} (n={rest.sum()})" if rest_label else None,
+    )
+    for label, mask in groups.items():
+        ax.scatter(
+            sender[mask],
+            receiver[mask],
+            c=colors[label],
+            s=style.POINT_SIZE_BACKGROUND,
+            linewidths=0,
+            rasterized=True,
+            label=f"{label} (n={mask.sum()})",
+        )
+    ax.set(
+        xlabel=f"Cmp. {GRANULARITY_COMPONENT} sender weight",
+        ylabel=f"Cmp. {GRANULARITY_COMPONENT} receiver weight",
+    )
 
 
 # =============================================================================

@@ -85,6 +85,10 @@ AXIS_SIZE = {
     # Supplementary heatmaps with too many rows or columns for the others
     "large": (2.5 * AXIS_WIDTH, 2 * AXIS_HEIGHT),
     "tall": (2.5 * AXIS_WIDTH, 3 * AXIS_HEIGHT),
+    # A few groups x many genes along x (dot plots)
+    "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
+    # A few rows: stacked bars, small heatmaps
+    "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
 }
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM

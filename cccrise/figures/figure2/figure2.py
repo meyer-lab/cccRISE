@@ -2,11 +2,11 @@
 
 from .. import common, style
 from . import (
-    cmp_eigenstate_loadings,
-    cmp_weight_scatter,
+    composition,
     cpd_rank,
-    eigenstate_scatter,
     factor_matrices,
+    group_scatter,
+    identity_markers,
     nichenet,
     rise_rank,
     significance,
@@ -16,7 +16,7 @@ from . import (
 LAYOUT = [
     [rise_rank, cpd_rank, stability],
     [factor_matrices],
-    [cmp_eigenstate_loadings, eigenstate_scatter, cmp_weight_scatter],
+    [group_scatter, [identity_markers, composition]],
     [significance, nichenet],
 ]
 

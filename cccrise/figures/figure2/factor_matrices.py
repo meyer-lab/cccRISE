@@ -15,7 +15,8 @@ import pandas as pd
 from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
 from .. import common
-from ._common import DATASET
+
+DATASET = "alad"
 
 MODES = {  # factor matrix: row label, whether to order rows
     "A": ("Condition", True),
