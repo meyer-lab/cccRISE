@@ -230,7 +230,6 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     tensor, so both paths report it identically up to fit noise, which grows
     past the true rank where the model is degenerate.
     """
-    from dataclasses import replace
     from unittest.mock import patch
 
     import cccrise.runners.run_cpd_rank as runner
@@ -252,7 +251,7 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
             patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
         ):
             df, out_path, sidecar = runner.run_cpd_rank_selection(
-                replace(DATASETS["alad"], backend="cpu"),
+                DATASETS["alad"],
                 rise_rank=5,
                 ranks=[1, 2, 3, 4, 5],
                 cp_n_iter_max=2000,

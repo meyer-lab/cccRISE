@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import tensorly as tl
 from tensorly.base import unfold
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
@@ -155,19 +154,19 @@ def cp_imputation_r2x(
     CP is fit with tensorly's EM-style masked ALS and scored only on the
     held-out entries, normalized as in `calculate_r2x`. Held-out entries are
     zeroed before fitting because tensorly's masked SVD initialization reads
-    them on its first pass. Fits on the active tensorly backend.
+    them on its first pass.
     """
     rng = np.random.default_rng(random_state)
     held_out = rng.uniform(size=tensor.shape) < mask_frac
     weights, factors = parafac(
-        tl.tensor(np.where(held_out, 0.0, tensor)),
+        np.where(held_out, 0.0, tensor),
         rank=rank,
-        mask=tl.tensor((~held_out).astype(float)),
+        mask=(~held_out).astype(float),
         random_state=random_state,
         **parafac_kwargs,
     )
     actual = tensor[held_out]
-    residual = actual - tl.to_numpy(cp_to_tensor((weights, factors)))[held_out]
+    residual = actual - cp_to_tensor((weights, factors))[held_out]
     return float(1.0 - np.sum(residual**2) / np.sum(actual**2))
 
 

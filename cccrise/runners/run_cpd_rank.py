@@ -26,7 +26,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import tensorly as tl
 from tensorly.decomposition import parafac
 
 from ..ccc_rise import (
@@ -159,8 +158,7 @@ def run_cpd_rank_selection(
 
         CP rank selection is conditional on the already-selected `rise_rank`.
 
-    RISE and the imputation fits run on `spec.backend`; the rest of the CP
-    stage is CPU-only. `compress`
+    RISE runs on `spec.backend`; the CP stage is CPU-only. `compress`
     compresses RISE and the fit R2X/collinearity sweep, not imputation.
 
         Returns the sweep results, the output path, and the sidecar path.
@@ -234,20 +232,18 @@ def run_cpd_rank_selection(
     print("4. Screening for component collinearity...")
     collinearity_df = cpd_component_collinearity(factors_by_rank)
 
-    # Masked ALS can't use the CANDELINC core, so imputation is the slowest
-    # step by far; it shares the RISE GPU when there is one.
+    # Masked ALS can't use the CANDELINC core, so this is the slowest step.
     print("5. Imputing held-out entries of the full tensor...")
-    with tl.backend_context("cupy" if spec.backend == "cupy" else "numpy"):
-        imputation_df = cp_imputation_sweep(
-            tensor,
-            ranks=ranks,
-            n_masks=n_masks,
-            mask_frac=mask_frac,
-            random_state=random_state,
-            n_iter_max=cp_n_iter_max,
-            tol=cp_tol,
-            **CP_FIT_OPTIONS,
-        )
+    imputation_df = cp_imputation_sweep(
+        tensor,
+        ranks=ranks,
+        n_masks=n_masks,
+        mask_frac=mask_frac,
+        random_state=random_state,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
+        **CP_FIT_OPTIONS,
+    )
 
     df = fit_r2x_df.merge(collinearity_df, on="Rank").merge(imputation_df, on="Rank")
 
