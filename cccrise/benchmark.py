@@ -132,6 +132,32 @@ def pseudobulk_tensor(
     return tensor, celltypes, filtered_lr_pairs
 
 
+#: `transform_tensor` options: none; each LR pair's slice clipped at its 99th
+#: percentile; each (sample, sender, receiver) block's LR vector at unit norm.
+TENSOR_TRANSFORMS = ("none", "winsor", "blocknorm")
+
+
+def transform_tensor(tensor: np.ndarray, kind: str) -> np.ndarray:
+    """The pseudobulk tensor with large entries tempered (`TENSOR_TRANSFORMS`).
+
+    ``winsor`` clips each LR pair at the 99th percentile of its
+    (condition, sender, receiver) entries; ``blocknorm`` scales every
+    (condition, sender, receiver) block's LR vector to unit norm (all-zero
+    blocks stay zero), so no condition x cell-type pair dominates by magnitude.
+    """
+    if kind == "none":
+        return tensor
+    if kind == "winsor":
+        cap = np.percentile(tensor.reshape(-1, tensor.shape[-1]), 99, axis=0)
+        return np.minimum(tensor, cap)
+    if kind == "blocknorm":
+        norms = np.linalg.norm(tensor, axis=-1, keepdims=True)
+        return np.divide(tensor, norms, out=np.zeros_like(tensor), where=norms > 0)
+    raise ValueError(
+        f"tensor transform must be one of {TENSOR_TRANSFORMS}, got {kind!r}"
+    )
+
+
 def pseudobulk_cpd_rank(
     tensor: np.ndarray,
     max_rank: int | None = None,

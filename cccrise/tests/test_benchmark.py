@@ -14,6 +14,7 @@ from cccrise.benchmark import (
     save_fits,
     staccato_order,
     tensor_cell2cell_elbow,
+    transform_tensor,
 )
 
 
@@ -98,6 +99,19 @@ def test_fit_comparators_resumes_from_its_checkpoints(tmp_path):
     for a, b in zip(first[:2], again[:2], strict=True):
         assert a.rank == b.rank
         np.testing.assert_array_equal(a.condition_factor, b.condition_factor)
+
+
+def test_transform_tensor_tempers_large_entries():
+    rng = np.random.default_rng(0)
+    tensor = rng.uniform(size=(6, 3, 3, 4))
+    tensor[0, 0, 0] = 1000.0  # one condition x cell-type pair dominates
+    winsor = transform_tensor(tensor, "winsor")
+    assert winsor.max() < 1000 and np.all(winsor <= tensor)
+    block = transform_tensor(tensor, "blocknorm")
+    np.testing.assert_allclose(np.linalg.norm(block, axis=-1), 1.0)
+    assert transform_tensor(tensor, "none") is tensor
+    with pytest.raises(ValueError, match="transform"):
+        transform_tensor(tensor, "log")
 
 
 def test_fit_comparators_rejects_unknown_rank_mode():

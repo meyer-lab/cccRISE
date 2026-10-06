@@ -42,7 +42,8 @@ Writes, in ``data/validation_results/``, the tables the benchmark figures read:
     uv run cccrise-benchmark --dataset alad --rank-mode shared --shared-rank 4
 
 ``--celltype-column celltype --suffix _fine`` repeats the comparators on the
-fine annotation, writing ``benchmark_*_<dataset>_fine.*``.
+fine annotation, writing ``benchmark_*_<dataset>_fine.*``; ``--tensor-transform
+winsor --suffix _winsor`` repeats them on a tempered tensor.
 """
 
 import argparse
@@ -63,12 +64,14 @@ from ..benchmark import (
     STACCATO_VAREXP,
     TC2C_ELBOW_RUNS,
     TC2C_UPPER_RANK,
+    TENSOR_TRANSFORMS,
     ComparatorFit,
     fit_comparators,
     fit_settings,
     load_fits,
     pseudobulk_tensor,
     save_fits,
+    transform_tensor,
 )
 from ..benchmark_null import (
     N_PERMUTATIONS,
@@ -141,7 +144,9 @@ def _condition_patients(adata, spec: DatasetSpec, conditions: np.ndarray) -> pd.
     return obs.set_index(spec.condition_column)[spec.patient_column].reindex(conditions)
 
 
-def _pseudobulk(adata, spec: DatasetSpec, complex_sep: str | None):
+def _pseudobulk(
+    adata, spec: DatasetSpec, complex_sep: str | None, tensor_transform: str = "none"
+):
     """The cell-type pseudobulk tensor and what describes it (mode labels
     included, so cached fits can be read without rebuilding it)."""
     print(">> Building the cell-type pseudobulk tensor")
@@ -152,7 +157,8 @@ def _pseudobulk(adata, spec: DatasetSpec, complex_sep: str | None):
         import_ligand_receptor_pairs(),
         complex_sep=complex_sep,
     )
-    print(f"   Tensor shape {tensor.shape}")
+    print(f"   Tensor shape {tensor.shape}, transform {tensor_transform!r}")
+    tensor = transform_tensor(tensor, tensor_transform)
     return tensor, {
         "tensor_shape": list(tensor.shape),
         "celltypes": [str(c) for c in celltypes],
@@ -168,6 +174,7 @@ def _comparator_fits(
     cached: tuple[list[ComparatorFit], dict[str, Any]] | None,
     complex_sep: str | None,
     checkpoint_dir: Path | None = None,
+    tensor_transform: str = "none",
     **fit_kwargs: Any,
 ) -> tuple[list[ComparatorFit], dict[str, Any], bool]:
     """Comparator fits for every rank mode, from the cache where it has them.
@@ -183,7 +190,9 @@ def _comparator_fits(
             print(f">> Rank mode {mode!r} comparator fits read from the cache")
         else:
             if tensor is None:
-                tensor, tensor_info = _pseudobulk(adata, spec, complex_sep)
+                tensor, tensor_info = _pseudobulk(
+                    adata, spec, complex_sep, tensor_transform
+                )
             print(f">> Fitting comparators, rank mode {mode!r}")
             mode_fits = fit_comparators(
                 tensor,
@@ -311,6 +320,7 @@ def run_benchmark_anova(
     suffix: str = "",
     tc2c_backend: str = "numpy",
     pb_max_rank: int | None = None,
+    tensor_transform: str = "none",
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Path, Path]:
     """Run the cccRISE ANOVA on cccRISE and every comparator.
 
@@ -332,6 +342,9 @@ def run_benchmark_anova(
         Tensor-cell2cell elbow sweep controls (``own`` mode only).
     staccato_varexp : float
         STACCato's per-mode explained-variance cut, in percent (``own`` only).
+    tensor_transform : str, default="none"
+        `benchmark.transform_tensor` applied to the pseudobulk tensor before
+        every comparator fit (cccRISE's published fit is unaffected).
     complex_sep : str, optional
         Communication-tensor option; see
         `ccc_rise.calc_communication_score_pseudobulk`.
@@ -384,6 +397,8 @@ def run_benchmark_anova(
         "factors_sha256": sha256_file(factors_path),
         **fit_settings(),
     }
+    if tensor_transform != "none":  # absent otherwise, so older caches stay valid
+        cache_key["tensor_transform"] = tensor_transform
     cached = None if refit else load_fits(cache_path, conditions, cache_key)
     fits, tensor_info, refit_any = _comparator_fits(
         adata,
@@ -392,6 +407,7 @@ def run_benchmark_anova(
         cached,
         complex_sep=complex_sep,
         checkpoint_dir=CHECKPOINT_DIR / _key_digest(cache_key),
+        tensor_transform=tensor_transform,
         shared_rank=shared_rank,
         tc2c_upper_rank=tc2c_upper_rank,
         tc2c_elbow_runs=tc2c_elbow_runs,
@@ -449,6 +465,7 @@ def run_benchmark_anova(
             "alpha": alpha,
             "read_depth_corrected": True,
             "complex_sep": complex_sep,
+            "tensor_transform": tensor_transform,
             "random_state": random_state,
             "tc2c_backend": tc2c_backend,
             "pb_max_rank": pb_max_rank,
@@ -504,6 +521,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--staccato-varexp", type=float, default=STACCATO_VAREXP)
     parser.add_argument("--alpha", type=float, default=0.05)
     parser.add_argument("--complex-sep", type=str, default="&")
+    parser.add_argument(
+        "--tensor-transform",
+        choices=TENSOR_TRANSFORMS,
+        default="none",
+        help="Temper large pseudobulk entries before fitting (benchmark.transform_tensor).",
+    )
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
         "--celltype-column",
@@ -569,6 +592,7 @@ def main(argv: list[str] | None = None) -> None:
         suffix=args.suffix,
         tc2c_backend=args.tc2c_backend,
         pb_max_rank=args.pb_max_rank,
+        tensor_transform=args.tensor_transform,
     )
 
 
