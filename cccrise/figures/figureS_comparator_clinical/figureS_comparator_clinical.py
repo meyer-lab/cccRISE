@@ -1,13 +1,19 @@
 """Supplementary figure: clinical association of every method's components
 (Figure 3's association heatmap, per method), with the comparators fit on
 coarse and on fine cell types, and each method's strongest association under
-the permutation null."""
+the permutation null, and the patient-resampled bootstrap of the 6-month
+outcome association."""
 
 from .. import common, style
-from . import heatmaps, heatmaps_fine, maxt
+from . import bootstrap, heatmaps, heatmaps_fine, maxt
 
-PANELS = {"coarse": heatmaps, "fine": heatmaps_fine, "maxt": maxt}
-LAYOUT = [["coarse"], ["fine"], ["maxt"]]
+PANELS = {
+    "coarse": heatmaps,
+    "fine": heatmaps_fine,
+    "maxt": maxt,
+    "bootstrap": bootstrap,
+}
+LAYOUT = [["coarse", "coarse"], ["fine", "fine"], ["maxt", "bootstrap"]]
 
 
 def makeFigure():
