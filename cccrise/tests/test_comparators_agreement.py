@@ -7,7 +7,6 @@ from cccrise.comparators.agreement import (
     cell_type_overlap,
     celltype_profiles,
     containment_table,
-    dominant_sample_fractions,
     joint_congruence,
     linear_cka,
     per_column_containment,
@@ -93,17 +92,11 @@ def test_type_eta_squared_and_profiles():
     )
 
 
-def test_sample_scaling_and_dominant_sample_fractions():
+def test_sample_scaling_puts_samples_on_one_scale():
     samples = np.array(["s1"] * 4 + ["s2"] * 16)
     load = np.r_[np.full(4, 0.5), np.full(16, 0.25)][:, None]
     scaled = sample_scaled(load, samples)
     np.testing.assert_allclose(scaled[:, 0], 1.0)  # 0.5*sqrt(4) = 0.25*sqrt(16)
-    types = np.array(["E"] * 4 + ["T"] * 8 + ["M"] * 8)
-    load2 = np.r_[np.ones(4), np.zeros(16)][:, None]
-    cond = np.array([[0.1], [0.9]])  # dominant sample: s2
-    out = dominant_sample_fractions(load2, types, samples, cond, ["s1", "s2"], 0.5)
-    assert set(out["sample"]) == {"s2"} and set(out["celltype"]) == {"T", "M"}
-    assert (out["active_frac"] == 0).all()
 
 
 def test_cell_type_overlap_separates_shared_and_distinct_cells():

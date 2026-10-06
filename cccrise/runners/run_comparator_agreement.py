@@ -17,8 +17,8 @@ on the condition and ligand-receptor modes the methods share
 From cccRISE's per-cell loadings (`sc_B` / `rc_C`, scaled by sqrt(n_cells) of
 each cell's sample; `agreement.sample_scaled`) it also writes how each
 component spreads over cell types (fraction of each type's cells carrying it,
-each type's share of its loading), the same inside each component's dominant
-sample, and the cell-type-aggregated sender / receiver loadings compared with
+each type's share of its loading, and which cells act as sender, receiver or
+both), and the cell-type-aggregated sender / receiver loadings compared with
 each comparator's sender / receiver factors.
 
 Writes, in ``data/validation_results/``:
@@ -27,7 +27,6 @@ Writes, in ``data/validation_results/``:
     comparator_containment_<dataset>.parquet    (direction, fit, mode, component)
     comparator_matching_<dataset>.parquet       Hungarian pairs, joint congruence
     comparator_cell_fractions_<dataset>.parquet (side, component, cell type)
-    comparator_sample_fractions_<dataset>.parquet (side, component, cell type in its dominant sample)
     comparator_cell_overlap_<dataset>.parquet   (component, cell type): active as sender, receiver, both, either
     comparator_celltype_modes_<dataset>.parquet (fit, side, component pair |cos|)
 
@@ -46,7 +45,6 @@ from ..comparators.agreement import (
     cell_type_overlap,
     celltype_profiles,
     containment_table,
-    dominant_sample_fractions,
     joint_congruence,
     sample_scaled,
     subspace_agreement,
@@ -73,7 +71,6 @@ def _outputs(spec: DatasetSpec) -> dict[str, Path]:
         "containment",
         "matching",
         "cell_fractions",
-        "sample_fractions",
         "cell_overlap",
         "celltype_modes",
     )
@@ -142,12 +139,11 @@ def _matching_rows(ref, fits) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _cell_rows(adata, spec: DatasetSpec, cccrise: ComparatorFit, conditions):
-    """Per side: cell-type fractions over all cells, and inside each
-    component's dominant sample, of the sample-scaled per-cell loadings."""
+def _cell_rows(adata, spec: DatasetSpec) -> pd.DataFrame:
+    """Per side: cell-type fractions of the sample-scaled per-cell loadings."""
     types = adata.obs[spec.celltype_column].astype(str).to_numpy()
     samples = adata.obs[spec.condition_column].astype(str).to_numpy()
-    overall, dominant = [], []
+    overall = []
     for side, key in (("sender", "sc_B"), ("receiver", "rc_C")):
         loadings = sample_scaled(adata.obsm[key], samples)
         frac = cell_type_fractions(loadings, types, TAU_FRACS)
@@ -155,11 +151,7 @@ def _cell_rows(adata, spec: DatasetSpec, cccrise: ComparatorFit, conditions):
         overall.append(
             frac.assign(side=side, type_eta_squared=frac["component"].map(eta))
         )
-        dom = dominant_sample_fractions(
-            loadings, types, samples, cccrise.condition_factor, conditions, 0.5
-        )
-        dominant.append(dom.assign(side=side))
-    return pd.concat(overall, ignore_index=True), pd.concat(dominant, ignore_index=True)
+    return pd.concat(overall, ignore_index=True)
 
 
 def _celltype_mode_rows(adata, celltype_column, comparators, celltypes) -> pd.DataFrame:
@@ -211,9 +203,7 @@ def run_comparator_agreement(
     }
     print(">> Per-cell loadings")
     adata = load_factors_to_anndata(spec.factors_path(), adata=spec.load())
-    tables["cell_fractions"], tables["sample_fractions"] = _cell_rows(
-        adata, spec, cccrise, conditions
-    )
+    tables["cell_fractions"] = _cell_rows(adata, spec)
     samples = adata.obs[spec.condition_column].astype(str).to_numpy()
     tables["cell_overlap"] = cell_type_overlap(
         sample_scaled(adata.obsm["sc_B"], samples),

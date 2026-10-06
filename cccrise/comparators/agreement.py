@@ -19,8 +19,7 @@ all cells of a type, as a cell-type mean would see it. Per-cell loadings are
 first put on one scale across samples (`sample_scaled`): a sample's RISE
 projection columns are unit-norm over its own cells, so raw per-cell loadings
 shrink as ``1 / sqrt(n_cells)`` and a single threshold would favour cells of
-small samples. `dominant_sample_fractions` repeats the count inside each
-component's dominant sample (its largest condition loading).
+small samples.
 """
 
 from collections.abc import Sequence
@@ -240,43 +239,6 @@ def sample_scaled(loadings: np.ndarray, samples: Sequence[str]) -> np.ndarray:
     samples = pd.Series(np.asarray(samples).astype(str))
     n = samples.map(samples.value_counts()).to_numpy(float)
     return np.asarray(loadings, float) * np.sqrt(n)[:, None]
-
-
-def dominant_sample_fractions(
-    loadings: np.ndarray,
-    cell_types: Sequence[str],
-    samples: Sequence[str],
-    condition_factor: np.ndarray,
-    conditions: Sequence[str],
-    tau_frac: float,
-) -> pd.DataFrame:
-    """Per component: inside the sample with its largest |condition loading|,
-    the fraction of each cell type's cells whose (sample-scaled) loading
-    exceeds ``tau_frac`` x the component's 99th percentile across all cells."""
-    loadings = np.asarray(loadings, float)
-    types = np.asarray(cell_types).astype(str)
-    samples = np.asarray(samples).astype(str)
-    p99 = np.percentile(loadings, 99, axis=0)
-    dominant = np.asarray(conditions).astype(str)[
-        np.argmax(np.abs(np.asarray(condition_factor, float)), axis=0)
-    ]
-    rows = []
-    for k, sample in enumerate(dominant):
-        cells = samples == sample
-        for t in np.unique(types[cells]):
-            in_type = cells & (types == t)
-            rows.append(
-                {
-                    "component": k + 1,
-                    "sample": sample,
-                    "celltype": t,
-                    "n_cells": int(in_type.sum()),
-                    "active_frac": float(
-                        np.mean(loadings[in_type, k] > tau_frac * p99[k])
-                    ),
-                }
-            )
-    return pd.DataFrame(rows)
 
 
 def type_eta_squared(loadings: np.ndarray, cell_types: Sequence[str]) -> np.ndarray:

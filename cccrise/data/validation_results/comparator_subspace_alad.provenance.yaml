@@ -33,7 +33,6 @@ outputs:
   containment: cccrise/data/validation_results/comparator_containment_alad.parquet
   matching: cccrise/data/validation_results/comparator_matching_alad.parquet
   cell_fractions: cccrise/data/validation_results/comparator_cell_fractions_alad.parquet
-  sample_fractions: cccrise/data/validation_results/comparator_sample_fractions_alad.parquet
   cell_overlap: cccrise/data/validation_results/comparator_cell_overlap_alad.parquet
   celltype_modes: cccrise/data/validation_results/comparator_celltype_modes_alad.parquet
 resulting_dims:
@@ -41,5 +40,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 4fd56d0065113bdf66feca08ad500f9d21a350a9-dirty
-generated: '2026-10-06T03:14:49+00:00'
+git_sha: 6c323475e20e0b8839b844c9bb77a2471441501b-dirty
+generated: '2026-10-06T03:37:09+00:00'
