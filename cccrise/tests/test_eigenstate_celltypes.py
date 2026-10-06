@@ -3,8 +3,10 @@ import pandas as pd
 
 from cccrise.validation.eigenstate_celltypes import (
     active,
+    bimodality_coefficient,
     classify,
     fine_profile,
+    fraction_checks,
     histogram_table,
     home_types,
     orient,
@@ -54,3 +56,20 @@ def test_score_units_and_null_run():
     assert set(hist["unit"]) == {"E1"}
     null = random_direction_null(RNG.normal(size=(300, 4)), FINE, COARSE, 10, RNG)
     assert len(null) == 10 and isinstance(null, pd.DataFrame)
+
+
+def test_fraction_checks_separate_a_subset_from_a_graded_program():
+    graded = RNG.normal(1.0, 0.3, 2000)
+    two_modes = np.r_[RNG.normal(0, 0.1, 1000), RNG.normal(3, 0.1, 1000)]
+    assert bimodality_coefficient(two_modes) > 5 / 9 > bimodality_coefficient(graded)
+    fine = np.array(["f"] * 2000)
+    subset = fraction_checks(two_modes, fine, "f")
+    # A subset's active fraction holds as the cut moves; a gradient's does not.
+    assert (
+        subset["top_fine_active_frac_tau0.25"] == subset["top_fine_active_frac_tau0.75"]
+    )
+    gradient = fraction_checks(graded, fine, "f")
+    assert (
+        gradient["top_fine_active_frac_tau0.25"]
+        > gradient["top_fine_active_frac_tau0.75"] + 0.3
+    )

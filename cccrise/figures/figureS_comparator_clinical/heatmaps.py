@@ -50,7 +50,12 @@ def plot_granularity(fig, granularity: str) -> None:
     ]
     widths = [int(anova.loc[anova["Method"] == m, "Component"].max()) for m, _ in fits]
     axes = fig.subplots(1, len(fits), width_ratios=widths, sharey=True)
-    vmax = float(anova["EtaSquared"].max())
+    # One scale for both granularities, so panels compare by colour.
+    vmax = max(
+        float(table["EtaSquared"].max())
+        for g in ("coarse", "fine")
+        if (table := load("anova", g)) is not None
+    )
     for ax, (method, rank) in zip(axes, fits, strict=True):
         image = _heatmap(ax, anova[anova["Method"] == method], order, vmax)
         ax.set_title(fit_label(method, rank))

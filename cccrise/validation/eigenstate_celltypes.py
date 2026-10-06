@@ -14,6 +14,12 @@ panel) and how they sit across fine types:
   so no annotation at either granularity represents it;
 - otherwise **partial in one fine type** or **mixed**.
 
+A fraction is only a sub-population if it does not depend on where the cut
+falls: `fraction_checks` reports, for the fine type holding most active
+cells, its active fraction at `SENSITIVITY_TAUS` and the bimodality
+coefficient of its scores. A fraction that moves with the cut through a
+unimodal distribution is a graded program, not a subset of cells.
+
 Scores are sample-scaled (`comparators.agreement.sample_scaled`) and oriented
 so that their largest-magnitude values are positive (`orient`). A
 random-direction null (`random_direction_null`) gives the same summaries for
@@ -24,12 +30,16 @@ from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 TAU = 0.5
 ALIGNED = 0.8
 PARTIAL = 0.2
 #: A fine type counts towards "cross-cutting" if it holds this share of the active cells.
 MIN_SHARE = 0.05
+SENSITIVITY_TAUS = (0.25, 0.75)
+#: Bimodality coefficient of a uniform distribution; larger suggests two modes.
+BIMODAL = 5 / 9
 
 
 def orient(scores: np.ndarray) -> np.ndarray:
@@ -87,6 +97,27 @@ def classify(profile: pd.DataFrame) -> dict:
         "top_fine_active_frac": float(top["active_frac"]),
         "top_fine_share": float(top["active_share"]),
         "call": _call(aligned_share, partial_share, n_partial),
+    }
+
+
+def bimodality_coefficient(x: np.ndarray) -> float:
+    """Sarle's bimodality coefficient (sample skewness and excess kurtosis)."""
+    n = len(x)
+    g, k = stats.skew(x), stats.kurtosis(x)
+    return float((g**2 + 1) / (k + 3 * (n - 1) ** 2 / ((n - 2) * (n - 3))))
+
+
+def fraction_checks(score: np.ndarray, fine: np.ndarray, top_fine: str) -> dict:
+    """The top fine type's active fraction at each `SENSITIVITY_TAUS` and the
+    bimodality coefficient of its scores."""
+    cut = np.percentile(score, 99)
+    x = score[fine == top_fine]
+    return {
+        **{
+            f"top_fine_active_frac_tau{t:g}": float(np.mean(x > t * cut))
+            for t in SENSITIVITY_TAUS
+        },
+        "top_fine_bimodality": bimodality_coefficient(x),
     }
 
 
@@ -151,8 +182,14 @@ def score_units(
         home = home_types(profile)
         cells = np.isin(coarse, home)
         threshold = TAU * float(np.percentile(score, 99))
+        summary = classify(profile)
         summaries.append(
-            {"unit": unit, "home_types": ", ".join(home), **classify(profile)}
+            {
+                "unit": unit,
+                "home_types": ", ".join(home),
+                **summary,
+                **fraction_checks(score, fine, summary["top_fine"]),
+            }
         )
         profiles.append(profile.assign(unit=unit))
         hists.append(
