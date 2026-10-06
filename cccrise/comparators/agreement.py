@@ -196,6 +196,44 @@ def cell_type_fractions(
     return pd.DataFrame(rows)
 
 
+def cell_type_overlap(
+    sender: np.ndarray,
+    receiver: np.ndarray,
+    cell_types: Sequence[str],
+    tau_frac: float,
+) -> pd.DataFrame:
+    """Per (component, cell type): the fractions of the type's cells active as
+    sender, as receiver, as both, and as either (sender, receiver or both),
+    and the Jaccard overlap of the active sender and receiver cells (1: the
+    same cells play both roles; 0: distinct cells). Active is as in
+    `cell_type_fractions`, per side."""
+    types = np.asarray(cell_types).astype(str)
+    active = {}
+    for side, loadings in (("sender", sender), ("receiver", receiver)):
+        loadings = np.asarray(loadings, float)
+        active[side] = loadings > tau_frac * np.percentile(loadings, 99, axis=0)
+    both = active["sender"] & active["receiver"]
+    either = active["sender"] | active["receiver"]
+    rows = []
+    for t in np.unique(types):
+        cells = types == t
+        for k in range(both.shape[1]):
+            n_either = int(either[cells, k].sum())
+            rows.append(
+                {
+                    "component": k + 1,
+                    "celltype": t,
+                    "n_cells": int(cells.sum()),
+                    "sender_frac": float(active["sender"][cells, k].mean()),
+                    "receiver_frac": float(active["receiver"][cells, k].mean()),
+                    "both_frac": float(both[cells, k].mean()),
+                    "either_frac": float(either[cells, k].mean()),
+                    "jaccard": both[cells, k].sum() / n_either if n_either else np.nan,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def sample_scaled(loadings: np.ndarray, samples: Sequence[str]) -> np.ndarray:
     """Per-cell loadings times ``sqrt(n_cells)`` of the cell's sample, which
     puts cells of differently sized samples on one scale."""

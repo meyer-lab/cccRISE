@@ -34,11 +34,12 @@ outputs:
   matching: cccrise/data/validation_results/comparator_matching_alad.parquet
   cell_fractions: cccrise/data/validation_results/comparator_cell_fractions_alad.parquet
   sample_fractions: cccrise/data/validation_results/comparator_sample_fractions_alad.parquet
+  cell_overlap: cccrise/data/validation_results/comparator_cell_overlap_alad.parquet
   celltype_modes: cccrise/data/validation_results/comparator_celltype_modes_alad.parquet
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 474d55480d75e8d6cee134d1788df80c64c213b2-dirty
-generated: '2026-10-03T01:38:56+00:00'
+git_sha: 4fd56d0065113bdf66feca08ad500f9d21a350a9-dirty
+generated: '2026-10-06T03:14:49+00:00'

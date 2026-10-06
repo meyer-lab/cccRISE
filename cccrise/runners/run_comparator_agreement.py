@@ -28,6 +28,7 @@ Writes, in ``data/validation_results/``:
     comparator_matching_<dataset>.parquet       Hungarian pairs, joint congruence
     comparator_cell_fractions_<dataset>.parquet (side, component, cell type)
     comparator_sample_fractions_<dataset>.parquet (side, component, cell type in its dominant sample)
+    comparator_cell_overlap_<dataset>.parquet   (component, cell type): active as sender, receiver, both, either
     comparator_celltype_modes_<dataset>.parquet (fit, side, component pair |cos|)
 
     uv run cccrise-comparator-agreement --dataset alad
@@ -42,6 +43,7 @@ import pandas as pd
 from ..benchmark import ComparatorFit, read_fits
 from ..comparators.agreement import (
     cell_type_fractions,
+    cell_type_overlap,
     celltype_profiles,
     containment_table,
     dominant_sample_fractions,
@@ -72,6 +74,7 @@ def _outputs(spec: DatasetSpec) -> dict[str, Path]:
         "matching",
         "cell_fractions",
         "sample_fractions",
+        "cell_overlap",
         "celltype_modes",
     )
     return {n: VALIDATION_DIR / f"comparator_{n}_{spec.key}.parquet" for n in names}
@@ -210,6 +213,13 @@ def run_comparator_agreement(
     adata = load_factors_to_anndata(spec.factors_path(), adata=spec.load())
     tables["cell_fractions"], tables["sample_fractions"] = _cell_rows(
         adata, spec, cccrise, conditions
+    )
+    samples = adata.obs[spec.condition_column].astype(str).to_numpy()
+    tables["cell_overlap"] = cell_type_overlap(
+        sample_scaled(adata.obsm["sc_B"], samples),
+        sample_scaled(adata.obsm["rc_C"], samples),
+        adata.obs[spec.celltype_column].astype(str).to_numpy(),
+        0.5,
     )
     tables["celltype_modes"] = _celltype_mode_rows(
         adata, spec.celltype_column, comparators, info["celltypes"]

@@ -4,6 +4,7 @@ import pytest
 
 from cccrise.comparators.agreement import (
     cell_type_fractions,
+    cell_type_overlap,
     celltype_profiles,
     containment_table,
     dominant_sample_fractions,
@@ -103,3 +104,15 @@ def test_sample_scaling_and_dominant_sample_fractions():
     out = dominant_sample_fractions(load2, types, samples, cond, ["s1", "s2"], 0.5)
     assert set(out["sample"]) == {"s2"} and set(out["celltype"]) == {"T", "M"}
     assert (out["active_frac"] == 0).all()
+
+
+def test_cell_type_overlap_separates_shared_and_distinct_cells():
+    types = np.array(["A"] * 10)
+    sender = np.r_[np.ones(4), np.zeros(6)][:, None]
+    same = cell_type_overlap(sender, sender, types, 0.5).iloc[0]
+    assert same["both_frac"] == 0.4 and same["jaccard"] == 1.0
+    receiver = np.r_[np.zeros(6), np.ones(4)][:, None]
+    distinct = cell_type_overlap(sender, receiver, types, 0.5).iloc[0]
+    assert distinct["sender_frac"] == 0.4 and distinct["receiver_frac"] == 0.4
+    assert distinct["both_frac"] == 0.0 and distinct["jaccard"] == 0.0
+    assert distinct["either_frac"] == 0.8 and same["either_frac"] == 0.4
