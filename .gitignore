@@ -172,6 +172,7 @@ nohup.out
 
 data/
 !cccrise/data/
+cccrise/data/signatures/
 *.h5ad
 # Quarto manuscript build outputs
 manuscript/_output/

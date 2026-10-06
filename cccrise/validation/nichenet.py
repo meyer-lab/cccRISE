@@ -369,11 +369,12 @@ def component_ligand_scores(
 
 
 def top_ligand_tests(
-    scores: pd.DataFrame, correction: str | None = "fdr_bh"
+    scores: pd.DataFrame, correction: str | None = "fdr_bh", score: str = "auroc"
 ) -> pd.DataFrame:
     """
-    Per component, a two-sided Mann-Whitney test of the top ligands' AUROCs
-    against every other scored ligand's (`component_ligand_scores` output),
+    Per component, a two-sided Mann-Whitney test of the top ligands' `score`
+    (AUROC by default) against every other scored ligand's
+    (`component_ligand_scores` output),
     with p-values adjusted across components (`anova.adjust_pvalues`, as in
     the ANOVA analysis).
 
@@ -387,19 +388,19 @@ def top_ligand_tests(
     from ..anova import adjust_pvalues
 
     rows = []
-    for cmp, c in scores.dropna(subset=["auroc"]).groupby("component"):
+    for cmp, c in scores.dropna(subset=[score]).groupby("component"):
         top = c[c["is_top"]].sort_values("weight", ascending=False)
-        rest = c.loc[~c["is_top"], "auroc"]
+        rest = c.loc[~c["is_top"], score]
         rows.append(
             {
                 "component": cmp,
                 "top_ligands": ", ".join(top["ligand"]),
                 "n_top": len(top),
                 "n_comparison": len(rest),
-                "top_median": top["auroc"].median(),
+                "top_median": top[score].median(),
                 "comparison_median": rest.median(),
-                "direction": "up" if top["auroc"].median() > rest.median() else "down",
-                "p": mannwhitneyu(top["auroc"], rest, alternative="two-sided").pvalue,
+                "direction": "up" if top[score].median() > rest.median() else "down",
+                "p": mannwhitneyu(top[score], rest, alternative="two-sided").pvalue,
             }
         )
     out = pd.DataFrame(rows)
