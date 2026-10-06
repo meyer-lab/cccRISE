@@ -199,11 +199,11 @@ def cp_imputation_sweep(
     random_state: int | None = None,
     **parafac_kwargs,
 ) -> pd.DataFrame:
-    """Imputation R2X across ranks, as mean and SEM over `n_masks` masks.
+    """Imputation R2X across ranks, as mean and SD over `n_masks` masks.
 
     Mask `m` is seeded identically at every rank, so ranks are compared on the
     same held-out entries. Columns: 'Rank', 'ImputationR2X',
-    'ImputationR2XSEM'.
+    'ImputationR2XSD'.
     """
     rows = [
         {
@@ -221,7 +221,7 @@ def cp_imputation_sweep(
     ]
     by_rank = pd.DataFrame(rows).groupby("Rank")["ImputationR2X"]
     return pd.DataFrame(
-        {"ImputationR2X": by_rank.mean(), "ImputationR2XSEM": by_rank.sem()}
+        {"ImputationR2X": by_rank.mean(), "ImputationR2XSD": by_rank.std()}
     ).reset_index()
 
 

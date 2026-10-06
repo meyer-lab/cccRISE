@@ -117,7 +117,7 @@ def test_cp_imputation_peaks_at_true_rank():
         tol=1e-8,
         **CP_FIT_OPTIONS,
     ).set_index("Rank")
-    assert list(df.columns) == ["ImputationR2X", "ImputationR2XSEM"]
+    assert list(df.columns) == ["ImputationR2X", "ImputationR2XSD"]
     assert df["ImputationR2X"].idxmax() == true_rank
 
 
