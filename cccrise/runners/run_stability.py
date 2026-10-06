@@ -33,6 +33,10 @@ Axes, and what each one asks:
               no PARAFAC2 fit.
   seed_only   Identical data refit end to end (RISE -> communication tensor
               -> CP) from a different random seed. Refits RISE.
+  jackknife   One patient (all of its conditions) left out per replicate,
+              every patient in turn, so it always runs one replicate per
+              patient whatever --n-replicates is. The influence of each
+              patient on every component and association. Refits RISE.
 
 Writes one row per (axis, replicate, stage, component); CPD rows also carry
 the matched component's ANOVA statistics:
@@ -55,8 +59,10 @@ from ..ccc_rise import (
     RISE_COMPRESSION_OPTIONS,
 )
 from ..import_data import import_ligand_receptor_pairs
+from ..utils import jackknife_units
 from ..validation.stability import (
     DEFAULT_AXES,
+    JACKKNIFE_AXIS,
     RISE_REFIT_AXES,
     SEED_AXIS,
     fit_stability_pipeline,
@@ -179,7 +185,6 @@ def run_stability(
     # Pin the code version before writing anything: see `provenance.git_sha`.
     git_sha()
 
-    rise_axes = [axis for axis in axes if axis in RISE_REFIT_AXES]
     print(f"=== Component and association stability: {spec.label} ===")
     print(f"    RISE rank {rise_rank}, CP rank {cp_rank}, {n_replicates} replicates")
     print(f"    Axes: {', '.join(axes)}")
@@ -188,16 +193,13 @@ def run_stability(
         f"control={control_label!r}  other={other_label!r}"
     )
     print(f"    backend={spec.backend or 'auto'}  compress={REPLICATE_COMPRESS}")
-    print(
-        f"    {1 + len(rise_axes) * n_replicates} PARAFAC2 fits, "
-        f"{1 + len(axes) * n_replicates} CP fits"
-    )
 
     print("1. Loading data...")
     adata = spec.load()
     lr_pairs = import_ligand_receptor_pairs()
     print(f"   AnnData shape: {adata.shape}")
     print(f"   Ligand-receptor pairs: {len(lr_pairs)}")
+    per_axis = _replicates_per_axis(adata, spec, axes, n_replicates)
 
     anova_kwargs: dict[str, Any] = {
         "group_column": group_column,
@@ -250,23 +252,13 @@ def run_stability(
         random_state=random_state,
     )
 
-    print("4. Aggregate FMS across replicates, per stage and axis:")
-    aggregate = metric_interval(df, "FMS", by=("Stage", "Axis"))
-    print(aggregate.to_string(index=False))
-    print("   Per-component stability:")
-    print(summarize_component_stability(df).to_string(index=False))
-
     # Label each component by the LR pair it loads onto hardest in the
     # reference fit, so the summary can name components clearly.
     labels = top_lr_pairs(
         reference["cp_factors"][3], reference["lr_symbols"], top_n=1
     ).set_index("Component")
-    if "conditions" in axes:
-        print("   Per-component ANOVA stability under the patient bootstrap:")
-        summary = summarize_anova_stability(
-            df, reference["anova"], "conditions", ci_level=ci_level, alpha=alpha
-        )
-        print(summary.join(labels["LRPair"], on="Component").to_string(index=False))
+    print("4. Summaries:")
+    _print_summaries(df, reference["anova"], labels["LRPair"], ci_level, alpha)
 
     print(f"5. Writing {len(df)} rows to {output_path}...")
     df.to_parquet(output_path, index=False)
@@ -279,6 +271,8 @@ def run_stability(
             "cp_rank": cp_rank,
             "axes": list(axes),
             "n_replicates": n_replicates,
+            "n_replicates_per_axis": per_axis,
+            "jackknife_unit": _jackknife_unit(spec),
             "group_column": group_column,
             "control_label": control_label,
             "other_label": other_label,
@@ -305,7 +299,8 @@ def run_stability(
                 "replicate's RISE, CPD and ANOVA rows are the same resampled "
                 "dataset (see validation.replicate_seed). On the seed_only axis "
                 "the seed is the only thing that differs from the reference: "
-                "same cells, same conditions, same ligand-receptor pairs"
+                "same cells, same conditions, same ligand-receptor pairs. On the "
+                "jackknife axis it seeds only the fits"
             ),
             "resampling": _resampling_description(spec, group_column, stratify),
             "condition_mode_alignment": (
@@ -349,6 +344,47 @@ def run_stability(
     return df, output_path, sidecar
 
 
+def _jackknife_unit(spec: DatasetSpec) -> str:
+    """The column the jackknife leaves one value of out per replicate."""
+    return spec.patient_column or spec.condition_column
+
+
+def _replicates_per_axis(
+    adata, spec: DatasetSpec, axes: tuple[str, ...], n_replicates: int
+) -> dict[str, int]:
+    """Replicates each axis runs -- one per patient on the jackknife -- with
+    the fit counts they cost printed."""
+    n_patients = len(jackknife_units(adata, _jackknife_unit(spec)))
+    per_axis = {a: n_patients if a == JACKKNIFE_AXIS else n_replicates for a in axes}
+    n_rise_fits = sum(n for axis, n in per_axis.items() if axis in RISE_REFIT_AXES)
+    print(f"   Replicates per axis: {per_axis}")
+    print(f"   {1 + n_rise_fits} PARAFAC2 fits, {1 + sum(per_axis.values())} CP fits")
+    return per_axis
+
+
+def _print_summaries(
+    df: pd.DataFrame,
+    reference_anova: pd.DataFrame,
+    top_lr_pair: pd.Series,
+    ci_level: float,
+    alpha: float,
+) -> None:
+    """Print the aggregate and per-component FMS, and the per-component ANOVA
+    stability on each patient-level axis that was run."""
+    print("   Aggregate FMS across replicates, per stage and axis:")
+    print(metric_interval(df, "FMS", by=("Stage", "Axis")).to_string(index=False))
+    print("   Per-component stability:")
+    print(summarize_component_stability(df).to_string(index=False))
+    for axis in ("conditions", JACKKNIFE_AXIS):
+        if axis not in set(df["Axis"]):
+            continue
+        print(f"   Per-component ANOVA stability on the {axis!r} axis:")
+        summary = summarize_anova_stability(
+            df, reference_anova, axis, ci_level=ci_level, alpha=alpha
+        )
+        print(summary.join(top_lr_pair, on="Component").to_string(index=False))
+
+
 def _resampling_description(
     spec: DatasetSpec, group_column: str, stratify: bool
 ) -> dict[str, str]:
@@ -375,6 +411,12 @@ def _resampling_description(
             "identical data refit end to end (RISE -> communication "
             "tensor -> CP) under a different random seed; one "
             "PARAFAC2 refit per replicate"
+        ),
+        JACKKNIFE_AXIS: (
+            f"one {spec.patient_column or spec.condition_column} left out per "
+            "replicate (all of its conditions), every one in turn in sorted "
+            "order (utils.jackknife_units); refit end to end; the left-out "
+            "patient is the 'LeftOut' column"
         ),
     }
 

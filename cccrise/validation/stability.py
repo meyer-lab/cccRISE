@@ -68,6 +68,8 @@ Row Alignment
 - The seed axis (`SEED_AXIS`) needs no alignment at all: the roster is the
   reference's own, so mode 0 already matches row for row. That is what makes
   its FMS comparable to the reference's on a per-component basis.
+- The jackknife axis (`JACKKNIFE_AXIS`) drops one patient's conditions, so
+  `reference_condition_rows` selects the reference's remaining rows.
 """
 
 from collections.abc import Callable
@@ -79,6 +81,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from scipy.optimize import linear_sum_assignment
+from scipy.stats import norm
 
 from ..anova import anova_component_associations, prepare_anova_inputs
 from ..ccc_rise import (
@@ -89,6 +92,8 @@ from ..ccc_rise import (
 )
 from ..factors import clean_memory, load_factors_netcdf
 from ..utils import (
+    jackknife_units,
+    leave_out_patient,
     replicate_seed,
     resample_cells,
     resample_conditions,
@@ -124,17 +129,24 @@ SEED_AXIS = "seed_only"
 #: edge.
 SEED_BAND_PERCENTILE = 5.0
 
+#: Name of the leave-one-patient-out axis: one replicate per patient, each
+#: refitting the pipeline on the cohort without that patient
+#: (`utils.leave_out_patient`). It draws nothing, so it runs one replicate per
+#: patient (`utils.jackknife_units`) regardless of `n_replicates`.
+JACKKNIFE_AXIS = "jackknife"
+
 #: Axes that refit RISE.
-RISE_REFIT_AXES = ("cells", "conditions", SEED_AXIS)
+RISE_REFIT_AXES = ("cells", "conditions", SEED_AXIS, JACKKNIFE_AXIS)
 
 #: Axes run by default.
-DEFAULT_AXES = ("cells", "conditions", "lr_pairs", SEED_AXIS)
+DEFAULT_AXES = ("cells", "conditions", "lr_pairs", SEED_AXIS, JACKKNIFE_AXIS)
 
 #: How an axis prepares the data it is fit on. Each entry takes
 #: ``(adata, condition_column, group_column, patient_column, seed)``.
 #:
 #: `SEED_AXIS`'s entry perturbs nothing -- its perturbation is applied
 #: downstream, by handing `fit_stability_pipeline` a different `random_state`.
+#: `JACKKNIFE_AXIS` is keyed by patient rather than seed; see `_replicate_data`.
 RESAMPLERS: dict[
     str,
     Callable[[anndata.AnnData, str, str | None, str | None, int], anndata.AnnData],
@@ -831,9 +843,12 @@ def stability_replicates(
     seed the fits start from, so it measures how far components move under the
     fitters' own randomness -- the reproducibility ceiling every resampling
     axis is read against, and the term that would otherwise be confounded with
-    sampling variability. The reference's condition-mode rows are expanded
-    onto each replicate's roster (`reference_condition_rows`), which is the
-    identity on every axis but 'conditions'.
+    sampling variability. `JACKKNIFE_AXIS` leaves one patient out per
+    replicate, every patient in turn, so each of its replicates measures that
+    one patient's influence on every component and association. The
+    reference's condition-mode rows are expanded onto each replicate's roster
+    (`reference_condition_rows`), which is the identity on 'cells' and
+    `SEED_AXIS` and a row subset on `JACKKNIFE_AXIS`.
 
     One axis acts on the reference tensor instead:
     - `lr_pairs`: The ligand-receptor mode bootstrapped with replacement,
@@ -865,14 +880,16 @@ def stability_replicates(
         Draw conditions within each `group_column` stratum, holding the class
         balance fixed; see `utils.resample_conditions`.
     patient_column : str | None, default=None
-        Condition-level patient identity column, for the 'conditions' axis
-        alone. When a patient contributes more than one condition, drawing one
-        of them carries its sibling condition in and drops one other random
-        draw to compensate (see `utils.resample_conditions`).
+        Condition-level patient identity column. On the 'conditions' axis, when
+        a patient contributes more than one condition, drawing one of them
+        carries its sibling condition in and drops one other random draw to
+        compensate (see `utils.resample_conditions`); on `JACKKNIFE_AXIS` the
+        unit left out (`condition_column` when None).
     axes : tuple[str, ...], default=DEFAULT_AXES
         Which axes to run.
     n_replicates : int, default=20
-        Replicates per axis.
+        Replicates per resampling axis; `JACKKNIFE_AXIS` always runs one per
+        patient.
     rise_n_iter_max, rise_tol : int, float
         Fitting controls for RISE.
     cp_n_iter_max, cp_tol
@@ -892,9 +909,10 @@ def stability_replicates(
     -------
     pd.DataFrame
         Long-form table with one row per (axis, replicate, stage, reference
-        component): the `per_component_fms` match, per-fit diagnostics, and --
-        on CPD rows, when `group_column` is given -- the matched component's
-        `ANOVA_COLUMNS`.
+        component): the `per_component_fms` match, per-fit diagnostics, the
+        patient a `JACKKNIFE_AXIS` replicate left out ('LeftOut', None on other
+        axes), and -- on CPD rows, when `group_column` is given -- the matched
+        component's `ANOVA_COLUMNS`.
     """
     unknown = set(axes) - set(RISE_REFIT_AXES) - {"lr_pairs"}
     if unknown:
@@ -926,12 +944,19 @@ def stability_replicates(
         "compress": compress,
     }
     strata = group_column if stratify else None
+    unit_column = patient_column or condition_column
 
     frames = []
     for axis in axes:
-        for replicate in range(n_replicates):
+        n_axis = (
+            len(jackknife_units(adata, unit_column))
+            if axis == JACKKNIFE_AXIS
+            else n_replicates
+        )
+        for replicate in range(n_axis):
             seed = replicate_seed(random_state, replicate)
-            print(f"   {axis} replicate {replicate + 1}/{n_replicates}")
+            print(f"   {axis} replicate {replicate + 1}/{n_axis}")
+            left_out = None
             if axis == "lr_pairs":
                 block = _lr_pairs_replicate(
                     reference,
@@ -944,8 +969,14 @@ def stability_replicates(
                 )
                 n_cells = n_conditions = np.nan
             else:
-                resampled = RESAMPLERS[axis](
-                    adata, condition_column, strata, patient_column, seed
+                resampled, left_out = _replicate_data(
+                    axis,
+                    adata,
+                    replicate,
+                    seed,
+                    condition_column,
+                    strata,
+                    patient_column,
                 )
                 fit = fit_stability_pipeline(resampled, random_state=seed, **fit_kwargs)
                 block = _refit_replicate(reference, fit)
@@ -954,6 +985,7 @@ def stability_replicates(
             block.insert(0, "Seed", seed)
             block.insert(0, "Replicate", replicate)
             block.insert(0, "Axis", axis)
+            block["LeftOut"] = left_out
             block["NCells"] = n_cells
             block["NConditions"] = n_conditions
             frames.append(block)
@@ -963,6 +995,25 @@ def stability_replicates(
             clean_memory()
 
     return pd.concat(frames, ignore_index=True)
+
+
+def _replicate_data(
+    axis: str,
+    adata: anndata.AnnData,
+    replicate: int,
+    seed: int,
+    condition_column: str,
+    strata: str | None,
+    patient_column: str | None,
+) -> tuple[anndata.AnnData, str | None]:
+    """The data a RISE-refitting replicate is fit on, and the patient it left
+    out (`JACKKNIFE_AXIS` only; None otherwise)."""
+    if axis == JACKKNIFE_AXIS:
+        unit_column = patient_column or condition_column
+        left_out = str(jackknife_units(adata, unit_column)[replicate])
+        return leave_out_patient(adata, unit_column, left_out), left_out
+    resampled = RESAMPLERS[axis](adata, condition_column, strata, patient_column, seed)
+    return resampled, None
 
 
 def _stage_block(
@@ -1268,7 +1319,10 @@ def summarize_anova_stability(
     axis : str, default="conditions"
         Axis to summarize; the patient bootstrap by default.
     ci_level : float, default=95.0
-        Central percentile interval width, in percent, taken on eta-squared.
+        Central interval width, in percent, taken on eta-squared: the
+        replicates' percentile interval on a resampling axis, and on
+        `JACKKNIFE_AXIS` the normal interval around the reference value with
+        the jackknife standard error (`_eta_squared_interval`).
     alpha : float, default=0.05
         Threshold `FracSignificant` counts replicates against.
 
@@ -1283,7 +1337,6 @@ def summarize_anova_stability(
         difference is exactly zero, i.e. has no direction to agree with),
         'MedianFMS', 'MinFMS', 'NReplicates'.
     """
-    tail = (100.0 - ci_level) / 2.0
     on_axis = df[(df["Axis"] == axis) & (df["Stage"] == STAGE_CPD)]
     reference_by_component = reference_anova.set_index("Component")
     rows = []
@@ -1294,7 +1347,9 @@ def summarize_anova_stability(
         diffs = group["GroupMeanDiff"].to_numpy(dtype=float)
         reference = reference_by_component.loc[component]
         reference_diff = float(reference["GroupMeanDiff"])
-        ci_low, ci_high = np.nanpercentile(eta, [tail, 100.0 - tail])
+        ci_low, ci_high = _eta_squared_interval(
+            eta, float(reference["EtaSquared"]), axis == JACKKNIFE_AXIS, ci_level
+        )
         rows.append(
             {
                 "Component": component,
@@ -1323,3 +1378,28 @@ def summarize_anova_stability(
             }
         )
     return pd.DataFrame(rows).sort_values("Component").reset_index(drop=True)
+
+
+def _eta_squared_interval(
+    eta: np.ndarray, reference_eta: float, jackknife: bool, ci_level: float
+) -> tuple[float, float]:
+    """Central `ci_level` interval on eta-squared from one axis's replicates.
+
+    Leave-one-out estimates sit far closer together than independent
+    resamples, so their percentiles would understate the uncertainty about
+    (n - 1)-fold in variance; the jackknife instead scales their spread up to
+    a standard error, ``sqrt((n - 1) / n * sum((eta_i - mean)^2))``, and the
+    interval is the normal one around the full-cohort value, floored at 0.
+    Degenerate (NaN) replicates are dropped either way.
+    """
+    eta = eta[np.isfinite(eta)]
+    if eta.size == 0:
+        return np.nan, np.nan
+    tail = (100.0 - ci_level) / 2.0
+    if not jackknife:
+        low, high = np.percentile(eta, [tail, 100.0 - tail])
+        return float(low), float(high)
+    n = eta.size
+    se = np.sqrt((n - 1) / n * np.sum((eta - eta.mean()) ** 2))
+    half_width = norm.ppf(1.0 - tail / 100.0) * se
+    return max(reference_eta - half_width, 0.0), reference_eta + half_width

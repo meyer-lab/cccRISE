@@ -1,5 +1,6 @@
-"""Per-component RISE stability under resampling of cells and conditions,
-against the seed-only reproducibility ceiling."""
+"""Per-component RISE stability under resampling of cells and conditions
+and leave-one-patient-out jackknifing, against the seed-only
+reproducibility ceiling."""
 
 from ...validation.stability import STAGE_RISE
 from .. import common, style

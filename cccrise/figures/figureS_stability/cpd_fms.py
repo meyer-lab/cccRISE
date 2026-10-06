@@ -1,5 +1,6 @@
 """Per-component CPD stability under resampling of cells, conditions, and LR
-pairs, against the seed-only reproducibility ceiling."""
+pairs and leave-one-patient-out jackknifing, against the seed-only
+reproducibility ceiling."""
 
 from ...validation.stability import STAGE_CPD
 from .. import common, style

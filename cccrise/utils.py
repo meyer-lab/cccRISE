@@ -255,6 +255,47 @@ def resample_conditions(
     return resampled
 
 
+def jackknife_units(data: anndata.AnnData, patient_name: str) -> np.ndarray:
+    """The patients `leave_out_patient` drops one at a time, in sorted order,
+    so jackknife replicate ``i`` always leaves out the same patient."""
+    return np.unique(np.asarray(data.obs[patient_name]).astype(str))
+
+
+def leave_out_patient(
+    data: anndata.AnnData, patient_name: str, patient: str
+) -> anndata.AnnData:
+    """Drop every cell of one patient -- all of its conditions -- for a
+    leave-one-patient-out (jackknife) replicate.
+
+    Unlike `resample_conditions`, nothing is drawn or duplicated: the replicate
+    is the cohort minus one patient, so each condition keeps its own label and
+    the replicate's roster is a subset of the full cohort's.
+
+    Parameters
+    ----------
+    data : anndata.AnnData
+        Single-cell expression data.
+    patient_name : str
+        Column in `data.obs` identifying the patient; a patient contributing
+        several conditions loses all of them.
+    patient : str
+        The patient to leave out, as in `jackknife_units`.
+
+    Returns
+    -------
+    anndata.AnnData
+        A copy without `patient`'s cells, with `var["means"]` recomputed over
+        the remaining cells -- see `resample_cells` for why that column has to
+        be refreshed.
+    """
+    keep = np.asarray(data.obs[patient_name]).astype(str) != str(patient)
+    if keep.all():
+        raise ValueError(f"No cells of patient {patient!r} in {patient_name!r}.")
+    left = data[keep].copy()
+    left.var["means"] = np.asarray(cast(Any, left.X).mean(axis=0)).ravel()
+    return left
+
+
 def replicate_seed(random_state: int, replicate: int) -> int:
     """Seed for one replicate: ``random_state * 1000 + replicate + 1``.
 

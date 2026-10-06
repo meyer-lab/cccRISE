@@ -16,6 +16,8 @@ from cccrise.runners._cli import CP_TOL, RISE_TOL
 from cccrise.utils import (
     _carry_paired_samples,
     _paired_conditions,
+    jackknife_units,
+    leave_out_patient,
     resample_cells,
     resample_conditions,
     resample_tensor,
@@ -24,11 +26,14 @@ from cccrise.validation.stability import (
     ANOVA_COLUMNS,
     CPD_SKIP_MODES,
     DEFAULT_AXES,
+    JACKKNIFE_AXIS,
+    RISE_REFIT_AXES,
     RISE_SKIP_MODES,
     SEED_AXIS,
     STAGE_CPD,
     STAGE_RISE,
     _attach_anova,
+    _eta_squared_interval,
     fit_stability_pipeline,
     metric_interval,
     per_component_fms,
@@ -1238,3 +1243,88 @@ def test_conditions_axis_stratifies_by_the_anova_group_and_pairs_patients(
     )
 
     assert seen == [("group" if stratify else None, "patient")]
+
+
+# =============================================================================
+# Patient jackknife
+# =============================================================================
+
+
+def test_jackknife_units_are_sorted_patients():
+    adata = _simulate_adata_with_paired_patient()
+    np.testing.assert_array_equal(
+        jackknife_units(adata, "patient"), ["P2", "P3", "P4", "P5", "P_pair"]
+    )
+
+
+def test_leave_out_patient_drops_every_condition_of_the_patient():
+    adata = _simulate_adata_with_paired_patient()
+    adata.obs["sample"] = adata.obs["sample"].astype("category")
+
+    left = leave_out_patient(adata, "patient", "P_pair")
+
+    assert set(left.obs["sample"]) == {"S2", "S3", "S4", "S5"}
+    assert left.n_obs == adata.n_obs - 2 * 8
+    np.testing.assert_allclose(
+        left.var["means"], np.asarray(cast(Any, left.X).mean(axis=0)).ravel(), rtol=1e-6
+    )
+    # The caller's object is untouched.
+    assert adata.n_obs == 6 * 8
+
+
+def test_leave_out_patient_rejects_an_unknown_patient():
+    with pytest.raises(ValueError, match="No cells"):
+        leave_out_patient(_simulate_adata(), "sample", "nobody")
+
+
+def test_jackknife_axis_runs_by_default_and_refits_rise():
+    assert JACKKNIFE_AXIS in DEFAULT_AXES
+    assert JACKKNIFE_AXIS in RISE_REFIT_AXES
+
+
+def test_jackknife_axis_leaves_out_each_patient_once():
+    """One replicate per patient whatever `n_replicates` says, each a refit on
+    the cohort without that patient, with the ANOVA re-run on it."""
+    adata = _simulate_adata(n_cond=6)
+    adata.obs["patient"] = adata.obs["sample"].replace({"S1": "S0"})
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
+    )
+
+    df = stability_replicates(
+        adata,
+        reference,
+        lr_pairs,
+        **kwargs,
+        axes=(JACKKNIFE_AXIS, "cells"),
+        n_replicates=1,
+        patient_column="patient",
+    )
+
+    jk = df[df["Axis"] == JACKKNIFE_AXIS]
+    assert jk["Replicate"].nunique() == 5
+    left_out = jk.groupby("Replicate")["LeftOut"].first()
+    assert list(left_out) == ["S0", "S2", "S3", "S4", "S5"]
+    n_conditions = jk.groupby("LeftOut")["NConditions"].first()
+    assert n_conditions["S0"] == 4  # S0 and S1 are one patient
+    assert n_conditions["S3"] == 5
+    assert set(jk["Stage"]) == {STAGE_RISE, STAGE_CPD}
+    assert jk["FMS"].between(0.0, 1.0 + 1e-9).all()
+    # Leaving out the paired patient leaves one 'ctrl' condition, too few for
+    # the ANOVA, which reports NaN for that replicate rather than failing.
+    eta = jk[jk["Stage"] == STAGE_CPD].set_index("LeftOut")["EtaSquared"]
+    assert eta["S0"].isna().all()
+    assert eta.drop("S0").notna().all()
+    assert df.loc[df["Axis"] == "cells", "LeftOut"].isna().all()
+
+
+def test_jackknife_interval_scales_the_leave_one_out_spread():
+    eta = np.array([0.2, 0.3, 0.4, np.nan])
+    se = np.sqrt(2 / 3 * 0.02)
+    low, high = _eta_squared_interval(eta, 0.3, jackknife=True, ci_level=95.0)
+    np.testing.assert_allclose([low, high], [0.3 - 1.959964 * se, 0.3 + 1.959964 * se])
+    # Percentiles of the same values would be far narrower.
+    p_low, p_high = _eta_squared_interval(eta, 0.3, jackknife=False, ci_level=95.0)
+    assert high - low > p_high - p_low

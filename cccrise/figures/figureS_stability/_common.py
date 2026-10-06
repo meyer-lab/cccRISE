@@ -45,4 +45,9 @@ def legend(fig) -> None:
         Patch(color=color, label=axis)
         for axis, color in style.STABILITY_AXIS_COLORS.items()
     ]
-    fig.legend(handles=handles, title="Resampled", loc="outside upper center", ncols=4)
+    fig.legend(
+        handles=handles,
+        title="Resampled",
+        loc="outside upper center",
+        ncols=len(handles),
+    )

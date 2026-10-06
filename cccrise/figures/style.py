@@ -96,11 +96,12 @@ COLORS = {
 }
 
 # Component-stability resampling axes; the seed-only ceiling is a grey
-# reference rather than a fourth result.
+# reference rather than a result of its own.
 STABILITY_AXIS_COLORS = {
     "seed_only": "0.55",
     "cells": _BLUE,
     "conditions": _ORANGE,
+    "jackknife": _PINK,
     "lr_pairs": _GREEN,
 }
 
