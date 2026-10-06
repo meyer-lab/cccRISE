@@ -26,7 +26,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import tensorly as tl
 
 from ..ccc_rise import (
     CP_COMPRESSION_OPTIONS,
@@ -118,6 +117,7 @@ def cp_fits_by_rank(
     n_iter_max: int,
     tol: float,
     random_state: int | None,
+    backend: str = "numpy",
 ) -> dict[int, tuple[np.ndarray, list[np.ndarray], float]]:
     """Fit CP once per rank. Every criterion below reads from this shared fit.
 
@@ -132,6 +132,7 @@ def cp_fits_by_rank(
             n_iter_max=n_iter_max,
             tol=tol,
             random_state=random_state,
+            backend=backend,
             **CP_FIT_OPTIONS,
         )
         fits[rank] = (weights, factors, calculate_r2x(weights, factors, tensor))
@@ -217,14 +218,14 @@ def run_cpd_rank_selection(
         }
 
     print(f"3. Fitting CP at every rank ({cp_backend})...")
-    with tl.backend_context(cp_backend):
-        fits = cp_fits_by_rank(
-            fit_target,
-            ranks=ranks,
-            n_iter_max=cp_n_iter_max,
-            tol=cp_tol,
-            random_state=random_state,
-        )
+    fits = cp_fits_by_rank(
+        fit_target,
+        ranks=ranks,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
+        random_state=random_state,
+        backend=cp_backend,
+    )
     # `candelinc_r2x` is the identity when nothing was discarded, so the
     # uncompressed path reports exactly the R2X the fit returned.
     fit_r2x_df = pd.DataFrame(
@@ -238,17 +239,17 @@ def run_cpd_rank_selection(
 
     # Masked ALS can't use the CANDELINC core, so this is the slowest step.
     print(f"5. Imputing held-out entries of the full tensor ({cp_backend})...")
-    with tl.backend_context(cp_backend):
-        imputation_df = cp_imputation_sweep(
-            tensor,
-            ranks=ranks,
-            n_masks=n_masks,
-            mask_frac=mask_frac,
-            random_state=random_state,
-            n_iter_max=cp_n_iter_max,
-            tol=cp_tol,
-            **CP_FIT_OPTIONS,
-        )
+    imputation_df = cp_imputation_sweep(
+        tensor,
+        ranks=ranks,
+        n_masks=n_masks,
+        mask_frac=mask_frac,
+        random_state=random_state,
+        n_iter_max=cp_n_iter_max,
+        tol=cp_tol,
+        backend=cp_backend,
+        **CP_FIT_OPTIONS,
+    )
 
     df = fit_r2x_df.merge(collinearity_df, on="Rank").merge(imputation_df, on="Rank")
 

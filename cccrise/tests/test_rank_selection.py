@@ -9,7 +9,6 @@ on, which is a 4-mode CP problem with no upstream home.
 import numpy as np
 import pandas as pd
 import pytest
-import tensorly as tl
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
 
@@ -21,7 +20,6 @@ from cccrise.rank_selection import (
     cp_core_consistency,
     cp_imputation_sweep,
     cpd_component_collinearity,
-    host_parafac,
 )
 
 
@@ -123,26 +121,26 @@ def test_cp_imputation_peaks_at_true_rank():
     assert df["ImputationR2X"].idxmax() == true_rank
 
 
-def test_host_parafac_cupy_matches_numpy():
-    """The runner's GPU CP path returns host arrays that fit like the CPU path."""
+def test_runner_cupy_matches_cpu(tmp_path):
+    """The GPU CP path (compressed fit sweep and imputation) reports what the
+    CPU path does, up to the true rank where the model is identifiable."""
     pytest.importorskip("cupy")
-    tensor = _simulate_cp_tensor((10, 12, 12, 30), rank=3, random_state=7)
-    mask = (np.random.default_rng(0).uniform(size=tensor.shape) >= 0.1).astype(float)
-    r2x = {}
-    for backend in ("numpy", "cupy"):
-        with tl.backend_context(backend):
-            weights, factors = host_parafac(
-                tensor * mask,
-                mask=mask,
-                rank=3,
-                n_iter_max=300,
-                tol=1e-8,
-                random_state=0,
-                **CP_FIT_OPTIONS,
-            )
-        assert isinstance(weights, np.ndarray)
-        r2x[backend] = calculate_r2x(weights, factors, tensor)
-    assert r2x["cupy"] == pytest.approx(r2x["numpy"], abs=1e-6)
+    tensor = _simulate_cp_tensor((24, 10, 10, 36), rank=3, random_state=23)
+    results = {
+        backend: _run_cpd_runner(
+            tensor,
+            tmp_path / f"{backend}.parquet",
+            backend=backend,
+            ranks=[1, 2, 3],
+            n_masks=2,
+            compress=True,
+        )
+        for backend in ("cpu", "cupy")
+    }
+    assert "cp_backend: cupy" in results["cupy"][2].read_text()
+    cpu, gpu = results["cpu"][0], results["cupy"][0]
+    for column in ("FitR2X", "ImputationR2X"):
+        np.testing.assert_allclose(gpu[column], cpu[column], rtol=1e-6)
 
 
 # =============================================================================
@@ -246,6 +244,33 @@ def test_candelinc_finds_the_true_rank_cliff():
     assert consistency[true_rank + 1] < 50.0
 
 
+def _run_cpd_runner(tensor: np.ndarray, output_path, backend: str = "cpu", **kwargs):
+    """Run `run_cpd_rank_selection` on `tensor` in place of a RISE-built one."""
+    from dataclasses import replace
+    from unittest.mock import patch
+
+    import cccrise.runners.run_cpd_rank as runner
+    from cccrise.runners.datasets import DATASETS
+
+    facts = {"resulting_dims": {}, "lr_pairs_annotated": 36, "r2x_pf2": 0.1}
+    with (
+        patch.object(runner, "build_interaction_tensor", return_value=(tensor, facts)),
+        # DATASETS["alad"] points at the real (private, multi-GB) BAL source
+        # file, which isn't present in CI; only the mocked tensor above should
+        # matter here, so stub out the hash of that file.
+        patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
+    ):
+        return runner.run_cpd_rank_selection(
+            replace(DATASETS["alad"], backend=backend),
+            rise_rank=5,
+            ranks=kwargs.pop("ranks", [1, 2, 3, 4, 5]),
+            cp_n_iter_max=2000,
+            cp_tol=1e-12,
+            output_path=output_path,
+            **kwargs,
+        )
+
+
 def test_runner_compressed_and_uncompressed_agree(tmp_path):
     """`compress=False` and the compressed path the runners take must agree.
 
@@ -254,36 +279,14 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     runs on the full tensor). Past it the model is degenerate, and fit noise
     alone moves imputation R2X between otherwise identical runs.
     """
-    from dataclasses import replace
-    from unittest.mock import patch
-
-    import cccrise.runners.run_cpd_rank as runner
-    from cccrise.runners.datasets import DATASETS
-
     true_rank = 3
     tensor = _simulate_cp_tensor((24, 10, 10, 36), rank=true_rank, random_state=22)
-    facts = {"resulting_dims": {}, "lr_pairs_annotated": 36, "r2x_pf2": 0.1}
 
     results = {}
     for compress in (True, False):
-        with (
-            patch.object(
-                runner, "build_interaction_tensor", return_value=(tensor, facts)
-            ),
-            # DATASETS["alad"] points at the real (private, multi-GB) BAL
-            # source file, which isn't present in CI; only the mocked tensor
-            # above should matter here, so stub out the hash of that file.
-            patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
-        ):
-            df, out_path, sidecar = runner.run_cpd_rank_selection(
-                replace(DATASETS["alad"], backend="cpu"),
-                rise_rank=5,
-                ranks=[1, 2, 3, 4, 5],
-                cp_n_iter_max=2000,
-                cp_tol=1e-12,
-                compress=compress,
-                output_path=tmp_path / f"cpd_{compress}.parquet",
-            )
+        df, out_path, sidecar = _run_cpd_runner(
+            tensor, tmp_path / f"cpd_{compress}.parquet", compress=compress
+        )
         assert out_path.exists() and sidecar.exists()
         assert f"compress: {str(compress).lower()}" in sidecar.read_text()
         results[compress] = df

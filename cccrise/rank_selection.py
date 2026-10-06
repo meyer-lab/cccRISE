@@ -144,15 +144,23 @@ def cp_core_consistency(
 
 
 def host_parafac(
-    tensor: np.ndarray, mask: np.ndarray | None = None, **parafac_kwargs
+    tensor: np.ndarray,
+    mask: np.ndarray | None = None,
+    backend: str = "numpy",
+    **parafac_kwargs,
 ) -> tuple[np.ndarray, Factors]:
-    """`parafac` on the active tensorly backend, with NumPy inputs and outputs."""
-    weights, factors = parafac(
-        tl.tensor(tensor),
-        mask=None if mask is None else tl.tensor(mask),
-        **parafac_kwargs,
-    )
-    return tl.to_numpy(weights), [tl.to_numpy(f) for f in factors]
+    """`parafac` on tensorly `backend`, with NumPy inputs and outputs.
+
+    Only the fit leaves the host, so callers' other tensorly calls stay on
+    NumPy.
+    """
+    with tl.backend_context(backend):
+        weights, factors = parafac(
+            tl.tensor(tensor),
+            mask=None if mask is None else tl.tensor(mask),
+            **parafac_kwargs,
+        )
+        return tl.to_numpy(weights), [tl.to_numpy(f) for f in factors]
 
 
 def cp_imputation_r2x(
