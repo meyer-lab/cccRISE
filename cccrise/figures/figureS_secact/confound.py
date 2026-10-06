@@ -46,7 +46,7 @@ def plot(fig):
     ax.set_xlim(*X_LIMITS)
     ax.legend(
         loc="upper center",
-        bbox_to_anchor=(0.4, -0.22),
+        bbox_to_anchor=(0.4, -0.32),
         ncols=3,
         fontsize=style.FONT_SIZE_DENSE,
     )
