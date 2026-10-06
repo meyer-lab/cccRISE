@@ -1,12 +1,12 @@
-"""Exploratory: which cells carry each cccRISE component. A cell is active
-when its loading (sender `sc_B`, receiver `rc_C`; scaled by sqrt(n_cells) of
-its sample, so samples of different sizes share one scale) exceeds half the
-component's 99th percentile. Top: the fraction of each cell type's cells that
-are active, over all samples. Bottom: the same inside the component's
-dominant sample (largest condition loading; cell counts in brackets).
-Components shared with the comparators are starred: the question is whether
-those are carried by every cell of one type, which a cell-type mean sees
-unchanged, while the others are carried by part of a type."""
+"""Exploratory: which cells carry each cccRISE component, and whether the same
+cells send and receive. A cell is active when its loading (sender `sc_B`,
+receiver `rc_C`; scaled by sqrt(n_cells) of its sample, so samples of
+different sizes share one scale) exceeds half the component's 99th
+percentile. Left, middle: the fraction of each cell type's cells active as
+sender, as receiver. Right: the fraction active as sender, receiver or both.
+Where the right value is close to the larger of the left two, the same cells
+send and receive; where it is close to their sum, different cells do.
+Components shared with the comparators (at their own ranks) are starred."""
 
 import numpy as np
 import pandas as pd
@@ -17,14 +17,17 @@ from ._common import load
 
 
 def _shared_components() -> set[int]:
-    calls = shared_calls(load("containment"), ["condition", "lr"])
+    containment = load("containment")
+    calls = shared_calls(
+        containment[containment["rank_mode"] == "own"], ["condition", "lr"]
+    )
     calls = calls[
         (calls["direction"] == "cccRISE in comparator") & calls["contained_all_modes"]
     ]
     return set(calls["component"])
 
 
-def _heatmap(ax, values: pd.DataFrame, counts: pd.DataFrame | None, labels, title):
+def _heatmap(ax, values: pd.DataFrame, labels, title):
     image = ax.imshow(
         values.to_numpy(float),
         cmap=style.CMAPS["sequential"],
@@ -33,18 +36,16 @@ def _heatmap(ax, values: pd.DataFrame, counts: pd.DataFrame | None, labels, titl
         aspect="auto",
     )
     for (i, j), v in np.ndenumerate(values.to_numpy(float)):
-        if not np.isfinite(v):
-            continue
-        text = f"{v:.2f}" if counts is None else f"{v:.2f}\n({counts.iat[i, j]:.0f})"
         ax.text(
             j,
             i,
-            text,
+            f"{v:.2f}",
             ha="center",
             va="center",
             fontsize=style.FONT_SIZE_DENSE - 1,
             color="white" if v > 0.6 else "0.2",
         )
+    ax.set_xticks(range(values.shape[1]), values.columns, rotation=40, ha="right")
     ax.set_yticks(range(len(labels)), labels)
     ax.set_title(title)
     ax.grid(False)
@@ -52,45 +53,23 @@ def _heatmap(ax, values: pd.DataFrame, counts: pd.DataFrame | None, labels, titl
 
 
 def plot(fig):
-    overall = load("cell_fractions")
-    dominant = load("sample_fractions")
+    overlap = load("cell_overlap")
     shared = _shared_components()
-    types = sorted(overall["celltype"].unique())
-    components = sorted(overall["component"].unique())
-    samples = dominant.groupby("component")["sample"].first()
+    types = sorted(overlap["celltype"].unique())
+    components = sorted(overlap["component"].unique())
     labels = [f"C{k}{' *' if k in shared else ''}" for k in components]
-    dom_labels = [
-        f"{lab} {samples[k].replace('ALAD1-', '').replace('-E1', '')}"
-        for lab, k in zip(labels, components, strict=True)
-    ]
-    axes = fig.subplots(2, 2, sharex=True)
-    for col, side in enumerate(("sender", "receiver")):
-        sub = overall[overall["side"] == side]
-        values = sub.pivot(
-            index="component", columns="celltype", values="active_frac_0.5"
-        )
-        _heatmap(
-            axes[0, col],
-            values[types],
-            None,
-            labels,
-            f"{side.capitalize()}: active fraction, all samples",
-        )
-        dom = dominant[dominant["side"] == side]
-        values = dom.pivot(index="component", columns="celltype", values="active_frac")
-        counts = dom.pivot(index="component", columns="celltype", values="n_cells")
-        image = _heatmap(
-            axes[1, col],
-            values.reindex(index=components, columns=types),
-            counts.reindex(index=components, columns=types),
-            dom_labels,
-            f"{side.capitalize()}: inside the dominant sample",
-        )
-        axes[1, col].set_xticks(range(len(types)), types, rotation=40, ha="right")
-    fig.colorbar(
-        image, ax=axes, label="Active fraction of the type's cells", shrink=0.7
-    )
+
+    def grid(column):
+        return overlap.pivot(
+            index="component", columns="celltype", values=column
+        ).reindex(index=components, columns=types)
+
+    axes = fig.subplots(1, 3, sharey=True)
+    _heatmap(axes[0], grid("sender_frac"), labels, "Sender")
+    _heatmap(axes[1], grid("receiver_frac"), labels, "Receiver")
+    image = _heatmap(axes[2], grid("either_frac"), labels, r"Sender $\cup$ Receiver")
+    fig.colorbar(image, ax=axes, label="Active fraction", shrink=0.8)
 
 
 def makeFigure():
-    return common.standalone(plot, (style.FIGURE_WIDTH_DOUBLE, 2 * style.PANEL_HEIGHT))
+    return common.standalone(plot, style.PANEL_SIZE["full"])

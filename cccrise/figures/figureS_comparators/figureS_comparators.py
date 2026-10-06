@@ -11,16 +11,10 @@ PANELS = {
     "shared": shared,
     "cell_fractions": cell_fractions,
 }
-LAYOUT = [
-    ["subspace"],
-    ["containment"],
-    ["shared"],
-    ["cell_fractions"],
-    ["cell_fractions"],
-]
+LAYOUT = [["subspace"], ["containment"], ["shared"], ["cell_fractions"]]
 
 
 def makeFigure():
     return common.compose(
-        (style.FIGURE_WIDTH_DOUBLE, 5 * 50 * style.MM), LAYOUT, PANELS
+        (style.FIGURE_WIDTH_DOUBLE, 4 * 52 * style.MM), LAYOUT, PANELS
     )

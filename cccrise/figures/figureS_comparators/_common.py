@@ -19,8 +19,11 @@ def load(name: str) -> pd.DataFrame:
 
 
 def fit_order(table: pd.DataFrame) -> list[tuple[str, str, str]]:
-    """(method, rank mode, rank) of every comparator fit, in a fixed order."""
+    """(method, rank mode, rank) of every comparator fit at the rank its own
+    procedure selects (the runner's shared-rank fits are not plotted), in a
+    fixed order."""
     order = {"Pseudobulk CPD": 0, "Tensor-cell2cell": 1, "STACCato": 2}
+    table = table[table["rank_mode"] == "own"]
     fits = table[["method", "rank_mode", "rank"]].drop_duplicates()
     return sorted(
         fits.itertuples(index=False, name=None),
@@ -29,6 +32,6 @@ def fit_order(table: pd.DataFrame) -> list[tuple[str, str, str]]:
 
 
 def fit_label(fit: tuple[str, str, str]) -> str:
-    method, mode, rank = fit
+    method, _mode, rank = fit
     short = {"Pseudobulk CPD": "PB CPD", "Tensor-cell2cell": "TC2C"}.get(method, method)
-    return f"{short} {mode} ({rank})"
+    return f"{short} ({rank})"

@@ -30,6 +30,5 @@ LAYOUT = [[f"{m}|{r}"] for m, r in FITS] + [["comparison"]]
 
 
 def makeFigure():
-    return common.compose(
-        (style.FIGURE_WIDTH_DOUBLE, 6 * 52 * style.MM), LAYOUT, PANELS
-    )
+    height = (len(FITS) + 1) * 55 * style.MM
+    return common.compose((style.FIGURE_WIDTH_DOUBLE, height), LAYOUT, PANELS)

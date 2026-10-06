@@ -2,8 +2,8 @@
 cccRISE against each comparator directly, on the permutations they share.
 
 Plots `benchmark_anova_paired_<dataset>.csv`, written by
-`uv run cccrise-benchmark --dataset <dataset>`. One panel per comparator rank
-mode. Each row is an association; each comparator's marker sits at cccRISE's
+`uv run cccrise-benchmark --dataset <dataset>`. Comparators at their own rank
+selection (the runner's shared-rank fits are not plotted). Each row is an association; each comparator's marker sits at cccRISE's
 best-component eta-squared minus that comparator's, over a gray bar spanning
 the central 95% of the same difference across the shared label shuffles. The
 bar is centred wherever the two methods' component counts put chance, not at
@@ -120,6 +120,7 @@ def plot_paired_differences(
 
 def makeFigure() -> Figure:
     df = load_runner_csv(PAIRED_CSV)
+    df = df[df["RankMode"].isin(list(RANK_MODE_TITLES))]
     order, found = _association_order(load_runner_csv(NULL_CSV))
     modes = [m for m in RANK_MODE_TITLES if (df["RankMode"] == m).any()]
 

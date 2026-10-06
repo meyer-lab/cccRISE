@@ -1,11 +1,11 @@
 """
 cccRISE ANOVA benchmark: the patient-status ANOVA heatmap of `figureAnova`,
-drawn once per method and comparator rank mode.
+drawn once per method, comparators at their own rank selection.
 
 Plots `benchmark_anova_<dataset>.csv`, written by
-`uv run cccrise-benchmark --dataset <dataset>`. Rows are the comparator rank
-modes (each method's own rank selection, then one shared rank); cccRISE's
-published model is repeated in every row as the reference column. Cell
+`uv run cccrise-benchmark --dataset <dataset>`. Each comparator is shown at
+the rank its own procedure selects (the runner's shared-rank fits are not
+plotted); cccRISE's published model is the reference column. Cell
 p-values are permutation p-values, family-wise across each method's components
 (`benchmark_null`), when the CSV carries them.
 """
@@ -22,7 +22,7 @@ from .figureBenchmarkNull import load_runner_csv
 SELECTED_DATASET = "alad"
 SWEEP_CSV = f"benchmark_anova_{SELECTED_DATASET}.parquet"
 METHOD_ORDER = ("cccRISE", "Pseudobulk CPD", "Tensor-cell2cell", "STACCato")
-RANK_MODE_LABELS = {"own": "own rank selection", "shared": "shared rank"}
+RANK_MODE_LABELS = {"own": "own rank selection"}
 
 
 def _panel_rows(df: pd.DataFrame) -> list[list[pd.DataFrame]]:
@@ -46,6 +46,7 @@ def _panel_rows(df: pd.DataFrame) -> list[list[pd.DataFrame]]:
 
 def makeFigure() -> Figure:
     df = load_runner_csv(SWEEP_CSV)
+    df = df[df["RankMode"].isin(["published", *RANK_MODE_LABELS])]
     rows = _panel_rows(df)
     n_cols = max(len(row) for row in rows)
     vmax = float(df["EtaSquared"].max())

@@ -8,12 +8,12 @@ from .. import common
 DATASET = "alad"
 
 #: (method, rank mode) in display order; cccRISE first, as the reference.
+#: Comparators appear at the rank their own procedure selects; the runner's
+#: shared-rank fits are not plotted.
 FITS = [
     ("cccRISE", "published"),
     ("Pseudobulk CPD", "own"),
-    ("Pseudobulk CPD", "shared"),
     ("Tensor-cell2cell", "own"),
-    ("Tensor-cell2cell", "shared"),
 ]
 
 
@@ -31,7 +31,9 @@ def all_scores() -> pd.DataFrame:
         VALIDATION_DIR,
         hint=f"    uv run cccrise-nichenet --dataset {DATASET} --comparators",
     )
-    return pd.concat([cccrise, comparators], ignore_index=True)
+    scores = pd.concat([cccrise, comparators], ignore_index=True)
+    keep = pd.MultiIndex.from_frame(scores[["method", "rank_mode"]]).isin(FITS)
+    return scores[keep].reset_index(drop=True)
 
 
 def fit_label(method: str, rank_mode: str, scores: pd.DataFrame) -> str:

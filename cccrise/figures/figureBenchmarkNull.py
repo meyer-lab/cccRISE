@@ -2,8 +2,8 @@
 cccRISE ANOVA benchmark against each method's own permutation null.
 
 Plots `benchmark_anova_null_<dataset>.csv`, written by
-`uv run cccrise-benchmark --dataset <dataset>`. One panel per comparator rank
-mode. Each row is an association; each method's marker sits at its best
+`uv run cccrise-benchmark --dataset <dataset>`. Comparators at their own rank
+selection (the runner's shared-rank fits are not plotted). Each row is an association; each method's marker sits at its best
 component's eta-squared, over a gray bar spanning its own null (mean to 95th
 percentile of the maximum eta-squared across its components, under the same
 shuffled labels for every method). A filled marker has a permutation p < 0.05,
@@ -31,7 +31,7 @@ METHOD_STYLE = {
     "Tensor-cell2cell": ("#1baf7a", "D"),
     "STACCato": ("#4a3aa7", "^"),
 }
-RANK_MODE_TITLES = {"own": "Own rank selection", "shared": "Shared rank"}
+RANK_MODE_TITLES = {"own": "Own rank selection"}
 NULL_COLOR = "0.82"
 HIGHLIGHT_COLOR = "#e3ecf9"
 
@@ -142,6 +142,7 @@ def _rank_note(df: pd.DataFrame) -> str:
 
 def makeFigure() -> Figure:
     df = load_runner_csv(NULL_CSV)
+    df = df[df["RankMode"].isin(["published", *RANK_MODE_TITLES])]
     cccrise = df[df["Method"] == "cccRISE"]
     modes = [m for m in RANK_MODE_TITLES if (df["RankMode"] == m).any()]
     order, found = _association_order(df)

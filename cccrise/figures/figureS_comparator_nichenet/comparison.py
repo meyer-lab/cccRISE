@@ -1,7 +1,8 @@
 """Every method on one scale: each top ligand's percentile among its own
 component's other ligands (0.5 = no better than the ligands the component
 barely uses). Left: pooled over components, one-sided Mann-Whitney of cccRISE
-against each comparator fit with BH q, and the common-language effect size.
+against each comparator at its own rank with BH q (across those comparators),
+and the common-language effect size.
 Right: each component's mean, with a permutation test of the difference in
 means against cccRISE (`validation.nichenet_comparators`)."""
 
