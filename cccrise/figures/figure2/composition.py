@@ -5,35 +5,36 @@ import pandas as pd
 
 from ...runners.datasets import DATASETS
 from .. import common, style
+from . import _common as S
 
 AXES = ("short",)
 
 
 def plot(axs):
     (ax,) = axs
-    adata = common.get_cell_projections(common.GRANULARITY_DATASET)
+    adata = common.get_cell_projections(S.GRANULARITY_DATASET)
     fractions = pd.crosstab(
-        common.cell_groups().to_numpy(),
-        adata.obs[DATASETS[common.GRANULARITY_DATASET].celltype_column]
+        S.cell_groups().to_numpy(),
+        adata.obs[DATASETS[S.GRANULARITY_DATASET].celltype_column]
         .astype(str)
         .to_numpy(),
         normalize="index",
     ).reindex(
-        index=list(common.GROUPS),
-        columns=style.CELL_TYPES[common.GRANULARITY_DATASET],
+        index=list(S.GROUPS),
+        columns=style.CELL_TYPES[S.GRANULARITY_DATASET],
         fill_value=0,
     )
     left = 0
-    for celltype, color in style.CELL_TYPE_COLORS[common.GRANULARITY_DATASET].items():
+    for celltype, color in style.CELL_TYPE_COLORS[S.GRANULARITY_DATASET].items():
         ax.barh(
-            range(len(common.GROUPS)),
+            range(len(S.GROUPS)),
             fractions[celltype],
             left=left,
             color=color,
             height=0.7,
         )
         left = left + fractions[celltype]
-    ax.set_yticks(range(len(common.GROUPS)), [g.capitalize() for g in common.GROUPS])
+    ax.set_yticks(range(len(S.GROUPS)), [g.capitalize() for g in S.GROUPS])
     ax.invert_yaxis()
     ax.set_xlim(0, 1)
     ax.set_xlabel("Fraction of cells")
@@ -41,7 +42,7 @@ def plot(axs):
     common.legend(
         ax,
         "right",
-        handles=common.celltype_handles(common.GRANULARITY_DATASET),
+        handles=common.celltype_handles(S.GRANULARITY_DATASET),
         ncols=2,
     )
 

@@ -8,7 +8,7 @@ from adjustText import adjust_text
 
 from ...factors import load_factors_netcdf
 from .. import common, style
-from ._common import COMPONENT, SPEC
+from ._common import COMPONENT, SPEC, plot_ranked_loadings
 from .coordinated_changes import N_TOP
 
 # Labels start in a column at this rank, in the empty space above the flat
@@ -23,9 +23,7 @@ def plot(axs):
     factor = load_factors_netcdf(SPEC.factors_path())["cp_D"]
     loadings = factor.values[:, COMPONENT - 1].astype(float)
     names = np.asarray(factor["lr_pair"].values).astype(str)
-    common.plot_ranked_loadings(
-        ax, loadings, names, N_TOP, 0, point_size=style.POINT_SIZE
-    )
+    plot_ranked_loadings(ax, loadings, names, N_TOP, 0, point_size=style.POINT_SIZE)
     ax.set_xscale("log")
     ax.set_xlim(0.8, len(loadings) * 1.2)
     ax.set(xlabel="LR pair rank", ylabel=f"Cmp. {COMPONENT}\nLR pair loading")

@@ -1,16 +1,21 @@
 .PHONY: clean test ty profile_cpu manuscript
 
-# One package per figure (cccrise/figures/figure<N>/), built from its master
-# figure<N>.py into output/figure<N>/figure<N>.svg. Build one panel with
+# One package per figure (cccrise/figures/figure<N>/, with its supplements
+# nested as figure<N>/figureS_<name>/), built from its master figure<N>.py into
+# output/figure<N>/figure<N>.svg. Build one panel with
 # `uv run cccrise-fbuild <N> <panel>`.
-fdirs = $(patsubst cccrise/figures/%/,%,$(wildcard cccrise/figures/figure*/))
+fpkgs = $(wildcard cccrise/figures/figure*/) $(wildcard cccrise/figures/figure*/figureS_*/)
+fdirs = $(foreach p,$(fpkgs),$(notdir $(p:/=)))
 allOutput = $(foreach d,$(fdirs),output/$(d)/$(d).svg)
 figureDeps = cccrise/figures/common.py cccrise/figures/style.py
+# A figure's package, and the parent package whose _common.py it shares
+fpkg = $(filter %/$(1)/,$(fpkgs))
+fparent = $(dir $(patsubst %/,%,$(call fpkg,$(1))))
 
 all: $(allOutput)
 
 .SECONDEXPANSION:
-output/%.svg: $$(wildcard cccrise/figures/$$(dir $$*)*.py) $(figureDeps)
+output/%.svg: $$(wildcard $$(call fpkg,$$(notdir $$*))*.py $$(call fparent,$$(notdir $$*))_common.py) $(figureDeps)
 	uv run cccrise-fbuild $(patsubst figure%,%,$(notdir $*))
 
 profile-cpu: .venv

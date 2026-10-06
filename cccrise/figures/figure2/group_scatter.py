@@ -1,9 +1,10 @@
 """Per-cell sender vs. receiver weight on the granularity component, colored
-by the label-free sender and receiver groups (`common.split_cells`): the
+by the label-free sender and receiver groups (`S.split_cells`): the
 cells passing either cutoff (`TAU` x each weight's maximum), split by the line
 of equal relative weight."""
 
 from .. import common, style
+from . import _common as S
 
 LEGEND_MARKER_SIZE = 12  # pt^2, alike for the small grey and larger group points
 AXES = ("square",)
@@ -11,12 +12,12 @@ AXES = ("square",)
 
 def plot(axs):
     (ax,) = axs
-    sender, receiver = common.component_weights()
-    groups = common.split_cells(sender, receiver)
-    common.plot_weight_scatter(
+    sender, receiver = S.component_weights()
+    groups = S.split_cells(sender, receiver)
+    S.plot_weight_scatter(
         ax,
         {g.capitalize(): mask for g, mask in groups.items()},
-        {g.capitalize(): color for g, color in common.GROUP_COLORS.items()},
+        {g.capitalize(): color for g, color in S.GROUP_COLORS.items()},
         rest_label="Rest",
     )
     _plot_boundary(ax, sender.max(), receiver.max())
@@ -39,7 +40,7 @@ def _plot_boundary(ax, sender_max: float, receiver_max: float) -> None:
     """The edges of the region passing neither cutoff, and the equal relative
     weight line beyond it."""
     (x0, x1), (y0, y1) = ax.get_xlim(), ax.get_ylim()
-    corner_x, corner_y = common.GROUP_TAU * sender_max, common.GROUP_TAU * receiver_max
+    corner_x, corner_y = S.GROUP_TAU * sender_max, S.GROUP_TAU * receiver_max
     reach = max(x1 / sender_max, y1 / receiver_max)
     for xs, ys in (
         ((x0, corner_x), (corner_y, corner_y)),

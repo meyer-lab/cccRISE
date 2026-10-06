@@ -3,12 +3,15 @@ Functions shared across manuscript figures: data loading, panel layout, the
 build entry point, and plotting functions used by more than one figure (e.g.
 the same rank-selection panels for ALAD and IBD). Code used by a single panel
 lives in that panel's module instead, and settings, data, or functions shared
-only by one figure's panels live in that figure's private `_common.py`.
+only by one main figure and its supplements live in that main figure's
+private `_common.py`.
 
 Each figure lives in its own `figures/figure<N>/` package: one module per
 panel, each exposing `plot(fig)` (draws into a Figure or SubFigure) and
 `makeFigure()` (the panel alone), plus a `figure<N>.py` master that arranges
-the panels with `panel_grid` and labels them with `label_panels`.
+the panels with `panel_grid` and labels them with `label_panels`. Each
+supplementary figure is a `figureS_<name>/` package nested in the main
+figure it supports.
 """
 
 import functools
@@ -25,7 +28,6 @@ import anndata
 import matplotlib
 import numpy as np
 import pandas as pd
-import scanpy as sc
 import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
@@ -50,10 +52,8 @@ from ..import_data import import_alad, import_balf_covid
 from ..runners.datasets import DATASETS
 from ..runners.provenance import read_metadata
 from ..utils import (
-    celltype_component_association,
     correct_conditions,
 )
-from ..validation.nichenet import top_pairs
 from . import style
 
 __all__ = [
@@ -140,7 +140,8 @@ def selected_ranks(dataset: str) -> tuple[int, int]:
 # Layout and build
 # =============================================================================
 
-OUTPUT_DIR = Path(__file__).parent.parent.parent / "output"
+FIGURES_DIR = Path(__file__).parent
+OUTPUT_DIR = FIGURES_DIR.parent.parent / "output"
 
 
 def panel_grid(
@@ -431,7 +432,12 @@ def build_figure(figure: str, panel: str | None = None) -> Figure:
     """Figure `figure` (e.g. '2', 'S_stability'), or one of its panels."""
     style.apply_style()
     package = f"figure{figure}"
-    module = importlib.import_module(f"cccrise.figures.{package}.{panel or package}")
+    # Supplements are nested in their main figure's package
+    (master,) = FIGURES_DIR.glob(f"**/{package}/{package}.py")
+    parts = master.parent.relative_to(FIGURES_DIR).parts
+    module = importlib.import_module(
+        ".".join(("cccrise.figures", *parts, panel or package))
+    )
     return module.makeFigure()
 
 
@@ -441,6 +447,7 @@ def genFigure():
     uv run cccrise-fbuild 2               # figures/figure2/figure2.py
     uv run cccrise-fbuild 2 rise_rank     # figures/figure2/rise_rank.py
     uv run cccrise-fbuild 2 --png         # PNG instead of SVG
+    uv run cccrise-fbuild S_stability     # figures/figure2/figureS_stability/
     """
     start = time.time()
     args = [arg for arg in sys.argv[1:] if arg != "--png"]
@@ -826,40 +833,6 @@ def get_cell_projections(dataset: str) -> anndata.AnnData:
     return load_factors_to_anndata(spec.factors_path(), adata=spec.load())
 
 
-def plot_celltype_eigenstate_association(
-    adata: anndata.AnnData,
-    dataset: str,
-    ax: plt.Axes,
-    highlight: Sequence[int] = (),
-) -> None:
-    """Cell type (rows, `style.CELL_TYPES` order) x RISE eigenstate mean
-    projection (mean over the cell type's cells of each eigenstate projection),
-    with the `highlight` eigenstates' labels bold."""
-    table = celltype_component_association(
-        adata,
-        factor_type="eigenstate",
-        celltype_col=DATASETS[dataset].celltype_column,
-        stat="mean",
-    ).reindex(style.CELL_TYPES[dataset])
-    vmax = np.nanmax(np.abs(table.to_numpy()))
-    image = ax.imshow(
-        table.to_numpy(),
-        cmap=style.CMAPS["diverging"],
-        vmin=-vmax,
-        vmax=vmax,
-        aspect="auto",
-    )
-    ax.set_xticks(range(table.shape[1]), table.columns)
-    ax.set_yticks(range(len(table)), table.index)
-    for label in ax.get_xticklabels():
-        if int(label.get_text()) in highlight:
-            label.set_fontweight("bold")
-    ax.set_xlabel("RISE eigenstate")
-    ax.tick_params(length=0)
-    ax.spines[:].set_visible(False)
-    ax.figure.colorbar(image, ax=ax, label="Mean projection", shrink=0.8)
-
-
 def plot_component_eigenstate_loadings(
     adata: anndata.AnnData, component: int, ax: plt.Axes, labeled: Sequence[int]
 ) -> None:
@@ -927,314 +900,12 @@ def plot_celltype_scatter(
         )
 
 
-def plot_component_weight_scatter(
-    dataset: str, component: int, ax: plt.Axes, highlight: Sequence[str] = ()
-) -> None:
-    """Per-cell sender vs. receiver weight on one CP component
-    (`plot_celltype_scatter`), with the cell type legend below it."""
-    adata = get_cell_projections(dataset)
-    plot_celltype_scatter(
-        adata,
-        dataset,
-        adata.obsm["sc_B"][:, component - 1],
-        adata.obsm["rc_C"][:, component - 1],
-        ax,
-        highlight=highlight,
-    )
-    ax.set(
-        xlabel=f"Cmp. {component} sender weight",
-        ylabel=f"Cmp. {component} receiver weight",
-    )
-    legend(
-        ax, "below", handles=celltype_handles(dataset), fontsize=style.FONT_SIZE_DENSE
-    )
-
-
 def celltype_handles(dataset: str) -> list[Patch]:
     """Legend handles of `dataset`'s cell type colors."""
     return [
         Patch(color=color, label=celltype)
         for celltype, color in style.CELL_TYPE_COLORS[dataset].items()
     ]
-
-
-# =============================================================================
-# Granularity component: label-free sender and receiver groups (ALAD Figure 2
-# and its cmp. 5 supplements)
-# =============================================================================
-
-# The CP component that splits a cell type into sender and receiver
-# subpopulations, and the RISE eigenstates of its largest sender (B) and
-# receiver (C) loadings
-GRANULARITY_DATASET = "alad"
-GRANULARITY_COMPONENT = 5
-GRANULARITY_SENDER_EIGENSTATE, GRANULARITY_RECEIVER_EIGENSTATE = 17, 15
-# Cells are split on their per-cell sender (`obsm["sc_B"]`) and receiver
-# (`obsm["rc_C"]`) weights on the component alone (`split_cells`), each
-# cutoff a fraction GROUP_TAU of that weight's largest value, then compared by
-# gene expression
-GROUP_TAU = 0.3
-GROUP_COLORS = {"sender": style.COLORS["sender"], "receiver": style.COLORS["receiver"]}
-GROUPS = (*GROUP_COLORS, "rest")
-DE_GROUPS = tuple(GROUP_COLORS)  # each tested against "rest"
-DOT_SIZE_MAX = 30  # pt^2, a gene detected in every cell of a group
-DOT_FRACTIONS = (0.25, 0.5, 1.0)  # size legend entries
-# Dot plot section names wider than this fraction of their genes' span are
-# abbreviated (`label_sections`), keeping neighbors apart
-SECTION_FILL = 0.9
-SECTION_ABBREVIATIONS = {
-    "Macrophages": "Mac.",
-    "Monocytes": "Mono.",
-    "Dendritic Cells": "DC",
-    "CD4 T cells": "CD4 T",
-    "CD8 T cells": "CD8 T",
-    "NK cells": "NK",
-    "Epithelial cells": "Epithelial",
-    "Proliferating cells": "Prolif.",
-    "Pan-epithelial": "Pan-epi.",
-    "Secretory": "Secr.",
-    "Top LR pairs": "LR pairs",
-}
-# Canonical markers of the annotated broad cell types, from the human lung
-# cell atlas (Travaglini et al. 2020, Nature), chosen to be specific within
-# these eight types (e.g. no pan-T genes shared by the CD4 and CD8 sets).
-# Only the gene names come from the literature; the annotations themselves
-# are not used.
-CELLTYPE_MARKERS = {
-    "Macrophages": ["MARCO", "FABP4", "C1QB", "CD68"],
-    "Monocytes": ["CD14", "FCN1", "VCAN", "S100A8"],
-    "Dendritic Cells": ["CD1C", "FCER1A", "CLEC10A"],
-    "CD4 T cells": ["CD4", "IL7R", "CD40LG"],
-    "CD8 T cells": ["CD8A", "CD8B", "GZMK"],
-    "NK cells": ["KLRF1", "NCAM1", "GNLY"],
-    "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "CDH1"],
-    "Proliferating cells": ["MKI67", "TOP2A"],
-}
-
-
-def component_weights() -> tuple[np.ndarray, np.ndarray]:
-    """Per-cell (sender, receiver) weight on the granularity component."""
-    adata = get_cell_projections(GRANULARITY_DATASET)
-    return (
-        adata.obsm["sc_B"][:, GRANULARITY_COMPONENT - 1],
-        adata.obsm["rc_C"][:, GRANULARITY_COMPONENT - 1],
-    )
-
-
-def split_cells(
-    sender: np.ndarray, receiver: np.ndarray, tau: float = GROUP_TAU
-) -> dict[str, np.ndarray]:
-    """{group: cell mask}: the cells passing the sender cutoff (`tau` x the
-    largest sender weight) or the receiver cutoff, each assigned to the role
-    of its larger weight relative to that weight's maximum."""
-    relative_sender, relative_receiver = (
-        sender / sender.max(),
-        receiver / receiver.max(),
-    )
-    high = (relative_sender >= tau) | (relative_receiver >= tau)
-    sends = relative_sender > relative_receiver
-    return {"sender": high & sends, "receiver": high & ~sends}
-
-
-def top_pair_genes() -> list[str]:
-    """Ligand then receptor genes (complexes split) of the component's top LR
-    pairs: those `factor_matrices` labels (NicheNet's relative-loading rule
-    over every pair)."""
-    adata = get_cell_projections(GRANULARITY_DATASET)
-    names = pd.Series(np.asarray(adata.uns["lr_pairs"]).astype(str)).str.split("^")
-    lr_pairs = pd.DataFrame({"ligand": names.str[0]})
-    rows = top_pairs(
-        adata.uns["D"], lr_pairs, GRANULARITY_COMPONENT, set(lr_pairs["ligand"])
-    )
-    top = names[rows]
-    return present(g for side in (0, 1) for g in top.str[side].str.split("&").explode())
-
-
-@functools.cache
-def cell_groups() -> pd.Series:
-    """Each cell's group at `GROUP_TAU`, "rest" if in none."""
-    groups = split_cells(*component_weights())
-    labels = np.full(len(groups["sender"]), "rest", dtype=object)
-    for group, mask in groups.items():
-        labels[mask] = group
-    return pd.Series(pd.Categorical(labels, categories=GROUPS))
-
-
-@functools.cache
-def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFrame]:
-    """{group: Wilcoxon score and BH q per gene, highest score first} of each
-    of `groups` against `reference`. Only the scores and q are used: scanpy's
-    fold changes assume natural-log data."""
-    adata = get_cell_projections(GRANULARITY_DATASET)
-    test = anndata.AnnData(
-        X=adata.X,
-        obs=pd.DataFrame({"group": cell_groups().to_numpy()}, index=adata.obs_names),
-        var=pd.DataFrame(index=adata.var_names),
-    )
-    sc.tl.rank_genes_groups(
-        test, "group", groups=list(groups), reference=reference, method="wilcoxon"
-    )
-    result = test.uns["rank_genes_groups"]
-    return {
-        g: pd.DataFrame(
-            {"score": result["scores"][g], "q": result["pvals_adj"][g]},
-            index=result["names"][g],
-        )
-        for g in groups
-    }
-
-
-def group_expression(genes: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """(fraction of cells detecting, mean expression) of `genes` (rows) in
-    each group (columns)."""
-    adata = get_cell_projections(GRANULARITY_DATASET)
-    X = adata[:, genes].to_df().to_numpy()
-    groups = cell_groups().to_numpy()
-    detected, mean = (
-        pd.DataFrame(
-            {g: stat(X[groups == g]) for g in GROUPS}, index=genes, dtype=float
-        )
-        for stat in (lambda x: (x > 0).mean(axis=0), lambda x: x.mean(axis=0))
-    )
-    return detected, mean
-
-
-def present(genes) -> list[str]:
-    """`genes` in the fit's gene set, in order, without repeats."""
-    var_names = set(get_cell_projections(GRANULARITY_DATASET).var_names)
-    return [g for g in dict.fromkeys(genes) if g in var_names]
-
-
-def plot_dotplot(
-    ax,
-    sections: dict[str, list[str]],
-    show_legend: bool = False,
-    fontsize: float | None = None,
-):
-    """Groups (rows) x genes (columns, under their `sections` names): dot
-    size the fraction of the group's cells detecting the gene, color its mean
-    expression relative to the gene's largest group mean, every label
-    `fontsize` (default `FACTOR_LABEL_FONT_SIZE`). With `show_legend`, the colorbar and size legend beside it.
-    Returns the dots."""
-    fontsize = fontsize or FACTOR_LABEL_FONT_SIZE
-    columns = label_sections(ax, sections, fontsize)
-    detected, mean = group_expression(list(columns))
-    relative = mean / mean.max(axis=1).to_numpy()[:, None]
-    x, y = np.meshgrid(list(columns.values()), np.arange(len(GROUPS)), indexing="ij")
-    points = ax.scatter(
-        x.ravel(),
-        y.ravel(),
-        s=DOT_SIZE_MAX * detected.to_numpy().ravel(),
-        c=relative.to_numpy().ravel(),
-        cmap=style.CMAPS["weight"],
-        vmin=0,
-        vmax=1,
-        linewidths=0,
-    )
-    ax.set_yticks(
-        range(len(GROUPS)), [g.capitalize() for g in GROUPS], fontsize=fontsize
-    )
-    ax.set_ylim(len(GROUPS) - 0.5, -0.5)
-    if show_legend:
-        colorbar(ax, points, "Mean expr.\n/ max group")
-        legend(
-            ax,
-            "right",
-            handles=[
-                ax.scatter([], [], s=DOT_SIZE_MAX * f, color=style.COLORS["ink"])
-                for f in DOT_FRACTIONS
-            ],
-            labels=[f"{f:.0%}" for f in DOT_FRACTIONS],
-            title="Detected",
-        )
-    return points
-
-
-def plot_markers(ax, markers: dict[str, list[str]], **kwargs):
-    """`plot_dotplot` of literature `markers` ({section: genes}), keeping the
-    genes in the fit's gene set."""
-    return plot_dotplot(
-        ax, {name: present(genes) for name, genes in markers.items()}, **kwargs
-    )
-
-
-def label_sections(
-    ax, sections: dict[str, list[str]], fontsize: float
-) -> dict[str, int]:
-    """Gene tick labels along x at 45 degrees, each section's name above its
-    genes (its `SECTION_ABBREVIATIONS` entry if the name would overrun them)
-    and thin lines between sections, all `fontsize`; returns {gene: column}."""
-    genes = [g for section in sections.values() for g in section]
-    ax.set_xticks(
-        range(len(genes)),
-        genes,
-        fontsize=fontsize,
-        rotation=45,
-        ha="right",
-        rotation_mode="anchor",
-    )
-    ax.set_xlim(-0.5, len(genes) - 0.5)
-    ax.tick_params(length=0)
-    renderer = ax.figure.canvas.get_renderer()
-    column_width = ax.bbox.width / len(genes)
-    columns, start = {}, 0
-    for name, section in sections.items():
-        end = start + len(section)
-        text = ax.text(
-            (start + end - 1) / 2,
-            1.03,
-            name,
-            transform=ax.get_xaxis_transform(),
-            ha="center",
-            va="bottom",
-            fontsize=fontsize,
-        )
-        if (
-            text.get_window_extent(renderer).width
-            > SECTION_FILL * len(section) * column_width
-        ):
-            text.set_text(SECTION_ABBREVIATIONS.get(name, name))
-        if end < len(genes):
-            ax.axvline(end - 0.5, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN)
-        columns |= {gene: start + i for i, gene in enumerate(section)}
-        start = end
-    return columns
-
-
-def plot_weight_scatter(
-    ax,
-    groups: dict[str, np.ndarray],
-    colors: dict[str, str],
-    rest_label: str | None = None,
-):
-    """Per-cell component sender vs. receiver weight, the cells of each of
-    `groups` ({legend label: mask}) colored `colors[label]`, the rest grey
-    (in the legend as `rest_label`, if given)."""
-    sender, receiver = component_weights()
-    rest = ~np.logical_or.reduce(list(groups.values()))
-    ax.scatter(
-        sender[rest],
-        receiver[rest],
-        c=style.COLORS["muted"],
-        s=style.POINT_SIZE_CELL,
-        linewidths=0,
-        rasterized=True,
-        label=f"{rest_label} (n={rest.sum()})" if rest_label else None,
-    )
-    for label, mask in groups.items():
-        ax.scatter(
-            sender[mask],
-            receiver[mask],
-            c=colors[label],
-            s=style.POINT_SIZE_BACKGROUND,
-            linewidths=0,
-            rasterized=True,
-            label=f"{label} (n={mask.sum()})",
-        )
-    ax.set(
-        xlabel=f"Cmp. {GRANULARITY_COMPONENT} sender weight",
-        ylabel=f"Cmp. {GRANULARITY_COMPONENT} receiver weight",
-    )
 
 
 # =============================================================================
@@ -1317,67 +988,6 @@ def _label_cell(
         va="center",
         fontsize=FACTOR_LABEL_FONT_SIZE,
     )
-
-
-RANKED_LABEL_GAP = 1.9 * style.MM  # between stacked labels on a ranked curve
-# Label columns on a ranked curve: starting this fraction of the ranks past
-# the head, this far apart, filled from the top loading down to this
-# fraction of it (above the curve's flat tail)
-RANKED_LABEL_X = 0.06
-RANKED_COLUMN_WIDTH = 0.2
-RANKED_LABEL_FLOOR = 0.3
-
-
-def plot_ranked_loadings(
-    ax: plt.Axes,
-    loadings: np.ndarray,
-    names: np.ndarray,
-    n_marked: int,
-    n_labeled: int,
-    point_size: float = style.POINT_SIZE_BACKGROUND,
-) -> None:
-    """One component's loadings against their rank (largest first): the
-    S-shaped curve with a steep head (the Shiny explorer's rank curve). The
-    `n_marked` largest are marked, and the `n_labeled` largest listed in
-    rank order in columns beside the head."""
-    order = np.argsort(-loadings)
-    ranks = np.arange(1, len(order) + 1)
-    ax.plot(ranks, loadings[order], color=style.COLORS["ink"], lw=style.LINE_WIDTH)
-    reference_line(ax, 0)
-    ax.scatter(
-        ranks[:n_marked],
-        loadings[order[:n_marked]],
-        color=style.COLORS["emphasis"],
-        s=point_size,
-        linewidths=0,
-        zorder=3,
-        clip_on=False,
-    )
-    low, high = float(loadings.min()), float(loadings.max())
-    ax.set_ylim(low - 0.05 * (high - low), high + 0.05 * (high - low))
-    ax.set_xlim(0, len(order) + 1)
-    _ranked_callouts(ax, names[order[:n_labeled]])
-
-
-def _ranked_callouts(ax, names) -> None:
-    """`names` (in rank order) as a ranked list in columns of labels stacked
-    `RANKED_LABEL_GAP` apart from the top loading down to the floor. No
-    leaders: the named genes are packed into the head of the curve."""
-    low, high = ax.get_ylim()
-    gap = RANKED_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * (high - low)
-    top = high - gap
-    per_column = max(int((1 - RANKED_LABEL_FLOOR) * top / gap), 1)
-    n = ax.get_xlim()[1]
-    for i, name in enumerate(names):
-        column, slot = divmod(i, per_column)
-        ax.text(
-            n * (RANKED_LABEL_X + column * RANKED_COLUMN_WIDTH),
-            top - slot * gap,
-            name,
-            va="center",
-            fontsize=FACTOR_LABEL_FONT_SIZE,
-            color=style.COLORS["ink"],
-        )
 
 
 def _spread_labels(rows: list[float], gap: float, n_rows: int) -> np.ndarray:
