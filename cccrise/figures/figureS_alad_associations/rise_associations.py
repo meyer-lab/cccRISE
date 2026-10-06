@@ -5,7 +5,7 @@ eta-squared, FDR-corrected across components within an association)."""
 from .. import common
 from ..figure3 import _common as S
 
-AXES = ("large",)
+AXES = ("wide",)
 
 
 def plot(axs):

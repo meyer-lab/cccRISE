@@ -931,7 +931,7 @@ def plot_component_weight_scatter(
     dataset: str, component: int, ax: plt.Axes, highlight: Sequence[str] = ()
 ) -> None:
     """Per-cell sender vs. receiver weight on one CP component
-    (`plot_celltype_scatter`), with the cell type legend beside it."""
+    (`plot_celltype_scatter`), with the cell type legend below it."""
     adata = get_cell_projections(dataset)
     plot_celltype_scatter(
         adata,
@@ -945,7 +945,9 @@ def plot_component_weight_scatter(
         xlabel=f"Cmp. {component} sender weight",
         ylabel=f"Cmp. {component} receiver weight",
     )
-    legend(ax, "right", handles=celltype_handles(dataset))
+    legend(
+        ax, "below", handles=celltype_handles(dataset), fontsize=style.FONT_SIZE_DENSE
+    )
 
 
 def celltype_handles(dataset: str) -> list[Patch]:
@@ -1332,6 +1334,7 @@ def plot_ranked_loadings(
     names: np.ndarray,
     n_marked: int,
     n_labeled: int,
+    point_size: float = style.POINT_SIZE_BACKGROUND,
 ) -> None:
     """One component's loadings against their rank (largest first): the
     S-shaped curve with a steep head (the Shiny explorer's rank curve). The
@@ -1345,7 +1348,7 @@ def plot_ranked_loadings(
         ranks[:n_marked],
         loadings[order[:n_marked]],
         color=style.COLORS["emphasis"],
-        s=style.POINT_SIZE_BACKGROUND,
+        s=point_size,
         linewidths=0,
         zorder=3,
         clip_on=False,

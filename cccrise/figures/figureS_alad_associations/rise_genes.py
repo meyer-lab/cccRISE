@@ -6,7 +6,7 @@ import numpy as np
 
 from ...factors import load_factors_netcdf
 from .. import common
-from . import _common as S
+from ..figure3 import _common as S
 
 MARKED_FRACTION = 0.05  # of genes, marked on the curve
 N_LABELED = 30  # as many of the top genes as the label columns hold

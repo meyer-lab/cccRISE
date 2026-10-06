@@ -6,15 +6,14 @@ from . import (
     cmp_weight_scatter,
     component_weights,
     coordinated_changes,
+    lr_loadings,
     pacmaps,
-    rise_genes,
-    rise_outcome_weights,
 )
 
 LAYOUT = [
-    [rise_outcome_weights, component_weights, cmp_weight_scatter],
-    [coordinated_changes, celltype_association],
-    [pacmaps, rise_genes],
+    [component_weights, celltype_association, cmp_weight_scatter],
+    [lr_loadings, coordinated_changes],
+    [pacmaps],
 ]
 
 

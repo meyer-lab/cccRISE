@@ -41,7 +41,7 @@ def plot(axs):
             )
         )
         ax.set_xticks(range(table.shape[1]), table.columns)
-        ax.set_yticks(range(len(table)), table.index)
+        ax.set_yticks(range(len(table)), table.index, fontsize=style.FONT_SIZE_DENSE)
         ax.set_xlabel(f"CP component\n({role} weight)")
         ax.tick_params(length=0)
         ax.spines[:].set_visible(False)
