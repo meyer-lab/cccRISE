@@ -7,7 +7,7 @@ One box per component: the NicheNet-style AUROC
 component's receiver ranking, restricted to genes expressed in the receiver
 groups. Points are colored and sized by the ligand's weight in the component,
 opaque for the top ligands (``nichenet.top_pair_ligands``) and translucent for
-the rest; the top LR pairs are labeled on `factor_matrices`. Above each box: a
+the rest; the top LR pairs are labeled on `cp_factor_matrices`. Above each box: a
 star where a two-sided Mann-Whitney test of the top ligands against all the
 others has Benjamini-Hochberg q (across components) below `SIG_ALPHA`
 (``nichenet.top_ligand_tests``), else n.s."""

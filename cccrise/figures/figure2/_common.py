@@ -88,7 +88,7 @@ def split_cells(
 
 def top_pair_genes() -> list[str]:
     """Ligand then receptor genes (complexes split) of the component's top LR
-    pairs: those `factor_matrices` labels (NicheNet's relative-loading rule
+    pairs: those `cp_factor_matrices` labels (NicheNet's relative-loading rule
     over every pair)."""
     adata = common.get_cell_projections(GRANULARITY_DATASET)
     names = pd.Series(np.asarray(adata.uns["lr_pairs"]).astype(str)).str.split("^")

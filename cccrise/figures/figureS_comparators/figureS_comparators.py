@@ -1,6 +1,6 @@
 """Supplementary figure: CCC-RISE against comparator methods."""
 
-from ... import common, style
+from .. import common, style
 from . import method_comparison
 
 PANELS = {"comparison": method_comparison}

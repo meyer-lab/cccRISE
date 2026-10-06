@@ -4,7 +4,7 @@
 Placeholder: no runner produces comparator results yet.
 """
 
-from ... import common, style
+from .. import common, style
 
 
 def plot(fig):

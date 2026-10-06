@@ -1,4 +1,4 @@
-"""Size of each label-free group (`figure2.group_scatter`)
+"""Size of each label-free group (`figure2.sender_receiver_strata`)
 across the cutoff fraction τ, the chosen `TAU` marked."""
 
 import numpy as np

@@ -11,7 +11,7 @@ panel, each exposing `plot(fig)` (draws into a Figure or SubFigure) and
 `makeFigure()` (the panel alone), plus a `figure<N>.py` master that arranges
 the panels with `panel_grid` and labels them with `label_panels`. Each
 supplementary figure is a `figureS_<name>/` package nested in the main
-figure it supports.
+figure it supports, or at the top level if it supports no single one.
 """
 
 import functools
@@ -429,10 +429,10 @@ def placeholder(fig: Figure | SubFigure | plt.Axes, text: str) -> None:
 
 
 def build_figure(figure: str, panel: str | None = None) -> Figure:
-    """Figure `figure` (e.g. '2', 'S_stability'), or one of its panels."""
+    """Figure `figure` (e.g. '2', 'S_cmp_stability'), or one of its panels."""
     style.apply_style()
     package = f"figure{figure}"
-    # Supplements are nested in their main figure's package
+    # Supplements may be nested in their main figure's package
     (master,) = FIGURES_DIR.glob(f"**/{package}/{package}.py")
     parts = master.parent.relative_to(FIGURES_DIR).parts
     module = importlib.import_module(
@@ -444,10 +444,10 @@ def build_figure(figure: str, panel: str | None = None) -> Figure:
 def genFigure():
     """Build a figure, or one of its panels, into output/figure<N>/:
 
-    uv run cccrise-fbuild 2               # figures/figure2/figure2.py
-    uv run cccrise-fbuild 2 rise_rank     # figures/figure2/rise_rank.py
-    uv run cccrise-fbuild 2 --png         # PNG instead of SVG
-    uv run cccrise-fbuild S_stability     # figures/figure2/figureS_stability/
+    uv run cccrise-fbuild 2                      # figures/figure2/figure2.py
+    uv run cccrise-fbuild 2 rise_rank_selection  # figures/figure2/rise_rank_selection.py
+    uv run cccrise-fbuild 2 --png                # PNG instead of SVG
+    uv run cccrise-fbuild S_cmp_stability        # figures/figure2/figureS_cmp_stability/
     """
     start = time.time()
     args = [arg for arg in sys.argv[1:] if arg != "--png"]

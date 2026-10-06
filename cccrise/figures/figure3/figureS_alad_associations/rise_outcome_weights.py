@@ -5,7 +5,7 @@ ANOVA tested."""
 
 from ... import common
 from .. import _common as S
-from ..component_weights import plot_outcome_weights
+from ..outcome_association import plot_outcome_weights
 
 AXES = ("square",)
 

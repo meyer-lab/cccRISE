@@ -1,9 +1,9 @@
 .PHONY: clean test ty profile_cpu manuscript
 
-# One package per figure (cccrise/figures/figure<N>/, with its supplements
-# nested as figure<N>/figureS_<name>/), built from its master figure<N>.py into
-# output/figure<N>/figure<N>.svg. Build one panel with
-# `uv run cccrise-fbuild <N> <panel>`.
+# One package per figure (cccrise/figures/figure<N>/; a supplement is nested as
+# figure<N>/figureS_<name>/, or top-level if it supports no one figure), built
+# from its master figure<N>.py into output/figure<N>/figure<N>.svg. Build one
+# panel with `uv run cccrise-fbuild <N> <panel>`.
 fpkgs = $(wildcard cccrise/figures/figure*/) $(wildcard cccrise/figures/figure*/figureS_*/)
 fdirs = $(foreach p,$(fpkgs),$(notdir $(p:/=)))
 allOutput = $(foreach d,$(fdirs),output/$(d)/$(d).svg)

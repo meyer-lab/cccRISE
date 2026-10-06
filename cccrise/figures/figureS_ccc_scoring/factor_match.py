@@ -5,7 +5,7 @@ sender/receiver |cosine|, an independent check of the pairing."""
 import numpy as np
 import pandas as pd
 
-from ... import common, style
+from .. import common, style
 from . import _common as S
 
 

@@ -1,7 +1,7 @@
 """The outcome-associated CP component's sender and receiver loadings on each
 RISE eigenstate, as Figure 2 shows for its granularity component.
 
-An alternative to `celltype_association` + `cmp_weight_scatter` for
+An alternative to `celltype_association` + `sender_receiver_scatter` for
 identifying the component's cell types (with the cell type x eigenstate
 supplement); not in the figure's layout.
 """
