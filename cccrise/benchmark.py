@@ -166,12 +166,15 @@ def pseudobulk_cpd_rank(
 ) -> tuple[int, pd.DataFrame]:
     """Pseudobulk CPD's rank, by the rule cccRISE's CP rank was selected with.
 
-    Fits ranks ``1..max_rank`` (default: the tensor's smallest mode, the bound
-    `ccc_rise.validate_cp_rank` puts on cccRISE) and returns the last rank
+    Fits ranks ``1..max_rank``, never beyond the tensor's smallest mode (the
+    bound `ccc_rise.validate_cp_rank` puts on cccRISE; above it the SVD
+    initialisation needs a full-matrices SVD of a mode unfolding, hundreds of
+    GB on the coarse tensor), and returns the last rank
     before core consistency first drops below `threshold` percent or any
     component pair turns collinear, with the per-rank diagnostics.
     """
-    max_rank = max_rank or min(tensor.shape)
+    bound = min(tensor.shape)
+    max_rank = min(max_rank, bound) if max_rank else bound
     factors_by_rank = {
         rank: pseudobulk_cp_decomposition(
             tensor,

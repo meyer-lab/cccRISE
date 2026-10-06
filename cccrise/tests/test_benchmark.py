@@ -59,6 +59,12 @@ def test_pseudobulk_cpd_rank_stops_before_the_rule_fails():
     assert rank == 2
 
 
+def test_pseudobulk_cpd_rank_never_exceeds_the_smallest_mode():
+    tensor = _nonneg_cp_tensor((6, 3, 3, 10), rank=2, seed=2, noise=0.01)
+    _rank, diagnostics = pseudobulk_cpd_rank(tensor, max_rank=10)
+    assert diagnostics["Rank"].max() == 3
+
+
 def test_staccato_order_moves_lr_to_mode_two():
     assert staccato_order(np.zeros((4, 3, 3, 9))).shape == (4, 9, 3, 3)
 
