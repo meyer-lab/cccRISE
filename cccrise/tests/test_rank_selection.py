@@ -18,7 +18,7 @@ from cccrise.rank_selection import (
     candelinc_compress,
     candelinc_r2x,
     cp_core_consistency,
-    cp_core_consistency_sweep,
+    cp_imputation_sweep,
     cpd_component_collinearity,
 )
 
@@ -101,14 +101,24 @@ def test_cp_core_consistency_drops_past_true_rank():
     assert overfit < at_true_rank
 
 
-def test_cp_core_consistency_sweep_shape():
-    tensor = _simulate_cp_tensor((6, 7, 7, 15), rank=2, random_state=6)
-    factors_by_rank = {
-        rank: _cp_fit(tensor, rank, n_iter_max=100, tol=1e-8)[:2] for rank in (1, 2, 4)
-    }
-    df = cp_core_consistency_sweep(tensor, factors_by_rank)
-    assert set(df["Rank"]) == {1, 2, 4}
-    assert "CoreConsistency" in df.columns
+def test_cp_imputation_peaks_at_true_rank():
+    """Held-out entries are imputed best at the true rank: below it the model
+    underfits, above it the extra components fit noise."""
+    true_rank = 3
+    tensor = _simulate_cp_tensor(
+        (10, 12, 12, 30), rank=true_rank, noise_std=0.3, random_state=6
+    )
+    df = cp_imputation_sweep(
+        tensor,
+        ranks=[1, 2, 3, 6],
+        n_masks=2,
+        random_state=0,
+        n_iter_max=300,
+        tol=1e-8,
+        **CP_FIT_OPTIONS,
+    ).set_index("Rank")
+    assert list(df.columns) == ["ImputationR2X", "ImputationR2XSEM"]
+    assert df["ImputationR2X"].idxmax() == true_rank
 
 
 # =============================================================================
@@ -216,13 +226,11 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     """`compress=False` and the compressed path the runners take must agree.
 
     Up to the true rank the CP model is identifiable and the two paths must
-    report the same metrics. Past it the model is degenerate *by definition*:
-    many equally-good solutions fit the tensor, the subspace constraint is
-    enough to pick a different one, and CORCONDIA there is not a stable
-    quantity. So the assertion past the true rank is only that both paths still
-    see the model degrade -- not that they agree on a number. On real data the
-    decision sits at the identifiable boundary, where they do agree.
+    report the same collinearity screen. Imputation always runs on the full
+    tensor, so both paths report it identically up to fit noise, which grows
+    past the true rank where the model is degenerate.
     """
+    from dataclasses import replace
     from unittest.mock import patch
 
     import cccrise.runners.run_cpd_rank as runner
@@ -244,7 +252,7 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
             patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
         ):
             df, out_path, sidecar = runner.run_cpd_rank_selection(
-                DATASETS["alad"],
+                replace(DATASETS["alad"], backend="cpu"),
                 rise_rank=5,
                 ranks=[1, 2, 3, 4, 5],
                 cp_n_iter_max=2000,
@@ -264,21 +272,12 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     np.testing.assert_allclose(compressed["FitR2X"], full["FitR2X"], atol=2e-3)
     assert compressed["FitR2X"].is_monotonic_increasing
 
-    for df in (compressed, full):
-        identifiable = df["Rank"] <= true_rank
-        assert (df.loc[identifiable, "CoreConsistency"] > 50.0).all()
-        # The model has to visibly degrade once rank exceeds the true one.
-        assert (
-            df.loc[~identifiable, "CoreConsistency"].min()
-            < df.loc[identifiable, "CoreConsistency"].min()
-        )
+    np.testing.assert_allclose(
+        compressed["ImputationR2X"], full["ImputationR2X"], atol=1e-3
+    )
+    assert compressed.loc[compressed["ImputationR2X"].idxmax(), "Rank"] == true_rank
 
     identifiable = compressed["Rank"] <= true_rank
-    np.testing.assert_allclose(
-        compressed.loc[identifiable, "CoreConsistency"],
-        full.loc[identifiable, "CoreConsistency"],
-        rtol=1e-4,
-    )
     assert list(compressed.loc[identifiable, "MaxModesCollinear"]) == list(
         full.loc[identifiable, "MaxModesCollinear"]
     )

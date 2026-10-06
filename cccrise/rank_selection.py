@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from tensorly.base import unfold
 from tensorly.cp_tensor import cp_to_tensor
+from tensorly.decomposition import parafac
 from tensorly.tenalg import mode_dot  # ty: ignore[unresolved-import]
 
 Factors = list[np.ndarray]
@@ -141,21 +143,66 @@ def cp_core_consistency(
     return float(100.0 * (1.0 - np.sum((core - ideal) ** 2) / np.sum(ideal**2)))
 
 
-def cp_core_consistency_sweep(
-    tensor: np.ndarray, factors_by_rank: dict[int, tuple[np.ndarray, Factors]]
-) -> pd.DataFrame:
-    """Core consistency across every rank in a set of CP fits.
+def cp_imputation_r2x(
+    tensor: np.ndarray,
+    rank: int,
+    mask_frac: float = 0.1,
+    random_state: int | None = None,
+    **parafac_kwargs,
+) -> float:
+    """R2X of CP-imputed entries, with a random `mask_frac` of entries held out.
 
-    Columns: 'Rank', 'CoreConsistency'.
+    CP is fit with tensorly's EM-style masked ALS and scored only on the
+    held-out entries, normalized as in `calculate_r2x`. Held-out entries are
+    zeroed before fitting because tensorly's masked SVD initialization reads
+    them on its first pass. Fits on the active tensorly backend.
+    """
+    rng = np.random.default_rng(random_state)
+    held_out = rng.uniform(size=tensor.shape) < mask_frac
+    weights, factors = parafac(
+        tl.tensor(np.where(held_out, 0.0, tensor)),
+        rank=rank,
+        mask=tl.tensor((~held_out).astype(float)),
+        random_state=random_state,
+        **parafac_kwargs,
+    )
+    actual = tensor[held_out]
+    residual = actual - tl.to_numpy(cp_to_tensor((weights, factors)))[held_out]
+    return float(1.0 - np.sum(residual**2) / np.sum(actual**2))
+
+
+def cp_imputation_sweep(
+    tensor: np.ndarray,
+    ranks: list[int],
+    n_masks: int = 5,
+    mask_frac: float = 0.1,
+    random_state: int | None = None,
+    **parafac_kwargs,
+) -> pd.DataFrame:
+    """Imputation R2X across ranks, as mean and SEM over `n_masks` masks.
+
+    Mask `m` is seeded identically at every rank, so ranks are compared on the
+    same held-out entries. Columns: 'Rank', 'ImputationR2X',
+    'ImputationR2XSEM'.
     """
     rows = [
         {
             "Rank": rank,
-            "CoreConsistency": cp_core_consistency(tensor, weights, factors),
+            "ImputationR2X": cp_imputation_r2x(
+                tensor,
+                rank,
+                mask_frac=mask_frac,
+                random_state=None if random_state is None else random_state + m,
+                **parafac_kwargs,
+            ),
         }
-        for rank, (weights, factors) in sorted(factors_by_rank.items())
+        for rank in ranks
+        for m in range(n_masks)
     ]
-    return pd.DataFrame(rows)
+    by_rank = pd.DataFrame(rows).groupby("Rank")["ImputationR2X"]
+    return pd.DataFrame(
+        {"ImputationR2X": by_rank.mean(), "ImputationR2XSEM": by_rank.sem()}
+    ).reset_index()
 
 
 def candelinc_compress(
@@ -169,13 +216,14 @@ def candelinc_compress(
     CP-ALS on a core small enough to sweep many ranks over, then maps the
     solution back with ``A_n = U_n F_n``.
 
-    Both rank-selection metrics are invariant to this, as long as each basis
-    keeps at least `max_rank` columns. The bases are orthonormal, so
+    Collinearity and core consistency are invariant to this, as long as each
+    basis keeps at least `max_rank` columns. The bases are orthonormal, so
     within-mode cosines between decompressed components equal those between
     core components (`cpd_component_collinearity`), and
     ``pinv(U_n F_n) = pinv(F_n) U_n^T`` makes the projected core identical
     whether taken from the original tensor or the core
-    (`cp_core_consistency`).
+    (`cp_core_consistency`). Entry-masked imputation is not: masks select
+    entries of the original tensor, so `cp_imputation_sweep` runs uncompressed.
 
     Raises
     ------
