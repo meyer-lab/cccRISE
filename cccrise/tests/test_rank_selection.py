@@ -9,6 +9,7 @@ on, which is a 4-mode CP problem with no upstream home.
 import numpy as np
 import pandas as pd
 import pytest
+import tensorly as tl
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
 
@@ -20,6 +21,7 @@ from cccrise.rank_selection import (
     cp_core_consistency,
     cp_imputation_sweep,
     cpd_component_collinearity,
+    host_parafac,
 )
 
 
@@ -119,6 +121,28 @@ def test_cp_imputation_peaks_at_true_rank():
     ).set_index("Rank")
     assert list(df.columns) == ["ImputationR2X", "ImputationR2XSEM"]
     assert df["ImputationR2X"].idxmax() == true_rank
+
+
+def test_host_parafac_cupy_matches_numpy():
+    """The runner's GPU CP path returns host arrays that fit like the CPU path."""
+    pytest.importorskip("cupy")
+    tensor = _simulate_cp_tensor((10, 12, 12, 30), rank=3, random_state=7)
+    mask = (np.random.default_rng(0).uniform(size=tensor.shape) >= 0.1).astype(float)
+    r2x = {}
+    for backend in ("numpy", "cupy"):
+        with tl.backend_context(backend):
+            weights, factors = host_parafac(
+                tensor * mask,
+                mask=mask,
+                rank=3,
+                n_iter_max=300,
+                tol=1e-8,
+                random_state=0,
+                **CP_FIT_OPTIONS,
+            )
+        assert isinstance(weights, np.ndarray)
+        r2x[backend] = calculate_r2x(weights, factors, tensor)
+    assert r2x["cupy"] == pytest.approx(r2x["numpy"], abs=1e-6)
 
 
 # =============================================================================
@@ -226,10 +250,11 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     """`compress=False` and the compressed path the runners take must agree.
 
     Up to the true rank the CP model is identifiable and the two paths must
-    report the same collinearity screen. Imputation always runs on the full
-    tensor, so both paths report it identically up to fit noise, which grows
-    past the true rank where the model is degenerate.
+    report the same collinearity screen and imputation R2X (imputation always
+    runs on the full tensor). Past it the model is degenerate, and fit noise
+    alone moves imputation R2X between otherwise identical runs.
     """
+    from dataclasses import replace
     from unittest.mock import patch
 
     import cccrise.runners.run_cpd_rank as runner
@@ -251,7 +276,7 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
             patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
         ):
             df, out_path, sidecar = runner.run_cpd_rank_selection(
-                DATASETS["alad"],
+                replace(DATASETS["alad"], backend="cpu"),
                 rise_rank=5,
                 ranks=[1, 2, 3, 4, 5],
                 cp_n_iter_max=2000,
@@ -271,12 +296,13 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     np.testing.assert_allclose(compressed["FitR2X"], full["FitR2X"], atol=2e-3)
     assert compressed["FitR2X"].is_monotonic_increasing
 
+    identifiable = compressed["Rank"] <= true_rank
     np.testing.assert_allclose(
-        compressed["ImputationR2X"], full["ImputationR2X"], atol=1e-3
+        compressed.loc[identifiable, "ImputationR2X"],
+        full.loc[identifiable, "ImputationR2X"],
+        rtol=1e-6,
     )
     assert compressed.loc[compressed["ImputationR2X"].idxmax(), "Rank"] == true_rank
-
-    identifiable = compressed["Rank"] <= true_rank
     assert list(compressed.loc[identifiable, "MaxModesCollinear"]) == list(
         full.loc[identifiable, "MaxModesCollinear"]
     )

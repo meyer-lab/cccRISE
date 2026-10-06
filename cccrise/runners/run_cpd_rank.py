@@ -26,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from tensorly.decomposition import parafac
+import tensorly as tl
 
 from ..ccc_rise import (
     CP_COMPRESSION_OPTIONS,
@@ -43,6 +43,7 @@ from ..rank_selection import (
     candelinc_r2x,
     cp_imputation_sweep,
     cpd_component_collinearity,
+    host_parafac,
 )
 from ._cli import (
     CP_N_ITER_MAX,
@@ -125,7 +126,7 @@ def cp_fits_by_rank(
     """
     fits = {}
     for rank in ranks:
-        weights, factors = parafac(
+        weights, factors = host_parafac(
             tensor,
             rank=rank,
             n_iter_max=n_iter_max,
@@ -158,7 +159,8 @@ def run_cpd_rank_selection(
 
         CP rank selection is conditional on the already-selected `rise_rank`.
 
-    RISE runs on `spec.backend`; the CP stage is CPU-only. `compress`
+    RISE runs on `spec.backend`, and so do the CP fits when it is 'cupy'
+    (everything else stays on CPU). `compress`
     compresses RISE and the fit R2X/collinearity sweep, not imputation.
 
         Returns the sweep results, the output path, and the sidecar path.
@@ -167,6 +169,7 @@ def run_cpd_rank_selection(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     git_sha()
+    cp_backend = "cupy" if spec.backend == "cupy" else "numpy"
 
     print(f"=== CPD rank selection: {spec.label} (RISE rank {rise_rank}) ===")
     print(
@@ -213,14 +216,15 @@ def run_cpd_rank_selection(
             "retained_fraction": float(retained),
         }
 
-    print("3. Fitting CP at every rank...")
-    fits = cp_fits_by_rank(
-        fit_target,
-        ranks=ranks,
-        n_iter_max=cp_n_iter_max,
-        tol=cp_tol,
-        random_state=random_state,
-    )
+    print(f"3. Fitting CP at every rank ({cp_backend})...")
+    with tl.backend_context(cp_backend):
+        fits = cp_fits_by_rank(
+            fit_target,
+            ranks=ranks,
+            n_iter_max=cp_n_iter_max,
+            tol=cp_tol,
+            random_state=random_state,
+        )
     # `candelinc_r2x` is the identity when nothing was discarded, so the
     # uncompressed path reports exactly the R2X the fit returned.
     fit_r2x_df = pd.DataFrame(
@@ -233,17 +237,18 @@ def run_cpd_rank_selection(
     collinearity_df = cpd_component_collinearity(factors_by_rank)
 
     # Masked ALS can't use the CANDELINC core, so this is the slowest step.
-    print("5. Imputing held-out entries of the full tensor...")
-    imputation_df = cp_imputation_sweep(
-        tensor,
-        ranks=ranks,
-        n_masks=n_masks,
-        mask_frac=mask_frac,
-        random_state=random_state,
-        n_iter_max=cp_n_iter_max,
-        tol=cp_tol,
-        **CP_FIT_OPTIONS,
-    )
+    print(f"5. Imputing held-out entries of the full tensor ({cp_backend})...")
+    with tl.backend_context(cp_backend):
+        imputation_df = cp_imputation_sweep(
+            tensor,
+            ranks=ranks,
+            n_masks=n_masks,
+            mask_frac=mask_frac,
+            random_state=random_state,
+            n_iter_max=cp_n_iter_max,
+            tol=cp_tol,
+            **CP_FIT_OPTIONS,
+        )
 
     df = fit_r2x_df.merge(collinearity_df, on="Rank").merge(imputation_df, on="Rank")
 
@@ -261,6 +266,7 @@ def run_cpd_rank_selection(
             "cp_tol": cp_tol,
             "cp_fit_options": CP_FIT_OPTIONS,
             "backend": spec.backend or "auto",
+            "cp_backend": cp_backend,
             "compress": compress,
             "n_masks": n_masks,
             "mask_frac": mask_frac,

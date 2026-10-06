@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from tensorly.base import unfold
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
@@ -142,6 +143,18 @@ def cp_core_consistency(
     return float(100.0 * (1.0 - np.sum((core - ideal) ** 2) / np.sum(ideal**2)))
 
 
+def host_parafac(
+    tensor: np.ndarray, mask: np.ndarray | None = None, **parafac_kwargs
+) -> tuple[np.ndarray, Factors]:
+    """`parafac` on the active tensorly backend, with NumPy inputs and outputs."""
+    weights, factors = parafac(
+        tl.tensor(tensor),
+        mask=None if mask is None else tl.tensor(mask),
+        **parafac_kwargs,
+    )
+    return tl.to_numpy(weights), [tl.to_numpy(f) for f in factors]
+
+
 def cp_imputation_r2x(
     tensor: np.ndarray,
     rank: int,
@@ -158,7 +171,7 @@ def cp_imputation_r2x(
     """
     rng = np.random.default_rng(random_state)
     held_out = rng.uniform(size=tensor.shape) < mask_frac
-    weights, factors = parafac(
+    weights, factors = host_parafac(
         np.where(held_out, 0.0, tensor),
         rank=rank,
         mask=(~held_out).astype(float),
