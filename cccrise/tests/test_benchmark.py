@@ -151,3 +151,19 @@ def test_fit_cache_round_trips_and_refuses_stale_settings(tmp_path):
     assert load_fits(path, conditions, {"seed": 2}) is None
     assert load_fits(path, conditions[::-1], {"seed": 1}) is None
     assert load_fits(tmp_path / "missing.nc", conditions, {"seed": 1}) is None
+
+
+def test_tensor_cell2cell_gpu_matches_cpu():
+    cupy = pytest.importorskip("cupy")
+    try:
+        cupy.cuda.runtime.getDeviceCount()
+    except cupy.cuda.runtime.CUDARuntimeError:
+        pytest.skip("no GPU")
+    from cccrise.benchmark import _nonneg_cp
+
+    tensor = _nonneg_cp_tensor((6, 3, 3, 10), rank=2, seed=3, noise=0.01)
+    cpu = _nonneg_cp(tensor, 2, 0)
+    gpu = _nonneg_cp(tensor, 2, 0, backend="cupy")
+    for a, b in zip(cpu.factors, gpu.factors, strict=True):
+        assert isinstance(b, np.ndarray)
+        np.testing.assert_allclose(a, b, rtol=1e-4, atol=1e-6)

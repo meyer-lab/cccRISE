@@ -220,15 +220,35 @@ def kneedle_elbow(
     return int(xs[int(np.argmax(difference))])
 
 
-def _nonneg_cp(tensor: np.ndarray, rank: int, random_state: int | None):
-    return non_negative_parafac(
-        tl.tensor(tensor),
-        rank,
-        init="random",
-        tol=TC2C_TOL,
-        n_iter_max=TC2C_N_ITER_MAX,
-        random_state=random_state,
-    )
+def _nonneg_cp(
+    tensor: np.ndarray, rank: int, random_state: int | None, backend: str = "numpy"
+):
+    """One Tensor-cell2cell fit, returned as NumPy arrays. ``backend="cupy"``
+    runs it on the GPU (the `gpu` extra): the random initialization is drawn
+    the same way, and the fit matches the CPU one to rounding."""
+    if backend == "numpy":
+        return non_negative_parafac(
+            tl.tensor(tensor),
+            rank,
+            init="random",
+            tol=TC2C_TOL,
+            n_iter_max=TC2C_N_ITER_MAX,
+            random_state=random_state,
+        )
+    tl.set_backend(backend)
+    try:
+        cp = non_negative_parafac(
+            tl.tensor(tensor),
+            rank,
+            init="random",
+            tol=TC2C_TOL,
+            n_iter_max=TC2C_N_ITER_MAX,
+            random_state=random_state,
+        )
+        weights, factors = tl.to_numpy(cp.weights), [tl.to_numpy(f) for f in cp.factors]
+    finally:
+        tl.set_backend("numpy")
+    return tl.cp_tensor.CPTensor((weights, factors))
 
 
 def _normalized_error(tensor: np.ndarray, cp) -> float:
@@ -243,6 +263,7 @@ def tensor_cell2cell_elbow(
     upper_rank: int = TC2C_UPPER_RANK,
     runs: int = TC2C_ELBOW_RUNS,
     random_state: int = 42,
+    backend: str = "numpy",
 ) -> tuple[int, np.ndarray]:
     """Tensor-cell2cell's rank: the elbow of the mean normalized error across
     `runs` random-init fits at every rank ``1..upper_rank``.
@@ -255,7 +276,7 @@ def tensor_cell2cell_elbow(
             np.mean(
                 [
                     _normalized_error(
-                        tensor, _nonneg_cp(tensor, rank, random_state + run)
+                        tensor, _nonneg_cp(tensor, rank, random_state + run, backend)
                     )
                     for run in range(runs)
                 ]
@@ -267,11 +288,11 @@ def tensor_cell2cell_elbow(
 
 
 def tensor_cell2cell_fit(
-    tensor: np.ndarray, rank: int, random_state: int = 42
+    tensor: np.ndarray, rank: int, random_state: int = 42, backend: str = "numpy"
 ) -> tuple[np.ndarray, list[np.ndarray]]:
     """Weights and ``(condition, sender, receiver, lr)`` factors of one
     Tensor-cell2cell fit at `rank`."""
-    cp = _nonneg_cp(tensor, rank, random_state)
+    cp = _nonneg_cp(tensor, rank, random_state, backend)
     return np.asarray(cp.weights), [np.asarray(f) for f in cp.factors]
 
 
@@ -343,6 +364,8 @@ def fit_comparators(
     tc2c_elbow_runs: int = TC2C_ELBOW_RUNS,
     staccato_varexp: float = STACCATO_VAREXP,
     random_state: int = 42,
+    tc2c_backend: str = "numpy",
+    pb_max_rank: int | None = None,
 ) -> list[ComparatorFit]:
     """Fit every comparator on the pseudobulk `tensor` under one rank mode.
 
@@ -363,7 +386,9 @@ def fit_comparators(
 
     stac_tensor = staccato_order(tensor)
     if rank_mode == "own":
-        pb_rank, diagnostics = pseudobulk_cpd_rank(tensor, random_state=random_state)
+        pb_rank, diagnostics = pseudobulk_cpd_rank(
+            tensor, max_rank=pb_max_rank, random_state=random_state
+        )
         pb_details: dict[str, Any] = {
             "corcondia_threshold": CORCONDIA_THRESHOLD,
             "core_consistency": diagnostics["CoreConsistency"].tolist(),
@@ -374,6 +399,7 @@ def fit_comparators(
             upper_rank=tc2c_upper_rank,
             runs=tc2c_elbow_runs,
             random_state=random_state,
+            backend=tc2c_backend,
         )
         tc2c_details: dict[str, Any] = {"elbow_errors": errors.tolist()}
         selections = [
@@ -393,7 +419,9 @@ def fit_comparators(
         stac_details = {}
 
     pb_weights, pb_factors = pseudobulk_cpd_fit(tensor, pb_rank, random_state)
-    tc_weights, tc_factors = tensor_cell2cell_fit(tensor, tc2c_rank, random_state)
+    tc_weights, tc_factors = tensor_cell2cell_fit(
+        tensor, tc2c_rank, random_state, tc2c_backend
+    )
     core, st_factors = staccato_fit(stac_tensor, core_shape, random_state)
     return [
         _comparator_fit(

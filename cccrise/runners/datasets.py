@@ -127,17 +127,18 @@ class DatasetSpec:
     def anova_point_estimate_filename(self) -> str:
         return f"anova_point_estimate_{self.key}.parquet"
 
-    def benchmark_anova_filename(self) -> str:
-        return f"benchmark_anova_{self.key}.parquet"
+    # `suffix` tags a benchmark run on another cell-type annotation ("fine").
+    def benchmark_anova_filename(self, suffix: str = "") -> str:
+        return f"benchmark_anova_{self.key}{suffix}.parquet"
 
-    def benchmark_null_filename(self) -> str:
-        return f"benchmark_anova_null_{self.key}.parquet"
+    def benchmark_null_filename(self, suffix: str = "") -> str:
+        return f"benchmark_anova_null_{self.key}{suffix}.parquet"
 
-    def benchmark_paired_filename(self) -> str:
-        return f"benchmark_anova_paired_{self.key}.parquet"
+    def benchmark_paired_filename(self, suffix: str = "") -> str:
+        return f"benchmark_anova_paired_{self.key}{suffix}.parquet"
 
-    def benchmark_fits_filename(self) -> str:
-        return f"benchmark_fits_{self.key}.nc"
+    def benchmark_fits_filename(self, suffix: str = "") -> str:
+        return f"benchmark_fits_{self.key}{suffix}.nc"
 
     def nichenet_comparator_scores_filename(self) -> str:
         return f"nichenet_comparator_scores_{self.key}.parquet"

@@ -40,10 +40,14 @@ Writes, in ``data/validation_results/``, the tables the benchmark figures read:
 
     uv run cccrise-benchmark --dataset alad
     uv run cccrise-benchmark --dataset alad --rank-mode shared --shared-rank 4
+
+``--celltype-column celltype --suffix _fine`` repeats the comparators on the
+fine annotation, writing ``benchmark_*_<dataset>_fine.*``.
 """
 
 import argparse
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -283,6 +287,9 @@ def run_benchmark_anova(
     refit: bool = False,
     factors_path: Path | None = None,
     output_path: Path | None = None,
+    suffix: str = "",
+    tc2c_backend: str = "numpy",
+    pb_max_rank: int | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Path, Path]:
     """Run the cccRISE ANOVA on cccRISE and every comparator.
 
@@ -317,12 +324,21 @@ def run_benchmark_anova(
         Published cccRISE model. Defaults to the dataset's canonical factors file.
     output_path : Path, optional
         Destination of the per-component table. Defaults to
-        ``data/validation_results/benchmark_anova_<dataset>.parquet``.
+        ``data/validation_results/benchmark_anova_<dataset><suffix>.parquet``.
+    suffix : str, default=""
+        Tag on every output's name, for a run on another cell-type annotation
+        (`spec.celltype_column` sets which one).
+    tc2c_backend : str, default="numpy"
+        Tensor-cell2cell's tensorly backend; "cupy" fits it on the GPU.
+    pb_max_rank : int, optional
+        Highest rank pseudobulk CPD's own-rank sweep fits (default: the
+        tensor's smallest mode). The rule stops at the first failing rank, so
+        a cap above that rank selects the same rank.
     """
     if spec.celltype_column is None:
         raise ValueError(f"Dataset {spec.key!r} has no celltype_column to pseudobulk.")
     factors_path = factors_path or spec.factors_path()
-    output_path = output_path or VALIDATION_DIR / spec.benchmark_anova_filename()
+    output_path = output_path or VALIDATION_DIR / spec.benchmark_anova_filename(suffix)
 
     print(f">> Loading {spec.label}")
     adata = add_cond_idxs(spec.load(), spec.condition_column)
@@ -332,7 +348,7 @@ def run_benchmark_anova(
     shared_rank = shared_rank or cp_rank
 
     dataset_fields = dataset_metadata(spec)
-    cache_path = output_path.with_name(spec.benchmark_fits_filename())
+    cache_path = output_path.with_name(spec.benchmark_fits_filename(suffix))
     cache_key = {
         "dataset": spec.key,
         "source_sha256": dataset_fields["source_sha256"],
@@ -343,6 +359,7 @@ def run_benchmark_anova(
         "tc2c_elbow_runs": tc2c_elbow_runs,
         "staccato_varexp": staccato_varexp,
         "shared_rank": shared_rank,
+        "pb_max_rank": pb_max_rank,
         "factors_sha256": sha256_file(factors_path),
         **fit_settings(),
     }
@@ -358,6 +375,8 @@ def run_benchmark_anova(
         tc2c_elbow_runs=tc2c_elbow_runs,
         staccato_varexp=staccato_varexp,
         random_state=random_state,
+        tc2c_backend=tc2c_backend,
+        pb_max_rank=pb_max_rank,
     )
     fits = [cccrise_fit, *fits]
     if refit_any:
@@ -385,7 +404,7 @@ def run_benchmark_anova(
 
     summary = pd.DataFrame(summaries)
     summary["PermPBH"] = bh_across_associations(summary, ["Method", "RankMode"])
-    null_path = output_path.with_name(spec.benchmark_null_filename())
+    null_path = output_path.with_name(spec.benchmark_null_filename(suffix))
     summary.to_parquet(null_path, index=False)
     print(f"   Wrote {len(summary)} rows to {null_path}")
 
@@ -394,7 +413,7 @@ def run_benchmark_anova(
     paired["PairedPBH"] = bh_across_associations(
         paired, ["Comparator", "RankMode"], column="PairedP"
     )
-    paired_path = output_path.with_name(spec.benchmark_paired_filename())
+    paired_path = output_path.with_name(spec.benchmark_paired_filename(suffix))
     paired.to_parquet(paired_path, index=False)
     print(f"   Wrote {len(paired)} rows to {paired_path}")
 
@@ -409,6 +428,8 @@ def run_benchmark_anova(
             "read_depth_corrected": True,
             "complex_sep": complex_sep,
             "random_state": random_state,
+            "tc2c_backend": tc2c_backend,
+            "pb_max_rank": pb_max_rank,
             "null": {
                 "n_permutations": n_permutations,
                 "statistic": "max eta-squared across components (Westfall-Young maxT)",
@@ -463,6 +484,26 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--complex-sep", type=str, default="&")
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
+        "--celltype-column",
+        default=None,
+        help="obs column to pseudobulk by (default: the dataset's broad annotation).",
+    )
+    parser.add_argument(
+        "--suffix", default="", help='Tag on every output name, e.g. "_fine".'
+    )
+    parser.add_argument(
+        "--tc2c-backend",
+        choices=["numpy", "cupy"],
+        default="numpy",
+        help="Fit Tensor-cell2cell on the GPU with cupy (needs the gpu extra).",
+    )
+    parser.add_argument(
+        "--pb-max-rank",
+        type=int,
+        default=None,
+        help="Cap on pseudobulk CPD's own-rank sweep (default: smallest mode).",
+    )
+    parser.add_argument(
         "--n-permutations",
         type=int,
         default=N_PERMUTATIONS,
@@ -486,6 +527,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     spec = DATASETS[args.dataset]
+    if args.celltype_column:
+        spec = replace(spec, celltype_column=args.celltype_column)
     run_benchmark_anova(
         spec,
         rank_modes=RANK_MODES if args.rank_mode == "both" else (args.rank_mode,),
@@ -499,8 +542,11 @@ def main(argv: list[str] | None = None) -> None:
         n_permutations=args.n_permutations,
         refit=args.refit,
         output_path=resolve_output(
-            args.output, VALIDATION_DIR, spec.benchmark_anova_filename()
+            args.output, VALIDATION_DIR, spec.benchmark_anova_filename(args.suffix)
         ),
+        suffix=args.suffix,
+        tc2c_backend=args.tc2c_backend,
+        pb_max_rank=args.pb_max_rank,
     )
 
 
