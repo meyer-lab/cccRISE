@@ -31,7 +31,8 @@ BiCV and CORCONDIA and its published factors are read from the cached model.
 """
 
 import json
-from collections.abc import Sequence
+import pickle
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -356,6 +357,24 @@ def _comparator_fit(
     )
 
 
+def _checkpointed(directory: Path | None, name: str, compute: Callable[[], Any]) -> Any:
+    """`compute()`, kept in ``directory/<name>.pkl`` so that an interrupted
+    run resumes after its last finished step (no checkpoint if `directory`
+    is None)."""
+    if directory is None:
+        return compute()
+    path = Path(directory) / f"{name}.pkl"
+    if path.exists():
+        print(f"   {name} read from checkpoint {path}")
+        return pickle.loads(path.read_bytes())
+    result = compute()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    partial = path.with_suffix(".partial")
+    partial.write_bytes(pickle.dumps(result))
+    partial.replace(path)
+    return result
+
+
 def fit_comparators(
     tensor: np.ndarray,
     rank_mode: str,
@@ -366,6 +385,7 @@ def fit_comparators(
     random_state: int = 42,
     tc2c_backend: str = "numpy",
     pb_max_rank: int | None = None,
+    checkpoint_dir: Path | None = None,
 ) -> list[ComparatorFit]:
     """Fit every comparator on the pseudobulk `tensor` under one rank mode.
 
@@ -380,26 +400,37 @@ def fit_comparators(
         `shared_rank` in every mode, capped at the mode's size).
     shared_rank : int
         Rank used when `rank_mode="shared"`.
+    checkpoint_dir : Path, optional
+        Where the rank searches and the fits are checkpointed (one file each);
+        it must be specific to the tensor and the settings.
     """
     if rank_mode not in RANK_MODES:
         raise ValueError(f"rank_mode must be one of {RANK_MODES}, got {rank_mode!r}")
 
     stac_tensor = staccato_order(tensor)
     if rank_mode == "own":
-        pb_rank, diagnostics = pseudobulk_cpd_rank(
-            tensor, max_rank=pb_max_rank, random_state=random_state
+        pb_rank, diagnostics = _checkpointed(
+            checkpoint_dir,
+            "pseudobulk_cpd_rank",
+            lambda: pseudobulk_cpd_rank(
+                tensor, max_rank=pb_max_rank, random_state=random_state
+            ),
         )
         pb_details: dict[str, Any] = {
             "corcondia_threshold": CORCONDIA_THRESHOLD,
             "core_consistency": diagnostics["CoreConsistency"].tolist(),
             "max_modes_collinear": diagnostics["MaxModesCollinear"].tolist(),
         }
-        tc2c_rank, errors = tensor_cell2cell_elbow(
-            tensor,
-            upper_rank=tc2c_upper_rank,
-            runs=tc2c_elbow_runs,
-            random_state=random_state,
-            backend=tc2c_backend,
+        tc2c_rank, errors = _checkpointed(
+            checkpoint_dir,
+            "tensor_cell2cell_elbow",
+            lambda: tensor_cell2cell_elbow(
+                tensor,
+                upper_rank=tc2c_upper_rank,
+                runs=tc2c_elbow_runs,
+                random_state=random_state,
+                backend=tc2c_backend,
+            ),
         )
         tc2c_details: dict[str, Any] = {"elbow_errors": errors.tolist()}
         selections = [
@@ -418,9 +449,15 @@ def fit_comparators(
         core_shape = tuple(min(shared_rank, size) for size in stac_tensor.shape)
         stac_details = {}
 
-    pb_weights, pb_factors = pseudobulk_cpd_fit(tensor, pb_rank, random_state)
-    tc_weights, tc_factors = tensor_cell2cell_fit(
-        tensor, tc2c_rank, random_state, tc2c_backend
+    pb_weights, pb_factors = _checkpointed(
+        checkpoint_dir,
+        f"pseudobulk_cpd_fit_{pb_rank}",
+        lambda: pseudobulk_cpd_fit(tensor, pb_rank, random_state),
+    )
+    tc_weights, tc_factors = _checkpointed(
+        checkpoint_dir,
+        f"tensor_cell2cell_fit_{tc2c_rank}",
+        lambda: tensor_cell2cell_fit(tensor, tc2c_rank, random_state, tc2c_backend),
     )
     core, st_factors = staccato_fit(stac_tensor, core_shape, random_state)
     return [

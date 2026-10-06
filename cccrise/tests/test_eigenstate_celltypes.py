@@ -51,5 +51,6 @@ def test_score_units_and_null_run():
     scores = {"E1": RNG.normal(size=300)}
     summary, profile, hist = score_units(scores, COARSE, FINE, n_bins=5)
     assert list(summary["unit"]) == ["E1"] and set(profile["unit"]) == {"E1"}
+    assert set(hist["unit"]) == {"E1"}
     null = random_direction_null(RNG.normal(size=(300, 4)), FINE, COARSE, 10, RNG)
     assert len(null) == 10 and isinstance(null, pd.DataFrame)

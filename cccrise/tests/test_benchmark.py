@@ -84,6 +84,22 @@ def test_fit_comparators_returns_one_row_per_condition(rank_mode):
         assert all(fit.modes["sender"].shape[0] == 4 for fit in fits)
 
 
+def test_fit_comparators_resumes_from_its_checkpoints(tmp_path):
+    tensor = _nonneg_cp_tensor((8, 4, 4, 12), rank=2, seed=1, noise=0.01)
+    kwargs = {"rank_mode": "own", "shared_rank": 3, "tc2c_upper_rank": 5}
+    first = fit_comparators(
+        tensor, tc2c_elbow_runs=1, checkpoint_dir=tmp_path, **kwargs
+    )
+    assert (tmp_path / "tensor_cell2cell_elbow.pkl").exists()
+    # A different tensor would refit; reading the checkpoints gives the first fits.
+    again = fit_comparators(
+        tensor * 2, tc2c_elbow_runs=1, checkpoint_dir=tmp_path, **kwargs
+    )
+    for a, b in zip(first[:2], again[:2], strict=True):
+        assert a.rank == b.rank
+        np.testing.assert_array_equal(a.condition_factor, b.condition_factor)
+
+
 def test_fit_comparators_rejects_unknown_rank_mode():
     with pytest.raises(ValueError, match="rank_mode"):
         fit_comparators(np.ones((3, 2, 2, 4)), rank_mode="best", shared_rank=2)
