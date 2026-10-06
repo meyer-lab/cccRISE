@@ -60,6 +60,7 @@ cccrise-nichenet = "cccrise.runners.run_nichenet:main"
 cccrise-altcommscore = "cccrise.runners.run_alt_comm_score:main"
 cccrise-benchmark = "cccrise.runners.run_benchmark_anova:main"
 cccrise-comparator-agreement = "cccrise.runners.run_comparator_agreement:main"
+cccrise-eigenstate-celltypes = "cccrise.runners.run_eigenstate_celltypes:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
