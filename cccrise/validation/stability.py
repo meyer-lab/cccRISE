@@ -2,15 +2,12 @@
 Component and association stability of the CCC-RISE pipeline at fixed RISE and
 CP ranks.
 
-Everything here is *conditional on* ranks that have already been chosen (see
-`rank_selection` for the rules that choose them). The goal is to evaluate
-whether the identified components recovered at those fixed ranks are stable and
-reproducible -- directly addressing Reviewer 2's major comment #4 -- and whether
-each CP component's association with the phenotype survives the same
-perturbations. Two axes perturb the fit: `JACKKNIFE_AXIS` leaves one patient
-out per replicate, every patient in turn, and `SEED_AXIS` refits the identical
-cohort from a different random seed, the reproducibility ceiling the jackknife
-is read against.
+This analysis evaluates whether the identified components recovered at those fixed
+ranks are stable and reproducible and whether each CP component's association with
+the phenotype survives the same perturbations. Two axes perturb the fit:
+`JACKKNIFE_AXIS` leaves one patient out per replicate, every patient in turn, and
+`SEED_AXIS` refits the identical cohort from a different random seed, the
+reproducibility ceiling the jackknife is read against.
 
 One replicate loop serves all three analyses: a replicate prepares the data
 once, refits RISE and CP once, scores RISE and CPD component stability from

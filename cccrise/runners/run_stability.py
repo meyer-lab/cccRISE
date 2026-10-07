@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 """
-Runner: are the components CCC-RISE reports, and their phenotype associations,
-stable when a patient is left out?
+Runner: Per-component stability during patient jackknifing and seed-refitting.
 
-Both ranks are already chosen (see `rank_selection.select_rise_rank` and
-`select_cpd_rank` for the rules, and issue #168 for the pinned values), so this
-runner takes them as inputs rather than producing them. What it measures is
-whether the components recovered at those ranks survive leaving each patient
-out: per replicate, each reference component's factor match score against its
-best-matching replicate component, and that replicate component's one-way
-ANOVA against the outcome.
+This runner measures whether the components recovered at fixed ranks survive leaving
+each patient out: per replicate, each reference component's factor match score against
+its best-matching replicate component, and that replicate component's one-way ANOVA
+against the outcome.
 
 One replicate loop serves all three analyses. A replicate refits RISE once,
 scores RISE stability from that fit, then builds the communication tensor
@@ -35,7 +31,7 @@ the matched component's ANOVA statistics:
     component_stability_<dataset>.parquet
 
     uv run cccrise-stability --dataset alad --rise-rank 17 --cp-rank 5 \
-        --n-replicates 20
+        --n-replicates 47
 """
 
 import argparse
