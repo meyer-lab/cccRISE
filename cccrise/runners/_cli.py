@@ -1,5 +1,9 @@
 import argparse
+from dataclasses import replace
+from functools import partial
 from pathlib import Path
+
+import pandas as pd
 
 from ..factors import load_factors_netcdf
 from .datasets import (
@@ -151,6 +155,34 @@ def resolve_anova_labels(
     if spec.outcome_column and not (group_column or control_label or other_label):
         return spec.outcome_column, None, None
     return resolve_group_labels(spec, group_column, control_label, other_label)
+
+
+def add_celltype_labels_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--celltype-labels",
+        type=Path,
+        default=None,
+        help="Parquet of extra per-cell label columns, indexed by cell name, "
+        "added to obs on load (e.g. the granularity ladder); pick one with "
+        "--celltype-column.",
+    )
+
+
+def _load_with_labels(loader, labels_path: Path, **kwargs):
+    adata = loader(**kwargs)
+    labels = pd.read_parquet(labels_path).reindex(adata.obs_names.astype(str))
+    if labels.isna().any().any():
+        raise ValueError(f"{labels_path} has no label for some loaded cells")
+    for column in labels:
+        adata.obs[column] = labels[column].to_numpy()
+    return adata
+
+
+def with_celltype_labels(spec: DatasetSpec, labels_path: Path | None) -> DatasetSpec:
+    """`spec` whose `load` also adds `labels_path`'s columns to obs."""
+    if labels_path is None:
+        return spec
+    return replace(spec, loader=partial(_load_with_labels, spec.loader, labels_path))
 
 
 def dataset_metadata(spec: DatasetSpec) -> dict:

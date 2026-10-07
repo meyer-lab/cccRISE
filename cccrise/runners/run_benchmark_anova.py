@@ -88,7 +88,14 @@ from ..factors import load_factors_netcdf
 from ..figures.figure3._common import ASSOCIATIONS as DEFAULT_ASSOCIATIONS
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..utils import correct_conditions
-from ._cli import add_dataset_argument, dataset_metadata, resolve_output, resulting_dims
+from ._cli import (
+    add_celltype_labels_argument,
+    add_dataset_argument,
+    dataset_metadata,
+    resolve_output,
+    resulting_dims,
+    with_celltype_labels,
+)
 from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec
 from .provenance import (
     REPO_ROOT,
@@ -209,6 +216,19 @@ def _key_digest(key: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
 
 
+def _optional_key_fields(
+    tensor_transform: str, celltype_labels: Path | None
+) -> dict[str, str]:
+    """Cache-key fields for options left at their defaults by older caches:
+    present only when set, so those caches stay valid."""
+    fields = {}
+    if tensor_transform != "none":
+        fields["tensor_transform"] = tensor_transform
+    if celltype_labels is not None:
+        fields["celltype_labels_sha256"] = sha256_file(celltype_labels)
+    return fields
+
+
 def _null_plans(adata, spec, conditions, associations, n_permutations, random_state):
     """Per association: the kept conditions, their group codes and the shared
     label permutations (`benchmark_null.association_permutations`)."""
@@ -321,6 +341,7 @@ def run_benchmark_anova(
     tc2c_backend: str = "numpy",
     pb_max_rank: int | None = None,
     tensor_transform: str = "none",
+    celltype_labels: Path | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Path, Path]:
     """Run the cccRISE ANOVA on cccRISE and every comparator.
 
@@ -368,6 +389,10 @@ def run_benchmark_anova(
         Highest rank pseudobulk CPD's own-rank sweep fits (default: the
         tensor's smallest mode). The rule stops at the first failing rank, so
         a cap above that rank selects the same rank.
+    celltype_labels : Path, optional
+        Parquet of extra per-cell label columns (`_cli.with_celltype_labels`)
+        that `spec.celltype_column` may name; its checksum joins the fit cache
+        key.
     """
     if spec.celltype_column is None:
         raise ValueError(f"Dataset {spec.key!r} has no celltype_column to pseudobulk.")
@@ -375,7 +400,9 @@ def run_benchmark_anova(
     output_path = output_path or VALIDATION_DIR / spec.benchmark_anova_filename(suffix)
 
     print(f">> Loading {spec.label}")
-    adata = add_cond_idxs(spec.load(), spec.condition_column)
+    adata = add_cond_idxs(
+        with_celltype_labels(spec, celltype_labels).load(), spec.condition_column
+    )
     conditions = np.unique(adata.obs[spec.condition_column])
 
     cccrise_fit, cp_rank = _published_cccrise(factors_path, conditions)
@@ -396,9 +423,8 @@ def run_benchmark_anova(
         "pb_max_rank": pb_max_rank,
         "factors_sha256": sha256_file(factors_path),
         **fit_settings(),
+        **_optional_key_fields(tensor_transform, celltype_labels),
     }
-    if tensor_transform != "none":  # absent otherwise, so older caches stay valid
-        cache_key["tensor_transform"] = tensor_transform
     cached = None if refit else load_fits(cache_path, conditions, cache_key)
     fits, tensor_info, refit_any = _comparator_fits(
         adata,
@@ -466,6 +492,7 @@ def run_benchmark_anova(
             "read_depth_corrected": True,
             "complex_sep": complex_sep,
             "tensor_transform": tensor_transform,
+            "celltype_labels": relpath(celltype_labels) if celltype_labels else None,
             "random_state": random_state,
             "tc2c_backend": tc2c_backend,
             "pb_max_rank": pb_max_rank,
@@ -536,6 +563,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--suffix", default="", help='Tag on every output name, e.g. "_fine".'
     )
+    add_celltype_labels_argument(parser)
     parser.add_argument(
         "--tc2c-backend",
         choices=["numpy", "cupy"],
@@ -593,6 +621,7 @@ def main(argv: list[str] | None = None) -> None:
         tc2c_backend=args.tc2c_backend,
         pb_max_rank=args.pb_max_rank,
         tensor_transform=args.tensor_transform,
+        celltype_labels=args.celltype_labels,
     )
 
 

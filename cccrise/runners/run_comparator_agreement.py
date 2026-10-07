@@ -58,7 +58,13 @@ from ..comparators.agreement import (
     unit_columns,
 )
 from ..factors import load_factors_netcdf, load_factors_to_anndata
-from ._cli import add_dataset_argument, dataset_metadata, resulting_dims
+from ._cli import (
+    add_celltype_labels_argument,
+    add_dataset_argument,
+    dataset_metadata,
+    resulting_dims,
+    with_celltype_labels,
+)
 from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, relpath, sha256_file, write_metadata
 
@@ -252,6 +258,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--suffix", default="", help="Suffix of the fits read and tables written."
     )
+    add_celltype_labels_argument(parser)
     return parser
 
 
@@ -260,6 +267,7 @@ def main(argv: list[str] | None = None) -> None:
     spec = DATASETS[args.dataset]
     if args.celltype_column:
         spec = replace(spec, celltype_column=args.celltype_column)
+    spec = with_celltype_labels(spec, args.celltype_labels)
     run_comparator_agreement(
         spec, n_null=args.n_null, random_state=args.random_state, suffix=args.suffix
     )
