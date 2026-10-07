@@ -85,6 +85,26 @@ def head_mass(lr: np.ndarray, ks: Sequence[int]) -> pd.DataFrame:
     )
 
 
+def loading_profile(lr: np.ndarray, names: Sequence[str], depth: int) -> pd.DataFrame:
+    """Per column, its `depth` largest pairs by |loading|: the pair, its
+    |loading| relative to the column's largest, its share of the column's
+    squared loading and the cumulative share down to its rank."""
+    x = np.abs(np.asarray(lr, float))
+    order = np.argsort(-x, axis=0, kind="stable")[:depth]
+    top = np.take_along_axis(x, order, axis=0)
+    share = top**2 / (x**2).sum(axis=0)
+    return pd.DataFrame(
+        {
+            "component": np.tile(np.arange(1, x.shape[1] + 1), len(order)),
+            "lr_rank": np.repeat(np.arange(1, len(order) + 1), x.shape[1]),
+            "lr_pair": np.asarray(names).astype(str)[order].ravel(),
+            "rel_max": (top / top[0]).ravel(),
+            "share": share.ravel(),
+            "cum_share": np.cumsum(share, axis=0).ravel(),
+        }
+    )
+
+
 def ranks(lr: np.ndarray) -> np.ndarray:
     """Per column, each pair's rank by |loading| (1 = largest)."""
     order = np.argsort(-np.abs(np.asarray(lr, float)), axis=0, kind="stable")

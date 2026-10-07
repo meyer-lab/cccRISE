@@ -10,6 +10,7 @@ from ..comparators.lr_concordance import (
     classify_components,
     coverage_table,
     head_mass,
+    loading_profile,
     missed_pairs,
     null_thresholds,
     overlap_table,
@@ -107,3 +108,13 @@ def test_shared_mass_and_head_mass():
     assert shared_mass(*k4, b)[0, 0] == pytest.approx(1.0)
     hm = head_mass(b, (1, 2)).set_index("k")["head_mass"]
     assert hm[1] == pytest.approx(9 / 9.05)
+
+
+def test_loading_profile():
+    lr = np.array([[3.0, 0.0], [-4.0, 1.0], [0.0, 2.0]])
+    t = loading_profile(lr, ["a", "b", "c"], depth=2)
+    first = t[t["component"] == 1].set_index("lr_rank")
+    assert first["lr_pair"].tolist() == ["b", "a"]
+    assert first["rel_max"].tolist() == pytest.approx([1.0, 0.75])
+    assert first["cum_share"].tolist() == pytest.approx([16 / 25, 1.0])
+    assert t[t["component"] == 2]["share"].tolist() == pytest.approx([0.8, 0.2])
