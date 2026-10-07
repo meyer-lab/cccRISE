@@ -73,6 +73,17 @@ def joint_congruence(
     return congruence, rows, cols
 
 
+def aligned_modes(fit, info: dict, cccrise_lr: np.ndarray) -> dict[str, np.ndarray]:
+    """A `benchmark.ComparatorFit`'s condition and LR factors, LR rows in
+    cccRISE's order (`info` is the cached fits' tensor description)."""
+    if fit.method == "cccRISE":
+        return {"condition": fit.condition_factor, "lr": fit.modes["lr"]}
+    order = pd.Index(info["lr_pairs"]).get_indexer(cccrise_lr)
+    if (order < 0).any():
+        raise ValueError("cccRISE LR pairs missing from the comparator tensor")
+    return {"condition": fit.condition_factor, "lr": fit.modes["lr"][order]}
+
+
 # --- subspaces --------------------------------------------------------------------------
 
 

@@ -46,6 +46,7 @@ import pandas as pd
 
 from ..benchmark import ComparatorFit, read_fits
 from ..comparators.agreement import (
+    aligned_modes,
     cell_type_fractions,
     cell_type_overlap,
     celltype_profiles,
@@ -82,18 +83,6 @@ def _outputs(spec: DatasetSpec, suffix: str = "") -> dict[str, Path]:
     return {
         n: VALIDATION_DIR / f"comparator_{n}_{spec.key}{suffix}.parquet" for n in names
     }
-
-
-def _aligned_modes(
-    fit: ComparatorFit, info: dict, cccrise_lr: np.ndarray
-) -> dict[str, np.ndarray]:
-    """A fit's condition and LR factors with LR rows in cccRISE's order."""
-    if fit.method == "cccRISE":
-        return {"condition": fit.condition_factor, "lr": fit.modes["lr"]}
-    order = pd.Index(info["lr_pairs"]).get_indexer(cccrise_lr)
-    if (order < 0).any():
-        raise ValueError("cccRISE LR pairs missing from the comparator tensor")
-    return {"condition": fit.condition_factor, "lr": fit.modes["lr"][order]}
 
 
 def _fit_label(fit: ComparatorFit) -> dict[str, str]:
@@ -197,9 +186,9 @@ def run_comparator_agreement(
     if not np.array_equal(ds.coords["condition"].values.astype(str), conditions):
         raise ValueError("Cached fits and the canonical factors disagree on conditions")
     cccrise_lr = ds.coords["lr_pair"].values.astype(str)
-    ref = _aligned_modes(cccrise, info, cccrise_lr)
+    ref = aligned_modes(cccrise, info, cccrise_lr)
     comparators = [
-        (f, _aligned_modes(f, info, cccrise_lr)) for f in fits if f.method != "cccRISE"
+        (f, aligned_modes(f, info, cccrise_lr)) for f in fits if f.method != "cccRISE"
     ]
     rng = np.random.default_rng(random_state)
     print(">> Subspace agreement and containment")
