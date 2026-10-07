@@ -73,6 +73,32 @@ PANEL_SIZE = {
     "full": (FIGURE_WIDTH_DOUBLE, PANEL_HEIGHT),
 }
 
+# Fixed axes sizes for figures composed with `common.compose_fixed`: every
+# axes box is one of these whatever its ticks, legend, or colorbar take up,
+# and rectangular and square axes share a height so a row's axes line up.
+AXIS_HEIGHT = 30 * MM
+AXIS_WIDTH = 46 * MM
+AXIS_SIZE = {
+    "rect": (AXIS_WIDTH, AXIS_HEIGHT),
+    "square": (AXIS_HEIGHT, AXIS_HEIGHT),
+    "full": (FIGURE_WIDTH_DOUBLE - 14 * MM, AXIS_HEIGHT),
+    # Supplementary heatmaps with too many columns for "rect"
+    "wide": (2.5 * AXIS_WIDTH, AXIS_HEIGHT),
+    "tall": (2.5 * AXIS_WIDTH, 3 * AXIS_HEIGHT),
+    # A few groups x many genes along x (dot plots)
+    "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
+    # A few rows: stacked bars, small heatmaps
+    "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
+}
+PAGE_MARGIN = 1 * MM
+PANEL_GAP_MIN = 1.5 * MM
+PANEL_GAP_MAX = 4 * MM
+ROW_GAP = 1 * MM
+PANEL_LABEL_SPACE = 4 * MM  # minimum room above a row's axes for its letters
+COLORBAR_WIDTH = 2 * MM
+COLORBAR_PAD = 1.5 * MM
+LEGEND_PAD = 1.5 * MM  # `common.legend` gap beyond an axes' decorations
+
 ## Colors
 CATEGORICAL = [to_hex(c) for c in sns.color_palette("colorblind")]
 _BLUE, _ORANGE, _GREEN, _VERMILLION, _PINK, _TAN, _, _GREY, _YELLOW, _SKY = CATEGORICAL
@@ -93,6 +119,7 @@ COLORS = {
     "highlight": _GREEN,
     "fit": _BLUE,  # in-sample fit metrics
     "heldout": _VERMILLION,  # held-out / cross-validated metrics
+    "fit_full": "0.25",  # the full-data fit, beside per-repeat fit metrics
 }
 
 # Component-stability resampling axes; the seed-only ceiling is a grey
@@ -106,8 +133,8 @@ STABILITY_AXIS_COLORS = {
 
 CMAPS = {
     "diverging": sns.diverging_palette(240, 10, as_cmap=True),  # signed loadings
-    "sequential": sns.color_palette("ch:s=-.2,r=.6", as_cmap=True),  # magnitudes
-    # Relative weights: light until substantial, so only heavy items read dark.
+    # Magnitudes and relative weights: light until substantial, so only heavy
+    # items read dark.
     "weight": LinearSegmentedColormap.from_list(
         "weight",
         [
