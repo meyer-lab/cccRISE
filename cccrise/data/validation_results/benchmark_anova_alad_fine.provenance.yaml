@@ -15,11 +15,14 @@ group_key: ALADstatus
 factors_file: cccrise/data/factors/bal_alad_factors.nc
 rank_modes:
 - own
+- shared
 shared_rank: 5
 correction: fdr_bh
 alpha: 0.05
 read_depth_corrected: true
 complex_sep: '&'
+tensor_transform: none
+celltype_labels: null
 random_state: 42
 tc2c_backend: cupy
 pb_max_rank: 10
@@ -45,7 +48,7 @@ pb_max_rank: 10
     Sex (Male vs. Female): e350db48c180b53c
 fit_cache:
   file: cccrise/data/validation_results/benchmark_fits_alad_fine.nc
-  fits_from_cache: false
+  fits_from_cache: true
 resulting_dims:
   conditions: 47
   genes: 16675
@@ -179,5 +182,15 @@ fits:
     - 0.009262263517748583
     - 0.0048429920843002325
   core_shape: [15, 10, 9, 8]
-git_sha: 2b17d830b76e4423ca9cd41f314efda474415216
-generated: '2026-10-06T04:58:13+00:00'
+- method: Pseudobulk CPD
+  rank_mode: shared
+  rank: '5'
+- method: Tensor-cell2cell
+  rank_mode: shared
+  rank: '5'
+- method: STACCato
+  rank_mode: shared
+  rank: 5x5x5x5
+  core_shape: [5, 5, 5, 5]
+git_sha: 72b646543e7965947ebeb0ca22d6c2c7f56b59e8-dirty
+generated: '2026-10-07T02:36:56+00:00'

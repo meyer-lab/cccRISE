@@ -27,7 +27,7 @@ def load_ladder(name: str) -> pd.DataFrame:
 FITS_HINT = (
     f"    uv run python -m cccrise.runners.run_granularity_summary --dataset {DATASET}"
 )
-TICKS = [8, 13, 23, 26, 38]
+TICKS = [8, 13, 23, 38]
 
 
 def load_fits() -> pd.DataFrame:
