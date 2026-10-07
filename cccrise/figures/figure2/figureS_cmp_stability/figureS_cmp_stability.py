@@ -1,9 +1,7 @@
 """Supplementary figure: per-component RISE and CP stability under patient
-jackknifing and seed refitting, with the FMS distribution of every bimodal
-component."""
+jackknifing, with the FMS distribution of every bimodal component."""
 
 from ... import common, style
-from . import _common as S
 from . import cpd_fms, fms_histograms, rise_fms
 
 PANELS = {"rise": rise_fms, "cpd": cpd_fms, "histograms": fms_histograms}
@@ -23,5 +21,4 @@ def makeFigure():
     cpd_ax.sharey(rise_ax)
     cpd_ax.set_ylabel("")
     cpd_ax.tick_params(axis="y", labelleft=False)
-    S.legend(fig)
     return fig
