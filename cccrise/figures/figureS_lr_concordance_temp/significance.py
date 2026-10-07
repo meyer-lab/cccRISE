@@ -3,11 +3,11 @@
 A pair is significant in a column when its |loading| is at least
 `SIGNIFICANT` x the column's largest. Per method (own-rank fits on the
 coarse annotation), each pair's score is its largest |loading| / column max
-over the method's columns. Every pair significant in cccRISE or in the
-comparator is drawn at (cccRISE score, comparator score); the quadrants at
-`SIGNIFICANT` split them into significant in both, in cccRISE only and in
-the comparator only. Points and labels are coloured by the cccRISE component
-for pairs significant in cccRISE."""
+over the method's columns. Every pair in the top `TOP_K` of any column of
+cccRISE or the comparator is drawn at (cccRISE score, comparator score); the
+quadrants at `SIGNIFICANT` split them into significant in both, in cccRISE
+only, in the comparator only and in neither. Pairs significant in cccRISE
+are coloured by its component; pairs significant in neither are unlabelled."""
 
 import numpy as np
 import pandas as pd
@@ -18,6 +18,7 @@ from ..figureS_lr_concordance._common import SHORT, load
 from .missed import _spread
 
 SIGNIFICANT = 0.4
+TOP_K = 10
 LIM = (-0.04, 1.06)
 LABEL_GAP = 0.05
 LEADER_SLOPE = 0.3
@@ -29,16 +30,17 @@ REGIONS = {  # (x significant, y significant) -> shade
 
 
 def scores(method: str) -> pd.DataFrame:
-    """Per pair significant in cccRISE or `method`: each method's best
-    |loading| / column max (`x`, `y`) and the column it comes from."""
+    """Per pair in the top `TOP_K` of any column of cccRISE or `method`: each
+    method's best |loading| / column max (`x`, `y`) and the column it comes
+    from."""
     table = load("profiles")
     table = table[table["annotation"] == "coarse"]
     best = table.loc[table.groupby(["method", "lr_pair"])["rel_max"].idxmax()]
     best = best.set_index(["method", "lr_pair"])[["rel_max", "component"]]
     out = best.loc["cccRISE"].join(best.loc[method], lsuffix="_x", rsuffix="_y")
     out = out.rename(columns={"rel_max_x": "x", "rel_max_y": "y"})
-    keep = (out["x"] >= SIGNIFICANT) | (out["y"] >= SIGNIFICANT)
-    return out[keep]
+    top = table[table["method"].isin(["cccRISE", method]) & (table["lr_rank"] <= TOP_K)]
+    return out.loc[sorted(set(top["lr_pair"]))]
 
 
 def _shade(ax):
@@ -72,6 +74,12 @@ def _counts(ax, table, short):
             f"{short} only",
             (False, True),
         ),
+        (
+            (0.0, SIGNIFICANT - 0.02, "left", "top"),
+            (~sx & ~sy).sum(),
+            "neither",
+            (False, False),
+        ),
     ):
         ax.text(
             x,
@@ -81,7 +89,7 @@ def _counts(ax, table, short):
             va=va,
             fontsize=style.FONT_SIZE_DENSE,
             fontweight="bold",
-            color=REGIONS[key],
+            color=REGIONS.get(key, style.COLORS["reference"]),
         )
 
 
@@ -96,9 +104,11 @@ def _labels(ax, table, colors, short):
     """A label column right of the axes. Each label aims for where its leader
     would meet the column at a common slope (up from points low in the plot,
     down from those high in it), so leaders rarely cross."""
-    reach = (LIM[1] - table["x"]) * LEADER_SLOPE
+    reach = (LIM[1] - table["x"]) * LEADER_SLOPE  # labelled pairs only, below
     aim = table["y"] + np.where(table["y"] < 0.5, reach, -reach)
-    rows = table.assign(aim=aim).sort_values("aim", ascending=False)
+    rows = table.assign(aim=aim)
+    rows = rows[(rows["x"] >= SIGNIFICANT) | (rows["y"] >= SIGNIFICANT)]
+    rows = rows.sort_values("aim", ascending=False)
     tops = _spread(
         LIM[1] - rows["aim"].to_numpy(float), LABEL_GAP, 0.0, LIM[1] - LIM[0]
     )
@@ -121,8 +131,12 @@ def plot(fig, method):
     palette = sns.color_palette("Dark2", 5)
     colors = pd.Series(
         [
-            palette[c - 1] if x >= SIGNIFICANT else style.COLORS["ink"]
-            for c, x in zip(table["component_x"], table["x"], strict=True)
+            palette[c - 1]
+            if x >= SIGNIFICANT
+            else style.COLORS["ink" if y >= SIGNIFICANT else "muted"]
+            for c, x, y in zip(
+                table["component_x"], table["x"], table["y"], strict=True
+            )
         ],
         index=table.index,
     )

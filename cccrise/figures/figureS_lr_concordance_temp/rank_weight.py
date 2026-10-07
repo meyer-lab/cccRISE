@@ -1,15 +1,12 @@
 """How much weight an LR column keeps down its ranking (companion to
-`missed`): per column, each rank's |loading| relative to the column's largest
-(left) and the cumulative share of its squared loading (right). cccRISE's
-components in colour, every own-rank comparator column (coarse and fine) in
-grey; dotted lines at the top-k and rank cuts of `missed`, dashed at
-0.4 x max."""
+`missed`): for one method's own-rank fit on the coarse annotation, each
+column's |loading| relative to its largest (left) and the cumulative share of
+its squared loading (right) by rank, one colour per column."""
 
 import seaborn as sns
 
 from .. import common, style
-from ..figureS_lr_concordance._common import load
-from .missed import RANK_CUT, K
+from ..figureS_lr_concordance._common import SHORT, load
 
 DEPTH = 50
 SIGNIFICANT = 0.4  # |loading| >= 0.4 x the column's largest
@@ -19,49 +16,43 @@ PANELS = {
 }
 
 
-def _lines(ax, table, column, colors):
-    comparators = table[table["method"] != "cccRISE"]
-    for _key, sub in comparators.groupby(["annotation", "method", "component"]):
-        ax.plot(
-            sub["lr_rank"], sub[column], color=style.COLORS["muted"], lw=0.5, zorder=1
-        )
-    ours = table[(table["method"] == "cccRISE") & (table["annotation"] == "coarse")]
-    for component, sub in ours.groupby("component"):
-        n = int((sub["rel_max"] >= SIGNIFICANT).sum())
-        ax.plot(
-            sub["lr_rank"],
-            sub[column],
-            color=colors[component - 1],
-            lw=style.LINE_WIDTH,
-            label=f"C{component} ({n} ≥ {SIGNIFICANT}× max)",
-            zorder=2,
-        )
+def palette(n: int) -> list:
+    """cccRISE's five components keep the colours they have in `significance`."""
+    return sns.color_palette("Dark2" if n <= 8 else "tab10", n)
 
 
-def plot(fig):
+def plot(fig, method: str = "cccRISE"):
     table = load("profiles")
-    table = table[table["lr_rank"] <= DEPTH]
-    colors = sns.color_palette("Dark2", 5)
+    table = table[
+        (table["method"] == method)
+        & (table["annotation"] == "coarse")
+        & (table["lr_rank"] <= DEPTH)
+    ]
+    prefix = "C" if method == "cccRISE" else f"{SHORT[method]} "
+    columns = sorted(table["component"].unique())
+    colors = dict(zip(columns, palette(len(columns)), strict=True))
     axes = fig.subplots(1, 2)
-    for ax, (column, ylabel) in zip(axes, PANELS.items(), strict=True):
-        _lines(ax, table, column, colors)
-        for cut in sorted({K, RANK_CUT}):
-            ax.axvline(cut, ls=":", color=style.COLORS["reference"], lw=0.5)
+    for ax, (value, ylabel) in zip(axes, PANELS.items(), strict=True):
+        for component, sub in table.groupby("component"):
+            n = int((sub["rel_max"] >= SIGNIFICANT).sum())
+            ax.plot(
+                sub["lr_rank"],
+                sub[value],
+                color=colors[component],
+                lw=style.LINE_WIDTH,
+                label=f"{prefix}{component} ({n} ≥ {SIGNIFICANT}× max)",
+            )
         ax.set_xlim(1, DEPTH)
         ax.set_ylim(0, 1.02)
         ax.set_xlabel("rank in column")
         ax.set_ylabel(ylabel)
         ax.grid(False)
-    axes[0].axhline(
-        SIGNIFICANT,
-        ls=style.LINE_STYLE_REFERENCE,
-        color=style.COLORS["reference"],
-        lw=0.5,
+    axes[0].legend(
+        fontsize=style.FONT_SIZE_DENSE,
+        loc="upper right",
+        ncol=2 if len(columns) > 6 else 1,
     )
-    axes[0].plot(
-        [], [], color=style.COLORS["muted"], lw=0.5, label="comparator columns"
-    )
-    axes[0].legend(fontsize=style.FONT_SIZE_DENSE, loc="upper right")
+    fig.suptitle(f"{method} (coarse)", fontsize=style.FONT_SIZE_TITLE)
 
 
 def makeFigure():
