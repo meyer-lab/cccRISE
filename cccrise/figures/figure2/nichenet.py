@@ -1,15 +1,16 @@
-"""NicheNet downstream-target validation of CPD components, from
+"""NicheNet downstream-target validation of CP components, from
 ``uv run cccrise-nichenet``: each component's top ligands against every other
 ligand the model sees.
 
 One box per component: the NicheNet-style AUROC
 (``nichenet.component_ligand_scores``) of every scored ligand on the
 component's receiver ranking, restricted to genes expressed in the receiver
-groups. Points are colored and sized by the ligand's weight in the component;
-the top ligands (``nichenet.top_pair_ligands``) are outlined and labeled.
-Above each box: a two-sided Mann-Whitney test of the top ligands against all
-the others, and its Benjamini-Hochberg q across components
-(``nichenet.top_ligand_tests``)."""
+groups. Points are colored and sized by the ligand's weight in the component,
+opaque for the top ligands (``nichenet.top_pair_ligands``) and translucent for
+the rest; the top LR pairs are labeled on `cp_factor_matrices`. Above each box: a
+star where a two-sided Mann-Whitney test of the top ligands against all the
+others has Benjamini-Hochberg q (across components) below `SIG_ALPHA`
+(``nichenet.top_ligand_tests``), else n.s."""
 
 import numpy as np
 from matplotlib.colors import LogNorm
@@ -21,13 +22,15 @@ from .. import common, style
 DATASET = "alad"
 WEIGHT_FLOOR = 1e-3
 JITTER = 0.22
-LABEL_X = 0.3  # label offset from the box center, in component units
-LABEL_GAP = 0.1  # fraction of the AUROC range between stacked labels
-TEST_Y = 0.3  # p/q text height above the highest AUROC, same units
-POINT_SIZE_MAX = 25
+TEST_Y = 0.08  # significance mark height above the highest AUROC, in AUROC ranges
+TEST_HEADROOM = 0.1  # space above the marks, as a fraction of the axes
+POINT_SIZE_MAX = 8.4
+BACKGROUND_ALPHA = 0.5  # non-top ligands, so the boxes show through
+AXES = ("rect",)
 
 
-def plot(fig):
+def plot(axs):
+    (ax,) = axs
     scores = common.load_runner_output(
         DATASETS[DATASET].nichenet_scores_filename(),
         VALIDATION_DIR,
@@ -35,17 +38,23 @@ def plot(fig):
     ).dropna(subset=["auroc"])
     tests = top_ligand_tests(scores).set_index("component")
     components = sorted(scores["component"].unique())
-    low, high = scores["auroc"].min(), scores["auroc"].max()
-    span = high - low
-    test_y = high + TEST_Y * span
+    high = scores["auroc"].max()
+    test_y = high + TEST_Y * (high - scores["auroc"].min())
 
-    ax = fig.subplots()
     rng = np.random.default_rng(0)
     for x, component in enumerate(components):
-        points = _component_points(
-            scores[scores["component"] == component], x, LABEL_GAP * span, ax, rng
+        points = _component_points(scores[scores["component"] == component], x, ax, rng)
+        significant = tests.loc[component, "q"] < common.SIG_ALPHA
+        ax.text(
+            x,
+            test_y,
+            "*" if significant else "n.s.",
+            ha="center",
+            va="bottom",
+            fontsize=style.FONT_SIZE_DENSE,
+            fontweight="bold" if significant else "normal",
+            color=style.COLORS["ink"] if significant else style.COLORS["reference"],
         )
-        _test_text(tests.loc[component], x, test_y, ax)
     ax.boxplot(
         [scores.loc[scores["component"] == c, "auroc"] for c in components],
         positions=range(len(components)),
@@ -63,92 +72,40 @@ def plot(fig):
         capprops={"color": style.COLORS["reference"], "lw": style.LINE_WIDTH_THIN},
     )
     common.reference_line(ax, 0.5)
-    ax.set_xticks(
-        range(len(components)),
-        [
-            f"{c}\n({tests.loc[c, 'n_top']:.0f} top / {tests.loc[c, 'n_comparison']:.0f})"
-            for c in components
-        ],
-    )
-    ax.set_xlim(-0.6, len(components) - 0.1)
-    ax.set_ylim(top=test_y + LABEL_GAP * span)
+    ax.set_xticks(range(len(components)), components)
+    ax.set_xlim(-0.6, len(components) - 0.4)
+    # Room for the significance marks; ticks only over the AUROCs
+    ax.set_ylim(top=test_y + TEST_HEADROOM * (test_y - ax.get_ylim()[0]))
+    limits = ax.get_ylim()
+    ax.set_yticks([t for t in ax.get_yticks() if t <= high])
+    ax.set_ylim(limits)
     ax.set_xlabel("CP component")
-    ax.set_ylabel("Ligand AUROC")
-    ax.set_title(
-        "Top ligands (outlined) vs all other ligands; "
-        f"two-sided Mann-Whitney, BH q (bold q < {common.SIG_ALPHA})"
-    )
-    fig.colorbar(points, ax=ax, label="Relative ligand weight", shrink=0.8, pad=0.01)
+    ax.set_ylabel("NicheNet target AUROC")
+    common.colorbar(ax, points, "Relative ligand weight")
 
 
-def _component_points(component_scores, x, gap, ax, rng):
-    """Weight-colored points for one component's ligands, top ligands labeled."""
+def _component_points(component_scores, x, ax, rng):
+    """Weight-colored points for one component's ligands, the non-top ones
+    translucent; returns the (opaque) top ligands' points."""
     c = component_scores.assign(
         w=np.clip(component_scores["rel_weight"], WEIGHT_FLOOR, 1)
     ).sort_values("w")
-    jitter = rng.uniform(-JITTER, JITTER, len(c))
-    top = c["is_top"].to_numpy()
-    points = ax.scatter(
-        x + jitter,
-        c["auroc"],
-        c=c["w"],
-        cmap=style.CMAPS["weight"],
-        norm=LogNorm(vmin=WEIGHT_FLOOR, vmax=1),
-        s=style.POINT_SIZE_BACKGROUND / 2 + POINT_SIZE_MAX * c["w"],
-        lw=np.where(top, style.LINE_WIDTH_THIN * 1.5, 0.2),
-        edgecolor=np.where(top, style.COLORS["ink"], "white"),
-        zorder=3,
-    )
-    labeled = c[top]
-    heights = _spread(labeled["auroc"].to_numpy(), gap)
-    for ligand, auroc, xi, y in zip(
-        labeled["ligand"], labeled["auroc"], x + jitter[top], heights, strict=True
-    ):
-        ax.plot(
-            [xi, x + LABEL_X],
-            [auroc, y],
-            color=style.COLORS["reference"],
-            lw=style.LINE_WIDTH_THIN * 0.8,
-            zorder=2,
-        )
-        ax.text(
-            x + LABEL_X + 0.01,
-            y,
-            ligand,
-            fontsize=style.FONT_SIZE_DENSE,
-            va="center",
-            color=style.COLORS["ink"],
-            zorder=4,
+    c["x"] = x + rng.uniform(-JITTER, JITTER, len(c))
+    for top, alpha in ((False, BACKGROUND_ALPHA), (True, 1.0)):
+        subset = c[c["is_top"] == top]
+        points = ax.scatter(
+            subset["x"],
+            subset["auroc"],
+            c=subset["w"],
+            cmap=style.CMAPS["weight"],
+            norm=LogNorm(vmin=WEIGHT_FLOOR, vmax=1),
+            s=style.POINT_SIZE_BACKGROUND / 2 + POINT_SIZE_MAX * subset["w"],
+            linewidths=0,
+            alpha=alpha,
+            zorder=3 + top,
         )
     return points
 
 
-def _spread(values, gap):
-    """Label heights at least `gap` apart, in the input order."""
-    order = np.argsort(values)
-    placed = values[order].astype(float)
-    for i in range(1, len(placed)):
-        placed[i] = max(placed[i], placed[i - 1] + gap)
-    out = np.empty_like(placed)
-    out[order] = placed
-    return out
-
-
-def _test_text(test, x, y, ax):
-    """Direction, p, and q of one component's top-vs-rest test."""
-    significant = test["q"] < common.SIG_ALPHA
-    arrow = "↑" if test["direction"] == "up" else "↓"
-    ax.text(
-        x,
-        y,
-        f"{arrow} p={test['p']:.2g}, q={test['q']:.2g}",
-        ha="center",
-        va="center",
-        fontsize=style.FONT_SIZE_DENSE,
-        color=style.COLORS["ink"] if significant else style.COLORS["reference"],
-        fontweight="bold" if significant else "normal",
-    )
-
-
 def makeFigure():
-    return common.standalone(plot, style.PANEL_SIZE["full"])
+    return common.standalone_fixed(__name__)

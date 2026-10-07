@@ -1,22 +1,21 @@
 """Figure 3: Alterations in cell communication are associated with ALAD outcomes."""
 
 from .. import common, style
-from . import associations, component_weights, interpretation
+from . import (
+    celltype_association,
+    coordinated_changes,
+    lr_loadings,
+    outcome_association,
+    pacmaps,
+    sender_receiver_scatter,
+)
 
-PANELS = {
-    "associations": associations,
-    "weights": component_weights,
-    "interpretation": interpretation,
-}
 LAYOUT = [
-    ["associations"] * 3 + ["weights"] * 3,
-    ["interpretation"] * 6,
+    [outcome_association, celltype_association, sender_receiver_scatter],
+    [lr_loadings, coordinated_changes],
+    [pacmaps],
 ]
-# mm per row, summing to the full-page height.
-ROW_HEIGHTS = [80, 120]
 
 
 def makeFigure():
-    return common.compose(
-        style.FIGSIZE["full_page"], LAYOUT, PANELS, height_ratios=ROW_HEIGHTS
-    )
+    return common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)

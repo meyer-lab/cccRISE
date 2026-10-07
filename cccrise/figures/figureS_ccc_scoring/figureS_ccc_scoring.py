@@ -16,7 +16,7 @@ LAYOUT = [
     ["interpretation"] * 3,
 ]
 # mm per row; the interpretation grid needs ~30 mm per CP component.
-ROW_HEIGHTS = [60, 180]
+ROW_HEIGHTS = [52, 188]
 
 
 def makeFigure():
