@@ -1,5 +1,5 @@
 """Supplementary figure: per-component RISE and CP stability under patient
-jackknifing and seed refitting, with the FMS distribution of every unstable
+jackknifing and seed refitting, with the FMS distribution of every bimodal
 component."""
 
 from ... import common, style
@@ -13,10 +13,10 @@ LAYOUT = [["rise"] * 3 + ["cpd"], ["histograms"] * 4]
 
 def makeFigure():
     fig = common.compose(
-        (style.FIGURE_WIDTH_DOUBLE, 150 * style.MM),
+        (style.FIGURE_WIDTH_DOUBLE, 130 * style.MM),
         LAYOUT,
         PANELS,
-        height_ratios=[1, 1],
+        height_ratios=[1, 0.6],
     )
     # The CP panel shares the RISE panel's FMS axis, labeled once
     rise_ax, cpd_ax = (subfig.axes[0] for subfig in fig.subfigs[:2])

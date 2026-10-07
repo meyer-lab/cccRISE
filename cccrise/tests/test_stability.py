@@ -987,13 +987,14 @@ def test_jackknife_interval_scales_the_leave_one_out_spread():
 # =============================================================================
 
 
-def test_unstable_components_flags_low_or_bimodal_fms_but_not_tight_clusters():
+def test_bimodal_components_flags_a_second_population_but_not_outliers():
     from cccrise.figures.figure2.figureS_cmp_stability import _common as S
 
     rng = np.random.default_rng(0)
-    tight = 1 - rng.uniform(0, 0.01, 40)  # high coefficient, tiny range
-    bimodal = np.r_[rng.uniform(0.55, 0.65, 20), rng.uniform(0.95, 1.0, 20)]
-    one_low = np.r_[np.ones(39), 0.1]
+    tight = 1 - rng.uniform(0, 0.01, 40)
+    one_low = np.r_[np.ones(39), 0.1]  # one failed replicate is not a mode
+    bimodal = np.r_[rng.uniform(0.0, 0.2, 10), rng.uniform(0.95, 1.0, 30)]
+    high_bimodal = np.r_[rng.uniform(0.55, 0.65, 20), rng.uniform(0.95, 1.0, 20)]
     df = pd.concat(
         [
             pd.DataFrame(
@@ -1001,10 +1002,11 @@ def test_unstable_components_flags_low_or_bimodal_fms_but_not_tight_clusters():
             )
             for stage, c, fms in [
                 (STAGE_RISE, 1, tight),
-                (STAGE_RISE, 2, bimodal),
-                (STAGE_CPD, 1, one_low),
+                (STAGE_RISE, 2, one_low),
+                (STAGE_RISE, 3, high_bimodal),
+                (STAGE_CPD, 1, bimodal),
             ]
         ]
     )
 
-    assert S.unstable_components(df) == [(STAGE_RISE, 2), (STAGE_CPD, 1)]
+    assert S.bimodal_components(df) == [(STAGE_RISE, 3), (STAGE_CPD, 1)]
