@@ -121,9 +121,6 @@ class DatasetSpec:
     def stability_filename(self) -> str:
         return f"component_stability_{self.key}.parquet"
 
-    def anova_bootstrap_filename(self) -> str:
-        return f"anova_bootstrap_{self.key}.parquet"
-
     def anova_point_estimate_filename(self) -> str:
         return f"anova_point_estimate_{self.key}.parquet"
 

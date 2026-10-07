@@ -1,10 +1,8 @@
-from typing import Any
-
 import anndata
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.stats import ttest_ind
+from scipy.stats import f_oneway, ttest_ind
 
 from cccrise.anova import (
     _eta_squared,
@@ -16,14 +14,14 @@ from cccrise.anova import (
     run_saved_factors_anova,
 )
 from cccrise.import_data import add_cond_idxs
-from cccrise.runners._cli import CP_TOL, RISE_TOL
-from cccrise.utils import replicate_seed, resample_conditions
-from cccrise.validation.anova_stability import (
+from cccrise.utils import leave_out_patient, replicate_seed
+from cccrise.validation.stability import (
+    JACKKNIFE_AXIS,
+    SEED_AXIS,
+    STAGE_CPD,
+    STAGE_RISE,
     align_to_reference_components,
-    bootstrap_anova,
-    bootstrap_replicate_anova,
-    fit_anova_pipeline,
-    summarize_bootstrap_anova,
+    summarize_anova_stability,
     top_lr_pairs,
 )
 
@@ -188,7 +186,7 @@ def test_two_group_anova_f_equals_squared_t():
 
 def test_anova_reports_nan_for_a_degenerate_component():
     """A component with a group having fewer than 2 samples reports NaN rather
-    than raising an error, so a bootstrap replicate survives."""
+    than raising an error, so a stability replicate survives."""
     A = np.array([[1.0], [2.0], [3.0], [4.0]])
     labels = pd.Series(["Ctrl", "Treat", "Treat", "Treat"])  # Ctrl has only 1 sample
 
@@ -203,192 +201,35 @@ def test_anova_reports_nan_for_a_degenerate_component():
     assert not res.loc[0, "Significant"]
 
 
-# =============================================================================
-# Pipeline, replicate, and summary tests
-# =============================================================================
+def test_anova_keeps_a_single_condition_group_when_allowed():
+    """`min_group_size=1` keeps a group of one in the test instead of voiding
+    it, matching scipy's one-way ANOVA on the same groups."""
+    A = np.array([[1.0], [2.0], [3.0], [4.0], [6.0]])
+    labels = pd.Series(["Ctrl", "Treat", "Treat", "Treat", "Other"])
 
+    adata = anndata.AnnData(X=np.zeros((5, 1)), uns={"A": A})
+    res = anova_component_associations(adata, labels, min_group_size=1)
 
-def test_fit_anova_pipeline_output_structure():
-    adata = _synthetic_cohort()
-    lr_pairs = pd.DataFrame(
-        {
-            "ligand": ["Gene_0", "Gene_2", "Gene_4"],
-            "receptor": ["Gene_1", "Gene_3", "Gene_5"],
-            "interaction_symbol": ["Gene_0_Gene_1", "Gene_2_Gene_3", "Gene_4_Gene_5"],
-        }
-    )
-    fit = fit_anova_pipeline(
-        adata,
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-        rise_rank=2,
-        cp_rank=2,
-        lr_pairs=lr_pairs,
-        rise_n_iter_max=10,
-        cp_n_iter_max=10,
-        rise_tol=RISE_TOL,
-        cp_tol=CP_TOL,
-        random_state=0,
-    )
-
-    assert isinstance(fit, dict)
-    expected_keys = {
-        "factors",
-        "cp_weights",
-        "lr_symbols",
-        "anova",
-        "r2x_cp",
-        "sample_to_group",
-    }
-    assert expected_keys.issubset(fit.keys())
-    assert len(fit["factors"]) == 4
-    assert isinstance(fit["anova"], pd.DataFrame)
-    assert len(fit["anova"]) == 2
-    assert list(fit["anova"]["Component"]) == [1, 2]
-    expected_anova_cols = {
-        "Component",
-        "F",
-        "P",
-        "EtaSquared",
-        "GroupMeanDiff",
-        "Significant",
-        "NGroups",
-        "GroupSizes",
-    }
-    assert expected_anova_cols.issubset(fit["anova"].columns)
-    assert len(fit["lr_symbols"]) == 3
-    assert isinstance(fit["r2x_cp"], float)
-    assert len(fit["sample_to_group"]) == 20
+    expected = f_oneway([1.0], [6.0], [2.0, 3.0, 4.0])
+    np.testing.assert_allclose(res.loc[0, "F"], expected.statistic)
+    np.testing.assert_allclose(res.loc[0, "P"], expected.pvalue)
 
 
 # =============================================================================
-# GPU backend and compression
+# Summary
 # =============================================================================
 
 
-def _anova_lr_pairs() -> pd.DataFrame:
-    return pd.DataFrame(
-        {
-            "ligand": ["Gene_0", "Gene_2", "Gene_4"],
-            "receptor": ["Gene_1", "Gene_3", "Gene_5"],
-            "interaction_symbol": ["Gene_0_Gene_1", "Gene_2_Gene_3", "Gene_4_Gene_5"],
-        }
-    )
-
-
-def test_fit_anova_pipeline_runs_compressed():
-    """`compress=True`, what the runners pass, must be a working code path."""
-    fit = fit_anova_pipeline(
-        _synthetic_cohort(),
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-        rise_rank=2,
-        cp_rank=2,
-        lr_pairs=_anova_lr_pairs(),
-        rise_n_iter_max=10,
-        cp_n_iter_max=10,
-        rise_tol=RISE_TOL,
-        cp_tol=CP_TOL,
-        random_state=0,
-        compress=True,
-    )
-    assert 0.0 <= fit["r2x_cp"] <= 1.0 + 1e-9
-
-
-def test_fit_anova_pipeline_accepts_an_explicit_cpu_backend():
-    """`backend` must reach `fit_rise` without erroring on a plain CPU
-    box, which is what every CI run and every cohort-scale fit uses."""
-    fit = fit_anova_pipeline(
-        _synthetic_cohort(),
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-        rise_rank=2,
-        cp_rank=2,
-        lr_pairs=_anova_lr_pairs(),
-        rise_n_iter_max=10,
-        cp_n_iter_max=10,
-        rise_tol=RISE_TOL,
-        cp_tol=CP_TOL,
-        random_state=0,
-        backend="cpu",
-    )
-    assert 0.0 <= fit["r2x_cp"] <= 1.0 + 1e-9
-
-
-def test_bootstrap_anova_runs_compressed():
-    adata = _synthetic_cohort()
-    lr_pairs = _anova_lr_pairs()
-    kwargs: dict[str, Any] = {
-        "condition_column": "Sample",
-        "group_column": "Group",
-        "control_label": "Ctrl",
-        "other_label": "Treat",
-        "rise_rank": 2,
-        "cp_rank": 2,
-        "lr_pairs": lr_pairs,
-        "rise_n_iter_max": 10,
-        "cp_n_iter_max": 10,
-        "rise_tol": RISE_TOL,
-        "cp_tol": CP_TOL,
-    }
-    reference = fit_anova_pipeline(adata, **kwargs, random_state=0, compress=True)
-
-    df = bootstrap_anova(
-        adata, reference=reference, **kwargs, n_boot=1, random_state=0, compress=True
-    )
-    assert df["EtaSquared"].between(-1e-9, 1.0 + 1e-9).all()
-
-
-def test_bootstrap_anova_forwards_patient_column_to_the_resampler(monkeypatch):
-    """Paired patients must be carried together in the ANOVA bootstrap too,
-    not only in `component_stability`."""
-    from cccrise.validation import anova_stability
-
-    seen = []
-    real = anova_stability.resample_conditions
-
-    def spy(*args, **kwargs):
-        seen.append(kwargs.get("patient_by"))
-        return real(*args, **kwargs)
-
-    monkeypatch.setattr(anova_stability, "resample_conditions", spy)
-
-    adata = _synthetic_cohort()
-    adata.obs["Patient"] = adata.obs["Sample"].replace({"Sample_1": "Sample_0"})
-    kwargs: dict[str, Any] = {
-        "condition_column": "Sample",
-        "group_column": "Group",
-        "control_label": "Ctrl",
-        "other_label": "Treat",
-        "rise_rank": 2,
-        "cp_rank": 2,
-        "lr_pairs": _anova_lr_pairs(),
-        "rise_n_iter_max": 10,
-        "cp_n_iter_max": 10,
-        "rise_tol": RISE_TOL,
-        "cp_tol": CP_TOL,
-    }
-    reference = fit_anova_pipeline(adata, **kwargs, random_state=0)
-    bootstrap_anova(
-        adata, reference=reference, **kwargs, n_boot=1, patient_column="Patient"
-    )
-    assert seen == ["Patient"]
-
-
-def test_summarize_bootstrap_anova_metrics():
+def test_summarize_anova_stability_metrics():
     # Component 1: large eta, significant, positive diff
     # Component 2: small eta, p > 0.05, 0 diff
     # Component 3: medium eta, mixed p, negative diff
-    boot_rows = []
+    rows = []
     for b in range(100):
-        boot_rows.append(
+        rows.append(
             {
+                "Axis": JACKKNIFE_AXIS,
+                "Stage": STAGE_CPD,
                 "Replicate": b,
                 "Component": 1,
                 "MatchedComponent": 1,
@@ -396,14 +237,13 @@ def test_summarize_bootstrap_anova_metrics():
                 "F": 15.0 + (b % 5),
                 "P": 0.001 if b < 95 else 0.06,  # 95% significant (< 0.05)
                 "GroupMeanDiff": 2.0 + 0.1 * (b % 5 - 2),
-                "MatchScore": 0.95,
-                "SignedCosine": 0.95,
-                "RunnerUpScore": 0.1,
-                "R2XCP": 0.85,
+                "FMS": 0.95,
             }
         )
-        boot_rows.append(
+        rows.append(
             {
+                "Axis": JACKKNIFE_AXIS,
+                "Stage": STAGE_CPD,
                 "Replicate": b,
                 "Component": 2,
                 "MatchedComponent": 2,
@@ -411,14 +251,13 @@ def test_summarize_bootstrap_anova_metrics():
                 "F": 0.5 + 0.1 * (b % 5),
                 "P": 0.40,
                 "GroupMeanDiff": 0.0 if b < 80 else 0.5,
-                "MatchScore": 0.90,
-                "SignedCosine": 0.90,
-                "RunnerUpScore": 0.2,
-                "R2XCP": 0.85,
+                "FMS": 0.90,
             }
         )
-        boot_rows.append(
+        rows.append(
             {
+                "Axis": JACKKNIFE_AXIS,
+                "Stage": STAGE_CPD,
                 "Replicate": b,
                 "Component": 3,
                 "MatchedComponent": 3,
@@ -426,14 +265,21 @@ def test_summarize_bootstrap_anova_metrics():
                 "F": 8.0 + (b % 3),
                 "P": 0.02 if b < 60 else 0.10,  # 60% significant
                 "GroupMeanDiff": -1.5 + 0.05 * (b % 3 - 1),
-                "MatchScore": 0.80,
-                "SignedCosine": 0.80,
-                "RunnerUpScore": 0.3,
-                "R2XCP": 0.85,
+                "FMS": 0.80,
             }
         )
 
-    boot_df = pd.DataFrame(boot_rows)
+    df = pd.DataFrame(rows)
+    # Rows of other axes and of the RISE stage must not leak into the summary.
+    noise = df.assign(EtaSquared=0.99, P=0.0, FMS=0.0)
+    df = pd.concat(
+        [
+            df,
+            noise.assign(Axis=SEED_AXIS),
+            noise.assign(Stage=STAGE_RISE),
+        ],
+        ignore_index=True,
+    )
     reference_anova = pd.DataFrame(
         {
             "Component": [1, 2, 3],
@@ -443,17 +289,19 @@ def test_summarize_bootstrap_anova_metrics():
             "GroupMeanDiff": [2.0, 0.0, -1.5],
         }
     )
-    summary = summarize_bootstrap_anova(
-        boot_df, reference_anova, ci_level=90.0, alpha=0.05
+    summary = summarize_anova_stability(
+        df, reference_anova, JACKKNIFE_AXIS, ci_level=90.0, alpha=0.05
     )
 
     assert len(summary) == 3
+    assert (summary["NReplicates"] == 100).all()
     s1 = summary[summary["Component"] == 1].iloc[0]
     assert s1["FracSignificant"] == 0.95
     assert s1["FracSameSignAsReference"] == 1.0
-    assert s1["CILow"] > 0.5
+    assert s1["CILow"] < s1["ReferenceEtaSquared"] < s1["CIHigh"]
     assert s1["ReferenceEtaSquared"] == 0.6
     assert s1["ReferenceGroupMeanDiff"] == 2.0
+    assert s1["MedianFMS"] == 0.95
 
     s2 = summary[summary["Component"] == 2].iloc[0]
     assert s2["FracSignificant"] == 0.0
@@ -465,135 +313,12 @@ def test_summarize_bootstrap_anova_metrics():
     assert s3["ReferenceGroupMeanDiff"] == -1.5
 
 
-def test_bootstrap_replicate_anova_mismatched_lr_roster():
-    factors = _synthetic_factors(n_lr=5, rank=2)
-    ref_anova = pd.DataFrame(
-        {
-            "Component": [1, 2],
-            "EtaSquared": [0.5, 0.2],
-            "F": [10.0, 2.0],
-            "P": [0.01, 0.2],
-            "GroupMeanDiff": [1.0, -1.0],
-        }
-    )
-    ref = {
-        "factors": factors,
-        "cp_weights": np.array([1.0, 1.0]),
-        "lr_symbols": np.array(["L1_R1", "L2_R2"]),
-        "anova": ref_anova,
-        "r2x_cp": 0.8,
-    }
-
-    adata = _synthetic_cohort()
-
-    # Mismatched lr_pairs with 2 pairs so CP rank 2 is valid, but symbols differ from ref
-    lr_pairs = pd.DataFrame(
-        {
-            "ligand": ["Gene_0", "Gene_2"],
-            "receptor": ["Gene_1", "Gene_3"],
-            "interaction_symbol": ["Gene_0_Gene_1", "Gene_2_Gene_3"],
-        }
-    )
-
-    with pytest.raises(ValueError, match="different ligand-receptor"):
-        bootstrap_replicate_anova(
-            adata,
-            reference=ref,
-            condition_column="Sample",
-            group_column="Group",
-            control_label="Ctrl",
-            other_label="Treat",
-            rise_rank=2,
-            cp_rank=2,
-            lr_pairs=lr_pairs,
-            rise_n_iter_max=10,
-            cp_n_iter_max=10,
-            rise_tol=RISE_TOL,
-            cp_tol=CP_TOL,
-        )
-
-
-def test_end_to_end_synthetic_bootstrap():
-    """Verify synthetic AnnData runs through fit_anova_pipeline, bootstrap_anova,
-    and summarize_bootstrap_anova without error."""
-    adata = _synthetic_cohort()
-
-    lr_pairs = pd.DataFrame(
-        {
-            "ligand": ["Gene_0", "Gene_2", "Gene_4"],
-            "receptor": ["Gene_1", "Gene_3", "Gene_5"],
-            "interaction_symbol": ["Gene_0_Gene_1", "Gene_2_Gene_3", "Gene_4_Gene_5"],
-        }
-    )
-
-    reference = fit_anova_pipeline(
-        adata,
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-        rise_rank=2,
-        cp_rank=2,
-        lr_pairs=lr_pairs,
-        rise_n_iter_max=10,
-        cp_n_iter_max=10,
-        rise_tol=RISE_TOL,
-        cp_tol=CP_TOL,
-        random_state=0,
-    )
-    assert len(reference["anova"]) == 2
-    assert len(reference["lr_symbols"]) == 3
-
-    boot_df = bootstrap_anova(
-        adata,
-        reference=reference,
-        condition_column="Sample",
-        group_column="Group",
-        control_label="Ctrl",
-        other_label="Treat",
-        rise_rank=2,
-        cp_rank=2,
-        n_boot=2,
-        lr_pairs=lr_pairs,
-        rise_n_iter_max=10,
-        cp_n_iter_max=10,
-        rise_tol=RISE_TOL,
-        cp_tol=CP_TOL,
-        random_state=0,
-    )
-    assert len(boot_df) == 4  # 2 replicates * 2 components
-    expected_cols = {
-        "Replicate",
-        "Component",
-        "MatchedComponent",
-        "EtaSquared",
-        "F",
-        "P",
-        "GroupMeanDiff",
-        "MatchScore",
-        "SignedCosine",
-        "RunnerUpScore",
-        "R2XCP",
-    }
-    assert set(boot_df.columns) == expected_cols
-
-    summary = summarize_bootstrap_anova(boot_df, reference["anova"])
-    assert len(summary) == 2
-    assert list(summary["Component"]) == [1, 2]
-    assert (summary["NReplicates"] == 2).all()
-
-
 def test_get_sample_to_group_is_ordered_by_condition_unique_idxs():
     """`anova_component_associations` reads `sample_to_group` as aligned to
-    `uns["A"]`'s rows, which are in `condition_unique_idxs` order. The ``__rep2``
-    suffix a repeat draw carries sorts next to its source label, but the
-    alignment must not rest on that -- it rests on both orderings being the
-    same sort."""
+    `uns["A"]`'s rows, which are in `condition_unique_idxs` order -- on a
+    jackknife replicate's roster as on the full cohort's."""
     adata = _synthetic_cohort(n_conditions=6)
-    resampled = add_cond_idxs(
-        resample_conditions(adata, "Sample", stratify_by="Group", random_seed=0),
-        "Sample",
-    )
+    resampled = add_cond_idxs(leave_out_patient(adata, "Sample", "Sample_2"), "Sample")
 
     sample_to_group = get_sample_to_group(resampled, "Sample", "Group")
 

@@ -1,4 +1,4 @@
-"""Aggregate RISE and CP stability per resampling axis (the Methods'
+"""Aggregate RISE and CP stability per stability axis (the Methods'
 stability metric: a replicate's mean FMS over components), as the median with
 a 2.5-97.5 percentile band over replicates, from ``uv run cccrise-stability``."""
 
@@ -6,16 +6,10 @@ import numpy as np
 from matplotlib.lines import Line2D
 
 from ...runners.datasets import DATASETS, VALIDATION_DIR
-from ...validation.component_stability import metric_interval
+from ...validation.stability import metric_interval
 from .. import common, style
 
 DATASET = "alad"
-AXIS_LABELS = {
-    "seed_only": "Seed only",
-    "cells": "Cells",
-    "conditions": "Conditions",
-    "lr_pairs": "LR pairs",
-}
 STAGE_ORDER = ["RISE", "CPD"]  # pipeline order
 STAGE_LABELS = {"RISE": "RISE", "CPD": "CP"}
 AXES = ("square",)
@@ -36,7 +30,7 @@ def plot(axs):
     stats = stats.sort_values(
         "Stage", key=lambda s: s.map(STAGE_ORDER.index), kind="stable"
     )
-    # Points grouped by stage, one per resampling axis, a blank slot between.
+    # Points grouped by stage, one per stability axis, a blank slot between.
     stages = list(dict.fromkeys(stats["Stage"]))
     within = stats.groupby("Stage").cumcount().to_numpy()
     sizes = stats.groupby("Stage").size()
@@ -65,14 +59,19 @@ def plot(axs):
     ax.tick_params(axis="x", length=0)
     ax.legend(
         handles=[
-            Line2D([], [], ls="", marker="o", color=color, label=AXIS_LABELS[axis])
+            Line2D(
+                [],
+                [],
+                ls="",
+                marker="o",
+                color=color,
+                label=style.STABILITY_AXIS_LABELS[axis],
+            )
             for axis, color in style.STABILITY_AXIS_COLORS.items()
         ],
-        title="Resampled",
         loc="lower center",
         ncols=2,
         fontsize=style.FONT_SIZE_DENSE,
-        title_fontsize=style.FONT_SIZE_DENSE,
         columnspacing=0.8,
     )
     ax.set_ylim(0, 1.05)
