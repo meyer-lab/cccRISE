@@ -28,6 +28,7 @@ dependencies = [
     "vsparse>=0.2.0",
     "pyreadr>=0.5.6",
     "pyyaml>=6.0",
+    "adjusttext>=1.4.0",
 ]
 
 readme = "README.md"

@@ -1175,7 +1175,7 @@ def summarize_component_stability(
     Parameters
     ----------
     df : pd.DataFrame
-        Output of `component_stability`.
+        Output of `stability_replicates`.
     lower, upper : float
         Percentiles reported as the interval for the observed axes. The seed
         band's own edge is `SEED_BAND_PERCENTILE`, deliberately independent of

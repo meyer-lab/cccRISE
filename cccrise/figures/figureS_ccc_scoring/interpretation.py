@@ -84,13 +84,24 @@ def plot(fig):
         points = _draw_lr_dots(row[0], component["lr"])
         _draw_heatmap(row[1], component["sender"])
         _draw_heatmap(row[2], component["receiver"])
+        # Same cell types as the sender heatmap, so only that one is labeled
+        row[2].sharey(row[1])
+        row[2].tick_params(axis="y", labelleft=False)
         row[0].set_ylabel(f"Component {i}", fontweight="bold")
     # Method labels on the bottom row only, column titles on the top only.
     for ax in axs[:-1].ravel():
         ax.tick_params(axis="x", labelbottom=False)
     for ax, kind in zip(axs[0], ("LR pairs", "Sender", "Receiver"), strict=True):
         ax.set_title(kind)
-    fig.colorbar(points, ax=axs, shrink=0.2, label="Loading / max |loading|")
+    fig.colorbar(
+        points,
+        ax=axs,
+        location="bottom",
+        shrink=0.3,
+        aspect=40,
+        pad=0.04,
+        label="Loading / max |loading|",
+    )
 
 
 def makeFigure():
