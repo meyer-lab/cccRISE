@@ -12,8 +12,8 @@ COMPONENT_NAMES = {"RISE": "RISE", "CPD": "CP"}  # stage -> axis label
 
 
 def plot_stage(fig, stage: str) -> None:
-    """Per-component FMS over resampling replicates for `stage` ('RISE' or
-    'CPD'), one box per resampling axis. The grey seed-only box is that
+    """Per-component FMS over replicates for `stage` ('RISE' or 'CPD'), one
+    box per stability axis. The grey seed-only box is that
     component's reproducibility ceiling: the gap below it is what perturbing
     the data costs beyond reseeding."""
     ax = fig.subplots()
@@ -40,14 +40,14 @@ def plot_stage(fig, stage: str) -> None:
 
 
 def legend(fig) -> None:
-    """One legend of the resampling-axis colors, above `fig`."""
+    """One legend of the stability-axis colors, above `fig`."""
     handles = [
         Patch(color=color, label=style.STABILITY_AXIS_LABELS[axis])
         for axis, color in style.STABILITY_AXIS_COLORS.items()
     ]
     fig.legend(
         handles=handles,
-        title="Resampled",
+        title="Refit",
         loc="outside upper center",
         ncols=len(handles),
     )

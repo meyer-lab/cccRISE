@@ -1,5 +1,5 @@
 """How well each replicate's CP component matched the full-cohort component on
-every resampling axis -- the control for the effect-size panels: a wide
+every stability axis -- the control for the effect-size panels: a wide
 effect-size distribution with low match scores means the component was not
 re-identified, not that its association was unstable."""
 

@@ -340,7 +340,7 @@ def _eta_squared(groups: list[np.ndarray]) -> float:
     """Fraction of a loading's total variance the grouping explains,
     ``SS_between / SS_total``.
 
-    The effect size, not the p-value, is what the bootstrap carries: it is a
+    The effect size, not the p-value, is what the stability replicates carry: it is a
     variance ratio, so it does not move with a replicate's sample count the
     way a p-value does.
     """
@@ -361,7 +361,7 @@ def _group_mean_diff(
 
     This is the only sign-bearing quantity the ANOVA reports, and so the one
     that carries direction -- which group loads higher -- through the
-    bootstrap's sign correction, exactly as the logistic regression weight
+    stability replicates' sign correction, exactly as the logistic regression weight
     did. F, P and eta-squared are sign-invariant by construction.
     """
     if len(groups) != 2:

@@ -5,11 +5,14 @@ CP ranks.
 Everything here is *conditional on* ranks that have already been chosen (see
 `rank_selection` for the rules that choose them). The goal is to evaluate
 whether the identified components recovered at those fixed ranks are stable and
-reproducible under data resampling -- directly addressing Reviewer 2's major
-comment #4 -- and whether each CP component's association with the phenotype
-survives the same resampling.
+reproducible -- directly addressing Reviewer 2's major comment #4 -- and whether
+each CP component's association with the phenotype survives the same
+perturbations. Two axes perturb the fit: `JACKKNIFE_AXIS` leaves one patient
+out per replicate, every patient in turn, and `SEED_AXIS` refits the identical
+cohort from a different random seed, the reproducibility ceiling the jackknife
+is read against.
 
-One replicate loop serves all three analyses: a replicate resamples the data
+One replicate loop serves all three analyses: a replicate prepares the data
 once, refits RISE and CP once, scores RISE and CPD component stability from
 those fits, and then re-runs the component--phenotype ANOVA on the same CP fit.
 Each replicate's ANOVA statistics are carried over onto the reference
@@ -26,8 +29,7 @@ This module computes and tracks two distinct categories of metrics:
 
 1. **Per-Fit Diagnostics (Single-Fit Properties)**:
    Diagnostics evaluating the reconstruction quality, identifiability, and
-   numerical conditioning of an *individual* model fit on a specific dataset or
-   resampled tensor:
+   numerical conditioning of an *individual* model fit on a specific dataset:
    - `R2X`: Variance explained (reconstruction quality) of the RISE or CPD fit.
    - `CoreConsistency`: Tucker core consistency (CORCONDIA) of the CPD fit.
    - `MaxModesCollinear` & `WorstPairCanceling`: Collinearity and degenerate
@@ -57,18 +59,15 @@ mean the same thing in the reference and the replicate (`axis_skip_modes`):
   Modes 1 and 2 (sender $D$ and receiver $E$ eigen-state loadings) are
   expressed in each fit's own RISE basis, which differs from replicate to
   replicate (`RISE_SKIP_MODES`, `CPD_SKIP_MODES`).
-- **Resampled modes are held out on the axis that resamples them.** The
-  condition mode (Mode 0) on 'conditions' and `JACKKNIFE_AXIS`, whose rosters
-  differ from the reference's; the ligand-receptor mode (CPD Mode 3) on
-  'lr_pairs'.
+- **The condition mode is held out on `JACKKNIFE_AXIS`**, whose roster
+  differs from the reference's.
 
-So RISE is matched on conditions and genes ('cells', `SEED_AXIS`) or genes
-alone (patient axes), and CPD on conditions and LR pairs ('cells',
-`SEED_AXIS`), LR pairs alone (patient axes) or conditions alone ('lr_pairs').
-FMS values therefore rest on different modes on different axes.
+So on `SEED_AXIS` RISE is matched on conditions and genes and CPD on
+conditions and LR pairs; on `JACKKNIFE_AXIS` RISE is matched on genes alone
+and CPD on LR pairs alone. FMS values therefore rest on different modes on the
+two axes.
 """
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
@@ -82,7 +81,6 @@ from scipy.stats import norm
 from ..anova import anova_component_associations, prepare_anova_inputs
 from ..ccc_rise import (
     add_cell_embeddings,
-    fit_cp,
     run_ccc_rise_workflow,
     save_ccc_rise_results,
 )
@@ -91,9 +89,6 @@ from ..utils import (
     jackknife_units,
     leave_out_patient,
     replicate_seed,
-    resample_cells,
-    resample_conditions,
-    resample_tensor,
 )
 
 Factors = list[np.ndarray]
@@ -106,9 +101,8 @@ STAGE_CPD = "CPD"
 #: coordinates are each fit's own RISE basis.
 RISE_SKIP_MODES: tuple[int, ...] = (1,)
 CPD_SKIP_MODES: tuple[int, ...] = (1, 2)
-#: The condition mode of both stages, and CP's ligand-receptor mode.
+#: The condition mode of both stages.
 CONDITION_MODE = 0
-LR_MODE = 3
 
 #: Modes `align_to_reference_components` matches two CP fits over by default:
 #: the ligand-receptor mode alone, the one mode whose coordinates mean the same
@@ -131,42 +125,13 @@ SEED_BAND_PERCENTILE = 5.0
 
 #: Name of the leave-one-patient-out axis: one replicate per patient, each
 #: refitting the pipeline on the cohort without that patient
-#: (`utils.leave_out_patient`). It draws nothing, so it runs one replicate per
-#: patient (`utils.jackknife_units`) regardless of `n_replicates`.
+#: (`utils.leave_out_patient`). It runs one replicate per patient
+#: (`utils.jackknife_units`) regardless of `n_replicates`, and holds out the
+#: condition mode, whose roster it changes, from its FMS.
 JACKKNIFE_AXIS = "jackknife"
 
-#: Axes whose replicates change the condition roster, so the condition mode
-#: is held out of their FMS.
-CONDITION_RESAMPLING_AXES = ("conditions", JACKKNIFE_AXIS)
-
-#: Axes that refit RISE.
-RISE_REFIT_AXES = ("cells", "conditions", SEED_AXIS, JACKKNIFE_AXIS)
-
-#: Axes run by default.
-DEFAULT_AXES = ("cells", "conditions", "lr_pairs", SEED_AXIS, JACKKNIFE_AXIS)
-
-#: How an axis prepares the data it is fit on. Each entry takes
-#: ``(adata, condition_column, group_column, patient_column, seed)``.
-#:
-#: `SEED_AXIS`'s entry perturbs nothing -- its perturbation is applied
-#: downstream, by handing `fit_stability_pipeline` a different `random_state`.
-#: `JACKKNIFE_AXIS` is keyed by patient rather than seed; see `_replicate_data`.
-RESAMPLERS: dict[
-    str,
-    Callable[[anndata.AnnData, str, str | None, str | None, int], anndata.AnnData],
-] = {
-    "cells": lambda adata, col, group, patient, seed: resample_cells(
-        adata, condition_name=col, random_seed=seed
-    ),
-    "conditions": lambda adata, col, group, patient, seed: resample_conditions(
-        adata,
-        condition_name=col,
-        stratify_by=group,
-        random_seed=seed,
-        patient_by=patient,
-    ),
-    SEED_AXIS: lambda adata, col, group, patient, seed: adata.copy(),
-}
+#: Axes run by default -- every axis there is.
+DEFAULT_AXES = (SEED_AXIS, JACKKNIFE_AXIS)
 
 
 # =============================================================================
@@ -176,12 +141,11 @@ RESAMPLERS: dict[
 
 def axis_skip_modes(stage: str, axis: str) -> tuple[int, ...]:
     """Modes held out of `stage`'s FMS on `axis`: the stage's eigen-state
-    modes, plus whichever mode `axis` resamples (see the module docstring)."""
+    modes, plus the condition mode on `JACKKNIFE_AXIS` (see the module
+    docstring)."""
     skip = RISE_SKIP_MODES if stage == STAGE_RISE else CPD_SKIP_MODES
-    if axis in CONDITION_RESAMPLING_AXES:
+    if axis == JACKKNIFE_AXIS:
         skip += (CONDITION_MODE,)
-    if axis == "lr_pairs":
-        skip += (LR_MODE,)
     return tuple(sorted(skip))
 
 
@@ -205,8 +169,8 @@ def per_component_fms(
 
     Matching is by congruence rather than by component index because
     `ccc_rise.standardize_cc_pf2` orders components by ``var(A)/mean(A)``, a
-    ratio whose denominator can approach zero, so the index itself moves under
-    resampling even when the components do not.
+    ratio whose denominator can approach zero, so the index itself moves
+    between fits even when the components do not.
 
     Parameters
     ----------
@@ -415,9 +379,8 @@ def anova_data(
 
     `anova.prepare_anova_inputs` needs only each cell's condition index and
     group label and its total counts (for `utils.correct_conditions`' read
-    depth correction), so this keeps those as a one-column AnnData. A fit can
-    then carry it cheaply, and a CP refit of the reference tensor (the
-    'lr_pairs' axis) can be tested against the reference's cohort.
+    depth correction), so this keeps those as a one-column AnnData that a
+    fit can carry cheaply.
     """
     totals = np.asarray(cast(Any, adata.X).sum(axis=1), dtype=float).reshape(-1, 1)
     obs = cast(pd.DataFrame, adata.obs)
@@ -439,7 +402,7 @@ def component_anova(
     `group_column`; see `anova.anova_component_associations`.
 
     A group left with a single condition by a replicate (e.g. ALAD's
-    two-condition 'Died' outcome when the jackknife or the bootstrap leaves one)
+    two-condition 'Died' outcome when the jackknife leaves one)
     stays in the test as a group of one rather than voiding it, so every
     replicate with at least two groups gets statistics.
 
@@ -526,7 +489,6 @@ def fit_stability_pipeline(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int = 42,
-    keep_tensor: bool = False,
     backend: str | None = None,
     compress: bool = False,
     numbering_reference: xr.Dataset | Path | None = None,
@@ -539,14 +501,14 @@ def fit_stability_pipeline(
     """Run RISE, build the communication tensor, and fit CP over `adata`.
 
     `adata` is written into by `parafac2.store_pf2`, so callers must hand
-    over a copy they do not need pristine -- which is what the resamplers
-    return.
+    over a copy they do not need pristine -- which is what
+    `stability_replicates` hands it.
 
     Parameters
     ----------
     adata : anndata.AnnData
-        Data to fit: the full cohort for the reference pass, a resampled
-        copy for a replicate.
+        Data to fit: the full cohort for the reference pass, a replicate's
+        copy otherwise.
     lr_pairs : pd.DataFrame
         Ligand-receptor pairs to score.
     condition_column : str
@@ -567,9 +529,6 @@ def fit_stability_pipeline(
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=42
         Seed for the RISE fit and the CP fit. The ANOVA is deterministic.
-    keep_tensor : bool, default=False
-        Retain the communication tensor on the returned fit. Only the
-        reference pass needs it.
     backend : str | None, default=None
         Backend the RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
         auto-detect); passed straight through to `ccc_rise.fit_rise`.
@@ -590,7 +549,6 @@ def fit_stability_pipeline(
         lr_pairs,
         cp_rank=cp_rank,
         condition_column=condition_column,
-        keep_tensor=keep_tensor,
         rise_n_iter_max=rise_n_iter_max,
         rise_tol=rise_tol,
         cp_n_iter_max=cp_n_iter_max,
@@ -647,7 +605,6 @@ def stability_fit(
         "condition_labels": _condition_labels(adata, condition_column),
         "gene_names": np.asarray(adata.var_names),
         "lr_symbols": fit["filtered_lr_pairs"]["interaction_symbol"].to_numpy(),
-        "tensor": fit["tensor"],
         "r2x_rise": float(adata.uns["r2x_pf2"]),
         "r2x_cp": fit["r2x_cp"],
         "cpd_diagnostics": fit["diagnostics"],
@@ -779,7 +736,6 @@ def stability_replicates(
     group_column: str | None = None,
     control_label: str | None = None,
     other_label: str | None = None,
-    stratify_by: str | None = None,
     patient_column: str | None = None,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
@@ -796,35 +752,28 @@ def stability_replicates(
     cp_tol: float,
 ) -> pd.DataFrame:
     """Per-component stability of both stages, and of the CP components'
-    phenotype associations, under resampling, in long form.
+    phenotype associations, across replicate refits, in long form.
 
-    For each axis in `RISE_REFIT_AXES` a replicate prepares the data, refits
-    RISE at `rise_rank`, and matches the resulting components onto the
-    reference's; the communication tensor built from that same fit is then
-    decomposed at `cp_rank` and matched in turn, and the same CP fit's ANOVA
-    against `group_column` is carried onto its matched components
-    (`_attach_anova`). Every match holds out the eigen-state modes and the
-    mode the axis resamples (`axis_skip_modes`). 'cells' and 'conditions' resample;
-    `SEED_AXIS` hands the pipeline the identical cohort and changes only the
-    seed the fits start from, so it measures how far components move under the
-    fitters' own randomness -- the reproducibility ceiling every resampling
-    axis is read against, and the term that would otherwise be confounded with
-    sampling variability. `JACKKNIFE_AXIS` leaves one patient out per
+    Every replicate prepares the data, refits RISE at `rise_rank`, and matches
+    the resulting components onto the reference's; the communication tensor
+    built from that same fit is then decomposed at `cp_rank` and matched in
+    turn, and the same CP fit's ANOVA against `group_column` is carried onto
+    its matched components (`_attach_anova`). Every match holds out the
+    eigen-state modes, and on `JACKKNIFE_AXIS` the condition mode
+    (`axis_skip_modes`). `JACKKNIFE_AXIS` leaves one patient out per
     replicate, every patient in turn, so each of its replicates measures that
-    one patient's influence on every component and association.
-
-    One axis acts on the reference tensor instead:
-    - `lr_pairs`: The ligand-receptor mode bootstrapped with replacement,
-      matching on the condition mode alone. It costs no PARAFAC2 fit and so
-      emits CPD rows only; its ANOVA is run on the reference cohort.
+    one patient's influence on every component and association. `SEED_AXIS`
+    hands the pipeline the identical cohort and changes only the seed the fits
+    start from, so it measures how far components move under the fitters' own
+    randomness -- the reproducibility ceiling the jackknife is read against.
 
     Parameters
     ----------
     adata : anndata.AnnData
-        Full-cohort data to resample from.
+        Full-cohort data.
     reference : dict[str, Any]
-        The full-cohort fit, produced by ``fit_stability_pipeline(..., keep_tensor=True)``
-        with the same `group_column`, `control_label` and `other_label`.
+        The full-cohort fit, produced by `fit_stability_pipeline` with the
+        same `group_column`, `control_label` and `other_label`.
     lr_pairs : pd.DataFrame
         Ligand-receptor pairs to score.
     condition_column : str
@@ -837,20 +786,14 @@ def stability_replicates(
     control_label, other_label : str | None, optional
         Values of `group_column` collapsed to the reference and other level;
         both None tests every level. See `anova.prepare_anova_inputs`.
-    stratify_by : str | None, default=None
-        Condition-level column the 'conditions' draw is stratified within,
-        holding each stratum's size fixed; see `utils.resample_conditions`.
-        Unstratified when None.
     patient_column : str | None, default=None
-        Condition-level patient identity column. On the 'conditions' axis, when
-        a patient contributes more than one condition, drawing one of them
-        carries its sibling condition in and drops one other random draw to
-        compensate (see `utils.resample_conditions`); on `JACKKNIFE_AXIS` the
-        unit left out (`condition_column` when None).
+        Condition-level patient identity column: the unit `JACKKNIFE_AXIS`
+        leaves out, so a patient contributing several conditions loses all of
+        them (`condition_column` when None).
     axes : tuple[str, ...], default=DEFAULT_AXES
         Which axes to run.
     n_replicates : int, default=20
-        Replicates per resampling axis; `JACKKNIFE_AXIS` always runs one per
+        Replicates on `SEED_AXIS`; `JACKKNIFE_AXIS` always runs one per
         patient.
     rise_n_iter_max, rise_tol : int, float
         Fitting controls for RISE.
@@ -859,8 +802,8 @@ def stability_replicates(
     complex_sep, communication_score, hill_k
         Communication-tensor options.
     random_state : int, default=42
-        Base seed; replicate ``r`` of every axis uses
-        `replicate_seed(random_state, r)` for its draw and its fits.
+        Base seed; replicate ``r`` of every axis seeds its fits with
+        `replicate_seed(random_state, r)`.
     backend : str | None, default=None
         Backend each replicate's RISE refit runs on; see
         `fit_stability_pipeline`.
@@ -872,27 +815,20 @@ def stability_replicates(
     pd.DataFrame
         Long-form table with one row per (axis, replicate, stage, reference
         component): the `per_component_fms` match, per-fit diagnostics, the
-        patient a `JACKKNIFE_AXIS` replicate left out ('LeftOut', None on other
-        axes), and -- on CPD rows, when `group_column` is given -- the matched
-        component's `ANOVA_COLUMNS`.
+        patient a `JACKKNIFE_AXIS` replicate left out ('LeftOut', None on
+        `SEED_AXIS`), and -- on CPD rows, when `group_column` is given -- the
+        matched component's `ANOVA_COLUMNS`.
     """
-    unknown = set(axes) - set(RISE_REFIT_AXES) - {"lr_pairs"}
+    unknown = set(axes) - set(DEFAULT_AXES)
     if unknown:
         raise ValueError(f"Unknown stability axes: {sorted(unknown)}")
-    if reference.get("tensor") is None and "lr_pairs" in axes:
-        raise ValueError(
-            "The 'lr_pairs' axis resamples the reference tensor, so the "
-            "reference fit must be built with keep_tensor=True."
-        )
 
-    anova_kwargs: dict[str, Any] = {
+    fit_kwargs: dict[str, Any] = {
+        "lr_pairs": lr_pairs,
         "condition_column": condition_column,
         "group_column": group_column,
         "control_label": control_label,
         "other_label": other_label,
-    }
-    fit_kwargs: dict[str, Any] = anova_kwargs | {
-        "lr_pairs": lr_pairs,
         "rise_rank": rise_rank,
         "cp_rank": cp_rank,
         "rise_n_iter_max": rise_n_iter_max,
@@ -906,77 +842,35 @@ def stability_replicates(
         "compress": compress,
     }
     unit_column = patient_column or condition_column
+    patients = jackknife_units(adata, unit_column)
 
     frames = []
     for axis in axes:
-        n_axis = (
-            len(jackknife_units(adata, unit_column))
-            if axis == JACKKNIFE_AXIS
-            else n_replicates
-        )
+        n_axis = len(patients) if axis == JACKKNIFE_AXIS else n_replicates
         for replicate in range(n_axis):
             seed = replicate_seed(random_state, replicate)
             print(f"   {axis} replicate {replicate + 1}/{n_axis}")
-            left_out = None
-            if axis == "lr_pairs":
-                block = _lr_pairs_replicate(
-                    reference,
-                    cp_rank,
-                    seed,
-                    compress,
-                    cp_n_iter_max,
-                    cp_tol,
-                    anova_kwargs,
-                )
-                n_cells = n_conditions = np.nan
-            else:
-                resampled, left_out = _replicate_data(
-                    axis,
-                    adata,
-                    replicate,
-                    seed,
-                    condition_column,
-                    stratify_by,
-                    patient_column,
-                )
-                fit = fit_stability_pipeline(resampled, random_state=seed, **fit_kwargs)
-                block = _refit_replicate(reference, fit, axis)
-                n_cells = float(resampled.n_obs)
-                n_conditions = float(len(fit["condition_labels"]))
+            left_out = str(patients[replicate]) if axis == JACKKNIFE_AXIS else None
+            data = (
+                adata.copy()
+                if left_out is None
+                else leave_out_patient(adata, unit_column, left_out)
+            )
+            fit = fit_stability_pipeline(data, random_state=seed, **fit_kwargs)
+            block = _replicate_block(reference, fit, axis)
             block.insert(0, "Seed", seed)
             block.insert(0, "Replicate", replicate)
             block.insert(0, "Axis", axis)
             block["LeftOut"] = left_out
-            block["NCells"] = n_cells
-            block["NConditions"] = n_conditions
+            block["NCells"] = float(data.n_obs)
+            block["NConditions"] = float(len(fit["condition_labels"]))
             frames.append(block)
             # CuPy's pool never returns freed blocks to the driver on its own,
-            # so a long sweep of variably-sized resamples fragments it until a
-            # fit spuriously trips the managed-memory fallback.
+            # so a long sweep of variably-sized fits fragments it until a fit
+            # spuriously trips the managed-memory fallback.
             clean_memory()
 
     return pd.concat(frames, ignore_index=True)
-
-
-def _replicate_data(
-    axis: str,
-    adata: anndata.AnnData,
-    replicate: int,
-    seed: int,
-    condition_column: str,
-    stratify_by: str | None,
-    patient_column: str | None,
-) -> tuple[anndata.AnnData, str | None]:
-    """The data a RISE-refitting replicate is fit on, and the patient it left
-    out (`JACKKNIFE_AXIS` only; None otherwise)."""
-    if axis == JACKKNIFE_AXIS:
-        unit_column = patient_column or condition_column
-        left_out = str(jackknife_units(adata, unit_column)[replicate])
-        return leave_out_patient(adata, unit_column, left_out), left_out
-    resampled = RESAMPLERS[axis](
-        adata, condition_column, stratify_by, patient_column, seed
-    )
-    return resampled, None
 
 
 def _stage_block(
@@ -1000,10 +894,10 @@ def _stage_block(
     return _attach_anova(block, anova)
 
 
-def _refit_replicate(
+def _replicate_block(
     reference: dict[str, Any], fit: dict[str, Any], axis: str
 ) -> pd.DataFrame:
-    """RISE and CPD rows of a replicate that refit the whole pipeline."""
+    """RISE and CPD rows of one replicate's refit."""
     _check_rosters(reference, fit, axis)
     rise = _stage_block(
         reference["rise_factors"],
@@ -1024,56 +918,17 @@ def _refit_replicate(
     return pd.concat([rise, cpd], ignore_index=True)
 
 
-def _lr_pairs_replicate(
-    reference: dict[str, Any],
-    cp_rank: int,
-    seed: int,
-    compress: bool,
-    cp_n_iter_max: int,
-    cp_tol: float,
-    anova_kwargs: dict[str, Any],
-) -> pd.DataFrame:
-    """CPD rows of a CP refit on the reference tensor with its ligand-receptor
-    mode bootstrapped; the ANOVA is run on the reference cohort."""
-    perturbed = cast(
-        np.ndarray,
-        resample_tensor(cast(np.ndarray, reference["tensor"]), random_seed=seed),
-    )
-    _weights, factors, r2x, diagnostics = fit_cp(
-        perturbed,
-        cp_rank,
-        n_iter_max=cp_n_iter_max,
-        tol=cp_tol,
-        random_state=seed,
-        compress=compress,
-    )
-    anova = (
-        None
-        if reference["anova_data"] is None
-        else component_anova(reference["anova_data"], factors, **anova_kwargs)
-    )
-    return _stage_block(
-        reference["cp_factors"],
-        factors,
-        STAGE_CPD,
-        "lr_pairs",
-        r2x,
-        diagnostics,
-        anova,
-    )
-
-
 def _check_rosters(reference: dict[str, Any], fit: dict[str, Any], axis: str) -> None:
     """Refuse to compare two fits on a mode whose rows differ between them.
 
     The gene and LR-pair rosters are fixed in practice -- gene filtering happens
-    in the loader before any resampling, and `ccc.build_context_ccc_tensor`
+    in the loader before any replicate is drawn, and `ccc.build_context_ccc_tensor`
     intersects over contexts whose gene index is identical -- so this should
     never fire. It raises rather than intersecting because a silent difference
     is the dangerous case: `per_component_fms` would line up different genes or
     different interactions row by row and return a perfectly plausible number.
     The condition roster must match too, on every axis that compares the
-    condition mode (all but `CONDITION_RESAMPLING_AXES`).
+    condition mode (all but `JACKKNIFE_AXIS`).
     """
     if not np.array_equal(fit["gene_names"], reference["gene_names"]):
         raise ValueError(
@@ -1086,7 +941,7 @@ def _check_rosters(reference: dict[str, Any], fit: dict[str, Any], axis: str) ->
             "pairs, so their CP ligand-receptor factor rows are not "
             "comparable and component matching would be meaningless."
         )
-    if axis not in CONDITION_RESAMPLING_AXES and not np.array_equal(
+    if axis != JACKKNIFE_AXIS and not np.array_equal(
         fit["condition_labels"], reference["condition_labels"]
     ):
         raise ValueError(
@@ -1244,16 +1099,16 @@ def summarize_component_stability(
 def summarize_anova_stability(
     df: pd.DataFrame,
     reference_anova: pd.DataFrame,
-    axis: str = "conditions",
+    axis: str = JACKKNIFE_AXIS,
     ci_level: float = 95.0,
     alpha: float = 0.05,
 ) -> pd.DataFrame:
     """One row per CP component: its effect-size distribution on one axis, and
-    how reliably the association and its direction survive resampling.
+    how reliably the association and its direction survive the replicates.
 
     Three things are reported side by side rather than collapsed into one
     number, because they call for different conclusions: how large the effect
-    is and how tightly the resamples pin it down (the eta-squared interval);
+    is and how tightly the replicates pin it down (the eta-squared interval);
     how often the association reaches `alpha` at all (`FracSignificant`); and
     whether the component was even re-identifiable across replicates
     (`MedianFMS`/`MinFMS`), which is a CP identifiability question rather than
@@ -1271,13 +1126,13 @@ def summarize_anova_stability(
         The full-cohort fit's per-component ANOVA table -- `stability_fit`'s
         ``result["anova"]`` -- carrying 'Component', 'EtaSquared', 'F', 'P' and
         'GroupMeanDiff'.
-    axis : str, default="conditions"
-        Axis to summarize; the patient bootstrap by default.
+    axis : str, default=JACKKNIFE_AXIS
+        Axis to summarize.
     ci_level : float, default=95.0
-        Central interval width, in percent, taken on eta-squared: the
-        replicates' percentile interval on a resampling axis, and on
+        Central interval width, in percent, taken on eta-squared: on
         `JACKKNIFE_AXIS` the normal interval around the reference value with
-        the jackknife standard error (`_eta_squared_interval`).
+        the jackknife standard error, on `SEED_AXIS` the replicates' percentile
+        interval (`_eta_squared_interval`).
     alpha : float, default=0.05
         Threshold `FracSignificant` counts replicates against.
 
@@ -1340,12 +1195,14 @@ def _eta_squared_interval(
 ) -> tuple[float, float]:
     """Central `ci_level` interval on eta-squared from one axis's replicates.
 
-    Leave-one-out estimates sit far closer together than independent
-    resamples, so their percentiles would understate the uncertainty about
+    Leave-one-out estimates sit far closer together than independent samples
+    would, so their percentiles would understate the uncertainty about
     (n - 1)-fold in variance; the jackknife instead scales their spread up to
     a standard error, ``sqrt((n - 1) / n * sum((eta_i - mean)^2))``, and the
     interval is the normal one around the full-cohort value, floored at 0.
-    Degenerate (NaN) replicates are dropped either way.
+    The seed axis's replicates are refits of one cohort, so their percentile
+    interval is the fitters' own spread. Degenerate (NaN) replicates are
+    dropped either way.
     """
     eta = eta[np.isfinite(eta)]
     if eta.size == 0:

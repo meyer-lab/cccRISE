@@ -1,4 +1,4 @@
-"""Aggregate RISE and CP stability per resampling axis (the Methods'
+"""Aggregate RISE and CP stability per stability axis (the Methods'
 stability metric: a replicate's mean FMS over components), as the median with
 a 2.5-97.5 percentile band over replicates, from ``uv run cccrise-stability``."""
 
@@ -30,7 +30,7 @@ def plot(axs):
     stats = stats.sort_values(
         "Stage", key=lambda s: s.map(STAGE_ORDER.index), kind="stable"
     )
-    # Points grouped by stage, one per resampling axis, a blank slot between.
+    # Points grouped by stage, one per stability axis, a blank slot between.
     stages = list(dict.fromkeys(stats["Stage"]))
     within = stats.groupby("Stage").cumcount().to_numpy()
     sizes = stats.groupby("Stage").size()

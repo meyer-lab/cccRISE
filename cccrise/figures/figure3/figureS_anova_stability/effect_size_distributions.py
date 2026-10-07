@@ -1,4 +1,4 @@
-"""Eta-squared distribution per CP component on every resampling axis, with
+"""Eta-squared distribution per CP component on every stability axis, with
 the full-cohort value overlaid (filled where significant)."""
 
 import numpy as np

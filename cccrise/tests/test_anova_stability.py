@@ -14,8 +14,10 @@ from cccrise.anova import (
     run_saved_factors_anova,
 )
 from cccrise.import_data import add_cond_idxs
-from cccrise.utils import replicate_seed, resample_conditions
+from cccrise.utils import leave_out_patient, replicate_seed
 from cccrise.validation.stability import (
+    JACKKNIFE_AXIS,
+    SEED_AXIS,
     STAGE_CPD,
     STAGE_RISE,
     align_to_reference_components,
@@ -184,7 +186,7 @@ def test_two_group_anova_f_equals_squared_t():
 
 def test_anova_reports_nan_for_a_degenerate_component():
     """A component with a group having fewer than 2 samples reports NaN rather
-    than raising an error, so a bootstrap replicate survives."""
+    than raising an error, so a stability replicate survives."""
     A = np.array([[1.0], [2.0], [3.0], [4.0]])
     labels = pd.Series(["Ctrl", "Treat", "Treat", "Treat"])  # Ctrl has only 1 sample
 
@@ -222,11 +224,11 @@ def test_summarize_anova_stability_metrics():
     # Component 1: large eta, significant, positive diff
     # Component 2: small eta, p > 0.05, 0 diff
     # Component 3: medium eta, mixed p, negative diff
-    boot_rows = []
+    rows = []
     for b in range(100):
-        boot_rows.append(
+        rows.append(
             {
-                "Axis": "conditions",
+                "Axis": JACKKNIFE_AXIS,
                 "Stage": STAGE_CPD,
                 "Replicate": b,
                 "Component": 1,
@@ -238,9 +240,9 @@ def test_summarize_anova_stability_metrics():
                 "FMS": 0.95,
             }
         )
-        boot_rows.append(
+        rows.append(
             {
-                "Axis": "conditions",
+                "Axis": JACKKNIFE_AXIS,
                 "Stage": STAGE_CPD,
                 "Replicate": b,
                 "Component": 2,
@@ -252,9 +254,9 @@ def test_summarize_anova_stability_metrics():
                 "FMS": 0.90,
             }
         )
-        boot_rows.append(
+        rows.append(
             {
-                "Axis": "conditions",
+                "Axis": JACKKNIFE_AXIS,
                 "Stage": STAGE_CPD,
                 "Replicate": b,
                 "Component": 3,
@@ -267,13 +269,13 @@ def test_summarize_anova_stability_metrics():
             }
         )
 
-    boot_df = pd.DataFrame(boot_rows)
+    df = pd.DataFrame(rows)
     # Rows of other axes and of the RISE stage must not leak into the summary.
-    noise = boot_df.assign(EtaSquared=0.99, P=0.0, FMS=0.0)
-    boot_df = pd.concat(
+    noise = df.assign(EtaSquared=0.99, P=0.0, FMS=0.0)
+    df = pd.concat(
         [
-            boot_df,
-            noise.assign(Axis="cells"),
+            df,
+            noise.assign(Axis=SEED_AXIS),
             noise.assign(Stage=STAGE_RISE),
         ],
         ignore_index=True,
@@ -288,7 +290,7 @@ def test_summarize_anova_stability_metrics():
         }
     )
     summary = summarize_anova_stability(
-        boot_df, reference_anova, "conditions", ci_level=90.0, alpha=0.05
+        df, reference_anova, JACKKNIFE_AXIS, ci_level=90.0, alpha=0.05
     )
 
     assert len(summary) == 3
@@ -296,7 +298,7 @@ def test_summarize_anova_stability_metrics():
     s1 = summary[summary["Component"] == 1].iloc[0]
     assert s1["FracSignificant"] == 0.95
     assert s1["FracSameSignAsReference"] == 1.0
-    assert s1["CILow"] > 0.5
+    assert s1["CILow"] < s1["ReferenceEtaSquared"] < s1["CIHigh"]
     assert s1["ReferenceEtaSquared"] == 0.6
     assert s1["ReferenceGroupMeanDiff"] == 2.0
     assert s1["MedianFMS"] == 0.95
@@ -313,15 +315,10 @@ def test_summarize_anova_stability_metrics():
 
 def test_get_sample_to_group_is_ordered_by_condition_unique_idxs():
     """`anova_component_associations` reads `sample_to_group` as aligned to
-    `uns["A"]`'s rows, which are in `condition_unique_idxs` order. The ``__rep2``
-    suffix a repeat draw carries sorts next to its source label, but the
-    alignment must not rest on that -- it rests on both orderings being the
-    same sort."""
+    `uns["A"]`'s rows, which are in `condition_unique_idxs` order -- on a
+    jackknife replicate's roster as on the full cohort's."""
     adata = _synthetic_cohort(n_conditions=6)
-    resampled = add_cond_idxs(
-        resample_conditions(adata, "Sample", stratify_by="Group", random_seed=0),
-        "Sample",
-    )
+    resampled = add_cond_idxs(leave_out_patient(adata, "Sample", "Sample_2"), "Sample")
 
     sample_to_group = get_sample_to_group(resampled, "Sample", "Group")
 

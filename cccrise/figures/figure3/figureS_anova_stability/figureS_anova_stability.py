@@ -1,5 +1,5 @@
 """Supplementary figure: the CP component - outcome associations under every
-stability resampling axis."""
+stability axis."""
 
 from ... import common, style
 from . import _common as S

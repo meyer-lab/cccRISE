@@ -252,9 +252,9 @@ def run_alt_comm_score(
     n_perms : int, default=200
         Permutations for each method's significance test.
     stability_axes : tuple[str, ...], default=DEFAULT_AXES
-        Resampling axes for each method's stability run.
+        Stability axes for each method's stability run.
     n_replicates : int, default=20
-        Replicates per stability axis.
+        Seed-only stability replicates; the jackknife runs one per patient.
     random_state : int, default=42
         Seed for the shared RISE fit, every method's CP fit and permutations,
         and the base seed of every stability replicate.
@@ -421,10 +421,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--stability-axes",
         type=str,
         default=",".join(DEFAULT_AXES),
-        help="Comma-separated stability resampling axes.",
+        help="Comma-separated stability axes.",
     )
     parser.add_argument(
-        "--n-replicates", type=int, default=20, help="Stability replicates per axis."
+        "--n-replicates",
+        type=int,
+        default=20,
+        help="Seed-only stability replicates (the jackknife runs one per patient).",
     )
     parser.add_argument(
         "--random-state",

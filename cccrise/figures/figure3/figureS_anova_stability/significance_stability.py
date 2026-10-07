@@ -1,4 +1,4 @@
-"""Per CP component and resampling axis, the fraction of replicates reaching
+"""Per CP component and stability axis, the fraction of replicates reaching
 p < alpha, and -- for a two-level outcome, where a group-mean direction exists
 -- agreeing with the full cohort on which group loads higher (black ticks)."""
 

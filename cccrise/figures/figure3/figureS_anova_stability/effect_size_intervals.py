@@ -1,6 +1,6 @@
-"""Eta-squared interval per CP component on every resampling axis -- the
-percentile interval on the bootstrap axes, the normal interval from the
-jackknife standard error on the jackknife axis -- with the replicates' median,
+"""Eta-squared interval per CP component on every stability axis -- the
+normal interval from the jackknife standard error on the jackknife axis, the
+percentile interval on the seed axis -- with the replicates' median,
 labeled with the component's top LR pair in the reference fit."""
 
 import numpy as np

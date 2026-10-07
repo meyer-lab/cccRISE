@@ -1,8 +1,7 @@
-"""The resampled CP component--outcome ANOVA shared by this figure's panels,
-from ``uv run cccrise-stability``.
+"""The jackknifed and seed-refit CP component--outcome ANOVA shared by this
+figure's panels, from ``uv run cccrise-stability``.
 
-Every replicate of every stability axis refits CP (most also refit RISE),
-matches its components back onto the full-cohort reference by the CPD factor
+Every replicate of every stability axis refits RISE and CP, matches its components back onto the full-cohort reference by the CPD factor
 match score, and records their ANOVA statistics, so every component's effect
 size comes with a distribution per axis. Components keep the reference's
 numbering.
@@ -120,7 +119,7 @@ def reference_legend_handles() -> list:
 
 
 def legend(fig) -> None:
-    """One legend of the resampling-axis colors, above `fig`."""
+    """One legend of the stability-axis colors, above `fig`."""
     handles = [
         Patch(
             color=style.STABILITY_AXIS_COLORS[a], label=style.STABILITY_AXIS_LABELS[a]
@@ -129,7 +128,7 @@ def legend(fig) -> None:
     ]
     fig.legend(
         handles=handles,
-        title="Resampled",
+        title="Refit",
         loc="outside upper center",
         ncols=len(handles),
     )

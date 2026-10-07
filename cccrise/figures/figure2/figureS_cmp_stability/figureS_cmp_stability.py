@@ -1,5 +1,5 @@
-"""Supplementary figure: per-component RISE and CP stability under
-resampling."""
+"""Supplementary figure: per-component RISE and CP stability under patient
+jackknifing and seed refitting."""
 
 from ... import common, style
 from . import _common as S
