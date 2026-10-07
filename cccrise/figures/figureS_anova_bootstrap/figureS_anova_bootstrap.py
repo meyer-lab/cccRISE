@@ -1,7 +1,8 @@
-"""Supplementary figure: patient-resampled bootstrap of the CP component -
-outcome associations."""
+"""Supplementary figure: the CP component - outcome associations under every
+stability resampling axis."""
 
 from .. import common, style
+from . import _common as S
 from . import (
     effect_size_distributions,
     effect_size_intervals,
@@ -16,10 +17,13 @@ PANELS = {
     "match": match_scores,
 }
 LAYOUT = [
-    ["distributions", "intervals"],
-    ["significance", "match"],
+    ["distributions", "distributions"],
+    ["intervals", "significance"],
+    ["match", "match"],
 ]
 
 
 def makeFigure():
-    return common.compose((style.FIGURE_WIDTH_DOUBLE, 120 * style.MM), LAYOUT, PANELS)
+    fig = common.compose((style.FIGURE_WIDTH_DOUBLE, 185 * style.MM), LAYOUT, PANELS)
+    S.legend(fig)
+    return fig

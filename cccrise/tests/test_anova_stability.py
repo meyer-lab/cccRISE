@@ -2,7 +2,7 @@ import anndata
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.stats import ttest_ind
+from scipy.stats import f_oneway, ttest_ind
 
 from cccrise.anova import (
     _eta_squared,
@@ -197,6 +197,20 @@ def test_anova_reports_nan_for_a_degenerate_component():
     assert np.isnan(res.loc[0, "EtaSquared"])
     assert np.isnan(res.loc[0, "GroupMeanDiff"])
     assert not res.loc[0, "Significant"]
+
+
+def test_anova_keeps_a_single_condition_group_when_allowed():
+    """`min_group_size=1` keeps a group of one in the test instead of voiding
+    it, matching scipy's one-way ANOVA on the same groups."""
+    A = np.array([[1.0], [2.0], [3.0], [4.0], [6.0]])
+    labels = pd.Series(["Ctrl", "Treat", "Treat", "Treat", "Other"])
+
+    adata = anndata.AnnData(X=np.zeros((5, 1)), uns={"A": A})
+    res = anova_component_associations(adata, labels, min_group_size=1)
+
+    expected = f_oneway([1.0], [6.0], [2.0, 3.0, 4.0])
+    np.testing.assert_allclose(res.loc[0, "F"], expected.statistic)
+    np.testing.assert_allclose(res.loc[0, "P"], expected.pvalue)
 
 
 # =============================================================================

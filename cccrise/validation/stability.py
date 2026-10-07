@@ -48,28 +48,24 @@ This module computes and tracks two distinct categories of metrics:
    - `SignedCosMode0`..`SignedCosMode3`: Per-mode signed cosine similarities
      between matched component vectors, capturing directional consistency.
 
-Mode Hold-Outs Across Resamplings
----------------------------------
-- **RISE (Mode 1 held out)**: Mode 0 (Conditions $A$) and Mode 2 (Genes $C$) are
-  compared; Mode 1 (Basis $B$, $r \\times r$) is held out (`RISE_SKIP_MODES = (1,)`).
-- **CPD (Modes 1 and 2 held out)**: Mode 0 (Conditions $G$) and Mode 3
-  (Ligand-receptor pairs $F$) are compared; Modes 1 and 2 (Sender $D$ and Receiver
-  $E$ eigen-state loadings) are held out (`CPD_SKIP_MODES = (1, 2)`) because
-  eigen-state indexing across bootstrap fits is not permuted into CPD rows.
-
-Row Alignment
+Matched Modes
 -------------
-- When conditions are resampled with replacement (`conditions` axis), reference
-  mode-0 rows ($A$ and $G$) are expanded via `reference_condition_rows` to align
-  with the replicate's resampled condition roster.
-- When ligand-receptor pairs are resampled with replacement (`lr_pairs` axis),
-  reference mode-3 rows ($F$) are expanded using the drawn LR indices to align
-  with the replicate's resampled LR roster.
-- The seed axis (`SEED_AXIS`) needs no alignment at all: the roster is the
-  reference's own, so mode 0 already matches row for row. That is what makes
-  its FMS comparable to the reference's on a per-component basis.
-- The jackknife axis (`JACKKNIFE_AXIS`) drops one patient's conditions, so
-  `reference_condition_rows` selects the reference's remaining rows.
+Components are matched, and the FMS computed, only on modes whose coordinates
+mean the same thing in the reference and the replicate (`axis_skip_modes`):
+
+- **Eigen-state modes are always held out.** RISE Mode 1 (basis $B$) and CPD
+  Modes 1 and 2 (sender $D$ and receiver $E$ eigen-state loadings) are
+  expressed in each fit's own RISE basis, which differs from replicate to
+  replicate (`RISE_SKIP_MODES`, `CPD_SKIP_MODES`).
+- **Resampled modes are held out on the axis that resamples them.** The
+  condition mode (Mode 0) on 'conditions' and `JACKKNIFE_AXIS`, whose rosters
+  differ from the reference's; the ligand-receptor mode (CPD Mode 3) on
+  'lr_pairs'.
+
+So RISE is matched on conditions and genes ('cells', `SEED_AXIS`) or genes
+alone (patient axes), and CPD on conditions and LR pairs ('cells',
+`SEED_AXIS`), LR pairs alone (patient axes) or conditions alone ('lr_pairs').
+FMS values therefore rest on different modes on different axes.
 """
 
 from collections.abc import Callable
@@ -106,9 +102,13 @@ Factors = list[np.ndarray]
 STAGE_RISE = "RISE"
 STAGE_CPD = "CPD"
 
-#: Modes held out during factor match score (FMS) calculations.
+#: Eigen-state modes, held out of every factor match score (FMS): their
+#: coordinates are each fit's own RISE basis.
 RISE_SKIP_MODES: tuple[int, ...] = (1,)
 CPD_SKIP_MODES: tuple[int, ...] = (1, 2)
+#: The condition mode of both stages, and CP's ligand-receptor mode.
+CONDITION_MODE = 0
+LR_MODE = 3
 
 #: Modes `align_to_reference_components` matches two CP fits over by default:
 #: the ligand-receptor mode alone, the one mode whose coordinates mean the same
@@ -134,6 +134,10 @@ SEED_BAND_PERCENTILE = 5.0
 #: (`utils.leave_out_patient`). It draws nothing, so it runs one replicate per
 #: patient (`utils.jackknife_units`) regardless of `n_replicates`.
 JACKKNIFE_AXIS = "jackknife"
+
+#: Axes whose replicates change the condition roster, so the condition mode
+#: is held out of their FMS.
+CONDITION_RESAMPLING_AXES = ("conditions", JACKKNIFE_AXIS)
 
 #: Axes that refit RISE.
 RISE_REFIT_AXES = ("cells", "conditions", SEED_AXIS, JACKKNIFE_AXIS)
@@ -168,6 +172,17 @@ RESAMPLERS: dict[
 # =============================================================================
 # Matching two fits' components
 # =============================================================================
+
+
+def axis_skip_modes(stage: str, axis: str) -> tuple[int, ...]:
+    """Modes held out of `stage`'s FMS on `axis`: the stage's eigen-state
+    modes, plus whichever mode `axis` resamples (see the module docstring)."""
+    skip = RISE_SKIP_MODES if stage == STAGE_RISE else CPD_SKIP_MODES
+    if axis in CONDITION_RESAMPLING_AXES:
+        skip += (CONDITION_MODE,)
+    if axis == "lr_pairs":
+        skip += (LR_MODE,)
+    return tuple(sorted(skip))
 
 
 def per_component_fms(
@@ -257,63 +272,6 @@ def per_component_fms(
             signed[mode][row_ind, col_ind] if mode in signed else np.nan
         )
     return out
-
-
-def reference_condition_rows(
-    reference_labels: np.ndarray, replicate_labels: np.ndarray
-) -> np.ndarray:
-    """Reference condition-mode rows corresponding to a replicate's roster.
-
-    RISE's `A` and CP's `G` index conditions in the order
-    `import_data.add_cond_idxs` assigns, namely sorted unique labels, so a
-    replicate's row *r* belongs to whichever condition it was drawn from.
-    `utils.resample_conditions` suffixes repeat draws (``__rep2``, ...); the
-    suffix is stripped here to recover the source label.
-
-    The returned index expands the reference's rows onto the replicate's
-    roster, so the condition mode can be *compared* rather than skipped. That
-    matters most on the axis that resamples conditions: dropping mode 0 there
-    would leave RISE stability resting on the gene factor alone, precisely on
-    the axis that perturbs the cohort, and would put the two axes' FMS values
-    on different scales. A condition drawn twice contributes twice on both
-    sides, which weights conditions exactly as the fit itself did.
-
-    Parameters
-    ----------
-    reference_labels : np.ndarray
-        The reference fit's condition labels, aligned to its mode-0 rows.
-    replicate_labels : np.ndarray
-        The replicate's condition labels, aligned to its mode-0 rows.
-
-    Returns
-    -------
-    np.ndarray
-        Integer index into `reference_labels`, of length
-        ``len(replicate_labels)``.
-
-    Raises
-    ------
-    ValueError
-        If a replicate label has no source row in the reference, which would
-        mean the two fits' condition modes are not relatable at all.
-    """
-    position = {str(label): i for i, label in enumerate(reference_labels)}
-    rows = []
-    for label in replicate_labels:
-        source = str(label).split("__rep")[0]
-        if source not in position:
-            raise ValueError(
-                f"Replicate condition {label!r} resolves to source condition "
-                f"{source!r}, which is absent from the reference fit's "
-                "condition mode, so the two fits cannot be compared on it."
-            )
-        rows.append(position[source])
-    return np.asarray(rows, dtype=int)
-
-
-def _expand_reference_mode(factors: Factors, mode: int, rows: np.ndarray) -> Factors:
-    """`factors` with specified mode rows re-indexed onto a replicate's roster."""
-    return [factors[m][rows] if m == mode else factors[m] for m in range(len(factors))]
 
 
 def _signed_mode_cosine(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -480,6 +438,11 @@ def component_anova(
     """One-way ANOVA of each CP component's condition loading against
     `group_column`; see `anova.anova_component_associations`.
 
+    A group left with a single condition by a replicate (e.g. ALAD's
+    two-condition 'Died' outcome when the jackknife or the bootstrap leaves one)
+    stays in the test as a group of one rather than voiding it, so every
+    replicate with at least two groups gets statistics.
+
     Parameters
     ----------
     data : anndata.AnnData
@@ -496,7 +459,9 @@ def component_anova(
     X, sample_to_group = prepare_anova_inputs(
         data, cp_factors, condition_column, group_column, control_label, other_label
     )
-    return anova_component_associations(X, sample_to_group, control_label=control_label)
+    return anova_component_associations(
+        X, sample_to_group, control_label=control_label, min_group_size=1
+    )
 
 
 def _attach_anova(block: pd.DataFrame, anova: pd.DataFrame | None) -> pd.DataFrame:
@@ -506,14 +471,16 @@ def _attach_anova(block: pd.DataFrame, anova: pd.DataFrame | None) -> pd.DataFra
     F, P and eta-squared do not change under a gauge flip and are read straight
     off the matched replicate component. `GroupMeanDiff` is a difference of
     condition-mode loadings, so it is sign-corrected by the condition mode's
-    own signed cosine (`SignedCosMode0`).
+    own signed cosine (`SignedCosMode0`) where that mode was compared, and by
+    the ligand-receptor mode's (`SignedCosMode3`) where it was held out.
     """
     if anova is None:
         return block
     matched = block["MatchedComponent"].to_numpy(dtype=int) - 1
     for column in ANOVA_COLUMNS:
         block[column] = anova[column].to_numpy(dtype=float)[matched]
-    block["GroupMeanDiff"] *= np.sign(block["SignedCosMode0"].to_numpy())
+    sign_cosine = block["SignedCosMode0"].fillna(block["SignedCosMode3"])
+    block["GroupMeanDiff"] *= np.sign(sign_cosine.to_numpy())
     return block
 
 
@@ -531,10 +498,9 @@ def _condition_labels(adata: anndata.AnnData, condition_column: str) -> np.ndarr
     the condition column is not already a string: `add_cond_idxs` sorts in the
     column's native dtype, so an integer column gives rows in `[1, 2, 10]`
     order while a string sort of the same labels gives `['1', '10', '2']`.
-    Consumers -- `reference_condition_rows` above all -- treat this array as
-    positionally aligned to mode 0, and a silent disagreement would have
-    `per_component_fms` compare the wrong patients and still return a
-    plausible number.
+    Consumers -- the core-numbering check in `relabel_rise` above all -- treat
+    this array as positionally aligned to mode 0, and a silent disagreement
+    would compare the wrong patients and still return a plausible number.
     """
     cond_idx = np.asarray(adata.obs["condition_unique_idxs"]).astype(int)
     labels = np.asarray(adata.obs[condition_column]).astype(str)
@@ -813,7 +779,7 @@ def stability_replicates(
     group_column: str | None = None,
     control_label: str | None = None,
     other_label: str | None = None,
-    stratify: bool = True,
+    stratify_by: str | None = None,
     patient_column: str | None = None,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 20,
@@ -834,27 +800,23 @@ def stability_replicates(
 
     For each axis in `RISE_REFIT_AXES` a replicate prepares the data, refits
     RISE at `rise_rank`, and matches the resulting components onto the
-    reference's with Mode 1 held out (`RISE_SKIP_MODES`); the communication
-    tensor built from that same fit is then decomposed at `cp_rank` and
-    matched in turn with Modes 1 and 2 held out (`CPD_SKIP_MODES`), and the
-    same CP fit's ANOVA against `group_column` is carried onto its matched
-    components (`_attach_anova`). 'cells' and 'conditions' resample;
+    reference's; the communication tensor built from that same fit is then
+    decomposed at `cp_rank` and matched in turn, and the same CP fit's ANOVA
+    against `group_column` is carried onto its matched components
+    (`_attach_anova`). Every match holds out the eigen-state modes and the
+    mode the axis resamples (`axis_skip_modes`). 'cells' and 'conditions' resample;
     `SEED_AXIS` hands the pipeline the identical cohort and changes only the
     seed the fits start from, so it measures how far components move under the
     fitters' own randomness -- the reproducibility ceiling every resampling
     axis is read against, and the term that would otherwise be confounded with
     sampling variability. `JACKKNIFE_AXIS` leaves one patient out per
     replicate, every patient in turn, so each of its replicates measures that
-    one patient's influence on every component and association. The
-    reference's condition-mode rows are expanded onto each replicate's roster
-    (`reference_condition_rows`), which is the identity on 'cells' and
-    `SEED_AXIS` and a row subset on `JACKKNIFE_AXIS`.
+    one patient's influence on every component and association.
 
     One axis acts on the reference tensor instead:
     - `lr_pairs`: The ligand-receptor mode bootstrapped with replacement,
-      matching CPD modes 0 and 3 with reference mode-3 rows expanded by the
-      drawn LR indices. It costs no PARAFAC2 fit and so emits CPD rows only;
-      its ANOVA is run on the reference cohort.
+      matching on the condition mode alone. It costs no PARAFAC2 fit and so
+      emits CPD rows only; its ANOVA is run on the reference cohort.
 
     Parameters
     ----------
@@ -870,15 +832,15 @@ def stability_replicates(
     rise_rank, cp_rank : int
         Ranks for the RISE and CP stages.
     group_column : str | None, default=None
-        Condition-level phenotype column the CP components are tested against,
-        and that the condition draw is stratified within. No ANOVA is run, and
-        the draw is unstratified, when None.
+        Condition-level phenotype column the CP components are tested against;
+        no ANOVA is run when None.
     control_label, other_label : str | None, optional
         Values of `group_column` collapsed to the reference and other level;
         both None tests every level. See `anova.prepare_anova_inputs`.
-    stratify : bool, default=True
-        Draw conditions within each `group_column` stratum, holding the class
-        balance fixed; see `utils.resample_conditions`.
+    stratify_by : str | None, default=None
+        Condition-level column the 'conditions' draw is stratified within,
+        holding each stratum's size fixed; see `utils.resample_conditions`.
+        Unstratified when None.
     patient_column : str | None, default=None
         Condition-level patient identity column. On the 'conditions' axis, when
         a patient contributes more than one condition, drawing one of them
@@ -943,7 +905,6 @@ def stability_replicates(
         "backend": backend,
         "compress": compress,
     }
-    strata = group_column if stratify else None
     unit_column = patient_column or condition_column
 
     frames = []
@@ -975,11 +936,11 @@ def stability_replicates(
                     replicate,
                     seed,
                     condition_column,
-                    strata,
+                    stratify_by,
                     patient_column,
                 )
                 fit = fit_stability_pipeline(resampled, random_state=seed, **fit_kwargs)
-                block = _refit_replicate(reference, fit)
+                block = _refit_replicate(reference, fit, axis)
                 n_cells = float(resampled.n_obs)
                 n_conditions = float(len(fit["condition_labels"]))
             block.insert(0, "Seed", seed)
@@ -1003,7 +964,7 @@ def _replicate_data(
     replicate: int,
     seed: int,
     condition_column: str,
-    strata: str | None,
+    stratify_by: str | None,
     patient_column: str | None,
 ) -> tuple[anndata.AnnData, str | None]:
     """The data a RISE-refitting replicate is fit on, and the patient it left
@@ -1012,7 +973,9 @@ def _replicate_data(
         unit_column = patient_column or condition_column
         left_out = str(jackknife_units(adata, unit_column)[replicate])
         return leave_out_patient(adata, unit_column, left_out), left_out
-    resampled = RESAMPLERS[axis](adata, condition_column, strata, patient_column, seed)
+    resampled = RESAMPLERS[axis](
+        adata, condition_column, stratify_by, patient_column, seed
+    )
     return resampled, None
 
 
@@ -1020,14 +983,16 @@ def _stage_block(
     reference_factors: Factors,
     factors: Factors,
     stage: str,
+    axis: str,
     r2x: float,
     diagnostics: dict[str, Any] | None = None,
     anova: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """One fit's `per_component_fms` rows for `stage`, with its per-fit
     diagnostics and, on CPD rows, its matched ANOVA statistics."""
-    skip_modes = RISE_SKIP_MODES if stage == STAGE_RISE else CPD_SKIP_MODES
-    block = per_component_fms(reference_factors, factors, skip_modes=skip_modes)
+    block = per_component_fms(
+        reference_factors, factors, skip_modes=axis_skip_modes(stage, axis)
+    )
     block.insert(0, "Stage", stage)
     block["R2X"] = r2x
     for column in ("CoreConsistency", "MaxModesCollinear", "WorstPairCanceling"):
@@ -1035,23 +1000,23 @@ def _stage_block(
     return _attach_anova(block, anova)
 
 
-def _refit_replicate(reference: dict[str, Any], fit: dict[str, Any]) -> pd.DataFrame:
-    """RISE and CPD rows of a replicate that refit the whole pipeline, with the
-    reference's condition-mode rows expanded onto the replicate's roster."""
-    _check_rosters(reference, fit)
-    rows = reference_condition_rows(
-        reference["condition_labels"], fit["condition_labels"]
-    )
+def _refit_replicate(
+    reference: dict[str, Any], fit: dict[str, Any], axis: str
+) -> pd.DataFrame:
+    """RISE and CPD rows of a replicate that refit the whole pipeline."""
+    _check_rosters(reference, fit, axis)
     rise = _stage_block(
-        _expand_reference_mode(reference["rise_factors"], mode=0, rows=rows),
+        reference["rise_factors"],
         fit["rise_factors"],
         STAGE_RISE,
+        axis,
         fit["r2x_rise"],
     )
     cpd = _stage_block(
-        _expand_reference_mode(reference["cp_factors"], mode=0, rows=rows),
+        reference["cp_factors"],
         fit["cp_factors"],
         STAGE_CPD,
+        axis,
         fit["r2x_cp"],
         fit["cpd_diagnostics"],
         fit["anova"],
@@ -1070,8 +1035,9 @@ def _lr_pairs_replicate(
 ) -> pd.DataFrame:
     """CPD rows of a CP refit on the reference tensor with its ligand-receptor
     mode bootstrapped; the ANOVA is run on the reference cohort."""
-    perturbed, lr_indices = resample_tensor(
-        cast(np.ndarray, reference["tensor"]), random_seed=seed, return_indices=True
+    perturbed = cast(
+        np.ndarray,
+        resample_tensor(cast(np.ndarray, reference["tensor"]), random_seed=seed),
     )
     _weights, factors, r2x, diagnostics = fit_cp(
         perturbed,
@@ -1087,33 +1053,27 @@ def _lr_pairs_replicate(
         else component_anova(reference["anova_data"], factors, **anova_kwargs)
     )
     return _stage_block(
-        _expand_reference_mode(reference["cp_factors"], mode=3, rows=lr_indices),
+        reference["cp_factors"],
         factors,
         STAGE_CPD,
+        "lr_pairs",
         r2x,
         diagnostics,
         anova,
     )
 
 
-def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
-    """Refuse to compare two fits whose gene, LR-pair or condition modes differ.
+def _check_rosters(reference: dict[str, Any], fit: dict[str, Any], axis: str) -> None:
+    """Refuse to compare two fits on a mode whose rows differ between them.
 
-    Both rosters are fixed in practice -- gene filtering happens in the loader
-    before any resampling, and `ccc.build_context_ccc_tensor` intersects over
-    contexts whose gene index is identical -- so this should never fire. It
-    raises rather than intersecting because a silent difference is the
-    dangerous case: `per_component_fms` would line up different genes or
-    different interactions row by row and return a perfectly plausible number,
-    and intersecting would change the mode length and so the FMS scale
-    invisibly.
-
-    The condition mode is checked by length rather than membership: the
-    replicate's roster is *meant* to differ from the reference's on the
-    condition axis. What must hold is that `condition_labels` still names
-    mode-0 row for row, since that is what `reference_condition_rows` matches
-    on. A length mismatch is the loud symptom of the labels having drifted out
-    of step with the rows.
+    The gene and LR-pair rosters are fixed in practice -- gene filtering happens
+    in the loader before any resampling, and `ccc.build_context_ccc_tensor`
+    intersects over contexts whose gene index is identical -- so this should
+    never fire. It raises rather than intersecting because a silent difference
+    is the dangerous case: `per_component_fms` would line up different genes or
+    different interactions row by row and return a perfectly plausible number.
+    The condition roster must match too, on every axis that compares the
+    condition mode (all but `CONDITION_RESAMPLING_AXES`).
     """
     if not np.array_equal(fit["gene_names"], reference["gene_names"]):
         raise ValueError(
@@ -1126,18 +1086,13 @@ def _check_rosters(reference: dict[str, Any], fit: dict[str, Any]) -> None:
             "pairs, so their CP ligand-receptor factor rows are not "
             "comparable and component matching would be meaningless."
         )
-    for fit_or_reference in (fit, reference):
-        n_labels = len(fit_or_reference["condition_labels"])
-        for key in ("rise_factors", "cp_factors"):
-            n_rows = fit_or_reference[key][0].shape[0]
-            if n_labels != n_rows:
-                raise ValueError(
-                    f"{n_labels} condition labels for {n_rows} rows of "
-                    f"{key}'s condition mode. The labels are what "
-                    "`reference_condition_rows` matches on, so a length "
-                    "mismatch means they no longer name the rows they are "
-                    "read as naming."
-                )
+    if axis not in CONDITION_RESAMPLING_AXES and not np.array_equal(
+        fit["condition_labels"], reference["condition_labels"]
+    ):
+        raise ValueError(
+            f"The {axis!r} axis compares the condition mode, but the replicate's "
+            "conditions differ from the reference's."
+        )
 
 
 # =============================================================================

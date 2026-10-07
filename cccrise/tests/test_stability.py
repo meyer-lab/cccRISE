@@ -34,10 +34,10 @@ from cccrise.validation.stability import (
     STAGE_RISE,
     _attach_anova,
     _eta_squared_interval,
+    axis_skip_modes,
     fit_stability_pipeline,
     metric_interval,
     per_component_fms,
-    reference_condition_rows,
     relabel_workflow_fit,
     stability_replicates,
     summarize_component_stability,
@@ -234,29 +234,48 @@ def test_relabel_workflow_fit_restores_the_core_numbering(tmp_path):
 
 
 # =============================================================================
-# Condition-mode row alignment
+# Matched modes
 # =============================================================================
 
 
-def test_reference_condition_rows_expands_repeat_draws_onto_their_source_rows():
-    reference = np.array(["S0", "S1", "S2"])
-    replicate = np.array(["S0", "S1", "S1__rep2", "S2"])
+def test_axis_skip_modes_holds_out_eigenstate_and_resampled_modes():
+    assert axis_skip_modes(STAGE_RISE, "cells") == (1,)
+    assert axis_skip_modes(STAGE_RISE, "conditions") == (0, 1)
+    assert axis_skip_modes(STAGE_RISE, JACKKNIFE_AXIS) == (0, 1)
+    assert axis_skip_modes(STAGE_CPD, SEED_AXIS) == (1, 2)
+    assert axis_skip_modes(STAGE_CPD, "conditions") == (0, 1, 2)
+    assert axis_skip_modes(STAGE_CPD, JACKKNIFE_AXIS) == (0, 1, 2)
+    assert axis_skip_modes(STAGE_CPD, "lr_pairs") == (1, 2, 3)
 
-    np.testing.assert_array_equal(
-        reference_condition_rows(reference, replicate), [0, 1, 1, 3 - 1]
+
+def test_stability_replicates_compares_only_unresampled_modes():
+    adata = _simulate_adata()
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(
+        adata.copy(), lr_pairs, **kwargs, random_state=0, keep_tensor=True
     )
 
-
-def test_reference_condition_rows_is_the_identity_on_an_unchanged_roster():
-    labels = np.array(["S0", "S1", "S2"])
-    np.testing.assert_array_equal(
-        reference_condition_rows(labels, labels), np.arange(3)
+    df = stability_replicates(
+        adata,
+        reference,
+        lr_pairs,
+        **kwargs,
+        axes=("conditions", "lr_pairs"),
+        n_replicates=1,
     )
 
-
-def test_reference_condition_rows_rejects_a_condition_absent_from_the_reference():
-    with pytest.raises(ValueError, match="absent from the reference"):
-        reference_condition_rows(np.array(["S0"]), np.array(["S0", "S9"]))
+    for key, rows in df.groupby(["Axis", "Stage"]):
+        axis, stage = cast(tuple[str, str], key)
+        skipped = axis_skip_modes(stage, axis)
+        for mode in range(4):
+            compared = rows[f"SignedCosMode{mode}"].notna().all()
+            assert compared == (
+                mode not in skipped and (stage == STAGE_CPD or mode < 3)
+            )
+    # The patient bootstrap's ANOVA is aligned by the LR mode alone.
+    cpd = df[(df["Axis"] == "conditions") & (df["Stage"] == STAGE_CPD)]
+    np.testing.assert_allclose(cpd["FMS"], cpd["SignedCosMode3"].abs())
 
 
 # =============================================================================
@@ -1046,32 +1065,15 @@ def test_summarize_component_stability_survives_a_parquet_round_trip(tmp_path):
     assert summary["FracWithinSeedBand"].notna().all()
 
 
-def test_reference_condition_rows_matches_on_labels_not_positions():
-    """The map is a label lookup, so a roster whose sorted order permutes the
-    reference's still lands on the right rows.
-
-    `P10` sorts before `P2` as a string but after it as a number, so a roster
-    that reorders the two is exactly the case a positional map would get
-    wrong -- and it would get it wrong quietly, by comparing one patient's
-    factor row against another's.
-    """
-    reference = np.array(["P1", "P2", "P10"])
-    replicate = np.array(["P10", "P1", "P1__rep2", "P2"])
-
-    np.testing.assert_array_equal(
-        reference_condition_rows(reference, replicate), [2, 0, 0, 1]
-    )
-
-
 def test_fit_stability_pipeline_labels_conditions_in_row_order():
     """`condition_labels` must name mode-0 row for row.
 
     `add_cond_idxs` orders the rows by a sort in the condition column's own
     dtype, so an integer column puts row 2 at patient ``10``. Deriving the
     labels with an independent string sort would instead call that row ``2``,
-    and `reference_condition_rows` -- which reads this array as positionally
-    aligned to the rows -- would then match replicate patients onto the wrong
-    reference rows without raising.
+    and the core-numbering check -- which reads this array as positionally
+    aligned to the rows -- would then compare the wrong patients without
+    raising.
     """
     adata = _simulate_adata()
     # Sample IDs whose numeric and string sorts disagree: [1, 2, 10, 20]
@@ -1093,11 +1095,10 @@ def test_fit_stability_pipeline_labels_conditions_in_row_order():
 
 def test_fit_stability_pipeline_gives_a_twice_drawn_condition_two_equal_rows():
     """A repeat draw is fit as its own condition off identical cells, so its
-    two mode-0 rows coincide and both expand from the one reference row."""
+    two mode-0 rows coincide."""
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
-    reference = fit_stability_pipeline(adata.copy(), lr_pairs, **kwargs, random_state=0)
     replicate = fit_stability_pipeline(
         resample_conditions(adata, "sample", stratify_by="group", random_seed=2),
         lr_pairs,
@@ -1110,11 +1111,6 @@ def test_fit_stability_pipeline_gives_a_twice_drawn_condition_two_equal_rows():
 
     A = replicate["rise_factors"][0]
     np.testing.assert_allclose(A[labels.index("S0")], A[labels.index("S0__rep2")])
-
-    rows = reference_condition_rows(
-        reference["condition_labels"], replicate["condition_labels"]
-    )
-    np.testing.assert_array_equal(rows, [0, 0, 2, 3])
 
 
 # =============================================================================
@@ -1188,7 +1184,8 @@ def test_attach_anova_reads_the_matched_component_and_corrects_the_sign():
         {
             "Component": [1, 2],
             "MatchedComponent": [2, 1],
-            "SignedCosMode0": [-0.9, 0.8],
+            "SignedCosMode0": [-0.9, np.nan],
+            "SignedCosMode3": [0.5, -0.7],
         }
     )
     anova = pd.DataFrame(
@@ -1205,16 +1202,18 @@ def test_attach_anova_reads_the_matched_component_and_corrects_the_sign():
 
     np.testing.assert_allclose(out["EtaSquared"], [0.5, 0.1])
     np.testing.assert_allclose(out["P"], [0.01, 0.4])
-    # Reference component 1 is replicate component 2, gauge-flipped.
-    np.testing.assert_allclose(out["GroupMeanDiff"], [-3.0, -1.0])
+    # Reference component 1 is replicate component 2, flipped in the condition
+    # mode; component 2's condition mode was held out, so the LR mode's sign
+    # corrects it.
+    np.testing.assert_allclose(out["GroupMeanDiff"], [-3.0, 1.0])
 
 
-@pytest.mark.parametrize("stratify", [True, False])
-def test_conditions_axis_stratifies_by_the_anova_group_and_pairs_patients(
-    monkeypatch, stratify
+@pytest.mark.parametrize("stratify_by", ["group", None])
+def test_conditions_axis_stratifies_as_told_and_pairs_patients(
+    monkeypatch, stratify_by
 ):
-    """The patient bootstrap draws within the outcome the ANOVA tests, so no
-    replicate loses an outcome level, and carries paired patients together."""
+    """The patient bootstrap draws within `stratify_by` -- independently of
+    the ANOVA's `group_column` -- and carries paired patients together."""
     from cccrise.validation import stability
 
     seen = []
@@ -1229,7 +1228,8 @@ def test_conditions_axis_stratifies_by_the_anova_group_and_pairs_patients(
     adata = _simulate_adata()
     adata.obs["patient"] = adata.obs["sample"].replace({"S1": "S0"})
     lr_pairs = _lr_pairs()
-    kwargs = _pipeline_kwargs()
+    adata.obs["outcome"] = adata.obs["group"]
+    kwargs = _pipeline_kwargs(group_column="outcome")
     reference = fit_stability_pipeline(adata.copy(), lr_pairs, **kwargs, random_state=0)
     stability_replicates(
         adata,
@@ -1239,10 +1239,10 @@ def test_conditions_axis_stratifies_by_the_anova_group_and_pairs_patients(
         axes=("conditions",),
         n_replicates=1,
         patient_column="patient",
-        stratify=stratify,
+        stratify_by=stratify_by,
     )
 
-    assert seen == [("group" if stratify else None, "patient")]
+    assert seen == [(stratify_by, "patient")]
 
 
 # =============================================================================
@@ -1312,11 +1312,9 @@ def test_jackknife_axis_leaves_out_each_patient_once():
     assert n_conditions["S3"] == 5
     assert set(jk["Stage"]) == {STAGE_RISE, STAGE_CPD}
     assert jk["FMS"].between(0.0, 1.0 + 1e-9).all()
-    # Leaving out the paired patient leaves one 'ctrl' condition, too few for
-    # the ANOVA, which reports NaN for that replicate rather than failing.
-    eta = jk[jk["Stage"] == STAGE_CPD].set_index("LeftOut")["EtaSquared"]
-    assert eta["S0"].isna().all()
-    assert eta.drop("S0").notna().all()
+    # Leaving out the paired patient leaves one 'ctrl' condition, which stays
+    # in the ANOVA as a group of one, so that replicate still gets statistics.
+    assert jk.loc[jk["Stage"] == STAGE_CPD, "EtaSquared"].notna().all()
     assert df.loc[df["Axis"] == "cells", "LeftOut"].isna().all()
 
 

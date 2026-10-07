@@ -24,7 +24,8 @@ Axes, and what each one asks:
               cohort held fixed. Robustness to which cells were captured and
               to sequencing depth. Refits RISE.
   conditions  Whole conditions bootstrapped with replacement, drawn within
-              outcome strata, keeping every cell of a drawn condition.
+              the dataset's group strata (ALAD: ALADstatus), keeping every
+              cell of a drawn condition.
               Robustness to which patients were enrolled -- the axis the
               manuscript's claims rest on, and the patient bootstrap of the
               ANOVA effect sizes. Refits RISE.
@@ -38,6 +39,8 @@ Axes, and what each one asks:
               patient whatever --n-replicates is. The influence of each
               patient on every component and association. Refits RISE.
 
+Components are matched, and the FMS computed, on the modes that are neither
+eigen-state modes nor resampled on that axis (`validation.axis_skip_modes`).
 Writes one row per (axis, replicate, stage, component); CPD rows also carry
 the matched component's ANOVA statistics:
 
@@ -65,6 +68,9 @@ from ..validation.stability import (
     JACKKNIFE_AXIS,
     RISE_REFIT_AXES,
     SEED_AXIS,
+    STAGE_CPD,
+    STAGE_RISE,
+    axis_skip_modes,
     fit_stability_pipeline,
     metric_interval,
     replicate_seed,
@@ -137,8 +143,7 @@ def run_stability(
         Replicates per axis.
     group_column : str, optional
         Column in `adata.obs` carrying the outcome the CP components are
-        tested against, and that the 'conditions' draw is stratified within.
-        Defaults to `spec.outcome_column` (every level tested), else
+        tested against. Defaults to `spec.outcome_column` (every level tested), else
         `spec.group_column`.
     control_label, other_label : str, optional
         Values of `group_column` mapped to the reference and other class.
@@ -148,8 +153,10 @@ def run_stability(
     alpha : float, default=0.05
         Significance threshold for the printed summary's `FracSignificant`.
     stratify : bool, default=True
-        Draw conditions within each `group_column` stratum, holding the class
-        balance fixed; see `utils.resample_conditions`.
+        Draw conditions within each `spec.group_column` stratum, holding the
+        class balance fixed; see `utils.resample_conditions`. The strata are
+        the dataset's groups rather than the tested outcome: a small outcome
+        level (ALAD's two-condition 'Died') makes a poor stratum.
     rise_n_iter_max, rise_tol, cp_n_iter_max, cp_tol
         Fitting controls for the RISE and CP fits.
     complex_sep, communication_score, hill_k
@@ -185,11 +192,12 @@ def run_stability(
     # Pin the code version before writing anything: see `provenance.git_sha`.
     git_sha()
 
+    stratify_by = spec.group_column if stratify else None
     print(f"=== Component and association stability: {spec.label} ===")
     print(f"    RISE rank {rise_rank}, CP rank {cp_rank}, {n_replicates} replicates")
     print(f"    Axes: {', '.join(axes)}")
     print(
-        f"    stratify={stratify}  alpha={alpha}  group_column={group_column!r}  "
+        f"    stratify_by={stratify_by!r}  alpha={alpha}  group_column={group_column!r}  "
         f"control={control_label!r}  other={other_label!r}"
     )
     print(f"    backend={spec.backend or 'auto'}  compress={REPLICATE_COMPRESS}")
@@ -245,7 +253,7 @@ def run_stability(
         reference,
         lr_pairs,
         **fit_kwargs,
-        stratify=stratify,
+        stratify_by=stratify_by,
         patient_column=spec.patient_column,
         axes=axes,
         n_replicates=n_replicates,
@@ -278,7 +286,7 @@ def run_stability(
             "other_label": other_label,
             "ci_level": ci_level,
             "alpha": alpha,
-            "stratify": stratify,
+            "stratify_by": stratify_by,
             "patient_column": spec.patient_column,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
@@ -302,24 +310,20 @@ def run_stability(
                 "same cells, same conditions, same ligand-receptor pairs. On the "
                 "jackknife axis it seeds only the fits"
             ),
-            "resampling": _resampling_description(spec, group_column, stratify),
-            "condition_mode_alignment": (
-                "reference condition-mode rows expanded onto the replicate's "
-                "roster by draw (see validation.reference_condition_rows)"
-            ),
-            "lr_mode_alignment": (
-                "reference ligand-receptor mode rows expanded by the drawn LR indices"
-            ),
+            "resampling": _resampling_description(spec, stratify_by),
             "fms_definition": (
-                "congruence product across compared modes (Modes 0 and 2 for RISE, "
-                "with Mode 1 held out; Modes 0 and 3 for CPD, with Modes 1 and 2 "
-                "held out), weights ignored (see validation.per_component_fms)"
+                "congruence product across compared modes, weights ignored (see "
+                "validation.per_component_fms); components matched on the same "
+                "modes"
             ),
+            "fms_modes": _fms_modes(axes),
             "anova_alignment": (
                 "each replicate's ANOVA statistics carried onto the reference "
                 "component its CP component was matched to by the CPD FMS; "
                 "GroupMeanDiff sign-corrected by the condition mode's signed "
-                "cosine (see validation._attach_anova)"
+                "cosine, or the LR mode's where the condition mode is held out "
+                "(see validation._attach_anova); a group left with one condition "
+                "stays in the test as a group of one"
             ),
             "component_numbering": component_numbering(core),
             "lr_roster_stable": True,
@@ -342,6 +346,18 @@ def run_stability(
     print(f"   Wrote provenance to {sidecar}")
 
     return df, output_path, sidecar
+
+
+def _fms_modes(axes: tuple[str, ...]) -> dict[str, dict[str, list[int]]]:
+    """The modes each stage's FMS compares on each axis, for the sidecar."""
+    return {
+        stage: {
+            axis: [m for m in range(n_modes) if m not in axis_skip_modes(stage, axis)]
+            for axis in axes
+            if stage == STAGE_CPD or axis in RISE_REFIT_AXES
+        }
+        for stage, n_modes in ((STAGE_RISE, 3), (STAGE_CPD, 4))
+    }
 
 
 def _jackknife_unit(spec: DatasetSpec) -> str:
@@ -370,14 +386,12 @@ def _print_summaries(
     alpha: float,
 ) -> None:
     """Print the aggregate and per-component FMS, and the per-component ANOVA
-    stability on each patient-level axis that was run."""
+    stability on every axis that was run."""
     print("   Aggregate FMS across replicates, per stage and axis:")
     print(metric_interval(df, "FMS", by=("Stage", "Axis")).to_string(index=False))
     print("   Per-component stability:")
     print(summarize_component_stability(df).to_string(index=False))
-    for axis in ("conditions", JACKKNIFE_AXIS):
-        if axis not in set(df["Axis"]):
-            continue
+    for axis in df["Axis"].unique():
         print(f"   Per-component ANOVA stability on the {axis!r} axis:")
         summary = summarize_anova_stability(
             df, reference_anova, axis, ci_level=ci_level, alpha=alpha
@@ -386,14 +400,14 @@ def _print_summaries(
 
 
 def _resampling_description(
-    spec: DatasetSpec, group_column: str, stratify: bool
+    spec: DatasetSpec, stratify_by: str | None
 ) -> dict[str, str]:
     """The sidecar's per-axis description of what each replicate resamples."""
     return {
         "cells": "cells bootstrapped with replacement within each condition",
         "conditions": (
             "whole conditions bootstrapped with replacement"
-            + (f", stratified by {group_column}" if stratify else ", unstratified")
+            + (f", stratified by {stratify_by}" if stratify_by else ", unstratified")
             + (
                 f"; paired by {spec.patient_column}: drawing one of a "
                 "patient's conditions carries its sibling in and drops "
@@ -468,7 +482,8 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_false",
         dest="stratify",
         help="Draw conditions from the whole cohort instead of within each "
-        "outcome group, letting the class balance vary between replicates.",
+        "group_column stratum (ALAD: ALADstatus), letting the class balance "
+        "vary between replicates.",
     )
     parser.add_argument("--rise-n-iter-max", type=int, default=RISE_N_ITER_MAX)
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)

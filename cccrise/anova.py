@@ -231,6 +231,7 @@ def anova_component_associations(
     alpha: float = 0.05,
     control_label: str | None = None,
     correction: str | None = None,
+    min_group_size: int = 2,
 ) -> pd.DataFrame:
     """One-way ANOVA of each CP component's condition loading against the
     group label.
@@ -253,6 +254,10 @@ def anova_component_associations(
         Multiple hypothesis testing correction across components (e.g., 'fdr_bh',
         'bonferroni', 'holm', or None). When specified, `Significant` is evaluated
         against the adjusted p-values in `PAdj`.
+    min_group_size : int, default=2
+        A component's test is reported as NaN when any group has fewer
+        conditions than this. 1 keeps a single-condition group in the test
+        (it adds between-group but no within-group degrees of freedom).
 
     Returns
     -------
@@ -265,7 +270,7 @@ def anova_component_associations(
         - 'EtaSquared': effect size eta^2 (SS_between / SS_total)
         - 'GroupMeanDiff': signed group mean difference (for binary grouping)
         - 'Significant': True if PAdj < alpha (or P < alpha when uncorrected)
-        - 'NGroups': number of distinct groups with >=2 samples
+        - 'NGroups': number of distinct groups with a sample
         - 'GroupSizes': count of samples in each group
     """
     A = np.asarray(X.uns["A"], dtype=float)
@@ -290,7 +295,7 @@ def anova_component_associations(
         groups = [kept_values[kept_labels == name] for name in level_names]
         group_sizes = [int(group.size) for group in groups]
 
-        if len(groups) < 2 or any(size < 2 for size in group_sizes):
+        if len(groups) < 2 or any(size < min_group_size for size in group_sizes):
             f_stat = p_value = eta_squared = group_mean_diff = np.nan
         else:
             f_stat, p_value = (float(stat) for stat in f_oneway(*groups))

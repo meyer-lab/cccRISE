@@ -1,9 +1,8 @@
-"""Bootstrap eta-squared distribution per CP component, with the full-cohort
-value overlaid; components significant in the full cohort are emphasized."""
+"""Eta-squared distribution per CP component on every resampling axis, with
+the full-cohort value overlaid (filled where significant)."""
 
 import numpy as np
 import seaborn as sns
-from matplotlib.lines import Line2D
 
 from .. import common, style
 from . import _common as S
@@ -11,46 +10,31 @@ from . import _common as S
 
 def plot(fig):
     ax = fig.subplots()
-    table = S.summary()
-    order = table["Component"].astype(int).tolist()
+    axes = S.axes()
     sns.violinplot(
         data=S.replicates(),
         x="Component",
         y="EtaSquared",
-        hue="Component",
-        order=order,
-        hue_order=order,
-        palette=S.reference_colors(table),
+        hue="Axis",
+        order=S.components(),
+        hue_order=axes,
+        palette=style.STABILITY_AXIS_COLORS,
         legend=False,
-        inner="quartile",
+        inner=None,
         linewidth=style.LINE_WIDTH_THIN,
         linecolor=style.COLORS["ink"],
         cut=0,
         density_norm="width",
         ax=ax,
     )
-    ax.scatter(
-        np.arange(len(order)),
-        table["ReferenceEtaSquared"],
-        marker="D",
-        s=style.POINT_SIZE,
-        color="black",
-        zorder=5,
-    )
-    ax.set_ylim(0, S.replicates()["EtaSquared"].max() * 1.25)  # legend headroom
+    reference = S.reference()
+    S.reference_markers(ax, np.arange(len(reference)), reference["EtaSquared"])
+    ax.set_ylim(0, S.replicates()["EtaSquared"].max() * 1.2)  # legend headroom
     ax.set_xlabel("CP component")
     ax.set_ylabel(r"$\eta^2$")
-    ax.set_title(f"Bootstrap effect sizes ({S.outcome()})")
-    ax.legend(
-        handles=[
-            Line2D([], [], color=style.COLORS["emphasis"], lw=4, label="Ref. p < 0.05"),
-            Line2D([], [], color=style.COLORS["muted"], lw=4, label="Ref. n.s."),
-            Line2D([], [], marker="D", color="black", lw=0, label="Full cohort"),
-        ],
-        loc="upper center",
-        ncols=3,
-    )
+    ax.set_title(f"Effect sizes ({S.outcome()})")
+    ax.legend(handles=S.reference_legend_handles(), loc="upper center", ncols=2)
 
 
 def makeFigure():
-    return common.standalone(plot, style.PANEL_SIZE["half"])
+    return common.standalone(plot, style.PANEL_SIZE["full"], legend=S.legend)
