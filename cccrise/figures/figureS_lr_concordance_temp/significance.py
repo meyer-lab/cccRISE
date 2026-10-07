@@ -7,7 +7,8 @@ over the method's columns. Every pair in the top `TOP_K` of any column of
 cccRISE or the comparator is drawn at (cccRISE score, comparator score); the
 quadrants at `SIGNIFICANT` split them into significant in both, in cccRISE
 only, in the comparator only and in neither. Pairs significant in cccRISE
-are coloured by its component; pairs significant in neither are unlabelled."""
+are coloured by its component; pairs significant in neither are unlabelled
+and uncounted."""
 
 import numpy as np
 import pandas as pd
@@ -17,7 +18,7 @@ from .. import style
 from ..figureS_lr_concordance._common import SHORT, load
 from .missed import _spread
 
-SIGNIFICANT = 0.4
+SIGNIFICANT = 0.2
 TOP_K = 10
 LIM = (-0.04, 1.06)
 LABEL_GAP = 0.05
@@ -53,43 +54,22 @@ def _shade(ax):
 
 
 def _counts(ax, table, short):
-    """Pairs per region, in the region's empty corner next to the cuts."""
+    """Pairs per region, in one line above the axes."""
     sx, sy = table["x"] >= SIGNIFICANT, table["y"] >= SIGNIFICANT
-    for (x, y, ha, va), n, name, key in (
-        (
-            (0.98, SIGNIFICANT + 0.02, "right", "bottom"),
-            (sx & sy).sum(),
-            "both",
-            (True, True),
-        ),
-        (
-            (0.98, SIGNIFICANT - 0.02, "right", "top"),
-            (sx & ~sy).sum(),
-            "cccRISE only",
-            (True, False),
-        ),
-        (
-            (0.0, SIGNIFICANT + 0.02, "left", "bottom"),
-            (~sx & sy).sum(),
-            f"{short} only",
-            (False, True),
-        ),
-        (
-            (0.0, SIGNIFICANT - 0.02, "left", "top"),
-            (~sx & ~sy).sum(),
-            "neither",
-            (False, False),
-        ),
+    for x, n, name, key in (
+        (0.0, (sx & sy).sum(), "both", (True, True)),
+        (0.3, (sx & ~sy).sum(), "cccRISE only", (True, False)),
+        (0.7, (~sx & sy).sum(), f"{short} only", (False, True)),
     ):
         ax.text(
             x,
-            y,
+            1.015,
             f"{name}: {n}",
-            ha=ha,
-            va=va,
+            transform=ax.transAxes,
+            va="bottom",
             fontsize=style.FONT_SIZE_DENSE,
             fontweight="bold",
-            color=REGIONS.get(key, style.COLORS["reference"]),
+            color=REGIONS[key],
         )
 
 
@@ -109,9 +89,9 @@ def _labels(ax, table, colors, short):
     rows = table.assign(aim=aim)
     rows = rows[(rows["x"] >= SIGNIFICANT) | (rows["y"] >= SIGNIFICANT)]
     rows = rows.sort_values("aim", ascending=False)
-    tops = _spread(
-        LIM[1] - rows["aim"].to_numpy(float), LABEL_GAP, 0.0, LIM[1] - LIM[0]
-    )
+    span = LIM[1] - LIM[0]
+    gap = min(LABEL_GAP, span / max(len(rows) - 1, 1))
+    tops = _spread(LIM[1] - rows["aim"].to_numpy(float), gap, 0.0, span)
     for top, (pair, row) in zip(tops, rows.iterrows(), strict=True):
         ax.annotate(
             _label_text(pair, row, short),
@@ -160,5 +140,7 @@ def plot(fig, method):
     ax.set_aspect("equal")
     ax.set_xlabel("cccRISE |loading| / component max")
     ax.set_ylabel(f"{short} |loading| / component max")
-    ax.set_title(f"cccRISE vs {method} (coarse)", fontsize=style.FONT_SIZE_TITLE)
+    ax.set_title(
+        f"cccRISE vs {method} (coarse)", fontsize=style.FONT_SIZE_TITLE, pad=12
+    )
     ax.grid(False)
