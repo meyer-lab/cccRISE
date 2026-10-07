@@ -20,6 +20,8 @@ Writes, in ``data/validation_results/``:
     granularity_representability_<dataset>.parquet    (level, seed, side, component)
     granularity_separation_<dataset>.parquet          (component, coarse type)
     granularity_dominance_<dataset>.parquet           (level, subtype): largest sample's share
+    granularity_strip_<dataset>.parquet               per cell: PaCMAP, `STRIP` loadings and
+                                                      their (sample x type) means per `STRIP_LEVELS`
 
     uv run python -m cccrise.runners.run_granularity_ladder --dataset alad
 """
@@ -34,6 +36,7 @@ from ..comparators.agreement import sample_scaled
 from ..factors import load_factors_to_anndata
 from ..validation.granularity_ladder import (
     MIN_CELLS,
+    block_means,
     random_split,
     representability,
     sample_dominance,
@@ -51,6 +54,9 @@ LADDER = (2, 4, 8, 16, 32)
 FIT_STEPS = (2, 4, 8)
 N_SEEDS = 20
 SIDES = {"sender": "sc_B", "receiver": "rc_C"}
+#: Per-cell loadings drawn with their cell-type-mean approximations: (side, component).
+STRIP = (("receiver", 4), ("receiver", 3))
+STRIP_LEVELS = ("coarse", "fine", "expr_m8", "rand_m8")
 HEADER = """\
 Granularity ladder (expression subtypes and random splits of each coarse type)
 and how much of each cccRISE component a cell-type mean represents.
@@ -64,6 +70,7 @@ def _outputs(spec: DatasetSpec) -> dict[str, Path]:
         "representability": "granularity_representability",
         "separation": "granularity_separation",
         "dominance": "granularity_dominance",
+        "strip": "granularity_strip",
     }
     return {k: VALIDATION_DIR / f"{v}_{spec.key}.parquet" for k, v in names.items()}
 
@@ -105,6 +112,22 @@ def _representability_rows(loadings, samples, levels, randoms) -> pd.DataFrame:
     return out
 
 
+def _strip(adata, loadings, samples, levels) -> pd.DataFrame:
+    """Per cell: PaCMAP coordinates, each `STRIP` loading, and its (sample x
+    type) mean at every `STRIP_LEVELS` level."""
+    pacmap = np.asarray(adata.obsm["PaCMAP"], float)
+    out = pd.DataFrame(
+        {"pacmap_1": pacmap[:, 0], "pacmap_2": pacmap[:, 1], "coarse": levels["coarse"]}
+    )
+    for side, component in STRIP:
+        values = loadings[side][:, [component - 1]]
+        name = f"{side}_C{component}"
+        out[name] = values[:, 0]
+        for level in STRIP_LEVELS:
+            out[f"{name}_{level}"] = block_means(values, samples, levels[level])[:, 0]
+    return out
+
+
 def run_granularity_ladder(spec: DatasetSpec, random_state: int = 0) -> dict:
     git_sha()
     print(f">> Loading {spec.label} with cccRISE's per-cell loadings")
@@ -128,6 +151,9 @@ def run_granularity_ladder(spec: DatasetSpec, random_state: int = 0) -> dict:
         "representability": _representability_rows(loadings, samples, levels, randoms),
         "separation": sender_receiver_separation(
             loadings["sender"], loadings["receiver"], levels["coarse"]
+        ),
+        "strip": _strip(
+            adata, loadings, samples, levels | {"rand_m8": randoms[(8, 0)]}
         ),
         "dominance": pd.concat(
             [

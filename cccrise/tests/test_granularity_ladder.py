@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from ..validation.granularity_ladder import (
+    block_means,
     merge_small,
     n_subtypes,
     random_split,
@@ -71,3 +72,9 @@ def test_merge_small_dissolves_tiny_clusters():
     clusters = np.r_[np.zeros(10), np.ones(10), [2]].astype(int)
     merged = merge_small(clusters, points, min_cells=5)
     assert merged.tolist() == [0] * 10 + [1] * 11
+
+
+def test_block_means():
+    values = np.array([[1.0], [3.0], [5.0]])
+    out = block_means(values, ["s", "s", "s"], ["a", "a", "b"])
+    assert out[:, 0].tolist() == [2.0, 2.0, 5.0]

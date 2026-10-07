@@ -124,14 +124,29 @@ def random_split(
     return out
 
 
-def _explained(values: np.ndarray, groups: np.ndarray) -> np.ndarray:
-    """Per column: 1 - within-group SS / total SS."""
+def _group_means(values: np.ndarray, groups: np.ndarray) -> np.ndarray:
+    """Each row replaced by its group's mean row."""
     codes, _ = pd.factorize(groups)
     counts = np.bincount(codes)[:, None]
     sums = np.zeros((counts.shape[0], values.shape[1]))
     np.add.at(sums, codes, values)
-    means = sums / counts
-    within = ((values - means[codes]) ** 2).sum(axis=0)
+    return (sums / counts)[codes]
+
+
+def block_means(
+    loadings: np.ndarray, samples: Sequence[str], types: Sequence[str]
+) -> np.ndarray:
+    """Each cell's loading replaced by its (sample x type) mean: what a
+    cell-type pseudobulk method can represent of it."""
+    blocks = np.char.add(
+        np.char.add(np.asarray(samples).astype(str), "|"), np.asarray(types).astype(str)
+    )
+    return _group_means(np.asarray(loadings, float), blocks)
+
+
+def _explained(values: np.ndarray, groups: np.ndarray) -> np.ndarray:
+    """Per column: 1 - within-group SS / total SS."""
+    within = ((values - _group_means(values, groups)) ** 2).sum(axis=0)
     total = ((values - values.mean(axis=0)) ** 2).sum(axis=0)
     return 1 - within / np.where(total > 0, total, 1)
 

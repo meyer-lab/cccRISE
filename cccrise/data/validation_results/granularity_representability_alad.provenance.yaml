@@ -35,5 +35,6 @@ outputs:
   representability: cccrise/data/validation_results/granularity_representability_alad.parquet
   separation: cccrise/data/validation_results/granularity_separation_alad.parquet
   dominance: cccrise/data/validation_results/granularity_dominance_alad.parquet
-git_sha: b78da8506e1f315bd9c9adc4efa93008e6e58fc3-dirty
-generated: '2026-10-07T02:10:28+00:00'
+  strip: cccrise/data/validation_results/granularity_strip_alad.parquet
+git_sha: f1c0a499a10be1dd836040b465e8e4f630b9a04d-dirty
+generated: '2026-10-07T02:19:09+00:00'
