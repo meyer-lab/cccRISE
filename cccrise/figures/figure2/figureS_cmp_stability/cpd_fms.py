@@ -1,7 +1,7 @@
-"""Per-component CP stability under resampling of cells, conditions, and LR
-pairs, against the seed-only reproducibility ceiling."""
+"""Per-component CP stability under leave-one-patient-out jackknifing,
+excluding seed refits (FMS ~1.0; see Figure 2's aggregate panel)."""
 
-from ....validation.component_stability import STAGE_CPD
+from ....validation.stability import STAGE_CPD
 from ... import common, style
 from . import _common as S
 
@@ -11,4 +11,4 @@ def plot(fig):
 
 
 def makeFigure():
-    return common.standalone(plot, style.PANEL_SIZE["half"], legend=S.legend)
+    return common.standalone(plot, style.PANEL_SIZE["half"])

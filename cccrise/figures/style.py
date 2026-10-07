@@ -122,13 +122,15 @@ COLORS = {
     "fit_full": "0.25",  # the full-data fit, beside per-repeat fit metrics
 }
 
-# Component-stability resampling axes; the seed-only ceiling is a grey
-# reference rather than a fourth result.
+# Component-stability axes; the seed-only ceiling is a grey reference rather
+# than a result of its own.
 STABILITY_AXIS_COLORS = {
     "seed_only": "0.55",
-    "cells": _BLUE,
-    "conditions": _ORANGE,
-    "lr_pairs": _GREEN,
+    "jackknife": _PINK,
+}
+STABILITY_AXIS_LABELS = {
+    "seed_only": "Seed only",
+    "jackknife": "Jackknife",
 }
 
 CMAPS = {

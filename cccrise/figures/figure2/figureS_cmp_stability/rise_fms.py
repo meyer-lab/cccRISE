@@ -1,7 +1,7 @@
-"""Per-component RISE stability under resampling of cells and conditions,
-against the seed-only reproducibility ceiling."""
+"""Per-component RISE stability under leave-one-patient-out jackknifing,
+excluding seed refits (FMS ~1.0; see Figure 2's aggregate panel)."""
 
-from ....validation.component_stability import STAGE_RISE
+from ....validation.stability import STAGE_RISE
 from ... import common, style
 from . import _common as S
 
@@ -11,4 +11,4 @@ def plot(fig):
 
 
 def makeFigure():
-    return common.standalone(plot, style.PANEL_SIZE["full"], legend=S.legend)
+    return common.standalone(plot, style.PANEL_SIZE["full"])

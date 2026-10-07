@@ -133,7 +133,7 @@ plt.rcParams.update(
 ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in ASSOCIATIONS}
 
 # ALAD's default comparison tests every level of the dataset spec's outcome
-# column, matching the ANOVA bootstrap's default.
+# column, matching the stability runner's ANOVA default.
 _REGROUPING_KEYS = {"mapping", "levels", "control_label", "other_label"}
 ALAD_DEFAULT_COMPARISON = next(
     name
