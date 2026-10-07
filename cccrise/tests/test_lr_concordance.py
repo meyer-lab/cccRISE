@@ -112,9 +112,9 @@ def test_shared_mass_and_head_mass():
 
 def test_loading_profile():
     lr = np.array([[3.0, 0.0], [-4.0, 1.0], [0.0, 2.0]])
-    t = loading_profile(lr, ["a", "b", "c"], depth=2)
+    t = loading_profile(lr, ["a", "b", "c"])
     first = t[t["component"] == 1].set_index("lr_rank")
-    assert first["lr_pair"].tolist() == ["b", "a"]
-    assert first["rel_max"].tolist() == pytest.approx([1.0, 0.75])
-    assert first["cum_share"].tolist() == pytest.approx([16 / 25, 1.0])
-    assert t[t["component"] == 2]["share"].tolist() == pytest.approx([0.8, 0.2])
+    assert first["lr_pair"].tolist() == ["b", "a", "c"]
+    assert first["rel_max"].tolist() == pytest.approx([1.0, 0.75, 0.0])
+    assert first["cum_share"].tolist() == pytest.approx([16 / 25, 1.0, 1.0])
+    assert t[t["component"] == 2]["share"].tolist() == pytest.approx([0.8, 0.2, 0])

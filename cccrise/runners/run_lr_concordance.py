@@ -28,8 +28,8 @@ Writes, in ``data/validation_results/``:
     lr_concordance_missed_<dataset>.parquet    (annotation, fit, direction, k, pair)
     lr_concordance_matches_<dataset>.parquet   one row per comparator column
     lr_concordance_columns_<dataset>.parquet   per LR column: head mass, top pairs
-    lr_concordance_profiles_<dataset>.parquet  per LR column and rank <= `DEPTH`: the
-                                               pair's |loading| / max and loading shares
+    lr_concordance_profiles_<dataset>.parquet  per LR column and pair: its rank,
+                                               |loading| / max and loading shares
 
     uv run python -m cccrise.runners.run_lr_concordance --dataset alad
 """
@@ -68,8 +68,6 @@ from .provenance import build_metadata, git_sha, relpath, sha256_file, write_met
 #: annotation -> (fits suffix, obs column of its cell types)
 ANNOTATIONS = {"coarse": ("", "broad_cell_type"), "fine": ("_fine", "celltype")}
 N_NULL = 10_000
-#: Ranks kept per column in the loading-by-rank profiles.
-DEPTH = 100
 HEADER = """\
 Top-k LR-pair agreement of cccRISE with the tensor comparators, the pairs one
 method ranks highly and the other does not, and each comparator column's best
@@ -224,7 +222,7 @@ def _annotation_tables(spec, annotation, adata, abundance, thresholds, pathways)
         _column_rows(ref_lr, lr_names).assign(**_label(ref, annotation))
     )
     out["profiles"].append(
-        loading_profile(ref_lr, lr_names, DEPTH).assign(**_label(ref, annotation))
+        loading_profile(ref_lr, lr_names).assign(**_label(ref, annotation))
     )
     for fit in (f for f in fits if f.method != "cccRISE"):
         lr = aligned_modes(fit, info, lr_names)["lr"]
@@ -239,7 +237,7 @@ def _annotation_tables(spec, annotation, adata, abundance, thresholds, pathways)
             _match_rows(fit, ref, lr, ref_lr, overlaps, profiles).assign(**label)
         )
         out["columns"].append(_column_rows(lr, lr_names).assign(**label))
-        out["profiles"].append(loading_profile(lr, lr_names, DEPTH).assign(**label))
+        out["profiles"].append(loading_profile(lr, lr_names).assign(**label))
     out["overlap"].append(
         overlap_table(ref_lr, abundance[:, None], KS, thresholds).assign(
             annotation=annotation, method="abundance", rank_mode="reference", rank="1"
@@ -319,7 +317,6 @@ def run_lr_concordance(
             "primary_k": PRIMARY_K,
             "mass_hit": MASS_HIT,
             "n_null": N_NULL,
-            "profile_depth": DEPTH,
             "random_state": random_state,
             "null": "abundance-weighted: k pairs drawn without replacement with "
             "probability proportional to their mean coarse pseudobulk score",

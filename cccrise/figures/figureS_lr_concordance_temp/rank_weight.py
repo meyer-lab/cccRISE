@@ -2,7 +2,8 @@
 `missed`): per column, each rank's |loading| relative to the column's largest
 (left) and the cumulative share of its squared loading (right). cccRISE's
 components in colour, every own-rank comparator column (coarse and fine) in
-grey; dotted lines at the top-10 and top-25 cuts, dashed at 0.4 x max."""
+grey; dotted lines at the top-k and rank cuts of `missed`, dashed at
+0.4 x max."""
 
 import seaborn as sns
 
@@ -44,7 +45,7 @@ def plot(fig):
     axes = fig.subplots(1, 2)
     for ax, (column, ylabel) in zip(axes, PANELS.items(), strict=True):
         _lines(ax, table, column, colors)
-        for cut in (K, RANK_CUT):
+        for cut in sorted({K, RANK_CUT}):
             ax.axvline(cut, ls=":", color=style.COLORS["reference"], lw=0.5)
         ax.set_xlim(1, DEPTH)
         ax.set_ylim(0, 1.02)
