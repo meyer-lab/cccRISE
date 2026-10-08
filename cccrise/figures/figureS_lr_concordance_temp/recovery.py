@@ -5,7 +5,7 @@ annotation), the fit's column sharing the most of the component's top-10 LR
 pairs (ties: the larger comparator loading on them). Number: pairs shared,
 starred above the abundance-weighted null's 95th percentile. Colour: the
 share of that column's squared loading the shared pairs carry. Below the
-number: the column and its heaviest pair (grey when not starred)."""
+number: that column's heaviest pair (grey when not starred)."""
 
 import numpy as np
 import pandas as pd
@@ -57,8 +57,7 @@ def _annotate(ax, rows, comps, mass, pairs):
             key = (annotation, method, int(row["comparator_component"]))
             ax.text(
                 j, i + 0.25,
-                f"{SHORT[method]} {row['comparator_component']}: "
-                f"{pairs.get(key, '').replace('^', '–')}",
+                pairs.get(key, "").replace("^", "–"),
                 ha="center", va="center", color=color,
                 fontsize=style.FONT_SIZE_DENSE - 1.5,
             )  # fmt: skip
