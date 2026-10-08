@@ -13,18 +13,19 @@ AXES = ("strip",)
 
 def plot(axs):
     (ax,) = axs
+    S.plot_dotplot(ax, gene_sets(), show_legend=True)
+
+
+def gene_sets() -> dict[str, list[str]]:
+    """{"Shared", "Sender", "Receiver": top genes}."""
     ranked = S.rank_genes(S.DE_GROUPS, "rest")
     top = {g: _top_genes(ranked[g], g) for g in ("sender", "receiver")}
     shared = [g for g in top["sender"] if g in top["receiver"]]
-    S.plot_dotplot(
-        ax,
-        {
-            "Shared": shared,
-            "Sender": [g for g in top["sender"] if g not in shared],
-            "Receiver": [g for g in top["receiver"] if g not in shared],
-        },
-        show_legend=True,
-    )
+    return {
+        "Shared": shared,
+        "Sender": [g for g in top["sender"] if g not in shared],
+        "Receiver": [g for g in top["receiver"] if g not in shared],
+    }
 
 
 def _top_genes(ranking, group: str) -> list[str]:

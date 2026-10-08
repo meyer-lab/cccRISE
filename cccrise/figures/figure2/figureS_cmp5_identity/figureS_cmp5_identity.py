@@ -1,7 +1,6 @@
 """Supplementary figure: how the granularity component's sender and receiver
-weights relate to the RISE eigenstates and cell types, how the label-free
-sender and receiver groups (Figure 2) depend on the cutoff, and the genes
-they express."""
+weights relate to the RISE eigenstates, which cell types the label-free
+sender and receiver groups (Figure 2) resemble, and the genes they express."""
 
 from matplotlib.transforms import Bbox
 
@@ -14,12 +13,10 @@ from . import (
     eigenstate_scatter,
     eigenstate_split,
     sender_vs_receiver,
-    tau_sweep,
 )
 
 LAYOUT = [
-    [eigenstate_scatter, cmp_eigenstate_loadings],
-    [eigenstate_split, tau_sweep],
+    [eigenstate_scatter, cmp_eigenstate_loadings, eigenstate_split],
     [sender_vs_receiver, celltype_auroc],
     [[celltype_markers, de_genes]],
 ]
