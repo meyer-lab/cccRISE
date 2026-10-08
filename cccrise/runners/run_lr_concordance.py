@@ -19,10 +19,12 @@ per comparator column against every cccRISE component
   class (`classify_components`), rank-only as pre-registered, mass-aware
   (the shared pairs must carry >= `MASS_HIT` of the comparator column's
   squared loading; added after the columns proved head-heavy) and by the
-  per-pair min (`shared_min_mass` >= `MASS_HIT`). The best match is the
-  component with the largest per-pair min on the shared top-10 pairs
-  (`mass_min`; a deviation from the pre-registered most-pairs-shared rule,
-  which let a column match a component heavy on a different shared pair).
+  per-pair min (`shared_min_weight` >= `MASS_HIT`: over the shared top-10
+  pairs, each pair's smaller squared loading relative to its column's top
+  pair, summed). The best match is the component with the largest per-pair
+  min (`min_weight`; a deviation from the pre-registered most-pairs-shared
+  rule, which let a column match a component heavy on a different shared
+  pair).
 
 Writes, in ``data/validation_results/``:
 
@@ -144,7 +146,7 @@ def _cp_agreement(fit: ComparatorFit, ref: ComparatorFit, profiles, i, j) -> dic
 def _match_rows(fit, ref, lr, ref_lr, overlaps, profiles) -> pd.DataFrame:
     """Each column of `fit` with its best cccRISE match and that pair's
     overlap at every k, head Spearman and (CP) cell-type / sample agreement."""
-    best = best_matches(overlaps, by="mass_min").set_index("comparator_component")
+    best = best_matches(overlaps, by="min_weight").set_index("comparator_component")
     per_k = overlaps.set_index(["cccrise_component", "comparator_component", "k"])
     rows = []
     for j, match in best.iterrows():
@@ -155,7 +157,7 @@ def _match_rows(fit, ref, lr, ref_lr, overlaps, profiles) -> pd.DataFrame:
             "cccrise_component": i + 1,
             "hit": bool(match["hit"]),
             "mass_hit": bool(match["hit"] and match["mass_comparator"] >= MASS_HIT),
-            "min_hit": bool(match["mass_min"] >= MASS_HIT),
+            "min_hit": bool(match["min_weight"] >= MASS_HIT),
             "lr_abs_cos": float(match["lr_abs_cos"]),
             "head_spearman": head_spearman(ref_lr[:, i], lr[:, j - 1]),
         }
@@ -164,7 +166,7 @@ def _match_rows(fit, ref, lr, ref_lr, overlaps, profiles) -> pd.DataFrame:
                 f"shared_k{k}": int(pair.loc[k, "shared"]),
                 f"mass_comparator_k{k}": float(pair.loc[k, "mass_comparator"]),
                 f"mass_cccrise_k{k}": float(pair.loc[k, "mass_cccrise"]),
-                f"mass_min_k{k}": float(pair.loc[k, "mass_min"]),
+                f"min_weight_k{k}": float(pair.loc[k, "min_weight"]),
             }
         if fit.kind == "cp":
             row |= _cp_agreement(fit, ref, profiles, i, j - 1)
