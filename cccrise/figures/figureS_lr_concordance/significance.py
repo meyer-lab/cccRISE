@@ -78,12 +78,46 @@ def significant(table: pd.DataFrame) -> pd.DataFrame:
     flagged between `C3_FLAG` and `SIGNIFICANT`."""
     sx = table["x"] >= SIGNIFICANT
     sy = table["y"] >= SIGNIFICANT
-    lookup = {flags: name for name, flags in REGIONS.items()}
     return table.assign(
         sx=sx,
         sy=sy,
-        region=[lookup.get(flags) for flags in zip(sx, sy, strict=True)],
+        region=_regions(sx, sy),
         c3_flag=(table["component_x"] == 3) & (table["x"] >= C3_FLAG) & ~sx,
+    )
+
+
+def _regions(sx, sy):
+    lookup = {flags: name for name, flags in REGIONS.items()}
+    return [lookup.get(flags) for flags in zip(sx, sy, strict=True)]
+
+
+def combined() -> pd.DataFrame:
+    """Every pair from the comparators' `significant` tables, with its region
+    across all of them: Shared when significant in cccRISE and at least one
+    comparator, Comparator Only when in at least one comparator but not in
+    cccRISE. `y` is its best comparator score and `tag` the comparator
+    columns it is significant in."""
+    tables = pd.concat(
+        {SHORT[m]: significant(scores(m)) for m in METHODS},
+        names=["short", "lr_pair"],
+    ).reset_index()
+    hits = tables[tables["sy"]]
+    tags = (
+        (hits["short"] + " " + hits["component_y"].astype(int).astype(str))
+        .groupby(hits["lr_pair"])
+        .agg(", ".join)
+    )
+    pairs = tables.groupby("lr_pair").agg(
+        x=("x", "first"),
+        component_x=("component_x", "first"),
+        sx=("sx", "first"),
+        c3_flag=("c3_flag", "first"),
+        y=("y", "max"),
+        sy=("sy", "any"),
+    )
+    return pairs.assign(
+        region=_regions(pairs["sx"], pairs["sy"]),
+        tag=tags.reindex(pairs.index).fillna(""),
     )
 
 
@@ -148,6 +182,8 @@ def _scatter(ax, table, colors):
 
 def _width(text, size, weight="normal"):
     """Width of `text` in points."""
+    if not text:
+        return 0.0
     prop = FontProperties(size=size, weight=weight)
     return TextPath((0, 0), text, prop=prop).get_extents().width
 
@@ -163,8 +199,7 @@ def _entries(table, colors, short):
         else:
             rows = rows.sort_values(["component_x", "x"], ascending=[True, False])
         labels = [
-            pair.replace("^", "–")
-            + ("" if name == "cccRISE Only" else f" ({short} {int(row.component_y)})")
+            pair.replace("^", "–") + ("" if name == "cccRISE Only" else f" ({row.tag})")
             for pair, row in rows.iterrows()
         ]
         title = f"{name.replace('Comparator', short)} ({len(rows)})"
@@ -180,9 +215,14 @@ def _entries(table, colors, short):
     return boxes
 
 
-def _columns(entries):
+def _columns(entries, max_width=np.inf):
+    """`entries` in two columns when there are more than `TWO_COLUMNS` and
+    the two fit in `max_width` points, else in one."""
     per = -(-len(entries) // 2) if len(entries) > TWO_COLUMNS else len(entries)
-    return [entries[i : i + per] for i in range(0, len(entries), max(per, 1))]
+    cols = [entries[i : i + per] for i in range(0, len(entries), max(per, 1))]
+    if len(cols) > 1 and _box_width("", cols) > max_width:
+        return [entries]
+    return cols
 
 
 def _box(ax, top, width, title, cols, common):
@@ -218,7 +258,7 @@ def _box_width(title, cols):
     return 2 * PAD + max(list_width, _width(title, TITLE_SIZE, "bold"))
 
 
-def _boxes(ax, table, colors, short):
+def _boxes(ax, table, colors, short, max_width=np.inf):
     """Sharp black boxes stacked from the top left of `ax`, laid out in
     points so each is as tall as its list; all share the widest's width."""
     ax.set_axis_off()
@@ -229,7 +269,9 @@ def _boxes(ax, table, colors, short):
         + ScaledTranslation(0, 1, ax.transAxes)
     )
     common = {"transform": at, "clip_on": False, "in_layout": False}
-    boxes = {t: _columns(e) for t, e in _entries(table, colors, short).items()}
+    boxes = {
+        t: _columns(e, max_width) for t, e in _entries(table, colors, short).items()
+    }
     width = max(_box_width(t, cols) for t, cols in boxes.items())
     top = 0.0
     for title, cols in boxes.items():
@@ -263,6 +305,7 @@ def plot(fig, method, boxes=True):
     unless `boxes` is False; the legend is drawn by `legend`."""
     short = SHORT[method]
     table = significant(scores(method))
+    table = table.assign(tag=f"{short} " + table["component_y"].astype(int).astype(str))
     palette = sns.color_palette("Dark2", 5)
     colors = _colors(table, palette)
     if boxes:
@@ -273,17 +316,24 @@ def plot(fig, method, boxes=True):
         ax = fig.subplots()
     _shade(ax)
     _scatter(ax, table, colors)
-    ax.set_xlabel("cccRISE |loading| / component max")
-    ax.set_ylabel(f"{short} |loading| / component max")
+    measure = "component max" if boxes else "max"
+    ax.set_xlabel(f"cccRISE |loading| / {measure}")
+    ax.set_ylabel(f"{short} |loading| / {measure}")
     ax.set_title(f"cccRISE vs {method}", fontsize=style.FONT_SIZE_TITLE)
 
 
 def plot_row(fig):
-    """Every comparator's scatter side by side, without the pair lists, and
-    one shared legend (the master figure's panel)."""
-    for sub, method in zip(fig.subfigures(1, len(METHODS)), METHODS, strict=True):
+    """The master figure's panel: every comparator's scatter side by side,
+    then one set of boxes listing each pair's region across all comparators
+    (`combined`), and one shared legend."""
+    scatters, side = fig.subfigures(1, 2, width_ratios=(3, 1.3))
+    for sub, method in zip(scatters.subfigures(1, len(METHODS)), METHODS, strict=True):
         plot(sub, method, boxes=False)
-    legend(fig)
+    table = combined()
+    colors = _colors(table, sns.color_palette("Dark2", 5))
+    width = side.bbox.width * 72 / side.dpi
+    _boxes(side.subplots(), table, colors, "Comparator", max_width=width)
+    legend(scatters)
 
 
 def standalone(method):

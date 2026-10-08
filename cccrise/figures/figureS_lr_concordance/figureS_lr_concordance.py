@@ -23,5 +23,5 @@ def makeFigure():
         (style.FIGURE_WIDTH_DOUBLE, style.FIGURE_HEIGHT_MAX),
         LAYOUT,
         PANELS,
-        height_ratios=[1.1, 1.0, 0.8],
+        height_ratios=[1.0, 0.85, 1.15],
     )
