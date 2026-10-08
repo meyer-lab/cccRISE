@@ -26,7 +26,7 @@ from matplotlib.textpath import TextPath
 from matplotlib.transforms import Affine2D, ScaledTranslation
 
 from .. import style
-from ..figureS_lr_concordance._common import SHORT, load
+from ._common import SHORT, load
 
 SIGNIFICANT = 0.4
 C3_FLAG = 0.2

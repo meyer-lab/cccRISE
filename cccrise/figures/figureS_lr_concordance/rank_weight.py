@@ -6,7 +6,7 @@ its squared loading (right) by rank, one colour per column."""
 import seaborn as sns
 
 from .. import common, style
-from ..figureS_lr_concordance._common import SHORT, load
+from ._common import SHORT, load
 
 DEPTH = 25
 PANELS = {
