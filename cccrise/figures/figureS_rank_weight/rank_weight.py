@@ -1,17 +1,18 @@
-"""How much weight an LR column keeps down its ranking (companion to
-`missed`): for one method's own-rank fit on the coarse annotation, each
+"""How much weight an LR column keeps down its ranking (why the
+LR-concordance figure compares top-10s): for one method's own-rank fit on the
+coarse annotation, each
 column's |loading| relative to its largest (left) and the cumulative share of
 its squared loading (right) by rank, one colour per column."""
 
 import seaborn as sns
 
 from .. import common, style
-from ._common import SHORT, load
+from ..figureS_lr_concordance._common import SHORT, load
 
 DEPTH = 25
 PANELS = {
     "rel_max": "|loading| / component max",
-    "cum_share": "cumulative share of squared loading",
+    "cum_share": "cumulative share\nof squared loading",
 }
 
 

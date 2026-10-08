@@ -1,20 +1,19 @@
-"""Which cccRISE components the comparators recover (draft panel A).
+"""Which cccRISE components the comparators recover.
 
 Per cccRISE component and comparator fit (own rank; coarse and fine
 annotation), the fit's column that best matches the component's top-10 LR
-pairs. A match is scored by the pairs both top-10s share: the geometric mean
-of the share of the component's squared loading and the share of the
-column's squared loading they carry, sqrt(m_cccRISE x m_comparator). It is 1
-only when both put all their weight on the shared pairs, and 0 when either
-puts none there; by Cauchy-Schwarz it bounds what the shared pairs add to the
-|cosine| of the two LR columns. Colour: that score for the best column (ties:
-more shared pairs). Number: how many pairs it shares."""
+pairs. A match is scored by the pairs both top-10s share: the smaller of the
+share of the component's squared loading and the share of the column's
+squared loading they carry, min(m_cccRISE, m_comparator), so it is only as
+strong as the side that weights the shared pairs least (1: both put all their
+weight there; 0: either puts none). Colour: that score for the best column
+(ties: more shared pairs). Number: how many pairs it shares."""
 
 import numpy as np
 import pandas as pd
 
 from .. import common, style
-from ..figureS_lr_concordance._common import ANNOTATIONS, METHODS, SHORT, load
+from ._common import ANNOTATIONS, METHODS, SHORT, load
 
 K = 10
 FITS = [(a, m) for a in ANNOTATIONS for m in METHODS]
@@ -22,11 +21,11 @@ FITS = [(a, m) for a in ANNOTATIONS for m in METHODS]
 
 def best(table: pd.DataFrame) -> pd.DataFrame:
     """Per (cccRISE component, annotation, method): the column with the
-    largest joint loading on the shared top-`K` pairs (`joint`), then the
-    most shared pairs."""
+    largest loading on the shared top-`K` pairs from both sides (`joint`, the
+    smaller of the two shares), then the most shared pairs."""
     table = table[(table["k"] == K) & table["method"].isin(METHODS)]
     table = table.assign(
-        joint=np.sqrt(table["mass_cccrise"] * table["mass_comparator"])
+        joint=np.minimum(table["mass_cccrise"], table["mass_comparator"])
     )
     table = table.sort_values(["joint", "shared"], ascending=False, kind="stable")
     keys = ["cccrise_component", "annotation", "method"]
@@ -59,11 +58,12 @@ def plot(fig):
     ax.set_yticks(range(len(comps)), [f"C{c}" for c in comps])
     ax.axvline(len(METHODS) - 0.5, color="white", lw=3)
     ax.set_ylabel("cccRISE component")
+    ax.set_title("Recovery of cccRISE components", fontsize=style.FONT_SIZE_TITLE)
     ax.grid(False)
     fig.colorbar(
         image,
         ax=ax,
-        label="joint loading on shared pairs\n√(cccRISE share × comparator share)",
+        label="loading on shared pairs\nmin(cccRISE, comparator)",
         shrink=0.8,
         pad=0.01,
     )
