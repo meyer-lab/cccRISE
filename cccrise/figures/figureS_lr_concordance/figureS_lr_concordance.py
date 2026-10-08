@@ -1,19 +1,19 @@
 """Supplementary figure: do cccRISE and the tensor comparators agree on top
-LR pairs? How well each comparator fit recovers each cccRISE component (A);
+LR pairs? How much of each cccRISE LR column lies in each comparator fit's span (A);
 for every CP comparator column, agreement on LR pairs, cell types and
 samples with its best cccRISE match (B); and, per comparator fit, whether
 the pairs one method calls significant (>= 0.4 x a column's largest
 |loading|) are significant in the other (C)."""
 
 from .. import common, style
-from . import recovery, significance, who_where
+from . import containment, significance, who_where
 
 PANELS = {
-    "recovery": recovery,
+    "containment": containment,
     "who_where": who_where,
     "significance": significance,
 }
-LAYOUT = [["recovery", "who_where"], ["significance", "significance"]]
+LAYOUT = [["containment", "who_where"], ["significance", "significance"]]
 
 
 def makeFigure():

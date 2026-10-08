@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from .. import common, style
-from ._common import ANNOTATIONS, METHODS, SHORT, load
+from ..figureS_lr_concordance._common import ANNOTATIONS, METHODS, SHORT, load
 
 K = 10
 VMAX = 1.6
