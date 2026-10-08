@@ -2,13 +2,12 @@
 comparator side: how much of each cccRISE LR column lies in the span of each
 comparator fit's LR columns (``||P_X a_k||^2`` for unit `a_k`; 1 when some
 combination of the fit's columns reproduces it). Rows: own-rank fits on the
-coarse and fine annotation; columns: cccRISE components. Boxed: contained
-(>= 0.85 and above the row-permutation null's 95th percentile;
-`cccrise-comparator-agreement`)."""
+coarse and fine annotation; columns: cccRISE components
+(`cccrise-comparator-agreement`). `plot_reverse`: the other direction, each
+comparator column's containment in the span of cccRISE's LR columns."""
 
 import numpy as np
 import pandas as pd
-from matplotlib.patches import Rectangle
 
 from ...runners.datasets import VALIDATION_DIR
 from .. import common, style
@@ -18,8 +17,9 @@ SUFFIXES = {"coarse": "", "fine": "_fine"}
 FITS = [(m, a) for a in ANNOTATIONS for m in METHODS]
 
 
-def load() -> pd.DataFrame:
-    """LR-mode containment of every cccRISE component in every own-rank fit."""
+def load(direction: str = "cccRISE in comparator") -> pd.DataFrame:
+    """LR-mode containment of every cccRISE component in every own-rank fit
+    (or, ``"comparator in cccRISE"``, of every fit's columns in cccRISE)."""
     frames = [
         common.load_runner_output(
             f"comparator_containment_alad{SUFFIXES[a]}.parquet",
@@ -29,31 +29,34 @@ def load() -> pd.DataFrame:
         for a in ANNOTATIONS
     ]
     table = pd.concat(frames, ignore_index=True)
-    return table[
-        (table["direction"] == "cccRISE in comparator")
-        & (table["mode"] == "lr")
-        & (table["rank_mode"] == "own")
-    ].set_index(["method", "annotation", "component"])
+    return (
+        table[
+            (table["direction"] == direction)
+            & (table["mode"] == "lr")
+            & (table["rank_mode"] == "own")
+        ]
+        .set_index(["method", "annotation", "component"])
+        .sort_index()
+    )
 
 
 def _grid(table, comps, column):
     return np.array([[table.loc[(*f, c), column] for c in comps] for f in FITS])
 
 
-def _annotate(ax, values, contained):
+def _annotate(ax, values, size=style.FONT_SIZE_DENSE):
     for (i, j), v in np.ndenumerate(values):
-        ax.text(
-            j, i, f"{v:.2f}", ha="center", va="center",
-            fontsize=style.FONT_SIZE_DENSE,
-            color="white" if v > 0.6 else style.COLORS["ink"],
-        )  # fmt: skip
-        if contained[i, j]:
-            ax.add_patch(
-                Rectangle(
-                    (j - 0.5, i - 0.5), 1, 1, fill=False, lw=1.2,
-                    edgecolor=style.COLORS["ink"],
-                )
+        if np.isfinite(v):
+            ax.text(
+                j, i, f"{v:.2f}", ha="center", va="center", fontsize=size,
+                color="white" if v > 0.6 else style.COLORS["ink"],
             )  # fmt: skip
+
+
+def _colorbar(fig, image, ax, label):
+    fig.colorbar(
+        image, ax=ax, label=label, location="bottom", shrink=0.8, pad=0.02
+    )  # fmt: skip
 
 
 def plot(fig):
@@ -64,7 +67,7 @@ def plot(fig):
     image = ax.imshow(
         values, cmap=style.CMAPS["sequential"], vmin=0, vmax=1, aspect="auto"
     )
-    _annotate(ax, values, _grid(table, comps, "contained").astype(bool))
+    _annotate(ax, values)
     ax.set_yticks(range(len(FITS)), [f"{SHORT[m]} {a}" for m, a in FITS])
     ax.set_xticks(range(len(comps)), [f"C{c}" for c in comps])
     ax.xaxis.tick_top()
@@ -74,14 +77,51 @@ def plot(fig):
     ax.set_xlabel("cccRISE component")
     ax.set_title("Recovery of cccRISE components", fontsize=style.FONT_SIZE_TITLE)
     ax.grid(False)
-    fig.colorbar(
-        image,
-        ax=ax,
-        label="LR containment in comparator span",
-        location="bottom",
-        shrink=0.8,
-        pad=0.02,
+    _colorbar(fig, image, ax, "LR containment in comparator span")
+
+
+def _reverse_rows(table):
+    """Each fit's columns in `FITS` order, a blank (NaN) row between fits:
+    the column of values, the fit of every row (None for blanks) and the
+    tick labels."""
+    values, fits, labels = [], [], []
+    for i, fit in enumerate(FITS):
+        if i:
+            values, fits, labels = [*values, np.nan], [*fits, None], [*labels, ""]
+        sub = table.loc[fit, "containment"].sort_index()
+        values += list(sub)
+        fits += [fit] * len(sub)
+        labels += [str(c) for c in sub.index]
+    return np.array(values)[:, None], fits, labels
+
+
+def plot_reverse(fig):
+    values, fits, labels = _reverse_rows(load("comparator in cccRISE"))
+    left, ax, right = fig.subplots(1, 3, width_ratios=(1, 0.45, 1))
+    left.set_axis_off()
+    right.set_axis_off()
+    cmap = style.CMAPS["sequential"].with_extremes(bad="white")
+    image = ax.imshow(
+        np.ma.masked_invalid(values), cmap=cmap, vmin=0, vmax=1, aspect="auto"
     )
+    _annotate(ax, values, size=style.FONT_SIZE_DENSE - 1.5)
+    ax.set_yticks(range(len(labels)), labels, fontsize=style.FONT_SIZE_DENSE - 1.5)
+    for fit in FITS:
+        rows = [i for i, f in enumerate(fits) if f == fit]
+        ax.text(
+            -0.25, np.mean(rows), f"{SHORT[fit[0]]}\n{fit[1]}", ha="right",
+            va="center", transform=ax.get_yaxis_transform(),
+            fontsize=style.FONT_SIZE_DENSE,
+        )  # fmt: skip
+    ax.set_xticks([])
+    ax.tick_params(length=0)
+    ax.spines[:].set_visible(False)
+    ax.set_title("Recovery of comparator columns", fontsize=style.FONT_SIZE_TITLE)
+    ax.grid(False)
+    fig.colorbar(
+        image, ax=ax, label="LR containment\nin cccRISE span", location="bottom",
+        ticks=[0, 0.5, 1], pad=0.02,
+    )  # fmt: skip
 
 
 def makeFigure():

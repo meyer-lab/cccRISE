@@ -5,15 +5,18 @@ samples with its best cccRISE match (B); and, per comparator fit, whether
 the pairs one method calls significant (>= 0.4 x a column's largest
 |loading|) are significant in the other (C)."""
 
+from types import SimpleNamespace
+
 from .. import common, style
-from . import containment, significance, who_where
+from . import containment, significance
 
 PANELS = {
     "containment": containment,
-    "who_where": who_where,
+    # Temporarily in place of who_where: each comparator column's containment.
+    "containment_reverse": SimpleNamespace(plot=containment.plot_reverse),
     "significance": significance,
 }
-LAYOUT = [["containment", "who_where"], ["significance", "significance"]]
+LAYOUT = [["containment", "containment_reverse"], ["significance", "significance"]]
 
 
 def makeFigure():
