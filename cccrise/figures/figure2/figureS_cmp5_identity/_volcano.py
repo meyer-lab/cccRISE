@@ -12,7 +12,7 @@ from .. import _common as S
 
 N_LABELED = 6
 Q_FLOOR = 1e-30  # q below this drawn at it
-HEADROOM = 1.5  # y limit over the highest point, room for labels
+HEADROOM = 1.1  # y limit over the highest point
 LABEL_DX = (
     0.04  # labels start this far outward of their points, a fraction of the x range
 )
