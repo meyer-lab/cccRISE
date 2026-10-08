@@ -16,9 +16,13 @@ per comparator column against every cccRISE component
 - per comparator column, its best cccRISE match with the agreement of their
   sender / receiver cell types (cccRISE's sample-scaled per-cell loadings
   averaged per comparator type) and of their condition columns, and its A5
-  class (`classify_components`), rank-only as pre-registered and mass-aware
+  class (`classify_components`), rank-only as pre-registered, mass-aware
   (the shared pairs must carry >= `MASS_HIT` of the comparator column's
-  squared loading; added after the columns proved head-heavy).
+  squared loading; added after the columns proved head-heavy) and by the
+  per-pair min (`shared_min_mass` >= `MASS_HIT`). The best match is the
+  component with the largest per-pair min on the shared top-10 pairs
+  (`mass_min`; a deviation from the pre-registered most-pairs-shared rule,
+  which let a column match a component heavy on a different shared pair).
 
 Writes, in ``data/validation_results/``:
 
@@ -140,7 +144,7 @@ def _cp_agreement(fit: ComparatorFit, ref: ComparatorFit, profiles, i, j) -> dic
 def _match_rows(fit, ref, lr, ref_lr, overlaps, profiles) -> pd.DataFrame:
     """Each column of `fit` with its best cccRISE match and that pair's
     overlap at every k, head Spearman and (CP) cell-type / sample agreement."""
-    best = best_matches(overlaps).set_index("comparator_component")
+    best = best_matches(overlaps, by="mass_min").set_index("comparator_component")
     per_k = overlaps.set_index(["cccrise_component", "comparator_component", "k"])
     rows = []
     for j, match in best.iterrows():
@@ -151,6 +155,7 @@ def _match_rows(fit, ref, lr, ref_lr, overlaps, profiles) -> pd.DataFrame:
             "cccrise_component": i + 1,
             "hit": bool(match["hit"]),
             "mass_hit": bool(match["hit"] and match["mass_comparator"] >= MASS_HIT),
+            "min_hit": bool(match["mass_min"] >= MASS_HIT),
             "lr_abs_cos": float(match["lr_abs_cos"]),
             "head_spearman": head_spearman(ref_lr[:, i], lr[:, j - 1]),
         }
@@ -159,6 +164,7 @@ def _match_rows(fit, ref, lr, ref_lr, overlaps, profiles) -> pd.DataFrame:
                 f"shared_k{k}": int(pair.loc[k, "shared"]),
                 f"mass_comparator_k{k}": float(pair.loc[k, "mass_comparator"]),
                 f"mass_cccrise_k{k}": float(pair.loc[k, "mass_cccrise"]),
+                f"mass_min_k{k}": float(pair.loc[k, "mass_min"]),
             }
         if fit.kind == "cp":
             row |= _cp_agreement(fit, ref, profiles, i, j - 1)
@@ -259,7 +265,11 @@ def _with_classes(matches: pd.DataFrame, containment: pd.DataFrame) -> pd.DataFr
         lr, on=["annotation", "method", "rank_mode", "comparator_component"], how="left"
     )
     cp = matches["sender_cos"].notna()
-    for column, hit in (("lr_class", "hit"), ("lr_class_mass", "mass_hit")):
+    for column, hit in (
+        ("lr_class", "hit"),
+        ("lr_class_mass", "mass_hit"),
+        ("lr_class_min", "min_hit"),
+    ):
         matches[column] = None
         matches.loc[cp, column] = classify_components(matches[cp], hit=hit)
     return matches

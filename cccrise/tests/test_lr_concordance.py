@@ -17,6 +17,7 @@ from ..comparators.lr_concordance import (
     ranks,
     shared_counts,
     shared_mass,
+    shared_min_mass,
     top_k_sets,
     whole_model_percentile,
 )
@@ -118,3 +119,22 @@ def test_loading_profile():
     assert first["rel_max"].tolist() == pytest.approx([1.0, 0.75, 0.0])
     assert first["cum_share"].tolist() == pytest.approx([16 / 25, 1.0, 1.0])
     assert t[t["component"] == 2]["share"].tolist() == pytest.approx([0.8, 0.2, 0])
+
+
+def test_shared_min_mass_needs_the_same_pairs():
+    a = np.array([[3.0, 3.0], [1.0, 1.0], [0.0, 0.0]])
+    b = np.array([[3.0, 1.0], [1.0, 3.0], [0.0, 0.0]])  # col 1 heavy elsewhere
+    sets = top_k_sets(a, 2), top_k_sets(b, 2)
+    got = shared_min_mass(*sets, a, b)
+    assert got[0, 0] == pytest.approx(1.0)
+    assert got[0, 1] == pytest.approx(0.2)  # min(0.9, 0.1) + min(0.1, 0.9)
+
+
+def test_best_match_by_min_mass():
+    ref = np.array([[3.0, 0.1], [0.1, 3.0], [1.0, 1.0], [0.0, 0.0]])
+    other = np.array([[0.1], [3.0], [1.0], [0.0]])
+    thresholds = pd.DataFrame({"k": [3], "null_q95": [1.0]})
+    table = overlap_table(ref, other, (3,), thresholds)
+    assert (table["shared"] == 3).all()  # a tie on pairs shared
+    best = best_matches(table, k=3, by="mass_min")
+    assert best["cccrise_component"].item() == 2

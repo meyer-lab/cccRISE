@@ -72,6 +72,32 @@ def shared_mass(
     )
 
 
+def shared_min_mass(
+    a_sets: Sequence[frozenset],
+    b_sets: Sequence[frozenset],
+    a: np.ndarray,
+    b: np.ndarray,
+) -> np.ndarray:
+    """``(a cols, b cols)``: over the pairs each two top-k sets share, the sum
+    of each pair's smaller share of squared loading (of the `a` column or the
+    `b` column). 1 only when both columns put all their weight on the shared
+    pairs, pair by pair alike; two columns heavy on different shared pairs
+    score near 0."""
+    share_a, share_b = (
+        np.asarray(m, float) ** 2 / (np.asarray(m, float) ** 2).sum(axis=0)
+        for m in (a, b)
+    )
+    return np.array(
+        [
+            [
+                np.minimum(share_a[sorted(x & y), i], share_b[sorted(x & y), j]).sum()
+                for j, y in enumerate(b_sets)
+            ]
+            for i, x in enumerate(a_sets)
+        ]
+    )
+
+
 def head_mass(lr: np.ndarray, ks: Sequence[int]) -> pd.DataFrame:
     """Per column and k: the share of its squared loading on its top-k pairs."""
     sq = np.sort(np.asarray(lr, float) ** 2, axis=0)[::-1]
@@ -173,6 +199,7 @@ def overlap_table(
         counts = shared_counts(ref_sets, other_sets)
         mass_other = shared_mass(ref_sets, other_sets, other)
         mass_ref = shared_mass(other_sets, ref_sets, ref).T
+        mass_min = shared_min_mass(ref_sets, other_sets, ref, other)
         i, j = np.indices(counts.shape)
         frames.append(
             pd.DataFrame(
@@ -185,6 +212,7 @@ def overlap_table(
                     "hit": counts.ravel() > q95[k],
                     "mass_comparator": mass_other.ravel(),
                     "mass_cccrise": mass_ref.ravel(),
+                    "mass_min": mass_min.ravel(),
                     "lr_abs_cos": cos.ravel(),
                 }
             )
@@ -192,12 +220,15 @@ def overlap_table(
     return pd.concat(frames, ignore_index=True)
 
 
-def best_matches(overlaps: pd.DataFrame, k: int = PRIMARY_K) -> pd.DataFrame:
-    """Per comparator column: the cccRISE component sharing most of its top-k
-    pairs, ties broken by |cos| of the LR columns."""
+def best_matches(
+    overlaps: pd.DataFrame, k: int = PRIMARY_K, by: str = "shared"
+) -> pd.DataFrame:
+    """Per comparator column: the cccRISE component with the largest `by`
+    (pre-registered: pairs shared; or ``mass_min``), ties broken by pairs
+    shared, then by |cos| of the LR columns."""
     sub = overlaps[overlaps["k"] == k].sort_values(
-        ["comparator_component", "shared", "lr_abs_cos"],
-        ascending=[True, False, False],
+        ["comparator_component", by, "shared", "lr_abs_cos"],
+        ascending=[True, False, False, False],
     )
     return sub.groupby("comparator_component", as_index=False).head(1)
 
