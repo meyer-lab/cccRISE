@@ -15,6 +15,8 @@ drawn small and grey and are not listed. Points are jittered by up to
 `JITTER` (never across a threshold) so pairs at the same scores, e.g. two
 columns' top pair at (1, 1), stay visible."""
 
+from functools import partial
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -25,8 +27,8 @@ from matplotlib.patches import Rectangle
 from matplotlib.textpath import TextPath
 from matplotlib.transforms import Affine2D, ScaledTranslation
 
-from .. import style
-from ._common import SHORT, load
+from .. import common, style
+from ._common import METHODS, SHORT, load
 
 SIGNIFICANT = 0.4
 C3_FLAG = 0.2
@@ -141,7 +143,6 @@ def _scatter(ax, table, colors):
     ax.set_xticks(np.arange(0, 1.01, 0.2))
     ax.set_yticks(np.arange(0, 1.01, 0.2))
     ax.set_aspect("equal")
-    ax.set_anchor("E")  # against the boxes
     ax.grid(False)
 
 
@@ -235,7 +236,8 @@ def _boxes(ax, table, colors, short):
         top = _box(ax, top, width, title, cols, common)
 
 
-def _legend(fig, palette, short):
+def legend(fig, short="comparator"):
+    palette = sns.color_palette("Dark2", 5)
     marker = {"marker": "o", "ls": "", "markersize": 4, "mec": "white", "mew": 0.4}
     handles = [
         Line2D([], [], color=palette[c - 1], label=f"C{c}", **marker)
@@ -256,16 +258,38 @@ def _legend(fig, palette, short):
     )
 
 
-def plot(fig, method):
+def plot(fig, method, boxes=True):
+    """One comparator's scatter, with each region's pairs listed beside it
+    unless `boxes` is False; the legend is drawn by `legend`."""
     short = SHORT[method]
     table = significant(scores(method))
     palette = sns.color_palette("Dark2", 5)
     colors = _colors(table, palette)
-    ax, side = fig.subplots(1, 2, width_ratios=(1, 0.72))
+    if boxes:
+        ax, side = fig.subplots(1, 2, width_ratios=(1, 0.72))
+        _boxes(side, table, colors, short)
+        ax.set_anchor("E")  # against the boxes
+    else:
+        ax = fig.subplots()
     _shade(ax)
     _scatter(ax, table, colors)
     ax.set_xlabel("cccRISE |loading| / component max")
     ax.set_ylabel(f"{short} |loading| / component max")
     ax.set_title(f"cccRISE vs {method}", fontsize=style.FONT_SIZE_TITLE)
-    _boxes(side, table, colors, short)
-    _legend(fig, palette, short)
+
+
+def plot_row(fig):
+    """Every comparator's scatter side by side, without the pair lists, and
+    one shared legend (the master figure's panel)."""
+    for sub, method in zip(fig.subfigures(1, len(METHODS)), METHODS, strict=True):
+        plot(sub, method, boxes=False)
+    legend(fig)
+
+
+def standalone(method):
+    """One comparator's scatter and pair lists on a figure of its own."""
+    return common.standalone(
+        partial(plot, method=method),
+        FIGURE_SIZE,
+        legend=partial(legend, short=SHORT[method]),
+    )
