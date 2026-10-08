@@ -1,14 +1,8 @@
 """The differential-detection volcano shared by this figure's sender vs.
 receiver and group vs. rest panels: each gene's difference in the fraction of
 cells detecting it against its Wilcoxon BH q (`S.rank_genes`). The
-`N_LABELED` most enriched significant genes on each side (`N_LABELED_REST`
-on the rest's) are labeled, the
-genes of the top LR pairs (`S.top_pair_genes`) outlined (and labeled, bold, if
-significant), and the genes both groups enrich against the rest
-(`shared_genes`) colored `SHARED_COLOR` and labeled on every panel. Labels
-are placed by `_label`."""
-
-import functools
+`N_LABELED` most enriched significant genes of each group (not of the
+rest) are labeled (`_label`)."""
 
 import numpy as np
 from adjustText import adjust_text
@@ -17,11 +11,8 @@ from ... import common, style
 from .. import _common as S
 
 N_LABELED = 6
-N_LABELED_REST = 3  # rest-enriched genes labeled: immune genes absent in both groups
-N_SHARED = 10  # top enriched genes per group compared for `shared_genes`
 Q_FLOOR = 1e-30  # q below this drawn at it
 HEADROOM = 1.5  # y limit over the highest point, room for labels
-SHARED_COLOR = style.COLORS["highlight"]
 LABEL_DX = (
     0.04  # labels start this far outward of their points, a fraction of the x range
 )
@@ -34,22 +25,10 @@ ARROWPROPS = {
 }
 
 
-@functools.cache
-def shared_genes() -> list[str]:
-    """Genes among the `N_SHARED` most enriched significant genes of both the
-    sender and receiver groups against the rest."""
-    ranked = S.rank_genes(S.DE_GROUPS, "rest")
-    top = [
-        set(r.index[(r["q"] < common.SIG_ALPHA) & (r["score"] > 0)][:N_SHARED])
-        for r in ranked.values()
-    ]
-    return sorted(set.intersection(*top))
-
-
 def volcano_data(group: str, reference: str):
     """(Wilcoxon ranking, detected fraction difference, -log10 q) of `group`
     against `reference` ('receiver' or 'rest')."""
-    if reference == "rest":  # shares `shared_genes`' cached test
+    if reference == "rest":  # one cached test of both groups
         ranking = S.rank_genes(S.DE_GROUPS, "rest")[group]
     else:
         ranking = S.rank_genes((group,), reference)[group]
@@ -78,31 +57,14 @@ def plot_volcano(ax, group: str, reference: str, lims=None) -> None:
     ax.scatter(
         delta, y, c=color, s=style.POINT_SIZE_BACKGROUND, linewidths=0, rasterized=True
     )
-    lr, shared = S.top_pair_genes(), shared_genes()
-    ax.scatter(
-        delta[lr],
-        y[lr],
-        facecolors="none",
-        edgecolors=style.COLORS["ink"],
-        s=style.POINT_SIZE_FOREGROUND,
-        linewidths=style.LINE_WIDTH_THIN,
-    )
-    ax.scatter(
-        delta[shared], y[shared], c=SHARED_COLOR, s=style.POINT_SIZE, linewidths=0
-    )
     common.reference_line(ax, -np.log10(common.SIG_ALPHA))
     common.reference_line(ax, 0, horizontal=False)
     x_limit, y_limit = limits(delta, y) if lims is None else lims
     ax.set(xlim=(-x_limit, x_limit), ylim=(0, y_limit))
-    labeled = [
-        *significant[:N_LABELED],
-        *significant[::-1][
-            : N_LABELED if reference in S.GROUP_COLORS else N_LABELED_REST
-        ],
-        *(g for g in lr if g in significant),
-        *shared,
-    ]
-    _label(ax, list(dict.fromkeys(labeled)), delta, y)
+    labeled = list(significant[:N_LABELED])
+    if reference in S.GROUP_COLORS:
+        labeled += list(significant[::-1][:N_LABELED])
+    _label(ax, labeled, delta, y)
     ax.set(
         xlabel=f"Detected fraction,\n{group} − {reference}",
         ylabel="−log$_{10}$ q (Wilcoxon)",
@@ -122,7 +84,6 @@ def _label(ax, genes, delta, y) -> None:
         / ax.bbox.height
         * np.diff(ax.get_ylim())[0]
     )
-    lr, shared = S.top_pair_genes(), shared_genes()
     texts = []
     for side in (1, -1):
         on_side = sorted(
@@ -137,8 +98,6 @@ def _label(ax, genes, delta, y) -> None:
                     ha="left" if side > 0 else "right",
                     va="center",
                     fontsize=common.FACTOR_LABEL_FONT_SIZE,
-                    fontweight="bold" if g in lr else "normal",
-                    color=SHARED_COLOR if g in shared else None,
                 )
             )
     placed = [t.get_text() for t in texts]
