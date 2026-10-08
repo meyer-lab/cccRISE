@@ -1,21 +1,22 @@
 """Are the pairs one method calls significant also significant in the other?
 
 A pair is significant in a column when its |loading| is at least
-`SIGNIFICANT` x the column's largest. Per method (own-rank fits on the
-coarse annotation), each pair's score is its largest |loading| / column max
-over the method's columns. Every pair in the top `TOP_K` of any column of
-cccRISE or the comparator is drawn at (cccRISE score, comparator score); the
+`SIGNIFICANT` x the column's largest. Per method (own-rank fits; rows: coarse
+and fine annotation, columns: comparators), each pair's score is its largest
+|loading| / column max over the method's columns. Every pair in the top
+`TOP_K` of any column of cccRISE or the comparator fit is drawn at (cccRISE
+score, comparator score); the
 solid lines at `SIGNIFICANT` split them into significant in both (grey), in
 cccRISE only (green), in the comparator only (red) and in neither. The dashed
 line at `C3_FLAG` only draws attention to cccRISE's C3 pairs between it and
-`SIGNIFICANT` (drawn in C3's colour, not counted as significant). Each
-region's pairs are listed in a box beside the plot, coloured by their cccRISE
-component (comparator-only pairs in black unless flagged C3); pairs significant in neither are
-drawn small and grey and are not listed. Points are jittered by up to
+`SIGNIFICANT` (drawn in C3's colour, not counted as significant). The boxes
+on the right list each pair once across all six fits (`combined`), coloured
+by its cccRISE component (comparator-only pairs in black unless flagged C3)
+and tagged with the comparator fits that call it significant (c: coarse,
+f: fine); pairs significant in neither are drawn small and grey and are not
+listed. Points are jittered by up to
 `JITTER` (never across a threshold) so pairs at the same scores, e.g. two
 columns' top pair at (1, 1), stay visible."""
-
-from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -28,7 +29,7 @@ from matplotlib.textpath import TextPath
 from matplotlib.transforms import Affine2D, ScaledTranslation
 
 from .. import common, style
-from ._common import METHODS, SHORT, load
+from ._common import ANNOTATIONS, METHODS, SHORT, load
 
 SIGNIFICANT = 0.4
 C3_FLAG = 0.2
@@ -36,7 +37,8 @@ TOP_K = 10
 JITTER = 0.02  # axis units, uniform on each axis
 ALPHA = 0.85
 LIM = (-0.04, 1.06)
-FIGURE_SIZE = (150 * style.MM, 88 * style.MM)
+FIGURE_SIZE = (style.FIGURE_WIDTH_DOUBLE, 110 * style.MM)
+FITS = [(method, annotation) for annotation in ANNOTATIONS for method in METHODS]
 REGIONS = {  # box title -> (x significant, y significant), top to bottom
     "cccRISE Only": (True, False),
     "Shared": (True, True),
@@ -58,12 +60,12 @@ COLUMN_GAP = 10
 BOX_GAP = 6  # between boxes
 
 
-def scores(method: str) -> pd.DataFrame:
-    """Per pair in the top `TOP_K` of any column of cccRISE or `method`: each
-    method's best |loading| / column max (`x`, `y`) and the column it comes
-    from."""
+def scores(method: str, annotation: str = "coarse") -> pd.DataFrame:
+    """Per pair in the top `TOP_K` of any column of cccRISE or `method` (on
+    `annotation`): each method's best |loading| / column max (`x`, `y`) and
+    the column it comes from."""
     table = load("profiles")
-    table = table[table["annotation"] == "coarse"]
+    table = table[table["annotation"] == annotation]
     best = table.loc[table.groupby(["method", "lr_pair"])["rel_max"].idxmax()]
     best = best.set_index(["method", "lr_pair"])[["rel_max", "component"]]
     out = best.loc["cccRISE"].join(best.loc[method], lsuffix="_x", rsuffix="_y")
@@ -92,21 +94,17 @@ def _regions(sx, sy):
 
 
 def combined() -> pd.DataFrame:
-    """Every pair from the comparators' `significant` tables, with its region
-    across all of them: Shared when significant in cccRISE and at least one
-    comparator, Comparator Only when in at least one comparator but not in
-    cccRISE. `y` is its best comparator score and `tag` the comparator
-    columns it is significant in."""
+    """Every pair from the comparator fits' `significant` tables, with its
+    region across all of them: Shared when significant in cccRISE and at
+    least one comparator fit, Comparator Only when in at least one comparator
+    fit but not in cccRISE. `y` is its best comparator score and `tag` the
+    comparator fits it is significant in (`_tag`)."""
     tables = pd.concat(
-        {SHORT[m]: significant(scores(m)) for m in METHODS},
-        names=["short", "lr_pair"],
+        {fit: significant(scores(*fit)) for fit in FITS},
+        names=["method", "annotation", "lr_pair"],
     ).reset_index()
     hits = tables[tables["sy"]]
-    tags = (
-        (hits["short"] + " " + hits["component_y"].astype(int).astype(str))
-        .groupby(hits["lr_pair"])
-        .agg(", ".join)
-    )
+    tags = hits.groupby("lr_pair")[["method", "annotation"]].apply(_tag)
     pairs = tables.groupby("lr_pair").agg(
         x=("x", "first"),
         component_x=("component_x", "first"),
@@ -118,6 +116,18 @@ def combined() -> pd.DataFrame:
     return pairs.assign(
         region=_regions(pairs["sx"], pairs["sy"]),
         tag=tags.reindex(pairs.index).fillna(""),
+    )
+
+
+def _tag(fits: pd.DataFrame) -> str:
+    """The fits a pair is significant in, e.g. "PB c/f · STAC c" (c: coarse,
+    f: fine), or "all"."""
+    if len(fits) == len(FITS):
+        return "all"
+    return " · ".join(
+        f"{SHORT[m]} " + "/".join(a[0] for a in ANNOTATIONS if a in set(sub))
+        for m in METHODS
+        if len(sub := fits.loc[fits["method"] == m, "annotation"])
     )
 
 
@@ -278,17 +288,14 @@ def _boxes(ax, table, colors, short, max_width=np.inf):
         top = _box(ax, top, width, title, cols, common)
 
 
-def legend(fig, short="comparator"):
+def legend(fig):
     palette = sns.color_palette("Dark2", 5)
     marker = {"marker": "o", "ls": "", "markersize": 4, "mec": "white", "mew": 0.4}
     handles = [
         Line2D([], [], color=palette[c - 1], label=f"C{c}", **marker)
         for c in range(1, 6)
     ]
-    handles += [
-        Line2D([], [], color="black", label=f"{short} only", **marker),
-        Line2D([], [], color=style.COLORS["muted"], label="neither", **marker),
-    ]
+    handles.append(Line2D([], [], color="black", label="comparator", **marker))
     fig.legend(
         handles=handles,
         loc="outside lower center",
@@ -300,35 +307,26 @@ def legend(fig, short="comparator"):
     )
 
 
-def plot(fig, method, boxes=True):
-    """One comparator's scatter, with each region's pairs listed beside it
-    unless `boxes` is False; the legend is drawn by `legend`."""
-    short = SHORT[method]
-    table = significant(scores(method))
-    table = table.assign(tag=f"{short} " + table["component_y"].astype(int).astype(str))
-    palette = sns.color_palette("Dark2", 5)
-    colors = _colors(table, palette)
-    if boxes:
-        ax, side = fig.subplots(1, 2, width_ratios=(1, 0.72))
-        _boxes(side, table, colors, short)
-        ax.set_anchor("E")  # against the boxes
-    else:
-        ax = fig.subplots()
+def _panel(ax, method, annotation):
+    table = significant(scores(method, annotation))
     _shade(ax)
-    _scatter(ax, table, colors)
-    measure = "component max" if boxes else "max"
-    ax.set_xlabel(f"cccRISE |loading| / {measure}")
-    ax.set_ylabel(f"{short} |loading| / {measure}")
-    ax.set_title(f"cccRISE vs {method}", fontsize=style.FONT_SIZE_TITLE)
+    _scatter(ax, table, _colors(table, sns.color_palette("Dark2", 5)))
+    ax.set_title(f"{method} ({annotation})", fontsize=style.FONT_SIZE_TITLE)
 
 
-def plot_row(fig):
-    """The master figure's panel: every comparator's scatter side by side,
-    then one set of boxes listing each pair's region across all comparators
-    (`combined`), and one shared legend."""
-    scatters, side = fig.subfigures(1, 2, width_ratios=(3, 1.3))
-    for sub, method in zip(scatters.subfigures(1, len(METHODS)), METHODS, strict=True):
-        plot(sub, method, boxes=False)
+def plot(fig):
+    """Rows: annotation; columns: comparator; right: one set of boxes listing
+    each pair's region across all six fits; below: one shared legend."""
+    scatters, side = fig.subfigures(1, 2, width_ratios=(3, 1.25))
+    axes = scatters.subplots(
+        len(ANNOTATIONS), len(METHODS), sharex=True, sharey=True, squeeze=False
+    )
+    for ax, (method, annotation) in zip(axes.ravel(), FITS, strict=True):
+        _panel(ax, method, annotation)
+    for ax in axes[-1]:
+        ax.set_xlabel("cccRISE |loading| / max")
+    for ax in axes[:, 0]:
+        ax.set_ylabel("comparator |loading| / max")
     table = combined()
     colors = _colors(table, sns.color_palette("Dark2", 5))
     width = side.bbox.width * 72 / side.dpi
@@ -336,10 +334,5 @@ def plot_row(fig):
     legend(scatters)
 
 
-def standalone(method):
-    """One comparator's scatter and pair lists on a figure of its own."""
-    return common.standalone(
-        partial(plot, method=method),
-        FIGURE_SIZE,
-        legend=partial(legend, short=SHORT[method]),
-    )
+def makeFigure():
+    return common.standalone(plot, FIGURE_SIZE)

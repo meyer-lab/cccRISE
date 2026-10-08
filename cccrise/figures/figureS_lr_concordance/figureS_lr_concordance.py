@@ -5,15 +5,13 @@ best cccRISE match (B); and, per comparator, whether the pairs one method
 calls significant (>= 0.4 x a column's largest |loading|) are significant in
 the other (C)."""
 
-from types import SimpleNamespace
-
 from .. import common, style
 from . import recovery, significance, who_where
 
 PANELS = {
     "recovery": recovery,
     "who_where": who_where,
-    "significance": SimpleNamespace(plot=significance.plot_row),
+    "significance": significance,
 }
 LAYOUT = [["recovery"], ["who_where"], ["significance"]]
 
@@ -23,5 +21,5 @@ def makeFigure():
         (style.FIGURE_WIDTH_DOUBLE, style.FIGURE_HEIGHT_MAX),
         LAYOUT,
         PANELS,
-        height_ratios=[0.6, 0.95, 1.15],
+        height_ratios=[0.5, 0.8, 1.5],
     )
