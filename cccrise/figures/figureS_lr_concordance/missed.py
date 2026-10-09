@@ -1,4 +1,5 @@
-"""Pairs one method weights and the other ranks low (draft panel D).
+"""Pairs one method weights and the other ranks low (a former panel D; not
+in use, so its title starts "NO").
 
 Every pair in an own-rank fit's top-10, one point per fit: left, comparator
 top-10s ranked by cccRISE; right, cccRISE's top-10 ranked by each comparator.
@@ -13,7 +14,7 @@ import numpy as np
 from matplotlib.ticker import FixedLocator, FuncFormatter
 
 from .. import style
-from ..figureS_lr_concordance._common import METHODS, SHORT, load
+from ._common import METHODS, SHORT, load
 
 K = 10
 RANK_CUT = 10
@@ -190,6 +191,10 @@ def plot(fig, annotations):
     axes = fig.subplots(1, 2)
     for ax, direction in zip(axes, DIRECTIONS, strict=True):
         _panel(ax, table[table["direction"] == direction], direction, worst)
+    fig.suptitle(
+        "NO (not in use): pairs one method weights and the other ranks low",
+        fontsize=style.FONT_SIZE_TITLE,
+    )
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(
         handles,
