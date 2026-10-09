@@ -38,7 +38,7 @@ def columns() -> pd.DataFrame:
 def _effective(ax, table):
     rng = np.random.default_rng(0)
     groups = [("cccRISE", "cccRISE")] + [(m, SHORT[m]) for m in METHODS]
-    for i, (method, label) in enumerate(groups):
+    for i, (method, _label) in enumerate(groups):
         sub = table[table["method"] == method]
         if method == "cccRISE":
             sub = sub[sub["annotation"] == "coarse"]  # the same fit on both
