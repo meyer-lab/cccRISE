@@ -119,11 +119,12 @@ def blocked_heatmap(ax, values, labels, groups, length, group_x=-0.25):
     return image
 
 
-def _reverse_column(ax, table, fits, length):
+def _reverse_column(ax, table, fits, length, name_groups):
     """One annotation's comparator columns as a single heatmap column,
-    padded with blank rows to `length` so both annotations share a scale."""
+    padded with blank rows to `length` so both annotations share a scale;
+    the methods are named only when `name_groups`."""
     values, owners, labels = _reverse_rows(table, fits)
-    groups = [SHORT[f[0]] if f else None for f in owners]
+    groups = [SHORT[f[0]] if f and name_groups else None for f in owners]
     image = blocked_heatmap(ax, values, labels, groups, length)
     ax.set_xticks([])
     ax.set_title(fits[0][1], fontsize=style.FONT_SIZE_DENSE + 1)
@@ -136,12 +137,12 @@ def plot_reverse(fig):
     table = load("comparator in cccRISE")
     groups = [[f for f in FITS if f[1] == a] for a in ANNOTATIONS]
     length = max(len(_reverse_rows(table, g)[0]) for g in groups)
-    axes = fig.subplots(1, 5, width_ratios=(0.5, 1, 1.3, 1, 0.5))
+    axes = fig.subplots(1, 5, width_ratios=(0.9, 1, 0.25, 1, 0.9))
     for ax in axes[::4]:
         ax.set_axis_off()
     axes[2].set_axis_off()
-    for ax, fits in zip(axes[1::2], groups, strict=True):
-        image = _reverse_column(ax, table, fits, length)
+    for ax, fits, first in zip(axes[1::2], groups, (True, False), strict=True):
+        image = _reverse_column(ax, table, fits, length, name_groups=first)
     fig.suptitle(
         "Recovery of comparator columns", fontsize=style.FONT_SIZE_TITLE,
         fontweight="normal",
