@@ -22,6 +22,8 @@ ks: [5, 10, 25]
 primary_k: 10
 mass_hit: 0.5
 n_null: 10000
+n_pair_null: 1000
+active_tau: 0.5
 random_state: 42
 'null': 'abundance-weighted: k pairs drawn without replacement with probability proportional
   to their mean coarse pseudobulk score'
@@ -44,5 +46,9 @@ outputs:
   matches: cccrise/data/validation_results/lr_concordance_matches_alad.parquet
   columns: cccrise/data/validation_results/lr_concordance_columns_alad.parquet
   profiles: cccrise/data/validation_results/lr_concordance_profiles_alad.parquet
-git_sha: f31de392164c50ccc5008c8d48c2ee98806def8a-dirty
-generated: '2026-10-07T21:59:54+00:00'
+  cell_weights: cccrise/data/validation_results/lr_concordance_cell_weights_alad.parquet
+  cell_activity: cccrise/data/validation_results/lr_concordance_cell_activity_alad.parquet
+  celltypes: cccrise/data/validation_results/lr_concordance_celltypes_alad.parquet
+  pair_containment: cccrise/data/validation_results/lr_concordance_pair_containment_alad.parquet
+git_sha: ab420a77501e701764674d32cad6b364e8144066-dirty
+generated: '2026-10-09T00:33:50+00:00'
