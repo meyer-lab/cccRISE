@@ -106,17 +106,21 @@ def combined() -> pd.DataFrame:
     return pairs.join(per_method).assign(region=_regions(pairs["sx"], pairs["sy"]))
 
 
-def _shade(ax):
+def shade(ax, c3=True, shades=None):
+    """The regions' fills (`SHADES` unless given) and threshold lines (with
+    `c3`, cccRISE's C3 flag line too)."""
+    shades = shades or SHADES
     for name, (sx, sy) in REGIONS.items():
         x0, x1 = (SIGNIFICANT, LIM[1]) if sx else (LIM[0], SIGNIFICANT)
         y0, y1 = (SIGNIFICANT, LIM[1]) if sy else (LIM[0], SIGNIFICANT)
         ax.add_patch(
-            Rectangle((x0, y0), x1 - x0, y1 - y0, lw=0, color=SHADES[name], zorder=0)
+            Rectangle((x0, y0), x1 - x0, y1 - y0, lw=0, color=shades[name], zorder=0)
         )
     line = {"color": "black", "lw": style.LINE_WIDTH_THIN, "zorder": 1}
     ax.axvline(SIGNIFICANT, **line)
     ax.axhline(SIGNIFICANT, **line)
-    ax.axvline(C3_FLAG, ls=style.LINE_STYLE_REFERENCE, **line)
+    if c3:
+        ax.axvline(C3_FLAG, ls=style.LINE_STYLE_REFERENCE, **line)
 
 
 def _colors(table, palette):
@@ -147,7 +151,7 @@ def _jitter(values, thresholds, rng):
     return moved
 
 
-def _scatter(ax, table, colors):
+def scatter(ax, table, colors):
     rng = np.random.default_rng(0)
     x = _jitter(table["x"].to_numpy(), (C3_FLAG, SIGNIFICANT), rng)
     y = _jitter(table["y"].to_numpy(), (SIGNIFICANT,), rng)
@@ -186,8 +190,8 @@ def legend(fig):
 
 def _panel(ax, method, annotation):
     table = significant(scores(method, annotation))
-    _shade(ax)
-    _scatter(ax, table, _colors(table, sns.color_palette("Dark2", 5)))
+    shade(ax)
+    scatter(ax, table, _colors(table, sns.color_palette("Dark2", 5)))
     ax.set_title(f"{method} ({annotation})", fontsize=style.FONT_SIZE_TITLE)
 
 

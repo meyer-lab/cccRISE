@@ -95,29 +95,38 @@ def _reverse_rows(table, fits):
     return np.array(values)[:, None], owners, labels
 
 
-def _reverse_column(ax, table, fits, length):
-    """One annotation's comparator columns as a single heatmap column,
-    padded with blank rows to `length` so both annotations share a scale."""
-    values, owners, labels = _reverse_rows(table, fits)
-    pad = length - len(values)
-    values = np.vstack([values, np.full((pad, 1), np.nan)])
+def blocked_heatmap(ax, values, labels, groups, length, group_x=-0.25):
+    """Containment values (NaN: blank) with small numbers, rows padded with
+    blanks to `length` rows, each row's tick label in `labels` and each group
+    of rows (`groups`, None for blanks) named left of its ticks."""
+    pad = np.full((length - len(values), values.shape[1]), np.nan)
+    values = np.vstack([values, pad])
     cmap = style.CMAPS["sequential"].with_extremes(bad="white")
     image = ax.imshow(
         np.ma.masked_invalid(values), cmap=cmap, vmin=0, vmax=1, aspect="auto"
     )
     _annotate(ax, values, size=style.FONT_SIZE_DENSE - 1.5)
     ax.set_yticks(range(len(labels)), labels, fontsize=style.FONT_SIZE_DENSE - 1.5)
-    for fit in fits:
-        rows = [i for i, f in enumerate(owners) if f == fit]
+    for group in dict.fromkeys(g for g in groups if g):
+        rows = [i for i, g in enumerate(groups) if g == group]
         ax.text(
-            -0.25, np.mean(rows), SHORT[fit[0]], ha="right", va="center",
+            group_x, np.mean(rows), group, ha="right", va="center",
             transform=ax.get_yaxis_transform(), fontsize=style.FONT_SIZE_DENSE,
         )  # fmt: skip
-    ax.set_xticks([])
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
-    ax.set_title(fits[0][1], fontsize=style.FONT_SIZE_DENSE + 1)
     ax.grid(False)
+    return image
+
+
+def _reverse_column(ax, table, fits, length):
+    """One annotation's comparator columns as a single heatmap column,
+    padded with blank rows to `length` so both annotations share a scale."""
+    values, owners, labels = _reverse_rows(table, fits)
+    groups = [SHORT[f[0]] if f else None for f in owners]
+    image = blocked_heatmap(ax, values, labels, groups, length)
+    ax.set_xticks([])
+    ax.set_title(fits[0][1], fontsize=style.FONT_SIZE_DENSE + 1)
     return image
 
 
