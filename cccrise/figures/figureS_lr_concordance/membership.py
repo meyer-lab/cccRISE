@@ -1,13 +1,13 @@
 """Which methods call each LR pair significant (`significance`): one row per
 pair significant in cccRISE or any comparator (each comparator's coarse and
-fine fits pooled), one column per method, a dot where the method calls it
-significant (>= `significance.SIGNIFICANT` x its column's top pair). Dot
-colour: that score (|loading| / column max); dot size: the pair's best rank
-in any of the method's columns (1 to `significance.TOP_K`, the scatters'
-filter). Rows are grouped by which methods call them: all four, cccRISE and
+fine fits pooled; >= `significance.SIGNIFICANT` x its column's top pair),
+one column per method, a dot where the pair is in the top
+`significance.TOP_K` of any of the method's columns (the scatters' filter).
+Dot size: that best rank; colour: its best |loading| / column max. Rows are
+grouped by which methods rank them in the top 10: all four, cccRISE and
 some comparators, cccRISE only, comparators only (most comparators first).
-Pair names: the cccRISE component's colour when cccRISE calls them, else
-black."""
+Pair names: the cccRISE component's colour when cccRISE ranks them in its
+top 10, else black."""
 
 import numpy as np
 import pandas as pd
@@ -46,27 +46,38 @@ def _ranks(pairs) -> pd.DataFrame:
     return best.rename(columns=SHORT).reindex(index=pairs, columns=list(COLUMNS))
 
 
+def _calls(table) -> pd.DataFrame:
+    """Whether each pair is in each method's top `TOP_K` (any column)."""
+    ranks = table[[f"rank_{c}" for c in COLUMNS]].set_axis(list(COLUMNS), axis=1)
+    return ranks.le(significance.TOP_K)
+
+
 def rows() -> pd.DataFrame:
     """Pairs significant anywhere, with their scores per method (`COLUMNS`),
     best ranks (`rank_<method>`), group, colour and row position `y`."""
     table = significance.combined()
     table = table[table["region"].notna()].rename(columns={"x": "cccRISE"})
-    calls = table[list(COLUMNS)].ge(significance.SIGNIFICANT)
+    table = table.join(_ranks(table.index).add_prefix("rank_"))
+    calls = _calls(table)
     n_comparators = calls[list(COLUMNS[1:])].sum(axis=1)
     palette = sns.color_palette("Dark2", 5)
     table = table.assign(
         group=np.select(
-            [calls.all(axis=1), table["sx"] & (n_comparators > 0), table["sx"]],
+            [
+                calls.all(axis=1),
+                calls["cccRISE"] & (n_comparators > 0),
+                calls["cccRISE"],
+            ],
             [0, 1, 2],
             default=3,
         ),
         n_comparators=n_comparators,
         pattern=calls.astype(int).astype(str).agg("".join, axis=1),
         color=[
-            palette[c - 1] if sx else "black"
-            for c, sx in zip(table["component_x"], table["sx"], strict=True)
+            palette[c - 1] if top else "black"
+            for c, top in zip(table["component_x"], calls["cccRISE"], strict=True)
         ],
-    ).join(_ranks(table.index).add_prefix("rank_"))
+    )
     table = table.sort_values(
         ["group", "n_comparators", "pattern", "component_x", "cccRISE"],
         ascending=[True, False, False, True, False],
@@ -77,7 +88,7 @@ def rows() -> pd.DataFrame:
 def _dots(ax, table):
     for j, column in enumerate(COLUMNS):
         score = table[column].fillna(0).to_numpy()
-        called = score >= significance.SIGNIFICANT
+        called = _calls(table)[column].to_numpy()
         ax.scatter(
             np.full(called.sum(), j), table["y"][called],
             s=_size(table[f"rank_{column}"].to_numpy()[called]),

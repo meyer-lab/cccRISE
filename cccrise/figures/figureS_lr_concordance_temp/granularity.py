@@ -1,12 +1,11 @@
-"""Shared drawing for the granularity drafts: where a comparator column and
-its matched cccRISE component agree on LR pairs, which cells carry the
-program (`run_lr_concordance` cell tables).
+"""Drawing for the subtype granularity draft (`granularity_subtypes`):
+where a comparator column and its matched cccRISE component agree on LR
+pairs, which cell subtypes carry the program (`run_lr_concordance` cell
+tables).
 
 One row per match, sender and receiver side by side. The x axis is the 26
-fine cell types grouped (bands) under their coarse type. Bars: a cccRISE
-measure per fine type (`granularity_subtypes`: its mean sample-scaled
-loading / the largest type's; `granularity_cells`: the fraction of the
-type's cells active, > 0.5 x the component's 99th percentile). Black step:
+fine cell types grouped (bands) under their coarse type. Bars: cccRISE's
+mean sample-scaled loading per fine type / the largest type's. Black step:
 the comparator column's |weight| / its largest, one step per coarse type for
 a coarse fit (one weight for every fine type under it), per fine type for a
 fine fit."""
@@ -115,14 +114,3 @@ def mean_loading(component, side, types):
         & (w["side"] == side)
     ].set_index("celltype")["weight"]
     return np.clip(sub / sub.max(), 0, None).reindex(types["celltype"]).to_numpy()
-
-
-def active_fraction(component, side, types):
-    """The fraction of each fine type's cells active in the component."""
-    a = load("cell_activity")
-    sub = a[
-        (a["annotation"] == "fine")
-        & (a["component"] == component)
-        & (a["side"] == side)
-    ].set_index("celltype")["active_frac"]
-    return sub.reindex(types["celltype"]).to_numpy()
