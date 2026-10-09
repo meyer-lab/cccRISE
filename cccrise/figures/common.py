@@ -29,10 +29,12 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import yaml
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.patches import Patch, Rectangle
+from matplotlib.text import Text
 
 matplotlib.use("AGG")
 
@@ -142,6 +144,8 @@ def selected_ranks(dataset: str) -> tuple[int, int]:
 
 FIGURES_DIR = Path(__file__).parent
 OUTPUT_DIR = FIGURES_DIR.parent.parent / "output"
+# Panel letters of every built figure, read by the manuscript's `meta` shortcodes
+PANELS_PATH = FIGURES_DIR.parent.parent / "manuscript" / "_panels.yml"
 
 
 def panel_grid(
@@ -166,9 +170,10 @@ def panel_grid(
 
 
 def label_panels(panels: dict[str, SubFigure]) -> None:
-    """Label panels A, B, C, ... in order, at each panel's top left."""
-    for letter, panel in zip(ascii_uppercase, panels.values(), strict=False):
-        panel.suptitle(letter, x=0, ha="left")
+    """Label panels A, B, C, ... in order, at each panel's top left, tagged
+    with the panel's name for `record_panel_letters`."""
+    for letter, (name, panel) in zip(ascii_uppercase, panels.items(), strict=False):
+        panel.suptitle(letter, x=0, ha="left", gid=name)
 
 
 def compose(
@@ -179,7 +184,9 @@ def compose(
     fig, subfigs = panel_grid(figsize, layout, **gridspec_kw)
     for name, subfig in subfigs.items():
         panels[name].plot(subfig)
-    label_panels(subfigs)
+    label_panels(
+        {panels[name].__name__.rpartition(".")[2]: sf for name, sf in subfigs.items()}
+    )
     return fig
 
 
@@ -235,7 +242,8 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
 
 
 def _letter_axes(fig: Figure, placements) -> None:
-    """Letter each axes A, B, C, ... at its left margin and its row's top."""
+    """Letter each axes A, B, C, ... at its left margin and its row's top,
+    tagged with its panel module's name for `record_panel_letters`."""
     width, height = fig.get_size_inches()
     for letter, (box, x, _, label_y) in zip(ascii_uppercase, placements, strict=False):
         fig.text(
@@ -246,6 +254,7 @@ def _letter_axes(fig: Figure, placements) -> None:
             va="top",
             fontsize=style.FONT_SIZE_PANEL_LABEL,
             fontweight="bold",
+            gid=box.ax.get_label(),
         )
 
 
@@ -459,7 +468,23 @@ def genFigure():
     output_dir.mkdir(parents=True, exist_ok=True)
     # No bbox_inches="tight": figures are drawn at their final print size.
     fig.savefig(output_dir / f"{panel or f'figure{figure}'}.{extension}")
+    if panel is None:
+        record_panel_letters(figure, fig)
     print(f"Figure {' '.join(args)} is done after {time.time() - start:.1f} s.\n")
+
+
+def record_panel_letters(figure: str, fig: Figure) -> None:
+    """Set `fig<figure>` in `PANELS_PATH` to the letters of each panel
+    module's axes, as tagged by `_letter_axes` or `label_panels`."""
+    letters: dict[str, list[str]] = {}
+    for text in fig.findobj(Text):
+        if module := text.get_gid():
+            letters.setdefault(module, []).append(text.get_text().lower())
+    panels = yaml.safe_load(PANELS_PATH.read_text()) or {}
+    panels[f"fig{figure}"] = letters
+    PANELS_PATH.write_text(
+        yaml.safe_dump(panels, sort_keys=False, default_flow_style=None)
+    )
 
 
 # =============================================================================
