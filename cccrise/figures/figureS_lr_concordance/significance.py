@@ -9,12 +9,11 @@ score, comparator score); the
 solid lines at `SIGNIFICANT` split them into significant in both (grey), in
 cccRISE only (green), in the comparator only (red) and in neither. The dashed
 line at `C3_FLAG` only draws attention to cccRISE's C3 pairs between it and
-`SIGNIFICANT` (drawn in C3's colour, not counted as significant). The boxes
-on the right list each pair once across all six fits (`combined`), coloured
-by its cccRISE component (comparator-only pairs in black unless flagged C3)
-and tagged with the comparator fits that call it significant (c: coarse,
-f: fine); pairs significant in neither are drawn small and grey and are not
-listed. Points are jittered by up to
+`SIGNIFICANT` (drawn in C3's colour, not counted as significant). Points
+are coloured by cccRISE component (comparator-only pairs in black unless
+flagged C3); pairs significant in neither are drawn small and grey.
+`membership` lists the pairs across all six fits (`combined`). Points are
+jittered by up to
 `JITTER` (never across a threshold) so pairs at the same scores, e.g. two
 columns' top pair at (1, 1), stay visible."""
 
@@ -22,11 +21,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.colors import to_rgba
-from matplotlib.font_manager import FontProperties
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
-from matplotlib.textpath import TextPath
-from matplotlib.transforms import Affine2D, ScaledTranslation
 
 from .. import common, style
 from ._common import ANNOTATIONS, METHODS, SHORT, load
@@ -37,9 +33,9 @@ TOP_K = 10
 JITTER = 0.02  # axis units, uniform on each axis
 ALPHA = 0.85
 LIM = (-0.04, 1.06)
-FIGURE_SIZE = (style.FIGURE_WIDTH_DOUBLE, 110 * style.MM)
+FIGURE_SIZE = (130 * style.MM, 100 * style.MM)
 FITS = [(method, annotation) for annotation in ANNOTATIONS for method in METHODS]
-REGIONS = {  # box title -> (x significant, y significant), top to bottom
+REGIONS = {  # region -> (x significant, y significant)
     "cccRISE Only": (True, False),
     "Shared": (True, True),
     "Comparator Only": (False, True),
@@ -49,28 +45,21 @@ SHADES = {
     "Shared": "0.9",
     "Comparator Only": to_rgba(style.COLORS["up"], 0.12),
 }
-TWO_COLUMNS = 6  # a box with more pairs than this lists them in two columns
-# Box layout, in points.
-TITLE_SIZE = style.FONT_SIZE_DENSE
-PAIR_SIZE = style.FONT_SIZE_DENSE - 0.5
-ROW = 7.5  # pitch of the listed pairs
-TITLE_ROW = 10  # title band, above the rule
-PAD = 4  # inside the box, around the list
-COLUMN_GAP = 10
-BOX_GAP = 6  # between boxes
 
 
-def scores(method: str, annotation: str = "coarse") -> pd.DataFrame:
-    """Per pair in the top `TOP_K` of any column of cccRISE or `method` (on
-    `annotation`): each method's best |loading| / column max (`x`, `y`) and
-    the column it comes from."""
+def scores(
+    method: str, annotation: str = "coarse", ref: str = "cccRISE"
+) -> pd.DataFrame:
+    """Per pair in the top `TOP_K` of any column of `ref` or `method` (on
+    `annotation`): each method's best |loading| / column max (`x` for `ref`,
+    `y` for `method`) and the column it comes from."""
     table = load("profiles")
     table = table[table["annotation"] == annotation]
     best = table.loc[table.groupby(["method", "lr_pair"])["rel_max"].idxmax()]
     best = best.set_index(["method", "lr_pair"])[["rel_max", "component"]]
-    out = best.loc["cccRISE"].join(best.loc[method], lsuffix="_x", rsuffix="_y")
+    out = best.loc[ref].join(best.loc[method], lsuffix="_x", rsuffix="_y")
     out = out.rename(columns={"rel_max_x": "x", "rel_max_y": "y"})
-    top = table[table["method"].isin(["cccRISE", method]) & (table["lr_rank"] <= TOP_K)]
+    top = table[table["method"].isin([ref, method]) & (table["lr_rank"] <= TOP_K)]
     return out.loc[sorted(set(top["lr_pair"]))]
 
 
@@ -94,17 +83,15 @@ def _regions(sx, sy):
 
 
 def combined() -> pd.DataFrame:
-    """Every pair from the comparator fits' `significant` tables, with its
-    region across all of them: Shared when significant in cccRISE and at
-    least one comparator fit, Comparator Only when in at least one comparator
-    fit but not in cccRISE. `y` is its best comparator score and `tag` the
-    comparator fits it is significant in (`_tag`)."""
+    """Every pair from the comparator fits' `significant` tables, once, with
+    its cccRISE score (`x`, `component_x`, `sx`, `c3_flag`), its best score
+    over each comparator's coarse and fine fits (one column per short name)
+    and its region across all of them (`sy`: significant in any comparator
+    fit)."""
     tables = pd.concat(
         {fit: significant(scores(*fit)) for fit in FITS},
         names=["method", "annotation", "lr_pair"],
     ).reset_index()
-    hits = tables[tables["sy"]]
-    tags = hits.groupby("lr_pair")[["method", "annotation"]].apply(_tag)
     pairs = tables.groupby("lr_pair").agg(
         x=("x", "first"),
         component_x=("component_x", "first"),
@@ -113,22 +100,10 @@ def combined() -> pd.DataFrame:
         y=("y", "max"),
         sy=("sy", "any"),
     )
-    return pairs.assign(
-        region=_regions(pairs["sx"], pairs["sy"]),
-        tag=tags.reindex(pairs.index).fillna(""),
-    )
-
-
-def _tag(fits: pd.DataFrame) -> str:
-    """The fits a pair is significant in, e.g. "PB c/f · STAC c" (c: coarse,
-    f: fine), or "all"."""
-    if len(fits) == len(FITS):
-        return "all"
-    return " · ".join(
-        f"{SHORT[m]} " + "/".join(a[0] for a in ANNOTATIONS if a in set(sub))
-        for m in METHODS
-        if len(sub := fits.loc[fits["method"] == m, "annotation"])
-    )
+    per_method = tables.pivot_table(
+        index="lr_pair", columns="method", values="y", aggfunc="max"
+    ).rename(columns=SHORT)
+    return pairs.join(per_method).assign(region=_regions(pairs["sx"], pairs["sy"]))
 
 
 def _shade(ax):
@@ -190,104 +165,6 @@ def _scatter(ax, table, colors):
     ax.grid(False)
 
 
-def _width(text, size, weight="normal"):
-    """Width of `text` in points."""
-    if not text:
-        return 0.0
-    prop = FontProperties(size=size, weight=weight)
-    return TextPath((0, 0), text, prop=prop).get_extents().width
-
-
-def _entries(table, colors, short):
-    """Per region: its title and its pairs as (label, colour) rows, in the
-    pair's point colour (comparator-only pairs in black unless flagged C3)."""
-    boxes = {}
-    for name in REGIONS:
-        rows = table[table["region"] == name]
-        if name == "Comparator Only":
-            rows = rows.sort_values("y", ascending=False)
-        else:
-            rows = rows.sort_values(["component_x", "x"], ascending=[True, False])
-        labels = [
-            pair.replace("^", "–") + ("" if name == "cccRISE Only" else f" ({row.tag})")
-            for pair, row in rows.iterrows()
-        ]
-        title = f"{name.replace('Comparator', short)} ({len(rows)})"
-        listed = (
-            [
-                colors[pair] if flag else "black"
-                for pair, flag in zip(rows.index, rows["c3_flag"], strict=True)
-            ]
-            if name == "Comparator Only"
-            else list(colors[rows.index])
-        )
-        boxes[title] = list(zip(labels, listed, strict=True))
-    return boxes
-
-
-def _columns(entries, max_width=np.inf):
-    """`entries` in two columns when there are more than `TWO_COLUMNS` and
-    the two fit in `max_width` points, else in one."""
-    per = -(-len(entries) // 2) if len(entries) > TWO_COLUMNS else len(entries)
-    cols = [entries[i : i + per] for i in range(0, len(entries), max(per, 1))]
-    if len(cols) > 1 and _box_width("", cols) > max_width:
-        return [entries]
-    return cols
-
-
-def _box(ax, top, width, title, cols, common):
-    """One box from `top` (points) down: centred title, rule, then the
-    pairs in `cols`; returns the top of the next box."""
-    rows = max((len(c) for c in cols), default=0)
-    height = TITLE_ROW + PAD + ROW * max(rows, 1) + PAD / 2
-    lw = style.LINE_WIDTH_THIN
-    ax.add_patch(
-        Rectangle((0, top), width, height, fill=False, ec="black", lw=lw, **common)
-    )
-    ax.text(
-        width / 2, top + TITLE_ROW / 2 + 1, title, ha="center", va="center",
-        fontsize=TITLE_SIZE, fontweight="bold", **common,
-    )  # fmt: skip
-    ax.add_line(
-        Line2D([0, width], [top + TITLE_ROW + 1] * 2, color="black", lw=lw, **common)
-    )
-    x = PAD
-    for col in cols:
-        for i, (label, color) in enumerate(col):
-            ax.text(
-                x, top + TITLE_ROW + PAD + (i + 0.5) * ROW, label, va="center",
-                fontsize=PAIR_SIZE, color=color, **common,
-            )  # fmt: skip
-        x += max(_width(label, PAIR_SIZE) for label, _ in col) + COLUMN_GAP
-    return top + height + BOX_GAP
-
-
-def _box_width(title, cols):
-    widths = [max(_width(label, PAIR_SIZE) for label, _ in col) for col in cols]
-    list_width = sum(widths) + COLUMN_GAP * (len(widths) - 1)
-    return 2 * PAD + max(list_width, _width(title, TITLE_SIZE, "bold"))
-
-
-def _boxes(ax, table, colors, short, max_width=np.inf):
-    """Sharp black boxes stacked from the top left of `ax`, laid out in
-    points so each is as tall as its list; all share the widest's width."""
-    ax.set_axis_off()
-    # points, y down, from the axes' top-left corner
-    at = (
-        Affine2D().scale(1 / 72, -1 / 72)
-        + ax.figure.dpi_scale_trans
-        + ScaledTranslation(0, 1, ax.transAxes)
-    )
-    common = {"transform": at, "clip_on": False, "in_layout": False}
-    boxes = {
-        t: _columns(e, max_width) for t, e in _entries(table, colors, short).items()
-    }
-    width = max(_box_width(t, cols) for t, cols in boxes.items())
-    top = 0.0
-    for title, cols in boxes.items():
-        top = _box(ax, top, width, title, cols, common)
-
-
 def legend(fig):
     palette = sns.color_palette("Dark2", 5)
     marker = {"marker": "o", "ls": "", "markersize": 4, "mec": "white", "mew": 0.4}
@@ -315,10 +192,8 @@ def _panel(ax, method, annotation):
 
 
 def plot(fig):
-    """Rows: annotation; columns: comparator; right: one set of boxes listing
-    each pair's region across all six fits; below: one shared legend."""
-    scatters, side = fig.subfigures(1, 2, width_ratios=(3, 1.25))
-    axes = scatters.subplots(
+    """Rows: annotation; columns: comparator; below: one shared legend."""
+    axes = fig.subplots(
         len(ANNOTATIONS), len(METHODS), sharex=True, sharey=True, squeeze=False
     )
     for ax, (method, annotation) in zip(axes.ravel(), FITS, strict=True):
@@ -327,11 +202,7 @@ def plot(fig):
         ax.set_xlabel("cccRISE |loading| / max")
     for ax in axes[:, 0]:
         ax.set_ylabel("comparator |loading| / max")
-    table = combined()
-    colors = _colors(table, sns.color_palette("Dark2", 5))
-    width = side.bbox.width * 72 / side.dpi
-    _boxes(side.subplots(), table, colors, "Comparator", max_width=width)
-    legend(scatters)
+    legend(fig)
 
 
 def makeFigure():

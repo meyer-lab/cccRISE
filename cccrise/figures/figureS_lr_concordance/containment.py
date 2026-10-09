@@ -80,47 +80,66 @@ def plot(fig):
     _colorbar(fig, image, ax, "LR containment in comparator span")
 
 
-def _reverse_rows(table):
-    """Each fit's columns in `FITS` order, a blank (NaN) row between fits:
-    the column of values, the fit of every row (None for blanks) and the
-    tick labels."""
-    values, fits, labels = [], [], []
-    for i, fit in enumerate(FITS):
+def _reverse_rows(table, fits):
+    """Each of `fits`' columns in order, a blank (NaN) row between fits: the
+    column of values, the fit of every row (None for blanks) and the tick
+    labels."""
+    values, owners, labels = [], [], []
+    for i, fit in enumerate(fits):
         if i:
-            values, fits, labels = [*values, np.nan], [*fits, None], [*labels, ""]
+            values, owners, labels = [*values, np.nan], [*owners, None], [*labels, ""]
         sub = table.loc[fit, "containment"].sort_index()
         values += list(sub)
-        fits += [fit] * len(sub)
+        owners += [fit] * len(sub)
         labels += [str(c) for c in sub.index]
-    return np.array(values)[:, None], fits, labels
+    return np.array(values)[:, None], owners, labels
 
 
-def plot_reverse(fig):
-    values, fits, labels = _reverse_rows(load("comparator in cccRISE"))
-    left, ax, right = fig.subplots(1, 3, width_ratios=(1, 0.45, 1))
-    left.set_axis_off()
-    right.set_axis_off()
+def _reverse_column(ax, table, fits, length):
+    """One annotation's comparator columns as a single heatmap column,
+    padded with blank rows to `length` so both annotations share a scale."""
+    values, owners, labels = _reverse_rows(table, fits)
+    pad = length - len(values)
+    values = np.vstack([values, np.full((pad, 1), np.nan)])
     cmap = style.CMAPS["sequential"].with_extremes(bad="white")
     image = ax.imshow(
         np.ma.masked_invalid(values), cmap=cmap, vmin=0, vmax=1, aspect="auto"
     )
     _annotate(ax, values, size=style.FONT_SIZE_DENSE - 1.5)
     ax.set_yticks(range(len(labels)), labels, fontsize=style.FONT_SIZE_DENSE - 1.5)
-    for fit in FITS:
-        rows = [i for i, f in enumerate(fits) if f == fit]
+    for fit in fits:
+        rows = [i for i, f in enumerate(owners) if f == fit]
         ax.text(
-            -0.25, np.mean(rows), f"{SHORT[fit[0]]}\n{fit[1]}", ha="right",
-            va="center", transform=ax.get_yaxis_transform(),
-            fontsize=style.FONT_SIZE_DENSE,
+            -0.25, np.mean(rows), SHORT[fit[0]], ha="right", va="center",
+            transform=ax.get_yaxis_transform(), fontsize=style.FONT_SIZE_DENSE,
         )  # fmt: skip
     ax.set_xticks([])
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
-    ax.set_title("Recovery of comparator columns", fontsize=style.FONT_SIZE_TITLE)
+    ax.set_title(fits[0][1], fontsize=style.FONT_SIZE_DENSE + 1)
     ax.grid(False)
+    return image
+
+
+def plot_reverse(fig):
+    """Coarse fits' columns beside the fine fits' columns."""
+    fig = fig.subfigures(1, 1)  # one level down: the panel letter takes the top one
+    table = load("comparator in cccRISE")
+    groups = [[f for f in FITS if f[1] == a] for a in ANNOTATIONS]
+    length = max(len(_reverse_rows(table, g)[0]) for g in groups)
+    axes = fig.subplots(1, 5, width_ratios=(0.5, 1, 1.3, 1, 0.5))
+    for ax in axes[::4]:
+        ax.set_axis_off()
+    axes[2].set_axis_off()
+    for ax, fits in zip(axes[1::2], groups, strict=True):
+        image = _reverse_column(ax, table, fits, length)
+    fig.suptitle(
+        "Recovery of comparator columns", fontsize=style.FONT_SIZE_TITLE,
+        fontweight="normal",
+    )  # fmt: skip
     fig.colorbar(
-        image, ax=ax, label="LR containment\nin cccRISE span", location="bottom",
-        ticks=[0, 0.5, 1], pad=0.02,
+        image, ax=list(axes[1:4]), label="LR containment in cccRISE span",
+        location="bottom", ticks=[0, 0.5, 1], pad=0.02, shrink=0.8,
     )  # fmt: skip
 
 

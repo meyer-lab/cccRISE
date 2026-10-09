@@ -7,5 +7,5 @@ from . import containment
 
 def makeFigure():
     return common.standalone(
-        containment.plot_reverse, (style.FIGURE_WIDTH_DOUBLE / 2, 110 * style.MM)
+        containment.plot_reverse, (style.FIGURE_WIDTH_DOUBLE / 2, 80 * style.MM)
     )
