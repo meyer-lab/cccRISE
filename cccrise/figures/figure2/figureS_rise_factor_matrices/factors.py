@@ -11,8 +11,8 @@ from . import _common as S
 AXES = ("rect", "square")
 
 
-def plot(axs):
-    factors = S.rise_factors()
+def plot(axs, dataset: str = S.DATASET):
+    factors = S.rise_factors(dataset)
     conditions = factors["pf2_A"].values.astype(float)
     common.plot_factor_heatmap(
         axs[0], conditions[common.dominant_order(conditions)], S.XLABEL
@@ -21,10 +21,11 @@ def plot(axs):
     axs[0].set_ylabel(f"Condition (n={len(conditions)})")
 
     common.plot_factor_heatmap(axs[1], factors["pf2_B"].values.astype(float), S.XLABEL)
-    axs[1].set_yticks(np.array(S.TICKS) - 1, S.TICKS)
+    ticks = common.component_ticks(factors.sizes["rise_component"])
+    axs[1].set_yticks(np.array(ticks) - 1, ticks)
     axs[1].set_ylabel("B row")
     for ax in axs:
-        ax.set_xticks(np.array(S.TICKS) - 1, S.TICKS)  # all 17 would collide
+        ax.set_xticks(np.array(ticks) - 1, ticks)  # every one would collide
 
 
 def makeFigure():

@@ -8,10 +8,10 @@ from .. import _common as S
 AXES = ("wide",)
 
 
-def plot(axs):
+def plot(axs, dataset: str = S.DATASET):
     (ax,) = axs
     common.plot_association_heatmap(
-        S.rise_association_table(), ax, xlabel="RISE component"
+        S.rise_association_table(dataset), ax, xlabel="RISE component"
     )
 
 

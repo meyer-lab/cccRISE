@@ -23,6 +23,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from string import ascii_letters, ascii_uppercase
+from types import SimpleNamespace
 
 import anndata
 import matplotlib
@@ -296,6 +297,17 @@ def _pack_rows(grid, natural, width):
 def standalone_fixed(module_name: str) -> Figure:
     """One panel module drawn alone at its fixed axes sizes."""
     return compose_fixed([[importlib.import_module(module_name)]])
+
+
+def for_dataset(panel, dataset: str) -> SimpleNamespace:
+    """Panel module `panel`, whose `plot` takes a `dataset` argument, drawing
+    `dataset` instead of its default: a stand-in for the module in a
+    `compose_fixed` row or a `compose` panel mapping."""
+    return SimpleNamespace(
+        __name__=panel.__name__,
+        AXES=getattr(panel, "AXES", ()),
+        plot=functools.partial(panel.plot, dataset=dataset),
+    )
 
 
 # in; a scratch canvas with room on every side of an axes for its margins
@@ -943,6 +955,17 @@ FACTOR_LABEL_GAP = 1.9 * style.MM
 FACTOR_LEADER_LENGTH = 0.2
 
 
+#: Component axes up to this long label every component (`plot_factor_heatmap`).
+COMPONENT_TICKS_ALL = 20
+
+
+def component_ticks(n: int) -> list[int]:
+    """1-based tick positions along a heatmap axis of `n` components or
+    eigenstates: 1 and every 5th up to 20, else 1 and every 10th."""
+    step = 5 if n <= COMPONENT_TICKS_ALL else 10
+    return [1, *range(step, n + 1, step)]
+
+
 def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
     """A factor matrix (rows x components, in the given row order), each
     component divided by its largest magnitude (keeping sign), on the
@@ -955,8 +978,9 @@ def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
         aspect="auto",
         interpolation="nearest",
     )
-    components = np.arange(loadings.shape[1])
-    ax.set_xticks(components, components + 1)
+    n = loadings.shape[1]
+    ticks = np.arange(1, n + 1) if n <= COMPONENT_TICKS_ALL else component_ticks(n)
+    ax.set_xticks(np.asarray(ticks) - 1, ticks)
     ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
@@ -979,11 +1003,17 @@ def label_heatmap_cells(
     labels stacked `FACTOR_LABEL_GAP` apart."""
     n_rows, n_cols = shape
     gap = FACTOR_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows  # in rows
+    placed = []
     for rightward in (True, False):
         side = sorted(e for e in entries if (e[1] <= n_cols // 2) == rightward)
         heights = _spread_labels([row for row, _, _ in side], gap, n_rows)
-        for (row, col, name), y in zip(side, heights, strict=True):
-            _label_cell(ax, row, col, name, y, rightward)
+        placed += [
+            (entry, y, rightward) for entry, y in zip(side, heights, strict=True)
+        ]
+    # The two sides' labels meet mid-heatmap, so keep them apart there too
+    heights = _separate([y for _, y, _ in placed], gap, n_rows)
+    for ((row, col, name), _, rightward), y in zip(placed, heights, strict=True):
+        _label_cell(ax, row, col, name, y, rightward)
 
 
 def _label_cell(
@@ -1011,6 +1041,21 @@ def _label_cell(
         va="center",
         fontsize=FACTOR_LABEL_FONT_SIZE,
     )
+
+
+def _separate(heights: list[float], gap: float, n_rows: int) -> np.ndarray:
+    """`heights` moved down only as far as keeps every two `gap` apart, then
+    the lot up if that pushed any past the last row; already-separated
+    heights are unchanged."""
+    order = np.argsort(heights, kind="stable")
+    placed = np.asarray(heights, dtype=float)[order]
+    for i in range(1, len(placed)):
+        placed[i] = max(placed[i], placed[i - 1] + gap)
+    if len(placed):
+        placed -= max(placed[-1] - (n_rows - 1), 0)
+    out = np.empty_like(placed)
+    out[order] = placed
+    return out
 
 
 def _spread_labels(rows: list[float], gap: float, n_rows: int) -> np.ndarray:

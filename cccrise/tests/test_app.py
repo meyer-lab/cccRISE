@@ -20,9 +20,14 @@ def test_every_dataset_has_comparisons_and_a_valid_default(key):
 def test_ibd_comparisons_test_its_inflammation_levels():
     spec = data.DATASETS["ibd"]
     levels = {"Healthy", "CD_inflamed", "CD_uninflamed"}
+    inflammation = [
+        cfg
+        for cfg in app.DATASET_COMPARISONS["ibd"].values()
+        if cfg["group_column"] == spec.group_col
+    ]
 
-    for cfg in app.DATASET_COMPARISONS["ibd"].values():
-        assert cfg["group_column"] == spec.group_col
+    assert len(inflammation) == 5  # all Crohn's, each pair of levels, 3-way
+    for cfg in inflammation:
         assert set(cfg.get("levels", levels)) <= levels
         assert cfg.get("control_label", "Healthy") in levels
 

@@ -9,9 +9,8 @@ from ....runners.datasets import DATASETS
 
 DATASET = "alad"
 XLABEL = "RISE component"
-TICKS = (1, 5, 10, 15)  # component ticks on narrow heatmaps
 
 
 @cache
-def rise_factors() -> xr.Dataset:
-    return load_factors_netcdf(DATASETS[DATASET].factors_path())
+def rise_factors(dataset: str = DATASET) -> xr.Dataset:
+    return load_factors_netcdf(DATASETS[dataset].factors_path())

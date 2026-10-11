@@ -33,13 +33,13 @@ from cccrise.app.data import (
     load_rise_factors,
 )
 from cccrise.app.lr_pairs import parse_lr_pairs
+from cccrise.figures.associations import ALAD_ASSOCIATIONS, IBD_ASSOCIATIONS
 from cccrise.figures.common import (
     plot_association_effect_sizes,
     plot_category_component_weights,
     plot_collinearity,
     plot_cpd_fit_r2x,
 )
-from cccrise.figures.figure3._common import ASSOCIATIONS
 from cccrise.figures.legacy.commonFuncs.plotFactors import (
     plot_celltype_association,
     plot_condition_factors,
@@ -130,7 +130,7 @@ plt.rcParams.update(
 
 # ALAD: Figure 3's curated comparisons, reused as-is (single source of
 # truth) rather than re-hardcoded here.
-ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in ASSOCIATIONS}
+ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in ALAD_ASSOCIATIONS}
 
 # ALAD's default comparison tests every level of the dataset spec's outcome
 # column, matching the stability runner's ANOVA default.
@@ -145,33 +145,11 @@ ALAD_DEFAULT_COMPARISON = next(
 DATASET_COMPARISONS: dict[str, dict[str, dict]] = {"alad": ALAD_COMPARISONS}
 DEFAULT_COMPARISONS: dict[str, str] = {"alad": ALAD_DEFAULT_COMPARISON}
 
-# IBD (registered once its refit factor model exists; see `data.DATASETS`):
-# every contrast of the three inflammation statuses, built from its
-# DatasetSpec fields; the 3-way test is the default, matching the ANOVA
-# bootstrap's default of testing every level of the group column.
+# IBD (registered once its factor model exists; see `data.DATASETS`): its
+# Figure 4 associations; the 3-way test is the default, matching the stability
+# runner's default of testing every level of the group column.
 if "ibd" in DATASETS:
-    _ibd_spec = DATASETS["ibd"]
-    _IBD_LEVEL_CONTRASTS = [
-        ("Healthy vs. CD Inflamed", ["Healthy", "CD_inflamed"]),
-        ("Healthy vs. CD Uninflamed", ["Healthy", "CD_uninflamed"]),
-        ("CD Uninflamed vs. CD Inflamed", ["CD_uninflamed", "CD_inflamed"]),
-    ]
-    DATASET_COMPARISONS["ibd"] = {
-        "Healthy vs. Crohn's (All)": {
-            "group_column": _ibd_spec.group_col,
-            "control_label": _ibd_spec.control_label,
-            "other_label": _ibd_spec.other_label,
-        },
-        **{
-            name: {
-                "group_column": _ibd_spec.group_col,
-                "levels": levels,
-                "control_label": levels[0],
-            }
-            for name, levels in _IBD_LEVEL_CONTRASTS
-        },
-        "Inflammation Status (3-Way)": {"group_column": _ibd_spec.group_col},
-    }
+    DATASET_COMPARISONS["ibd"] = {cfg["name"]: cfg for cfg in IBD_ASSOCIATIONS}
     DEFAULT_COMPARISONS["ibd"] = "Inflammation Status (3-Way)"
 
 

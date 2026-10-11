@@ -29,12 +29,12 @@ BACKGROUND_ALPHA = 0.5  # non-top ligands, so the boxes show through
 AXES = ("rect",)
 
 
-def plot(axs):
+def plot(axs, dataset: str = DATASET):
     (ax,) = axs
     scores = common.load_runner_output(
-        DATASETS[DATASET].nichenet_scores_filename(),
+        DATASETS[dataset].nichenet_scores_filename(),
         VALIDATION_DIR,
-        hint=f"    uv run cccrise-nichenet --dataset {DATASET}",
+        hint=f"    uv run cccrise-nichenet --dataset {dataset}",
     ).dropna(subset=["auroc"])
     tests = top_ligand_tests(scores).set_index("component")
     components = sorted(scores["component"].unique())

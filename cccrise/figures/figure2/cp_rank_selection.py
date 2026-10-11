@@ -8,11 +8,11 @@ DATASET = "alad"
 AXES = ("square", "square")
 
 
-def plot(axs):
+def plot(axs, dataset: str = DATASET):
     sweep = common.load_runner_output(
-        DATASETS[DATASET].cpd_rank_filename(), RANK_SELECTION_DIR
+        DATASETS[dataset].cpd_rank_filename(), RANK_SELECTION_DIR
     )
-    rank = common.selected_ranks(DATASET)[1]
+    rank = common.selected_ranks(dataset)[1]
     common.plot_cpd_fit_r2x(sweep, axs[0], rank)
     common.plot_collinearity(sweep, axs[1], rank)
 

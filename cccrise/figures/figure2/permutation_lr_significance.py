@@ -13,8 +13,8 @@ DATASET = "alad"
 AXES = ("square", "square")
 
 
-def plot(axs):
-    spec = DATASETS[DATASET]
+def plot(axs, dataset: str = DATASET):
+    spec = DATASETS[dataset]
     lr_table = common.load_runner_output(
         spec.significance_lr_filename(), VALIDATION_DIR
     )

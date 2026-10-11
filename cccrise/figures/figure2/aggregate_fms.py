@@ -15,10 +15,10 @@ STAGE_LABELS = {"RISE": "RISE", "CPD": "CP"}
 AXES = ("square",)
 
 
-def plot(axs):
+def plot(axs, dataset: str = DATASET):
     (ax,) = axs
     stability = common.load_runner_output(
-        DATASETS[DATASET].stability_filename(), VALIDATION_DIR
+        DATASETS[dataset].stability_filename(), VALIDATION_DIR
     )
     stats = metric_interval(
         stability[stability["Axis"].isin(style.STABILITY_AXIS_COLORS)],

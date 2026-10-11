@@ -28,10 +28,10 @@ BIMODAL_MINOR_FRACTION = 0.1
 
 
 @cache
-def stability() -> pd.DataFrame:
+def stability(dataset: str = DATASET) -> pd.DataFrame:
     """Jackknife rows, one per (replicate, stage, component)."""
     df = common.load_runner_output(
-        DATASETS[DATASET].stability_filename(), VALIDATION_DIR
+        DATASETS[dataset].stability_filename(), VALIDATION_DIR
     )
     return df[df["Axis"] == JACKKNIFE_AXIS]
 
@@ -64,12 +64,12 @@ def bimodal_components(df: pd.DataFrame) -> list[tuple[str, int]]:
     ]
 
 
-def plot_stage(fig, stage: str) -> None:
+def plot_stage(fig, stage: str, dataset: str = DATASET) -> None:
     """Per-component jackknife FMS for `stage` ('RISE' or 'CPD'), one box per
     component."""
     ax = fig.subplots()
     sns.boxplot(
-        data=stability()[stability()["Stage"] == stage],
+        data=stability(dataset)[stability(dataset)["Stage"] == stage],
         x="Component",
         y="FMS",
         color=COLOR,

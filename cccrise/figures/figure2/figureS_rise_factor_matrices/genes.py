@@ -12,9 +12,9 @@ TOP_GENE_FRACTION = 0.1
 AXES = ("tall",)
 
 
-def plot(axs):
+def plot(axs, dataset: str = S.DATASET):
     (ax,) = axs
-    loadings = S.rise_factors()["pf2_C"].values.astype(float)
+    loadings = S.rise_factors(dataset)["pf2_C"].values.astype(float)
     loadings = loadings / np.abs(loadings).max(axis=0)
     n_top = round(TOP_GENE_FRACTION * len(loadings))
     shown = loadings[np.argsort(-np.abs(loadings).max(axis=1))[:n_top]]

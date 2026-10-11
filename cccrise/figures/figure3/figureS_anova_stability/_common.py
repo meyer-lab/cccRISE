@@ -20,25 +20,26 @@ from ....validation.stability import JACKKNIFE_AXIS, STAGE_CPD
 from ... import common, style
 
 DATASET = "alad"
-FILENAME = DATASETS[DATASET].stability_filename()
 
 
 @cache
-def metadata() -> dict:
-    return read_metadata(VALIDATION_DIR / FILENAME)
+def metadata(dataset: str = DATASET) -> dict:
+    return read_metadata(VALIDATION_DIR / DATASETS[dataset].stability_filename())
 
 
 @cache
-def replicates() -> pd.DataFrame:
+def replicates(dataset: str = DATASET) -> pd.DataFrame:
     """Jackknife CPD rows, one per (replicate, component)."""
-    df = common.load_runner_output(FILENAME, VALIDATION_DIR)
+    df = common.load_runner_output(
+        DATASETS[dataset].stability_filename(), VALIDATION_DIR
+    )
     return df[(df["Axis"] == JACKKNIFE_AXIS) & (df["Stage"] == STAGE_CPD)]
 
 
 @cache
-def reference() -> pd.DataFrame:
+def reference(dataset: str = DATASET) -> pd.DataFrame:
     """The full-cohort ANOVA per component, from the sidecar."""
-    meta = metadata()
+    meta = metadata(dataset)
     n = len(meta["reference_eta_squared"])
     return pd.DataFrame(
         {
@@ -49,21 +50,21 @@ def reference() -> pd.DataFrame:
     )
 
 
-def alpha() -> float:
-    return float(metadata()["alpha"])
+def alpha(dataset: str = DATASET) -> float:
+    return float(metadata(dataset)["alpha"])
 
 
-def outcome() -> str:
-    return metadata()["group_column"]
+def outcome(dataset: str = DATASET) -> str:
+    return metadata(dataset)["group_column"]
 
 
-def components() -> list[int]:
-    return reference()["Component"].astype(int).tolist()
+def components(dataset: str = DATASET) -> list[int]:
+    return reference(dataset)["Component"].astype(int).tolist()
 
 
-def reference_markers(ax, x, y) -> None:
+def reference_markers(ax, x, y, dataset: str = DATASET) -> None:
     """Full-cohort values as diamonds, filled where p < alpha."""
-    significant = reference()["P"].to_numpy() < alpha()
+    significant = reference(dataset)["P"].to_numpy() < alpha(dataset)
     for filled in (True, False):
         keep = significant == filled
         ax.scatter(
@@ -78,9 +79,9 @@ def reference_markers(ax, x, y) -> None:
         )
 
 
-def reference_legend_handles() -> list:
+def reference_legend_handles(dataset: str = DATASET) -> list:
     return [
-        Line2D([], [], marker="D", color="black", lw=0, label=f"Full cohort, p < {alpha():g}"),
+        Line2D([], [], marker="D", color="black", lw=0, label=f"Full cohort, p < {alpha(dataset):g}"),
         Line2D(
             [], [], marker="D", color="black", markerfacecolor="white", lw=0,
             label="Full cohort, n.s.",

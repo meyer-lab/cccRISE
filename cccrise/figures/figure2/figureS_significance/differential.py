@@ -16,9 +16,9 @@ CLIP_QUANTILE = 0.998
 AXES = ("rect",)
 
 
-def plot(axs):
+def plot(axs, dataset: str = DATASET):
     (ax,) = axs
-    spec = DATASETS[DATASET]
+    spec = DATASETS[dataset]
     differential = pd.read_parquet(
         VALIDATION_DIR / spec.significance_differential_filename()
     )

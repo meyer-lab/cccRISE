@@ -11,8 +11,8 @@ N_COLS = 6
 BINS = np.linspace(0, 1, 11)
 
 
-def plot(fig):
-    df = S.stability()
+def plot(fig, dataset: str = S.DATASET):
+    df = S.stability(dataset)
     bimodal = S.bimodal_components(df)
     n_cols = min(N_COLS, max(1, len(bimodal)))
     n_rows = max(1, -(-len(bimodal) // n_cols))

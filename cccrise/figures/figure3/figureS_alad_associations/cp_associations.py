@@ -7,9 +7,9 @@ from .. import _common as S
 AXES = ("rect",)
 
 
-def plot(axs):
+def plot(axs, dataset: str = S.DATASET):
     (ax,) = axs
-    common.plot_association_heatmap(S.association_table(), ax)
+    common.plot_association_heatmap(S.association_table(dataset), ax)
 
 
 def makeFigure():

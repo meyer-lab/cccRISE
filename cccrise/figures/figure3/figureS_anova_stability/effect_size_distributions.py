@@ -9,13 +9,13 @@ from ... import common, style
 from . import _common as S
 
 
-def plot(fig):
+def plot(fig, dataset: str = S.DATASET):
     ax = fig.subplots()
     sns.violinplot(
-        data=S.replicates(),
+        data=S.replicates(dataset),
         x="Component",
         y="EtaSquared",
-        order=S.components(),
+        order=S.components(dataset),
         color=style.STABILITY_AXIS_COLORS[JACKKNIFE_AXIS],
         inner=None,
         linewidth=style.LINE_WIDTH_THIN,
@@ -24,12 +24,12 @@ def plot(fig):
         density_norm="width",
         ax=ax,
     )
-    reference = S.reference()
-    S.reference_markers(ax, np.arange(len(reference)), reference["EtaSquared"])
-    ax.set_ylim(0, S.replicates()["EtaSquared"].max() * 1.2)  # legend headroom
+    reference = S.reference(dataset)
+    S.reference_markers(ax, np.arange(len(reference)), reference["EtaSquared"], dataset)
+    ax.set_ylim(0, S.replicates(dataset)["EtaSquared"].max() * 1.2)  # legend headroom
     ax.set_xlabel("CP component")
-    ax.set_ylabel(rf"Jackknife $\eta^2$ ({S.outcome()})")
-    ax.legend(handles=S.reference_legend_handles(), loc="upper center", ncols=2)
+    ax.set_ylabel(rf"Jackknife $\eta^2$ ({S.outcome(dataset)})")
+    ax.legend(handles=S.reference_legend_handles(dataset), loc="upper center", ncols=2)
 
 
 def makeFigure():

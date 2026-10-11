@@ -24,13 +24,12 @@ MODES = {  # factor matrix: row label, whether to order rows
     "C": ("Receiver eigenstate", False),
     "D": ("LR pair", True),
 }
-EIGENSTATE_TICKS = (1, 5, 10, 15)
 TOP_LR_FRACTION = 0.15
 AXES = ("square",) * len(MODES)
 
 
-def plot(axs):
-    adata = common.load_factors_to_anndata(DATASETS[DATASET].factors_path())
+def plot(axs, dataset: str = DATASET):
+    adata = common.load_factors_to_anndata(DATASETS[dataset].factors_path())
     for ax, (key, (ylabel, ordered)) in zip(axs, MODES.items(), strict=True):
         loadings = np.asarray(adata.uns[key], dtype=float)
         loadings = loadings / np.abs(loadings).max(axis=0)
@@ -45,7 +44,8 @@ def plot(axs):
             ax.set_yticks([])
             ylabel += f"s (n={len(loadings)})"
         else:
-            ax.set_yticks([t - 1 for t in EIGENSTATE_TICKS], EIGENSTATE_TICKS)
+            ticks = common.component_ticks(len(loadings))
+            ax.set_yticks([t - 1 for t in ticks], ticks)
         ax.set_ylabel(ylabel)
         position = np.argsort(order)  # row index -> drawn row
         common.label_heatmap_cells(

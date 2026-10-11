@@ -6,8 +6,8 @@ from ... import common, style
 from . import _common as S
 
 
-def plot(fig):
-    S.plot_stage(fig, STAGE_CPD)
+def plot(fig, dataset: str = S.DATASET):
+    S.plot_stage(fig, STAGE_CPD, dataset)
 
 
 def makeFigure():

@@ -7,12 +7,12 @@ DATASET = "alad"
 AXES = ("rect",)
 
 
-def plot(axs):
+def plot(axs, dataset: str = DATASET):
     (ax,) = axs
     sweep = common.load_runner_output(
-        DATASETS[DATASET].rise_rank_filename(), RANK_SELECTION_DIR
+        DATASETS[dataset].rise_rank_filename(), RANK_SELECTION_DIR
     )
-    common.plot_rise_rank(sweep, ax, rank=common.selected_ranks(DATASET)[0])
+    common.plot_rise_rank(sweep, ax, rank=common.selected_ranks(dataset)[0])
 
 
 def makeFigure():
