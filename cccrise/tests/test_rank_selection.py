@@ -13,7 +13,7 @@ import yaml
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
 
-from cccrise.ccc_rise import CP_FIT_OPTIONS
+from cccrise.ccc_rise import CP_FIT_OPTIONS, RISE_FIT_OPTIONS
 from cccrise.rank_selection import (
     calculate_r2x,
     candelinc_compress,
@@ -254,11 +254,9 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
                 output_path=tmp_path / f"cpd_{compress}.parquet",
             )
         assert out_path.exists() and sidecar.exists()
-        assert f"compress: {str(compress).lower()}" in sidecar.read_text()
         # The RISE fit options are hard-coded, so the sidecar must say so.
         recorded = yaml.safe_load(sidecar.read_text())
-        assert recorded["normalize_slices"] is True
-        assert recorded["fix_B_identity"] is True
+        assert recorded | RISE_FIT_OPTIONS | {"compress": compress} == recorded
         results[compress] = df
 
     compressed, full = results[True], results[False]

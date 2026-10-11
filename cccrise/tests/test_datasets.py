@@ -15,7 +15,10 @@ def _parse(*argv: str) -> argparse.Namespace:
 
 
 def test_registry_cap_is_the_registry_entry():
-    for argv in (("--dataset", "ibd"), ("--dataset", "ibd", "--max-cells-per-condition", "2000")):
+    for argv in (
+        ("--dataset", "ibd"),
+        ("--dataset", "ibd", "--max-cells-per-condition", "2000"),
+    ):
         spec = resolve_dataset(_parse(*argv))
 
         assert spec is DATASETS["ibd"]

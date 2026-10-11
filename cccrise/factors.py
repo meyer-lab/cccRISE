@@ -241,16 +241,6 @@ def ensure_decompressed(filepath: str | Path) -> Path:
     return path
 
 
-def load_figure_adata(data_or_path: str | Path | anndata.AnnData) -> anndata.AnnData:
-    """An AnnData as-is, a factors `.nc` via `load_factors_to_anndata`, or any
-    other path as an `.h5ad`."""
-    if isinstance(data_or_path, anndata.AnnData):
-        return data_or_path
-    if str(data_or_path).endswith(".nc"):
-        return load_factors_to_anndata(data_or_path)
-    return anndata.read_h5ad(data_or_path)
-
-
 def save_ccc_rise_fit(
     path: str | Path,
     adata: anndata.AnnData,

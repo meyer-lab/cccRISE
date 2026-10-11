@@ -358,9 +358,7 @@ def _replicates_per_axis(
     """Replicates each axis runs -- one per patient, or per fold, on the
     jackknife -- with the fit counts they cost printed."""
     n_groups = len(
-        jackknife_groups(
-            jackknife_units(adata, _jackknife_unit(spec)), jackknife_folds
-        )
+        jackknife_groups(jackknife_units(adata, _jackknife_unit(spec)), jackknife_folds)
     )
     per_axis = {a: n_groups if a == JACKKNIFE_AXIS else n_replicates for a in axes}
     print(f"   Replicates per axis: {per_axis}")
