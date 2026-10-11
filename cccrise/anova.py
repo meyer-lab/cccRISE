@@ -288,7 +288,9 @@ def anova_component_associations(
         # A missing label or a non-finite loading has no group to sit in; drop
         # that condition rather than let it poison the component's whole test.
         keep = labels.notna().to_numpy() & np.isfinite(values)
-        kept_labels = labels[keep].to_numpy()
+        # Compared as strings, as the level names are: numeric labels (e.g.
+        # binned ages) would otherwise match no level.
+        kept_labels = labels[keep].astype(str).to_numpy()
         kept_values = values[keep]
 
         level_names = sorted({str(name) for name in kept_labels})

@@ -215,6 +215,22 @@ def test_anova_keeps_a_single_condition_group_when_allowed():
     np.testing.assert_allclose(res.loc[0, "P"], expected.pvalue)
 
 
+def test_anova_groups_numeric_labels():
+    """Numeric labels (e.g. binned ages) form groups as their string forms do."""
+    A = np.array([[1.0], [2.0], [3.0], [6.0], [7.0], [9.0]])
+    numeric, text = (pd.Series(v) for v in ([20, 20, 20, 30, 30, 30], list("aaabbb")))
+
+    adata = anndata.AnnData(X=np.zeros((6, 1)), uns={"A": A})
+    res = anova_component_associations(adata, numeric)
+
+    expected = f_oneway([1.0, 2.0, 3.0], [6.0, 7.0, 9.0])
+    np.testing.assert_allclose(res.loc[0, "F"], expected.statistic)
+    cols = ["F", "P", "PAdj", "EtaSquared", "NGroups"]
+    pd.testing.assert_frame_equal(
+        res[cols], anova_component_associations(adata, text)[cols]
+    )
+
+
 # =============================================================================
 # Summary
 # =============================================================================
