@@ -61,8 +61,9 @@ def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
         "--max-cells-per-condition",
         type=int,
         default=None,
-        help="Randomly cap every condition at this many cells (default: keep all). "
-        "Outputs are named for the capped dataset, e.g. ibd_cap2000.",
+        help="Randomly cap every condition at this many cells (default: the "
+        "registry's cap, if any, else keep all). Outputs at any other cap are "
+        "named for it, e.g. ibd_cap500.",
     )
     parser.add_argument(
         "--cell-cap-seed",

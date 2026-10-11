@@ -17,13 +17,12 @@ from parafac2.utils import polar_factor
 
 from .ccc_rise import add_cell_embeddings
 from .import_data import add_cond_idxs
-from .runners.datasets import DATASETS, IBD_CELL_CAP
+from .runners.datasets import DATASETS
 
 DATA_DIR = Path(__file__).parent / "data"
 COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
 ALAD_FACTORS_PATH = DATASETS["alad"].factors_path()
-#: The IBD model fit on at most `IBD_CELL_CAP` cells per sample.
-IBD_FACTORS_PATH = DATASETS["ibd"].with_cell_cap(IBD_CELL_CAP).factors_path()
+IBD_FACTORS_PATH = DATASETS["ibd"].factors_path()
 #: Factors-file attribute fingerprinting the fit's cells (see `save_ccc_rise_fit`).
 CELL_IDS_ATTR = "cell_ids_sha256"
 
@@ -226,10 +225,10 @@ def ensure_decompressed(filepath: str | Path) -> Path:
     """`filepath`, first decompressing `<filepath>.xz` next to it if only that
     exists.
 
-    Factor files over GitHub's 100 MB limit are committed xz-compressed
-    (currently `ibd_ti_factors_cap2000.nc.xz`) with the `.nc` git-ignored, so
-    a fresh clone has only the `.xz`. The `.nc` is written once, through a
-    temporary file so an interrupted run never leaves a truncated one behind.
+    A factor file over GitHub's 100 MB limit can be committed xz-compressed
+    with the `.nc` git-ignored, so a fresh clone has only the `.xz`. The `.nc`
+    is written once, through a temporary file so an interrupted run never
+    leaves a truncated one behind.
     """
     path = Path(filepath)
     compressed = path.with_name(path.name + ".xz")

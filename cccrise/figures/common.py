@@ -50,7 +50,7 @@ from ..factors import (
     load_or_compute_dataframe,
 )
 from ..import_data import import_alad, import_balf_covid
-from ..runners.datasets import DATASETS, IBD_CELL_CAP
+from ..runners.datasets import DATASETS
 from ..runners.provenance import read_metadata
 from ..utils import (
     correct_conditions,
@@ -101,9 +101,9 @@ def get_alad_data(
 
 
 #: The IBD cohort as its factor model (`IBD_FACTORS_PATH`) was fit: mesenchymal
-#: lineage excluded and capped at `IBD_CELL_CAP` cells per sample. `.load()`
-#: gives those cells' expression.
-IBD_SPEC = DATASETS["ibd"].with_cell_cap(IBD_CELL_CAP)
+#: lineage excluded and capped at `runners.datasets.IBD_CELL_CAP` cells per
+#: sample. `.load()` gives those cells' expression.
+IBD_SPEC = DATASETS["ibd"]
 
 
 def get_ibd_data(

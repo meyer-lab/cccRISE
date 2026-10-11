@@ -80,7 +80,8 @@ def comparison_output_dir(communication_score: str) -> Path:
 @dataclass(frozen=True)
 class DatasetSpec:
     key: str
-    label: str
+    #: The cohort's name; `label` adds the cell cap, if any.
+    cohort_label: str
     loader: Callable[..., anndata.AnnData]
     condition_column: str
     celltype_column: str
@@ -105,6 +106,9 @@ class DatasetSpec:
     #: `import_data.cap_cells_per_condition`). None loads every cell.
     max_cells_per_condition: int | None = None
     cell_cap_seed: int = 0
+    #: Appended to `key` in every output filename (see `output_key`);
+    #: `with_cell_cap` sets it for a cap other than the registry's.
+    name_suffix: str = ""
     #: Broad lineages the loader removes before anything else (see
     #: `import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`). Empty keeps every lineage.
     excluded_broad_cell_types: tuple[str, ...] = ()
@@ -125,32 +129,42 @@ class DatasetSpec:
         return args
 
     @property
-    def output_key(self) -> str:
-        """`key`, suffixed ``_cap<N>`` (and ``s<seed>`` for a non-default seed)
-        when capped. Every output filename uses it, so a capped run never
-        overwrites the uncapped dataset's results; `key` itself stays the
-        registry key, for lookups such as `_cli.DEFAULT_GROUP_LABELS`."""
+    def label(self) -> str:
+        """`cohort_label`, with the cell cap when there is one."""
         if self.max_cells_per_condition is None:
-            return self.key
-        seed = f"s{self.cell_cap_seed}" if self.cell_cap_seed else ""
-        return f"{self.key}_cap{self.max_cells_per_condition}{seed}"
+            return self.cohort_label
+        return (
+            f"{self.cohort_label} (<= {self.max_cells_per_condition} cells per "
+            f"condition, seed {self.cell_cap_seed})"
+        )
+
+    @property
+    def output_key(self) -> str:
+        """`key` plus `name_suffix`. Every output filename uses it, so a run at
+        a cap other than the registry's never overwrites the registry
+        dataset's results; `key` itself stays the registry key, for lookups
+        such as `_cli.DEFAULT_GROUP_LABELS`."""
+        return self.key + self.name_suffix
 
     def with_cell_cap(self, max_cells: int, seed: int = 0) -> "DatasetSpec":
-        """This dataset capped at `max_cells` cells per condition."""
+        """This dataset capped at `max_cells` cells per condition, its outputs
+        suffixed ``_cap<N>`` (and ``s<seed>`` for a non-zero seed) unless that
+        is already its cap."""
         if "max_cells_per_condition" not in inspect.signature(self.loader).parameters:
             raise ValueError(
                 f"Dataset {self.key!r}'s loader does not support a cell cap."
             )
-        capped = replace(
+        if (max_cells, seed) == (self.max_cells_per_condition, self.cell_cap_seed):
+            return self
+        suffix = f"_cap{max_cells}" + (f"s{seed}" if seed else "")
+        return replace(
             self,
-            label=f"{self.label} (<= {max_cells} cells per condition, seed {seed})",
             max_cells_per_condition=max_cells,
             cell_cap_seed=seed,
-        )
-        suffix = capped.output_key.removeprefix(self.key)
-        return replace(
-            capped,
-            factors_filename=self.factors_filename.replace(".nc", f"{suffix}.nc"),
+            name_suffix=suffix,
+            factors_filename=self.factors_filename.replace(
+                f"{self.name_suffix}.nc", f"{suffix}.nc"
+            ),
         )
 
     def load(self) -> anndata.AnnData:
@@ -182,10 +196,14 @@ class DatasetSpec:
         return f"nichenet_scores_{self.output_key}.parquet"
 
 
+#: Per-sample cell cap of the registry's IBD cohort, whose results every IBD
+#: figure and the app read; the uncapped cohort is too large to fit whole.
+IBD_CELL_CAP = 2000
+
 DATASETS: dict[str, DatasetSpec] = {
     "alad": DatasetSpec(
         key="alad",
-        label="ALAD Lung Transplant BAL",
+        cohort_label="ALAD Lung Transplant BAL",
         loader=import_alad,
         condition_column="dsco_id",
         factors_filename="bal_alad_factors.nc",
@@ -198,15 +216,9 @@ DATASETS: dict[str, DatasetSpec] = {
     ),
     "ibd": DatasetSpec(
         key="ibd",
-        label="IBDverse Crohn's Disease Terminal Ileum",
+        cohort_label="IBDverse Crohn's Disease Terminal Ileum",
         loader=import_ibdverse,
         condition_column="sanger_sample_id",
-        # The cap-2000 factor model (`--max-cells-per-condition 2000`, see
-        # `IBD_CELL_CAP`) ships xz-compressed as
-        # `cccrise/data/ibd_ti_factors_cap2000.nc.xz` (the `.nc` is 298 MB, over
-        # GitHub's 100 MB limit, and is git-ignored). `factors.load_factors_netcdf`
-        # decompresses it on first use (lossless; sha256 of the `.nc`:
-        # ec432831e347a9b1d081d98c4b610e44bb98e8c15de4eadf7b1ce1055c1f6953).
         factors_filename="ibd_ti_factors.nc",
         source_file=IBD_FULL_COHORT_IVCSC,
         celltype_column="broad_cell_type",
@@ -215,6 +227,7 @@ DATASETS: dict[str, DatasetSpec] = {
         # products mismatched SciPy's on the full matrix. MKL speeds up the CPU
         # products when `MKL_RT` points at libmkl_rt.
         backend="cpu",
+        max_cells_per_condition=IBD_CELL_CAP,
         excluded_broad_cell_types=IBD_EXCLUDED_BROAD_CELL_TYPES,
         notes=(
             "Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, "
@@ -229,7 +242,3 @@ DATASETS: dict[str, DatasetSpec] = {
 }
 
 DATASET_KEYS = tuple(DATASETS)
-
-#: Per-sample cell cap of the IBD model the figures and app use
-#: (`factors.IBD_FACTORS_PATH`); the uncapped cohort is too large to fit whole.
-IBD_CELL_CAP = 2000

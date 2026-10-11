@@ -17,7 +17,7 @@ from cccrise.factors import (
 )
 from cccrise.figures.common import get_alad_data, get_ibd_data
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
-from cccrise.runners.datasets import IBD_CELL_CAP, RANK_SELECTION_DIR
+from cccrise.runners.datasets import RANK_SELECTION_DIR
 from cccrise.runners.datasets import DatasetSpec as RunnerSpec
 from cccrise.runners.provenance import sidecar_path
 
@@ -60,9 +60,7 @@ DATASETS: dict[str, DatasetSpec] = {
     ),
 }
 
-# IBD joins once its factor model, refit without the mesenchymal lineage
-# (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`), is written to `IBD_FACTORS_PATH`.
-# The earlier model predates both that exclusion and the fit fingerprint.
+# IBD joins when its factor model is present.
 if (
     IBD_FACTORS_PATH.exists()
     or IBD_FACTORS_PATH.with_name(IBD_FACTORS_PATH.name + ".xz").exists()
@@ -77,7 +75,7 @@ if (
         group_col="inflammation_status",
         control_label="Healthy",
         other_label="Crohn's",
-        runner=RUNNER_DATASETS["ibd"].with_cell_cap(IBD_CELL_CAP),
+        runner=RUNNER_DATASETS["ibd"],
     )
 
 

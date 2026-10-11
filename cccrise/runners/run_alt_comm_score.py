@@ -56,11 +56,11 @@ from ._cli import (
     core_numbering_reference,
     dataset_metadata,
     resolve_anova_labels,
+    resolve_dataset,
 )
 from .datasets import (
     COMMUNICATION_SCORES,
     COMPARISON_PROVENANCE_FILENAME,
-    DATASETS,
     DatasetSpec,
     comparison_output_dir,
 )
@@ -440,7 +440,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_alt_comm_score(
         spec,
         rise_rank=args.rise_rank,
