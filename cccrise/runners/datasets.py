@@ -6,14 +6,20 @@ the loader, the source file, the condition column and the canonical output
 filenames are looked up here.
 """
 
+import inspect
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 import anndata
 
-from ..import_data import IBD_FULL_COHORT_IVCSC, import_alad, import_ibdverse
+from ..import_data import (
+    IBD_EXCLUDED_BROAD_CELL_TYPES,
+    IBD_FULL_COHORT_IVCSC,
+    import_alad,
+    import_ibdverse,
+)
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 #: Core factorizations written by `run_ccc_rise`.
@@ -92,18 +98,60 @@ class DatasetSpec:
     #: default. None falls back to `group_column` and its registered labels.
     outcome_column: str | None = None
     #: RISE backend every runner fits on ('cpu', 'cupy', 'mlx'); None
-    #: auto-detects, for cohorts too large for the GPU.
+    #: auto-detects, which picks a GPU whenever one is present.
     backend: str | None = None
     notes: str = ""
+    #: Per-condition cell cap passed to the loader (see
+    #: `import_data.cap_cells_per_condition`). None loads every cell.
+    max_cells_per_condition: int | None = None
+    cell_cap_seed: int = 0
+    #: Broad lineages the loader removes before anything else (see
+    #: `import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`). Empty keeps every lineage.
+    excluded_broad_cell_types: tuple[str, ...] = ()
 
     @property
     def loader_args(self) -> dict[str, Any]:
         """The keyword arguments `load` passes."""
-        return {
+        args: dict[str, Any] = {
             "filename": str(self.source_file),
             "gene_threshold": self.gene_threshold,
             "normalize": True,
         }
+        if self.max_cells_per_condition is not None:
+            args["max_cells_per_condition"] = self.max_cells_per_condition
+            args["cell_cap_seed"] = self.cell_cap_seed
+        if self.excluded_broad_cell_types:
+            args["excluded_broad_cell_types"] = list(self.excluded_broad_cell_types)
+        return args
+
+    @property
+    def output_key(self) -> str:
+        """`key`, suffixed ``_cap<N>`` (and ``s<seed>`` for a non-default seed)
+        when capped. Every output filename uses it, so a capped run never
+        overwrites the uncapped dataset's results; `key` itself stays the
+        registry key, for lookups such as `_cli.DEFAULT_GROUP_LABELS`."""
+        if self.max_cells_per_condition is None:
+            return self.key
+        seed = f"s{self.cell_cap_seed}" if self.cell_cap_seed else ""
+        return f"{self.key}_cap{self.max_cells_per_condition}{seed}"
+
+    def with_cell_cap(self, max_cells: int, seed: int = 0) -> "DatasetSpec":
+        """This dataset capped at `max_cells` cells per condition."""
+        if "max_cells_per_condition" not in inspect.signature(self.loader).parameters:
+            raise ValueError(
+                f"Dataset {self.key!r}'s loader does not support a cell cap."
+            )
+        capped = replace(
+            self,
+            label=f"{self.label} (<= {max_cells} cells per condition, seed {seed})",
+            max_cells_per_condition=max_cells,
+            cell_cap_seed=seed,
+        )
+        suffix = capped.output_key.removeprefix(self.key)
+        return replace(
+            capped,
+            factors_filename=self.factors_filename.replace(".nc", f"{suffix}.nc"),
+        )
 
     def load(self) -> anndata.AnnData:
         """Load the dataset, normalized."""
@@ -113,25 +161,25 @@ class DatasetSpec:
         return FACTORS_DIR / self.factors_filename
 
     def rise_rank_filename(self) -> str:
-        return f"rise_rank_{self.key}.parquet"
+        return f"rise_rank_{self.output_key}.parquet"
 
     def cpd_rank_filename(self) -> str:
-        return f"cpd_rank_{self.key}.parquet"
+        return f"cpd_rank_{self.output_key}.parquet"
 
     def stability_filename(self) -> str:
-        return f"component_stability_{self.key}.parquet"
+        return f"component_stability_{self.output_key}.parquet"
 
     def anova_point_estimate_filename(self) -> str:
-        return f"anova_point_estimate_{self.key}.parquet"
+        return f"anova_point_estimate_{self.output_key}.parquet"
 
     def significance_lr_filename(self) -> str:
-        return f"significance_lr_{self.key}.parquet"
+        return f"significance_lr_{self.output_key}.parquet"
 
     def significance_differential_filename(self) -> str:
-        return f"significance_differential_{self.key}.parquet"
+        return f"significance_differential_{self.output_key}.parquet"
 
     def nichenet_scores_filename(self) -> str:
-        return f"nichenet_scores_{self.key}.parquet"
+        return f"nichenet_scores_{self.output_key}.parquet"
 
 
 DATASETS: dict[str, DatasetSpec] = {
@@ -153,17 +201,35 @@ DATASETS: dict[str, DatasetSpec] = {
         label="IBDverse Crohn's Disease Terminal Ileum",
         loader=import_ibdverse,
         condition_column="sanger_sample_id",
+        # The cap-2000 factor model (`--max-cells-per-condition 2000`, see
+        # `IBD_CELL_CAP`) ships xz-compressed as
+        # `cccrise/data/ibd_ti_factors_cap2000.nc.xz` (the `.nc` is 298 MB, over
+        # GitHub's 100 MB limit, and is git-ignored). `factors.load_factors_netcdf`
+        # decompresses it on first use (lossless; sha256 of the `.nc`:
+        # ec432831e347a9b1d081d98c4b610e44bb98e8c15de4eadf7b1ce1055c1f6953).
         factors_filename="ibd_ti_factors.nc",
         source_file=IBD_FULL_COHORT_IVCSC,
         celltype_column="broad_cell_type",
         group_column="inflammation_status",
+        # Too large for the GPU: auto-detect would pick CuPy, whose managed-memory
+        # products mismatched SciPy's on the full matrix. MKL speeds up the CPU
+        # products when `MKL_RT` points at libmkl_rt.
+        backend="cpu",
+        excluded_broad_cell_types=IBD_EXCLUDED_BROAD_CELL_TYPES,
         notes=(
             "Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, "
             "232 healthy and 111 Crohn's (64 inflamed / 47 uninflamed). "
             "`celltype` holds 57 annotated types matching the published DGE "
-            "tables; `broad_cell_type` holds 8 lineages."
+            "tables; `broad_cell_type` holds 8 lineages, of which the "
+            "mesenchymal one (fibroblasts, endothelial cells, pericytes) is "
+            "excluded as a biopsy-sampling artifact "
+            "(`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`)."
         ),
     ),
 }
 
 DATASET_KEYS = tuple(DATASETS)
+
+#: Per-sample cell cap of the IBD model the figures and app use
+#: (`factors.IBD_FACTORS_PATH`); the uncapped cohort is too large to fit whole.
+IBD_CELL_CAP = 2000

@@ -9,6 +9,7 @@ on, which is a 4-mode CP problem with no upstream home.
 import numpy as np
 import pandas as pd
 import pytest
+import yaml
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
 
@@ -254,6 +255,10 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
             )
         assert out_path.exists() and sidecar.exists()
         assert f"compress: {str(compress).lower()}" in sidecar.read_text()
+        # The RISE fit options are hard-coded, so the sidecar must say so.
+        recorded = yaml.safe_load(sidecar.read_text())
+        assert recorded["normalize_slices"] is True
+        assert recorded["fix_B_identity"] is True
         results[compress] = df
 
     compressed, full = results[True], results[False]

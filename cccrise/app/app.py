@@ -145,6 +145,35 @@ ALAD_DEFAULT_COMPARISON = next(
 DATASET_COMPARISONS: dict[str, dict[str, dict]] = {"alad": ALAD_COMPARISONS}
 DEFAULT_COMPARISONS: dict[str, str] = {"alad": ALAD_DEFAULT_COMPARISON}
 
+# IBD (registered once its refit factor model exists; see `data.DATASETS`):
+# every contrast of the three inflammation statuses, built from its
+# DatasetSpec fields; the 3-way test is the default, matching the ANOVA
+# bootstrap's default of testing every level of the group column.
+if "ibd" in DATASETS:
+    _ibd_spec = DATASETS["ibd"]
+    _IBD_LEVEL_CONTRASTS = [
+        ("Healthy vs. CD Inflamed", ["Healthy", "CD_inflamed"]),
+        ("Healthy vs. CD Uninflamed", ["Healthy", "CD_uninflamed"]),
+        ("CD Uninflamed vs. CD Inflamed", ["CD_uninflamed", "CD_inflamed"]),
+    ]
+    DATASET_COMPARISONS["ibd"] = {
+        "Healthy vs. Crohn's (All)": {
+            "group_column": _ibd_spec.group_col,
+            "control_label": _ibd_spec.control_label,
+            "other_label": _ibd_spec.other_label,
+        },
+        **{
+            name: {
+                "group_column": _ibd_spec.group_col,
+                "levels": levels,
+                "control_label": levels[0],
+            }
+            for name, levels in _IBD_LEVEL_CONTRASTS
+        },
+        "Inflammation Status (3-Way)": {"group_column": _ibd_spec.group_col},
+    }
+    DEFAULT_COMPARISONS["ibd"] = "Inflammation Status (3-Way)"
+
 
 def scrollable_plot(output_id: str, width_px: int, height_px: int) -> ui.Tag:
     """A plot output pinned to a fixed pixel size, in a horizontally

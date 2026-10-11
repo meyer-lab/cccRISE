@@ -5,6 +5,7 @@ from ..factors import load_factors_netcdf
 from .datasets import (
     COMMUNICATION_SCORES,
     DATASET_KEYS,
+    DATASETS,
     DEFAULT_COMMUNICATION_SCORE,
     DatasetSpec,
 )
@@ -16,7 +17,7 @@ from .provenance import relpath, sha256_file
 # explicitly.
 DEFAULT_GROUP_LABELS: dict[str, tuple[str, str]] = {
     "alad": ("control", "alad"),
-    "ibd": ("healthy", "inflamed"),
+    "ibd": ("Healthy", "Crohn's"),
 }
 
 # Fit controls shared by every runner's RISE (PARAFAC2) and CP decompositions.
@@ -56,6 +57,27 @@ def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
         choices=DATASET_KEYS,
         help="Dataset label from the runner registry.",
     )
+    parser.add_argument(
+        "--max-cells-per-condition",
+        type=int,
+        default=None,
+        help="Randomly cap every condition at this many cells (default: keep all). "
+        "Outputs are named for the capped dataset, e.g. ibd_cap2000.",
+    )
+    parser.add_argument(
+        "--cell-cap-seed",
+        type=int,
+        default=0,
+        help="Seed for --max-cells-per-condition's per-condition draw.",
+    )
+
+
+def resolve_dataset(args: argparse.Namespace) -> DatasetSpec:
+    """The registry entry `add_dataset_argument`'s arguments select."""
+    spec = DATASETS[args.dataset]
+    if args.max_cells_per_condition is not None:
+        spec = spec.with_cell_cap(args.max_cells_per_condition, args.cell_cap_seed)
+    return spec
 
 
 def add_group_arguments(parser: argparse.ArgumentParser) -> None:

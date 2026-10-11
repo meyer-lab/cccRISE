@@ -19,8 +19,8 @@ from .ccc import (
 )
 from .import_data import (
     add_cond_idxs,
-    condition_matrices,
     import_ligand_receptor_pairs,
+    iter_condition_matrices,
 )
 from .rank_selection import (
     Factors,
@@ -972,7 +972,8 @@ def calculate_interaction_tensor(
 
     Projects each mean-centered condition matrix onto its RISE projections
     (``P_k^T X_k``) and scores ligand-receptor communication between the
-    resulting eigen-states. All conditions are densified at once.
+    resulting eigen-states. Only one condition is dense at a time: the whole
+    IBD cohort dense is hundreds of GB.
 
     Parameters
     ----------
@@ -1001,7 +1002,7 @@ def calculate_interaction_tensor(
     projected_matrices = [
         P.T @ X
         for P, X in zip(
-            condition_projections(adata), condition_matrices(adata), strict=True
+            condition_projections(adata), iter_condition_matrices(adata), strict=True
         )
     ]
     # Per-gene mean subtracted before fitting RISE (see `prepare_dataset`); added

@@ -29,6 +29,7 @@ from ..ccc_rise import (
     CP_COMPRESSION_OPTIONS,
     CP_FIT_OPTIONS,
     RISE_COMPRESSION_OPTIONS,
+    RISE_FIT_OPTIONS,
     calculate_interaction_tensor,
     fit_rise,
     validate_cp_rank,
@@ -51,10 +52,11 @@ from ._cli import (
     add_scoring_arguments,
     dataset_metadata,
     parse_ranks,
+    resolve_dataset,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, RANK_SELECTION_DIR, DatasetSpec
+from .datasets import RANK_SELECTION_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
 
 #: Top of the default CP sweep, which is also capped at the RISE rank: a CP
@@ -241,6 +243,7 @@ def run_cpd_rank_selection(
             "cp_ranks": ranks,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "cp_fit_options": CP_FIT_OPTIONS,
@@ -309,7 +312,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_cpd_rank_selection(
         spec,
         rise_rank=args.rise_rank,
