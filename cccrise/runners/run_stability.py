@@ -18,7 +18,10 @@ Axes, and what each one asks:
   jackknife   One patient (all of its conditions) left out per replicate,
               every patient in turn, so it always runs one replicate per
               patient whatever --n-replicates is. The influence of each
-              patient on every component and association.
+              patient on every component and association. With
+              --jackknife-folds K, a fold of patients is left out instead,
+              K replicates in all (a grouped jackknife, for cohorts with too
+              many patients to refit once per patient).
   seed_only   Identical data refit end to end (RISE -> communication tensor
               -> CP) from a different random seed: the reproducibility
               ceiling the jackknife is read against.
@@ -44,9 +47,10 @@ from ..ccc_rise import (
     CP_COMPRESSION_OPTIONS,
     CP_FIT_OPTIONS,
     RISE_COMPRESSION_OPTIONS,
+    RISE_FIT_OPTIONS,
 )
 from ..import_data import import_ligand_receptor_pairs
-from ..utils import jackknife_units
+from ..utils import jackknife_groups, jackknife_units
 from ..validation.stability import (
     DEFAULT_AXES,
     JACKKNIFE_AXIS,
@@ -75,10 +79,11 @@ from ._cli import (
     core_numbering_reference,
     dataset_metadata,
     resolve_anova_labels,
+    resolve_dataset,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec, scoring_output_dir
+from .datasets import VALIDATION_DIR, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -94,6 +99,7 @@ def run_stability(
     cp_rank: int,
     axes: tuple[str, ...] = DEFAULT_AXES,
     n_replicates: int = 100,
+    jackknife_folds: int | None = None,
     group_column: str | None = None,
     control_label: str | None = None,
     other_label: str | None = None,
@@ -123,6 +129,10 @@ def run_stability(
         Axes to run; see the module docstring.
     n_replicates : int, default=100
         Replicates on the seed axis; the jackknife runs one per patient.
+    jackknife_folds : int, optional
+        Leave a fold of patients out per jackknife replicate, this many
+        replicates in all, instead of one patient per replicate; see
+        `validation.stability_replicates`.
     group_column : str, optional
         Column in `adata.obs` carrying the outcome the CP components are
         tested against. Defaults to `spec.outcome_column` (every level tested), else
@@ -183,7 +193,7 @@ def run_stability(
     lr_pairs = import_ligand_receptor_pairs()
     print(f"   AnnData shape: {adata.shape}")
     print(f"   Ligand-receptor pairs: {len(lr_pairs)}")
-    per_axis = _replicates_per_axis(adata, spec, axes, n_replicates)
+    per_axis = _replicates_per_axis(adata, spec, axes, n_replicates, jackknife_folds)
 
     anova_kwargs: dict[str, Any] = {
         "group_column": group_column,
@@ -232,6 +242,7 @@ def run_stability(
         axes=axes,
         n_replicates=n_replicates,
         random_state=random_state,
+        jackknife_folds=jackknife_folds,
     )
 
     # Label each component by the LR pair it loads onto hardest in the
@@ -255,6 +266,7 @@ def run_stability(
             "n_replicates": n_replicates,
             "n_replicates_per_axis": per_axis,
             "jackknife_unit": _jackknife_unit(spec),
+            "jackknife_folds": jackknife_folds,
             "group_column": group_column,
             "control_label": control_label,
             "other_label": other_label,
@@ -263,6 +275,7 @@ def run_stability(
             "patient_column": spec.patient_column,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "cp_n_iter_max": cp_n_iter_max,
             "cp_tol": cp_tol,
             "cp_fit_options": CP_FIT_OPTIONS,
@@ -281,7 +294,7 @@ def run_stability(
                 "reference: same cells, same conditions, same ligand-receptor "
                 "pairs"
             ),
-            "replicates": _replicate_description(spec),
+            "replicates": _replicate_description(spec, jackknife_folds),
             "fms_definition": (
                 "congruence product across compared modes, weights ignored (see "
                 "validation.per_component_fms); components matched on the same "
@@ -336,12 +349,20 @@ def _jackknife_unit(spec: DatasetSpec) -> str:
 
 
 def _replicates_per_axis(
-    adata, spec: DatasetSpec, axes: tuple[str, ...], n_replicates: int
+    adata,
+    spec: DatasetSpec,
+    axes: tuple[str, ...],
+    n_replicates: int,
+    jackknife_folds: int | None,
 ) -> dict[str, int]:
-    """Replicates each axis runs -- one per patient on the jackknife -- with
-    the fit counts they cost printed."""
-    n_patients = len(jackknife_units(adata, _jackknife_unit(spec)))
-    per_axis = {a: n_patients if a == JACKKNIFE_AXIS else n_replicates for a in axes}
+    """Replicates each axis runs -- one per patient, or per fold, on the
+    jackknife -- with the fit counts they cost printed."""
+    n_groups = len(
+        jackknife_groups(
+            jackknife_units(adata, _jackknife_unit(spec)), jackknife_folds
+        )
+    )
+    per_axis = {a: n_groups if a == JACKKNIFE_AXIS else n_replicates for a in axes}
     print(f"   Replicates per axis: {per_axis}")
     print(f"   {1 + sum(per_axis.values())} PARAFAC2 and CP fits")
     return per_axis
@@ -368,19 +389,29 @@ def _print_summaries(
         print(summary.join(top_lr_pair, on="Component").to_string(index=False))
 
 
-def _replicate_description(spec: DatasetSpec) -> dict[str, str]:
+def _replicate_description(
+    spec: DatasetSpec, jackknife_folds: int | None
+) -> dict[str, str]:
     """The sidecar's per-axis description of what each replicate refits."""
+    unit = _jackknife_unit(spec)
+    jackknife = (
+        f"one {unit} left out per replicate (all of its conditions), every one "
+        "in turn in sorted order (utils.jackknife_units); refit end to end; the "
+        "left-out patient is the 'LeftOut' column"
+    )
+    if jackknife_folds is not None:
+        jackknife = (
+            f"grouped jackknife: every {unit}, shuffled by random_state, split "
+            f"into {jackknife_folds} near-equal folds, one fold left out per "
+            "replicate (utils.jackknife_groups); refit end to end; the left-out "
+            f"{unit}s are the 'LeftOut' column, joined by '|'"
+        )
     return {
         SEED_AXIS: (
             "identical data refit end to end (RISE -> communication "
             "tensor -> CP) under a different random seed"
         ),
-        JACKKNIFE_AXIS: (
-            f"one {_jackknife_unit(spec)} left out per replicate (all of its "
-            "conditions), every one in turn in sorted order "
-            "(utils.jackknife_units); refit end to end; the left-out patient "
-            "is the 'LeftOut' column"
-        ),
+        JACKKNIFE_AXIS: jackknife,
     }
 
 
@@ -416,7 +447,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--n-replicates",
         type=int,
         default=100,
-        help="Seed-only replicates; the jackknife always runs one per patient.",
+        help="Seed-only replicates; the jackknife runs one per patient, or one "
+        "per fold with --jackknife-folds.",
+    )
+    parser.add_argument(
+        "--jackknife-folds",
+        type=int,
+        default=None,
+        help="Leave a fold of patients out per jackknife replicate (this many "
+        "folds, shuffled by --random-state) instead of one patient (default).",
     )
     add_group_arguments(parser)
     parser.add_argument(
@@ -451,13 +490,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_stability(
         spec,
         rise_rank=args.rise_rank,
         cp_rank=args.cp_rank,
         axes=tuple(axis.strip() for axis in args.axes.split(",") if axis.strip()),
         n_replicates=args.n_replicates,
+        jackknife_folds=args.jackknife_folds,
         group_column=args.group_column,
         control_label=args.control_label,
         other_label=args.other_label,

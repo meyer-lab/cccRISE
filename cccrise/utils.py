@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
 
@@ -43,14 +44,30 @@ def jackknife_units(data: anndata.AnnData, patient_name: str) -> np.ndarray:
     return np.unique(np.asarray(data.obs[patient_name]).astype(str))
 
 
-def leave_out_patient(
-    data: anndata.AnnData, patient_name: str, patient: str
-) -> anndata.AnnData:
-    """Drop every cell of one patient -- all of its conditions -- for a
-    leave-one-patient-out (jackknife) replicate.
+def jackknife_groups(
+    units: np.ndarray, n_folds: int | None = None, random_state: int = 0
+) -> list[np.ndarray]:
+    """The units each jackknife replicate leaves out: every unit on its own,
+    in `units`' order, when `n_folds` is None; otherwise `units` shuffled by
+    `random_state` and split into `n_folds` near-equal folds (a grouped,
+    delete-d jackknife), for cohorts with too many units to refit once per
+    unit."""
+    if n_folds is None:
+        return [units[i : i + 1] for i in range(len(units))]
+    if not 2 <= n_folds <= len(units):
+        raise ValueError(f"n_folds must be in [2, {len(units)}], got {n_folds}.")
+    shuffled = np.random.default_rng(random_state).permutation(units)
+    return [np.sort(fold) for fold in np.array_split(shuffled, n_folds)]
 
-    Nothing is drawn or duplicated: the replicate is the cohort minus one
-    patient, so each condition keeps its own label and the replicate's roster
+
+def leave_out_patient(
+    data: anndata.AnnData, patient_name: str, patient: str | Sequence[str]
+) -> anndata.AnnData:
+    """Drop every cell of one patient (or of each of several) -- all of its
+    conditions -- for a jackknife replicate.
+
+    Nothing is drawn or duplicated: the replicate is the cohort minus the
+    patients, so each condition keeps its own label and the replicate's roster
     is a subset of the full cohort's.
 
     Parameters
@@ -60,8 +77,8 @@ def leave_out_patient(
     patient_name : str
         Column in `data.obs` identifying the patient; a patient contributing
         several conditions loses all of them.
-    patient : str
-        The patient to leave out, as in `jackknife_units`.
+    patient : str | Sequence[str]
+        The patient to leave out, as in `jackknife_units`, or several.
 
     Returns
     -------
@@ -73,7 +90,8 @@ def leave_out_patient(
         un-center the projected matrices before scoring, so a stale column
         would bias both stages and surface as spurious instability.
     """
-    keep = np.asarray(data.obs[patient_name]).astype(str) != str(patient)
+    patients = [patient] if isinstance(patient, str) else list(patient)
+    keep = ~np.isin(np.asarray(data.obs[patient_name]).astype(str), patients)
     if keep.all():
         raise ValueError(f"No cells of patient {patient!r} in {patient_name!r}.")
     left = data[keep].copy()

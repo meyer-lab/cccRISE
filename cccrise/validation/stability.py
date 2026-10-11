@@ -83,6 +83,7 @@ from ..ccc_rise import (
 )
 from ..factors import clean_memory, load_factors_netcdf
 from ..utils import (
+    jackknife_groups,
     jackknife_units,
     leave_out_patient,
     replicate_seed,
@@ -742,6 +743,7 @@ def stability_replicates(
     random_state: int = 42,
     backend: str | None = None,
     compress: bool = False,
+    jackknife_folds: int | None = None,
     *,
     rise_n_iter_max: int,
     cp_n_iter_max: int,
@@ -790,8 +792,8 @@ def stability_replicates(
     axes : tuple[str, ...], default=DEFAULT_AXES
         Which axes to run.
     n_replicates : int, default=20
-        Replicates on `SEED_AXIS`; `JACKKNIFE_AXIS` always runs one per
-        patient.
+        Replicates on `SEED_AXIS`; `JACKKNIFE_AXIS` runs one per patient, or
+        one per fold with `jackknife_folds`.
     rise_n_iter_max, rise_tol : int, float
         Fitting controls for RISE.
     cp_n_iter_max, cp_tol
@@ -806,6 +808,10 @@ def stability_replicates(
         `fit_stability_pipeline`.
     compress : bool, default=False
         Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
+    jackknife_folds : int | None, default=None
+        Leave out a fold of patients per `JACKKNIFE_AXIS` replicate instead of
+        one patient: the patients shuffled by `random_state` and split into
+        this many folds (`utils.jackknife_groups`).
 
     Returns
     -------
@@ -813,7 +819,7 @@ def stability_replicates(
         Long-form table with one row per (axis, replicate, stage, reference
         component): the `per_component_fms` match, per-fit diagnostics, the
         patient a `JACKKNIFE_AXIS` replicate left out ('LeftOut', None on
-        `SEED_AXIS`), and -- on CPD rows, when `group_column` is given -- the
+        `SEED_AXIS`; a fold's patients joined by ``|``), and -- on CPD rows, when `group_column` is given -- the
         matched component's `ANOVA_COLUMNS`.
     """
     unknown = set(axes) - set(DEFAULT_AXES)
@@ -839,20 +845,21 @@ def stability_replicates(
         "compress": compress,
     }
     unit_column = patient_column or condition_column
-    patients = jackknife_units(adata, unit_column)
+    groups = jackknife_groups(
+        jackknife_units(adata, unit_column), jackknife_folds, random_state
+    )
 
     frames = []
     for axis in axes:
-        n_axis = len(patients) if axis == JACKKNIFE_AXIS else n_replicates
+        n_axis = len(groups) if axis == JACKKNIFE_AXIS else n_replicates
         for replicate in range(n_axis):
             seed = replicate_seed(random_state, replicate)
             print(f"   {axis} replicate {replicate + 1}/{n_axis}")
-            left_out = str(patients[replicate]) if axis == JACKKNIFE_AXIS else None
-            data = (
-                adata.copy()
-                if left_out is None
-                else leave_out_patient(adata, unit_column, left_out)
-            )
+            if axis == JACKKNIFE_AXIS:
+                left_out = "|".join(groups[replicate])
+                data = leave_out_patient(adata, unit_column, groups[replicate])
+            else:
+                left_out, data = None, adata.copy()
             fit = fit_stability_pipeline(data, random_state=seed, **fit_kwargs)
             block = _replicate_block(reference, fit, axis)
             block.insert(0, "Seed", seed)

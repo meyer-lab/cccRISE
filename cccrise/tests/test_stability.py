@@ -14,6 +14,7 @@ from cccrise.factors import save_ccc_rise_fit
 from cccrise.rank_selection import calculate_r2x
 from cccrise.runners._cli import CP_TOL, RISE_TOL
 from cccrise.utils import (
+    jackknife_groups,
     jackknife_units,
     leave_out_patient,
     resample_tensor,
@@ -929,6 +930,32 @@ def test_leave_out_patient_drops_every_condition_of_the_patient():
     assert adata.n_obs == 6 * 8
 
 
+def test_jackknife_groups_default_to_one_unit_each():
+    units = np.array(["P1", "P2", "P3"])
+    assert [g.tolist() for g in jackknife_groups(units)] == [["P1"], ["P2"], ["P3"]]
+
+
+def test_jackknife_groups_split_every_unit_into_folds_reproducibly():
+    units = np.array([f"P{i:02d}" for i in range(10)])
+
+    folds = jackknife_groups(units, n_folds=3, random_state=1)
+
+    assert sorted(len(f) for f in folds) == [3, 3, 4]
+    assert sorted(np.concatenate(folds)) == units.tolist()
+    again = jackknife_groups(units, n_folds=3, random_state=1)
+    assert all(np.array_equal(a, b) for a, b in zip(folds, again, strict=True))
+    with pytest.raises(ValueError, match="n_folds"):
+        jackknife_groups(units, n_folds=11)
+
+
+def test_leave_out_patient_drops_several_patients():
+    adata = _simulate_adata_with_paired_patient()
+
+    left = leave_out_patient(adata, "patient", ["P_pair", "P3"])
+
+    assert set(left.obs["sample"]) == {"S2", "S4", "S5"}
+
+
 def test_leave_out_patient_rejects_an_unknown_patient():
     with pytest.raises(ValueError, match="No cells"):
         leave_out_patient(_simulate_adata(), "sample", "nobody")
@@ -970,6 +997,29 @@ def test_jackknife_axis_leaves_out_each_patient_once():
     # in the ANOVA as a group of one, so that replicate still gets statistics.
     assert jk.loc[jk["Stage"] == STAGE_CPD, "EtaSquared"].notna().all()
     assert df.loc[df["Axis"] == SEED_AXIS, "LeftOut"].isna().all()
+
+
+def test_grouped_jackknife_leaves_out_one_fold_per_replicate():
+    adata = _simulate_adata(n_cond=6)
+    lr_pairs = _lr_pairs()
+    kwargs = _pipeline_kwargs()
+    reference = fit_stability_pipeline(adata.copy(), lr_pairs, **kwargs, random_state=0)
+
+    df = stability_replicates(
+        adata,
+        reference,
+        lr_pairs,
+        **kwargs,
+        axes=(JACKKNIFE_AXIS,),
+        jackknife_folds=2,
+    )
+
+    left_out = df.groupby("Replicate")["LeftOut"].first()
+    assert len(left_out) == 2
+    folds = [set(s.split("|")) for s in left_out]
+    assert folds[0].isdisjoint(folds[1])
+    assert folds[0] | folds[1] == {f"S{i}" for i in range(6)}
+    assert (df.groupby("Replicate")["NConditions"].first() == 3).all()
 
 
 def test_jackknife_interval_scales_the_leave_one_out_spread():
