@@ -665,26 +665,38 @@ def plot_association_heatmap(
     image = ax.imshow(
         values, cmap=style.CMAPS["weight"], vmin=0, vmax=vmax, aspect="auto"
     )
+    # Past COMPONENT_TICKS_ALL columns the values no longer fit in their cells:
+    # star the significant cells only and read eta-squared off the colorbar.
+    dense = effect.shape[1] > COMPONENT_TICKS_ALL
+    _annotate_association_cells(ax, values, padj.to_numpy(dtype=float), vmax, dense)
+    ticks = component_ticks(effect.shape[1]) if dense else list(effect.columns)
+    ax.set_xticks(np.asarray(ticks) - 1, ticks)
+    ax.set_yticks(range(len(order)), order, fontsize=style.FONT_SIZE_DENSE)
+    ax.set_xlabel(xlabel)
+    ax.tick_params(length=0)
+    ax.spines[:].set_visible(False)
+    colorbar(ax, image, rf"$\eta^2$ (* FDR < {SIG_ALPHA})")
+
+
+def _annotate_association_cells(
+    ax: plt.Axes, values: np.ndarray, padj: np.ndarray, vmax: float, dense: bool
+) -> None:
+    """`plot_association_heatmap`'s cell labels: each eta-squared, bold and
+    starred where significant, or only the star when `dense`."""
     for (i, j), value in np.ndenumerate(values):
-        if not np.isfinite(value):
+        significant = padj[i, j] < SIG_ALPHA
+        if not np.isfinite(value) or (dense and not significant):
             continue
-        significant = padj.iloc[i, j] < SIG_ALPHA
         ax.text(
             j,
             i,
-            f"{value:.2f}" + ("*" if significant else ""),
+            "*" if dense else f"{value:.2f}" + ("*" if significant else ""),
             ha="center",
             va="center",
             fontsize=style.FONT_SIZE_DENSE,
             fontweight="bold" if significant else "normal",
             color="white" if value > 0.6 * vmax else style.COLORS["ink"],
         )
-    ax.set_xticks(range(effect.shape[1]), effect.columns)
-    ax.set_yticks(range(len(order)), order, fontsize=style.FONT_SIZE_DENSE)
-    ax.set_xlabel(xlabel)
-    ax.tick_params(length=0)
-    ax.spines[:].set_visible(False)
-    colorbar(ax, image, rf"$\eta^2$ (* FDR < {SIG_ALPHA})")
 
 
 def plot_association_effect_sizes(
