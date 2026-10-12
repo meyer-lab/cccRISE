@@ -61,7 +61,9 @@ def jackknife_groups(
 
 
 def leave_out_patient(
-    data: anndata.AnnData, patient_name: str, patient: str | Sequence[str]
+    data: anndata.AnnData,
+    patient_name: str,
+    patient: str | Sequence[str] | np.ndarray,
 ) -> anndata.AnnData:
     """Drop every cell of one patient (or of each of several) -- all of its
     conditions -- for a jackknife replicate.
@@ -77,8 +79,9 @@ def leave_out_patient(
     patient_name : str
         Column in `data.obs` identifying the patient; a patient contributing
         several conditions loses all of them.
-    patient : str | Sequence[str]
-        The patient to leave out, as in `jackknife_units`, or several.
+    patient : str | Sequence[str] | np.ndarray
+        The patient to leave out, as in `jackknife_units`, or several (e.g. a
+        `jackknife_groups` fold).
 
     Returns
     -------

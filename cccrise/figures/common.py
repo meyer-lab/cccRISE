@@ -670,7 +670,7 @@ def plot_association_heatmap(
     dense = effect.shape[1] > COMPONENT_TICKS_ALL
     _annotate_association_cells(ax, values, padj.to_numpy(dtype=float), vmax, dense)
     ticks = component_ticks(effect.shape[1]) if dense else list(effect.columns)
-    ax.set_xticks(np.asarray(ticks) - 1, ticks)
+    ax.set_xticks(np.asarray(ticks) - 1, [str(tick) for tick in ticks])
     ax.set_yticks(range(len(order)), order, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
@@ -992,7 +992,7 @@ def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
     )
     n = loadings.shape[1]
     ticks = np.arange(1, n + 1) if n <= COMPONENT_TICKS_ALL else component_ticks(n)
-    ax.set_xticks(np.asarray(ticks) - 1, ticks)
+    ax.set_xticks(np.asarray(ticks) - 1, [str(tick) for tick in ticks])
     ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)

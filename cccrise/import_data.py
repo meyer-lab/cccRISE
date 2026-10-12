@@ -389,9 +389,10 @@ def import_ibdverse(
     # applied. A gene detected only in an excluded lineage fails the filter.
     n_cells = int(in_cohort.sum())
     keep_cells = (np.asarray(counts.sum(axis=1)).reshape(-1) > 10.0) & in_cohort
-    gene_totals = (packed[in_cohort].X if n_cells < counts.shape[0] else counts).sum(
-        axis=0
+    cohort_counts = (
+        cast(Any, packed[in_cohort].X) if n_cells < counts.shape[0] else counts
     )
+    gene_totals = cohort_counts.sum(axis=0)
     keep_genes = np.asarray(gene_totals).reshape(-1) > gene_threshold * n_cells
     keep_genes &= ~excluded
     if max_cells_per_condition is not None:
