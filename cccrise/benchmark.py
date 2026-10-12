@@ -410,20 +410,31 @@ def _elbow_errors(tensor: np.ndarray, ranks, runs: int, random_state: int):
     )
 
 
+def _device_fit_error(device_tensor, rank: int, random_state: int) -> float:
+    """One GPU Tensor-cell2cell fit's normalized error, ``sqrt(1 - R2X)``
+    from `_device_r2x`; the fit is dropped and CuPy's cached blocks freed
+    before returning, so no small array pins a large freed block that the
+    next fit's tensor-sized temporaries need."""
+    import cupy
+
+    cp = _device_nonneg_cp(device_tensor, rank, random_state)
+    error = float(np.sqrt(max(0.0, 1.0 - _device_r2x(device_tensor, *cp))))
+    del cp
+    cupy.get_default_memory_pool().free_all_blocks()
+    return error
+
+
 def _device_elbow_errors(tensor: np.ndarray, ranks, runs: int, random_state: int):
     """`_elbow_errors` on the GPU: the tensor is uploaded once, and each
-    fit's error is ``sqrt(1 - R2X)`` from `_device_r2x`, without forming the
-    reconstruction (the CPU residual, to rounding)."""
+    fit's error is computed on the device (`_device_fit_error`), without
+    forming the reconstruction (the CPU residual, to rounding)."""
     device = _device_tensor(tensor)
     return np.array(
         [
             np.mean(
                 [
-                    np.sqrt(max(0.0, 1.0 - _device_r2x(device, *cp)))
-                    for cp in (
-                        _device_nonneg_cp(device, rank, random_state + run)
-                        for run in range(runs)
-                    )
+                    _device_fit_error(device, rank, random_state + run)
+                    for run in range(runs)
                 ]
             )
             for rank in ranks
