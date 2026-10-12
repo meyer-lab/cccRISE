@@ -61,5 +61,5 @@ generated_by: an exploratory script that calls the same functions as run_ccc_ris
   uncompressed; ccc_rise.fit_ccc_cp, uncompressed; factors.save_ccc_rise_fit) with the settings
   above. The RISE fit ran once; CP 8 was fit later on the communication tensor rebuilt from
   that RISE fit as stored here, reproducing the stored CP 3 R2X.
-git_sha: ee0cb2a90fe70aa64f172606f3bf507e00193c9f
+git_sha: 2b4ddc152810fd5d013c42c32e2dfbd69a250e52
 generated: '2026-10-11T06:36:49+00:00'
