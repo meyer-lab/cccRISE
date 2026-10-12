@@ -105,6 +105,12 @@ def _fit_one(spec, cache, cccrise_fit, suffix, mapping, chosen, settings) -> Non
         **{k: settings[k] for k in KEY_SETTINGS},
         # only when set, so fits made before the option keep their key
         **({"pb_stop_at_failure": True} if settings["pb_stop_at_failure"] else {}),
+        **({"pb_compress": True} if settings["pb_compress"] else {}),
+        **(
+            {"pb_backend": settings["pb_backend"]}
+            if settings["pb_backend"] != "numpy"
+            else {}
+        ),
         **fit_settings(),
     }
     conditions = np.asarray(cache["samples"])
@@ -126,6 +132,8 @@ def _fit_one(spec, cache, cccrise_fit, suffix, mapping, chosen, settings) -> Non
         tc2c_backend=settings["tc2c_backend"],
         pb_max_rank=settings["pb_max_rank"],
         pb_stop_at_failure=settings["pb_stop_at_failure"],
+        pb_backend=settings["pb_backend"],
+        pb_compress=settings["pb_compress"],
         checkpoint_dir=CHECKPOINT_DIR / digest / "own",
     )
     info["broken_out"] = chosen
@@ -159,6 +167,12 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--staccato-varexp", type=float, default=STACCATO_VAREXP)
     parser.add_argument("--pb-max-rank", type=int, default=10)
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument("--pb-backend", default="numpy", choices=["numpy", "cupy"])
+    parser.add_argument(
+        "--pb-compress",
+        action="store_true",
+        help="Fit pseudobulk CPD on a CANDELINC core of the tensor.",
+    )
     parser.add_argument(
         "--pb-stop-at-failure",
         action="store_true",
@@ -176,6 +190,8 @@ def main(argv: list[str] | None = None) -> None:
         pb_max_rank=args.pb_max_rank,
         random_state=args.random_state,
         pb_stop_at_failure=args.pb_stop_at_failure,
+        pb_backend=args.pb_backend,
+        pb_compress=args.pb_compress,
     )
 
 

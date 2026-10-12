@@ -42,11 +42,21 @@ import numpy as np
 import pandas as pd
 import tensorly as tl
 import xarray as xr
-from tensorly.decomposition import non_negative_parafac
+from tensorly.decomposition import non_negative_parafac, parafac
 
-from .ccc_rise import calc_communication_score_pseudobulk, pseudobulk_cp_decomposition
+from .ccc_rise import (
+    CP_N_STARTS,
+    calc_communication_score_pseudobulk,
+    cp_start_seeds,
+    pseudobulk_cp_decomposition,
+    seeded_cp_fit_options,
+)
 from .comparators.staccato import staccato
-from .rank_selection import cp_core_consistency_sweep, cpd_component_collinearity
+from .rank_selection import (
+    candelinc_compress,
+    cp_core_consistency_sweep,
+    cpd_component_collinearity,
+)
 from .utils import pseudobulk_X
 
 RANK_MODES = ("own", "shared")
@@ -161,6 +171,93 @@ def transform_tensor(tensor: np.ndarray, kind: str) -> np.ndarray:
     )
 
 
+#: A GPU fit runs in float32 above this tensor size: the 16 GB card cannot
+#: hold a float64 copy of the largest tensors with their unfoldings.
+GPU_FLOAT64_MAX_BYTES = 3 * 2**30
+
+
+def _device_tensor(tensor: np.ndarray):
+    """`tensor` on the GPU (float64 up to `GPU_FLOAT64_MAX_BYTES`, else
+    float32); the cupy backend must be active."""
+    import cupy
+
+    dtype = np.float64 if tensor.nbytes <= GPU_FLOAT64_MAX_BYTES else np.float32
+    return cupy.asarray(tensor, dtype=dtype)
+
+
+def _device_r2x(tensor, weights, factors) -> float:
+    """R2X of a CP model against `tensor` on the active backend, from
+    ``||T||^2 - 2 <T, T_hat> + ||T_hat||^2`` without forming the
+    reconstruction (`rank_selection.calculate_r2x`'s value, to rounding)."""
+    t_norm2 = sum(float(tl.sum(s * s)) for s in tensor)
+    if t_norm2 == 0:
+        return 0.0
+    core = tl.to_numpy(tl.tenalg.multi_mode_dot(tensor, [f.T for f in factors]))
+    w = tl.to_numpy(weights)
+    diagonal = np.array([core[(r,) * 4] for r in range(len(w))])
+    gram = np.ones((len(w), len(w)))
+    for f in factors:
+        f = tl.to_numpy(f)
+        gram *= f.T @ f
+    residual = t_norm2 - 2 * float(w @ diagonal) + float(w @ gram @ w)
+    return float(1.0 - residual / t_norm2)
+
+
+def _gpu_multistart(device_tensor, rank: int, random_state: int):
+    """`ccc_rise.parafac_multistart` on the GPU (same starts and options),
+    the best start by `_device_r2x`; returns NumPy weights and factors."""
+    best = None
+    for seed in cp_start_seeds(random_state, CP_N_STARTS):
+        weights, factors = parafac(
+            device_tensor,
+            rank,
+            n_iter_max=PSEUDOBULK_N_ITER_MAX,
+            tol=PSEUDOBULK_TOL,
+            random_state=seed,
+            **seeded_cp_fit_options(seed),
+        )
+        r2x = _device_r2x(device_tensor, weights, factors)
+        if best is None or r2x > best[0]:
+            best = (r2x, weights, factors)
+    assert best is not None
+    return tl.to_numpy(best[1]).astype(float), [
+        tl.to_numpy(f).astype(float) for f in best[2]
+    ]
+
+
+def _pseudobulk_cp_fits(tensor: np.ndarray, ranks, random_state: int, backend: str):
+    """Yield (rank, (weights, factors)) of pseudobulk CPD at each rank, on
+    the CPU (`ccc_rise.pseudobulk_cp_decomposition`) or the GPU; the NumPy
+    backend is active whenever a fit is handed back."""
+    if backend == "numpy":
+        for rank in ranks:
+            yield (
+                rank,
+                pseudobulk_cp_decomposition(
+                    tensor,
+                    rank,
+                    n_iter_max=PSEUDOBULK_N_ITER_MAX,
+                    tol=PSEUDOBULK_TOL,
+                    random_state=random_state,
+                )[:2],
+            )
+        return
+    tl.set_backend(backend)
+    try:
+        device = _device_tensor(tensor)
+        for rank in ranks:
+            fit = _gpu_multistart(device, rank, random_state)
+            tl.set_backend("numpy")
+            yield rank, fit
+            tl.set_backend(backend)
+    finally:
+        tl.set_backend("numpy")
+
+
+def _passes_alone(tensor, rank, fit, threshold) -> bool:
+    return bool(_rank_diagnostics(tensor, {rank: fit}, threshold)[1].all())
+
+
 def _rank_diagnostics(
     tensor: np.ndarray, factors_by_rank: dict, threshold: float
 ) -> tuple[pd.DataFrame, np.ndarray]:
@@ -180,6 +277,7 @@ def pseudobulk_cpd_rank(
     threshold: float = CORCONDIA_THRESHOLD,
     random_state: int = 42,
     stop_at_failure: bool = False,
+    backend: str = "numpy",
 ) -> tuple[int, pd.DataFrame]:
     """Pseudobulk CPD's rank, by the rule cccRISE's CP rank was selected with.
 
@@ -191,25 +289,16 @@ def pseudobulk_cpd_rank(
     component pair turns collinear, with the per-rank diagnostics. With
     `stop_at_failure` the sweep ends at the first failing rank: each rank's
     diagnostics depend only on its own fit, so the rank is the same and only
-    the diagnostics of the ranks after it are not computed.
+    the diagnostics of the ranks after it are not computed. ``backend="cupy"``
+    fits on the GPU (`_pseudobulk_cp_fits`); the diagnostics stay on the CPU.
     """
     bound = min(tensor.shape)
     max_rank = min(max_rank, bound) if max_rank else bound
     factors_by_rank = {}
-    for rank in range(1, max_rank + 1):
-        factors_by_rank[rank] = pseudobulk_cp_decomposition(
-            tensor,
-            rank,
-            n_iter_max=PSEUDOBULK_N_ITER_MAX,
-            tol=PSEUDOBULK_TOL,
-            random_state=random_state,
-        )[:2]
-        if (
-            stop_at_failure
-            and not _rank_diagnostics(tensor, {rank: factors_by_rank[rank]}, threshold)[
-                1
-            ].all()
-        ):
+    fits = _pseudobulk_cp_fits(tensor, range(1, max_rank + 1), random_state, backend)
+    for rank, fit in fits:
+        factors_by_rank[rank] = fit
+        if stop_at_failure and not _passes_alone(tensor, rank, fit, threshold):
             break
     diagnostics, passes = _rank_diagnostics(tensor, factors_by_rank, threshold)
     first_fail = np.flatnonzero(~passes)
@@ -218,16 +307,12 @@ def pseudobulk_cpd_rank(
 
 
 def pseudobulk_cpd_fit(
-    tensor: np.ndarray, rank: int, random_state: int = 42
+    tensor: np.ndarray, rank: int, random_state: int = 42, backend: str = "numpy"
 ) -> tuple[np.ndarray, list[np.ndarray]]:
     """Weights and ``(condition, sender, receiver, lr)`` factors of one
-    pseudobulk CPD fit at `rank`."""
-    weights, factors, _r2x = pseudobulk_cp_decomposition(
-        tensor,
-        rank,
-        n_iter_max=PSEUDOBULK_N_ITER_MAX,
-        tol=PSEUDOBULK_TOL,
-        random_state=random_state,
+    pseudobulk CPD fit at `rank` (``backend="cupy"``: on the GPU)."""
+    ((_rank, (weights, factors)),) = _pseudobulk_cp_fits(
+        tensor, [rank], random_state, backend
     )
     return np.asarray(weights), [np.asarray(f) for f in factors]
 
@@ -276,7 +361,8 @@ def _nonneg_cp(
 ):
     """One Tensor-cell2cell fit, returned as NumPy arrays. ``backend="cupy"``
     runs it on the GPU (the `gpu` extra): the random initialization is drawn
-    the same way, and the fit matches the CPU one to rounding."""
+    the same way, and the fit matches the CPU one to rounding (in float32
+    above `GPU_FLOAT64_MAX_BYTES`, `_device_tensor`)."""
     if backend == "numpy":
         return non_negative_parafac(
             tl.tensor(tensor),
@@ -289,7 +375,7 @@ def _nonneg_cp(
     tl.set_backend(backend)
     try:
         cp = non_negative_parafac(
-            tl.tensor(tensor),
+            _device_tensor(tensor),
             rank,
             init="random",
             tol=TC2C_TOL,
@@ -425,6 +511,26 @@ def _checkpointed(directory: Path | None, name: str, compute: Callable[[], Any])
     return result
 
 
+def _pseudobulk_target(tensor, compress, max_rank, checkpoint_dir):
+    """The tensor pseudobulk CPD fits on, and the bases that decompress its
+    factors (None when it is `tensor` itself). Compressed, it is the CANDELINC
+    core (`rank_selection.candelinc_compress`) with bases that keep every
+    rank the sweep can reach: core consistency and component collinearity
+    are the same on the core as on the tensor, as cccRISE's own compressed CP
+    rank sweep relies on, and a fit on the core is a CP model of the tensor
+    constrained to the bases' column spaces."""
+    if not compress:
+        return tensor, None
+    bound = min(tensor.shape)
+    reach = min(max_rank, bound) if max_rank else bound
+    core, bases, _lost = _checkpointed(
+        checkpoint_dir,
+        "pseudobulk_candelinc",
+        lambda: candelinc_compress(tensor, reach),
+    )
+    return core, bases
+
+
 def fit_comparators(
     tensor: np.ndarray,
     rank_mode: str,
@@ -437,6 +543,8 @@ def fit_comparators(
     pb_max_rank: int | None = None,
     checkpoint_dir: Path | None = None,
     pb_stop_at_failure: bool = False,
+    pb_backend: str = "numpy",
+    pb_compress: bool = False,
 ) -> list[ComparatorFit]:
     """Fit every comparator on the pseudobulk `tensor` under one rank mode.
 
@@ -457,20 +565,29 @@ def fit_comparators(
     pb_stop_at_failure : bool
         End pseudobulk CPD's rank sweep at its first failing rank
         (`pseudobulk_cpd_rank`); same rank, fewer fits.
+    pb_backend : {"numpy", "cupy"}
+        Where pseudobulk CPD fits (`_pseudobulk_cp_fits`).
+    pb_compress : bool
+        Fit pseudobulk CPD on a CANDELINC core of the tensor
+        (`_pseudobulk_target`) and decompress its factors.
     """
     if rank_mode not in RANK_MODES:
         raise ValueError(f"rank_mode must be one of {RANK_MODES}, got {rank_mode!r}")
 
     stac_tensor = staccato_order(tensor)
+    pb_tensor, pb_bases = _pseudobulk_target(
+        tensor, pb_compress, pb_max_rank, checkpoint_dir
+    )
     if rank_mode == "own":
         pb_rank, diagnostics = _checkpointed(
             checkpoint_dir,
             "pseudobulk_cpd_rank",
             lambda: pseudobulk_cpd_rank(
-                tensor,
+                pb_tensor,
                 max_rank=pb_max_rank,
                 random_state=random_state,
                 stop_at_failure=pb_stop_at_failure,
+                backend=pb_backend,
             ),
         )
         pb_details: dict[str, Any] = {
@@ -509,8 +626,10 @@ def fit_comparators(
     pb_weights, pb_factors = _checkpointed(
         checkpoint_dir,
         f"pseudobulk_cpd_fit_{pb_rank}",
-        lambda: pseudobulk_cpd_fit(tensor, pb_rank, random_state),
+        lambda: pseudobulk_cpd_fit(pb_tensor, pb_rank, random_state, pb_backend),
     )
+    if pb_bases is not None:
+        pb_factors = [basis @ f for basis, f in zip(pb_bases, pb_factors, strict=True)]
     tc_weights, tc_factors = _checkpointed(
         checkpoint_dir,
         f"tensor_cell2cell_fit_{tc2c_rank}",

@@ -70,6 +70,25 @@ def test_pseudobulk_cpd_rank_stopping_early_selects_the_same_rank():
     )
 
 
+def test_compressed_pseudobulk_cpd_matches_the_full_rank_and_span():
+    from cccrise.benchmark import _pseudobulk_target, pseudobulk_cpd_fit
+
+    tensor = _nonneg_cp_tensor((20, 12, 12, 30), rank=2, seed=3, noise=1e-3)
+    core, bases = _pseudobulk_target(tensor, True, 3, None)
+    assert core.shape == (8, 8, 8, 8)
+    full_rank, _ = pseudobulk_cpd_rank(tensor, max_rank=3)
+    core_rank, _ = pseudobulk_cpd_rank(core, max_rank=3)
+    assert core_rank == full_rank == 2
+    _, full = pseudobulk_cpd_fit(tensor, 2)
+    _, small = pseudobulk_cpd_fit(core, 2)
+    lr = bases[3] @ small[3]
+    cos = np.abs(
+        (lr / np.linalg.norm(lr, axis=0)).T
+        @ (full[3] / np.linalg.norm(full[3], axis=0))
+    )
+    assert cos.max(axis=1).min() > 0.999
+
+
 def test_pseudobulk_cpd_rank_never_exceeds_the_smallest_mode():
     tensor = _nonneg_cp_tensor((6, 3, 3, 10), rank=2, seed=2, noise=0.01)
     _rank, diagnostics = pseudobulk_cpd_rank(tensor, max_rank=10)
