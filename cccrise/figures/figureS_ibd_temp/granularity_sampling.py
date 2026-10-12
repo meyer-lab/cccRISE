@@ -40,14 +40,12 @@ def load(name: str) -> pd.DataFrame:
     return table[table["labelling"] != "_coarse"]
 
 
-def _jitter(x, seed=0):
-    return x * np.exp(np.random.default_rng(seed).uniform(-0.03, 0.03, len(x)))
+def _jitter(x, seed=0, width=0.6):
+    return x + np.random.default_rng(seed).uniform(-width, width, len(x))
 
 
 def _axis(ax, ticks):
-    ax.set_xscale("log")
     ax.set_xticks(ticks, [str(t) for t in ticks])
-    ax.minorticks_off()
     ax.grid(False)
 
 
@@ -74,7 +72,11 @@ def _containment(axes, comps, ticks):
         ax.set_title(SHORT[method], fontsize=style.FONT_SIZE_TITLE)
         ax.set_xlabel("cell types")
     axes[0].set_ylabel("cccRISE component's LR\ncontainment in comparator span")
-    axes[-1].legend(fontsize=style.FONT_SIZE_DENSE - 1, ncol=2, loc="center right")
+    axes[-1].legend(
+        fontsize=style.FONT_SIZE_DENSE - 1,
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
+    )
 
 
 def _columns(axes, cols, ticks):
@@ -161,8 +163,8 @@ def _recovery_by_rank(ax, comps, ticks):
     handles = []
     for marker, (method, part) in zip("osD", table.groupby("method"), strict=True):
         points = ax.scatter(
-            _jitter(part["r"].to_numpy(float), len(part)),
-            part["hits"] + _jitter(np.ones(len(part)), len(part) + 1) - 1,
+            _jitter(part["r"].to_numpy(float), len(part), 0.15),
+            _jitter(part["hits"].to_numpy(float), len(part) + 1, 0.08),
             c=part["n_types"], cmap=style.CMAPS["sequential"], norm=norm,
             marker=marker, s=style.POINT_SIZE, lw=0,
         )  # fmt: skip
