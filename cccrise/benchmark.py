@@ -393,20 +393,36 @@ def _normalized_error(tensor: np.ndarray, cp) -> float:
     return float(np.sqrt(np.sum(residual**2) / np.sum(tensor**2)))
 
 
-def _elbow_errors(tensor: np.ndarray, ranks, runs: int, random_state: int):
+def _resumable_errors(ranks, rank_error, progress: Path | None) -> np.ndarray:
+    """`rank_error(rank)` for every rank, each kept in `progress` (JSON,
+    rank -> error) as it finishes, so that an interrupted elbow resumes
+    after its last finished rank (nothing is kept if `progress` is None)."""
+    done = json.loads(progress.read_text()) if progress and progress.exists() else {}
+    for rank in ranks:
+        if str(rank) in done:
+            continue
+        done[str(rank)] = float(rank_error(rank))
+        if progress is not None:
+            progress.parent.mkdir(parents=True, exist_ok=True)
+            partial = progress.with_suffix(".partial")
+            partial.write_text(json.dumps(done))
+            partial.replace(progress)
+    return np.array([done[str(rank)] for rank in ranks])
+
+
+def _elbow_errors(
+    tensor: np.ndarray, ranks, runs: int, random_state: int, progress=None
+):
     """Mean normalized error per rank over `runs` fits (NumPy)."""
-    return np.array(
-        [
-            np.mean(
-                [
-                    _normalized_error(
-                        tensor, _nonneg_cp(tensor, rank, random_state + run)
-                    )
-                    for run in range(runs)
-                ]
-            )
-            for rank in ranks
-        ]
+    return _resumable_errors(
+        ranks,
+        lambda rank: np.mean(
+            [
+                _normalized_error(tensor, _nonneg_cp(tensor, rank, random_state + run))
+                for run in range(runs)
+            ]
+        ),
+        progress,
     )
 
 
@@ -424,21 +440,19 @@ def _device_fit_error(device_tensor, rank: int, random_state: int) -> float:
     return error
 
 
-def _device_elbow_errors(tensor: np.ndarray, ranks, runs: int, random_state: int):
+def _device_elbow_errors(
+    tensor: np.ndarray, ranks, runs: int, random_state: int, progress=None
+):
     """`_elbow_errors` on the GPU: the tensor is uploaded once, and each
     fit's error is computed on the device (`_device_fit_error`), without
     forming the reconstruction (the CPU residual, to rounding)."""
     device = _device_tensor(tensor)
-    return np.array(
-        [
-            np.mean(
-                [
-                    _device_fit_error(device, rank, random_state + run)
-                    for run in range(runs)
-                ]
-            )
-            for rank in ranks
-        ]
+    return _resumable_errors(
+        ranks,
+        lambda rank: np.mean(
+            [_device_fit_error(device, rank, random_state + run) for run in range(runs)]
+        ),
+        progress,
     )
 
 
@@ -448,19 +462,22 @@ def tensor_cell2cell_elbow(
     runs: int = TC2C_ELBOW_RUNS,
     random_state: int = 42,
     backend: str = "numpy",
+    progress: Path | None = None,
 ) -> tuple[int, np.ndarray]:
     """Tensor-cell2cell's rank: the elbow of the mean normalized error across
     `runs` random-init fits at every rank ``1..upper_rank``.
 
-    Returns the selected rank and the mean error per rank.
+    Each rank's error is kept in `progress` as it finishes
+    (`_resumable_errors`). Returns the selected rank and the mean error per
+    rank.
     """
     ranks = list(range(1, upper_rank + 1))
     if backend == "numpy":
-        errors = _elbow_errors(tensor, ranks, runs, random_state)
+        errors = _elbow_errors(tensor, ranks, runs, random_state, progress)
     else:
         tl.set_backend(backend)
         try:
-            errors = _device_elbow_errors(tensor, ranks, runs, random_state)
+            errors = _device_elbow_errors(tensor, ranks, runs, random_state, progress)
         finally:
             tl.set_backend("numpy")
     return kneedle_elbow(ranks, errors), errors
@@ -737,6 +754,9 @@ def fit_comparators(
                     runs=tc2c_elbow_runs,
                     random_state=random_state,
                     backend=tc2c_backend,
+                    progress=checkpoint_dir / "tensor_cell2cell_elbow.json"
+                    if checkpoint_dir
+                    else None,
                 ),
                 tc2c_backend,
             ),

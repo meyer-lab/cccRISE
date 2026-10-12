@@ -284,3 +284,16 @@ def test_staccato_fit_gpu_matches_cpu():
         assert isinstance(b, np.ndarray)
         np.testing.assert_allclose(a, b, atol=1e-8)
     np.testing.assert_allclose(cpu[2], gpu[2], atol=1e-8)
+
+
+def test_tensor_cell2cell_elbow_resumes_from_its_progress(tmp_path, monkeypatch):
+    import cccrise.benchmark as benchmark
+
+    tensor = _nonneg_cp_tensor((10, 5, 5, 15), rank=3, seed=3)
+    progress = tmp_path / "elbow.json"
+    full = tensor_cell2cell_elbow(tensor, upper_rank=5, runs=2, progress=progress)
+    # every rank is read back: no fit runs again
+    monkeypatch.setattr(benchmark, "_nonneg_cp", lambda *a, **k: 1 / 0)
+    again = tensor_cell2cell_elbow(tensor, upper_rank=5, runs=2, progress=progress)
+    assert again[0] == full[0]
+    np.testing.assert_array_equal(again[1], full[1])
