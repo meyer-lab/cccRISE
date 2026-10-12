@@ -233,3 +233,18 @@ def test_tensor_cell2cell_gpu_matches_cpu():
     for a, b in zip(cpu.factors, gpu.factors, strict=True):
         assert isinstance(b, np.ndarray)
         np.testing.assert_allclose(a, b, rtol=1e-4, atol=1e-6)
+
+
+def test_tensor_cell2cell_elbow_gpu_matches_cpu():
+    cupy = pytest.importorskip("cupy")
+    try:
+        cupy.cuda.runtime.getDeviceCount()
+    except cupy.cuda.runtime.CUDARuntimeError:
+        pytest.skip("no GPU")
+    from cccrise.benchmark import tensor_cell2cell_elbow
+
+    tensor = _nonneg_cp_tensor((6, 3, 3, 10), rank=2, seed=3, noise=0.01)
+    cpu_rank, cpu = tensor_cell2cell_elbow(tensor, upper_rank=5, runs=2)
+    gpu_rank, gpu = tensor_cell2cell_elbow(tensor, upper_rank=5, runs=2, backend="cupy")
+    assert gpu_rank == cpu_rank
+    np.testing.assert_allclose(gpu, cpu, rtol=1e-5, atol=1e-7)

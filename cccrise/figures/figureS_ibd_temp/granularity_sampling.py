@@ -3,7 +3,7 @@
 
 x: the labelling's number of cell types -- the 7 lineages (fit under the
 sampled levels' settings, ``_s0r0``), 12 / 24 / 36 fine types broken out of
-their lineage at random (5 repeats each; points), and all 54 fine types.
+their lineage at random (3 repeats each; points), and all 54 fine types.
 Lines join the means.
 
 A. Each cccRISE component's LR containment in each comparator's span (one

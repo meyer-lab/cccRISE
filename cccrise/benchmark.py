@@ -356,6 +356,18 @@ def kneedle_elbow(
     return int(xs[int(np.argmax(difference))])
 
 
+def _device_nonneg_cp(device_tensor, rank: int, random_state: int | None):
+    """One Tensor-cell2cell fit of a tensor already on the active backend."""
+    return non_negative_parafac(
+        device_tensor,
+        rank,
+        init="random",
+        tol=TC2C_TOL,
+        n_iter_max=TC2C_N_ITER_MAX,
+        random_state=random_state,
+    )
+
+
 def _nonneg_cp(
     tensor: np.ndarray, rank: int, random_state: int | None, backend: str = "numpy"
 ):
@@ -364,24 +376,10 @@ def _nonneg_cp(
     the same way, and the fit matches the CPU one to rounding (in float32
     above `GPU_FLOAT64_MAX_BYTES`, `_device_tensor`)."""
     if backend == "numpy":
-        return non_negative_parafac(
-            tl.tensor(tensor),
-            rank,
-            init="random",
-            tol=TC2C_TOL,
-            n_iter_max=TC2C_N_ITER_MAX,
-            random_state=random_state,
-        )
+        return _device_nonneg_cp(tl.tensor(tensor), rank, random_state)
     tl.set_backend(backend)
     try:
-        cp = non_negative_parafac(
-            _device_tensor(tensor),
-            rank,
-            init="random",
-            tol=TC2C_TOL,
-            n_iter_max=TC2C_N_ITER_MAX,
-            random_state=random_state,
-        )
+        cp = _device_nonneg_cp(_device_tensor(tensor), rank, random_state)
         weights, factors = tl.to_numpy(cp.weights), [tl.to_numpy(f) for f in cp.factors]
     finally:
         tl.set_backend("numpy")
@@ -393,6 +391,44 @@ def _normalized_error(tensor: np.ndarray, cp) -> float:
     final reconstruction error when no mask is given)."""
     residual = tensor - tl.cp_to_tensor(cp)
     return float(np.sqrt(np.sum(residual**2) / np.sum(tensor**2)))
+
+
+def _elbow_errors(tensor: np.ndarray, ranks, runs: int, random_state: int):
+    """Mean normalized error per rank over `runs` fits (NumPy)."""
+    return np.array(
+        [
+            np.mean(
+                [
+                    _normalized_error(
+                        tensor, _nonneg_cp(tensor, rank, random_state + run)
+                    )
+                    for run in range(runs)
+                ]
+            )
+            for rank in ranks
+        ]
+    )
+
+
+def _device_elbow_errors(tensor: np.ndarray, ranks, runs: int, random_state: int):
+    """`_elbow_errors` on the GPU: the tensor is uploaded once, and each
+    fit's error is ``sqrt(1 - R2X)`` from `_device_r2x`, without forming the
+    reconstruction (the CPU residual, to rounding)."""
+    device = _device_tensor(tensor)
+    return np.array(
+        [
+            np.mean(
+                [
+                    np.sqrt(max(0.0, 1.0 - _device_r2x(device, *cp)))
+                    for cp in (
+                        _device_nonneg_cp(device, rank, random_state + run)
+                        for run in range(runs)
+                    )
+                ]
+            )
+            for rank in ranks
+        ]
+    )
 
 
 def tensor_cell2cell_elbow(
@@ -408,19 +444,14 @@ def tensor_cell2cell_elbow(
     Returns the selected rank and the mean error per rank.
     """
     ranks = list(range(1, upper_rank + 1))
-    errors = np.array(
-        [
-            np.mean(
-                [
-                    _normalized_error(
-                        tensor, _nonneg_cp(tensor, rank, random_state + run, backend)
-                    )
-                    for run in range(runs)
-                ]
-            )
-            for rank in ranks
-        ]
-    )
+    if backend == "numpy":
+        errors = _elbow_errors(tensor, ranks, runs, random_state)
+    else:
+        tl.set_backend(backend)
+        try:
+            errors = _device_elbow_errors(tensor, ranks, runs, random_state)
+        finally:
+            tl.set_backend("numpy")
     return kneedle_elbow(ranks, errors), errors
 
 
