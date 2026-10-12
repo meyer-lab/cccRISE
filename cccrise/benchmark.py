@@ -51,7 +51,7 @@ from .ccc_rise import (
     pseudobulk_cp_decomposition,
     seeded_cp_fit_options,
 )
-from .comparators.staccato import staccato
+from .comparators.staccato import flip_signs, staccato
 from .rank_selection import (
     candelinc_compress,
     cp_core_consistency_sweep,
@@ -475,6 +475,38 @@ def tensor_cell2cell_fit(
     return np.asarray(cp.weights), [np.asarray(f) for f in cp.factors]
 
 
+#: A mode's Gram matrix is accumulated over slices of about this many bytes,
+#: each cast to float64 on its own (a float32 GPU tensor is never cast whole).
+GRAM_SLICE_BYTES = 2**30
+
+
+def _mode_gram(tensor, mode: int) -> np.ndarray:
+    """The Gram matrix of `tensor`'s mode-`mode` unfolding, in float64, on
+    the active backend; returned as NumPy."""
+    axis = 1 if mode == 0 else 0
+    step = max(1, GRAM_SLICE_BYTES // (tensor.size // tensor.shape[axis] * 8))
+    gram = None
+    for start in range(0, tensor.shape[axis], step):
+        index = [slice(None)] * tensor.ndim
+        index[axis] = slice(start, start + step)
+        part = tl.unfold(tl.tensor(tensor[tuple(index)], dtype=tl.float64), mode)
+        block = tl.dot(part, tl.transpose(part))
+        gram = block if gram is None else gram + block
+    return tl.to_numpy(gram)
+
+
+def mode_eigen(tensor, mode: int) -> tuple[np.ndarray, np.ndarray]:
+    """Eigenvalues (descending) and eigenvectors of `tensor`'s mode-`mode`
+    unfolding's Gram matrix (`_mode_gram`)."""
+    values, vectors = np.linalg.eigh(_mode_gram(tensor, mode))
+    return values[::-1], vectors[:, ::-1]
+
+
+def _varexp_rank(eigenvalues: np.ndarray, varexp: float) -> tuple[int, np.ndarray]:
+    proportions = np.clip(eigenvalues, 0.0, None) / eigenvalues.sum()
+    return max(int(np.sum(proportions > varexp / 100)), 1), proportions
+
+
 def eigen_varexp_rank(
     tensor: np.ndarray, mode: int, varexp: float = STACCATO_VAREXP
 ) -> tuple[int, np.ndarray]:
@@ -484,10 +516,8 @@ def eigen_varexp_rank(
 
     Returns the rank and the explained-variance proportions.
     """
-    unfolded = tl.unfold(tl.tensor(tensor), mode)
-    eigenvalues = np.linalg.eigvalsh(unfolded @ unfolded.T)[::-1]
-    proportions = np.clip(eigenvalues, 0.0, None) / eigenvalues.sum()
-    return max(int(np.sum(proportions > varexp / 100)), 1), proportions
+    with tl.backend_context("numpy"):
+        return _varexp_rank(mode_eigen(tensor, mode)[0], varexp)
 
 
 def staccato_order(tensor: np.ndarray) -> np.ndarray:
@@ -497,21 +527,46 @@ def staccato_order(tensor: np.ndarray) -> np.ndarray:
 
 
 def staccato_fit(
-    tensor: np.ndarray, core_shape: Sequence[int], random_state: int = 42
-) -> tuple[np.ndarray, list[np.ndarray]]:
-    """Core and ``(condition, sender, receiver, lr)`` factors of an
-    unsupervised STACCato fit.
+    tensor: np.ndarray,
+    core_shape: Sequence[int] | None = None,
+    varexp: float = STACCATO_VAREXP,
+    random_state: int = 42,
+    backend: str = "numpy",
+) -> tuple[tuple[int, ...], list[np.ndarray], np.ndarray, list[np.ndarray]]:
+    """An unsupervised STACCato fit, its per-mode ranks selected by `varexp`
+    (`eigen_varexp_rank`) unless `core_shape` is given.
+
+    One eigendecomposition per mode's Gram matrix gives both the ranks and
+    the first Tucker fit's SVD initialisation (its leading eigenvectors are
+    the unfolding's leading left singular vectors, signed as `tucker` signs
+    them). ``backend="cupy"`` runs the Gram matrices and the first Tucker
+    fit on the GPU (`_device_tensor`; the Gram matrices in float64).
 
     `tensor` and the returned core are in STACCato's mode order (see
-    `staccato_order`); the factors are returned in the standard order.
+    `staccato_order`). Returns the core shape, each mode's explained-variance
+    proportions, the core, and the ``(condition, sender, receiver, lr)``
+    factors.
     """
-    result = staccato(tensor, core_shape, random_state=random_state)
-
-    def _array(w: Any) -> np.ndarray:
-        return w.to_numpy() if isinstance(w, pd.DataFrame) else np.asarray(w)
-
-    factors = [_array(w) for w in (result.W1, result.W3, result.W4, result.W2)]
-    return np.asarray(result.G), factors
+    with tl.backend_context(backend):
+        device = tensor if backend == "numpy" else _device_tensor(tensor)
+        eigen = [mode_eigen(device, mode) for mode in range(device.ndim)]
+        selections = [_varexp_rank(values, varexp) for values, _ in eigen]
+        if core_shape is None:
+            core_shape = tuple(rank for rank, _ in selections)
+        init = [
+            tl.tensor(flip_signs(vectors[:, :rank])[0], dtype=device.dtype)
+            for (_, vectors), rank in zip(eigen, core_shape, strict=True)
+        ]
+        result = staccato(
+            device,
+            core_shape,
+            random_state=random_state,
+            init=(tl.tenalg.multi_mode_dot(device, init, transpose=True), init),
+            full_output=False,
+        )
+    factors = [np.asarray(w) for w in (result.W1, result.W3, result.W4, result.W2)]
+    proportions = [p for _, p in selections]
+    return tuple(core_shape), proportions, np.asarray(result.G), factors
 
 
 def _comparator_fit(
@@ -616,6 +671,7 @@ def fit_comparators(
     pb_stop_at_failure: bool = False,
     pb_backend: str = "numpy",
     pb_compress: bool = False,
+    stac_backend: str = "numpy",
 ) -> list[ComparatorFit]:
     """Fit every comparator on the pseudobulk `tensor` under one rank mode.
 
@@ -641,6 +697,8 @@ def fit_comparators(
     pb_compress : bool
         Fit pseudobulk CPD on a CANDELINC core of the tensor
         (`_pseudobulk_target`) and decompress its factors.
+    stac_backend : {"numpy", "cupy"}
+        Where STACCato selects its ranks and fits (`staccato_fit`).
     """
     if rank_mode not in RANK_MODES:
         raise ValueError(f"rank_mode must be one of {RANK_MODES}, got {rank_mode!r}")
@@ -684,21 +742,13 @@ def fit_comparators(
             ),
         )
         tc2c_details: dict[str, Any] = {"elbow_errors": errors.tolist()}
-        selections = [
-            eigen_varexp_rank(stac_tensor, mode, staccato_varexp) for mode in range(4)
-        ]
-        core_shape = tuple(rank for rank, _ in selections)
-        stac_details: dict[str, Any] = {
-            "varexp_percent": staccato_varexp,
-            "top_proportions": [p[:STACCATO_KEEP].tolist() for _, p in selections],
-        }
+        core_shape = None
     else:
         pb_rank = shared_rank
         pb_details = {}
         tc2c_rank = shared_rank
         tc2c_details = {}
         core_shape = tuple(min(shared_rank, size) for size in stac_tensor.shape)
-        stac_details = {}
 
     pb_weights, pb_factors = _checkpointed(
         checkpoint_dir,
@@ -718,7 +768,22 @@ def fit_comparators(
             tc2c_backend,
         ),
     )
-    core, st_factors = staccato_fit(stac_tensor, core_shape, random_state)
+    core_shape, proportions, core, st_factors = _checkpointed(
+        checkpoint_dir,
+        "staccato",
+        _on_gpu(
+            lambda: staccato_fit(
+                stac_tensor, core_shape, staccato_varexp, random_state, stac_backend
+            ),
+            stac_backend,
+        ),
+    )
+    stac_details: dict[str, Any] = {}
+    if rank_mode == "own":
+        stac_details = {
+            "varexp_percent": staccato_varexp,
+            "top_proportions": [p[:STACCATO_KEEP].tolist() for p in proportions],
+        }
     return [
         _comparator_fit(
             "Pseudobulk CPD",

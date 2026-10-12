@@ -248,3 +248,39 @@ def test_tensor_cell2cell_elbow_gpu_matches_cpu():
     gpu_rank, gpu = tensor_cell2cell_elbow(tensor, upper_rank=5, runs=2, backend="cupy")
     assert gpu_rank == cpu_rank
     np.testing.assert_allclose(gpu, cpu, rtol=1e-5, atol=1e-7)
+
+
+def test_staccato_fit_selects_eigen_ranks_and_matches_svd_init():
+    from cccrise.benchmark import staccato_fit
+    from cccrise.comparators.staccato import staccato
+
+    tensor = staccato_order(_nonneg_cp_tensor((12, 6, 6, 20), rank=2, noise=1e-3))
+    shape, proportions, core, factors = staccato_fit(tensor)
+    assert shape == tuple(eigen_varexp_rank(tensor, m)[0] for m in range(4))
+    for m in range(4):
+        np.testing.assert_allclose(proportions[m], eigen_varexp_rank(tensor, m)[1])
+    # the Gram-eigenvector start is tucker's SVD start
+    reference = staccato(tensor, shape, random_state=42)
+    for mine, ref in zip(
+        factors, (reference.W1, reference.W3, reference.W4, reference.W2), strict=True
+    ):
+        np.testing.assert_allclose(mine, ref, atol=1e-6)
+    np.testing.assert_allclose(core, reference.G, atol=1e-6)
+
+
+def test_staccato_fit_gpu_matches_cpu():
+    cupy = pytest.importorskip("cupy")
+    try:
+        cupy.cuda.runtime.getDeviceCount()
+    except cupy.cuda.runtime.CUDARuntimeError:
+        pytest.skip("no GPU")
+    from cccrise.benchmark import staccato_fit
+
+    tensor = staccato_order(_nonneg_cp_tensor((12, 6, 6, 20), rank=3, noise=1e-2))
+    cpu = staccato_fit(tensor)
+    gpu = staccato_fit(tensor, backend="cupy")
+    assert gpu[0] == cpu[0]
+    for a, b in zip(cpu[3], gpu[3], strict=True):
+        assert isinstance(b, np.ndarray)
+        np.testing.assert_allclose(a, b, atol=1e-8)
+    np.testing.assert_allclose(cpu[2], gpu[2], atol=1e-8)

@@ -81,3 +81,47 @@ def test_staccato_rejects_wrong_dimensionality():
     tensor = np.zeros((4, 4, 4))
     with pytest.raises(ValueError, match="4-mode tensor"):
         staccato(tensor, core_shape=(2, 2, 2, 2))
+
+
+def _low_rank(rng, shape, ranks, noise):
+    import tensorly as tl
+
+    core = rng.normal(size=ranks)
+    factors = [np.linalg.qr(rng.normal(size=(n, r)))[0] for n, r in zip(shape, ranks)]
+    return tl.tucker_to_tensor((core, factors)) + noise * rng.normal(size=shape)
+
+
+@pytest.mark.parametrize("supervised", [False, True])
+def test_coefficient_tucker_matches_the_full_tensor_fit(supervised):
+    """The second Tucker fit, done on the core, equals `tucker` on the full
+    coefficient tensor (factors and core, signs included)."""
+    from tensorly.decomposition import tucker
+
+    rng = np.random.default_rng(3)
+    tensor = _low_rank(rng, (12, 10, 5, 5), (4, 4, 3, 3), noise=0.1)
+    covariate = (
+        np.column_stack([np.ones(12), rng.normal(size=(12, 4))])
+        if supervised
+        else None
+    )
+    core_shape = (3, 4, 3, 3)
+    result = staccato(tensor, core_shape, covariate=covariate, random_state=0)
+    G, factors = tucker(
+        result.coef_tensor, rank=list(core_shape), init="svd", random_state=0
+    )
+    for mine, full in zip(
+        (result.W1, result.W2, result.W3, result.W4), factors, strict=True
+    ):
+        np.testing.assert_allclose(mine, full, atol=1e-10)
+    np.testing.assert_allclose(result.G, G, atol=1e-10)
+
+
+def test_staccato_without_full_output_keeps_the_factors():
+    rng = np.random.default_rng(5)
+    tensor = _low_rank(rng, (8, 9, 4, 4), (3, 3, 2, 2), noise=0.05)
+    full = staccato(tensor, (3, 3, 2, 2), random_state=0)
+    lean = staccato(tensor, (3, 3, 2, 2), random_state=0, full_output=False)
+    assert lean.fitted is None and lean.coef_tensor is None
+    assert np.isnan(lean.sigma2)
+    for name in ("W1", "W2", "W3", "W4", "G"):
+        np.testing.assert_array_equal(getattr(lean, name), getattr(full, name))

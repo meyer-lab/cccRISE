@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from tensorly.decomposition import tucker
 from tensorly.tenalg import multi_mode_dot  # ty: ignore[unresolved-import]
 from tensorly.tucker_tensor import tucker_to_tensor
@@ -32,19 +33,22 @@ class StaccatoResult:
     G : np.ndarray
         Core tensor of shape ``core_shape``, from the second (orthogonalizing)
         Tucker decomposition.
-    fitted : np.ndarray
+    fitted : np.ndarray or None
         Model-implied signal tensor, same shape as the input tensor:
         ``coef_tensor`` mode-multiplied by the original (unrotated) covariate
-        matrices. Analogous to upstream's ``U``.
-    coef_tensor : np.ndarray
+        matrices. Analogous to upstream's ``U``. None unless `full_output`.
+    coef_tensor : np.ndarray or None
         The covariate-coefficient tensor (upstream's ``C_ts``), shape
         ``(p1, d2, d3, d4)`` where ``p1`` is the covariate's column count.
+        None unless `full_output`.
     sigma2 : float
-        Mean squared residual, ``mean((tensor - fitted) ** 2)``.
+        Mean squared residual, ``mean((tensor - fitted) ** 2)`` (NaN unless
+        `full_output`).
     log_likelihood : float
         Total (summed) Gaussian log-likelihood of the fit under i.i.d. noise
         with variance ``sigma2``. Upstream returns the full elementwise
-        log-likelihood array; this returns its sum for convenience.
+        log-likelihood array; this returns its sum for convenience (NaN
+        unless `full_output`).
     """
 
     W1: np.ndarray
@@ -52,8 +56,8 @@ class StaccatoResult:
     W3: np.ndarray | pd.DataFrame
     W4: np.ndarray | pd.DataFrame
     G: np.ndarray
-    fitted: np.ndarray
-    coef_tensor: np.ndarray
+    fitted: np.ndarray | None
+    coef_tensor: np.ndarray | None
     sigma2: float
     log_likelihood: float
 
@@ -79,6 +83,46 @@ def _mode_products(tensor: np.ndarray, matrices: Sequence[np.ndarray]) -> np.nda
     return out
 
 
+def flip_signs(factor: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """`factor` with each column's largest-magnitude entry made positive
+    (`tensorly`'s ``svd_flip`` rule), and the signs applied."""
+    rows = np.argmax(np.abs(factor), axis=0)
+    signs = np.sign(factor[rows, np.arange(factor.shape[1])])
+    signs[signs == 0] = 1
+    return factor * signs, signs
+
+
+def _coefficient_tucker(core_rot, factors_rot, Rs, core_shape, random_state):
+    """The second (orthogonalizing) Tucker fit, of the coefficient tensor
+    ``core_rot x_k (R_k^-1 U_k)``, without forming that tensor.
+
+    With the thin QR ``R_k^-1 U_k = Q_k S_k``, the coefficient tensor is
+    ``(core_rot x_k S_k) x_k Q_k`` with orthonormal ``Q_k``, so its Tucker
+    fit at `core_shape` is the fit of the small core ``core_rot x_k S_k``
+    with factors ``Q_k P_k``: what `tucker` on the full tensor returns (its
+    SVD initialisation is already exact), with signs set by the same rule.
+    Runs on the host whatever the active backend."""
+    with tl.backend_context("numpy"):
+        qs, ss = zip(
+            *(
+                np.linalg.qr(np.linalg.solve(R, np.asarray(U, float)))
+                for R, U in zip(Rs, factors_rot, strict=True)
+            )
+        )
+        small = multi_mode_dot(np.asarray(core_rot, float), list(ss))
+        G, ps = tucker(
+            small, rank=list(core_shape), init="svd", random_state=random_state
+        )
+        factors = []
+        for mode, (q, p) in enumerate(zip(qs, ps, strict=True)):
+            factor, signs = flip_signs(q @ p)
+            factors.append(factor)
+            shape = [1] * G.ndim
+            shape[mode] = -1
+            G = G * signs.reshape(shape)
+    return G, factors
+
+
 def staccato(
     tensor: np.ndarray,
     core_shape: Sequence[int],
@@ -87,6 +131,8 @@ def staccato(
     sender_names: Sequence[str] | None = None,
     receiver_names: Sequence[str] | None = None,
     random_state: int | None = None,
+    init="svd",
+    full_output: bool = True,
 ) -> StaccatoResult:
     """Re-implementation of STACCato's supervised Tucker decomposition.
 
@@ -111,7 +157,8 @@ def staccato(
        covariate-coefficient tensor.
     4. Re-decomposes that coefficient tensor with a second Tucker fit, purely
        to obtain orthonormal, directly-interpretable factor matrices and a
-       core tensor.
+       core tensor (done on the first fit's core, `_coefficient_tucker`,
+       which gives the same factors without forming the full tensor).
     5. Reconstructs the covariate-driven fitted tensor by mode-multiplying
        the coefficient tensor by the original (unrotated) covariate matrices.
 
@@ -165,6 +212,16 @@ def staccato(
         plain array.
     random_state : int, optional
         Passed to both internal Tucker fits (``tensorly.decomposition.tucker``).
+    init : {"svd"} or (core, factors), optional
+        The first Tucker fit's initialisation (``tucker``'s `init`): a given
+        ``(core, factors)`` lets a caller that already has each unfolding's
+        leading singular vectors skip recomputing them.
+    full_output : bool
+        Also form the coefficient tensor, the fitted tensor and their
+        residual statistics. Without it only the factors and core are
+        returned, and an unsupervised fit's `tensor` may be a tensor of the
+        active `tensorly` backend (the first Tucker fit runs there; e.g. on
+        the GPU).
 
     Returns
     -------
@@ -200,22 +257,24 @@ def staccato(
 
     rotated = _mode_products(tensor, [Q.T for Q in Qs])
     core_rot, factors_rot = tucker(
-        rotated, rank=list(core_shape), init="svd", random_state=random_state
+        rotated, rank=list(core_shape), init=init, random_state=random_state
     )
-    est_rot = tucker_to_tensor((core_rot, factors_rot))
-
-    coef_tensor = _mode_products(est_rot, [np.linalg.inv(R) for R in Rs])
-
-    G, (W1, W2, W3, W4) = tucker(
-        coef_tensor, rank=list(core_shape), init="svd", random_state=random_state
+    core_rot, factors_rot = tl.to_numpy(core_rot), list(map(tl.to_numpy, factors_rot))
+    G, (W1, W2, W3, W4) = _coefficient_tucker(
+        core_rot, factors_rot, Rs, core_shape, random_state
     )
 
-    fitted = _mode_products(coef_tensor, covariates)
-    residual = tensor - fitted
-    sigma2 = float(np.mean(residual**2))
-    log_likelihood = float(
-        np.sum(-0.5 * np.log(2 * np.pi * sigma2) - residual**2 / (2 * sigma2))
-    )
+    coef_tensor = fitted = None
+    sigma2 = log_likelihood = float("nan")
+    if full_output:
+        est_rot = tucker_to_tensor((core_rot, factors_rot))
+        coef_tensor = _mode_products(est_rot, [np.linalg.inv(R) for R in Rs])
+        fitted = _mode_products(coef_tensor, covariates)
+        residual = tensor - fitted
+        sigma2 = float(np.mean(residual**2))
+        log_likelihood = float(
+            np.sum(-0.5 * np.log(2 * np.pi * sigma2) - residual**2 / (2 * sigma2))
+        )
 
     def _label(
         factor: np.ndarray, names: Sequence[str] | None
