@@ -1,0 +1,32 @@
+"""The RISE condition factor (A; conditions ordered by their most heavily
+loaded component, then by that loading) and mixing factor (B; columns are the
+components, and the fit's is the identity), each component divided by its
+largest magnitude (keeping sign)."""
+
+import numpy as np
+
+from ... import common
+from . import _common as S
+
+AXES = ("rect", "square")
+
+
+def plot(axs, dataset: str = S.DATASET):
+    factors = S.rise_factors(dataset)
+    conditions = factors["pf2_A"].values.astype(float)
+    common.plot_factor_heatmap(
+        axs[0], conditions[common.dominant_order(conditions)], S.XLABEL
+    )
+    axs[0].set_yticks([])
+    axs[0].set_ylabel(f"Condition (n={len(conditions)})")
+
+    common.plot_factor_heatmap(axs[1], factors["pf2_B"].values.astype(float), S.XLABEL)
+    ticks = common.component_ticks(factors.sizes["rise_component"])
+    axs[1].set_yticks(np.array(ticks) - 1, ticks)
+    axs[1].set_ylabel("B row")
+    for ax in axs:
+        ax.set_xticks(np.array(ticks) - 1, ticks)  # every one would collide
+
+
+def makeFigure():
+    return common.standalone_fixed(__name__)

@@ -26,7 +26,7 @@ from ...runners.datasets import (
     comparison_output_dir,
 )
 from ...runners.provenance import read_metadata_at
-from ...validation.anova_stability import align_to_reference_components
+from ...validation.stability import align_to_reference_components
 from .. import common, style
 
 DATASET = "alad"
@@ -44,6 +44,7 @@ SCORE_LABELS = {
 SCORE_COLORS = dict(
     zip(SCORE_LABELS, [style.CATEGORICAL[i] for i in (0, 1, 2, 4)], strict=True)
 )
+SIG_FONT_SIZE = 1.5 * style.FONT_SIZE_LABEL  # significance asterisks
 #: Modes CP components are paired across methods on: condition and LR.
 MATCH_MODES = (0, 3)
 HINT = (
@@ -145,7 +146,9 @@ def grouped_bar(
             for xi, value in zip(
                 offset[sig[method]], data[method][sig[method]], strict=True
             ):
-                ax.text(xi, value, "*", ha="center", va="bottom")
+                ax.text(
+                    xi, value, "*", ha="center", va="bottom", fontsize=SIG_FONT_SIZE
+                )
     ax.set_xticks(x, data.index)
     ax.set_xlabel("CP component")
     ax.set_ylabel(ylabel)

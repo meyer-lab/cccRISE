@@ -11,12 +11,14 @@ import yaml
 
 from cccrise.factors import (
     ALAD_FACTORS_PATH,
+    IBD_FACTORS_PATH,
     load_factors_netcdf,
     load_factors_to_anndata,
 )
-from cccrise.figures.common import get_alad_data
+from cccrise.figures.common import get_alad_data, get_ibd_data
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.runners.datasets import RANK_SELECTION_DIR
+from cccrise.runners.datasets import DatasetSpec as RunnerSpec
 from cccrise.runners.provenance import sidecar_path
 
 
@@ -31,11 +33,14 @@ class DatasetSpec:
     celltype_col: str
     condition_col: str
     group_col: str | None
-    #: Value of `group_col` treated as the reference class for the logistic
-    #: regression weight summary, and the name given to every other value.
-    #: None if no case/control grouping is defined for this dataset.
+    #: Value of `group_col` treated as the reference class for the
+    #: case/control condition association, and the name given to every other
+    #: value. None if no case/control grouping is defined for this dataset.
     control_label: str | None = None
     other_label: str | None = None
+    #: Runner registry entry the factors were fit with; names the cached
+    #: rank-selection sweeps and the patient column.
+    runner: RunnerSpec | None = None
 
 
 # TODO: COVID-19 is left out while its legacy factors file predates the fit
@@ -51,8 +56,27 @@ DATASETS: dict[str, DatasetSpec] = {
         group_col="ALADstatus",
         control_label="control",
         other_label="alad",
+        runner=RUNNER_DATASETS["alad"],
     ),
 }
+
+# IBD joins when its factor model is present.
+if (
+    IBD_FACTORS_PATH.exists()
+    or IBD_FACTORS_PATH.with_name(IBD_FACTORS_PATH.name + ".xz").exists()
+):
+    DATASETS["ibd"] = DatasetSpec(
+        key="ibd",
+        label="IBDverse Crohn's Disease Terminal Ileum",
+        factors_path=IBD_FACTORS_PATH,
+        raw_loader=lambda: get_ibd_data(project_cells=True, do_embedding=False),
+        celltype_col="broad_cell_type",
+        condition_col="sanger_sample_id",
+        group_col="inflammation_status",
+        control_label="Healthy",
+        other_label="Crohn's",
+        runner=RUNNER_DATASETS["ibd"],
+    )
 
 
 @dataclass(frozen=True)
@@ -152,7 +176,7 @@ def _read_sweep(filename: str) -> pd.DataFrame | None:
 
 @lru_cache(maxsize=4)
 def load_rank_selection(key: str) -> RankSelection:
-    runner_spec = RUNNER_DATASETS.get(key)
+    runner_spec = DATASETS[key].runner
     if runner_spec is None:
         return RankSelection(rise=None, cpd=None, cpd_rise_rank=None)
     cpd = _read_sweep(runner_spec.cpd_rank_filename())

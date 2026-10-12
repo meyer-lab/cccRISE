@@ -12,7 +12,12 @@ from cccrise.ccc_rise import fit_rise
 from cccrise.factors import save_ccc_rise_fit
 from cccrise.import_data import add_cond_idxs
 from cccrise.runners.datasets import DatasetSpec
-from cccrise.runners.run_significance import build_parser, output_paths
+from cccrise.runners.run_significance import (
+    SLIM_DIFFERENTIAL_DTYPES,
+    build_parser,
+    output_paths,
+    slim_differential_table,
+)
 from cccrise.validation.significance import (
     fit_significance_pipeline,
     significance_to_xarray,
@@ -201,7 +206,7 @@ def test_runner_cli_parser_and_paths():
 
     dummy_spec = DatasetSpec(
         key="test_cohort",
-        label="Test Cohort",
+        cohort_label="Test Cohort",
         loader=lambda **kwargs: anndata.AnnData(),
         condition_column="sample",
         celltype_column="celltype",
@@ -216,3 +221,25 @@ def test_runner_cli_parser_and_paths():
     assert str(paths["differential"]).endswith(
         "significance_differential_test_cohort.parquet"
     )
+
+
+def test_slim_differential_table_keeps_the_plotted_columns_compactly():
+    full = pd.DataFrame(
+        {
+            "Sender": [1, 2],
+            "Receiver": [2, 1],
+            "LRPair": ["A^B", "C^D"],
+            "ObservedDiff": [0.5, -0.25],
+            "PValue": [0.01, 0.5],
+            "NullMean": [0.0, 0.0],
+            "NullStd": [1.0, 1.0],
+            "ZScore": [0.5, -0.25],
+        }
+    )
+
+    slim = slim_differential_table(full)
+
+    assert list(slim.columns) == list(SLIM_DIFFERENTIAL_DTYPES)
+    assert slim["ObservedDiff"].dtype == np.float32
+    assert isinstance(slim["LRPair"].dtype, pd.CategoricalDtype)
+    np.testing.assert_allclose(slim["PValue"], full["PValue"])

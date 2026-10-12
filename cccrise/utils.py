@@ -1,4 +1,3 @@
-import warnings
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
@@ -39,249 +38,76 @@ def resample(
     return resampled_data
 
 
-def resample_cells(
+def jackknife_units(data: anndata.AnnData, patient_name: str) -> np.ndarray:
+    """The patients `leave_out_patient` drops one at a time, in sorted order,
+    so jackknife replicate ``i`` always leaves out the same patient."""
+    return np.unique(np.asarray(data.obs[patient_name]).astype(str))
+
+
+def jackknife_groups(
+    units: np.ndarray, n_folds: int | None = None, random_state: int = 0
+) -> list[np.ndarray]:
+    """The units each jackknife replicate leaves out: every unit on its own,
+    in `units`' order, when `n_folds` is None; otherwise `units` shuffled by
+    `random_state` and split into `n_folds` near-equal folds (a grouped,
+    delete-d jackknife), for cohorts with too many units to refit once per
+    unit."""
+    if n_folds is None:
+        return [units[i : i + 1] for i in range(len(units))]
+    if not 2 <= n_folds <= len(units):
+        raise ValueError(f"n_folds must be in [2, {len(units)}], got {n_folds}.")
+    shuffled = np.random.default_rng(random_state).permutation(units)
+    return [np.sort(fold) for fold in np.array_split(shuffled, n_folds)]
+
+
+def leave_out_patient(
     data: anndata.AnnData,
-    condition_name: str,
-    random_seed: int | None = None,
+    patient_name: str,
+    patient: str | Sequence[str] | np.ndarray,
 ) -> anndata.AnnData:
-    """Bootstrap cells with replacement within each condition.
+    """Drop every cell of one patient (or of each of several) -- all of its
+    conditions -- for a jackknife replicate.
 
-    Probes robustness to which cells were captured and to sequencing depth,
-    holding the cohort itself fixed. Use `resample_conditions` for the
-    complementary question of robustness to cohort composition.
-
-    Supersedes `resample`, which draws the same way but seeds the global
-    `np.random` state -- perturbing every other draw in the process -- and
-    leaves `var["means"]` describing the original cells. That column is
-    load-bearing twice over: `parafac2_nd` (via
-    `parafac2.utils.extract_dataset_info`) centers each condition slice with
-    it before the RISE fit, and `ccc_rise.calc_communication_score`
-    adds it back to un-center the projected matrices before scoring. A stale
-    column therefore biases both stages of the pipeline in correlated
-    directions, which would surface as instability that is really just
-    mis-centering. `resample` is kept for the existing FMS figures that cite
-    its numbers.
+    Nothing is drawn or duplicated: the replicate is the cohort minus the
+    patients, so each condition keeps its own label and the replicate's roster
+    is a subset of the full cohort's.
 
     Parameters
     ----------
     data : anndata.AnnData
-        Single-cell expression data to resample.
-    condition_name : str
-        Column in `data.obs` identifying the condition (patient) to draw
-        within. Each condition keeps its original cell count.
-    random_seed : int | None, optional
-        Seed for the draw. None leaves it unseeded.
+        Single-cell expression data.
+    patient_name : str
+        Column in `data.obs` identifying the patient; a patient contributing
+        several conditions loses all of them.
+    patient : str | Sequence[str] | np.ndarray
+        The patient to leave out, as in `jackknife_units`, or several (e.g. a
+        `jackknife_groups` fold).
 
     Returns
     -------
     anndata.AnnData
-        A copy holding the drawn cells, with `var["means"]` recomputed over
-        them.
+        A copy without `patient`'s cells, with `var["means"]` recomputed over
+        the remaining cells. That column is load-bearing twice over:
+        `parafac2.anndata_to_list` centers each condition slice with it before
+        the RISE fit, and `ccc_rise.calc_communication_score` adds it back to
+        un-center the projected matrices before scoring, so a stale column
+        would bias both stages and surface as spurious instability.
     """
-    rng = np.random.default_rng(random_seed)
-
-    drawn = []
-    for sample in data.obs[condition_name].unique():
-        cell_indices = np.where(data.obs[condition_name] == sample)[0]
-        drawn.append(rng.choice(cell_indices, size=cell_indices.size, replace=True))
-
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="Observation names are not unique")
-        resampled = data[np.concatenate(drawn)].copy()
-    resampled.obs_names_make_unique()
-    resampled.var["means"] = np.asarray(cast(Any, resampled.X).mean(axis=0)).ravel()
-    return resampled
-
-
-def _paired_conditions(
-    obs: pd.DataFrame, condition_name: str, patient_by: str, labels: np.ndarray
-) -> dict[str, str]:
-    """Map each condition sharing a patient with exactly one sibling condition
-    to that sibling's label, for `resample_conditions`'s `patient_by`.
-
-    A patient contributing only one condition has no sibling and so is absent
-    from the returned mapping. A patient contributing more than two is paired
-    cyclically (each condition maps to the "next" one), which is untested
-    territory -- ALAD's own paired patients each contribute exactly two.
-    """
-    patients = obs[patient_by].to_numpy().astype(str)
-    table = pd.DataFrame(
-        {condition_name: labels, patient_by: patients}
-    ).drop_duplicates(condition_name)
-
-    pairs: dict[str, str] = {}
-    for _patient, members in table.groupby(patient_by)[condition_name]:
-        conds = members.tolist()
-        if len(conds) < 2:
-            continue
-        for i, cond in enumerate(conds):
-            pairs[cond] = conds[(i + 1) % len(conds)]
-    return pairs
-
-
-def _carry_paired_samples(
-    drawn: np.ndarray | Sequence[str],
-    pair_of: dict[str, str],
-    rng: np.random.Generator,
-    stratum_of: dict[str, Any] | None = None,
-) -> list[str]:
-    """Carry in a paired condition's sibling sample, dropping one other random
-    draw per carry so the resample's total size is unchanged.
-
-    Some ALAD patients contributed two samples (conditions), so an ordinary
-    per-condition bootstrap can draw one of a patient's samples without the
-    other, treating one enrollment as two independent ones. This carries the
-    sibling sample in whenever the draw hits either one; the compensating
-    drop is what keeps the final number of patients in the resampling fixed,
-    rather than growing by one every time a pair is hit.
-
-    The drop never takes the draw that triggered a carry or a carried-in
-    sibling (so a carry is not undone, by its own drop or a later one),
-    unless nothing else is left to drop. A draw that an earlier carry
-    dropped triggers no carry of its own.
-
-    With `stratum_of` (condition -> stratum), the drop is drawn from the
-    carried sibling's own stratum, so every stratum keeps its original count
-    even when a patient's two samples fall in different strata.
-
-    Each of the original draws is visited once, so a condition drawn twice
-    triggers two independent carry-and-drop steps.
-    """
-    # [condition, protected]; lists, so entries are told apart by identity
-    entries = [[cond, False] for cond in drawn]
-    for entry in list(entries):
-        sibling = pair_of.get(entry[0])
-        if sibling is None or not any(e is entry for e in entries):
-            continue
-        entry[1] = True
-        entries.append([sibling, True])
-        _drop_one_unprotected(entries, sibling, rng, stratum_of)
-    return [cond for cond, _ in entries]
-
-
-def _drop_one_unprotected(
-    entries: list[list[Any]],
-    sibling: str,
-    rng: np.random.Generator,
-    stratum_of: dict[str, Any] | None,
-) -> None:
-    """Drop one random entry from `sibling`'s stratum, preferring entries a
-    carry has not protected (see `_carry_paired_samples`)."""
-    in_stratum = [
-        i
-        for i, (c, _) in enumerate(entries)
-        if stratum_of is None or stratum_of[c] == stratum_of[sibling]
-    ]
-    pool = [i for i in in_stratum if not entries[i][1]] or in_stratum
-    entries.pop(pool[rng.integers(0, len(pool))])
-
-
-def resample_conditions(
-    data: anndata.AnnData,
-    condition_name: str,
-    stratify_by: str | None = None,
-    random_seed: int | None = None,
-    patient_by: str | None = None,
-) -> anndata.AnnData:
-    """Bootstrap whole conditions (patients) with replacement, keeping every
-    cell of a drawn condition.
-
-    Complements `resample_cells`, which resamples cells *within* each condition
-    and so holds the patient roster fixed. Here the roster itself is the
-    resampled unit, which is what a bootstrap of a condition-mode result -- a
-    per-patient factor, or a model fit on one -- requires: the sampling
-    variability being estimated is variability in which patients were enrolled.
-
-    A condition drawn more than once is relabeled (``<label>__rep2``, ...) so
-    stages keying on `condition_name` -- `import_data.add_cond_idxs`, and
-    through it RISE's per-condition slicing -- treat repeat draws as separate
-    conditions instead of merging their cells into one oversized slice.
-
-    Parameters
-    ----------
-    data : anndata.AnnData
-        Single-cell expression data to resample.
-    condition_name : str
-        Column in `data.obs` identifying the condition (patient) to draw.
-    stratify_by : str | None, optional
-        Column in `data.obs` that is constant within a condition, typically a
-        group or outcome label. When given, conditions are drawn with
-        replacement *within* each stratum, so every stratum keeps exactly its
-        original condition count. Without it, a uniform draw on a small cohort
-        can return a replicate whose groups are badly imbalanced, or that has
-        lost a group entirely -- which changes what the condition factor can
-        express, and would register as instability caused by the draw rather
-        than by the cohort.
-    random_seed : int | None, optional
-        Seed for the draw. None leaves it unseeded.
-    patient_by : str | None, optional
-        Column in `data.obs` that is constant within a condition and shared by
-        every condition (sample) belonging to the same patient. When given,
-        drawing one of a two-sample patient's conditions carries its sibling
-        condition in too, and drops one other random draw to compensate --
-        never the pair itself unless nothing else is left, and from the
-        sibling's own stratum when `stratify_by` is given (see
-        `_carry_paired_samples`). Conditions whose patient contributes only
-        one of them are unaffected.
-
-    Returns
-    -------
-    anndata.AnnData
-        A copy holding the drawn conditions' cells, with `condition_name`
-        relabeled per draw and `var["means"]` recomputed over the resampled
-        cells -- see `resample_cells` for why that column has to be refreshed.
-    """
-    rng = np.random.default_rng(random_seed)
-    obs = cast(pd.DataFrame, data.obs)
-    labels = obs[condition_name].to_numpy().astype(str)
-
-    stratum_of = None
-    if stratify_by is None:
-        conditions = np.unique(labels)
-        drawn = rng.choice(conditions, size=conditions.size, replace=True)
-    else:
-        strata = (
-            pd.DataFrame({condition_name: labels, stratify_by: obs[stratify_by].values})
-            .drop_duplicates(condition_name)
-            .set_index(condition_name)[stratify_by]
-        )
-        drawn = np.concatenate(
-            [
-                rng.choice(members.index.to_numpy(), size=len(members), replace=True)
-                for _, members in strata.groupby(strata, observed=True)
-            ]
-        )
-        stratum_of = strata.to_dict()
-
-    if patient_by is not None:
-        pair_of = _paired_conditions(obs, condition_name, patient_by, labels)
-        drawn = _carry_paired_samples(drawn, pair_of, rng, stratum_of)
-
-    cells_of = {cond: np.flatnonzero(labels == cond) for cond in np.unique(labels)}
-    draws_so_far: dict[str, int] = {}
-    cell_indices, new_labels = [], []
-    for cond in drawn:
-        draws_so_far[cond] = draws_so_far.get(cond, 0) + 1
-        cells = cells_of[cond]
-        suffix = "" if draws_so_far[cond] == 1 else f"__rep{draws_so_far[cond]}"
-        cell_indices.append(cells)
-        new_labels.append(np.full(cells.size, f"{cond}{suffix}"))
-
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="Observation names are not unique")
-        resampled = data[np.concatenate(cell_indices)].copy()
-    resampled.obs[condition_name] = np.concatenate(new_labels)
-    resampled.obs_names_make_unique()
-    resampled.var["means"] = np.asarray(cast(Any, resampled.X).mean(axis=0)).ravel()
-    return resampled
+    patients = [patient] if isinstance(patient, str) else list(patient)
+    keep = ~np.isin(np.asarray(data.obs[patient_name]).astype(str), patients)
+    if keep.all():
+        raise ValueError(f"No cells of patient {patient!r} in {patient_name!r}.")
+    left = data[keep].copy()
+    left.var["means"] = np.asarray(cast(Any, left.X).mean(axis=0)).ravel()
+    return left
 
 
 def replicate_seed(random_state: int, replicate: int) -> int:
     """Seed for one replicate: ``random_state * 1000 + replicate + 1``.
 
-    One integer per (axis, replicate) drives the resample, the RISE refit and
-    the CP fit, so a replicate's RISE and CPD rows describe the same
-    resampled dataset by construction rather than by coincidence. The ``+ 1``
+    One integer per (axis, replicate) drives the RISE refit and the CP
+    restarts, so a replicate's RISE and CPD rows describe the same fit by
+    construction rather than by coincidence. The ``+ 1``
     leaves `random_state` itself to the reference pass, so no replicate reuses
     the reference's starting point.
     """

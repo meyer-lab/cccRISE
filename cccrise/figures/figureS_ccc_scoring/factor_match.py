@@ -36,8 +36,6 @@ def plot(fig):
     axs = fig.subplots(1, 2)
     S.grouped_bar(axs[0], match, "Match score")
     S.grouped_bar(axs[1], cosine, "Sender/receiver |cosine|")
-    axs[0].set_title("Component match")
-    axs[1].set_title("Matched sender/receiver")
     for ax in axs:
         ax.set_ylim(0, 1.05)
 

@@ -4,6 +4,8 @@ using xarray NetCDF objects.
 """
 
 import hashlib
+import lzma
+import shutil
 from pathlib import Path
 from typing import Any, cast
 
@@ -20,6 +22,7 @@ from .runners.datasets import DATASETS
 DATA_DIR = Path(__file__).parent / "data"
 COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
 ALAD_FACTORS_PATH = DATASETS["alad"].factors_path()
+IBD_FACTORS_PATH = DATASETS["ibd"].factors_path()
 #: Factors-file attribute fingerprinting the fit's cells (see `save_ccc_rise_fit`).
 CELL_IDS_ATTR = "cell_ids_sha256"
 
@@ -211,8 +214,31 @@ def load_factors_netcdf(filepath: str | Path) -> xr.Dataset:
     Loads eagerly (`load_dataset`, not `open_dataset`) so the returned
     Dataset stays usable after the underlying file is closed -- needed to
     read a file and then overwrite it in the same process.
+
+    A file committed only xz-compressed is decompressed first; see
+    `ensure_decompressed`.
     """
-    return xr.load_dataset(Path(filepath), engine="h5netcdf")
+    return xr.load_dataset(ensure_decompressed(filepath), engine="h5netcdf")
+
+
+def ensure_decompressed(filepath: str | Path) -> Path:
+    """`filepath`, first decompressing `<filepath>.xz` next to it if only that
+    exists.
+
+    A factor file over GitHub's 100 MB limit can be committed xz-compressed
+    with the `.nc` git-ignored, so a fresh clone has only the `.xz`. The `.nc`
+    is written once, through a temporary file so an interrupted run never
+    leaves a truncated one behind.
+    """
+    path = Path(filepath)
+    compressed = path.with_name(path.name + ".xz")
+    if not path.exists() and compressed.exists():
+        print(f"Decompressing {compressed.name} (one-time)...")
+        partial = path.with_name(path.name + ".partial")
+        with lzma.open(compressed) as src, open(partial, "wb") as dst:
+            shutil.copyfileobj(src, dst, length=1 << 24)
+        partial.replace(path)
+    return path
 
 
 def save_ccc_rise_fit(

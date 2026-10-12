@@ -41,12 +41,31 @@ from ._cli import (
     add_group_arguments,
     add_scoring_arguments,
     dataset_metadata,
+    resolve_dataset,
     resolve_group_labels,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec, scoring_output_dir
+from .datasets import VALIDATION_DIR, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, relpath, write_metadata
+
+#: The differential table's columns `--slim-differential` keeps (all
+#: `figureS_significance` plots), with their stored dtypes. A full table has one
+#: row per sender x receiver eigenstate x LR pair, about 185 MB for IBD at RISE
+#: rank 60 -- over GitHub's 100 MB file limit.
+SLIM_DIFFERENTIAL_DTYPES = {
+    "Sender": "int16",
+    "Receiver": "int16",
+    "LRPair": "category",
+    "ObservedDiff": "float32",
+    "PValue": "float32",
+}
+
+
+def slim_differential_table(diff_df: pd.DataFrame) -> pd.DataFrame:
+    """`diff_df`'s `SLIM_DIFFERENTIAL_DTYPES` columns, in those dtypes."""
+    return diff_df[list(SLIM_DIFFERENTIAL_DTYPES)].astype(SLIM_DIFFERENTIAL_DTYPES)
+
 
 HEADER = """\
 Permutation-based significance testing of CCC-RISE communication scores.
@@ -77,6 +96,7 @@ def run_significance(
     random_state: int = 42,
     output_path: Path | None = None,
     output_root: Path | None = None,
+    slim_differential: bool = False,
 ) -> tuple[pd.DataFrame, dict[str, Path]]:
     """Load a shared RISE fit, run permutation significance testing, and
     write output tables.
@@ -114,6 +134,9 @@ def run_significance(
         `communication_score="expression_product"` (the canonical location
         figures read), or `comparison_output_dir(communication_score)`
         (under `validation_results/alt_score_methods/`) for any other score.
+    slim_differential : bool, default=False
+        Write only the differential table's `SLIM_DIFFERENTIAL_DTYPES` columns,
+        in those dtypes, zstd-compressed.
 
     Returns
     -------
@@ -182,7 +205,9 @@ def run_significance(
         print(
             f"   Writing {len(diff_df)} differential interactions to {paths['differential']}..."
         )
-        diff_df.to_parquet(paths["differential"], index=False)
+        if slim_differential:
+            diff_df = slim_differential_table(diff_df)
+        diff_df.to_parquet(paths["differential"], index=False, compression="zstd")
         written_paths.append(paths["differential"])
 
     metadata = build_metadata(
@@ -197,6 +222,7 @@ def run_significance(
             "complex_sep": complex_sep,
             "complex_agg_method": complex_agg_method,
             "hill_k": hill_k,
+            "differential_columns": list(diff_df.columns),
             "r2x_rise": float(results["r2x_rise"]),
             "random_state": random_state,
             "total_tensor_entries": int(overview_df["TotalEntries"].iloc[0]),
@@ -269,6 +295,12 @@ def build_parser() -> argparse.ArgumentParser:
         "under --output-root.",
     )
     parser.add_argument(
+        "--slim-differential",
+        action="store_true",
+        help="Write only the differential columns the figures plot, in compact "
+        "dtypes (for cohorts whose full table is too large to commit).",
+    )
+    parser.add_argument(
         "--output-root",
         type=Path,
         default=None,
@@ -283,7 +315,7 @@ def main(argv: list[str] | None = None) -> None:
     """Entry point for cccrise-significance."""
     parser = build_parser()
     args = parser.parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     output_root = args.output_root or scoring_output_dir(
         args.communication_score, VALIDATION_DIR
     )
@@ -304,6 +336,7 @@ def main(argv: list[str] | None = None) -> None:
             args.output, output_root, spec.significance_lr_filename()
         ),
         output_root=output_root,
+        slim_differential=args.slim_differential,
     )
 
 

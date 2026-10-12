@@ -19,7 +19,7 @@ from ._common import FITS, all_scores, fit_label
 def _plot_fit(method, rank_mode, fig):
     scores = all_scores()
     fit = scores[(scores["method"] == method) & (scores["rank_mode"] == rank_mode)]
-    plot_scores(fig, fit, title=fit_label(method, rank_mode, scores))
+    plot_scores(fig.subplots(), fit, title=fit_label(method, rank_mode, scores))
 
 
 PANELS = {

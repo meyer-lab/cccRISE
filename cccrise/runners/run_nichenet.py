@@ -32,7 +32,7 @@ from typing import cast, get_args
 import pandas as pd
 
 from ..benchmark import read_fits
-from ..factors import load_factors_to_anndata
+from ..factors import ensure_decompressed, load_factors_to_anndata
 from ..validation.nichenet import (
     DeMethod,
     component_ligand_scores,
@@ -40,8 +40,14 @@ from ..validation.nichenet import (
     top_ligand_tests,
 )
 from ..validation.nichenet_comparators import comparator_ligand_scores
-from ._cli import add_dataset_argument, dataset_metadata, resolve_output, resulting_dims
-from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec
+from ._cli import (
+    add_dataset_argument,
+    dataset_metadata,
+    resolve_dataset,
+    resolve_output,
+    resulting_dims,
+)
+from .datasets import VALIDATION_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, relpath, sha256_file, write_metadata
 
 HEADER = """\
@@ -91,7 +97,7 @@ def run_nichenet(
     tuple[pd.DataFrame, Path, Path]
         The per-(component, ligand) table, its output path, and its sidecar path.
     """
-    factors_path = spec.factors_path()
+    factors_path = ensure_decompressed(spec.factors_path())
     if not factors_path.exists():
         raise FileNotFoundError(
             f"{factors_path} not found. Produce it with:\n"
@@ -285,7 +291,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     settings = {
         "top_perc": args.top_perc,
         "de_method": cast(DeMethod, args.de_method),

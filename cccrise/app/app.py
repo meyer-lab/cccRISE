@@ -33,13 +33,13 @@ from cccrise.app.data import (
     load_rise_factors,
 )
 from cccrise.app.lr_pairs import parse_lr_pairs
+from cccrise.figures.associations import ALAD_ASSOCIATIONS, IBD_ASSOCIATIONS
 from cccrise.figures.common import (
     plot_association_effect_sizes,
     plot_category_component_weights,
     plot_collinearity,
     plot_cpd_fit_r2x,
 )
-from cccrise.figures.figure3._common import ASSOCIATIONS
 from cccrise.figures.legacy.commonFuncs.plotFactors import (
     plot_celltype_association,
     plot_condition_factors,
@@ -94,16 +94,14 @@ TEXT_SCALE = 1.15
 # Section headers, 1.5x Bootstrap's h4 (1.5rem) and h6 (1rem).
 HEADER_CSS = "h4 { font-size: 2.25rem; } h6 { font-size: 1.5rem; }"
 
-# `plot_categorical_scatter` sorts categories alphabetically for its color
-# assignment, so this list has to be in that order: Both, Neither, Receiver
-# Only, Sender Only. "Neither" is usually the majority category, so it's
-# muted rather than drawn from the same accented palette as the other three.
-STRENGTH_CATEGORY_COLORS = [
-    colors.PINK,
-    colors.LIGHT_GREY,
-    colors.RECEIVER,
-    colors.SENDER,
-]
+# "Neither" is usually the majority category, so it's muted rather than drawn
+# from the same accented palette as the other three.
+STRENGTH_CATEGORY_COLORS = {
+    "Both": colors.PINK,
+    "Neither": colors.LIGHT_GREY,
+    "Receiver Only": colors.RECEIVER,
+    "Sender Only": colors.SENDER,
+}
 
 # Sender/receiver scatter component selects (x and y axes).
 SCATTER_COMPONENT_INPUTS = {
@@ -132,10 +130,10 @@ plt.rcParams.update(
 
 # ALAD: Figure 3's curated comparisons, reused as-is (single source of
 # truth) rather than re-hardcoded here.
-ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in ASSOCIATIONS}
+ALAD_COMPARISONS: dict[str, dict] = {cfg["name"]: cfg for cfg in ALAD_ASSOCIATIONS}
 
 # ALAD's default comparison tests every level of the dataset spec's outcome
-# column, matching the ANOVA bootstrap's default.
+# column, matching the stability runner's ANOVA default.
 _REGROUPING_KEYS = {"mapping", "levels", "control_label", "other_label"}
 ALAD_DEFAULT_COMPARISON = next(
     name
@@ -146,6 +144,13 @@ ALAD_DEFAULT_COMPARISON = next(
 
 DATASET_COMPARISONS: dict[str, dict[str, dict]] = {"alad": ALAD_COMPARISONS}
 DEFAULT_COMPARISONS: dict[str, str] = {"alad": ALAD_DEFAULT_COMPARISON}
+
+# IBD (registered once its factor model exists; see `data.DATASETS`): its
+# Figure 4 associations; the 3-way test is the default, matching the stability
+# runner's default of testing every level of the group column.
+if "ibd" in DATASETS:
+    DATASET_COMPARISONS["ibd"] = {cfg["name"]: cfg for cfg in IBD_ASSOCIATIONS}
+    DEFAULT_COMPARISONS["ibd"] = "Inflammation Status (3-Way)"
 
 
 def scrollable_plot(output_id: str, width_px: int, height_px: int) -> ui.Tag:
@@ -594,13 +599,14 @@ def server(input, output, session):
             levels=cfg.get("levels"),
             control_label=cfg.get("control_label"),
             other_label=cfg.get("other_label"),
-            title=name,
+            xlabel="",
             ax=axes[1],
             anova_df=df,
             patient_column=patient_column,
             condition_column=DATASETS[input.dataset()].condition_col,
             palette=colors.categorical_colors(8),
         )
+        axes[1].set_title(name)
         return fig
 
     @render.ui
@@ -1160,11 +1166,12 @@ def server(input, output, session):
 
     @reactive.calc
     def strength_weights():
+        """(sender weights, receiver weights, sender threshold, receiver
+        threshold) of the selected component."""
         cmp = input.component()
-        return (
-            *weights_and_threshold("sc_B", cmp),
-            *weights_and_threshold("rc_C", cmp),
-        )
+        sender, sender_threshold = weights_and_threshold("sc_B", cmp)
+        receiver, receiver_threshold = weights_and_threshold("rc_C", cmp)
+        return sender, receiver, sender_threshold, receiver_threshold
 
     @reactive.calc
     def selected_celltype_mask():
@@ -1233,12 +1240,14 @@ def server(input, output, session):
 
         points = np.asarray(ds.adata.obsm["PaCMAP"])
         fig, ax = plt.subplots(figsize=(6.5, 5.5), layout="tight")
+        # `plot_categorical_scatter` takes one color per present category, in
+        # sorted order; a category can be empty (e.g. no "Both" cells)
         plot_categorical_scatter(
-            points, pd.Series(categories), ax, color_key=STRENGTH_CATEGORY_COLORS
+            points,
+            pd.Series(categories),
+            ax,
+            color_key=[STRENGTH_CATEGORY_COLORS[c] for c in np.unique(categories)],
         )
-
-        # Same category -> color assignment `plot_categorical_scatter` makes
-        category_colors = dict(zip(np.unique(categories), STRENGTH_CATEGORY_COLORS))
         selected = np.flatnonzero(selected_celltype_mask())
         # Strong senders/receivers drawn last, over the "Neither" majority
         selected = selected[
@@ -1247,7 +1256,7 @@ def server(input, output, session):
         enlarge_points(
             ax,
             points[selected],
-            [category_colors[c] for c in categories[selected]],
+            [STRENGTH_CATEGORY_COLORS[c] for c in categories[selected]],
             scale=1 + input.tt_point_size() / 100,
         )
         assign_labels(ax)

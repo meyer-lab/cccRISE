@@ -19,9 +19,9 @@ import xarray as xr
 from ..ccc_rise import (
     compute_communication_significance,
     compute_differential_significance,
-    condition_matrices,
     condition_projections,
 )
+from ..import_data import condition_matrices
 from ..utils import load_rise_reference
 
 

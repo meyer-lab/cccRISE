@@ -1,142 +1,144 @@
 """Data shared by Figure 3's panels: the ALAD outcome associations tested
-against every CP component, and the fit they are tested on.
-
-`ASSOCIATIONS` is also the Shiny app's list of ALAD comparisons.
+against every CP component and every RISE component, and the fit they are
+tested on. The association tables take any dataset with an entry in
+`figures.associations`.
 """
 
 from functools import cache
-from typing import Any
+from typing import Any, cast
 
 import anndata
+import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 
 from ...anova import _resolve_factors_and_metadata, run_multiple_factors_anova
+from ...factors import load_factors_netcdf
 from ...runners.datasets import DATASETS
+from .. import common, style
+from ..associations import ASSOCIATIONS as DATASET_ASSOCIATIONS
 
 DATASET = "alad"
 SPEC = DATASETS[DATASET]
 
-#: Outcome associations tested against every CP component: `name` labels the
-#: row, `group_column` is the condition-level `obs` column, and the optional
-#: `levels` / `mapping` / `control_label` / `other_label` regroup it (see
-#: `anova.prepare_group_labels`).
-ASSOCIATIONS: list[dict[str, Any]] = [
-    # --- Primary ALAD Contrasts (Previously Tested) ---
-    {
-        "name": "Control vs. ALAD (All)",
-        "group_column": "ALADstatus",
-        "control_label": "control",
-        "other_label": "alad",
-    },
-    {
-        "name": "Control vs. Declined",
-        "group_column": "ALADstatus",
-        "levels": ["control", "declined"],
-        "control_label": "control",
-    },
-    {
-        "name": "Control vs. Recovered",
-        "group_column": "ALADstatus",
-        "levels": ["control", "recovered"],
-        "control_label": "control",
-    },
-    {
-        "name": "Declined vs. Recovered",
-        "group_column": "ALADstatus",
-        "levels": ["declined", "recovered"],
-        "control_label": "declined",
-    },
-    {
-        "name": "ALAD Status (3-Way)",
-        "group_column": "ALADstatus",
-    },
-    # --- Recommended Longitudinal Graft Outcomes & Rejection ---
-    {
-        "name": "6-Month Outcome (4-Way)",
-        "group_column": "6monthcondition",
-    },
-    {
-        "name": "6-Month CLAD/Died vs. No CLAD",
-        "group_column": "6monthcondition",
-        "mapping": {
-            "CLAD": "CLAD/Died",
-            "Died": "CLAD/Died",
-            "No CLAD/Stable": "No CLAD",
-            "No CLAD/Recovered": "No CLAD",
-        },
-        "control_label": "No CLAD",
-    },
-    {
-        "name": "1-Year CLAD/Died vs. No CLAD",
-        "group_column": "1yearcondition",
-        "mapping": {
-            "No CLAD/Stable": "No CLAD",
-            "No CLAD/Recovered": "No CLAD",
-            "CLAD/Declined": "CLAD/Died",
-            "CLAD/Stable": "CLAD/Died",
-            "Died": "CLAD/Died",
-            "No CLAD/Declined": "No CLAD",
-            "Recovered": "No CLAD",
-        },
-        "control_label": "No CLAD",
-    },
-    {
-        "name": "Acute Rejection (Yes vs. No)",
-        "group_column": "rejection.y",
-        "levels": ["no", "yes"],
-        "control_label": "no",
-    },
-    {
-        "name": "Recovery Trajectory (5-Way)",
-        "group_column": "recovered.y",
-    },
-    # --- Previously Tested Demographics & Baseline Covariates ---
-    {
-        "name": "Pre-Tx Diagnosis (ILD vs. Other)",
-        "group_column": "diagnosisgroup",
-        "mapping": {
-            "ILD": "ILD",
-            "pHTN": "Other",
-            "COPD": "Other",
-            "CF": "Other",
-        },
-        "control_label": "ILD",
-    },
-    {
-        "name": "CMV Serostatus (IgG+ vs. IgG-)",
-        "group_column": "cmvstatus2",
-        "levels": ["IgG+", "IgG-"],
-        "control_label": "IgG-",
-    },
-    {
-        "name": "Sex (Male vs. Female)",
-        "group_column": "sex",
-        "levels": ["male", "female"],
-        "control_label": "female",
-    },
-]
+# The CP component associated with the 6-month outcome and the cell types it
+# draws on
+COMPONENT = 4
+OUTCOME = "6-Month Outcome (4-Way)"
+COMPONENT_CELLTYPES = ("CD4 T cells", "CD8 T cells", "NK cells")
+
+#: The ALAD outcome associations; see `figures.associations`.
+ASSOCIATIONS = DATASET_ASSOCIATIONS[DATASET]
 
 
 @cache
-def factors_adata() -> anndata.AnnData:
-    """The canonical fit attached to the ALAD source data's annotations."""
+def factors_adata(dataset: str = DATASET) -> anndata.AnnData:
+    """`dataset`'s canonical fit attached to its source data's annotations."""
+    spec = DATASETS[dataset]
     adata, _, _ = _resolve_factors_and_metadata(
-        SPEC.factors_path(), condition_column=SPEC.condition_column
+        spec.factors_path(), condition_column=spec.condition_column
     )
     return adata
 
 
 @cache
-def association_table() -> pd.DataFrame:
+def association_table(dataset: str = DATASET) -> pd.DataFrame:
     """ANOVA of every CP component against every association, FDR-corrected
     across components within each association."""
     return run_multiple_factors_anova(
-        factors_adata(),
-        ASSOCIATIONS,
-        condition_column=SPEC.condition_column,
+        factors_adata(dataset),
+        DATASET_ASSOCIATIONS[dataset],
+        condition_column=DATASETS[dataset].condition_column,
         correction="fdr_bh",
     )
 
 
 def association(name: str) -> dict[str, Any]:
     return next(spec for spec in ASSOCIATIONS if spec["name"] == name)
+
+
+@cache
+def rise_conditions_adata(dataset: str = DATASET) -> anndata.AnnData:
+    """One obs row per condition, carrying the RISE condition factor
+    (`pf2_A`) in `uns["A"]`."""
+    spec = DATASETS[dataset]
+    cond = spec.condition_column
+    obs = cast(pd.DataFrame, factors_adata(dataset).obs).drop_duplicates(cond)
+    pf2_A = load_factors_netcdf(spec.factors_path())["pf2_A"]
+    # `get_sample_to_group` orders labels by `np.unique`, so pf2_A rows must too
+    assert np.array_equal(np.unique(obs[cond]).astype(str), pf2_A.condition.astype(str))
+    return anndata.AnnData(obs=obs, uns={"A": pf2_A.values})
+
+
+@cache
+def rise_association_table(dataset: str = DATASET) -> pd.DataFrame:
+    """ANOVA of every RISE component against every association, as
+    `association_table` tests the CP components, FDR-corrected across
+    components within each association."""
+    return run_multiple_factors_anova(
+        rise_conditions_adata(dataset),
+        DATASET_ASSOCIATIONS[dataset],
+        condition_column=DATASETS[dataset].condition_column,
+        correction="fdr_bh",
+    )
+
+
+RANKED_LABEL_GAP = 1.9 * style.MM  # between stacked labels on a ranked curve
+# Label columns on a ranked curve: starting this fraction of the ranks past
+# the head, this far apart, filled from the top loading down to this
+# fraction of it (above the curve's flat tail)
+RANKED_LABEL_X = 0.06
+RANKED_COLUMN_WIDTH = 0.2
+RANKED_LABEL_FLOOR = 0.3
+
+
+def plot_ranked_loadings(
+    ax: plt.Axes,
+    loadings: np.ndarray,
+    names: np.ndarray,
+    n_marked: int,
+    n_labeled: int,
+    point_size: float = style.POINT_SIZE_BACKGROUND,
+) -> None:
+    """One component's loadings against their rank (largest first): the
+    S-shaped curve with a steep head (the Shiny explorer's rank curve). The
+    `n_marked` largest are marked, and the `n_labeled` largest listed in
+    rank order in columns beside the head."""
+    order = np.argsort(-loadings)
+    ranks = np.arange(1, len(order) + 1)
+    ax.plot(ranks, loadings[order], color=style.COLORS["ink"], lw=style.LINE_WIDTH)
+    common.reference_line(ax, 0)
+    ax.scatter(
+        ranks[:n_marked],
+        loadings[order[:n_marked]],
+        color=style.COLORS["emphasis"],
+        s=point_size,
+        linewidths=0,
+        zorder=3,
+        clip_on=False,
+    )
+    low, high = float(loadings.min()), float(loadings.max())
+    ax.set_ylim(low - 0.05 * (high - low), high + 0.05 * (high - low))
+    ax.set_xlim(0, len(order) + 1)
+    _ranked_callouts(ax, names[order[:n_labeled]])
+
+
+def _ranked_callouts(ax, names) -> None:
+    """`names` (in rank order) as a ranked list in columns of labels stacked
+    `RANKED_LABEL_GAP` apart from the top loading down to the floor. No
+    leaders: the named genes are packed into the head of the curve."""
+    low, high = ax.get_ylim()
+    gap = RANKED_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * (high - low)
+    top = high - gap
+    per_column = max(int((1 - RANKED_LABEL_FLOOR) * top / gap), 1)
+    n = ax.get_xlim()[1]
+    for i, name in enumerate(names):
+        column, slot = divmod(i, per_column)
+        ax.text(
+            n * (RANKED_LABEL_X + column * RANKED_COLUMN_WIDTH),
+            top - slot * gap,
+            name,
+            va="center",
+            fontsize=common.FACTOR_LABEL_FONT_SIZE,
+            color=style.COLORS["ink"],
+        )

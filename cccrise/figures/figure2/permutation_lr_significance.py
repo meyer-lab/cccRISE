@@ -1,0 +1,86 @@
+"""Permutation significance of communication, from
+``uv run cccrise-significance``: null calibration and observed against
+permutation-null scores. The differential-signaling volcano is in
+`figureS_significance`."""
+
+import numpy as np
+import seaborn as sns
+
+from ...runners.datasets import DATASETS, VALIDATION_DIR
+from .. import common, style
+
+DATASET = "alad"
+AXES = ("square", "square")
+
+
+def plot(axs, dataset: str = DATASET):
+    spec = DATASETS[dataset]
+    lr_table = common.load_runner_output(
+        spec.significance_lr_filename(), VALIDATION_DIR
+    )
+    _calibration(lr_table, axs[0])
+    _observed_vs_null(lr_table, axs[1])
+
+
+def _calibration(lr_table, ax):
+    """Fraction of significant condition x eigenstate entries per LR pair,
+    against the 5% expected under the null."""
+    fractions = lr_table["FractionSignificant_p05"].dropna()
+    x_max = max(0.25, np.ceil(fractions.max() * 20) / 20)
+    sns.histplot(
+        fractions,
+        kde=True,
+        ax=ax,
+        color=style.COLORS["emphasis"],
+        bins=np.linspace(0, x_max, 26),
+        stat="density",
+        alpha=0.4,
+        edgecolor="white",
+        linewidth=style.LINE_WIDTH_THIN,
+    )
+    common.reference_line(
+        ax, common.SIG_ALPHA, horizontal=False, label="Permutation null (5%)"
+    )
+    ax.set_xlim(0, x_max)
+    ax.set_ylim(top=ax.get_ylim()[1] * 1.25)  # headroom for the legend
+    ax.set_xlabel("Fraction of entries significant\nper LR pair (p < 0.05)")
+    ax.set_ylabel("Density")
+    ax.legend(loc="upper right")
+
+
+def _observed_vs_null(lr_table, ax):
+    """Mean observed score against the permutation-null mean per LR pair,
+    colored by mean z-score."""
+    observed, null, z = (
+        lr_table[c] for c in ("MeanObserved", "MeanNull", "MeanZScore")
+    )
+    limit = np.abs(z).max()
+    points = ax.scatter(
+        observed,
+        null,
+        c=z,
+        cmap=style.CMAPS["diverging"],
+        vmin=-limit,
+        vmax=limit,
+        s=style.POINT_SIZE_BACKGROUND,
+        edgecolors="none",
+        rasterized=True,
+    )
+    common.colorbar(ax, points, "Mean z-score")
+    low = min(0.0, observed.min(), null.min())
+    high = max(observed.max(), null.max()) * 1.05
+    ax.plot(
+        [low, high],
+        [low, high],
+        color=style.COLORS["reference"],
+        linestyle=style.LINE_STYLE_REFERENCE,
+        linewidth=style.LINE_WIDTH_THIN,
+    )
+    ax.set_xlim(low, high)
+    ax.set_ylim(low, high)
+    ax.set_xlabel("Mean observed\nLR pair score")
+    ax.set_ylabel("Mean cell-permuted\nnull score")
+
+
+def makeFigure():
+    return common.standalone_fixed(__name__)

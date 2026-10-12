@@ -9,11 +9,11 @@ score of the component."""
 import numpy as np
 import pandas as pd
 
+from ...comparators.resampling import summarize_bootstrap_anova
 from ...runners.datasets import VALIDATION_DIR
 from ...runners.provenance import read_metadata
-from ...validation.anova_stability import summarize_bootstrap_anova
 from .. import common, style
-from ..figureS_anova_bootstrap import _common as cccrise_boot
+from . import _cccrise_boot as cccrise_boot
 from ._common import SHORT, load
 
 FILENAME = "comparator_anova_bootstrap_alad.parquet"

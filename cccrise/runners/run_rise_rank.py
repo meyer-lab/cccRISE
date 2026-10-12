@@ -25,10 +25,11 @@ from ._cli import (
     add_dataset_argument,
     dataset_metadata,
     parse_ranks,
+    resolve_dataset,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, RANK_SELECTION_DIR, DatasetSpec
+from .datasets import RANK_SELECTION_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, write_metadata
 
 DEFAULT_RANKS = "1:51"
@@ -108,6 +109,7 @@ def run_rise_rank_selection(
             "held_out_gene_frac": held_out_gene_frac,
             "rise_n_iter_max": rise_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "compress": REPLICATE_COMPRESS,
             "rise_compression_options": RISE_COMPRESSION_OPTIONS,
             "backend": spec.backend or "auto",
@@ -151,7 +153,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_rise_rank_selection(
         spec,
         ranks=parse_ranks(args.ranks),

@@ -18,7 +18,7 @@ from .anova import (
 from .ccc_rise import run_ccc_rise_workflow
 from .factors import (
     ALAD_FACTORS_PATH,
-    COVID19_FACTORS_PATH,
+    IBD_FACTORS_PATH,
     clean_memory,
     factors_to_xarray,
     load_factors_netcdf,
@@ -30,7 +30,7 @@ from .tensor import run_pseudobulk_workflow
 
 __all__ = [
     "ALAD_FACTORS_PATH",
-    "COVID19_FACTORS_PATH",
+    "IBD_FACTORS_PATH",
     "adjust_pvalues",
     "anova_component_associations",
     "clean_memory",

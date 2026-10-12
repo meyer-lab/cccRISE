@@ -1,12 +1,12 @@
 """Patient-level bootstrap of a tensor comparator's component--phenotype ANOVA.
 
-The comparator counterpart of `anova_stability`: resample the patient roster
-(`utils.resample_conditions`, stratified, paired samples carried together),
+The comparator counterpart of the (since replaced) cccRISE bootstrap: resample the patient roster
+(`comparators.resampling.resample_conditions`, stratified, paired samples carried together),
 rebuild the cell-type pseudobulk tensor on the resampled cells, refit the
 comparator at its fixed rank, run the same ANOVA (`anova.prepare_anova_inputs`
 then `anova.anova_component_associations`), and match each replicate's
 components back to the full-cohort fit on the ligand-receptor mode
-(`anova_stability.align_to_reference_components`). Each fit's condition
+(`comparators.resampling.align_to_reference_components`). Each fit's condition
 factor is oriented to a positive column mean (with its LR column flipped
 alongside, which leaves the CP model unchanged), as `standardize_cc_pf2`
 does for cccRISE, so `GroupMeanDiff` keeps its direction across fits.
@@ -21,9 +21,12 @@ import pandas as pd
 
 from ..anova import anova_component_associations, prepare_anova_inputs
 from ..benchmark import pseudobulk_cpd_fit, pseudobulk_tensor, tensor_cell2cell_fit
+from ..comparators.resampling import (
+    REPLICATE_COLUMNS,
+    align_to_reference_components,
+    resample_conditions,
+)
 from ..import_data import add_cond_idxs
-from ..utils import resample_conditions
-from .anova_stability import REPLICATE_COLUMNS, align_to_reference_components
 
 #: Factor order is (condition, sender, receiver, lr); match on lr, as cccRISE.
 LR_MODE = 3
@@ -86,7 +89,7 @@ def comparator_replicate(
     lr_pairs: pd.DataFrame,
     patient_column: str | None = None,
 ) -> pd.DataFrame:
-    """One replicate, in `anova_stability.REPLICATE_COLUMNS` (R2XCP is NaN)."""
+    """One replicate, in `resampling.REPLICATE_COLUMNS` (R2XCP is NaN)."""
     resampled = resample_conditions(
         adata,
         columns["condition"],

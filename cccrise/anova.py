@@ -235,6 +235,7 @@ def anova_component_associations(
     alpha: float = 0.05,
     control_label: str | None = None,
     correction: str | None = None,
+    min_group_size: int = 2,
 ) -> pd.DataFrame:
     """One-way ANOVA of each CP component's condition loading against the
     group label.
@@ -257,6 +258,10 @@ def anova_component_associations(
         Multiple hypothesis testing correction across components (e.g., 'fdr_bh',
         'bonferroni', 'holm', or None). When specified, `Significant` is evaluated
         against the adjusted p-values in `PAdj`.
+    min_group_size : int, default=2
+        A component's test is reported as NaN when any group has fewer
+        conditions than this. 1 keeps a single-condition group in the test
+        (it adds between-group but no within-group degrees of freedom).
 
     Returns
     -------
@@ -269,8 +274,7 @@ def anova_component_associations(
         - 'EtaSquared': effect size eta^2 (SS_between / SS_total)
         - 'GroupMeanDiff': signed group mean difference (for binary grouping)
         - 'Significant': True if PAdj < alpha (or P < alpha when uncorrected)
-        - 'NGroups': number of distinct non-null group levels (the test is
-          skipped, NaN, if any has fewer than 2 samples)
+        - 'NGroups': number of distinct groups with a sample
         - 'GroupSizes': count of samples in each group
     """
     A = np.asarray(X.uns["A"], dtype=float)
@@ -288,14 +292,16 @@ def anova_component_associations(
         # A missing label or a non-finite loading has no group to sit in; drop
         # that condition rather than let it poison the component's whole test.
         keep = labels.notna().to_numpy() & np.isfinite(values)
-        kept_labels = labels[keep].to_numpy()
+        # Compared as strings, as the level names are: numeric labels (e.g.
+        # binned ages) would otherwise match no level.
+        kept_labels = labels[keep].astype(str).to_numpy()
         kept_values = values[keep]
 
         level_names = sorted({str(name) for name in kept_labels})
         groups = [kept_values[kept_labels == name] for name in level_names]
         group_sizes = [int(group.size) for group in groups]
 
-        if len(groups) < 2 or any(size < 2 for size in group_sizes):
+        if len(groups) < 2 or any(size < min_group_size for size in group_sizes):
             f_stat = p_value = eta_squared = group_mean_diff = np.nan
         else:
             f_stat, p_value = (float(stat) for stat in f_oneway(*groups))
@@ -340,7 +346,7 @@ def _eta_squared(groups: list[np.ndarray]) -> float:
     """Fraction of a loading's total variance the grouping explains,
     ``SS_between / SS_total``.
 
-    The effect size, not the p-value, is what the bootstrap carries: it is a
+    The effect size, not the p-value, is what the stability replicates carry: it is a
     variance ratio, so it does not move with a replicate's sample count the
     way a p-value does.
     """
@@ -360,10 +366,9 @@ def _group_mean_diff(
     levels; NaN otherwise.
 
     This is the only sign-bearing quantity the ANOVA reports, and so the one
-    that carries direction -- which group loads higher. Its orientation is
-    comparable across fits because `standardize_cc_pf2` gives each condition
-    factor column a positive mean. F, P and eta-squared are sign-invariant
-    by construction.
+    that carries direction -- which group loads higher -- through the
+    stability replicates' sign correction, exactly as the logistic regression weight
+    did. F, P and eta-squared are sign-invariant by construction.
     """
     if len(groups) != 2:
         return np.nan

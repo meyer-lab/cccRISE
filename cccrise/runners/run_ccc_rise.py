@@ -30,6 +30,7 @@ import anndata
 from ..ccc_rise import (
     CP_FIT_OPTIONS,
     CP_N_STARTS,
+    RISE_FIT_OPTIONS,
     run_ccc_rise_workflow,
     validate_cp_rank,
 )
@@ -43,11 +44,11 @@ from ._cli import (
     add_dataset_argument,
     add_scoring_arguments,
     dataset_metadata,
+    resolve_dataset,
     resolve_output,
     resulting_dims,
 )
 from .datasets import (
-    DATASETS,
     FACTORS_DIR,
     RANK_SELECTION_DIR,
     DatasetSpec,
@@ -208,6 +209,7 @@ def run_pipeline(
             "rise_n_iter_max": rise_n_iter_max,
             "cp_n_iter_max": cp_n_iter_max,
             "rise_tol": rise_tol,
+            **RISE_FIT_OPTIONS,
             "cp_tol": cp_tol,
             "random_state": random_state,
             "complex_sep": complex_sep,
@@ -279,7 +281,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_pipeline(
         spec,
         rise_rank=args.rise_rank,

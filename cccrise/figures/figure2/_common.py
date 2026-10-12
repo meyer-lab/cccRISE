@@ -1,163 +1,287 @@
-"""Choices and data shared by Figure 2's panels.
+"""The granularity component shared by Figure 2's panels and its cmp. 5
+supplements: the CP component that splits a cell type into sender and
+receiver subpopulations, the label-free sender and receiver groups its
+per-cell weights define, and their gene expression."""
 
-Cell type granularity (`cmp_eigenstate_loadings`, `cmp_weight_scatter`,
-`eigenstate_scatter`): the CP component that splits a cell type into sender
-and receiver subpopulations, and the RISE eigenstates its sender and receiver
-loadings draw on.
-
-Coordinated changes (`lr_association`, `lr_covariation`): the
-outcome-associated CP component's LR pairs, each scored on its own in the raw
-communication tensor and compared to the component.
-"""
-
-import copy
-from functools import cache
+import functools
 
 import anndata
 import numpy as np
 import pandas as pd
+import scanpy as sc
 
-from ...anova import run_multiple_factors_anova
-from ...ccc_rise import calculate_interaction_tensor
-from ...factors import load_factors_netcdf
-from ...import_data import import_ligand_receptor_pairs
-from ...runners.datasets import DATASETS
-from ...utils import load_rise_reference
-from .. import common
-from ..figure3._common import SPEC, association, factors_adata
+from ...validation.nichenet import top_pairs
+from .. import common, style
 
-DATASET = "alad"
-
-## Cell type granularity
+# The CP component that splits a cell type into sender and receiver
+# subpopulations, and the RISE eigenstates of its largest sender (B) and
+# receiver (C) loadings
+GRANULARITY_DATASET = "alad"
 GRANULARITY_COMPONENT = 5
-# Its largest sender (B) and receiver (C) loadings
-SENDER_EIGENSTATE, RECEIVER_EIGENSTATE = 17, 15
-HIGHLIGHT_CELLTYPE = "Epithelial cells"
-
-## Coordinated changes
-# The CP component associated with ASSOCIATION (Figure 3); its N_TOP most
-# heavily weighted LR pairs are the ones tested for co-variation.
-ASSOCIATED_COMPONENT = 4
-ASSOCIATION = "6-Month Outcome (4-Way)"
-N_TOP = 10
-COVARIATION_DRAWS = 2000
-N_EXPRESSION_NEIGHBORS = 20  # an expression-matched pair is one of these nearest
-# Beside the axes: the panels are too short for an in-axes legend corner
-OUTSIDE_LEGEND = {"loc": "center left", "bbox_to_anchor": (1.02, 0.5)}
-
-
-@cache
-def coordinated_analysis() -> dict:
-    """The component's and every LR pair's outcome association, the
-    component's top LR pairs, and those pairs' co-variation against
-    `covariation_baselines`."""
-    adata = factors_adata()
-    scores = component_lr_scores(DATASET, ASSOCIATED_COMPONENT)
-    weights = np.asarray(adata.uns["D"])[:, ASSOCIATED_COMPONENT - 1]
-    top = np.argsort(-np.abs(weights))[:N_TOP]
-    per_lr = column_associations(scores, adata)
-    loading = np.asarray(adata.uns["A"])[:, [ASSOCIATED_COMPONENT - 1]]
-    return {
-        "lr_eta": per_lr.EtaSquared.to_numpy(),
-        "component_eta": float(column_associations(loading, adata).EtaSquared.iloc[0]),
-        "top": top,
-        "observed": mean_pairwise_rank_correlation(scores, top),
-        "baselines": covariation_baselines(
-            scores, top, per_lr.PAdj.to_numpy() < common.SIG_ALPHA
-        ),
-    }
-
-
-def component_lr_scores(dataset: str, component: int) -> np.ndarray:
-    """Each LR pair's per-condition raw communication score in a CP
-    component's own sender/receiver context (conditions x LR pairs, in the
-    factors file's LR order).
-
-    The raw tensor (condition x sender eigenstate x receiver eigenstate x LR
-    pair) is rebuilt from the saved RISE fit with the scoring the CP was fit
-    on, which reproduces the fit's R2X; each LR pair's slice is then weighted
-    by the component's sender (B) and receiver (C) eigenstate loadings and
-    summed over eigenstates, so a pair is scored between the same cells the
-    component describes."""
-    spec = DATASETS[dataset]
-    factors = load_factors_netcdf(spec.factors_path())
-    adata = load_rise_reference(spec.factors_path(), spec.load(), spec.condition_column)
-    tensor, lr_pairs = calculate_interaction_tensor(
-        adata, import_ligand_receptor_pairs(), complex_sep=factors.attrs["complex_sep"]
-    )
-    order = pd.Index(lr_pairs["interaction_symbol"].astype(str)).get_indexer(
-        factors["lr_pair"].values.astype(str)
-    )
-    sender, receiver = (
-        factors[k].values[:, component - 1].astype(float) for k in ("cp_B", "cp_C")
-    )
-    return np.einsum("cijl,i,j->cl", np.asarray(tensor)[..., order], sender, receiver)
+GRANULARITY_SENDER_EIGENSTATE, GRANULARITY_RECEIVER_EIGENSTATE = 17, 15
+# Cells are split on their per-cell sender (`obsm["sc_B"]`) and receiver
+# (`obsm["rc_C"]`) weights on the component alone (`split_cells`), each
+# cutoff a fraction GROUP_TAU of that weight's largest value, then compared by
+# gene expression
+GROUP_TAU = 0.3
+GROUP_COLORS = {"sender": style.COLORS["sender"], "receiver": style.COLORS["receiver"]}
+GROUPS = (*GROUP_COLORS, "rest")
+DE_GROUPS = tuple(GROUP_COLORS)  # each tested against "rest"
+DOT_SIZE_MAX = 30  # pt^2, a gene detected in every cell of a group
+DOT_FRACTIONS = (0.25, 0.5, 1.0)  # size legend entries
+# Dot plot section names wider than this fraction of their genes' span are
+# abbreviated (`label_sections`), keeping neighbors apart
+SECTION_FILL = 0.9
+SECTION_ABBREVIATIONS = {
+    "Macrophages": "Mac.",
+    "Monocytes": "Mono.",
+    "Dendritic Cells": "DC",
+    "CD4 T cells": "CD4 T",
+    "CD8 T cells": "CD8 T",
+    "NK cells": "NK",
+    "Epithelial cells": "Epithelial",
+    "Proliferating cells": "Prolif.",
+    "Pan-epithelial": "Pan-epi.",
+    "Secretory": "Secr.",
+    "Top LR pairs": "LR pairs",
+}
+# Canonical markers of the annotated broad cell types, from the human lung
+# cell atlas (Travaglini et al. 2020, Nature), chosen to be specific within
+# these eight types (e.g. no pan-T genes shared by the CD4 and CD8 sets).
+# Only the gene names come from the literature; the annotations themselves
+# are not used.
+CELLTYPE_MARKERS = {
+    "Macrophages": ["MARCO", "FABP4", "C1QB", "CD68"],
+    "Monocytes": ["CD14", "FCN1", "VCAN", "S100A8"],
+    "Dendritic Cells": ["CD1C", "FCER1A", "CLEC10A"],
+    "CD4 T cells": ["CD4", "IL7R", "CD40LG"],
+    "CD8 T cells": ["CD8A", "CD8B", "GZMK"],
+    "NK cells": ["KLRF1", "NCAM1", "GNLY"],
+    "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "CDH1"],
+    "Proliferating cells": ["MKI67", "TOP2A"],
+}
 
 
-def column_associations(matrix: np.ndarray, adata: anndata.AnnData) -> pd.DataFrame:
-    """Figure 3's component ANOVA against ASSOCIATION, applied to each column
-    of a conditions x features `matrix` in place of the component condition
-    loadings: a one-way ANOVA per column over the association's groups,
-    reporting eta^2, FDR-corrected (Benjamini-Hochberg) across columns."""
-    adata = copy.copy(adata)
-    adata.uns = {**adata.uns, "A": matrix}
-    return run_multiple_factors_anova(
-        adata,
-        [association(ASSOCIATION)],
-        condition_column=SPEC.condition_column,
-        correction="fdr_bh",
+def component_weights() -> tuple[np.ndarray, np.ndarray]:
+    """Per-cell (sender, receiver) weight on the granularity component."""
+    adata = common.get_cell_projections(GRANULARITY_DATASET)
+    return (
+        adata.obsm["sc_B"][:, GRANULARITY_COMPONENT - 1],
+        adata.obsm["rc_C"][:, GRANULARITY_COMPONENT - 1],
     )
 
 
-def mean_pairwise_rank_correlation(scores: np.ndarray, columns) -> float:
-    """Mean Spearman correlation across conditions over every pair of
-    `columns`: each LR pair's scores are ranked across conditions, and the
-    Pearson correlation of those ranks is averaged over all pairs."""
-    ranks = np.argsort(np.argsort(scores[:, columns], axis=0), axis=0)
-    correlations = np.corrcoef(ranks.T)
-    return float(correlations[np.triu_indices(len(columns), 1)].mean())
-
-
-def covariation_baselines(
-    scores: np.ndarray, top: np.ndarray, associated: np.ndarray, seed: int = 0
+def split_cells(
+    sender: np.ndarray, receiver: np.ndarray, tau: float = GROUP_TAU
 ) -> dict[str, np.ndarray]:
-    """`mean_pairwise_rank_correlation` of as many LR pairs as `top`, drawn
-    `COVARIATION_DRAWS` times from the LR pairs outside `top`, under three
-    baselines:
+    """{group: cell mask}: the cells passing the sender cutoff (`tau` x the
+    largest sender weight) or the receiver cutoff, each assigned to the role
+    of its larger weight relative to that weight's maximum."""
+    relative_sender, relative_receiver = (
+        sender / sender.max(),
+        receiver / receiver.max(),
+    )
+    high = (relative_sender >= tau) | (relative_receiver >= tau)
+    sends = relative_sender > relative_receiver
+    return {"sender": high & sends, "receiver": high & ~sends}
 
-    - random: drawn uniformly without replacement.
-    - expression_matched: one pair per top pair, each drawn from that top
-      pair's `N_EXPRESSION_NEIGHBORS` nearest pairs in log mean score
-      (without replacement within a draw), so the draw matches the top pairs'
-      expression levels.
-    - associated: drawn uniformly from the `associated` (boolean mask) pairs,
-      i.e. the other pairs significantly associated with the outcome."""
-    rng = np.random.default_rng(seed)
-    pool = np.setdiff1d(np.arange(scores.shape[1]), top)
-    level = np.log10(scores.mean(axis=0) + 1e-12)
-    neighbors = [
-        pool[np.argsort(np.abs(level[pool] - level[t]))[:N_EXPRESSION_NEIGHBORS]]
-        for t in top
-    ]
 
-    def matched_draw():
-        draw = []
-        for candidates in neighbors:
-            draw.append(rng.choice(np.setdiff1d(candidates, draw)))
-        return draw
+def top_pair_genes() -> list[str]:
+    """Ligand then receptor genes (complexes split) of the component's top LR
+    pairs: those `cp_factor_matrices` labels (NicheNet's relative-loading rule
+    over every pair)."""
+    adata = common.get_cell_projections(GRANULARITY_DATASET)
+    names = pd.Series(np.asarray(adata.uns["lr_pairs"]).astype(str)).str.split("^")
+    lr_pairs = pd.DataFrame({"ligand": names.str[0]})
+    rows = top_pairs(
+        adata.uns["D"], lr_pairs, GRANULARITY_COMPONENT, set(lr_pairs["ligand"])
+    )
+    top = names[rows]
+    return present(g for side in (0, 1) for g in top.str[side].str.split("&").explode())
 
-    associated_pool = np.setdiff1d(np.flatnonzero(associated), top)
-    draws = {
-        "random": lambda: rng.choice(pool, len(top), replace=False),
-        "expression_matched": matched_draw,
-        "associated": lambda: rng.choice(associated_pool, len(top), replace=False),
-    }
+
+@functools.cache
+def cell_groups() -> pd.Series:
+    """Each cell's group at `GROUP_TAU`, "rest" if in none."""
+    groups = split_cells(*component_weights())
+    labels = np.full(len(groups["sender"]), "rest", dtype=object)
+    for group, mask in groups.items():
+        labels[mask] = group
+    return pd.Series(pd.Categorical(labels, categories=GROUPS))
+
+
+@functools.cache
+def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFrame]:
+    """{group: Wilcoxon score and BH q per gene, highest score first} of each
+    of `groups` against `reference`. Only the scores and q are used: scanpy's
+    fold changes assume natural-log data."""
+    adata = common.get_cell_projections(GRANULARITY_DATASET)
+    test = anndata.AnnData(
+        X=adata.X,
+        obs=pd.DataFrame({"group": cell_groups().to_numpy()}, index=adata.obs_names),
+        var=pd.DataFrame(index=adata.var_names),
+    )
+    sc.tl.rank_genes_groups(
+        test, "group", groups=list(groups), reference=reference, method="wilcoxon"
+    )
+    result = test.uns["rank_genes_groups"]
     return {
-        name: np.array(
-            [
-                mean_pairwise_rank_correlation(scores, draw())
-                for _ in range(COVARIATION_DRAWS)
-            ]
+        g: pd.DataFrame(
+            {"score": result["scores"][g], "q": result["pvals_adj"][g]},
+            index=result["names"][g],
         )
-        for name, draw in draws.items()
+        for g in groups
     }
+
+
+def group_expression(genes: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(fraction of cells detecting, mean expression) of `genes` (rows) in
+    each group (columns)."""
+    adata = common.get_cell_projections(GRANULARITY_DATASET)
+    X = adata[:, genes].to_df().to_numpy()
+    groups = cell_groups().to_numpy()
+    detected, mean = (
+        pd.DataFrame(
+            {g: stat(X[groups == g]) for g in GROUPS}, index=genes, dtype=float
+        )
+        for stat in (lambda x: (x > 0).mean(axis=0), lambda x: x.mean(axis=0))
+    )
+    return detected, mean
+
+
+def present(genes) -> list[str]:
+    """`genes` in the fit's gene set, in order, without repeats."""
+    var_names = set(common.get_cell_projections(GRANULARITY_DATASET).var_names)
+    return [g for g in dict.fromkeys(genes) if g in var_names]
+
+
+def plot_dotplot(
+    ax,
+    sections: dict[str, list[str]],
+    show_legend: bool = False,
+    fontsize: float | None = None,
+):
+    """Groups (rows) x genes (columns, under their `sections` names): dot
+    size the fraction of the group's cells detecting the gene, color its mean
+    expression relative to the gene's largest group mean, every label
+    `fontsize` (default `FACTOR_LABEL_FONT_SIZE`). With `show_legend`, the colorbar and size legend beside it.
+    Returns the dots."""
+    fontsize = fontsize or common.FACTOR_LABEL_FONT_SIZE
+    columns = label_sections(ax, sections, fontsize)
+    detected, mean = group_expression(list(columns))
+    relative = mean / mean.max(axis=1).to_numpy()[:, None]
+    x, y = np.meshgrid(list(columns.values()), np.arange(len(GROUPS)), indexing="ij")
+    points = ax.scatter(
+        x.ravel(),
+        y.ravel(),
+        s=DOT_SIZE_MAX * detected.to_numpy().ravel(),
+        c=relative.to_numpy().ravel(),
+        cmap=style.CMAPS["weight"],
+        vmin=0,
+        vmax=1,
+        linewidths=0,
+    )
+    ax.set_yticks(
+        range(len(GROUPS)), [g.capitalize() for g in GROUPS], fontsize=fontsize
+    )
+    ax.set_ylim(len(GROUPS) - 0.5, -0.5)
+    if show_legend:
+        common.colorbar(ax, points, "Mean expr.\n/ max group")
+        common.legend(
+            ax,
+            "right",
+            handles=[
+                ax.scatter([], [], s=DOT_SIZE_MAX * f, color=style.COLORS["ink"])
+                for f in DOT_FRACTIONS
+            ],
+            labels=[f"{f:.0%}" for f in DOT_FRACTIONS],
+            title="Detected",
+        )
+    return points
+
+
+def plot_markers(ax, markers: dict[str, list[str]], **kwargs):
+    """`plot_dotplot` of literature `markers` ({section: genes}), keeping the
+    genes in the fit's gene set."""
+    return plot_dotplot(
+        ax, {name: present(genes) for name, genes in markers.items()}, **kwargs
+    )
+
+
+def label_sections(
+    ax, sections: dict[str, list[str]], fontsize: float
+) -> dict[str, int]:
+    """Gene tick labels along x at 45 degrees, each section's name above its
+    genes (its `SECTION_ABBREVIATIONS` entry if the name would overrun them)
+    and thin lines between sections, all `fontsize`; returns {gene: column}."""
+    genes = [g for section in sections.values() for g in section]
+    ax.set_xticks(
+        range(len(genes)),
+        genes,
+        fontsize=fontsize,
+        rotation=45,
+        ha="right",
+        rotation_mode="anchor",
+    )
+    ax.set_xlim(-0.5, len(genes) - 0.5)
+    ax.tick_params(length=0)
+    renderer = ax.figure.canvas.get_renderer()
+    column_width = ax.bbox.width / len(genes)
+    columns, start = {}, 0
+    for name, section in sections.items():
+        end = start + len(section)
+        text = ax.text(
+            (start + end - 1) / 2,
+            1.03,
+            name,
+            transform=ax.get_xaxis_transform(),
+            ha="center",
+            va="bottom",
+            fontsize=fontsize,
+        )
+        if (
+            text.get_window_extent(renderer).width
+            > SECTION_FILL * len(section) * column_width
+        ):
+            text.set_text(SECTION_ABBREVIATIONS.get(name, name))
+        if end < len(genes):
+            ax.axvline(end - 0.5, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN)
+        columns |= {gene: start + i for i, gene in enumerate(section)}
+        start = end
+    return columns
+
+
+def plot_weight_scatter(
+    ax,
+    groups: dict[str, np.ndarray],
+    colors: dict[str, str],
+    rest_label: str | None = None,
+):
+    """Per-cell component sender vs. receiver weight, the cells of each of
+    `groups` ({legend label: mask}) colored `colors[label]`, the rest grey
+    (in the legend as `rest_label`, if given)."""
+    sender, receiver = component_weights()
+    rest = ~np.logical_or.reduce(list(groups.values()))
+    ax.scatter(
+        sender[rest],
+        receiver[rest],
+        c=style.COLORS["muted"],
+        s=style.POINT_SIZE_CELL,
+        linewidths=0,
+        rasterized=True,
+        label=f"{rest_label} (n={rest.sum()})" if rest_label else None,
+    )
+    for label, mask in groups.items():
+        ax.scatter(
+            sender[mask],
+            receiver[mask],
+            c=colors[label],
+            s=style.POINT_SIZE_BACKGROUND,
+            linewidths=0,
+            rasterized=True,
+            label=f"{label} (n={mask.sum()})",
+        )
+    ax.set(
+        xlabel=f"Cmp. {GRANULARITY_COMPONENT} sender weight",
+        ylabel=f"Cmp. {GRANULARITY_COMPONENT} receiver weight",
+    )
