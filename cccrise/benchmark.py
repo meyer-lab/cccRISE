@@ -511,16 +511,45 @@ def _checkpointed(directory: Path | None, name: str, compute: Callable[[], Any])
     return result
 
 
-def _pseudobulk_target(tensor, compress, max_rank, checkpoint_dir):
+#: Held while a process uses the GPU, so concurrent fits take turns on it.
+GPU_LOCK = Path(__file__).resolve().parents[1] / "output" / "cache" / "gpu.lock"
+
+
+def _on_gpu(compute: Callable[[], Any], backend: str) -> Callable[[], Any]:
+    """`compute`, run holding `GPU_LOCK` and followed by freeing CuPy's
+    memory pools when `backend` is ``"cupy"`` (CuPy otherwise keeps the
+    freed blocks and another process finds the card full)."""
+    if backend != "cupy":
+        return compute
+
+    def run():
+        import fcntl
+
+        from .factors import clean_memory
+
+        GPU_LOCK.parent.mkdir(parents=True, exist_ok=True)
+        with open(GPU_LOCK, "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                return compute()
+            finally:
+                clean_memory()
+                fcntl.flock(lock, fcntl.LOCK_UN)
+
+    return run
+
+
+def _pseudobulk_target(tensor, compress, max_rank, checkpoint_dir, backend):
     """The tensor pseudobulk CPD fits on, and the bases that decompress its
     factors (None when it is `tensor` itself). Compressed, it is the CANDELINC
     core (`rank_selection.candelinc_compress`) with bases that keep every
     rank the sweep can reach: core consistency and component collinearity
     are the same on the core as on the tensor, as cccRISE's own compressed CP
     rank sweep relies on, and a fit on the core is a CP model of the tensor
-    constrained to the bases' column spaces."""
+    constrained to the bases' column spaces. A core is fit on the CPU: it is
+    small, and the GPU would only add transfers."""
     if not compress:
-        return tensor, None
+        return tensor, None, backend
     bound = min(tensor.shape)
     reach = min(max_rank, bound) if max_rank else bound
     core, bases, _lost = _checkpointed(
@@ -528,7 +557,7 @@ def _pseudobulk_target(tensor, compress, max_rank, checkpoint_dir):
         "pseudobulk_candelinc",
         lambda: candelinc_compress(tensor, reach),
     )
-    return core, bases
+    return core, bases, "numpy"
 
 
 def fit_comparators(
@@ -575,19 +604,22 @@ def fit_comparators(
         raise ValueError(f"rank_mode must be one of {RANK_MODES}, got {rank_mode!r}")
 
     stac_tensor = staccato_order(tensor)
-    pb_tensor, pb_bases = _pseudobulk_target(
-        tensor, pb_compress, pb_max_rank, checkpoint_dir
+    pb_tensor, pb_bases, pb_backend = _pseudobulk_target(
+        tensor, pb_compress, pb_max_rank, checkpoint_dir, pb_backend
     )
     if rank_mode == "own":
         pb_rank, diagnostics = _checkpointed(
             checkpoint_dir,
             "pseudobulk_cpd_rank",
-            lambda: pseudobulk_cpd_rank(
-                pb_tensor,
-                max_rank=pb_max_rank,
-                random_state=random_state,
-                stop_at_failure=pb_stop_at_failure,
-                backend=pb_backend,
+            _on_gpu(
+                lambda: pseudobulk_cpd_rank(
+                    pb_tensor,
+                    max_rank=pb_max_rank,
+                    random_state=random_state,
+                    stop_at_failure=pb_stop_at_failure,
+                    backend=pb_backend,
+                ),
+                pb_backend,
             ),
         )
         pb_details: dict[str, Any] = {
@@ -598,12 +630,15 @@ def fit_comparators(
         tc2c_rank, errors = _checkpointed(
             checkpoint_dir,
             "tensor_cell2cell_elbow",
-            lambda: tensor_cell2cell_elbow(
-                tensor,
-                upper_rank=tc2c_upper_rank,
-                runs=tc2c_elbow_runs,
-                random_state=random_state,
-                backend=tc2c_backend,
+            _on_gpu(
+                lambda: tensor_cell2cell_elbow(
+                    tensor,
+                    upper_rank=tc2c_upper_rank,
+                    runs=tc2c_elbow_runs,
+                    random_state=random_state,
+                    backend=tc2c_backend,
+                ),
+                tc2c_backend,
             ),
         )
         tc2c_details: dict[str, Any] = {"elbow_errors": errors.tolist()}
@@ -626,14 +661,20 @@ def fit_comparators(
     pb_weights, pb_factors = _checkpointed(
         checkpoint_dir,
         f"pseudobulk_cpd_fit_{pb_rank}",
-        lambda: pseudobulk_cpd_fit(pb_tensor, pb_rank, random_state, pb_backend),
+        _on_gpu(
+            lambda: pseudobulk_cpd_fit(pb_tensor, pb_rank, random_state, pb_backend),
+            pb_backend,
+        ),
     )
     if pb_bases is not None:
         pb_factors = [basis @ f for basis, f in zip(pb_bases, pb_factors, strict=True)]
     tc_weights, tc_factors = _checkpointed(
         checkpoint_dir,
         f"tensor_cell2cell_fit_{tc2c_rank}",
-        lambda: tensor_cell2cell_fit(tensor, tc2c_rank, random_state, tc2c_backend),
+        _on_gpu(
+            lambda: tensor_cell2cell_fit(tensor, tc2c_rank, random_state, tc2c_backend),
+            tc2c_backend,
+        ),
     )
     core, st_factors = staccato_fit(stac_tensor, core_shape, random_state)
     return [

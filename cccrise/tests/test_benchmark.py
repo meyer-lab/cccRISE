@@ -74,7 +74,7 @@ def test_compressed_pseudobulk_cpd_matches_the_full_rank_and_span():
     from cccrise.benchmark import _pseudobulk_target, pseudobulk_cpd_fit
 
     tensor = _nonneg_cp_tensor((20, 12, 12, 30), rank=2, seed=3, noise=1e-3)
-    core, bases = _pseudobulk_target(tensor, True, 3, None)
+    core, bases, _ = _pseudobulk_target(tensor, True, 3, None, "numpy")
     assert core.shape == (8, 8, 8, 8)
     full_rank, _ = pseudobulk_cpd_rank(tensor, max_rank=3)
     core_rank, _ = pseudobulk_cpd_rank(core, max_rank=3)
