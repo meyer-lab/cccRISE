@@ -6,6 +6,8 @@ and annotation (rows), from the selection traces its own-rank fit keeps
   open markers are ranks with a collinear component pair; the rank is the
   last one before either rule fails. Values below the axis floor are drawn
   on it.
+  The IBD fine sweep stops at its first failing rank (`pb_stop_at_failure`;
+  same rank), so it is short.
 - Tensor-cell2cell: mean normalised reconstruction error by rank; the rank
   is the elbow (kneedle).
 - STACCato: the leading eigenvalue shares of each mode's unfolding (log),
@@ -17,6 +19,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+from matplotlib.ticker import MaxNLocator
 
 from ...benchmark import CORCONDIA_THRESHOLD, STACCATO_VAREXP, read_fits
 from ...runners.datasets import DATASETS, VALIDATION_DIR
@@ -44,6 +47,7 @@ def _fits(dataset, suffix):
 
 def _selected(ax, rank):
     ax.axvline(rank, color=style.COLORS["reference"], ls=":", lw=style.LINE_WIDTH_THIN)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
 
 def _pb(ax, fit):
@@ -59,6 +63,8 @@ def _pb(ax, fit):
     ax.axhline(CORCONDIA_THRESHOLD, color=style.COLORS["up"], lw=style.LINE_WIDTH_THIN)
     _selected(ax, int(fit.rank))
     ax.set_ylim(CC_FLOOR - 5, 105)
+    # a sweep stopped at its first failing rank is short (`pb_stop_at_failure`)
+    ax.set_xlim(0.5, max(len(cc), 4) + 0.5)
     ax.set_ylabel("core consistency (%)")
 
 
