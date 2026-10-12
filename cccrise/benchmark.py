@@ -74,6 +74,9 @@ TC2C_N_ITER_MAX = 100
 # 1% explained variance (`cal_eigen_varexp(..., varexp = 1)`); run
 # unsupervised, the sample mode is cut the same way.
 STACCATO_VAREXP = 1.0
+#: Leading explained-variance proportions kept per mode in a STACCato fit's
+#: details, for the rank-selection figure (stored only; not a fit setting).
+STACCATO_KEEP = 30
 
 
 #: Non-condition modes a `ComparatorFit` keeps, in the communication tensor's
@@ -468,7 +471,7 @@ def fit_comparators(
         core_shape = tuple(rank for rank, _ in selections)
         stac_details: dict[str, Any] = {
             "varexp_percent": staccato_varexp,
-            "top_proportions": [p[:10].tolist() for _, p in selections],
+            "top_proportions": [p[:STACCATO_KEEP].tolist() for _, p in selections],
         }
     else:
         pb_rank = shared_rank

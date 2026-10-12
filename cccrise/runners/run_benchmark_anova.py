@@ -114,7 +114,7 @@ cccrise.runners.run_benchmark_anova -- do not hand-edit.
 """
 
 
-def _published_cccrise(
+def published_cccrise(
     factors_path: Path, conditions: np.ndarray
 ) -> tuple[ComparatorFit, int]:
     """cccRISE's published CP factors, and its CP rank."""
@@ -405,7 +405,7 @@ def run_benchmark_anova(
     )
     conditions = np.unique(adata.obs[spec.condition_column])
 
-    cccrise_fit, cp_rank = _published_cccrise(factors_path, conditions)
+    cccrise_fit, cp_rank = published_cccrise(factors_path, conditions)
     shared_rank = shared_rank or cp_rank
 
     dataset_fields = dataset_metadata(spec)
