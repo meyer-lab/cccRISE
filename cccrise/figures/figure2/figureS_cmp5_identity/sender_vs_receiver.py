@@ -1,14 +1,15 @@
 """Genes differing between the sender and receiver groups
-(`_volcano.plot_volcano`)."""
+(`_common.plot_volcano`), labeling the most enriched in each
+(`_common.top_genes`)."""
 
 from ... import common
-from ._volcano import plot_volcano
+from . import _common as V
 
 AXES = ("square",)
 
 
 def plot(axs):
-    plot_volcano(axs[0], "sender", "receiver")
+    V.plot_volcano(axs[0], "sender", "receiver", V.top_genes("sender", "receiver"))
 
 
 def makeFigure():

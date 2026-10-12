@@ -1,23 +1,21 @@
-"""Supplementary figure: how the granularity component's sender and receiver
-weights relate to the RISE eigenstates, the genes distinguishing the
-label-free sender and receiver groups (Figure 2) from each other and from the
-rest of the cells, and which cell types they resemble."""
+"""Supplementary figure: the RISE eigenstates behind the granularity
+component's sender and receiver weights, the canonical cell type markers of
+the label-free sender and receiver groups (Figure 2), and the genes
+distinguishing each group from the rest of the cells and from each other."""
 
 from ... import common, style
 from . import (
-    celltype_auroc,
     celltype_markers,
     cmp_eigenstate_loadings,
     eigenstate_scatter,
-    eigenstate_split,
     group_vs_rest,
     sender_vs_receiver,
 )
 
 LAYOUT = [
-    [eigenstate_scatter, cmp_eigenstate_loadings, eigenstate_split],
-    [sender_vs_receiver, group_vs_rest],
-    [[celltype_markers, celltype_auroc]],
+    [eigenstate_scatter, cmp_eigenstate_loadings],
+    [celltype_markers],
+    [group_vs_rest, sender_vs_receiver],
 ]
 
 

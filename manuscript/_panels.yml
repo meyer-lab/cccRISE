@@ -15,11 +15,9 @@ fig5: {}
 figS_cmp5_identity:
   eigenstate_scatter: [a]
   cmp_eigenstate_loadings: [b]
-  eigenstate_split: [c]
-  sender_vs_receiver: [d]
-  group_vs_rest: [e, f]
-  celltype_markers: [g]
-  celltype_auroc: [h]
+  celltype_markers: [c]
+  group_vs_rest: [d, e]
+  sender_vs_receiver: [f]
 figS_cmp_stability:
   rise_fms: [a]
   cpd_fms: [b]

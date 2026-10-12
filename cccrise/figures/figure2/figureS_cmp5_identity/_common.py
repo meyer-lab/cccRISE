@@ -1,16 +1,17 @@
 """The differential-detection volcano shared by this figure's sender vs.
 receiver and group vs. rest panels: each gene's difference in the fraction of
-cells detecting it against its Wilcoxon BH q (`S.rank_genes`). The
-`N_LABELED` most enriched significant genes of each group (not of the
-rest) are labeled (`_label`)."""
+cells detecting it against its Wilcoxon BH q (`S.rank_genes`), colored by
+quadrant (`legend`) and with given genes (e.g. `top_genes`) labeled
+(`_label`)."""
 
 import numpy as np
 from adjustText import adjust_text
+from matplotlib.lines import Line2D
 
 from ... import common, style
 from .. import _common as S
 
-N_LABELED = 6
+N_LABELED = 6  # `top_genes` per side
 Q_FLOOR = 1e-30  # q below this drawn at it
 HEADROOM = 1.1  # y limit over the highest point
 LABEL_DX = (
@@ -37,21 +38,40 @@ def volcano_data(group: str, reference: str):
     return ranking, delta, -np.log10(np.clip(ranking["q"], Q_FLOOR, 1))
 
 
+def enriched(ranking, delta):
+    """Whether each gene is significant with its Wilcoxon score on the same
+    side of zero as its detected fraction difference."""
+    return (ranking["q"] < common.SIG_ALPHA) & (
+        np.sign(ranking["score"]) == np.sign(delta)
+    )
+
+
+def top_genes(group: str, reference: str, n: int = N_LABELED) -> list[str]:
+    """The `n` `enriched` genes of `group` against `reference` with the
+    highest Wilcoxon scores, then the `n` of `reference` with the lowest."""
+    ranking, delta, _ = volcano_data(group, reference)
+    genes = ranking[enriched(ranking, delta)]  # highest score first
+    return [
+        *genes.index[genes["score"] > 0][:n],
+        *genes.index[genes["score"] < 0][::-1][:n],
+    ]
+
+
 def limits(delta, y) -> tuple[float, float]:
     """(symmetric x limit, y limit) fitting `delta` and `y`, with label room."""
     return np.abs(delta).max() * 1.25, y.max() * HEADROOM
 
 
-def plot_volcano(ax, group: str, reference: str, lims=None) -> None:
-    """Volcano of `group` against `reference`, genes enriched in each colored
-    by it if significant, within `lims` (default `limits` of its own data)."""
+def plot_volcano(ax, group: str, reference: str, labeled, lims=None) -> None:
+    """Volcano of `group` against `reference` within `lims` (default `limits`
+    of its own data), labeling `labeled`. A significant gene takes the color
+    of the side of zero it falls on, unless its Wilcoxon score points the
+    other way (ubiquitous genes, e.g. mitochondrial, detected slightly less
+    often but more highly), which stays muted."""
     ranking, delta, y = volcano_data(group, reference)
-    significant = ranking.index[ranking["q"] < common.SIG_ALPHA]
     color = np.where(
-        ranking["q"] < common.SIG_ALPHA,
-        np.where(
-            ranking["score"] > 0, REFERENCE_COLORS[group], REFERENCE_COLORS[reference]
-        ),
+        enriched(ranking, delta),
+        np.where(delta > 0, REFERENCE_COLORS[group], REFERENCE_COLORS[reference]),
         style.COLORS["muted"],
     )
     ax.scatter(
@@ -61,14 +81,30 @@ def plot_volcano(ax, group: str, reference: str, lims=None) -> None:
     common.reference_line(ax, 0, horizontal=False)
     x_limit, y_limit = limits(delta, y) if lims is None else lims
     ax.set(xlim=(-x_limit, x_limit), ylim=(0, y_limit))
-    labeled = list(significant[:N_LABELED])
-    if reference in S.GROUP_COLORS:
-        labeled += list(significant[::-1][:N_LABELED])
     _label(ax, labeled, delta, y)
     ax.set(
         xlabel=f"Detected fraction,\n{group} − {reference}",
         ylabel="−log$_{10}$ q (Wilcoxon)",
     )
+
+
+def legend(ax) -> None:
+    """The volcanoes' shared color key, its title over one row of entries,
+    above `ax` (below its panel letter)."""
+    entries = {g.capitalize(): c for g, c in REFERENCE_COLORS.items()}
+    entries["None"] = style.COLORS["muted"]
+    handles = [
+        Line2D([], [], ls="", marker="o", color=c, label=label)
+        for label, c in entries.items()
+    ]
+    legend = common.legend(
+        ax, "above", handles=handles, ncol=len(handles), title="Enriched in"
+    )
+    # Wider than the axes: hangs into the row's gaps rather than spreading the
+    # panels apart, its height kept by an empty title padded past it
+    legend.set_in_layout(False)
+    height = legend.get_window_extent().height / ax.figure.dpi + style.LEGEND_PAD
+    ax.set_title(" ", pad=height * 72)
 
 
 def _label(ax, genes, delta, y) -> None:
@@ -87,7 +123,7 @@ def _label(ax, genes, delta, y) -> None:
     texts = []
     for side in (1, -1):
         on_side = sorted(
-            (g for g in genes if np.sign(delta[g]) == side), key=lambda g: -y[g]
+            (g for g in genes if (delta[g] >= 0) == (side > 0)), key=lambda g: -y[g]
         )
         for g, slot in zip(on_side, _stack(y[on_side].to_numpy(), step), strict=True):
             texts.append(
@@ -108,7 +144,7 @@ def _label(ax, genes, delta, y) -> None:
         target_x=delta[placed].to_numpy(),
         target_y=y[placed].to_numpy(),
         ax=ax,
-        expand=(1.2, 1.4),
+        expand=(1.3, 1.6),
         force_text=(0.6, 1.0),
         force_pull=(0.002, 0.002),
         time_lim=10,
