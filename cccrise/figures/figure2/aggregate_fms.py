@@ -15,7 +15,7 @@ STAGE_ORDER = ["RISE", "CPD"]  # pipeline order
 STAGE_LABELS = {"RISE": "RISE", "CPD": "CP"}
 JITTER = 0.25
 REPLICATE_ALPHA = 0.5
-Y_MIN = 0.4  # below every replicate, with room for the legend
+Y_MIN = 0.55  # below every replicate, with room for the legend
 AXES = ("square",)
 
 
