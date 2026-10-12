@@ -103,6 +103,8 @@ def _fit_one(spec, cache, cccrise_fit, suffix, mapping, chosen, settings) -> Non
         "labelling": suffix or "_coarse",
         "broken_out": json.dumps(chosen),
         **{k: settings[k] for k in KEY_SETTINGS},
+        # only when set, so fits made before the option keep their key
+        **({"pb_stop_at_failure": True} if settings["pb_stop_at_failure"] else {}),
         **fit_settings(),
     }
     conditions = np.asarray(cache["samples"])
@@ -123,6 +125,7 @@ def _fit_one(spec, cache, cccrise_fit, suffix, mapping, chosen, settings) -> Non
         random_state=settings["random_state"],
         tc2c_backend=settings["tc2c_backend"],
         pb_max_rank=settings["pb_max_rank"],
+        pb_stop_at_failure=settings["pb_stop_at_failure"],
         checkpoint_dir=CHECKPOINT_DIR / digest / "own",
     )
     info["broken_out"] = chosen
@@ -156,6 +159,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--staccato-varexp", type=float, default=STACCATO_VAREXP)
     parser.add_argument("--pb-max-rank", type=int, default=10)
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument(
+        "--pb-stop-at-failure",
+        action="store_true",
+        help="End pseudobulk CPD's rank sweep at its first failing rank.",
+    )
     args = parser.parse_args(argv)
     run(
         resolve_dataset(args),
@@ -167,6 +175,7 @@ def main(argv: list[str] | None = None) -> None:
         staccato_varexp=args.staccato_varexp,
         pb_max_rank=args.pb_max_rank,
         random_state=args.random_state,
+        pb_stop_at_failure=args.pb_stop_at_failure,
     )
 
 

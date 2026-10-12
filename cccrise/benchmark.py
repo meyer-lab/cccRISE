@@ -161,11 +161,25 @@ def transform_tensor(tensor: np.ndarray, kind: str) -> np.ndarray:
     )
 
 
+def _rank_diagnostics(
+    tensor: np.ndarray, factors_by_rank: dict, threshold: float
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """Per rank: core consistency and collinearity, and whether it passes."""
+    diagnostics = cp_core_consistency_sweep(tensor, factors_by_rank).merge(
+        cpd_component_collinearity(factors_by_rank), on="Rank"
+    )
+    passes = (diagnostics["CoreConsistency"] >= threshold) & (
+        diagnostics["MaxModesCollinear"] == 0
+    )
+    return diagnostics, passes.to_numpy()
+
+
 def pseudobulk_cpd_rank(
     tensor: np.ndarray,
     max_rank: int | None = None,
     threshold: float = CORCONDIA_THRESHOLD,
     random_state: int = 42,
+    stop_at_failure: bool = False,
 ) -> tuple[int, pd.DataFrame]:
     """Pseudobulk CPD's rank, by the rule cccRISE's CP rank was selected with.
 
@@ -174,28 +188,32 @@ def pseudobulk_cpd_rank(
     initialisation needs a full-matrices SVD of a mode unfolding, hundreds of
     GB on the coarse tensor), and returns the last rank
     before core consistency first drops below `threshold` percent or any
-    component pair turns collinear, with the per-rank diagnostics.
+    component pair turns collinear, with the per-rank diagnostics. With
+    `stop_at_failure` the sweep ends at the first failing rank: each rank's
+    diagnostics depend only on its own fit, so the rank is the same and only
+    the diagnostics of the ranks after it are not computed.
     """
     bound = min(tensor.shape)
     max_rank = min(max_rank, bound) if max_rank else bound
-    factors_by_rank = {
-        rank: pseudobulk_cp_decomposition(
+    factors_by_rank = {}
+    for rank in range(1, max_rank + 1):
+        factors_by_rank[rank] = pseudobulk_cp_decomposition(
             tensor,
             rank,
             n_iter_max=PSEUDOBULK_N_ITER_MAX,
             tol=PSEUDOBULK_TOL,
             random_state=random_state,
         )[:2]
-        for rank in range(1, max_rank + 1)
-    }
-    diagnostics = cp_core_consistency_sweep(tensor, factors_by_rank).merge(
-        cpd_component_collinearity(factors_by_rank), on="Rank"
-    )
-    passes = (diagnostics["CoreConsistency"] >= threshold) & (
-        diagnostics["MaxModesCollinear"] == 0
-    )
-    first_fail = np.flatnonzero(~passes.to_numpy())
-    rank = int(first_fail[0]) if first_fail.size else max_rank
+        if (
+            stop_at_failure
+            and not _rank_diagnostics(tensor, {rank: factors_by_rank[rank]}, threshold)[
+                1
+            ].all()
+        ):
+            break
+    diagnostics, passes = _rank_diagnostics(tensor, factors_by_rank, threshold)
+    first_fail = np.flatnonzero(~passes)
+    rank = int(first_fail[0]) if first_fail.size else len(factors_by_rank)
     return max(rank, 1), diagnostics
 
 
@@ -418,6 +436,7 @@ def fit_comparators(
     tc2c_backend: str = "numpy",
     pb_max_rank: int | None = None,
     checkpoint_dir: Path | None = None,
+    pb_stop_at_failure: bool = False,
 ) -> list[ComparatorFit]:
     """Fit every comparator on the pseudobulk `tensor` under one rank mode.
 
@@ -435,6 +454,9 @@ def fit_comparators(
     checkpoint_dir : Path, optional
         Where the rank searches and the fits are checkpointed (one file each);
         it must be specific to the tensor and the settings.
+    pb_stop_at_failure : bool
+        End pseudobulk CPD's rank sweep at its first failing rank
+        (`pseudobulk_cpd_rank`); same rank, fewer fits.
     """
     if rank_mode not in RANK_MODES:
         raise ValueError(f"rank_mode must be one of {RANK_MODES}, got {rank_mode!r}")
@@ -445,7 +467,10 @@ def fit_comparators(
             checkpoint_dir,
             "pseudobulk_cpd_rank",
             lambda: pseudobulk_cpd_rank(
-                tensor, max_rank=pb_max_rank, random_state=random_state
+                tensor,
+                max_rank=pb_max_rank,
+                random_state=random_state,
+                stop_at_failure=pb_stop_at_failure,
             ),
         )
         pb_details: dict[str, Any] = {

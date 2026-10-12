@@ -169,12 +169,17 @@ def scatter(ax, table, colors):
     ax.grid(False)
 
 
+def _n_components() -> int:
+    profiles = load("profiles")
+    return int(profiles.loc[profiles["method"] == "cccRISE", "component"].max())
+
+
 def legend(fig):
-    palette = sns.color_palette("Dark2", 5)
+    palette = sns.color_palette("Dark2", 8)
     marker = {"marker": "o", "ls": "", "markersize": 4, "mec": "white", "mew": 0.4}
     handles = [
         Line2D([], [], color=palette[c - 1], label=f"C{c}", **marker)
-        for c in range(1, 6)
+        for c in range(1, _n_components() + 1)
     ]
     handles.append(Line2D([], [], color="black", label="comparator", **marker))
     fig.legend(
@@ -191,7 +196,7 @@ def legend(fig):
 def _panel(ax, method, annotation):
     table = significant(scores(method, annotation))
     shade(ax)
-    scatter(ax, table, _colors(table, sns.color_palette("Dark2", 5)))
+    scatter(ax, table, _colors(table, sns.color_palette("Dark2", 8)))
     ax.set_title(f"{method} ({annotation})", fontsize=style.FONT_SIZE_TITLE)
 
 

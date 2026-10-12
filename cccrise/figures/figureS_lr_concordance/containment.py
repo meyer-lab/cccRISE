@@ -11,6 +11,7 @@ import pandas as pd
 
 from ...runners.datasets import VALIDATION_DIR
 from .. import common, style
+from . import _common
 from ._common import ANNOTATIONS, METHODS, SHORT
 
 SUFFIXES = {"coarse": "", "fine": "_fine"}
@@ -22,9 +23,9 @@ def load(direction: str = "cccRISE in comparator") -> pd.DataFrame:
     (or, ``"comparator in cccRISE"``, of every fit's columns in cccRISE)."""
     frames = [
         common.load_runner_output(
-            f"comparator_containment_alad{SUFFIXES[a]}.parquet",
+            f"comparator_containment_{_common.DATASET}{SUFFIXES[a]}.parquet",
             VALIDATION_DIR,
-            hint="    uv run cccrise-comparator-agreement --dataset alad",
+            hint=f"    uv run cccrise-comparator-agreement --dataset {_common.DATASET}",
         ).assign(annotation=a)
         for a in ANNOTATIONS
     ]

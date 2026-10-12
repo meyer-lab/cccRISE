@@ -98,7 +98,7 @@ def _side(ax, table, palette):
 
 def plot(fig):
     table = bars()
-    palette = sns.color_palette("Dark2", 5)
+    palette = sns.color_palette("Dark2", 8)
     axes = fig.subplots(1, len(SIDES), sharey=True)
     for ax, side in zip(axes, SIDES, strict=True):
         _side(ax, table[table["side"] == side], palette)

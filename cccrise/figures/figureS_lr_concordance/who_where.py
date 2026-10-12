@@ -129,7 +129,7 @@ def plot(fig):
     table = rows()
     ax = fig.subplots()
     mappable = _cells(ax, table)
-    _bars(ax, table, sns.color_palette("Dark2", 5))
+    _bars(ax, table, sns.color_palette("Dark2", 8))
     _fit_labels(ax, table)
     ax.set_xlim(BAR[0], CLASS_BAR[1])
     ax.set_ylim(table["y"].max() + 1, 0)

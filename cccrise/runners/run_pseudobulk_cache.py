@@ -98,6 +98,7 @@ def build_cache(spec: DatasetSpec) -> dict:
         out[f"{side}_sums"], out[f"{side}_active"] = loading_sums(
             np.asarray(adata.obsm[key]), samples, fine, sample_order, fine_order
         )
+    out = {k: np.asarray(v) for k, v in out.items()}
     out["coarse_check_max_abs"] = _coarse_check(adata, spec, genes, out, lr_pairs)
     print(
         f"   Largest difference from the direct tensor: {out['coarse_check_max_abs']:.3g}"
@@ -106,7 +107,10 @@ def build_cache(spec: DatasetSpec) -> dict:
         raise ValueError("the cache does not reproduce the coarse tensor")
     path = cache_path(spec.output_key)
     path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(path, **out)
+    # labels as fixed-width strings, so the cache loads without pickle
+    np.savez_compressed(
+        path, **{k: v.astype(str) if v.dtype == object else v for k, v in out.items()}
+    )
     write_metadata(
         path,
         build_metadata(

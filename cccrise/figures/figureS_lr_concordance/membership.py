@@ -76,7 +76,7 @@ def rows() -> pd.DataFrame:
     table = table.join(_ranks(table.index))
     calls = _calls(table)
     n_comparators = calls[list(COLUMNS[1:])].sum(axis=1)
-    palette = sns.color_palette("Dark2", 5)
+    palette = sns.color_palette("Dark2", 8)
     table = table.assign(
         group=np.select(
             [

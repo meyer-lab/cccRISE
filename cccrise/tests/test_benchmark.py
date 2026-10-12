@@ -59,6 +59,17 @@ def test_pseudobulk_cpd_rank_stops_before_the_rule_fails():
     assert rank == 2
 
 
+def test_pseudobulk_cpd_rank_stopping_early_selects_the_same_rank():
+    tensor = _nonneg_cp_tensor((10, 5, 5, 15), rank=2, seed=5, noise=1e-3)
+    rank, full = pseudobulk_cpd_rank(tensor, max_rank=4)
+    early_rank, early = pseudobulk_cpd_rank(tensor, max_rank=4, stop_at_failure=True)
+    assert early_rank == rank
+    assert list(early["Rank"]) == list(range(1, rank + 2))
+    np.testing.assert_allclose(
+        early["CoreConsistency"], full["CoreConsistency"].iloc[: rank + 1]
+    )
+
+
 def test_pseudobulk_cpd_rank_never_exceeds_the_smallest_mode():
     tensor = _nonneg_cp_tensor((6, 3, 3, 10), rank=2, seed=2, noise=0.01)
     _rank, diagnostics = pseudobulk_cpd_rank(tensor, max_rank=10)
