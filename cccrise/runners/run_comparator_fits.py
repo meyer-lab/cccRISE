@@ -14,7 +14,12 @@ selection (`benchmark.fit_comparators`). Labellings:
   ``1000 * n + k``) broken out of their coarse type, every other fine type
   staying in its coarse type -- the granularity steps between the two
   (``s0``, fit once, is the coarse labelling under the sampled levels'
-  settings).
+  settings);
+- targeted labellings, naming fine types and coarse types by the codes of
+  `CODES`: ``lin+a+b`` (the coarse labelling with fine types `a` and `b`
+  broken out), ``fine-L+a`` (every fine type broken out except coarse type
+  `L`'s, which stay pooled apart from `a`), and ``s<n>r<k>-a`` (that
+  sampled labelling with `a` reverted to its coarse type).
 
 Each labelling's fits, with the published cccRISE fit first, are written as
 ``benchmark_fits_<dataset><suffix>.nc`` (suffix ``""`` for coarse, ``_fine``,
@@ -24,7 +29,7 @@ whose file already holds fits with the same settings is skipped.
 
     uv run python -m cccrise.runners.run_comparator_fits --dataset ibd --levels coarse
     uv run python -m cccrise.runners.run_comparator_fits --dataset ibd \\
-        --levels s12 s24 s36 --repeats 5 --tc2c-backend cupy
+        --levels s12 s24 s36 --repeats 5 --tc2c-backend cupy --stac-backend cupy
 """
 
 import argparse
@@ -56,6 +61,19 @@ from .run_benchmark_anova import CHECKPOINT_DIR, published_cccrise
 from .run_pseudobulk_cache import cache_path
 
 SAMPLED = re.compile(r"^s(\d+)$")
+TARGETED = re.compile(r"^(?:lin|fine-(\w+)|s(\d+)r(\d+))((?:[+-]\w+)*)$")
+#: Codes for the fine and coarse types the targeted labellings name (IBD).
+CODES = {
+    "ee": "Enteroendocrine cells",
+    "ec": "Enterochromaffin cells",
+    "tuft": "Tuft cells",
+    "ilc": "ILCs",
+    "mast": "Mast cells",
+    "mono": "Monocytes SOD2+",
+    "sec": "Secretory",
+    "mye": "Myeloid",
+    "t": "T cell",
+}
 #: Settings a labelling's fits depend on (the backend does not count).
 KEY_SETTINGS = (
     "factors_sha256",
@@ -67,6 +85,28 @@ KEY_SETTINGS = (
 )
 
 
+def _sampled(fine: list[str], n: int, repeat: int) -> list[str]:
+    rng = np.random.default_rng(1000 * n + repeat)
+    return sorted(rng.choice(fine, size=n, replace=False).tolist())
+
+
+def _targeted(fine: list[str], coarse: dict, level: str) -> list[str]:
+    """The fine types a targeted labelling (`TARGETED`) breaks out."""
+    match = TARGETED.match(level)
+    pooled, n, repeat, edits = match.groups()
+    if n is not None:
+        base = set(_sampled(fine, int(n), int(repeat)))
+    elif pooled is not None:
+        base = {t for t in fine if coarse[t] != CODES[pooled]}
+    else:
+        base = set()
+    for sign, code in re.findall(r"([+-])(\w+)", edits):
+        if CODES[code] not in coarse:
+            raise ValueError(f"{code!r} ({CODES[code]}) is not a fine type")
+        (base.add if sign == "+" else base.discard)(CODES[code])
+    return sorted(base)
+
+
 def labelling(cache: dict, level: str, repeat: int = 0) -> tuple[str, dict, list]:
     """The suffix, fine type -> group mapping and broken-out fine types of
     one labelling."""
@@ -76,10 +116,14 @@ def labelling(cache: dict, level: str, repeat: int = 0) -> tuple[str, dict, list
         return "", coarse, []
     if level == "fine":
         return "_fine", {t: t for t in fine}, fine
-    n = int(SAMPLED.match(level).group(1))
-    rng = np.random.default_rng(1000 * n + repeat)
-    chosen = sorted(rng.choice(fine, size=n, replace=False).tolist())
-    return f"_s{n}r{repeat}", coarse | {t: t for t in chosen}, chosen
+    if match := SAMPLED.match(level):
+        n = int(match.group(1))
+        chosen = _sampled(fine, n, repeat)
+        suffix = f"_s{n}r{repeat}"
+    else:
+        chosen = _targeted(fine, coarse, level)
+        suffix = f"_{level}"
+    return suffix, coarse | {t: t for t in chosen}, chosen
 
 
 def labelled_tensor(cache: dict, mapping: dict, lr_pairs, complex_sep="&"):
@@ -98,23 +142,28 @@ def labelled_tensor(cache: dict, mapping: dict, lr_pairs, complex_sep="&"):
     }
 
 
-def _fit_one(spec, cache, cccrise_fit, suffix, mapping, chosen, settings) -> None:
-    path = VALIDATION_DIR / spec.benchmark_fits_filename(suffix)
-    key = {
+def _fit_key(spec, suffix, chosen, settings) -> dict:
+    """The settings a labelling's fits are cached under."""
+    # options only when set, so fits made before an option keep their key
+    optional = {
+        "pb_stop_at_failure": settings["pb_stop_at_failure"] or None,
+        "pb_compress": settings["pb_compress"] or None,
+        "pb_backend": settings["pb_backend"],
+        "stac_backend": settings["stac_backend"],
+    }
+    return {
         "dataset": spec.output_key,
         "labelling": suffix or "_coarse",
         "broken_out": json.dumps(chosen),
         **{k: settings[k] for k in KEY_SETTINGS},
-        # only when set, so fits made before the option keep their key
-        **({"pb_stop_at_failure": True} if settings["pb_stop_at_failure"] else {}),
-        **({"pb_compress": True} if settings["pb_compress"] else {}),
-        **(
-            {"pb_backend": settings["pb_backend"]}
-            if settings["pb_backend"] != "numpy"
-            else {}
-        ),
+        **{k: v for k, v in optional.items() if v not in (None, "numpy")},
         **fit_settings(),
     }
+
+
+def _fit_one(spec, cache, cccrise_fit, suffix, mapping, chosen, settings) -> None:
+    path = VALIDATION_DIR / spec.benchmark_fits_filename(suffix)
+    key = _fit_key(spec, suffix, chosen, settings)
     conditions = np.asarray(cache["samples"])
     if load_fits(path, conditions, key) is not None:
         print(f">> {suffix or 'coarse'}: fits already cached, skipped")
@@ -136,6 +185,7 @@ def _fit_one(spec, cache, cccrise_fit, suffix, mapping, chosen, settings) -> Non
         pb_stop_at_failure=settings["pb_stop_at_failure"],
         pb_backend=settings["pb_backend"],
         pb_compress=settings["pb_compress"],
+        stac_backend=settings["stac_backend"],
         checkpoint_dir=CHECKPOINT_DIR / digest / "own",
     )
     info["broken_out"] = chosen
@@ -155,7 +205,8 @@ def run(spec: DatasetSpec, levels: list[str], repeats: int, **settings: Any) -> 
     for level in levels:
         # ``s0`` breaks nothing out: the coarse labelling, once, fit under the
         # same settings as the other sampled levels
-        for repeat in range(repeats if SAMPLED.match(level) and level != "s0" else 1):
+        sampled = SAMPLED.match(level) and level != "s0"
+        for repeat in range(repeats if sampled else 1):
             suffix, mapping, chosen = labelling(cache, level, repeat)
             _fit_one(spec, cache, cccrise_fit, suffix, mapping, chosen, settings)
 
@@ -172,6 +223,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--pb-max-rank", type=int, default=10)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--pb-backend", default="numpy", choices=["numpy", "cupy"])
+    parser.add_argument("--stac-backend", default="numpy", choices=["numpy", "cupy"])
     parser.add_argument(
         "--pb-compress",
         action="store_true",
@@ -196,6 +248,7 @@ def main(argv: list[str] | None = None) -> None:
         pb_stop_at_failure=args.pb_stop_at_failure,
         pb_backend=args.pb_backend,
         pb_compress=args.pb_compress,
+        stac_backend=args.stac_backend,
     )
 
 
