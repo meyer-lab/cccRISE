@@ -714,37 +714,27 @@ def generate_ccc_tensor(
 
     Returns
     -------
-    ccc_tensor : list of nested lists
-        List of directed cell-cell communication matrices, one for each ligand-
-        receptor pair in ppi_data. These matrices contain the communication score for
-        pairs of cells for the corresponding PPI. This tensor represent a
-        3D-communication tensor for the context.
+    ccc_tensor : numpy.ndarray
+        Directed cell-cell communication matrices, one for each ligand-
+        receptor pair in ppi_data, shape (PPIs, cells, cells). These matrices
+        contain the communication score for pairs of cells for the
+        corresponding PPI. This tensor represent a 3D-communication tensor for
+        the context.
     """
-    ppi_a = interaction_columns[0]
-    ppi_b = interaction_columns[1]
-
-    # Convert DataFrame to NumPy arrays for faster indexing
     gene_index = {gene: i for i, gene in enumerate(rnaseq_data.index)}
-    data_array = rnaseq_data.values  # Convert to NumPy once
-
-    ccc_tensor = []
-    for _, ppi in ppi_data.iterrows():
-        # Use NumPy indexing instead of pandas .loc
-        gene_a_idx = gene_index[ppi[ppi_a]]
-        gene_b_idx = gene_index[ppi[ppi_b]]
-
-        v = data_array[gene_a_idx, :]
-        w = data_array[gene_b_idx, :]
-
-        ccc_tensor.append(
-            compute_ccc_matrix(
-                prot_a_exp=v,
-                prot_b_exp=w,
-                communication_score=communication_score,
-                hill_k=hill_k,
-            ).tolist()
-        )
-    return ccc_tensor
+    data_array = rnaseq_data.to_numpy()
+    # every pair at once: the same elementwise products `compute_ccc_matrix`
+    # forms one pair at a time
+    v, w = (
+        data_array[[gene_index[g] for g in ppi_data[column]]]
+        for column in interaction_columns
+    )
+    return combine_communication_score(
+        v[:, :, None] * w[:, None, :],
+        v[:, :, None] + w[:, None, :],
+        communication_score=communication_score,
+        hill_k=hill_k,
+    )
 
 
 def aggregate_ccc_tensor(

@@ -754,3 +754,45 @@ def test_projection_recompute_rejects_other_data(tmp_path):
     for other in (adata[::-1].copy(), shifted):
         with pytest.raises(ValueError, match="do not match|differ"):
             load_factors_to_anndata(path, adata=other)
+
+
+def test_add_complexes_to_expression_aggregates_and_zeroes_missing():
+    from cccrise.ccc_rise import add_complexes_to_expression
+
+    expr = pd.DataFrame(
+        [[1.0, 4.0], [2.0, 1.0], [8.0, 2.0]], index=["A", "B", "C"], columns=["x", "y"]
+    )
+    complexes = {"A&B": ["A", "B"], "A&Z": ["A", "Z"], "B&C": {"B", "C"}}
+    out = add_complexes_to_expression(expr, complexes, agg_method="min")
+    assert list(out.index) == ["A", "B", "C", "A&B", "A&Z", "B&C"]
+    np.testing.assert_array_equal(out.loc["A&B"], [1.0, 1.0])
+    np.testing.assert_array_equal(out.loc["A&Z"], [0.0, 0.0])
+    np.testing.assert_array_equal(out.loc["B&C"], [2.0, 1.0])
+    mean = add_complexes_to_expression(expr, complexes, agg_method="mean")
+    np.testing.assert_allclose(mean.loc["A&B"], [1.5, 2.5])
+    gmean = add_complexes_to_expression(expr, complexes, agg_method="gmean")
+    np.testing.assert_allclose(gmean.loc["B&C"], [4.0, np.sqrt(2.0)])
+    with pytest.raises(ValueError, match="not a valid agg_method"):
+        add_complexes_to_expression(expr, complexes, agg_method="max")
+
+
+@pytest.mark.parametrize(
+    "communication_score", ["expression_product", "expression_mean", "expression_gmean"]
+)
+def test_generate_ccc_tensor_matches_pair_by_pair(communication_score):
+    from cccrise.ccc import generate_ccc_tensor
+
+    rng = np.random.default_rng(0)
+    expr = pd.DataFrame(
+        rng.uniform(size=(4, 3)), index=["L1", "R1", "L2", "R2"], columns=list("abc")
+    )
+    ppi = pd.DataFrame({"A": ["L1", "L2", "L1"], "B": ["R1", "R2", "R2"]})
+    tensor = generate_ccc_tensor(expr, ppi, communication_score=communication_score)
+    assert tensor.shape == (3, 3, 3)
+    for i, (a, b) in enumerate(zip(ppi["A"], ppi["B"], strict=True)):
+        np.testing.assert_array_equal(
+            tensor[i],
+            compute_ccc_matrix(
+                expr.loc[a].to_numpy(), expr.loc[b].to_numpy(), communication_score
+            ),
+        )

@@ -1385,28 +1385,29 @@ def add_complexes_to_expression(rnaseq_data, complexes, agg_method="min"):
         missing). Columns are
         cell-types/tissues/samples and rows are genes.
     """
-    tmp_rna = rnaseq_data.copy()
-    for k, v in complexes.items():
-        if isinstance(v, set):
-            v = list(v)
-        elif isinstance(v, list):
-            pass  # No need to convert, already a list
-        else:
+    # NaN-skipping, as the pandas reductions this used to call row by row
+    aggregate = {
+        "min": lambda x: np.fmin.reduce(x, axis=0),
+        "mean": lambda x: np.nanmean(x, axis=0),
+        "gmean": lambda x: np.exp(np.nanmean(np.log(x), axis=0)),
+    }
+    if agg_method not in aggregate:
+        raise ValueError(f"{agg_method} is not a valid agg_method")
+    if not complexes:  # nothing appended: the input's dtype is kept
+        return rnaseq_data.copy()
+    values = rnaseq_data.to_numpy()
+    rows = np.zeros((len(complexes), rnaseq_data.shape[1]))
+    for i, v in enumerate(complexes.values()):
+        if not isinstance(v, (set, list)):
             raise TypeError(
                 "Values in the `complexes`dictionary must be sets or lists."
             )
-        if all(g in tmp_rna.index for g in v):
-            df = tmp_rna.loc[v, :]
-            if agg_method == "min":
-                tmp_rna.loc[k] = df.min().values.tolist()
-            elif agg_method == "mean":
-                tmp_rna.loc[k] = df.mean().values.tolist()
-            elif agg_method == "gmean":
-                tmp_rna.loc[k] = df.apply(
-                    lambda x: np.exp(np.mean(np.log(x)))
-                ).values.tolist()
-            else:
-                raise ValueError(f"{agg_method} is not a valid agg_method")
-        else:
-            tmp_rna.loc[k] = [0] * tmp_rna.shape[1]
-    return tmp_rna
+        index = rnaseq_data.index.get_indexer(list(v))
+        if (index >= 0).all():
+            rows[i] = aggregate[agg_method](values[index])
+    return pd.concat(
+        [
+            rnaseq_data,
+            pd.DataFrame(rows, index=list(complexes), columns=rnaseq_data.columns),
+        ]
+    )
