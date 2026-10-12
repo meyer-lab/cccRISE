@@ -297,3 +297,18 @@ def test_tensor_cell2cell_elbow_resumes_from_its_progress(tmp_path, monkeypatch)
     again = tensor_cell2cell_elbow(tensor, upper_rank=5, runs=2, progress=progress)
     assert again[0] == full[0]
     np.testing.assert_array_equal(again[1], full[1])
+
+
+@pytest.mark.parametrize("shape", [(4, 3, 3, 6), (5, 3, 3, 7)])  # even, odd inner sizes
+def test_odd_inner_mttkrp_matches_tensorly(shape):
+    from cccrise.benchmark import _odd_inner_mttkrp
+
+    rng = np.random.default_rng(0)
+    tensor = rng.random(shape)
+    cp = (rng.random(2), [rng.random((n, 2)) for n in shape])
+    for mode in range(4):
+        np.testing.assert_allclose(
+            _odd_inner_mttkrp(tensor, cp, mode),
+            tl.tenalg.unfolding_dot_khatri_rao(tensor, cp, mode),
+            rtol=1e-12,
+        )

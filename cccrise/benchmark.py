@@ -33,6 +33,7 @@ BiCV and CORCONDIA and its published factors are read from the cached model.
 import json
 import pickle
 from collections.abc import Callable, Sequence
+from functools import partial
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -356,9 +357,30 @@ def kneedle_elbow(
     return int(xs[int(np.argmax(difference))])
 
 
+def _odd_inner_mttkrp(tensor, cp_tensor, mode):
+    """tensorly's ``unfolding_dot_khatri_rao`` with the product's inner
+    dimension padded by one zero when it is even. On the RTX 5080, cuBLAS's
+    float64 GEMM of a few rows by millions of columns takes about 80x longer
+    when that dimension is even (1.44 vs 0.019 s at 3,443,720 vs 3,443,721;
+    9.7 vs 0.12 s at the fine tensor's 23,245,410); the zero changes the
+    product only by summation order."""
+    weights, factors = cp_tensor
+    kr = tl.tenalg.khatri_rao(factors, weights=weights, skip_matrix=mode)
+    unfolded = tl.unfold(tensor, mode)
+    if unfolded.shape[1] % 2 == 0:
+        context = tl.context(unfolded)
+        unfolded = tl.concatenate(
+            [unfolded, tl.zeros((unfolded.shape[0], 1), **context)], axis=1
+        )
+        kr = tl.concatenate([kr, tl.zeros((1, kr.shape[1]), **context)], axis=0)
+    return tl.dot(unfolded, kr)
+
+
 def _device_nonneg_cp(device_tensor, rank: int, random_state: int | None):
-    """One Tensor-cell2cell fit of a tensor already on the active backend."""
-    return non_negative_parafac(
+    """One Tensor-cell2cell fit of a tensor already on the active backend
+    (on the GPU with `_odd_inner_mttkrp`)."""
+    fit = partial(
+        non_negative_parafac,
         device_tensor,
         rank,
         init="random",
@@ -366,6 +388,14 @@ def _device_nonneg_cp(device_tensor, rank: int, random_state: int | None):
         n_iter_max=TC2C_N_ITER_MAX,
         random_state=random_state,
     )
+    if tl.get_backend() != "cupy":
+        return fit()
+    default = tl.tenalg.current_backend().unfolding_dot_khatri_rao
+    tl.tenalg.register_backend_method("unfolding_dot_khatri_rao", _odd_inner_mttkrp)
+    try:
+        return fit()
+    finally:
+        tl.tenalg.register_backend_method("unfolding_dot_khatri_rao", default)
 
 
 def _nonneg_cp(
