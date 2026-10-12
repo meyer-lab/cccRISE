@@ -58,6 +58,27 @@ class StaccatoResult:
     log_likelihood: float
 
 
+def _mode_products(tensor: np.ndarray, matrices: Sequence[np.ndarray]) -> np.ndarray:
+    """`tensor` multiplied by ``matrices[m]`` along every mode m, as
+    `multi_mode_dot` does; a diagonal matrix (the identity covariates and
+    their +-1 QR factors of unsupervised STACCato) scales its mode by its
+    diagonal instead of a full mode product, which gives the same values
+    (the products it skips are by zero)."""
+    out = tensor
+    for mode, matrix in enumerate(matrices):
+        diagonal = np.diag(matrix)
+        if matrix.shape[0] == matrix.shape[1] and np.array_equal(
+            matrix, np.diag(diagonal)
+        ):
+            if not np.all(diagonal == 1):
+                shape = [1] * out.ndim
+                shape[mode] = -1
+                out = out * diagonal.reshape(shape)
+        else:
+            out = multi_mode_dot(out, [matrix], modes=[mode])
+    return out
+
+
 def staccato(
     tensor: np.ndarray,
     core_shape: Sequence[int],
@@ -177,21 +198,19 @@ def staccato(
         Qs.append(Q)
         Rs.append(R)
 
-    rotated = multi_mode_dot(tensor, [Q.T for Q in Qs], modes=[0, 1, 2, 3])
+    rotated = _mode_products(tensor, [Q.T for Q in Qs])
     core_rot, factors_rot = tucker(
         rotated, rank=list(core_shape), init="svd", random_state=random_state
     )
     est_rot = tucker_to_tensor((core_rot, factors_rot))
 
-    coef_tensor = multi_mode_dot(
-        est_rot, [np.linalg.inv(R) for R in Rs], modes=[0, 1, 2, 3]
-    )
+    coef_tensor = _mode_products(est_rot, [np.linalg.inv(R) for R in Rs])
 
     G, (W1, W2, W3, W4) = tucker(
         coef_tensor, rank=list(core_shape), init="svd", random_state=random_state
     )
 
-    fitted = multi_mode_dot(coef_tensor, covariates, modes=[0, 1, 2, 3])
+    fitted = _mode_products(coef_tensor, covariates)
     residual = tensor - fitted
     sigma2 = float(np.mean(residual**2))
     log_likelihood = float(

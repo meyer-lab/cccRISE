@@ -12,7 +12,9 @@ selection (`benchmark.fit_comparators`). Labellings:
 - ``fine``: every fine type;
 - ``s<n>r<k>``: `n` fine types drawn uniformly at random (seed
   ``1000 * n + k``) broken out of their coarse type, every other fine type
-  staying in its coarse type -- the granularity steps between the two.
+  staying in its coarse type -- the granularity steps between the two
+  (``s0``, fit once, is the coarse labelling under the sampled levels'
+  settings).
 
 Each labelling's fits, with the published cccRISE fit first, are written as
 ``benchmark_fits_<dataset><suffix>.nc`` (suffix ``""`` for coarse, ``_fine``,
@@ -151,7 +153,9 @@ def run(spec: DatasetSpec, levels: list[str], repeats: int, **settings: Any) -> 
         "lr_pairs": import_ligand_receptor_pairs(),
     }
     for level in levels:
-        for repeat in range(repeats if SAMPLED.match(level) else 1):
+        # ``s0`` breaks nothing out: the coarse labelling, once, fit under the
+        # same settings as the other sampled levels
+        for repeat in range(repeats if SAMPLED.match(level) and level != "s0" else 1):
             suffix, mapping, chosen = labelling(cache, level, repeat)
             _fit_one(spec, cache, cccrise_fit, suffix, mapping, chosen, settings)
 
