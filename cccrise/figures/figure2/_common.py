@@ -45,19 +45,21 @@ SECTION_ABBREVIATIONS = {
     "Secretory": "Secr.",
     "Top LR pairs": "LR pairs",
 }
-# Canonical markers of the annotated broad cell types, from the human lung
-# cell atlas (Travaglini et al. 2020, Nature), chosen to be specific within
-# these eight types (e.g. no pan-T genes shared by the CD4 and CD8 sets).
+# Canonical markers of the annotated broad cell types: the union of the
+# canonical markers of their subtypes in Travaglini et al. 2020 (Nature),
+# Table 1 (CD16 as FCGR3A; "CD8" as CD8A/CD8B; MHCII, not one gene, left out;
+# the "CD8" listed for CD4+ Mem/Eff T cells taken as a typo). The table has no
+# pan-epithelial or proliferating set, so those two are conventional markers.
 # Only the gene names come from the literature; the annotations themselves
 # are not used.
 CELLTYPE_MARKERS = {
-    "Macrophages": ["MARCO", "FABP4", "C1QB", "CD68"],
-    "Monocytes": ["CD14", "FCN1", "VCAN", "S100A8"],
-    "Dendritic Cells": ["CD1C", "FCER1A", "CLEC10A"],
-    "CD4 T cells": ["CD4", "IL7R", "CD40LG"],
-    "CD8 T cells": ["CD8A", "CD8B", "GZMK"],
-    "NK cells": ["KLRF1", "NCAM1", "GNLY"],
     "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "CDH1"],
+    "Macrophages": ["MARCO", "MSR1", "MRC1"],
+    "Monocytes": ["CD14", "FCGR3A"],
+    "Dendritic Cells": ["LILRB4", "IRF8"],
+    "CD4 T cells": ["CD4", "COTL1"],
+    "CD8 T cells": ["CD3E", "CD8A", "CD8B", "DUSP2", "GZMH", "GZMB"],
+    "NK cells": ["KLRD1", "NKG7", "TYROBP"],
     "Proliferating cells": ["MKI67", "TOP2A"],
 }
 

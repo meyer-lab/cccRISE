@@ -31,7 +31,7 @@ This allows for the identification of specific cell subpopulations driving commu
 ::: {#fig-2}
 ![](figures/figure2/figure2.svg){width="6.5in"}
 
-**Figure 2.** 
+**Figure 2.**
 ({{< panel 2 rise-rank-selection >}}) Reconstruction error between the full fit and full tensor, the train fit and in-sample tensor, and the train fit and held-out tensor (BiCV) across RISE ranks.
 ({{< panel 2 cp-rank-selection.1 >}}) CP fit and imputation R2X and ({{< panel 2 cp-rank-selection.2 >}}) component collinearity across CP ranks.
 ({{< panel 2 aggregate-fms >}}) Aggregate RISE and CP factor stability across patient jackknife and model initializations.
@@ -40,7 +40,7 @@ This allows for the identification of specific cell subpopulations driving commu
 ({{< panel 2 nichenet >}}) AUROC between all ligands' NicheNet--inferred gene targets and DE genes in each component's top receiver cells (*: p~adj~<0.05 between top ligands and all other ligands).
 ({{< panel 2 sender-receiver-strata >}}) Per-cell component 5 sender vs. receiver weight, thresholded into label-free groups.
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of each group.
-({{< panel 2 epithelial-markers >}}) Pan-epithelial, airway epithelial subtype, and top LR pair genes per group.
+({{< panel 2 epithelial-markers >}}) Enrichment of epithelial subtype and top LR pair genes per group.
 :::
 
 To evaluate the ability of CCC-RISE to resolve communication patterns at single-cell resolution, we applied the framework to 47 bronchoalveolar lavage (BAL) samples collected from 45 lung transplant patients at varying stages of progression through acute/chronic lung allograft dysfunction (ALAD/CLAD) [source].
@@ -61,13 +61,13 @@ Last, we compared DE genes in top receiver cells with ligand-associated target g
 In sum, these results show that CCC-RISE produces biological signals stronger than chance that partially agree with external ligand--gene-target inference.
 
 Taking advantage of RISE's ability to group of cells into eigen-states based on shared gene expression patterns, we performed a label-free exploration into the CCC-RISE factors.
-We chose to investigate CP component 5 because its sender/receiver cells were uniquely spread across eigen-states, which indicated communication between different groups of cells ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}). 
+We chose to investigate CP component 5 because its sender/receiver cells were uniquely spread across eigen-states, which indicated communication among multiple groups of cells ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}).
 Component 5 represents a well-validated tissue repair program mediated by epidermal growth factor (EGFR) and betacellulin (BTC), commonly implicated in lung tissue damage ({{< fig 2 cp-factor-matrices.4 >}}) [source].
 Its eigen-state loadings collectively stratified cells into mutually exclusive groups of senders and receivers ({{< fig 2 sender-receiver-strata >}}).
-Exploiting the ability to trace cell identity back to gene expression (owed to RISE's cell projections), we found that these groups share expression of canonical epithelial marker genes at significantly higher levels relative to cells with low component 5 weight ({{< fig cmp5-identity celltype-markers group-vs-rest >}}).
+Exploiting the ability to trace cell identity back to gene expression (owed to RISE's cell projections), we found that these groups share expression of canonical epithelial marker genes (EPCAM, KRT8, KRT18, and KRT19) at significantly higher levels relative to cells with low component 5 weight ({{< fig cmp5-identity celltype-markers group-vs-rest >}}).
 This eigen-state--derived epithelial label was largely in concencus with the most granular cell-type labels available ({{< fig 2 celltype-composition >}}).
-Individually, the sender and receiver groups expressed unique epithelial subpopulation markers that exceeded the granularity of available cell-type annotations ({{< fig 2 epithelial-markers >}}, {{< fig cmp5-identity sender-vs-receiver >}}).
-In sum, a cell-label--agnostic interpretation of CCC-RISE factors subdivided a well-validated EGFR--BTC communication axis into ciliated epithelial sender cells and basal/secratory epithelial receiver cells, exceeding available cell-type annotations.
+Individually, the sender and receiver groups expressed unique epithelial subpopulation markers indicating ciliated sender cells and secratory/alveolar receiver cells ({{< fig 2 epithelial-markers >}}, {{< fig cmp5-identity sender-vs-receiver >}}).
+In sum, a cell-label--agnostic interpretation of CCC-RISE factors dissected a well-validated EGFR--BTC communication axis between epithelial subpopulations, exceeding available cell-type annotations.
 
 
 **Figure 2.

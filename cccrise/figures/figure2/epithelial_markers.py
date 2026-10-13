@@ -5,10 +5,11 @@ epithelial subtype markers (`SUBTYPE_MARKERS`, from the same atlas), and the gen
 from .. import common, style
 from . import _common as S
 
+# Differentially expressed markers
 SUBTYPE_MARKERS = {
-    "Ciliated": ["FOXJ1", "CAPS", "TPPP3"],
-    "Basal": ["KRT5", "TP63", "KRT15"],
-    "Secretory": ["SCGB1A1", "SCGB3A1", "MUC5B"],
+    "Ciliated": ["C20orf85", "RSPH1", "SNTN", "TPPP3", "CCDC146", "CDHR3"],
+    "Secretory": ["CXCL17", "SERPINB3", "KRT19"],
+    "Alveolar": ["KRT7"],
 }
 AXES = ("strip",)
 
@@ -16,9 +17,7 @@ AXES = ("strip",)
 def plot(axs):
     S.plot_markers(
         axs[0],
-        {"Pan-epithelial": S.CELLTYPE_MARKERS["Epithelial cells"]}
-        | SUBTYPE_MARKERS
-        | {"Top LR pairs": S.top_pair_genes()},
+        SUBTYPE_MARKERS | {"Top LR pairs": S.top_pair_genes()},
         show_legend=True,
         fontsize=style.FONT_SIZE_TICK,  # as the group labels
     )
