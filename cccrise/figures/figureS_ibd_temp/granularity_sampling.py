@@ -1,10 +1,11 @@
 """IBD draft: what the comparators recover as cell-type labels get finer
 (`run_granularity_sampling`; labellings from `run_comparator_fits`).
 
-x: the labelling's number of cell types -- the 7 lineages (fit under the
-sampled levels' settings, ``_s0r0``), 12 / 24 / 36 fine types broken out of
-their lineage at random (3 repeats each; points), and all 54 fine types.
-Lines join the means.
+x: the sampling level, placed at its typical number of cell types -- the 7
+lineages (fit under the sampled levels' settings, ``_s0r0``), 12 / 24 / 36
+fine types broken out of their lineage at random (5 repeats each; points),
+and all 54 fine types. A type broken out of a lineage it is alone in adds no
+type, so some s24 / s36 repeats have one fewer. Lines join the means.
 
 A. Each cccRISE component's LR containment in each comparator's span (one
    panel per method, one line per component).
@@ -37,7 +38,9 @@ def load(name: str) -> pd.DataFrame:
         hint=f"    uv run python -m cccrise.runners.run_granularity_sampling --dataset {DATASET}",
     )
     # the exact lineage fit is a reference; the curve uses the sampling protocol
-    return table[table["labelling"] != "_coarse"]
+    table = table[table["labelling"] != "_coarse"]
+    by_level = table.groupby("n_broken_out")["n_types"]
+    return table.assign(level=by_level.transform("median").round().astype(int))
 
 
 def _jitter(x, seed=0, width=0.6):
@@ -56,10 +59,10 @@ def _containment(axes, comps, ticks):
         for k, part in sub.groupby("cccrise_component"):
             color = palette[k - 1]
             ax.scatter(
-                _jitter(part["n_types"].to_numpy(float), k), part["lr_containment"],
+                _jitter(part["level"].to_numpy(float), k), part["lr_containment"],
                 s=style.POINT_SIZE_BACKGROUND, color=color, alpha=0.6, lw=0,
             )  # fmt: skip
-            means = part.groupby("n_types")["lr_containment"].mean()
+            means = part.groupby("level")["lr_containment"].mean()
             ax.plot(
                 means.index,
                 means.values,
@@ -88,21 +91,21 @@ def _columns(axes, cols, ticks):
     for ax, (label, flag) in zip(axes, measures.items(), strict=True):
         shares = (
             cols.assign(flag=flag)
-            .groupby(["method", "labelling", "n_types"])["flag"]
+            .groupby(["method", "labelling", "level"])["flag"]
             .mean()
             .reset_index()
         )
         for method, part in shares.groupby("method"):
             color = METHOD_COLORS[method]
             ax.scatter(
-                _jitter(part["n_types"].to_numpy(float)),
+                _jitter(part["level"].to_numpy(float)),
                 part["flag"],
                 s=style.POINT_SIZE_BACKGROUND,
                 color=color,
                 alpha=0.6,
                 lw=0,
             )
-            means = part.groupby("n_types")["flag"].mean()
+            means = part.groupby("level")["flag"].mean()
             ax.plot(
                 means.index,
                 means.values,
@@ -131,14 +134,14 @@ def _ranks(ax, cols, ticks):
     for method, part in first.groupby("method"):
         color = METHOD_COLORS[method]
         ax.scatter(
-            _jitter(part["n_types"].to_numpy(float)),
+            _jitter(part["level"].to_numpy(float)),
             part["r"],
             s=style.POINT_SIZE_BACKGROUND,
             color=color,
             alpha=0.6,
             lw=0,
         )
-        means = part.groupby("n_types")["r"].mean()
+        means = part.groupby("level")["r"].mean()
         ax.plot(
             means.index,
             means.values,
@@ -183,7 +186,7 @@ def _recovery_by_rank(ax, comps, ticks):
 
 def plot(fig):
     comps, cols = load("components"), load("columns")
-    ticks = sorted(comps["n_types"].unique())
+    ticks = sorted(comps["level"].unique())
     top, bottom = fig.subfigures(2, 1, height_ratios=(1, 1))
     _containment(top.subplots(1, len(METHODS), sharey=True), comps, ticks)
     axes = bottom.subplots(1, 5)

@@ -23,7 +23,7 @@ dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 
   the published DGE tables; `broad_cell_type` holds 8 lineages, of which the mesenchymal one
   (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
 fits_path: cccrise/data/validation_results/benchmark_fits_ibd_fine.nc
-fits_sha256: f28a8c3ffa25af2493e99f1827a92fca289ed246c7aae7e3418f00a118648129
+fits_sha256: 70ea3f3c2eca66fd125a2f9aa2e4186fc3100c49bfcc36427101751c6bba7566
 factors_path: cccrise/data/factors/ibd_ti_factors.nc
 factors_sha256: 5fafe3d564bbd22457f66cf8c97e5a5e4f8f476e63e08aad144cc1a5ff60afb2
 celltype_column: celltype
@@ -50,5 +50,5 @@ resulting_dims:
   genes: 23355
   cells: 634534
   lr_pairs: 1255
-git_sha: c56b2bf4df0b99cda568d74169aa32a9e731afb7
-generated: '2026-10-12T09:24:42+00:00'
+git_sha: e9f1026000c719dae5c3a790958bd13803a81e3d-dirty
+generated: '2026-10-13T03:50:39+00:00'
