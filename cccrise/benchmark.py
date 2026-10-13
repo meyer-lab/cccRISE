@@ -31,10 +31,11 @@ BiCV and CORCONDIA and its published factors are read from the cached model.
 """
 
 import json
+import os
 import pickle
 from collections.abc import Callable, Sequence
-from functools import partial
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -655,12 +656,21 @@ def _checkpointed(directory: Path | None, name: str, compute: Callable[[], Any])
     return result
 
 
-#: Held while a process uses the GPU, so concurrent fits take turns on it.
-GPU_LOCK = Path(__file__).resolve().parents[1] / "output" / "cache" / "gpu.lock"
+#: Where the per-GPU locks live: a process holds the one for the card it sees
+#: (`gpu_lock`) while using it, so fits on one card take turns while fits on
+#: different cards run side by side.
+GPU_LOCK_DIR = Path(__file__).resolve().parents[1] / "output" / "cache"
+
+
+def gpu_lock() -> Path:
+    """The lock file for the card(s) this process sees (``CUDA_VISIBLE_DEVICES``,
+    CUDA's device 0 when unset)."""
+    devices = os.environ.get("CUDA_VISIBLE_DEVICES", "0").replace(",", "-")
+    return GPU_LOCK_DIR / f"gpu{devices}.lock"
 
 
 def _on_gpu(compute: Callable[[], Any], backend: str) -> Callable[[], Any]:
-    """`compute`, run holding `GPU_LOCK` and followed by freeing CuPy's
+    """`compute`, run holding `gpu_lock()` and followed by freeing CuPy's
     memory pools when `backend` is ``"cupy"`` (CuPy otherwise keeps the
     freed blocks and another process finds the card full)."""
     if backend != "cupy":
@@ -671,8 +681,8 @@ def _on_gpu(compute: Callable[[], Any], backend: str) -> Callable[[], Any]:
 
         from .factors import clean_memory
 
-        GPU_LOCK.parent.mkdir(parents=True, exist_ok=True)
-        with open(GPU_LOCK, "w") as lock:
+        GPU_LOCK_DIR.mkdir(parents=True, exist_ok=True)
+        with open(gpu_lock(), "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             try:
                 return compute()
