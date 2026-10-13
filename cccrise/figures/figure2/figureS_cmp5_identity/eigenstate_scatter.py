@@ -1,8 +1,6 @@
 """Per-cell projection onto the RISE eigenstates behind the granularity
-component's sender (x) and receiver (y) loadings, with dashed lines at each
-projection's `common.STRONG_CELL_PERCENTILE`."""
-
-import numpy as np
+component's sender (x) and receiver (y) loadings, with dashed lines through
+the origin."""
 
 from ... import common, style
 from .. import _common as S
@@ -23,8 +21,8 @@ def plot(axs):
         linewidths=0,
         rasterized=True,
     )
-    common.reference_line(ax, np.percentile(x, common.STRONG_CELL_PERCENTILE), False)
-    common.reference_line(ax, np.percentile(y, common.STRONG_CELL_PERCENTILE))
+    common.reference_line(ax, 0, False)
+    common.reference_line(ax, 0)
     ax.set(
         xlabel=f"Eigenstate {S.GRANULARITY_SENDER_EIGENSTATE} projection",
         ylabel=f"Eigenstate {S.GRANULARITY_RECEIVER_EIGENSTATE} projection",

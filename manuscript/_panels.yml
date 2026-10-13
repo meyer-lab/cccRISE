@@ -23,7 +23,7 @@ figS_cmp_stability:
   cpd_fms: [b]
   fms_histograms: [c]
 figS_rise_factor_matrices:
-  factors: [a, b]
-  genes: [c]
+  factors: [a]
+  genes: [b]
 figS_significance: {}
 figS_celltype_eigenstates: {}
