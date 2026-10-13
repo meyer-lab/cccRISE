@@ -287,7 +287,7 @@ def test_staccato_fit_gpu_matches_cpu():
 
 
 def test_tensor_cell2cell_elbow_resumes_from_its_progress(tmp_path, monkeypatch):
-    import cccrise.benchmark as benchmark
+    from cccrise import benchmark
 
     tensor = _nonneg_cp_tensor((10, 5, 5, 15), rank=3, seed=3)
     progress = tmp_path / "elbow.json"
@@ -311,4 +311,20 @@ def test_odd_inner_mttkrp_matches_tensorly(shape):
             _odd_inner_mttkrp(tensor, cp, mode),
             tl.tenalg.unfolding_dot_khatri_rao(tensor, cp, mode),
             rtol=1e-12,
+        )
+
+
+def test_odd_inner_mttkrp_leaves_float32_unpadded():
+    from cccrise.benchmark import _odd_inner_mttkrp
+
+    rng = np.random.default_rng(0)
+    tensor = rng.random((4, 3, 3, 6)).astype(np.float32)
+    cp = (
+        rng.random(2).astype(np.float32),
+        [rng.random((n, 2)).astype(np.float32) for n in tensor.shape],
+    )
+    for mode in range(4):
+        np.testing.assert_array_equal(
+            _odd_inner_mttkrp(tensor, cp, mode),
+            tl.tenalg.unfolding_dot_khatri_rao(tensor, cp, mode),
         )

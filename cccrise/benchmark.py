@@ -364,11 +364,14 @@ def _odd_inner_mttkrp(tensor, cp_tensor, mode):
     float64 GEMM of a few rows by millions of columns takes about 80x longer
     when that dimension is even (1.44 vs 0.019 s at 3,443,720 vs 3,443,721;
     9.7 vs 0.12 s at the fine tensor's 23,245,410); the zero changes the
-    product only by summation order."""
+    product only by summation order. Float32 products are not slowed (nor is
+    either precision on the RTX 4090), and the padded copy of the unfolding
+    puts the large float32 tensors' fits out of memory, so only float64 is
+    padded; float32 is tensorly's product unchanged."""
     weights, factors = cp_tensor
     kr = tl.tenalg.khatri_rao(factors, weights=weights, skip_matrix=mode)
     unfolded = tl.unfold(tensor, mode)
-    if unfolded.shape[1] % 2 == 0:
+    if unfolded.shape[1] % 2 == 0 and unfolded.dtype == np.float64:
         context = tl.context(unfolded)
         unfolded = tl.concatenate(
             [unfolded, tl.zeros((unfolded.shape[0], 1), **context)], axis=1
