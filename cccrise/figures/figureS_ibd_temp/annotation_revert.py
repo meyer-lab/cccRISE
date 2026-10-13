@@ -14,6 +14,9 @@ B. Every fine type except the Secretory lineage's, which stays pooled apart
 C. The same for the single-type components: Mono SOD2+ (C1, C7), ILC (C2,
    C3, C8) and Mast (C3), broken out of lineage labels (top) or kept apart
    from an otherwise pooled lineage in the fine labelling (bottom).
+D. The sampled labellings that recovered C4 or C5/C6 with both carriers
+   broken out (s36 repeats 0, 3, 4), then each with one carrier reverted to
+   its lineage label (``-EE`` etc.).
 
 The last column of each heatmap is the method's selected LR rank for that
 labelling (STACCato: its LR-mode rank): misses at a low rank are the rank
@@ -35,13 +38,20 @@ ROWS = {
         "_s0r0", "_lin+mono", "_lin+ilc", "_lin+mast",
         "_fine-mye", "_fine-mye+mono", "_fine-mye+mast", "_fine-t", "_fine-t+ilc", "_fine",
     ],
+    "sampled": [
+        f"_s36r{r}{c}"
+        for r, reverts in ((0, ("", "-ee", "-ec")), (3, ("", "-ee", "-ec", "-tuft")),
+                           (4, ("", "-ee", "-ec", "-tuft")))
+        for c in reverts
+    ],
 }  # fmt: skip
 
 
 def _table():
     targeted = load("targeted_components")
     sampled = load("sampling_components")
-    reference = sampled[sampled["labelling"].isin(["_s0r0", "_fine"])]
+    named = {r for rows in ROWS.values() for r in rows}
+    reference = sampled[sampled["labelling"].isin(named)]
     return pd.concat([targeted, reference], ignore_index=True)
 
 
@@ -93,6 +103,7 @@ def plot(fig):
         "lineage": "lineage + Secretory types",
         "fine": "fine, Secretory reverted",
         "single": "single-type components",
+        "sampled": "sampled s36, a carrier reverted",
     }
     heights = [len(r) + 1.5 for r in ROWS.values()]
     heights[-1] += 5  # the component labels
@@ -103,4 +114,4 @@ def plot(fig):
 
 
 def makeFigure():
-    return common.standalone(plot, (style.FIGURE_WIDTH_DOUBLE, 190 * style.MM))
+    return common.standalone(plot, (style.FIGURE_WIDTH_DOUBLE, 235 * style.MM))

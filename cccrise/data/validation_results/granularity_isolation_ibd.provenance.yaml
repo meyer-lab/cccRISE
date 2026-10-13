@@ -64,5 +64,13 @@ labellings:
   _lin+mast: cccrise/data/validation_results/benchmark_fits_ibd_lin+mast.nc
   _lin+mono: cccrise/data/validation_results/benchmark_fits_ibd_lin+mono.nc
   _lin+tuft: cccrise/data/validation_results/benchmark_fits_ibd_lin+tuft.nc
-git_sha: e9f1026000c719dae5c3a790958bd13803a81e3d-dirty
-generated: '2026-10-13T10:40:17+00:00'
+  _s36r0-ec: cccrise/data/validation_results/benchmark_fits_ibd_s36r0-ec.nc
+  _s36r0-ee: cccrise/data/validation_results/benchmark_fits_ibd_s36r0-ee.nc
+  _s36r3-ec: cccrise/data/validation_results/benchmark_fits_ibd_s36r3-ec.nc
+  _s36r3-ee: cccrise/data/validation_results/benchmark_fits_ibd_s36r3-ee.nc
+  _s36r3-tuft: cccrise/data/validation_results/benchmark_fits_ibd_s36r3-tuft.nc
+  _s36r4-ec: cccrise/data/validation_results/benchmark_fits_ibd_s36r4-ec.nc
+  _s36r4-ee: cccrise/data/validation_results/benchmark_fits_ibd_s36r4-ee.nc
+  _s36r4-tuft: cccrise/data/validation_results/benchmark_fits_ibd_s36r4-tuft.nc
+git_sha: 84871928635520310aa10fe42f9455f234179883-dirty
+generated: '2026-10-13T13:28:34+00:00'
