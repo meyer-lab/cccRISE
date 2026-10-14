@@ -32,21 +32,34 @@ def calculate_r2x(weights: np.ndarray, factors: Factors, tensor: np.ndarray) -> 
     return float(1.0 - norm_residual_sq / norm_tensor_sq)
 
 
+#: A pair whose cosines, multiplied over every mode, reach minus this is a
+#: canceling pair: its two rank-1 terms are near-negatives of each other.
+CANCELING_PRODUCT = 0.8
+
+
 def cpd_component_collinearity(
     factors_by_rank: dict[int, tuple[np.ndarray, Factors]],
     threshold: float = 0.9,
 ) -> pd.DataFrame:
-    """Screen CPD factor models across ranks for degenerate ("canceling") pairs.
+    """Screen CPD factor models across ranks for collinear and canceling pairs.
 
-    Two rank-1 terms that are nearly identical in most modes but flip sign in
-    one nearly cancel in the sum, despite each carrying substantial weight.
-    A pair collinear across modes with no sign flip is a near-duplicate rather
-    than a canceling pair, so the sign is reported separately from the count.
+    A pair collinear (|cos| > `threshold`) in two or more modes is not
+    identified: its two terms sum to the shared vectors times a rank-2
+    matrix over the other modes, and any factorization of that matrix fits
+    equally well. ``MaxModesCollinear`` counts the most such modes over pairs,
+    whichever modes they are; collinearity in one mode (a shared sender,
+    receiver or LR pair) leaves the pair identified.
 
-    Returns one row per rank:
-    ``MaxModesCollinear``, ``WorstPairCanceling``, and
-    ``WorstPairI`` / ``WorstPairJ`` (1-based component indices, -1 when
-    rank < 2).
+    A pair is canceling (degenerate) when its cosines multiply over every
+    mode to at most ``-CANCELING_PRODUCT``: the two rank-1 terms nearly cancel
+    in the sum. Only this product is invariant to CP's per-mode sign
+    convention -- one mode's sign can be moved to any other -- so a negative
+    cosine in one mode alone is not a cancellation.
+
+    Returns one row per rank: ``MaxModesCollinear``, ``WorstPairI`` /
+    ``WorstPairJ`` (the pair with that count, 1-based, -1 when rank < 2),
+    ``MinCosineProduct`` (over pairs) and ``WorstPairCanceling`` (whether any
+    pair is canceling; NaN when rank < 2).
     """
     rows = []
     for rank in sorted(factors_by_rank):
@@ -55,16 +68,17 @@ def cpd_component_collinearity(
             rows.append(_no_collinearity_row(rank))
             continue
 
-        best_count, canceling, best_pair = _worst_collinear_pair(
+        best_count, best_pair, min_product = _worst_collinear_pair(
             factors, rank, threshold
         )
         rows.append(
             {
                 "Rank": rank,
                 "MaxModesCollinear": best_count,
-                "WorstPairCanceling": canceling,
+                "WorstPairCanceling": bool(min_product <= -CANCELING_PRODUCT),
                 "WorstPairI": best_pair[0],
                 "WorstPairJ": best_pair[1],
+                "MinCosineProduct": min_product,
             }
         )
 
@@ -78,37 +92,25 @@ def _no_collinearity_row(rank: int) -> dict:
         "WorstPairCanceling": np.nan,
         "WorstPairI": -1,
         "WorstPairJ": -1,
+        "MinCosineProduct": np.nan,
     }
 
 
 def _worst_collinear_pair(
     factors: Factors, rank: int, threshold: float
-) -> tuple[int, float, tuple[int, int]]:
-    """Find the component pair with the most modes exceeding the collinearity
-    threshold, and whether its collinear modes cancel (net-negative sign)."""
+) -> tuple[int, tuple[int, int], float]:
+    """The pair collinear in the most modes (first on ties), and the smallest
+    product of a pair's cosines over every mode."""
     cos_by_mode = []
     for f in factors:
         norm = f / np.linalg.norm(f, axis=0, keepdims=True)
         cos_by_mode.append(norm.T @ norm)
-
-    best_count = -1
-    best_pair = (-1, -1)
-    best_signs: list[float] = []
-    for i in range(rank):
-        for j in range(i + 1, rank):
-            signs = [cos_by_mode[m][i, j] for m in range(4)]
-            count = int(sum(abs(s) > threshold for s in signs))
-            if count > best_count:
-                best_count = count
-                best_pair = (i + 1, j + 1)
-                best_signs = signs
-
-    canceling = np.nan
-    if best_count > 0:
-        collinear_signs = [s for s in best_signs if abs(s) > threshold]
-        canceling = bool(np.prod(np.sign(collinear_signs)) < 0)
-
-    return best_count, canceling, best_pair
+    cos = np.stack(cos_by_mode)  # (modes, rank, rank)
+    i, j = np.triu_indices(rank, k=1)
+    counts = (np.abs(cos[:, i, j]) > threshold).sum(axis=0)
+    worst = int(np.argmax(counts))
+    min_product = float(np.prod(cos[:, i, j], axis=0).min())
+    return int(counts[worst]), (int(i[worst]) + 1, int(j[worst]) + 1), min_product
 
 
 def cp_core_consistency(

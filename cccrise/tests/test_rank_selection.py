@@ -76,6 +76,18 @@ def test_cpd_component_collinearity_flags_duplicate_and_canceling_pairs():
     canceling = {3: (weights, _factors_with_pair(dims, flip_mode=1))}
     df = cpd_component_collinearity(canceling)
     assert df.loc[df["Rank"] == 3, "WorstPairCanceling"].item() is True
+    assert df.loc[df["Rank"] == 3, "MinCosineProduct"].item() == pytest.approx(-1)
+
+
+def test_cpd_component_collinearity_one_mode_sign_is_not_canceling():
+    """A pair opposite in one mode only is a shared (sign-flipped) factor,
+    not a cancellation: the sign can be moved to any other mode."""
+    rng = np.random.default_rng(1)
+    factors = [rng.normal(size=(d, 3)) for d in (5, 6, 6, 8)]
+    factors[1][:, 1] = -factors[1][:, 0]
+    df = cpd_component_collinearity({3: (np.ones(3), factors)})
+    assert df["MaxModesCollinear"].item() == 1
+    assert df["WorstPairCanceling"].item() is False
 
 
 def test_cpd_component_collinearity_rank_below_two_is_trivial():

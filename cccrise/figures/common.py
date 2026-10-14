@@ -583,8 +583,8 @@ def plot_collinearity(
     ),
 ):
     """Number of modes the most collinear component pair is collinear in, per
-    CP rank, marked by whether that pair duplicates or cancels itself. A
-    canceling pair (collinear in >= 2 modes with opposing signs) flags a
+    CP rank, marked by whether the fit has a canceling pair (cosines whose
+    product over every mode is <= -`CANCELING_PRODUCT`), which flags a
     degenerate fit. `colors` is (no collinear pair, near-duplicate,
     canceling)."""
     none_color, duplicate_color, canceling_color = colors
