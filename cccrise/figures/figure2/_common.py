@@ -30,8 +30,11 @@ DE_GROUPS = tuple(GROUP_COLORS)  # each tested against "rest"
 DOT_SIZE_MAX = 30  # pt^2, a gene detected in every cell of a group
 DOT_FRACTIONS = (0.25, 0.5, 1.0)  # size legend entries
 # Dot plot section names wider than this fraction of their genes' span are
-# abbreviated (`label_sections`), keeping neighbors apart
+# abbreviated (`label_sections`), keeping neighbors apart; one still within
+# SECTION_GAP font sizes of its left neighbor is raised a row
 SECTION_FILL = 0.9
+SECTION_GAP = 0.5
+SECTION_Y = 1.03  # axes fraction
 SECTION_ABBREVIATIONS = {
     "Macrophages": "Mac.",
     "Monocytes": "Mono.",
@@ -42,16 +45,15 @@ SECTION_ABBREVIATIONS = {
     "Epithelial cells": "Epithelial",
     "Proliferating cells": "Prolif.",
     "Pan-epithelial": "Pan-epi.",
-    "Secretory": "Secr.",
     "Top LR pairs": "LR pairs",
 }
 # Canonical markers of the annotated broad cell types: the union of the
 # canonical markers of their subtypes in Travaglini et al. 2020 (Nature),
-# Table 1 (CD16 as FCGR3A; "CD8" as CD8A/CD8B; MHCII, not one gene, left out;
-# the "CD8" listed for CD4+ Mem/Eff T cells taken as a typo). The table has no
-# pan-epithelial or proliferating set, so those two are conventional markers.
-# Only the gene names come from the literature; the annotations themselves
-# are not used.
+# Supplementary Table 1 (CD16 as FCGR3A; "CD8" as CD8A/CD8B; MHCII, not one
+# gene, left out; the "CD8" listed for CD4+ Mem/Eff T cells taken as a typo).
+# The table has no pan-epithelial or proliferating set, so those two are
+# conventional markers. Only the gene names come from the literature; the
+# annotations themselves are not used.
 CELLTYPE_MARKERS = {
     "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "CDH1"],
     "Macrophages": ["MARCO", "MSR1", "MRC1"],
@@ -61,6 +63,20 @@ CELLTYPE_MARKERS = {
     "CD8 T cells": ["CD3E", "CD8A", "CD8B", "DUSP2", "GZMH", "GZMB"],
     "NK cells": ["KLRD1", "NKG7", "TYROBP"],
     "Proliferating cells": ["MKI67", "TOP2A"],
+}
+# Canonical markers of the epithelial subtypes in the same table, verbatim
+EPITHELIAL_SUBTYPE_MARKERS = {
+    "Club": ["CYP2F2", "SCGB3A2", "CCKAR"],
+    "Ciliated": ["FOXJ1", "TUBB1", "TP73", "CCDC78"],
+    "Basal": ["KRT5", "KRT14", "TP63", "DAPL1"],
+    "Goblet": ["MUC5B", "MUC5AC", "SPDEF"],
+    "Mucous": ["MUC5B"],
+    "Serous": ["PRR4", "LPO", "LTF"],
+    "Ionocyte": ["CFTR", "FOXI1", "ASCL3"],
+    "Neuroendocrine": ["CALCA", "CHGA", "ASCL1"],
+    "Tuft": ["DCLK1", "ASCL2"],
+    "AT1": ["AGER", "PDPN", "CLIC5"],
+    "AT2": ["SFTPB", "SFTPC", "SFTPD", "MUC1", "ETV5"],
 }
 
 
@@ -114,9 +130,9 @@ def cell_groups() -> pd.Series:
 
 @functools.cache
 def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFrame]:
-    """{group: Wilcoxon score and BH q per gene, highest score first} of each
-    of `groups` against `reference`. Only the scores and q are used: scanpy's
-    fold changes assume natural-log data."""
+    """{group: Wilcoxon score, p, and BH q per gene, highest score first} of each
+    of `groups` against `reference`. scanpy's fold changes are left out: they
+    assume natural-log data."""
     adata = common.get_cell_projections(GRANULARITY_DATASET)
     test = anndata.AnnData(
         X=adata.X,
@@ -129,7 +145,11 @@ def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFram
     result = test.uns["rank_genes_groups"]
     return {
         g: pd.DataFrame(
-            {"score": result["scores"][g], "q": result["pvals_adj"][g]},
+            {
+                "score": result["scores"][g],
+                "p": result["pvals"][g],
+                "q": result["pvals_adj"][g],
+            },
             index=result["names"][g],
         )
         for g in groups
@@ -169,10 +189,10 @@ def plot_dotplot(
     `fontsize` (default `FACTOR_LABEL_FONT_SIZE`). With `show_legend`, the colorbar and size legend beside it.
     Returns the dots."""
     fontsize = fontsize or common.FACTOR_LABEL_FONT_SIZE
-    columns = label_sections(ax, sections, fontsize)
-    detected, mean = group_expression(list(columns))
+    genes = label_sections(ax, sections, fontsize)
+    detected, mean = (stat.loc[genes] for stat in group_expression(present(genes)))
     relative = mean / mean.max(axis=1).to_numpy()[:, None]
-    x, y = np.meshgrid(list(columns.values()), np.arange(len(GROUPS)), indexing="ij")
+    x, y = np.meshgrid(np.arange(len(genes)), np.arange(len(GROUPS)), indexing="ij")
     points = ax.scatter(
         x.ravel(),
         y.ravel(),
@@ -210,12 +230,12 @@ def plot_markers(ax, markers: dict[str, list[str]], **kwargs):
     )
 
 
-def label_sections(
-    ax, sections: dict[str, list[str]], fontsize: float
-) -> dict[str, int]:
+def label_sections(ax, sections: dict[str, list[str]], fontsize: float) -> list[str]:
     """Gene tick labels along x at 45 degrees, each section's name above its
-    genes (its `SECTION_ABBREVIATIONS` entry if the name would overrun them)
-    and thin lines between sections, all `fontsize`; returns {gene: column}."""
+    genes (its `SECTION_ABBREVIATIONS` entry if the name would overrun them,
+    raised a row if it would still crowd its neighbor) and thin lines between
+    sections, all `fontsize`; returns the genes, one per column (a gene in two
+    sections in both)."""
     genes = [g for section in sections.values() for g in section]
     ax.set_xticks(
         range(len(genes)),
@@ -229,12 +249,13 @@ def label_sections(
     ax.tick_params(length=0)
     renderer = ax.figure.canvas.get_renderer()
     column_width = ax.bbox.width / len(genes)
-    columns, start = {}, 0
+    gap = SECTION_GAP * fontsize / 72 * ax.figure.dpi
+    start, previous_end = 0, -np.inf
     for name, section in sections.items():
         end = start + len(section)
         text = ax.text(
             (start + end - 1) / 2,
-            1.03,
+            SECTION_Y,
             name,
             transform=ax.get_xaxis_transform(),
             ha="center",
@@ -246,11 +267,16 @@ def label_sections(
             > SECTION_FILL * len(section) * column_width
         ):
             text.set_text(SECTION_ABBREVIATIONS.get(name, name))
+        extent = text.get_window_extent(renderer)
+        if extent.x0 < previous_end + gap:  # crowds its neighbor: raised a row
+            text.set_y(SECTION_Y + extent.height / ax.bbox.height)
+            previous_end = -np.inf
+        else:
+            previous_end = extent.x1
         if end < len(genes):
             ax.axvline(end - 0.5, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN)
-        columns |= {gene: start + i for i, gene in enumerate(section)}
         start = end
-    return columns
+    return genes
 
 
 def plot_weight_scatter(
