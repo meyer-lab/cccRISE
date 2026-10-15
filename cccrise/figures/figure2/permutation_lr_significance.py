@@ -1,7 +1,6 @@
 """Permutation significance of communication, from
 ``uv run cccrise-significance``: null calibration and observed against
-permutation-null scores. The differential-signaling volcano is in
-`figureS_significance`."""
+permutation-null scores."""
 
 import numpy as np
 import seaborn as sns

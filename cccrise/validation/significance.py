@@ -2,14 +2,15 @@
 Statistical significance testing and summarization utilities for CCC-RISE.
 
 Implements the within-condition cell-loading permutation test
-(`ccc_rise.compute_communication_significance`) and the cross-condition
-sample-label differential test (`ccc_rise.compute_differential_significance`),
-along with functions to summarize per-LR pair, differential, and global
-significance metrics.
+(`ccc_rise.compute_communication_significance`), with functions to summarize
+its per-LR pair and global significance metrics, and the patient-block
+permutation of condition-level labels (`patient_permutation_differential`)
+that tests group differences in condition-level scores.
 """
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import anndata
 import numpy as np
@@ -18,7 +19,6 @@ import xarray as xr
 
 from ..ccc_rise import (
     compute_communication_significance,
-    compute_differential_significance,
     condition_matrices,
     condition_projections,
 )
@@ -31,19 +31,15 @@ def fit_significance_pipeline(
     reference_path: str | Path,
     lr_pairs: pd.DataFrame,
     n_perms: int = 1000,
-    group_column: str | None = None,
-    control_label: str | None = None,
-    other_label: str | None = None,
     communication_score: str = "expression_product",
     complex_sep: str | None = "&",
     complex_agg_method: str = "min",
     hill_k: float = 0.5,
-    max_exact_perms: int = 100_000,
     random_state: int = 42,
     validate: bool = False,
 ) -> dict[str, Any]:
-    """Load a shared RISE fit and compute within-condition and differential
-    communication significance.
+    """Load a shared RISE fit and compute within-condition communication
+    significance.
 
     Parameters
     ----------
@@ -58,13 +54,6 @@ def fit_significance_pipeline(
         Ligand-receptor pairs table with columns 'ligand' and 'receptor'.
     n_perms : int, default=1000
         Number of permutations for significance testing.
-    group_column : str, optional
-        Binary group column in `adata.obs` (e.g. disease status). If provided,
-        differential significance testing is also performed across groups.
-    control_label : str, optional
-        Label indicating the reference/control group.
-    other_label : str, optional
-        Label indicating the comparison/case group.
     communication_score : str, default='expression_product'
         Scoring function ('expression_product', 'expression_mean',
         'expression_gmean', 'expression_hill'), independent of whichever
@@ -75,8 +64,6 @@ def fit_significance_pipeline(
         Method for aggregating subunits within a complex ('min', 'mean', 'gmean').
     hill_k : float, default=0.5
         Half-saturation constant for Hill communication scoring.
-    max_exact_perms : int, default=100_000
-        Maximum combinatorial assignments to enumerate exactly for differential test.
     random_state : int, default=42
         Random seed for permutations.
     validate : bool, default=False
@@ -90,10 +77,6 @@ def fit_significance_pipeline(
         - 'pvalue_tensor': 4D ndarray empirical p-values
         - 'null_mean_tensor': 4D ndarray permutation null mean scores
         - 'null_std_tensor': 4D ndarray permutation null std scores
-        - 'diff_observed': 3D ndarray (senders, receivers, lr_pairs) differential score (if group_column given)
-        - 'diff_pvalue': 3D ndarray differential p-values (if group_column given)
-        - 'diff_null_mean': 3D ndarray differential null means (if group_column given)
-        - 'diff_null_std': 3D ndarray differential null stds (if group_column given)
         - 'filtered_lr_pairs': pd.DataFrame of evaluated LR pairs
         - 'condition_names': list[str] of conditions
         - 'r2x_rise': float PARAFAC2 fit quality (of the loaded reference)
@@ -102,7 +85,7 @@ def fit_significance_pipeline(
     r2x_rise = adata.uns["r2x_pf2"]
     condition_names = np.unique(adata.obs[condition_column]).tolist()
 
-    # 2. Within-condition permutation significance test
+    # Within-condition cell-loading permutation test
     X_list = condition_matrices(adata)
     gene_names = list(adata.var_names)
     gene_means = (
@@ -132,77 +115,20 @@ def fit_significance_pipeline(
         validate=validate,
     )
 
-    # 3. Cross-condition differential significance test (if group info is available)
-    diff_observed = None
-    diff_pvalue = None
-    diff_null_mean = None
-    diff_null_std = None
-
-    if group_column is not None and group_column in adata.obs:
-        cond_to_group = (
-            cast(pd.DataFrame, adata.obs)
-            .groupby(condition_column)[group_column]
-            .first()
-        )
-        unique_vals = set(cond_to_group.dropna().unique())
-        sample_to_group = None
-
-        if control_label is not None and control_label in unique_vals:
-            sample_to_group = np.array(
-                [cond_to_group[c] != control_label for c in condition_names],
-                dtype=bool,
-            )
-        elif other_label is not None:
-            sample_to_group = np.array(
-                [cond_to_group[c] == other_label for c in condition_names],
-                dtype=bool,
-            )
-        else:
-            if len(unique_vals) == 2:
-                vals_list = list(unique_vals)
-                control_label, other_label = str(vals_list[0]), str(vals_list[1])
-                sample_to_group = np.array(
-                    [cond_to_group[c] == other_label for c in condition_names],
-                    dtype=bool,
-                )
-
-        if sample_to_group is not None and 0 < sample_to_group.sum() < len(
-            sample_to_group
-        ):
-            (
-                diff_observed,
-                diff_pvalue,
-                diff_null_mean,
-                diff_null_std,
-            ) = compute_differential_significance(
-                interaction_tensor=observed_tensor,
-                sample_to_group=sample_to_group,
-                n_perms=n_perms,
-                max_exact_perms=max_exact_perms,
-                random_state=random_state,
-            )
-
     return {
         "observed_tensor": observed_tensor,
         "pvalue_tensor": pvalue_tensor,
         "null_mean_tensor": null_mean_tensor,
         "null_std_tensor": null_std_tensor,
-        "diff_observed": diff_observed,
-        "diff_pvalue": diff_pvalue,
-        "diff_null_mean": diff_null_mean,
-        "diff_null_std": diff_null_std,
         "filtered_lr_pairs": filtered_lr_pairs,
         "condition_names": condition_names,
         "r2x_rise": r2x_rise,
         "n_perms": n_perms,
-        "group_column": group_column,
-        "control_label": control_label,
-        "other_label": other_label,
     }
 
 
 def summarize_significance_lr(results: dict[str, Any]) -> pd.DataFrame:
-    """Summarize per-LR pair communication significance and differential testing.
+    """Summarize per-LR pair communication significance.
 
     Parameters
     ----------
@@ -223,8 +149,6 @@ def summarize_significance_lr(results: dict[str, Any]) -> pd.DataFrame:
         - 'FractionSignificant_p05': fraction of (condition, sender, receiver) entries with p < 0.05
         - 'FractionSignificant_p01': fraction of entries with p < 0.01
         - 'MaxObserved': maximum observed communication score
-        - 'MeanDiffObserved': mean differential communication (if differential test was performed)
-        - 'FractionDiffSignificant_p05': fraction of (sender, receiver) differential entries with p < 0.05
     """
     observed = results["observed_tensor"]  # (n_cond, n_send, n_recv, n_lr)
     pvalues = results["pvalue_tensor"]
@@ -267,94 +191,7 @@ def summarize_significance_lr(results: dict[str, Any]) -> pd.DataFrame:
         }
     )
 
-    # Attach differential metrics if available
-    if (
-        results.get("diff_observed") is not None
-        and results.get("diff_pvalue") is not None
-    ):
-        diff_obs = results["diff_observed"]  # (n_send, n_recv, n_lr)
-        diff_pvals = results["diff_pvalue"]
-
-        summary["MeanDiffObserved"] = np.mean(diff_obs, axis=(0, 1))
-        summary["FractionDiffSignificant_p05"] = np.mean(diff_pvals < 0.05, axis=(0, 1))
-        summary["FractionDiffSignificant_p01"] = np.mean(diff_pvals < 0.01, axis=(0, 1))
-
     return summary.sort_values(by="MeanZScore", ascending=False).reset_index(drop=True)
-
-
-def summarize_significance_differential(
-    results: dict[str, Any],
-    top_n: int | None = None,
-) -> pd.DataFrame:
-    """Summarize cross-condition differential signaling by sender-receiver-LR triplets.
-
-    Parameters
-    ----------
-    results : dict[str, Any]
-        Dictionary returned by `fit_significance_pipeline`.
-    top_n : int, optional
-        If specified, return only the top N interactions by significance.
-
-    Returns
-    -------
-    pd.DataFrame
-        Table of differential interactions with columns:
-        - 'Sender': Sender eigen-state component index (1-based)
-        - 'Receiver': Receiver eigen-state component index (1-based)
-        - 'LRPair': Ligand-receptor pair symbol
-        - 'ObservedDiff': Difference in mean communication (Group 1 - Group 0)
-        - 'PValue': Differential permutation p-value
-        - 'NullMean': Differential permutation null mean difference
-        - 'NullStd': Differential permutation null std
-        - 'ZScore': Differential effect size (ObservedDiff - NullMean) / NullStd
-    """
-    if results.get("diff_observed") is None or results.get("diff_pvalue") is None:
-        return pd.DataFrame()
-
-    diff_obs = results["diff_observed"]  # (n_send, n_recv, n_lr)
-    diff_pvals = results["diff_pvalue"]
-    diff_null_mean = results["diff_null_mean"]
-    diff_null_std = results["diff_null_std"]
-    lr_df = results["filtered_lr_pairs"]
-
-    lr_symbols = (
-        lr_df["interaction_symbol"].tolist()
-        if "interaction_symbol" in lr_df
-        else [f"{l}_{r}" for l, r in zip(lr_df["ligand"], lr_df["receptor"])]
-    )
-
-    n_send, n_recv, n_lr = diff_obs.shape
-    rows = []
-
-    for s in range(n_send):
-        for r in range(n_recv):
-            for l in range(n_lr):
-                obs_d = float(diff_obs[s, r, l])
-                pval = float(diff_pvals[s, r, l])
-                nm = float(diff_null_mean[s, r, l])
-                ns = float(diff_null_std[s, r, l])
-                z = (obs_d - nm) / max(ns, 1e-3)
-
-                rows.append(
-                    {
-                        "Sender": s + 1,
-                        "Receiver": r + 1,
-                        "LRPair": lr_symbols[l],
-                        "ObservedDiff": obs_d,
-                        "PValue": pval,
-                        "NullMean": nm,
-                        "NullStd": ns,
-                        "ZScore": z,
-                    }
-                )
-
-    df = pd.DataFrame(rows)
-    df = df.sort_values(by=["PValue", "ZScore"], ascending=[True, False]).reset_index(
-        drop=True
-    )
-    if top_n is not None:
-        df = df.head(top_n)
-    return df
 
 
 def summarize_significance_overview(results: dict[str, Any]) -> pd.DataFrame:
@@ -424,10 +261,6 @@ def significance_to_xarray(results: dict[str, Any]) -> xr.Dataset:
         - 'pvalue'
         - 'null_mean'
         - 'null_std'
-        - 'diff_observed' (if differential test was performed)
-        - 'diff_pvalue'
-        - 'diff_null_mean'
-        - 'diff_null_std'
     """
     condition_names = results["condition_names"]
     rise_rank = results["observed_tensor"].shape[1]
@@ -446,7 +279,6 @@ def significance_to_xarray(results: dict[str, Any]) -> xr.Dataset:
     }
 
     dims_4d = ["condition", "sender_rise", "receiver_rise", "lr_pair"]
-    dims_3d = ["sender_rise", "receiver_rise", "lr_pair"]
 
     data_vars: dict[str, Any] = {
         "observed_communication": (dims_4d, results["observed_tensor"]),
@@ -455,10 +287,47 @@ def significance_to_xarray(results: dict[str, Any]) -> xr.Dataset:
         "null_std": (dims_4d, results["null_std_tensor"]),
     }
 
-    if results.get("diff_observed") is not None:
-        data_vars["diff_observed"] = (dims_3d, results["diff_observed"])
-        data_vars["diff_pvalue"] = (dims_3d, results["diff_pvalue"])
-        data_vars["diff_null_mean"] = (dims_3d, results["diff_null_mean"])
-        data_vars["diff_null_std"] = (dims_3d, results["diff_null_std"])
-
     return xr.Dataset(data_vars=data_vars, coords=coords)
+
+
+def patient_block_permutations(
+    patients: Sequence[str] | np.ndarray, n_perms: int, random_state: int = 0
+) -> np.ndarray:
+    """`n_perms` reorderings of the conditions (n_perms x n_conditions index
+    arrays) that keep each patient's conditions together: single-condition
+    patients are shuffled among themselves, and a patient's block of k
+    conditions swaps only with other patients' blocks of k. Indexing a
+    condition-level label array with a row permutes the labels by patient."""
+    rng = np.random.default_rng(random_state)
+    patients = np.asarray(patients)
+    blocks: dict[int, list[np.ndarray]] = {}
+    for patient in pd.unique(patients):
+        idx = np.flatnonzero(patients == patient)
+        blocks.setdefault(len(idx), []).append(idx)
+    perms = np.tile(np.arange(len(patients)), (n_perms, 1))
+    for same_size in blocks.values():
+        stacked = np.array(same_size)
+        for perm in perms:
+            perm[stacked.ravel()] = stacked[rng.permutation(len(stacked))].ravel()
+    return perms
+
+
+def patient_permutation_differential(
+    scores: np.ndarray,
+    case: np.ndarray,
+    patients: Sequence[str] | np.ndarray,
+    n_perms: int = 10_000,
+    random_state: int = 0,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Case-minus-control mean difference of each column of a conditions x
+    features `scores` matrix, observed and under `patient_block_permutations`
+    of the boolean `case` labels: (observed (features,), null (n_perms x
+    features))."""
+    case = np.asarray(case, dtype=bool)
+
+    def weights(c: np.ndarray) -> np.ndarray:
+        return c / c.sum() - ~c / (~c).sum()
+
+    perms = patient_block_permutations(patients, n_perms, random_state)
+    null = np.stack([weights(case[p]) for p in perms]) @ scores
+    return weights(case) @ scores, null
