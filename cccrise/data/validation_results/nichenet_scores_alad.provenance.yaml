@@ -22,12 +22,12 @@ de_method: wilcoxon
 min_expr_frac: 0.1
 rel_cutoff: 0.4
 receiver_celltype_column: broad_cell_type
-n_rewire: 1000
+n_shuffle: 1000
 nichenet_ligand_target_url: https://zenodo.org/records/7074291/files/ligand_target_matrix_nsga2r_final.rds
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: 309b7c41af84bdc40c438f6744d156de6096cc08
-generated: '2026-10-15T21:09:58+00:00'
+git_sha: 883ceff5f5f55775d5dd1818e74bbfe2d9ae7773
+generated: '2026-10-15T21:38:07+00:00'
