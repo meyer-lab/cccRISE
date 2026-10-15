@@ -12,9 +12,9 @@ share count less; `component_ligand_scores`). The question is whether the
 ligands a component weights most are better supported by downstream evidence
 than the ligands it barely uses: each component is summarized by the ligands'
 score percentiles averaged with the ligand weights as weights, and tested
-against the same average on rewired copies of the NicheNet prior that keep
-every ligand's target count and every target's sharedness
-(`rewired_percentiles`, `weighted_percentile_tests`).
+against the same average on copies of the NicheNet prior with its
+ligand-target links shuffled at random (`shuffled_percentiles`,
+`weighted_percentile_tests`).
 
 The ligand-target prior is the NicheNet v2 ligand-target matrix (Zenodo
 record 7074291), which is only published as an R `.rds` object; it is read
@@ -437,39 +437,26 @@ def weighted_percentile(percentiles: pd.DataFrame, by=("component",)) -> pd.Seri
     return sums["wp"] / sums["weight"]
 
 
-def curveball(lt_df: pd.DataFrame, seed: int = 0) -> pd.DataFrame:
-    """
-    Rewire the long-format prior by curveball trades (Strona et al. 2014),
-    keeping every ligand's number of targets and every target's sharedness
-    (the number of ligands listing it): two random ligands pool the targets
-    only one of them lists, reshuffle the pool, and each takes back as many
-    as it gave. 5 x the number of ligands trades fully randomize the
-    non-hub links of the NicheNet prior.
-    """
+def shuffle_prior(lt_df: pd.DataFrame, seed: int = 0) -> pd.DataFrame:
+    """The long-format prior with its ligand-target links placed uniformly at
+    random on the grid of its ligands x targets (as many links, no other
+    structure kept)."""
     rng = np.random.default_rng(seed)
-    codes, names = pd.factorize(lt_df["target"])
-    groups = list(lt_df.assign(code=codes).groupby("ligand", sort=False))
-    ligands = [lig for lig, _ in groups]
-    T = [g["code"].to_numpy() for _, g in groups]
-    for _ in range(5 * len(T)):
-        a, b = rng.choice(len(T), 2, replace=False)
-        only_a, only_b = ~np.isin(T[a], T[b]), ~np.isin(T[b], T[a])
-        pool = rng.permutation(np.concatenate([T[a][only_a], T[b][only_b]]))
-        T[a] = np.concatenate([T[a][~only_a], pool[: only_a.sum()]])
-        T[b] = np.concatenate([T[b][~only_b], pool[only_a.sum() :]])
+    ligands, targets = lt_df["ligand"].unique(), lt_df["target"].unique()
+    cells = rng.choice(len(ligands) * len(targets), len(lt_df), replace=False)
     return pd.DataFrame(
         {
-            "ligand": np.repeat(np.array(ligands, dtype=object), [len(t) for t in T]),
-            "target": names[np.concatenate(T)],
+            "ligand": ligands[cells // len(targets)],
+            "target": targets[cells % len(targets)],
         }
     )
 
 
-def _rewired_percentiles(rankings, lt_df, ligands, seed: int) -> pd.DataFrame:
-    rewired = curveball(lt_df, seed)
+def _shuffled_percentiles(rankings, lt_df, ligands, seed: int) -> pd.DataFrame:
+    shuffled = shuffle_prior(lt_df, seed)
     return pd.concat(
         [
-            ligand_activities(rankings[cmp][0], rewired)
+            ligand_activities(rankings[cmp][0], shuffled)
             .reindex(ligs)
             .dropna()
             .rank(pct=True)
@@ -483,17 +470,17 @@ def _rewired_percentiles(rankings, lt_df, ligands, seed: int) -> pd.DataFrame:
     )
 
 
-def rewired_percentiles(
+def shuffled_percentiles(
     scores: pd.DataFrame,
     rankings: dict[int, tuple[pd.Series, int, int]],
     lt_df: pd.DataFrame,
-    n_rewire: int = 1000,
+    n_shuffle: int = 1000,
     n_jobs: int = 1,
 ) -> pd.DataFrame:
     """
-    The rewired-prior null of `score_percentiles`: every scored ligand of
+    The shuffled-prior null of `score_percentiles`: every scored ligand of
     `scores` re-scored on its component's ranking (`rankings`) with each of
-    `n_rewire` `curveball` rewirings of `lt_df` (seeds 0..n_rewire-1), as
+    `n_shuffle` `shuffle_prior` copies of `lt_df` (seeds 0..n_shuffle-1), as
     percentiles among the component's scored ligands.
 
     Returns
@@ -503,9 +490,9 @@ def rewired_percentiles(
     """
     scored = scores.dropna(subset=["auroc"])
     ligands = {cmp: list(g["ligand"]) for cmp, g in scored.groupby("component")}
-    job = partial(_rewired_percentiles, rankings, lt_df, ligands)
+    job = partial(_shuffled_percentiles, rankings, lt_df, ligands)
     with ProcessPoolExecutor(n_jobs) as pool:
-        return pd.concat(pool.map(job, range(n_rewire)), ignore_index=True)
+        return pd.concat(pool.map(job, range(n_shuffle)), ignore_index=True)
 
 
 def weighted_percentile_tests(
@@ -516,7 +503,7 @@ def weighted_percentile_tests(
     """
     Per component, the `weighted_percentile` of `component_ligand_scores`
     output against its value on each replicate of `null_percentiles`
-    (`rewired_percentiles`), the ligand weights held fixed: one-sided
+    (`shuffled_percentiles`), the ligand weights held fixed: one-sided
     permutation p, adjusted across components (`anova.adjust_pvalues`, as in
     the ANOVA analysis).
 

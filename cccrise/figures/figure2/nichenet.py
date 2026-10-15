@@ -4,10 +4,10 @@ best-supported downstream targets in its receiver cells?
 
 Per component, the weight-averaged target-score percentile of its ligands
 (``nichenet.weighted_percentile``; diamond) against the same average with
-every ligand re-scored on rewired copies of the NicheNet prior that keep each
-ligand's target count and each target's sharedness
-(``nichenet.rewired_percentiles``; box: quartiles, whiskers at the 2.5th and
-97.5th percentiles of the rewirings). Above each component: a star
+every ligand re-scored on copies of the NicheNet prior with its ligand-target
+links shuffled at random (``nichenet.shuffled_percentiles``; box: quartiles,
+whiskers at the 2.5th and 97.5th percentiles of the shuffles). Above each
+component: a star
 where the one-sided permutation p, Benjamini-Hochberg adjusted across
 components, is below `SIG_ALPHA` (``nichenet.weighted_percentile_tests``),
 else n.s. The per-ligand scores and percentiles behind it are in the
@@ -51,7 +51,7 @@ def load_scores() -> pd.DataFrame:
 
 @functools.cache
 def load_null() -> pd.DataFrame:
-    """The runner's `rewired_percentiles` table."""
+    """The runner's `shuffled_percentiles` table."""
     return _load(DATASETS[DATASET].nichenet_null_filename())
 
 
@@ -119,7 +119,7 @@ def plot(axs):
                 facecolor=BOX_FACE,
                 edgecolor=style.COLORS["reference"],
                 lw=style.LINE_WIDTH_THIN,
-                label="Rewired\nNicheNet",
+                label="Shuffled\nNicheNet",
             ),
         ],
     )

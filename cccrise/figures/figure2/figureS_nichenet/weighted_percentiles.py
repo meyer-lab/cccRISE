@@ -4,8 +4,8 @@ the component's ligands (``nichenet.score_percentiles``), each ligand counted
 in proportion to its weight in the component -- box at the weighted
 quartiles, whiskers at the weighted 5th and 95th percentiles, diamond at the
 weighted mean (Figure 2's statistic). "Null": the same, pooled over every
-component and every rewired copy of the NicheNet prior
-(``nichenet.rewired_percentiles``)."""
+component and every shuffled copy of the NicheNet prior
+(``nichenet.shuffled_percentiles``)."""
 
 import numpy as np
 

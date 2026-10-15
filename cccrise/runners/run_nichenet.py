@@ -11,13 +11,13 @@ highest-loading cells against the lowest-loading cells of the whole dataset
 is the per-component differential expression over the full single-cell
 dataset, so the result is cached for ``figures/figure2/nichenet.py`` to plot.
 
-Each scored ligand is also re-scored on `--n-rewire` rewired copies of the
-NicheNet prior (``nichenet.rewired_percentiles``), the null of the
+Each scored ligand is also re-scored on `--n-shuffle` copies of the NicheNet
+prior with its links shuffled (``nichenet.shuffled_percentiles``), the null of the
 weight-averaged score percentile test. Writes the long-format tables
 `figures/figure2/nichenet.py` and its supplement read:
 
     nichenet_scores_<dataset>.parquet   one row per (component, ligand)
-    nichenet_null_<dataset>.parquet     one row per (component, rewiring, ligand)
+    nichenet_null_<dataset>.parquet     one row per (component, shuffle, ligand)
 
     uv run cccrise-nichenet --dataset alad
 """
@@ -35,7 +35,7 @@ from ..validation.nichenet import (
     load_ligand_target_matrix,
     receiver_celltypes,
     receiver_rankings,
-    rewired_percentiles,
+    shuffled_percentiles,
     weighted_percentile_tests,
 )
 from ._cli import add_dataset_argument, dataset_metadata, resolve_output, resulting_dims
@@ -63,7 +63,7 @@ def run_nichenet(
     de_method: DeMethod = "wilcoxon",
     min_expr_frac: float = 0.1,
     rel_cutoff: float = 0.4,
-    n_rewire: int = 1000,
+    n_shuffle: int = 1000,
     n_jobs: int = 16,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
@@ -80,8 +80,8 @@ def run_nichenet(
         `nichenet.receiver_celltypes`).
     rel_cutoff
         Passed to `nichenet.component_ligand_scores`.
-    n_rewire, n_jobs
-        Passed to `nichenet.rewired_percentiles`.
+    n_shuffle, n_jobs
+        Passed to `nichenet.shuffled_percentiles`.
     output_path : Path, optional
         Parquet destination; defaults to the registry's NicheNet scores filename.
 
@@ -129,9 +129,9 @@ def run_nichenet(
     for cmp in components:
         types = receiver_celltypes(adata, cmp, spec.celltype_column)
         print(f"   Cmp {cmp} receiver cell types: {', '.join(types)}")
-    print(f"3. Re-scoring on {n_rewire} rewired NicheNet priors...")
-    null = rewired_percentiles(scores, rankings, lt_df, n_rewire, n_jobs)
-    print("   Weight-averaged score percentiles vs the rewired priors:")
+    print(f"3. Re-scoring on {n_shuffle} shuffled NicheNet priors...")
+    null = shuffled_percentiles(scores, rankings, lt_df, n_shuffle, n_jobs)
+    print("   Weight-averaged score percentiles vs the shuffled priors:")
     tests = weighted_percentile_tests(scores, null)[0]
     print(tests.round(4).to_string(index=False))
 
@@ -153,7 +153,7 @@ def run_nichenet(
             "min_expr_frac": min_expr_frac,
             "rel_cutoff": rel_cutoff,
             "receiver_celltype_column": spec.celltype_column,
-            "n_rewire": n_rewire,
+            "n_shuffle": n_shuffle,
             "nichenet_ligand_target_url": (
                 "https://zenodo.org/records/7074291/files/"
                 "ligand_target_matrix_nsga2r_final.rds"
@@ -194,10 +194,10 @@ def build_parser() -> argparse.ArgumentParser:
         "the component's largest scorable pair.",
     )
     parser.add_argument(
-        "--n-rewire",
+        "--n-shuffle",
         type=int,
         default=1000,
-        help="Rewired NicheNet priors in the null of the weighted-percentile test.",
+        help="Shuffled NicheNet priors in the null of the weighted-percentile test.",
     )
     parser.add_argument("--n-jobs", type=int, default=16)
     parser.add_argument(
@@ -218,7 +218,7 @@ def main(argv: list[str] | None = None) -> None:
         de_method=cast(DeMethod, args.de_method),
         min_expr_frac=args.min_expr_frac,
         rel_cutoff=args.rel_cutoff,
-        n_rewire=args.n_rewire,
+        n_shuffle=args.n_shuffle,
         n_jobs=args.n_jobs,
         output_path=resolve_output(
             args.output, VALIDATION_DIR, spec.nichenet_scores_filename()

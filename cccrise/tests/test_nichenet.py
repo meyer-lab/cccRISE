@@ -9,7 +9,6 @@ from cccrise.anova import adjust_pvalues
 from cccrise.validation.nichenet import (
     _receiver_population,
     component_ligand_scores,
-    curveball,
     expressed_genes,
     ligand_activities,
     ligand_weights,
@@ -17,8 +16,9 @@ from cccrise.validation.nichenet import (
     receiver_celltypes,
     receiver_ranking,
     receiver_rankings,
-    rewired_percentiles,
     score_percentiles,
+    shuffle_prior,
+    shuffled_percentiles,
     target_idf,
     top_pair_ligands,
     weighted_percentile,
@@ -163,25 +163,22 @@ def test_top_pair_ligands_normalizes_to_scorable_pairs():
     assert top_pair_ligands(D, lr_pairs, 1, set()) == []
 
 
-def test_curveball_preserves_target_counts_and_sharedness():
-    rng = np.random.default_rng(0)
+def test_shuffle_prior_keeps_link_count_and_vocabulary():
+    # a hub target listed by every ligand loses its hub status
     lt_df = pd.DataFrame(
         {
             "ligand": np.repeat([f"L{i}" for i in range(20)], 15),
             "target": [
-                f"g{j}" for _ in range(20) for j in rng.choice(60, 15, replace=False)
+                t for i in range(20) for t in ["hub", *(f"g{i}_{j}" for j in range(14))]
             ],
         }
     )
-    rewired = curveball(lt_df, seed=1)
-    for col in ("ligand", "target"):
-        pd.testing.assert_series_equal(
-            rewired[col].value_counts().sort_index(),
-            lt_df[col].value_counts().sort_index(),
-        )
-    assert not rewired.duplicated().any()
-    links = set(zip(lt_df["ligand"], lt_df["target"]))
-    assert len(links & set(zip(rewired["ligand"], rewired["target"]))) < len(links)
+    shuffled = shuffle_prior(lt_df, seed=1)
+    assert len(shuffled) == len(lt_df) and not shuffled.duplicated().any()
+    assert set(shuffled["ligand"]) <= set(lt_df["ligand"])
+    assert set(shuffled["target"]) <= set(lt_df["target"])
+    assert (shuffled["target"] == "hub").sum() < 20
+    pd.testing.assert_frame_equal(shuffled, shuffle_prior(lt_df, seed=1))
 
 
 def _random_null(scores: pd.DataFrame, n: int, seed: int = 0) -> pd.DataFrame:
@@ -263,7 +260,7 @@ def test_component_ligand_scores_end_to_end():
     assert s.loc["LIGA", "rel_weight"] == pytest.approx(1.0)
     assert (s.loc[["LIGB", "LIGC", "LIGD"], "auroc"] < 0.8).all()
 
-    null = rewired_percentiles(scores, rankings, lt_df, n_rewire=3)
+    null = shuffled_percentiles(scores, rankings, lt_df, n_shuffle=3)
     assert set(null["replicate"]) == {0, 1, 2}
     assert set(null["ligand"]) <= {"LIGA", "LIGB", "LIGC", "LIGD"}
     assert null["score_pct"].between(0, 1).all()
