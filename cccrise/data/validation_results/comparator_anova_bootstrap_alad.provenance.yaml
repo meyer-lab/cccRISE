@@ -4,7 +4,7 @@
 dataset: alad
 dataset_label: ALAD Lung Transplant BAL
 source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
-source_sha256: 19e7056711e65fcdc57c59abd1a62857d76549fa597dc648ff7560448dd3213e
+source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
 loader_args:
   filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
   gene_threshold: 0.001
@@ -21,20 +21,24 @@ stratify: true
 match_modes: [3]
 references:
   Pseudobulk CPD:
-    rank: 3
+    rank: 4
     reference_etasquared:
-    - 0.0079431795526003
-    - 0.06636007639069383
-    - 0.07918150589258069
+    - 0.009042014836785576
+    - 0.06668085117796481
+    - 0.08034338172932286
+    - 0.07278224879602359
     reference_f:
-    - 0.11476382996146557
-    - 1.0187665189554431
-    - 1.2325283702015437
+    - 0.13078477049584225
+    - 1.0240429204634323
+    - 1.2521939695481938
+    - 1.1250995048233408
     reference_p:
-    - 0.9509859262709929
-    - 0.3937302320916942
-    - 0.30955978762756625
+    - 0.9412590777755525
+    - 0.39142136645573095
+    - 0.3027272195111916
+    - 0.3495179205648981
     reference_groupmeandiff:
+    - .nan
     - .nan
     - .nan
     - .nan
@@ -60,5 +64,5 @@ references:
     - .nan
     - .nan
     - .nan
-git_sha: 2b17d830b76e4423ca9cd41f314efda474415216
-generated: '2026-10-06T07:19:56+00:00'
+git_sha: 82007a2b9ea1b42b215b6b1badcbff5789376a65-dirty
+generated: '2026-10-15T15:16:48+00:00'
