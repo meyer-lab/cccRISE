@@ -699,14 +699,14 @@ def plot_rule_screen(starts: pd.DataFrame, summary: pd.DataFrame, ax: plt.Axes,
     ax.scatter(disagree["Rank"], [n + 1.9] * len(disagree), marker="x", s=style.POINT_SIZE,
                color=style.COLORS["ink"], lw=style.LINE_WIDTH_THIN)  # fmt: skip
     mark_rank(ax, rank)
-    ax.set_ylim(0, 1.8 * n)
+    ax.set_ylim(0, 2.1 * n)
     ax.set_xlabel("CP rank")
     ax.set_yticks(range(0, n + 1, max(1, n // 2)))
     ax.set_ylabel("Production starts")
     zones = [plt.Line2D([], [], marker="s", ls="", color=c, markersize=4, label=f"CC {label}")
              for _floor, c, label in CORCONDIA_ZONES]  # fmt: skip
     handles = ax.get_legend_handles_labels()[0] + zones
-    ax.legend(handles=handles, loc="upper center", ncols=3, fontsize=style.FONT_SIZE_DENSE - 1,
+    ax.legend(handles=handles, loc="upper center", ncols=2, fontsize=style.FONT_SIZE_DENSE - 1,
               frameon=False, handlelength=0.8, columnspacing=0.6, handletextpad=0.3)  # fmt: skip
 
 
@@ -718,9 +718,10 @@ def _corcondia_strip(ax: plt.Axes, summary: pd.DataFrame, y: float) -> None:
             c for floor, c, _label in CORCONDIA_ZONES if row["CoreConsistency"] >= floor
         )
         ax.scatter(row["Rank"], y, marker="s", s=style.POINT_SIZE, color=color, lw=0)
-    ax.annotate("CORCONDIA", (1.0, y), xycoords=("axes fraction", "data"), ha="left",
-                va="center", fontsize=style.FONT_SIZE_DENSE, xytext=(2, 0),
-                textcoords="offset points")  # fmt: skip
+    # inside the axes, at the strip's end: ranks past the last passing one have no square
+    ax.annotate("CORCONDIA", (1.0, y), xycoords=("axes fraction", "data"), ha="right",
+                va="center", fontsize=style.FONT_SIZE_DENSE - 1, xytext=(-2, 0),
+                textcoords="offset points", color=style.COLORS["ink"])  # fmt: skip
 
 
 # --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------
