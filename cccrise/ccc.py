@@ -56,7 +56,7 @@ def combine_communication_score(
     """Combine a ligand/receptor pair's raw elementwise product and sum into
     a communication score. Shared by `compute_ccc_matrix` (a single LR pair,
     combined via an outer product over cells/eigen-states) and
-    `_fast_interaction_tensor` (many LR pairs combined at once, vectorized).
+    `validation.significance._fast_interaction_tensor` (many LR pairs combined at once, vectorized).
     `raw_product`/`raw_sum` must already be broadcast to the same target
     shape (e.g. via `np.outer`/`np.add.outer` for a single pair, or the
     matching einsum/broadcast for a batch of pairs).

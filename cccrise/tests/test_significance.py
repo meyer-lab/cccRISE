@@ -7,6 +7,7 @@ from pathlib import Path
 import anndata
 import numpy as np
 import pandas as pd
+import pytest
 
 from cccrise.ccc_rise import fit_rise
 from cccrise.factors import save_ccc_rise_fit
@@ -14,6 +15,7 @@ from cccrise.import_data import add_cond_idxs
 from cccrise.runners.datasets import DatasetSpec
 from cccrise.runners.run_significance import build_parser, output_paths
 from cccrise.validation.significance import (
+    compute_communication_significance,
     fit_significance_pipeline,
     patient_block_permutations,
     patient_permutation_differential,
@@ -207,3 +209,103 @@ def test_patient_permutation_differential_matches_group_means():
     )
     assert np.allclose(observed, scores[case].mean(0) - scores[~case].mean(0))
     assert null.shape == (20, 3)
+
+
+@pytest.mark.parametrize(
+    "communication_score",
+    ["expression_product", "expression_mean", "expression_gmean", "expression_hill"],
+)
+def test_compute_communication_significance_works_across_scoring_strategies(
+    communication_score,
+):
+    rng = np.random.default_rng(0)
+    n_genes = 4
+    gene_names = ["L1", "R1", "L2", "R2"]
+    lr_pairs = pd.DataFrame(
+        {
+            "ligand": ["L1", "L2"],
+            "receptor": ["R1", "R2"],
+            "interaction_symbol": ["L1^R1", "L2^R2"],
+        }
+    )
+
+    n_cells_per_cond = 12
+    rank = 3
+    X_list = [rng.uniform(0.0, 5.0, size=(n_cells_per_cond, n_genes)) for _ in range(2)]
+    projections = []
+    for _ in range(2):
+        raw = rng.normal(size=(n_cells_per_cond, rank))
+        q, _ = np.linalg.qr(raw)
+        projections.append(q[:, :rank])
+
+    (
+        interaction_tensor,
+        pvalue_tensor,
+        null_mean_tensor,
+        null_std_tensor,
+        filtered_lr_pairs,
+    ) = compute_communication_significance(
+        X_list=X_list,
+        projections=projections,
+        gene_names=gene_names,
+        lr_pairs=lr_pairs,
+        n_perms=25,
+        random_state=0,
+        communication_score=communication_score,
+        validate=True,
+    )
+
+    n_lr = len(filtered_lr_pairs)
+    expected_shape = (2, rank, rank, n_lr)
+    assert interaction_tensor.shape == expected_shape
+    assert pvalue_tensor.shape == expected_shape
+    assert null_mean_tensor.shape == expected_shape
+    assert null_std_tensor.shape == expected_shape
+
+    assert np.all(pvalue_tensor >= 0.0) and np.all(pvalue_tensor <= 1.0)
+    assert np.all(np.isfinite(null_mean_tensor))
+    assert np.all(null_std_tensor >= 0.0)
+
+    if communication_score in ("expression_gmean", "expression_hill"):
+        assert np.all(interaction_tensor >= 0.0)
+    if communication_score == "expression_hill":
+        assert np.all(interaction_tensor < 1.0)
+
+
+def test_compute_communication_significance_gene_means_keeps_tensor_nonnegative():
+    # Raw (uncentered) expression projected through a signed projection can
+    # itself be negative; gene_means should recenter and clip it, just like
+    # calc_communication_score, so the null model stays sign-safe (#139).
+    rng = np.random.default_rng(1)
+    n_genes = 4
+    gene_names = ["L1", "R1", "L2", "R2"]
+    lr_pairs = pd.DataFrame(
+        {
+            "ligand": ["L1", "L2"],
+            "receptor": ["R1", "R2"],
+            "interaction_symbol": ["L1^R1", "L2^R2"],
+        }
+    )
+    n_cells_per_cond = 10
+    rank = 2
+    X_list = [rng.uniform(0.0, 5.0, size=(n_cells_per_cond, n_genes)) for _ in range(2)]
+    gene_means = X_list[0].mean(axis=0)
+    projections = []
+    for _ in range(2):
+        raw = rng.normal(size=(n_cells_per_cond, rank))
+        q, _ = np.linalg.qr(raw)
+        projections.append(q[:, :rank])
+
+    interaction_tensor, pvalue_tensor, _, _, _ = compute_communication_significance(
+        X_list=X_list,
+        projections=projections,
+        gene_names=gene_names,
+        lr_pairs=lr_pairs,
+        n_perms=10,
+        random_state=1,
+        gene_means=gene_means,
+        validate=True,
+    )
+
+    assert np.all(interaction_tensor >= 0.0)
+    assert np.all(pvalue_tensor >= 0.0) and np.all(pvalue_tensor <= 1.0)
