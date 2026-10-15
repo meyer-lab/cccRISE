@@ -9,48 +9,48 @@ from cccrise.anova import adjust_pvalues
 from cccrise.validation.nichenet import (
     _receiver_population,
     component_ligand_scores,
+    curveball,
     expressed_genes,
-    ligand_activity_auroc,
+    ligand_activities,
     ligand_weights,
     load_ligand_target_matrix,
+    receiver_celltypes,
     receiver_ranking,
-    top_ligand_tests,
+    receiver_rankings,
+    rewired_percentiles,
+    score_percentiles,
+    target_idf,
     top_pair_ligands,
+    weighted_percentile,
+    weighted_percentile_tests,
 )
 
 
-def test_ligand_activity_auroc_perfect_separation():
-    # Targets rank at the very top of de_ranking -> AUROC should be 1.0.
+def test_ligand_activities_perfect_separation_and_undefined():
+    # LIGA's targets rank at the very top -> AUROC 1.0; LIGB's target is not
+    # ranked and LIGC lists every ranked gene -> undefined.
     genes = [f"g{i}" for i in range(10)]
-    scores = list(range(10, 0, -1))  # g0 highest score ... g9 lowest
-    de_ranking = pd.Series(scores, index=genes)
-
+    de_ranking = pd.Series(range(10, 0, -1), index=genes, dtype=float)
     lt_df = pd.DataFrame(
         {
-            "ligand": ["LIGA"] * 3,
-            "target": ["g0", "g1", "g2"],
-            "weight": [0.9, 0.8, 0.7],
+            "ligand": ["LIGA"] * 3 + ["LIGB"] + ["LIGC"] * 10,
+            "target": ["g0", "g1", "g2", "missing", *genes],
         }
     )
-
-    auroc = ligand_activity_auroc(de_ranking, "LIGA", lt_df)
-    assert auroc == pytest.approx(1.0)
-
-
-def test_ligand_activity_auroc_no_targets_returns_none():
-    de_ranking = pd.Series([1.0, 2.0], index=["g0", "g1"])
-    lt_df = pd.DataFrame({"ligand": [], "target": [], "weight": []})
-
-    assert ligand_activity_auroc(de_ranking, "MISSING_LIGAND", lt_df) is None
+    act = ligand_activities(de_ranking, lt_df)
+    assert act["LIGA"] == pytest.approx(1.0)
+    assert np.isnan(act["LIGB"]) and np.isnan(act["LIGC"])
 
 
-def test_ligand_activity_auroc_all_positive_returns_none():
-    de_ranking = pd.Series([1.0, 2.0], index=["g0", "g1"])
+def test_ligand_activities_downweights_shared_targets():
+    # LIGA's targets: g0 (top, also listed by LIGB) and g9 (bottom, its own).
+    # Plain AUROC would be 0.5; weighting g0 by log(2/2) = 0 leaves g9 only.
+    de_ranking = pd.Series(range(10, 0, -1), index=[f"g{i}" for i in range(10)])
     lt_df = pd.DataFrame(
-        {"ligand": ["LIGA", "LIGA"], "target": ["g0", "g1"], "weight": [0.9, 0.8]}
+        {"ligand": ["LIGA", "LIGA", "LIGB"], "target": ["g0", "g9", "g0"]}
     )
-
-    assert ligand_activity_auroc(de_ranking, "LIGA", lt_df) is None
+    np.testing.assert_allclose(target_idf(lt_df), [0.0, np.log(2), 0.0])
+    assert ligand_activities(de_ranking, lt_df)["LIGA"] == pytest.approx(0.0)
 
 
 def test_load_ligand_target_matrix_missing_cache_raises(tmp_path):
@@ -102,6 +102,19 @@ def test_receiver_population_excludes_middle():
     assert kept.n_obs < adata.n_obs
 
 
+def test_receiver_population_celltype_receivers():
+    # Receivers are the top cells of the high-loading cell type; non-receivers
+    # the bottom cells of every type.
+    adata = _make_synthetic_adata(n_cells=200, n_high=40, random_state=2)
+    adata.obs["broad_cell_type"] = ["REC"] * 40 + ["OTHER"] * 160
+    assert receiver_celltypes(adata, 1, "broad_cell_type") == ["REC"]
+    kept, pos_mask = _receiver_population(adata, 1, 20, "broad_cell_type")
+    assert pos_mask.sum() == 8  # 20% of the 40 receiver-type cells
+    assert (kept.obs["broad_cell_type"][pos_mask] == "REC").all()
+    assert (kept.obs["broad_cell_type"][~pos_mask] == "OTHER").all()
+    assert (~pos_mask).sum() == pytest.approx(40, abs=2)  # 20% of all cells
+
+
 def test_receiver_ranking_recovers_target_genes():
     target_genes = ["g0", "g1", "g2"]
     adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
@@ -150,7 +163,44 @@ def test_top_pair_ligands_normalizes_to_scorable_pairs():
     assert top_pair_ligands(D, lr_pairs, 1, set()) == []
 
 
-def test_top_ligand_tests_bh_across_components():
+def test_curveball_preserves_target_counts_and_sharedness():
+    rng = np.random.default_rng(0)
+    lt_df = pd.DataFrame(
+        {
+            "ligand": np.repeat([f"L{i}" for i in range(20)], 15),
+            "target": [
+                f"g{j}" for _ in range(20) for j in rng.choice(60, 15, replace=False)
+            ],
+        }
+    )
+    rewired = curveball(lt_df, seed=1)
+    for col in ("ligand", "target"):
+        pd.testing.assert_series_equal(
+            rewired[col].value_counts().sort_index(),
+            lt_df[col].value_counts().sort_index(),
+        )
+    assert not rewired.duplicated().any()
+    links = set(zip(lt_df["ligand"], lt_df["target"]))
+    assert len(links & set(zip(rewired["ligand"], rewired["target"]))) < len(links)
+
+
+def _random_null(scores: pd.DataFrame, n: int, seed: int = 0) -> pd.DataFrame:
+    """Null percentiles unrelated to the weights: random score ranks."""
+    rng = np.random.default_rng(seed)
+    pct = score_percentiles(scores)[["component", "ligand"]]
+    return pd.concat(
+        [
+            pct.assign(replicate=r, score_pct=rng.random(len(pct))).assign(
+                score_pct=lambda d: d.groupby("component")["score_pct"].rank(pct=True)
+            )
+            for r in range(n)
+        ],
+        ignore_index=True,
+    )
+
+
+def test_weighted_percentile_tests_against_null():
+    # Cmp 1: heavy ligands score highest; cmp 2: unrelated; cmp 3: lowest.
     rng = np.random.default_rng(0)
     rows = []
     for cmp, shift in ((1, 0.2), (2, 0.0), (3, -0.2)):
@@ -162,22 +212,26 @@ def test_top_ligand_tests_bh_across_components():
                     "component": cmp,
                     "ligand": [f"L{i}" for i in range(40)],
                     "auroc": auroc,
-                    "weight": np.linspace(1, 0.01, 40),
+                    "weight": np.r_[np.ones(4), np.full(36, 0.01)],
                     "is_top": np.arange(40) < 4,
                 }
             )
         )
-    tests = top_ligand_tests(pd.concat(rows, ignore_index=True))
-    assert tests.loc[0, "direction"] == "up" and tests.loc[2, "direction"] == "down"
-    assert tests.loc[0, "p"] < 0.01 and tests.loc[2, "p"] < 0.01
+    scores = pd.concat(rows, ignore_index=True)
+    tests, null = weighted_percentile_tests(scores, _random_null(scores, 500))
+    assert tests.loc[0, "weighted_pct"] > 0.9 and tests.loc[0, "p"] < 0.01
+    assert tests.loc[2, "weighted_pct"] < 0.15 and tests.loc[2, "p"] > 0.99
+    assert abs(tests.loc[1, "null_mean"] - 0.5) < 0.05
+    assert tests.loc[0, "top_ligands"] == "L0, L1, L2, L3"
     np.testing.assert_allclose(
         tests["q"], adjust_pvalues(tests["p"].to_numpy(), "fdr_bh")
     )
-    assert list(tests["n_top"]) == [4, 4, 4] and list(tests["n_comparison"]) == [
-        36,
-        36,
-        36,
-    ]
+    assert null.index.names == ["component", "replicate"] and len(null) == 1500
+    # the observed statistic is the weight-averaged percentile
+    pct = score_percentiles(scores)
+    assert weighted_percentile(pct).loc[1] == pytest.approx(
+        tests.loc[0, "weighted_pct"]
+    )
 
 
 def test_component_ligand_scores_end_to_end():
@@ -200,12 +254,16 @@ def test_component_ligand_scores_end_to_end():
             "weight": 1.0,
         }
     )
-    scores = component_ligand_scores(
-        adata, lr_pairs, lt_df, components=[1], top_perc=20
-    )
+    rankings = receiver_rankings(adata, components=[1], top_perc=20)
+    scores = component_ligand_scores(adata.uns["D"], lr_pairs, lt_df, rankings)
     s = scores.set_index("ligand")
     assert np.isnan(s.loc["GZMX", "auroc"]) and not s.loc["GZMX", "is_top"]
     assert list(s.index[s["is_top"]]) == ["LIGA"]
     assert s.loc["LIGA", "auroc"] > 0.9
     assert s.loc["LIGA", "rel_weight"] == pytest.approx(1.0)
     assert (s.loc[["LIGB", "LIGC", "LIGD"], "auroc"] < 0.8).all()
+
+    null = rewired_percentiles(scores, rankings, lt_df, n_rewire=3)
+    assert set(null["replicate"]) == {0, 1, 2}
+    assert set(null["ligand"]) <= {"LIGA", "LIGB", "LIGC", "LIGD"}
+    assert null["score_pct"].between(0, 1).all()

@@ -27,3 +27,6 @@ figS_rise_factor_matrices:
   genes: [b]
 figS_significance: {}
 figS_celltype_eigenstates: {}
+figS_nichenet:
+  ligand_scores: [a]
+  weighted_percentiles: [b]

@@ -1,16 +1,20 @@
 """
 NicheNet-style downstream-target validation of cccRISE / CPD components.
 
-For each CPD component, the cells with the highest and lowest
-receiver-eigenstate loading (`obsm["rc_C"]`) are contrasted by differential
-expression, and every ligand the model sees is scored by how well that
-ranking -- restricted to genes expressed in the two groups -- recovers the
-ligand's literature-curated downstream targets (a NicheNet-style AUROC;
-`component_ligand_scores`). Each component's top ligands (`top_pair_ligands`)
-are then compared with all the other ligands on the same ranking
-(`top_ligand_tests`): the question is whether the ligands the component
-weights most are better supported by downstream evidence than ligands it
-barely uses, not whether any ligand beats a shuffled-cell null.
+For each CPD component, the cells of its receiver cell types
+(`receiver_celltypes`) with the highest receiver-eigenstate loading
+(`obsm["rc_C"]`) are contrasted with the lowest-loading cells of the whole
+dataset by differential expression, and every ligand the model sees is
+scored by how well that ranking -- restricted to genes expressed in the two
+groups -- recovers the ligand's literature-curated downstream targets
+(`ligand_activities`, a NicheNet-style AUROC in which targets many ligands
+share count less; `component_ligand_scores`). The question is whether the
+ligands a component weights most are better supported by downstream evidence
+than the ligands it barely uses: each component is summarized by the ligands'
+score percentiles averaged with the ligand weights as weights, and tested
+against the same average on rewired copies of the NicheNet prior that keep
+every ligand's target count and every target's sharedness
+(`rewired_percentiles`, `weighted_percentile_tests`).
 
 The ligand-target prior is the NicheNet v2 ligand-target matrix (Zenodo
 record 7074291), which is only published as an R `.rds` object; it is read
@@ -23,6 +27,8 @@ neither the network nor `pyreadr` is required afterwards.
 """
 
 import urllib.request
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -30,8 +36,7 @@ import anndata
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from scipy.stats import mannwhitneyu
-from sklearn.metrics import roc_auc_score
+from scipy.stats import rankdata
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 NICHENET_LT_URL = (
@@ -136,14 +141,32 @@ def load_ligand_target_matrix(
     return pd.read_parquet(cache_path)
 
 
+def receiver_celltypes(
+    adata: anndata.AnnData, cmp: int, celltype_key: str, rel_cutoff: float = 0.4
+) -> list[str]:
+    """Component `cmp`'s receiver cell types: those whose mean
+    receiver-eigenstate loading is at least `rel_cutoff` x the largest
+    cell-type mean."""
+    loadings = np.asarray(adata.obsm["rc_C"])[:, cmp - 1]
+    means = (
+        pd.Series(loadings)
+        .groupby(adata.obs[celltype_key].astype(str).to_numpy())
+        .mean()
+    )
+    return list(means.index[means >= rel_cutoff * means.max()])
+
+
 def _receiver_population(
-    adata: anndata.AnnData, cmp: int, top_perc: float
+    adata: anndata.AnnData, cmp: int, top_perc: float, celltype_key: str | None = None
 ) -> tuple[anndata.AnnData, np.ndarray]:
     """
     Split `adata` into the cells above the `100 - top_perc` percentile
     ("high") and below the `top_perc` percentile ("low") of component `cmp`'s
     receiver-eigenstate loading (`adata.obsm["rc_C"][:, cmp - 1]`), discarding
-    every other cell.
+    every other cell. With `celltype_key`, the "high" group is taken among the
+    cells of the component's `receiver_celltypes` only, so that a rare
+    receiver cell type is not diluted by abundant low-loading cells; the
+    "low" group is still taken among all cells.
 
     Returns
     -------
@@ -152,8 +175,12 @@ def _receiver_population(
         aligned to `kept` marking the "high" group.
     """
     loadings = np.asarray(adata.obsm["rc_C"])[:, cmp - 1]
-    pos_idx = loadings > np.percentile(loadings, 100 - top_perc)
-    neg_idx = loadings < np.percentile(loadings, top_perc)
+    pool = np.ones(len(loadings), dtype=bool)
+    if celltype_key is not None:
+        types = receiver_celltypes(adata, cmp, celltype_key)
+        pool = adata.obs[celltype_key].astype(str).isin(types).to_numpy()
+    pos_idx = pool & (loadings > np.percentile(loadings[pool], 100 - top_perc))
+    neg_idx = ~pos_idx & (loadings < np.percentile(loadings, top_perc))
     kept_idx = pos_idx | neg_idx
     return adata[kept_idx].copy(), pos_idx[kept_idx]
 
@@ -174,47 +201,53 @@ def _run_de(
     return pd.Series(scores, index=names).sort_values(ascending=False)
 
 
-def ligand_activity_auroc(
-    de_ranking: pd.Series,
-    ligand: str,
-    lt_df: pd.DataFrame,
-) -> float | None:
-    """
-    Compute the NicheNet-style ligand-activity AUROC for one ligand.
+def target_idf(lt_df: pd.DataFrame) -> np.ndarray:
+    """Per row of `lt_df`, log(number of ligands / the number of ligands
+    listing the target): hub targets that most ligands list count ~0."""
+    sharedness = lt_df.groupby("target")["ligand"].transform("size")
+    return np.log(lt_df["ligand"].nunique() / sharedness).to_numpy()
 
-    Genes in `de_ranking` that are among `ligand`'s cached top targets
-    (`lt_df`) are treated as the positive class; every other gene in
-    `de_ranking` is the negative/background class. `de_ranking`'s DE test
-    statistic is used as the classifier score.
+
+def ligand_activities(de_ranking: pd.Series, lt_df: pd.DataFrame) -> pd.Series:
+    """
+    NicheNet-style activity of every ligand in `lt_df` on one DE ranking: the
+    AUROC of `de_ranking`'s statistic for the ligand's cached top targets
+    against every other ranked gene, each target counted with its
+    `target_idf` weight and each other gene once (ties averaged).
+
+    A target's count of non-targets ranked below it is its rank among all
+    ranked genes minus its rank among the ligand's ranked targets.
 
     Parameters
     ----------
     de_ranking : pd.Series
         Gene -> DE test statistic (from `receiver_ranking`), covering the
         receiver population's expressed/tested genes.
-    ligand : str
-        Ligand gene symbol.
     lt_df : pd.DataFrame
         Long-format ligand-target matrix (columns "ligand", "target", "weight"),
         from `load_ligand_target_matrix`/`fetch_ligand_target_matrix`.
 
     Returns
     -------
-    float or None
-        AUROC, or None if `ligand` has no cached targets overlapping
-        `de_ranking`'s genes, or if the overlap is entirely positive or
-        entirely negative (AUROC undefined).
+    pd.Series
+        Ligand -> activity; NaN where none or all of the ranked genes are the
+        ligand's targets (AUROC undefined).
     """
-    targets = set(lt_df.loc[lt_df["ligand"] == ligand, "target"])
-    if not targets:
-        return None
-
-    genes = de_ranking.index
-    y_true = genes.isin(targets).astype(int)
-    if y_true.sum() == 0 or y_true.sum() == len(y_true):
-        return None
-
-    return float(roc_auc_score(y_true, de_ranking.to_numpy()))
+    pos = de_ranking.index.get_indexer(lt_df["target"])
+    hit = pos >= 0
+    df = pd.DataFrame(
+        {
+            "ligand": lt_df["ligand"].to_numpy()[hit],
+            "rank": rankdata(de_ranking.to_numpy())[pos[hit]],
+            "w": target_idf(lt_df)[hit],
+        }
+    )
+    df["below"] = df["w"] * (df["rank"] - df.groupby("ligand")["rank"].rank())
+    g = df.groupby("ligand")
+    n_neg = len(de_ranking) - g.size()
+    auc = g["below"].sum() / (g["w"].sum() * n_neg)
+    auc[n_neg == 0] = np.nan
+    return auc.reindex(lt_df["ligand"].unique())
 
 
 def expressed_genes(
@@ -285,11 +318,12 @@ def receiver_ranking(
     top_perc: float = 10,
     de_method: DeMethod = "wilcoxon",
     min_expr_frac: float = 0.1,
+    celltype_key: str | None = None,
 ) -> tuple[pd.Series, int, int] | None:
     """
     Component `cmp`'s receiver DE ranking: "high" vs "low" loading cells
-    (`_receiver_population`), genes ranked by `_run_de`, restricted to
-    `expressed_genes`.
+    (`_receiver_population`, with `celltype_key`), genes ranked by `_run_de`,
+    restricted to `expressed_genes`.
 
     Returns
     -------
@@ -297,7 +331,7 @@ def receiver_ranking(
         (ranking, n_high, n_low), or None if either group has fewer than 2
         cells.
     """
-    kept, pos_mask = _receiver_population(adata, cmp, top_perc)
+    kept, pos_mask = _receiver_population(adata, cmp, top_perc, celltype_key)
     n_pos, n_neg = int(pos_mask.sum()), int((~pos_mask).sum())
     if n_pos < 2 or n_neg < 2:
         return None
@@ -306,40 +340,50 @@ def receiver_ranking(
     return ranking[ranking.index.isin(expressed)], n_pos, n_neg
 
 
-def component_ligand_scores(
+def receiver_rankings(
     adata: anndata.AnnData,
-    lr_pairs: pd.DataFrame,
-    lt_df: pd.DataFrame,
     components: list[int],
     top_perc: float = 10,
     de_method: DeMethod = "wilcoxon",
     min_expr_frac: float = 0.1,
+    celltype_key: str | None = None,
+) -> dict[int, tuple[pd.Series, int, int]]:
+    """`receiver_ranking` of every component in `components`; components with
+    fewer than 2 cells in either group are omitted."""
+    rankings = {
+        cmp: receiver_ranking(
+            adata, cmp, top_perc, de_method, min_expr_frac, celltype_key
+        )
+        for cmp in components
+    }
+    return {cmp: r for cmp, r in rankings.items() if r is not None}
+
+
+def component_ligand_scores(
+    D: np.ndarray,
+    lr_pairs: pd.DataFrame,
+    lt_df: pd.DataFrame,
+    rankings: dict[int, tuple[pd.Series, int, int]],
     rel_cutoff: float = 0.4,
 ) -> pd.DataFrame:
     """
     Score every ligand the model sees on each component's receiver ranking
-    (`receiver_ranking`) and flag each component's top ligands.
+    (`receiver_rankings`) and flag each component's top ligands.
 
-    A ligand's AUROC (`ligand_activity_auroc`) is NaN where undefined, i.e.
+    A ligand's score (`ligand_activities`) is NaN where undefined, i.e.
     when none of its prior targets is expressed. The top set is
     `top_pair_ligands` over the scorable ligands.
 
     Parameters
     ----------
-    adata : anndata.AnnData
-        Dataset with the finalized fit loaded (`obsm["rc_C"]`, `uns["D"]`).
+    D : np.ndarray
+        LR-pair x component loadings of the finalized fit (`uns["D"]`).
     lr_pairs : pd.DataFrame
-        "ligand"/"receptor" columns in the row order of `uns["D"]`.
+        "ligand"/"receptor" columns in the row order of `D`.
     lt_df : pd.DataFrame
         Long-format ligand-target prior (`load_ligand_target_matrix`).
-    components : list[int]
-        1-indexed CPD components to score.
-    top_perc : float, default=10
-        Percentile defining the "high"/"low" receiver groups.
-    de_method : str, default="wilcoxon"
-        `scanpy.tl.rank_genes_groups` method.
-    min_expr_frac : float, default=0.1
-        Minimum detection fraction in either group for a gene to be kept.
+    rankings : dict
+        1-indexed component -> (ranking, n_high, n_low), `receiver_rankings`.
     rel_cutoff : float, default=0.4
         Top-set threshold, relative to the component's largest scorable pair.
 
@@ -349,20 +393,12 @@ def component_ligand_scores(
         One row per (component, ligand): ["component", "ligand", "auroc",
         "weight", "rel_weight" (weight / the component's top scorable
         ligand's), "is_top", "n_pos", "n_neg", "n_expressed_genes"].
-        Components with fewer than 2 cells in either group are omitted.
     """
-    D = adata.uns["D"]
     weights = ligand_weights(D, lr_pairs)
     rows = []
-    for cmp in components:
-        receivers = receiver_ranking(adata, cmp, top_perc, de_method, min_expr_frac)
-        if receivers is None:
-            continue
-        ranking, n_pos, n_neg = receivers
-        auroc = {
-            lig: ligand_activity_auroc(ranking, lig, lt_df) for lig in weights.index
-        }
-        scorable = {lig for lig, a in auroc.items() if a is not None}
+    for cmp, (ranking, n_pos, n_neg) in rankings.items():
+        auroc = ligand_activities(ranking, lt_df).reindex(weights.index)
+        scorable = set(auroc.dropna().index)
         top = set(top_pair_ligands(D, lr_pairs, cmp, scorable, rel_cutoff))
         w = weights[cmp]
         w_max = w[list(scorable)].max() if scorable else np.nan
@@ -370,7 +406,7 @@ def component_ligand_scores(
             {
                 "component": cmp,
                 "ligand": lig,
-                "auroc": np.nan if auroc[lig] is None else auroc[lig],
+                "auroc": auroc[lig],
                 "weight": w[lig],
                 "rel_weight": w[lig] / w_max,
                 "is_top": lig in top,
@@ -383,40 +419,146 @@ def component_ligand_scores(
     return pd.DataFrame(rows)
 
 
-def top_ligand_tests(
-    scores: pd.DataFrame, correction: str | None = "fdr_bh"
+def score_percentiles(scores: pd.DataFrame) -> pd.DataFrame:
+    """The scored ligands of `component_ligand_scores` output, with each
+    ligand's score percentile among its component's ligands ("score_pct",
+    average ranks / number of ligands)."""
+    scored = scores.dropna(subset=["auroc"]).copy()
+    scored["score_pct"] = scored.groupby("component")["auroc"].rank(pct=True)
+    return scored
+
+
+def weighted_percentile(percentiles: pd.DataFrame, by=("component",)) -> pd.Series:
+    """Per group, the ligands' score percentiles averaged with the ligand
+    weights as weights: where the ligands the component uses sit in the score
+    ranking, 0.5 if weight is unrelated to score."""
+    g = percentiles.assign(wp=percentiles["weight"] * percentiles["score_pct"])
+    sums = g.groupby(list(by))[["wp", "weight"]].sum()
+    return sums["wp"] / sums["weight"]
+
+
+def curveball(lt_df: pd.DataFrame, seed: int = 0) -> pd.DataFrame:
+    """
+    Rewire the long-format prior by curveball trades (Strona et al. 2014),
+    keeping every ligand's number of targets and every target's sharedness
+    (the number of ligands listing it): two random ligands pool the targets
+    only one of them lists, reshuffle the pool, and each takes back as many
+    as it gave. 5 x the number of ligands trades fully randomize the
+    non-hub links of the NicheNet prior.
+    """
+    rng = np.random.default_rng(seed)
+    codes, names = pd.factorize(lt_df["target"])
+    groups = list(lt_df.assign(code=codes).groupby("ligand", sort=False))
+    ligands = [lig for lig, _ in groups]
+    T = [g["code"].to_numpy() for _, g in groups]
+    for _ in range(5 * len(T)):
+        a, b = rng.choice(len(T), 2, replace=False)
+        only_a, only_b = ~np.isin(T[a], T[b]), ~np.isin(T[b], T[a])
+        pool = rng.permutation(np.concatenate([T[a][only_a], T[b][only_b]]))
+        T[a] = np.concatenate([T[a][~only_a], pool[: only_a.sum()]])
+        T[b] = np.concatenate([T[b][~only_b], pool[only_a.sum() :]])
+    return pd.DataFrame(
+        {
+            "ligand": np.repeat(np.array(ligands, dtype=object), [len(t) for t in T]),
+            "target": names[np.concatenate(T)],
+        }
+    )
+
+
+def _rewired_percentiles(rankings, lt_df, ligands, seed: int) -> pd.DataFrame:
+    rewired = curveball(lt_df, seed)
+    return pd.concat(
+        [
+            ligand_activities(rankings[cmp][0], rewired)
+            .reindex(ligs)
+            .dropna()
+            .rank(pct=True)
+            .rename("score_pct")
+            .rename_axis("ligand")
+            .reset_index()
+            .assign(component=cmp, replicate=seed)
+            for cmp, ligs in ligands.items()
+        ],
+        ignore_index=True,
+    )
+
+
+def rewired_percentiles(
+    scores: pd.DataFrame,
+    rankings: dict[int, tuple[pd.Series, int, int]],
+    lt_df: pd.DataFrame,
+    n_rewire: int = 1000,
+    n_jobs: int = 1,
 ) -> pd.DataFrame:
     """
-    Per component, a two-sided Mann-Whitney test of the top ligands' AUROCs
-    against every other scored ligand's (`component_ligand_scores` output),
-    with p-values adjusted across components (`anova.adjust_pvalues`, as in
-    the ANOVA analysis).
+    The rewired-prior null of `score_percentiles`: every scored ligand of
+    `scores` re-scored on its component's ranking (`rankings`) with each of
+    `n_rewire` `curveball` rewirings of `lt_df` (seeds 0..n_rewire-1), as
+    percentiles among the component's scored ligands.
 
     Returns
     -------
     pd.DataFrame
-        One row per component: ["component", "top_ligands", "n_top",
-        "n_comparison", "top_median", "comparison_median", "direction"
-        ("up"/"down"), "p", "q"].
+        ["ligand", "score_pct", "component", "replicate"].
+    """
+    scored = scores.dropna(subset=["auroc"])
+    ligands = {cmp: list(g["ligand"]) for cmp, g in scored.groupby("component")}
+    job = partial(_rewired_percentiles, rankings, lt_df, ligands)
+    with ProcessPoolExecutor(n_jobs) as pool:
+        return pd.concat(pool.map(job, range(n_rewire)), ignore_index=True)
+
+
+def weighted_percentile_tests(
+    scores: pd.DataFrame,
+    null_percentiles: pd.DataFrame,
+    correction: str | None = "fdr_bh",
+) -> tuple[pd.DataFrame, pd.Series]:
+    """
+    Per component, the `weighted_percentile` of `component_ligand_scores`
+    output against its value on each replicate of `null_percentiles`
+    (`rewired_percentiles`), the ligand weights held fixed: one-sided
+    permutation p, adjusted across components (`anova.adjust_pvalues`, as in
+    the ANOVA analysis).
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.Series]
+        One row per component: ["component", "top_ligands", "weighted_pct",
+        "null_mean", "p", "q"]; and the null's weighted percentiles, indexed
+        by (component, replicate).
     """
     from ..anova import adjust_pvalues
 
-    rows = []
-    for cmp, c in scores.dropna(subset=["auroc"]).groupby("component"):
-        top = c[c["is_top"]].sort_values("weight", ascending=False)
-        rest = c.loc[~c["is_top"], "auroc"]
-        rows.append(
-            {
-                "component": cmp,
-                "top_ligands": ", ".join(top["ligand"]),
-                "n_top": len(top),
-                "n_comparison": len(rest),
-                "top_median": top["auroc"].median(),
-                "comparison_median": rest.median(),
-                "direction": "up" if top["auroc"].median() > rest.median() else "down",
-                "p": mannwhitneyu(top["auroc"], rest, alternative="two-sided").pvalue,
-            }
-        )
-    out = pd.DataFrame(rows)
+    percentiles = score_percentiles(scores)
+    observed = weighted_percentile(percentiles)
+    null = weighted_percentile(
+        null_weights(null_percentiles, scores), by=("component", "replicate")
+    )
+    n_null = null.groupby(level=0).size()
+    out = pd.DataFrame(
+        {
+            "component": observed.index,
+            "top_ligands": [
+                ", ".join(
+                    c[c["is_top"]].sort_values("weight", ascending=False)["ligand"]
+                )
+                for _, c in percentiles.groupby("component")
+            ],
+            "weighted_pct": observed.to_numpy(),
+            "null_mean": null.groupby(level=0).mean().loc[observed.index].to_numpy(),
+            "p": [
+                (1 + (null.loc[k] >= v - 1e-12).sum()) / (1 + n_null[k])
+                for k, v in observed.items()
+            ],
+        }
+    )
     out["q"] = adjust_pvalues(out["p"].to_numpy(), method=correction)
-    return out
+    return out, null
+
+
+def null_weights(null_percentiles: pd.DataFrame, scores: pd.DataFrame) -> pd.DataFrame:
+    """`null_percentiles` with each ligand's weight in its component from
+    `scores` ("weight" column)."""
+    return null_percentiles.merge(
+        scores[["component", "ligand", "weight"]], on=["component", "ligand"]
+    )

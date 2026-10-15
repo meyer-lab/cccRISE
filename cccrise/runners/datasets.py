@@ -133,6 +133,9 @@ class DatasetSpec:
     def nichenet_scores_filename(self) -> str:
         return f"nichenet_scores_{self.key}.parquet"
 
+    def nichenet_null_filename(self) -> str:
+        return f"nichenet_null_{self.key}.parquet"
+
 
 DATASETS: dict[str, DatasetSpec] = {
     "alad": DatasetSpec(
