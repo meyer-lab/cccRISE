@@ -8,15 +8,12 @@ from . import (
     lr_permutation,
     lr_volcano,
     outcome_association,
-    pacmaps,
-    sender_receiver_scatter,
 )
 
 LAYOUT = [
-    [outcome_association, celltype_association, sender_receiver_scatter],
+    [outcome_association, celltype_association],
     [lr_loadings, coordinated_changes],
     [lr_permutation, lr_volcano],
-    [pacmaps],
 ]
 
 

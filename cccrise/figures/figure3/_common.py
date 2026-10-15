@@ -21,11 +21,9 @@ from .. import common, style
 DATASET = "alad"
 SPEC = DATASETS[DATASET]
 
-# The CP component associated with the 6-month outcome and the cell types it
-# draws on
+# The CP component associated with the 6-month outcome
 COMPONENT = 4
 OUTCOME = "6-Month Outcome (4-Way)"
-COMPONENT_CELLTYPES = ("CD4 T cells", "CD8 T cells", "NK cells")
 
 #: Outcome associations tested against every CP component: `name` labels the
 #: row, `group_column` is the condition-level `obs` column, and the optional
