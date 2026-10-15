@@ -63,6 +63,7 @@ from .rank_selection import (
     RULE_PASS_SHARE,
     RULE_R2X_WINDOW,
     candelinc_compress,
+    r2x_without_reconstruction,
     select_rank_by_rule,
 )
 from .utils import pseudobulk_X
@@ -193,27 +194,9 @@ def _device_tensor(tensor: np.ndarray, float64: bool = False):
     return cupy.asarray(tensor, dtype=dtype)
 
 
-def _device_r2x(tensor, weights, factors) -> float:
-    """R2X of a CP model against `tensor` on the active backend, from
-    ``||T||^2 - 2 <T, T_hat> + ||T_hat||^2`` without forming the
-    reconstruction (`rank_selection.calculate_r2x`'s value, to rounding)."""
-    t_norm2 = sum(float(tl.sum(s * s)) for s in tensor)
-    if t_norm2 == 0:
-        return 0.0
-    core = tl.to_numpy(tl.tenalg.multi_mode_dot(tensor, [f.T for f in factors]))
-    w = tl.to_numpy(weights)
-    diagonal = np.array([core[(r,) * 4] for r in range(len(w))])
-    gram = np.ones((len(w), len(w)))
-    for f in factors:
-        f = tl.to_numpy(f)
-        gram *= f.T @ f
-    residual = t_norm2 - 2 * float(w @ diagonal) + float(w @ gram @ w)
-    return float(1.0 - residual / t_norm2)
-
-
 def _gpu_starts(device_tensor, rank: int, random_state: int, n_starts: int):
     """`ccc_rise.parafac_starts` on the GPU (same starts and options): NumPy
-    weights, factors and R2X (`_device_r2x`) per start."""
+    weights, factors and R2X (`rank_selection.r2x_without_reconstruction`) per start."""
     starts = []
     for seed in cp_start_seeds(random_state, n_starts):
         weights, factors = parafac(
@@ -224,7 +207,7 @@ def _gpu_starts(device_tensor, rank: int, random_state: int, n_starts: int):
             random_state=seed,
             **seeded_cp_fit_options(seed),
         )
-        r2x = _device_r2x(device_tensor, weights, factors)
+        r2x = r2x_without_reconstruction(device_tensor, weights, factors)
         numpy_factors = [tl.to_numpy(f).astype(float) for f in factors]
         starts.append((tl.to_numpy(weights).astype(float), numpy_factors, r2x))
     return starts
@@ -438,13 +421,13 @@ def _elbow_errors(
 
 def _device_fit_error(device_tensor, rank: int, random_state: int) -> float:
     """One GPU Tensor-cell2cell fit's normalized error, ``sqrt(1 - R2X)``
-    from `_device_r2x`; the fit is dropped and CuPy's cached blocks freed
+    from `rank_selection.r2x_without_reconstruction`; the fit is dropped and CuPy's cached blocks freed
     before returning, so no small array pins a large freed block that the
     next fit's tensor-sized temporaries need."""
     import cupy
 
     cp = _device_nonneg_cp(device_tensor, rank, random_state)
-    error = float(np.sqrt(max(0.0, 1.0 - _device_r2x(device_tensor, *cp))))
+    error = float(np.sqrt(max(0.0, 1.0 - r2x_without_reconstruction(device_tensor, *cp))))
     del cp
     cupy.get_default_memory_pool().free_all_blocks()
     return error

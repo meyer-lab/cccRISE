@@ -376,3 +376,35 @@ def test_candelinc_energy_keeps_that_share_of_every_mode():
         b.shape[1] >= s.shape[1] for b, s in zip(bases, small_bases, strict=True)
     )
     assert lost_sq / np.sum(tensor**2) <= 4e-3 < small_lost / np.sum(tensor**2)
+
+
+def test_cpd_rank_rule_runner_fits_resumes_and_selects(tmp_path):
+    from cccrise.runners.run_cpd_rank_rule import Fitter, score
+
+    tensor = _simulate_cp_tensor((12, 10, 10, 30), rank=2, noise_std=0.01)
+    fitter = Fitter(tensor, "numpy", False, tmp_path, n_random=2, max_rank=3)
+    starts = {rank: fitter.rank_starts(rank, 42) for rank in (1, 2, 3)}
+    assert len(list(tmp_path.glob("*.npz"))) == 3 * (10 + 2)
+    # a second pass reads every fit back rather than refitting
+    again = Fitter(tensor, "numpy", False, tmp_path, n_random=2, max_rank=3)
+    np.testing.assert_allclose(
+        again.rank_starts(2, 42)["svd"][0][2], starts[2]["svd"][0][2]
+    )
+    selected, summary, per_start, _elbow = score(tensor, starts)
+    assert selected >= 2
+    assert summary.loc[summary["Rank"] <= 2, "Passes"].all()
+    assert set(per_start["Family"]) == {"svd", "random"} and len(per_start) == 36
+
+
+def test_cpd_rank_rule_compressed_fit_matches_the_full_one(tmp_path):
+    from cccrise.runners.run_cpd_rank_rule import Fitter
+
+    tensor = _simulate_cp_tensor((30, 12, 12, 40), rank=3, noise_std=0.1)
+    full = Fitter(tensor, "numpy", False, tmp_path / "full", 1, 3)
+    core = Fitter(tensor, "numpy", True, tmp_path / "core", 1, 3)
+    for path in (tmp_path / "full", tmp_path / "core"):
+        path.mkdir()
+    a = full.start(3, "svd", 0, 42)
+    b = core.start(3, "svd", 0, 42)
+    assert abs(a[2] - b[2]) < 1e-4
+    assert matched_congruence(a[1], b[1]).min() > 0.99

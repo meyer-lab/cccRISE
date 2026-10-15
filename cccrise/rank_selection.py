@@ -2,6 +2,7 @@ from collections.abc import Iterable, Sequence
 
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from scipy.optimize import linear_sum_assignment
 from tensorly.base import unfold
 from tensorly.cp_tensor import cp_to_tensor
@@ -33,6 +34,25 @@ def calculate_r2x(weights: np.ndarray, factors: Factors, tensor: np.ndarray) -> 
         return 0.0
     norm_residual_sq = np.sum((tensor - reconstruction) ** 2)
     return float(1.0 - norm_residual_sq / norm_tensor_sq)
+
+
+def r2x_without_reconstruction(tensor, weights, factors) -> float:
+    """R2X of a CP model against `tensor` on the active tensorly backend, from
+    ``||T||^2 - 2 <T, T_hat> + ||T_hat||^2`` without forming the
+    reconstruction (`calculate_r2x`'s value, to rounding), so it fits beside
+    a tensor that fills the GPU or memory."""
+    t_norm2 = sum(float(tl.sum(s * s)) for s in tensor)
+    if t_norm2 == 0:
+        return 0.0
+    core = tl.to_numpy(tl.tenalg.multi_mode_dot(tensor, [f.T for f in factors]))
+    w = tl.to_numpy(weights)
+    diagonal = np.array([core[(r,) * 4] for r in range(len(w))])
+    gram = np.ones((len(w), len(w)))
+    for f in factors:
+        f = tl.to_numpy(f)
+        gram *= f.T @ f
+    residual = t_norm2 - 2 * float(w @ diagonal) + float(w @ gram @ w)
+    return float(1.0 - residual / t_norm2)
 
 
 #: A pair whose cosines, multiplied over every mode, reach minus this is a

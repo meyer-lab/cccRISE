@@ -620,6 +620,109 @@ def plot_collinearity(
     ax.legend(loc="upper right", fontsize=style.FONT_SIZE_DENSE)
 
 
+#: Production starts by screen outcome (`rank_selection.screen_starts`), in
+#: stacking order, with their colours.
+RULE_OUTCOMES = {
+    "Pass": style.COLORS["emphasis"],
+    "Borderline (rep.)": style.COLORS["fit"],
+    "Borderline (not rep.)": style.COLORS["muted"],
+    "Not identified": style.COLORS["heldout"],
+    "Canceling": style.COLORS["up"],
+}
+#: Core consistency zones (Bro & Kiers 2003): appropriate, warning, invalid.
+CORCONDIA_ZONES = (
+    (80.0, style.COLORS["highlight"], "\u2265 80"),
+    (0.0, style.COLORS["sender"], "0\u201380"),
+    (-np.inf, style.COLORS["up"], "< 0"),
+)
+
+
+def rule_outcome(row: pd.Series) -> str:
+    """One start's screen outcome, worst first."""
+    if row["Canceling"]:
+        return "Canceling"
+    if row["NotIdentified"]:
+        return "Not identified"
+    if row["Borderline"]:
+        return "Borderline (rep.)" if row["Passes"] else "Borderline (not rep.)"
+    return "Pass"
+
+
+def plot_rule_r2x(starts: pd.DataFrame, summary: pd.DataFrame, ax: plt.Axes,
+                  rank: int | None = None, elbow: int | None = None):  # fmt: skip
+    """CP fit R2X by rank under the multi-start rule
+    (`run_cpd_rank_rule`): each production start (filled when it passes the
+    screen), each random start (grey, the diagnostic), the best passing
+    production fit (line), the selected rank and the elbow (diagnostic)."""
+    for family, shift, color in (("random", 0.18, style.COLORS["muted"]),
+                                 ("svd", -0.18, style.COLORS["emphasis"])):  # fmt: skip
+        part = starts[starts["Family"] == family]
+        ax.scatter(part["Rank"] + shift, part["R2X"], s=style.POINT_SIZE_BACKGROUND, lw=0.5,
+                   edgecolor=color, facecolor=[color if p else "white" for p in part["Passes"]],
+                   label="Production starts" if family == "svd" else "Random starts")  # fmt: skip
+    best = summary.dropna(subset=["BestPassingR2X"])
+    ax.plot(best["Rank"], best["BestPassingR2X"], color=style.COLORS["emphasis"],
+            lw=style.LINE_WIDTH, zorder=1, label="Best passing fit")  # fmt: skip
+    mark_rank(ax, rank)
+    if elbow is not None:
+        ax.axvline(
+            elbow, color=style.COLORS["reference"], ls=":", lw=style.LINE_WIDTH_THIN
+        )
+        ax.annotate("elbow\n(diagnostic)", (elbow, 0.98), xycoords=("data", "axes fraction"),
+                    fontsize=style.FONT_SIZE_DENSE, color=style.COLORS["reference"], ha="right",
+                    va="top", xytext=(-2, 0), textcoords="offset points")  # fmt: skip
+    ax.set_xlabel("CP rank")
+    ax.set_ylabel("Fit $R^2X$")
+    ax.legend(loc="lower right", fontsize=style.FONT_SIZE_DENSE)
+
+
+def plot_rule_screen(starts: pd.DataFrame, summary: pd.DataFrame, ax: plt.Axes,
+                     rank: int | None = None, pass_share: float = 0.9):  # fmt: skip
+    """The multi-start rule by rank: the production starts stacked by screen
+    outcome, the line the passing count must reach, core consistency's zone
+    (strip above the bars), and a cross where the passing starts disagree."""
+    production = starts[starts["Family"] == "svd"]
+    counts = (production.assign(Outcome=production.apply(rule_outcome, axis=1))
+              .groupby(["Rank", "Outcome"]).size().unstack(fill_value=0)
+              .reindex(columns=list(RULE_OUTCOMES), fill_value=0))  # fmt: skip
+    bottom = np.zeros(len(counts))
+    for outcome, color in RULE_OUTCOMES.items():
+        ax.bar(counts.index, counts[outcome], bottom=bottom, color=color, width=0.8,
+               label=outcome, lw=0)  # fmt: skip
+        bottom += counts[outcome].to_numpy()
+    n = int(counts.sum(axis=1).max())
+    ax.axhline(pass_share * n, color=style.COLORS["reference"], ls=style.LINE_STYLE_REFERENCE,
+               lw=style.LINE_WIDTH_THIN)  # fmt: skip
+    _corcondia_strip(ax, summary, n + 0.8)
+    disagree = summary[(summary["PassShare"] >= pass_share) & (summary["CoreConsistency"] > 0)
+                       & ~(summary["AgreementFMS"] >= 0.9)]  # fmt: skip
+    ax.scatter(disagree["Rank"], [n + 1.9] * len(disagree), marker="x", s=style.POINT_SIZE,
+               color=style.COLORS["ink"], lw=style.LINE_WIDTH_THIN)  # fmt: skip
+    mark_rank(ax, rank)
+    ax.set_ylim(0, 1.8 * n)
+    ax.set_xlabel("CP rank")
+    ax.set_yticks(range(0, n + 1, max(1, n // 2)))
+    ax.set_ylabel("Production starts")
+    zones = [plt.Line2D([], [], marker="s", ls="", color=c, markersize=4, label=f"CC {label}")
+             for _floor, c, label in CORCONDIA_ZONES]  # fmt: skip
+    handles = ax.get_legend_handles_labels()[0] + zones
+    ax.legend(handles=handles, loc="upper center", ncols=3, fontsize=style.FONT_SIZE_DENSE - 1,
+              frameon=False, handlelength=0.8, columnspacing=0.6, handletextpad=0.3)  # fmt: skip
+
+
+def _corcondia_strip(ax: plt.Axes, summary: pd.DataFrame, y: float) -> None:
+    """Core consistency's zone per rank (median over passing starts) as
+    squares at height `y`; blank where no start passes."""
+    for _, row in summary.dropna(subset=["CoreConsistency"]).iterrows():
+        color = next(
+            c for floor, c, _label in CORCONDIA_ZONES if row["CoreConsistency"] >= floor
+        )
+        ax.scatter(row["Rank"], y, marker="s", s=style.POINT_SIZE, color=color, lw=0)
+    ax.annotate("CORCONDIA", (1.0, y), xycoords=("axes fraction", "data"), ha="left",
+                va="center", fontsize=style.FONT_SIZE_DENSE, xytext=(2, 0),
+                textcoords="offset points")  # fmt: skip
+
+
 # --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------
 
 #: Outcome levels in reading order (healthy/control first); unlisted levels
