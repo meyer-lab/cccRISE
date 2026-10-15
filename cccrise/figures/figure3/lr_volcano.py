@@ -1,17 +1,17 @@
 """Every CP component's `N_SHOWN` most heavily weighted LR pairs, each in its
-own component's context (`lr_permutation`): log2 fold change of the group
-medians of the depth-normalized scores against the pair's permutation p.
+own component's context (`lr_permutation`): log2 ratio of the group means
+of the depth-normalized scores against the pair's one-sided permutation p.
 The outcome-associated component's top `N_TOP` pairs are highlighted and
 named where p < 0.05, and its next `N_SHOWN - N_TOP` set off from the other
 components' pairs."""
 
 import numpy as np
 
-from ....factors import load_factors_netcdf
-from ... import common, style
-from .._common import COMPONENT, SPEC
-from ..coordinated_changes import N_TOP
-from ..lr_permutation import CASE_DISPLAY, CONTROL_DISPLAY, permutation_analysis
+from ...factors import load_factors_netcdf
+from .. import common, style
+from ._common import COMPONENT, SPEC
+from .coordinated_changes import N_TOP
+from .lr_permutation import CASE_DISPLAY, CONTROL_DISPLAY, permutation_analysis
 
 N_SHOWN = 20
 AXES = ("rect",)
@@ -27,7 +27,7 @@ def plot(axs):
     result = permutation_analysis()
     points = {
         k: (
-            median_log2_fold_change(r)[r["order"][:N_SHOWN]],
+            mean_log2_ratio(r)[r["order"][:N_SHOWN]],
             -np.log10(r["p"][r["order"][:N_SHOWN]]),
         )
         for k, r in result.items()
@@ -65,8 +65,8 @@ def plot(axs):
         ax, x[:N_TOP], y[:N_TOP], lr_names[result[COMPONENT]["order"][:N_TOP]]
     )
     ax.set(
-        xlabel=f"log$_2$(median score ratio)\n{CASE_DISPLAY} ÷ {CONTROL_DISPLAY}",
-        ylabel="−log$_{10}$(rank-difference p)",
+        xlabel=f"log$_2$(mean score ratio)\n{CASE_DISPLAY} ÷ {CONTROL_DISPLAY}",
+        ylabel="−log$_{10}$(permutation p)",
     )
     common.legend(
         ax,
@@ -78,10 +78,10 @@ def plot(axs):
     )
 
 
-def median_log2_fold_change(component: dict) -> np.ndarray:
-    """log2 ratio of the group medians, offset by a thousandth of the median
+def mean_log2_ratio(component: dict) -> np.ndarray:
+    """log2 ratio of the group means, offset by a thousandth of the median
     positive one so pairs absent from a group stay finite."""
-    case, control = component["medians"]
+    case, control = component["means"]
     both = np.concatenate([case, control])
     offset = 1e-3 * np.median(both[both > 0])
     return np.log2((case + offset) / (control + offset))
