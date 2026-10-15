@@ -13,7 +13,7 @@ from . import _common as S
 
 AXES = ("strip",)
 # Least sender - receiver difference in the fraction of cells detecting a
-# marker shown: the tie-corrected test calls differences of a handful of cells
+# marker shown, leaving out significant differences of a handful of cells
 MIN_DETECTED_DIFFERENCE = 0.2
 
 

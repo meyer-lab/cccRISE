@@ -103,24 +103,30 @@ HLCA_EPITHELIAL_MARKERS = {
     "Tuft": ["DAB1"],
     "pre-TB secretory": ["SFTPB", "RNASE1", "SFTA1P"],
 }
-# HLCA annotations pooled into a Travaglini subtype; the rest keep their name
-HLCA_SUBTYPES = {
+# The subtype each atlas annotation is pooled into; the rest keep their name.
+# SMG duct is left out (None): submucosal gland ducts are not expected in BAL,
+# and its MGST1 is detected in half the other cells.
+SUBTYPE_SECTIONS = {
+    "Club": "Secretory",
+    "Goblet": "Secretory",
+    "Club (non-nasal)": "Secretory",
+    "Goblet (bronchial)": "Secretory",
+    "Goblet (subsegmental)": "Secretory",
     "Basal resting": "Basal",
     "Suprabasal": "Basal",
-    "Club (non-nasal)": "Club",
     "Multiciliated (non-nasal)": "Ciliated",
-    "Goblet (bronchial)": "Goblet",
-    "Goblet (subsegmental)": "Goblet",
     "SMG mucous": "Mucous",
     "SMG serous (bronchial)": "Serous",
+    "SMG duct": None,
 }
 # Both atlases' markers, pooled per subtype
 EPITHELIAL_SUBTYPE_MARKERS: dict[str, list[str]] = {}
 for _name, _genes in [
     *TRAVAGLINI_EPITHELIAL_MARKERS.items(),
-    *((HLCA_SUBTYPES.get(n, n), g) for n, g in HLCA_EPITHELIAL_MARKERS.items()),
+    *HLCA_EPITHELIAL_MARKERS.items(),
 ]:
-    EPITHELIAL_SUBTYPE_MARKERS.setdefault(_name, []).extend(_genes)
+    if (_section := SUBTYPE_SECTIONS.get(_name, _name)) is not None:
+        EPITHELIAL_SUBTYPE_MARKERS.setdefault(_section, []).extend(_genes)
 
 
 def component_weights() -> tuple[np.ndarray, np.ndarray]:
@@ -188,7 +194,6 @@ def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFram
         groups=list(groups),
         reference=reference,
         method="wilcoxon",
-        tie_correct=True,  # sparse genes are mostly tied zeros
     )
     result = test.uns["rank_genes_groups"]
     return {

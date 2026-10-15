@@ -19,6 +19,8 @@ LABEL_DX = (
 )
 LABEL_LINE_SPACING = 1.15  # between stacked labels, in font sizes
 REFERENCE_COLORS = {**S.GROUP_COLORS, "rest": style.COLORS["ink"]}
+LABEL_BOX = {"edgecolor": "none", "pad": 0.5}  # pad in points
+LABEL_ZORDER = 2.2  # over the reference lines (2), under the spines (2.5)
 ARROWPROPS = {
     "arrowstyle": "-",
     "lw": style.LINE_WIDTH_THIN / 2,
@@ -77,11 +79,11 @@ def plot_volcano(ax, group: str, reference: str, labeled, lims=None) -> None:
     ax.scatter(
         delta, y, c=color, s=style.POINT_SIZE_BACKGROUND, linewidths=0, rasterized=True
     )
-    threshold = common.reference_line(ax, -np.log10(common.SIG_ALPHA))
+    common.reference_line(ax, -np.log10(common.SIG_ALPHA))
     common.reference_line(ax, 0, horizontal=False)
     x_limit, y_limit = limits(delta, y) if lims is None else lims
     ax.set(xlim=(-x_limit, x_limit), ylim=(0, y_limit))
-    _label(ax, labeled, delta, y, threshold)
+    _label(ax, labeled, delta, y)
     ax.set(
         xlabel=f"Detected fraction,\n{group} − {reference}",
         ylabel="−log$_{10}$ q (Wilcoxon)",
@@ -107,12 +109,12 @@ def legend(ax) -> None:
     ax.set_title(" ", pad=height * 72)
 
 
-def _label(ax, genes, delta, y, threshold) -> None:
+def _label(ax, genes, delta, y) -> None:
     """Labels of `genes`, first placed just outward of their points (away
     from zero, where the volcano is empty) and stacked at least a line apart
     on each side (coincident points otherwise trap `adjust_text`), then moved
-    off the points and the `threshold` line by `adjust_text`, with leader lines
-    to their points."""
+    off the points by `adjust_text`, with leader lines to their points; each on
+    a background-colored box, hiding the reference lines under it."""
     step = (
         LABEL_LINE_SPACING
         * common.FACTOR_LABEL_FONT_SIZE
@@ -135,6 +137,8 @@ def _label(ax, genes, delta, y, threshold) -> None:
                     ha="left" if side > 0 else "right",
                     va="center",
                     fontsize=common.FACTOR_LABEL_FONT_SIZE,
+                    bbox=LABEL_BOX | {"facecolor": ax.get_facecolor()},
+                    zorder=LABEL_ZORDER,
                 )
             )
     placed = [t.get_text() for t in texts]
@@ -142,7 +146,6 @@ def _label(ax, genes, delta, y, threshold) -> None:
         texts,
         x=delta.to_numpy(),
         y=y.to_numpy(),
-        objects=[threshold],
         target_x=delta[placed].to_numpy(),
         target_y=y[placed].to_numpy(),
         ax=ax,
