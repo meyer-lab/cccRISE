@@ -4,19 +4,19 @@ fine types having their own label? Targeted labellings
 component's LR containment in each comparator's span (colour; dots at
 >= 0.85), one heatmap per method.
 
-A. Lineage labels, with the Secretory types that carry C4-C6 (EE, EC, Tuft)
+A. Lineage labels, with the Secretory types that carry C3 and C4 (EE, EC, Tuft)
    broken out in every combination; the first row is the plain lineage
    labelling (s0).
 B. Every fine type except the Secretory lineage's, which stays pooled apart
    from the same combinations; the last row is the full fine labelling.
    Going down from the row with all three, each row reverts one or more of
    them to their lineage label.
-C. The same for the single-type components: Mono SOD2+ (C1, C7), ILC (C2,
-   C3, C8) and Mast (C3), broken out of lineage labels (top) or kept apart
+C. The same for the single-type components: Mono SOD2+ (C1, C5), ILC (C2,
+   C6) and Mast (C2), broken out of lineage labels (top) or kept apart
    from an otherwise pooled lineage in the fine labelling (bottom).
-D. The sampled labellings that recovered C4 or C5/C6 with both carriers
-   broken out (s36 repeats 0, 3, 4), then each with one carrier reverted to
-   its lineage label (``-EE`` etc.).
+D. The sampled labellings that recovered C3 or C4 (CP 8: C4, C5/C6) with both
+   carriers broken out (s36 repeats 0, 3, 4), then each with one carrier
+   reverted to its lineage label (``-EE`` etc.).
 
 The last column of each heatmap is the method's selected LR rank for that
 labelling (STACCato: its LR-mode rank): misses at a low rank are the rank

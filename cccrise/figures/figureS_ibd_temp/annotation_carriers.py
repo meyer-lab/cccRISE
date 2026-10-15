@@ -4,8 +4,8 @@ comparators recover a component only when those types have their own label
 
 A. cccRISE's per-fine-type activity (share of a type's cells active in the
    component) as sender and receiver, for the types active in any component;
-   boxes mark each component's most active sender and receiver. C4-C6 are sent
-   by one fine type and received by another (EE -> EC, EE -> Tuft); the rest
+   boxes mark each component's most active sender and receiver. C3 and C4 are
+   sent by one fine type and received by another (EE -> EC, EE -> Tuft); the rest
    are sent and received by the same type.
 B. Over the sampled labellings (s0, s12 / s24 / s36 x repeats, fine), each
    component's LR containment in each comparator's span, split by whether its
