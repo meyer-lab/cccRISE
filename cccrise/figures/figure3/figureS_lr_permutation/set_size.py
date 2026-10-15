@@ -35,7 +35,7 @@ def plot(axs):
         )
     common.reference_line(ax, -np.log10(common.SIG_ALPHA))
     common.reference_line(ax, N_TOP, horizontal=False, linestyle=":")
-    ax.set(xlabel="Top LR pairs in set", ylabel="Set −log10(permutation p)")
+    ax.set(xlabel="Top-N LR pairs (N)", ylabel="−log$_{10}$(top-N set p)")
 
 
 def makeFigure():

@@ -11,7 +11,7 @@ from ....factors import load_factors_netcdf
 from ... import common, style
 from .._common import COMPONENT, SPEC
 from ..coordinated_changes import N_TOP
-from ..lr_permutation import CASE_LABEL, permutation_analysis
+from ..lr_permutation import CASE_DISPLAY, CONTROL_DISPLAY, permutation_analysis
 
 N_SHOWN = 20
 AXES = ("rect",)
@@ -65,8 +65,8 @@ def plot(axs):
         ax, x[:N_TOP], y[:N_TOP], lr_names[result[COMPONENT]["order"][:N_TOP]]
     )
     ax.set(
-        xlabel=f"log2 median fold change\n({CASE_LABEL} / No CLAD)",
-        ylabel="−log10(permutation p)",
+        xlabel=f"log$_2$(median score ratio)\n{CASE_DISPLAY} ÷ {CONTROL_DISPLAY}",
+        ylabel="−log$_{10}$(rank-difference p)",
     )
     common.legend(
         ax,

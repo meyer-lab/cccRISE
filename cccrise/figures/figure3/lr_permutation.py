@@ -23,6 +23,8 @@ from typing import Any, cast
 
 import numpy as np
 import pandas as pd
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 from scipy.stats import rankdata
 
 from ...anova import get_sample_to_group, prepare_group_labels
@@ -34,6 +36,9 @@ from .coordinated_changes import N_TOP, component_lr_scores
 
 CONTRAST = "6-Month CLAD/Died vs. No CLAD"
 CASE_LABEL = "CLAD/Died"
+# The groups as axis labels name them, free of the slash in CASE_LABEL
+CASE_DISPLAY = "CLAD+died"
+CONTROL_DISPLAY = "no CLAD"
 N_PERMS = 10_000
 MAX_TOP = 30  # largest top-pair set the set test is run on
 AXES = ("square",)
@@ -82,7 +87,32 @@ def plot_set_null_violins(result: dict[int, dict], n_top: int, ax) -> None:
     ax.set_xticks(components)
     ax.set(
         xlabel="Component",
-        ylabel=f"Top-{n_top} LR pair\nmean |diff.| (null SDs)",
+        ylabel=f"Top-{n_top} LR pair\nmean |rank-difference z|",
+    )
+    ax.legend(
+        handles=[
+            Patch(
+                color=style.COLORS["muted"], alpha=0.8, label="Patient-permutation null"
+            ),
+            Line2D(
+                [],
+                [],
+                color=style.COLORS["reference"],
+                lw=style.LINE_WIDTH_THIN,
+                linestyle=style.LINE_STYLE_REFERENCE,
+                label="Null 95th percentile",
+            ),
+            Line2D(
+                [],
+                [],
+                marker="D",
+                linestyle="",
+                color=style.COLORS["ink"],
+                label="Observed",
+            ),
+        ],
+        loc="upper left",
+        fontsize=style.FONT_SIZE_DENSE,
     )
 
 
