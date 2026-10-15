@@ -2,12 +2,12 @@
 and annotation (rows), from the selection traces its own-rank fit keeps
 (`benchmark.fit_comparators`; `benchmark_fits_<dataset><suffix>.nc`).
 
-- Pseudobulk CPD: core consistency (CORCONDIA) by rank, with the 85% line;
-  open markers are ranks with a collinear component pair; the rank is the
-  last one before either rule fails. Values below the axis floor are drawn
-  on it.
-  The IBD fine sweep stops at its first failing rank (`pb_stop_at_failure`;
-  same rank), so it is short.
+- Pseudobulk CPD: cccRISE's rank rule (`rank_selection.select_rank_by_rule`).
+  The share of its production starts passing the collinearity screen by
+  rank, with the 90% line; open markers are ranks failing the rule on core
+  consistency or agreement despite the screen; the rank is the largest
+  passing one. Sweeps stopped at their first failing rank
+  (`pb_stop_at_failure`) are short.
 - Tensor-cell2cell: mean normalised reconstruction error by rank; the rank
   is the elbow (kneedle).
 - STACCato: the leading eigenvalue shares of each mode's unfolding (log),
@@ -21,7 +21,8 @@ from types import SimpleNamespace
 import numpy as np
 from matplotlib.ticker import MaxNLocator
 
-from ...benchmark import CORCONDIA_THRESHOLD, STACCATO_VAREXP, read_fits
+from ...benchmark import STACCATO_VAREXP, read_fits
+from ...rank_selection import RULE_PASS_SHARE
 from ...runners.datasets import DATASETS, VALIDATION_DIR
 from .. import common, style
 
@@ -33,7 +34,6 @@ ROWS = (
 )
 METHODS = ("Pseudobulk CPD", "Tensor-cell2cell", "STACCato")
 STAC_MODES = ("sample", "LR", "sender", "receiver")
-CC_FLOOR = -20.0
 COLOR = style.COLORS["emphasis"]
 
 
@@ -51,21 +51,20 @@ def _selected(ax, rank):
 
 
 def _pb(ax, fit):
-    cc = np.asarray(fit.details["core_consistency"], float)
-    collinear = np.asarray(fit.details["max_modes_collinear"]) > 0
-    ranks = np.arange(1, len(cc) + 1)
-    shown = np.maximum(cc, CC_FLOOR)
-    ax.plot(ranks, shown, color=COLOR, lw=style.LINE_WIDTH, zorder=1)
+    share = np.asarray(fit.details["rule_pass_share"], float)
+    passes = np.asarray(fit.details["rule_passes"], bool)
+    ranks = np.arange(1, len(share) + 1)
+    other = (share >= RULE_PASS_SHARE) & ~passes  # failed on CORCONDIA or agreement
+    ax.plot(ranks, share, color=COLOR, lw=style.LINE_WIDTH, zorder=1)
     ax.scatter(
-        ranks, shown, s=style.POINT_SIZE, zorder=2, lw=0.8, edgecolor=COLOR,
-        facecolor=[("white" if c else COLOR) for c in collinear],
+        ranks, share, s=style.POINT_SIZE, zorder=2, lw=0.8, edgecolor=COLOR,
+        facecolor=[("white" if o else COLOR) for o in other],
     )  # fmt: skip
-    ax.axhline(CORCONDIA_THRESHOLD, color=style.COLORS["up"], lw=style.LINE_WIDTH_THIN)
+    ax.axhline(RULE_PASS_SHARE, color=style.COLORS["up"], lw=style.LINE_WIDTH_THIN)
     _selected(ax, int(fit.rank))
-    ax.set_ylim(CC_FLOOR - 5, 105)
-    # a sweep stopped at its first failing rank is short (`pb_stop_at_failure`)
-    ax.set_xlim(0.5, max(len(cc), 4) + 0.5)
-    ax.set_ylabel("core consistency (%)")
+    ax.set_ylim(-0.05, 1.05)
+    ax.set_xlim(0.5, max(len(share), 4) + 0.5)
+    ax.set_ylabel("starts passing the screen")
 
 
 def _tc2c(ax, fit):

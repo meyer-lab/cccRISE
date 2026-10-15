@@ -88,7 +88,23 @@ def parafac_multistart(
     initialization can settle in a local optimum, so a single start is not
     reliably the best fit.
     """
-    best: tuple[float, np.ndarray, Factors] | None = None
+    starts = parafac_starts(tensor, rank, n_iter_max, tol, random_state, n_starts)
+    assert starts, "n_starts must be at least 1"
+    weights, factors, _r2x = max(starts, key=lambda start: start[2])
+    return weights, factors
+
+
+def parafac_starts(
+    tensor: np.ndarray,
+    rank: int,
+    n_iter_max: int,
+    tol: float | None,
+    random_state: int | None = None,
+    n_starts: int = CP_N_STARTS,
+) -> list[tuple[np.ndarray, Factors, float]]:
+    """Every start `parafac_multistart` chooses from: weights, factors and
+    R2X against `tensor`, in seed order (`cp_start_seeds`)."""
+    starts = []
     for seed in cp_start_seeds(random_state, n_starts):
         weights, factors = parafac(
             tensor,
@@ -98,11 +114,8 @@ def parafac_multistart(
             random_state=seed,
             **seeded_cp_fit_options(seed),
         )
-        r2x = calculate_r2x(weights, factors, tensor)
-        if best is None or r2x > best[0]:
-            best = (r2x, weights, factors)
-    assert best is not None, "n_starts must be at least 1"
-    return best[1], best[2]
+        starts.append((weights, factors, calculate_r2x(weights, factors, tensor)))
+    return starts
 
 
 def _matrices_to_rnaseq_dataframes(

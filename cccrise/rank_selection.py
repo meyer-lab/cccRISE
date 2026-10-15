@@ -1,5 +1,8 @@
+from collections.abc import Iterable, Sequence
+
 import numpy as np
 import pandas as pd
+from scipy.optimize import linear_sum_assignment
 from tensorly.base import unfold
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.tenalg import mode_dot  # ty: ignore[unresolved-import]
@@ -36,6 +39,12 @@ def calculate_r2x(weights: np.ndarray, factors: Factors, tensor: np.ndarray) -> 
 #: canceling pair: its two rank-1 terms are near-negatives of each other.
 CANCELING_PRODUCT = 0.8
 
+#: The share of each mode's energy a CANDELINC basis keeps when compression
+#: must not change the fit (`candelinc_compress`'s `energy`). On ALAD and IBD
+#: it reproduces the uncompressed CP fit from the same start (FMS >= 0.9998,
+#: R2X within 3e-5); 99-99.5% does not at high rank.
+CP_COMPRESSION_ENERGY = 0.999
+
 
 def cpd_component_collinearity(
     factors_by_rank: dict[int, tuple[np.ndarray, Factors]],
@@ -68,9 +77,7 @@ def cpd_component_collinearity(
             rows.append(_no_collinearity_row(rank))
             continue
 
-        best_count, best_pair, min_product = _worst_collinear_pair(
-            factors, rank, threshold
-        )
+        best_count, best_pair, min_product = _worst_collinear_pair(factors, threshold)
         rows.append(
             {
                 "Rank": rank,
@@ -96,20 +103,28 @@ def _no_collinearity_row(rank: int) -> dict:
     }
 
 
+def _pair_cosines(factors: Factors) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Per mode, the cosine of every component pair, ``(modes, pairs)``, and
+    the pairs' 0-based indices ``i < j``."""
+    rank = factors[0].shape[1]
+    i, j = np.triu_indices(rank, k=1)
+    cos = np.stack([_unit(f).T @ _unit(f) for f in factors])  # (modes, rank, rank)
+    return cos[:, i, j], i, j
+
+
+def _unit(f: np.ndarray) -> np.ndarray:
+    return f / np.linalg.norm(f, axis=0, keepdims=True)
+
+
 def _worst_collinear_pair(
-    factors: Factors, rank: int, threshold: float
+    factors: Factors, threshold: float
 ) -> tuple[int, tuple[int, int], float]:
     """The pair collinear in the most modes (first on ties), and the smallest
     product of a pair's cosines over every mode."""
-    cos_by_mode = []
-    for f in factors:
-        norm = f / np.linalg.norm(f, axis=0, keepdims=True)
-        cos_by_mode.append(norm.T @ norm)
-    cos = np.stack(cos_by_mode)  # (modes, rank, rank)
-    i, j = np.triu_indices(rank, k=1)
-    counts = (np.abs(cos[:, i, j]) > threshold).sum(axis=0)
+    cos, i, j = _pair_cosines(factors)
+    counts = (np.abs(cos) > threshold).sum(axis=0)
     worst = int(np.argmax(counts))
-    min_product = float(np.prod(cos[:, i, j], axis=0).min())
+    min_product = float(np.prod(cos, axis=0).min())
     return int(counts[worst]), (int(i[worst]) + 1, int(j[worst]) + 1), min_product
 
 
@@ -161,7 +176,10 @@ def cp_core_consistency_sweep(
 
 
 def candelinc_compress(
-    tensor: np.ndarray, max_rank: int, oversample: int = 5
+    tensor: np.ndarray,
+    max_rank: int,
+    oversample: int = 5,
+    energy: float | None = None,
 ) -> tuple[np.ndarray, Factors, float]:
     """Compress a tensor to a CANDELINC core sized for ranks up to `max_rank`.
 
@@ -179,6 +197,13 @@ def candelinc_compress(
     whether taken from the original tensor or the core
     (`cp_core_consistency`).
 
+    The bases constrain the fit, though: a basis of ``max_rank +
+    oversample`` columns discards enough of a sample or LR mode to change the
+    optimum CP-ALS reaches. With `energy`, each basis also keeps the leading
+    directions holding that fraction of the mode's energy (measured on
+    `tensor`), which at 0.999 reproduces the uncompressed fit
+    (`CP_COMPRESSION_ENERGY`).
+
     Raises
     ------
     ValueError
@@ -193,6 +218,8 @@ def candelinc_compress(
         )
 
     keep = [min(dim, max_rank + oversample) for dim in tensor.shape]
+    if energy is not None:
+        keep = [max(k, _energy_size(tensor, m, energy)) for m, k in enumerate(keep)]
     # Compress the most-compressible modes first: every later Gram matrix is
     # then formed from an already smaller tensor.
     order = sorted(range(tensor.ndim), key=lambda m: keep[m] / tensor.shape[m])
@@ -216,6 +243,14 @@ def candelinc_compress(
     return core, bases, lost_sq
 
 
+def _energy_size(tensor: np.ndarray, mode: int, energy: float) -> int:
+    """How many leading directions of `mode` hold `energy` of its energy."""
+    unfolded = unfold(tensor, mode)
+    eigvals = np.linalg.eigvalsh(unfolded @ unfolded.T)[::-1]
+    share = np.cumsum(eigvals) / eigvals.sum()
+    return min(tensor.shape[mode], int(np.searchsorted(share, energy)) + 1)
+
+
 def candelinc_r2x(core_r2x: float, core: np.ndarray, lost_sq: float) -> float:
     """Restate a core-space R2X as R2X against the original tensor.
 
@@ -228,3 +263,147 @@ def candelinc_r2x(core_r2x: float, core: np.ndarray, lost_sq: float) -> float:
     if norm_sq == 0:
         return 0.0
     return float(1.0 - (lost_sq + (1.0 - core_r2x) * core_sq) / norm_sq)
+
+
+# --- The multi-start rank rule (RANK_SELECTION_RULE.md) --------------------------------
+#
+# Per rank, CP is fit from the production starts. Each fit is screened for
+# canceling, non-identified and borderline pairs; the rank is kept when
+# nearly every start passes, the passing starts' core consistency is above
+# the published invalid boundary, and the equally good passing starts agree.
+
+#: Production starts per rank (`ccc_rise.cp_start_seeds`).
+RULE_N_STARTS = 10
+#: |cos| above this in two or more modes leaves a pair not identified.
+NOT_IDENTIFIED_COS = 0.9
+#: |cos| above this in two or more modes is borderline: the pair passes only
+#: if both its components reproduce in the best passing start.
+BORDERLINE_COS = 0.8
+#: Share of starts that must pass the screen.
+RULE_PASS_SHARE = 0.9
+#: Passing starts within this R2X of the best are equally good fits.
+RULE_R2X_WINDOW = 0.005
+#: Matched congruence (FMS) at which two fits, or a component, reproduce.
+RULE_AGREE_FMS = 0.9
+
+#: One start's fit: weights, factors and R2X.
+Start = tuple[np.ndarray, Factors, float]
+
+
+def screen_pairs(factors: Factors) -> tuple[bool, bool, list[tuple[int, int]]]:
+    """Whether a fit has a canceling pair, a non-identified pair, and its
+    borderline pairs (0-based), every mode treated alike."""
+    if factors[0].shape[1] < 2:
+        return False, False, []
+    cos, i, j = _pair_cosines(factors)
+    canceling = bool((np.prod(cos, axis=0) <= -CANCELING_PRODUCT).any())
+    n_strict = (np.abs(cos) > NOT_IDENTIFIED_COS).sum(axis=0)
+    n_loose = (np.abs(cos) > BORDERLINE_COS).sum(axis=0)
+    borderline = [
+        (int(a), int(b))
+        for a, b, strict, loose in zip(i, j, n_strict, n_loose, strict=True)
+        if strict < 2 <= loose
+    ]
+    return canceling, bool((n_strict >= 2).any()), borderline
+
+
+def matched_congruence(reference: Factors, factors: Factors) -> np.ndarray:
+    """For each component of `factors`, the absolute product over modes of its
+    cosines with its optimal (Hungarian) match in `reference`. The mean is the
+    two fits' FMS without weights, as `validation.stability.per_component_fms`."""
+    congruence = np.ones((reference[0].shape[1], factors[0].shape[1]))
+    for ref, f in zip(reference, factors, strict=True):
+        congruence = congruence * (_unit(ref).T @ _unit(f))
+    congruence = np.abs(congruence)
+    rows, cols = linear_sum_assignment(-congruence)
+    out = np.zeros(factors[0].shape[1])
+    out[cols] = congruence[rows, cols]
+    return out
+
+
+def screen_starts(starts: Sequence[Start]) -> pd.DataFrame:
+    """Per start: R2X, the screen, its FMS to the best start clear of canceling
+    and non-identified pairs, and whether it passes (borderline pairs
+    included, by reproducing in that best start)."""
+    rows = [
+        dict(
+            zip(
+                ("Canceling", "NotIdentified", "Borderline"),
+                screen_pairs(f),
+                strict=True,
+            )
+        )
+        | {"R2X": r2x}
+        for _w, f, r2x in starts
+    ]
+    table = pd.DataFrame(rows)
+    clear = ~table["Canceling"] & ~table["NotIdentified"]
+    table["FMS"], table["Passes"] = np.nan, False
+    if not clear.any():
+        return table
+    reference = starts[int(table.loc[clear, "R2X"].idxmax())][1]
+    for k, (_w, f, _r2x) in enumerate(starts):
+        per = matched_congruence(reference, f)
+        table.loc[k, "FMS"] = per.mean()
+        reproduced = all(
+            min(per[a], per[b]) >= RULE_AGREE_FMS for a, b in table.at[k, "Borderline"]
+        )
+        table.loc[k, "Passes"] = bool(clear[k]) and reproduced
+    return table
+
+
+def rank_rule_row(tensor: np.ndarray, starts: Sequence[Start]) -> tuple[dict, int]:
+    """One rank under the rule: the share of starts passing, the passing
+    starts' median core consistency, the median FMS to the best passing start
+    of the other passing starts within `RULE_R2X_WINDOW` of it, whether the
+    rank passes, and the index of its production fit (the best passing start,
+    or the best start when none passes)."""
+    table = screen_starts(starts)
+    passing = table[table["Passes"]]
+    row = {"PassShare": float(table["Passes"].mean()), "CoreConsistency": np.nan,
+           "AgreementFMS": np.nan, "NAgreeing": 0, "BestPassingR2X": np.nan}  # fmt: skip
+    if passing.empty:
+        return row | {"Passes": False}, int(table["R2X"].idxmax())
+    best = int(passing["R2X"].idxmax())
+    near = passing[
+        (passing["R2X"] >= passing["R2X"].max() - RULE_R2X_WINDOW)
+        & (passing.index != best)
+    ]
+    row |= {
+        "CoreConsistency": float(
+            np.median(
+                [cp_core_consistency(tensor, *starts[k][:2]) for k in passing.index]
+            )
+        ),
+        "AgreementFMS": float(near["FMS"].median()) if len(near) else np.nan,
+        "NAgreeing": len(near),
+        "BestPassingR2X": float(passing["R2X"].max()),
+    }
+    row["Passes"] = bool(
+        row["PassShare"] >= RULE_PASS_SHARE and row["CoreConsistency"] > 0
+        and row["AgreementFMS"] >= RULE_AGREE_FMS
+    )  # fmt: skip
+    return row, best
+
+
+def select_rank_by_rule(
+    tensor: np.ndarray,
+    starts_by_rank: Iterable[tuple[int, Sequence[Start]]],
+    stop_at_failure: bool = False,
+) -> tuple[int, pd.DataFrame, tuple[np.ndarray, Factors]]:
+    """The largest rank passing the rule, the per-rank table and that rank's
+    production fit (weights, factors). Ranks are consumed in order; with
+    `stop_at_failure` the sweep ends at the first failing rank, which selects
+    the same rank whenever the passing ranks are contiguous from 1. With no
+    passing rank, the first rank is returned."""
+    rows, chosen = [], {}
+    for rank, starts in starts_by_rank:
+        row, k = rank_rule_row(tensor, starts)
+        rows.append({"Rank": rank} | row)
+        chosen[rank] = starts[k][:2]
+        if stop_at_failure and not row["Passes"]:
+            break
+    table = pd.DataFrame(rows)
+    passing = table.loc[table["Passes"], "Rank"]
+    rank = int(passing.max()) if len(passing) else int(table["Rank"].iloc[0])
+    return rank, table, chosen[rank]

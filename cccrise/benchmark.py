@@ -12,8 +12,8 @@ expression-product builder cccRISE already uses (`ccc_rise
 .calc_communication_score_pseudobulk`):
 
 - **Pseudobulk CPD**: the manuscript's own baseline, signed CP exactly as
-  `ccc_rise.pseudobulk_cp_decomposition` fits it, with its rank selected by
-  the criteria cccRISE's CP rank was (CORCONDIA and the collinearity screen).
+  `ccc_rise.parafac_multistart` fits it, with its rank and fit selected by
+  cccRISE's own rule (`rank_selection.select_rank_by_rule`).
 - **Tensor-cell2cell**: non-negative CP, with Tensor-cell2cell's own
   ``tf_optimization='regular'`` settings and its elbow rank selection. The
   tensor is the shared one, not upstream's: product rather than mean scoring,
@@ -50,14 +50,20 @@ from .ccc_rise import (
     CP_N_STARTS,
     calc_communication_score_pseudobulk,
     cp_start_seeds,
-    pseudobulk_cp_decomposition,
+    parafac_starts,
     seeded_cp_fit_options,
 )
 from .comparators.staccato import flip_signs, staccato
 from .rank_selection import (
+    BORDERLINE_COS,
+    CP_COMPRESSION_ENERGY,
+    NOT_IDENTIFIED_COS,
+    RULE_AGREE_FMS,
+    RULE_N_STARTS,
+    RULE_PASS_SHARE,
+    RULE_R2X_WINDOW,
     candelinc_compress,
-    cp_core_consistency_sweep,
-    cpd_component_collinearity,
+    select_rank_by_rule,
 )
 from .utils import pseudobulk_X
 
@@ -65,14 +71,13 @@ RANK_MODES = ("own", "shared")
 
 # Bump when a change to a comparator's fitting or rank selection should
 # invalidate every cached own-rank fit.
-FIT_CACHE_VERSION = 5
+FIT_CACHE_VERSION = 6
 
-# `tensor.run_pseudobulk_workflow`'s CP settings, and the rule cccRISE's CP rank
-# was read off by: the last rank before core consistency first drops below 85%
-# or a collinear component pair appears.
+# `tensor.run_pseudobulk_workflow`'s CP settings. Pseudobulk CPD's rank is
+# chosen by cccRISE's own rule (`rank_selection.select_rank_by_rule`, over
+# `RULE_N_STARTS` production starts per rank).
 PSEUDOBULK_N_ITER_MAX = 1000
 PSEUDOBULK_TOL = 1e-11
-CORCONDIA_THRESHOLD = 85.0
 
 # Tensor-cell2cell's `run_tensor_cell2cell_pipeline` defaults with
 # tf_optimization='regular': random init, 10 elbow runs per rank up to rank 25,
@@ -178,12 +183,13 @@ def transform_tensor(tensor: np.ndarray, kind: str) -> np.ndarray:
 GPU_FLOAT64_MAX_BYTES = 3 * 2**30
 
 
-def _device_tensor(tensor: np.ndarray):
-    """`tensor` on the GPU (float64 up to `GPU_FLOAT64_MAX_BYTES`, else
-    float32); the cupy backend must be active."""
+def _device_tensor(tensor: np.ndarray, float64: bool = False):
+    """`tensor` on the GPU (float64 up to `GPU_FLOAT64_MAX_BYTES` or when
+    `float64`, else float32); the cupy backend must be active."""
     import cupy
 
-    dtype = np.float64 if tensor.nbytes <= GPU_FLOAT64_MAX_BYTES else np.float32
+    small = tensor.nbytes <= GPU_FLOAT64_MAX_BYTES
+    dtype = np.float64 if float64 or small else np.float32
     return cupy.asarray(tensor, dtype=dtype)
 
 
@@ -205,11 +211,11 @@ def _device_r2x(tensor, weights, factors) -> float:
     return float(1.0 - residual / t_norm2)
 
 
-def _gpu_multistart(device_tensor, rank: int, random_state: int):
-    """`ccc_rise.parafac_multistart` on the GPU (same starts and options),
-    the best start by `_device_r2x`; returns NumPy weights and factors."""
-    best = None
-    for seed in cp_start_seeds(random_state, CP_N_STARTS):
+def _gpu_starts(device_tensor, rank: int, random_state: int, n_starts: int):
+    """`ccc_rise.parafac_starts` on the GPU (same starts and options): NumPy
+    weights, factors and R2X (`_device_r2x`) per start."""
+    starts = []
+    for seed in cp_start_seeds(random_state, n_starts):
         weights, factors = parafac(
             device_tensor,
             rank,
@@ -219,103 +225,73 @@ def _gpu_multistart(device_tensor, rank: int, random_state: int):
             **seeded_cp_fit_options(seed),
         )
         r2x = _device_r2x(device_tensor, weights, factors)
-        if best is None or r2x > best[0]:
-            best = (r2x, weights, factors)
-    assert best is not None
-    return tl.to_numpy(best[1]).astype(float), [
-        tl.to_numpy(f).astype(float) for f in best[2]
-    ]
+        numpy_factors = [tl.to_numpy(f).astype(float) for f in factors]
+        starts.append((tl.to_numpy(weights).astype(float), numpy_factors, r2x))
+    return starts
 
 
-def _pseudobulk_cp_fits(tensor: np.ndarray, ranks, random_state: int, backend: str):
-    """Yield (rank, (weights, factors)) of pseudobulk CPD at each rank, on
-    the CPU (`ccc_rise.pseudobulk_cp_decomposition`) or the GPU; the NumPy
-    backend is active whenever a fit is handed back."""
+def _pseudobulk_cp_starts(
+    tensor: np.ndarray, ranks, random_state: int, backend: str, n_starts: int
+):
+    """Yield (rank, starts) of pseudobulk CPD, each start's weights, factors
+    and R2X, on the CPU (`ccc_rise.parafac_starts`) or the GPU (float64; V1
+    found float32 CP-ALS diverging). The NumPy backend is active whenever
+    starts are handed back."""
     if backend == "numpy":
         for rank in ranks:
-            yield (
-                rank,
-                pseudobulk_cp_decomposition(
-                    tensor,
-                    rank,
-                    n_iter_max=PSEUDOBULK_N_ITER_MAX,
-                    tol=PSEUDOBULK_TOL,
-                    random_state=random_state,
-                )[:2],
-            )
+            yield rank, parafac_starts(tensor, rank, PSEUDOBULK_N_ITER_MAX,
+                                       PSEUDOBULK_TOL, random_state, n_starts)  # fmt: skip
         return
     tl.set_backend(backend)
     try:
-        device = _device_tensor(tensor)
+        device = _device_tensor(tensor, float64=True)
         for rank in ranks:
-            fit = _gpu_multistart(device, rank, random_state)
+            starts = _gpu_starts(device, rank, random_state, n_starts)
             tl.set_backend("numpy")
-            yield rank, fit
+            yield rank, starts
             tl.set_backend(backend)
     finally:
         tl.set_backend("numpy")
 
 
-def _passes_alone(tensor, rank, fit, threshold) -> bool:
-    return bool(_rank_diagnostics(tensor, {rank: fit}, threshold)[1].all())
-
-
-def _rank_diagnostics(
-    tensor: np.ndarray, factors_by_rank: dict, threshold: float
-) -> tuple[pd.DataFrame, np.ndarray]:
-    """Per rank: core consistency and collinearity, and whether it passes."""
-    diagnostics = cp_core_consistency_sweep(tensor, factors_by_rank).merge(
-        cpd_component_collinearity(factors_by_rank), on="Rank"
-    )
-    passes = (diagnostics["CoreConsistency"] >= threshold) & (
-        diagnostics["MaxModesCollinear"] == 0
-    )
-    return diagnostics, passes.to_numpy()
-
-
 def pseudobulk_cpd_rank(
     tensor: np.ndarray,
     max_rank: int | None = None,
-    threshold: float = CORCONDIA_THRESHOLD,
     random_state: int = 42,
     stop_at_failure: bool = False,
     backend: str = "numpy",
-) -> tuple[int, pd.DataFrame]:
-    """Pseudobulk CPD's rank, by the rule cccRISE's CP rank was selected with.
+) -> tuple[int, pd.DataFrame, tuple[np.ndarray, list[np.ndarray]]]:
+    """Pseudobulk CPD's rank and fit, by the rule cccRISE's CP rank is chosen
+    with (`rank_selection.select_rank_by_rule`): per rank,
+    `RULE_N_STARTS` production starts are screened, and the largest rank
+    whose starts pass and agree is kept, with its best passing start as the fit.
 
     Fits ranks ``1..max_rank``, never beyond the tensor's smallest mode (the
     bound `ccc_rise.validate_cp_rank` puts on cccRISE; above it the SVD
     initialisation needs a full-matrices SVD of a mode unfolding, hundreds of
-    GB on the coarse tensor), and returns the last rank
-    before core consistency first drops below `threshold` percent or any
-    component pair turns collinear, with the per-rank diagnostics. With
-    `stop_at_failure` the sweep ends at the first failing rank: each rank's
-    diagnostics depend only on its own fit, so the rank is the same and only
-    the diagnostics of the ranks after it are not computed. ``backend="cupy"``
-    fits on the GPU (`_pseudobulk_cp_fits`); the diagnostics stay on the CPU.
+    GB on the coarse tensor). With `stop_at_failure` the sweep ends at the
+    first failing rank. ``backend="cupy"`` fits on the GPU; the rule's
+    diagnostics stay on the CPU. Returns the rank, the per-rank table and the
+    fit (weights, ``(condition, sender, receiver, lr)`` factors).
     """
     bound = min(tensor.shape)
     max_rank = min(max_rank, bound) if max_rank else bound
-    factors_by_rank = {}
-    fits = _pseudobulk_cp_fits(tensor, range(1, max_rank + 1), random_state, backend)
-    for rank, fit in fits:
-        factors_by_rank[rank] = fit
-        if stop_at_failure and not _passes_alone(tensor, rank, fit, threshold):
-            break
-    diagnostics, passes = _rank_diagnostics(tensor, factors_by_rank, threshold)
-    first_fail = np.flatnonzero(~passes)
-    rank = int(first_fail[0]) if first_fail.size else len(factors_by_rank)
-    return max(rank, 1), diagnostics
+    starts = _pseudobulk_cp_starts(
+        tensor, range(1, max_rank + 1), random_state, backend, RULE_N_STARTS
+    )
+    return select_rank_by_rule(tensor, starts, stop_at_failure)
 
 
 def pseudobulk_cpd_fit(
     tensor: np.ndarray, rank: int, random_state: int = 42, backend: str = "numpy"
 ) -> tuple[np.ndarray, list[np.ndarray]]:
     """Weights and ``(condition, sender, receiver, lr)`` factors of one
-    pseudobulk CPD fit at `rank` (``backend="cupy"``: on the GPU)."""
-    ((_rank, (weights, factors)),) = _pseudobulk_cp_fits(
-        tensor, [rank], random_state, backend
+    pseudobulk CPD fit at `rank`, best of `CP_N_STARTS` starts
+    (``backend="cupy"``: on the GPU). Used at a fixed (shared) rank."""
+    ((_rank, starts),) = _pseudobulk_cp_starts(
+        tensor, [rank], random_state, backend, CP_N_STARTS
     )
+    weights, factors, _r2x = max(starts, key=lambda start: start[2])
     return np.asarray(weights), [np.asarray(f) for f in factors]
 
 
@@ -699,22 +675,21 @@ def _on_gpu(compute: Callable[[], Any], backend: str) -> Callable[[], Any]:
 def _pseudobulk_target(tensor, compress, max_rank, checkpoint_dir, backend):
     """The tensor pseudobulk CPD fits on, and the bases that decompress its
     factors (None when it is `tensor` itself). Compressed, it is the CANDELINC
-    core (`rank_selection.candelinc_compress`) with bases that keep every
-    rank the sweep can reach: core consistency and component collinearity
-    are the same on the core as on the tensor, as cccRISE's own compressed CP
-    rank sweep relies on, and a fit on the core is a CP model of the tensor
-    constrained to the bases' column spaces. A core is fit on the CPU: it is
-    small, and the GPU would only add transfers."""
+    core (`rank_selection.candelinc_compress`) whose bases keep every rank the
+    sweep can reach and `CP_COMPRESSION_ENERGY` of each mode's energy: core
+    consistency and component collinearity are the same on the core as on the
+    tensor, and at that energy a fit on the core reproduces the uncompressed
+    fit (rank-sized bases alone change the optimum)."""
     if not compress:
         return tensor, None, backend
     bound = min(tensor.shape)
     reach = min(max_rank, bound) if max_rank else bound
     core, bases, _lost = _checkpointed(
         checkpoint_dir,
-        "pseudobulk_candelinc",
-        lambda: candelinc_compress(tensor, reach),
+        "pseudobulk_candelinc_energy",
+        lambda: candelinc_compress(tensor, reach, energy=CP_COMPRESSION_ENERGY),
     )
-    return core, bases, "numpy"
+    return core, bases, backend
 
 
 def fit_comparators(
@@ -768,9 +743,9 @@ def fit_comparators(
         tensor, pb_compress, pb_max_rank, checkpoint_dir, pb_backend
     )
     if rank_mode == "own":
-        pb_rank, diagnostics = _checkpointed(
+        pb_rank, rule, pb_fit = _checkpointed(
             checkpoint_dir,
-            "pseudobulk_cpd_rank",
+            "pseudobulk_cpd_rule",
             _on_gpu(
                 lambda: pseudobulk_cpd_rank(
                     pb_tensor,
@@ -783,9 +758,10 @@ def fit_comparators(
             ),
         )
         pb_details: dict[str, Any] = {
-            "corcondia_threshold": CORCONDIA_THRESHOLD,
-            "core_consistency": diagnostics["CoreConsistency"].tolist(),
-            "max_modes_collinear": diagnostics["MaxModesCollinear"].tolist(),
+            "rule_pass_share": rule["PassShare"].tolist(),
+            "core_consistency": rule["CoreConsistency"].tolist(),
+            "agreement_fms": rule["AgreementFMS"].tolist(),
+            "rule_passes": rule["Passes"].tolist(),
         }
         tc2c_rank, errors = _checkpointed(
             checkpoint_dir,
@@ -812,15 +788,18 @@ def fit_comparators(
         tc2c_rank = shared_rank
         tc2c_details = {}
         core_shape = tuple(min(shared_rank, size) for size in stac_tensor.shape)
+        pb_fit = _checkpointed(
+            checkpoint_dir,
+            f"pseudobulk_cpd_fit_{pb_rank}",
+            _on_gpu(
+                lambda: pseudobulk_cpd_fit(
+                    pb_tensor, pb_rank, random_state, pb_backend
+                ),
+                pb_backend,
+            ),
+        )
 
-    pb_weights, pb_factors = _checkpointed(
-        checkpoint_dir,
-        f"pseudobulk_cpd_fit_{pb_rank}",
-        _on_gpu(
-            lambda: pseudobulk_cpd_fit(pb_tensor, pb_rank, random_state, pb_backend),
-            pb_backend,
-        ),
-    )
+    pb_weights, pb_factors = pb_fit
     if pb_bases is not None:
         pb_factors = [basis @ f for basis, f in zip(pb_bases, pb_factors, strict=True)]
     tc_weights, tc_factors = _checkpointed(
@@ -881,7 +860,15 @@ def fit_settings() -> dict[str, Any]:
         "fit_cache_version": FIT_CACHE_VERSION,
         "pseudobulk_n_iter_max": PSEUDOBULK_N_ITER_MAX,
         "pseudobulk_tol": PSEUDOBULK_TOL,
-        "corcondia_threshold": CORCONDIA_THRESHOLD,
+        "pseudobulk_rule": {
+            "n_starts": RULE_N_STARTS,
+            "not_identified_cos": NOT_IDENTIFIED_COS,
+            "borderline_cos": BORDERLINE_COS,
+            "pass_share": RULE_PASS_SHARE,
+            "r2x_window": RULE_R2X_WINDOW,
+            "agree_fms": RULE_AGREE_FMS,
+            "compression_energy": CP_COMPRESSION_ENERGY,
+        },
         "tc2c_tol": TC2C_TOL,
         "tc2c_n_iter_max": TC2C_N_ITER_MAX,
     }

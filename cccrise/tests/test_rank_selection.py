@@ -21,6 +21,9 @@ from cccrise.rank_selection import (
     cp_core_consistency,
     cp_core_consistency_sweep,
     cpd_component_collinearity,
+    matched_congruence,
+    screen_pairs,
+    select_rank_by_rule,
 )
 
 
@@ -297,3 +300,79 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     assert list(compressed.loc[identifiable, "MaxModesCollinear"]) == list(
         full.loc[identifiable, "MaxModesCollinear"]
     )
+
+
+def _pair_factors(cosines, rng, rank=3, dims=(12, 10, 10, 30)):
+    """Factors whose components 0 and 1 have the given per-mode cosines and
+    whose third component is generic."""
+    factors = []
+    for dim, cos in zip(dims, cosines, strict=True):
+        f = np.linalg.qr(rng.normal(size=(dim, rank)))[0]
+        f[:, 1] = cos * f[:, 0] + np.sqrt(1 - cos**2) * f[:, 1]
+        factors.append(f)
+    return factors
+
+
+def test_screen_pairs_reads_each_rule_from_the_cosines():
+    rng = np.random.default_rng(0)
+    assert screen_pairs(_pair_factors((0.95, 0.2, 0.1, 0.0), rng)) == (False, False, [])
+    assert screen_pairs(_pair_factors((0.95, 0.95, 0.1, 0.0), rng))[1]
+    assert screen_pairs(_pair_factors((0.85, 0.85, 0.1, 0.0), rng))[2] == [(0, 1)]
+    canceling = _pair_factors((-0.95, -0.95, -0.95, 0.95), rng)
+    assert screen_pairs(canceling)[0]
+    # one mode's sign alone is a convention, not a cancellation
+    assert not screen_pairs(_pair_factors((-0.95, 0.1, 0.1, 0.1), rng))[0]
+
+
+def test_matched_congruence_ignores_order_and_sign():
+    rng = np.random.default_rng(1)
+    factors = [rng.normal(size=(dim, 3)) for dim in (8, 6, 6, 20)]
+    shuffled = [f[:, [2, 0, 1]] * np.array([1, -1, 1]) for f in factors]
+    shuffled[1][:, 1] *= -1  # the sign moves to another mode
+    np.testing.assert_allclose(matched_congruence(factors, shuffled), 1.0)
+
+
+def _starts(fits, tensor):
+    """Starts from (weights, factors) fits; a bare factor list gets unit weights."""
+    fits = [
+        fit if isinstance(fit, tuple) else (np.ones(fit[0].shape[1]), fit)
+        for fit in fits
+    ]
+    return [(w, f, calculate_r2x(w, f, tensor)) for w, f in fits]
+
+
+def test_select_rank_by_rule_keeps_the_largest_passing_rank():
+    rng = np.random.default_rng(2)
+    tensor = _simulate_cp_tensor((12, 10, 10, 30), rank=2, noise_std=0.01)
+    good = [tuple(_cp_fit(tensor, r)[:2]) for r in (1, 2)]
+    # rank 3: every start splits one program over two components
+    bad = _pair_factors((0.99, 0.99, 0.3, 0.2), rng)
+    by_rank = [(1, _starts([good[0]] * 10, tensor)), (2, _starts([good[1]] * 10, tensor)),
+               (3, _starts([bad] * 10, tensor))]  # fmt: skip
+    rank, table, (_weights, factors) = select_rank_by_rule(tensor, by_rank)
+    assert rank == 2
+    assert table["Passes"].tolist() == [True, True, False]
+    np.testing.assert_allclose(matched_congruence(good[1][1], factors), 1.0)
+    early_rank, early, _fit = select_rank_by_rule(tensor, by_rank, stop_at_failure=True)
+    assert early_rank == 2 and len(early) == 3
+
+
+def test_select_rank_by_rule_needs_nine_of_ten_starts():
+    rng = np.random.default_rng(3)
+    tensor = _simulate_cp_tensor((12, 10, 10, 30), rank=2, noise_std=0.01)
+    good = tuple(_cp_fit(tensor, 2)[:2])
+    bad = _pair_factors((0.99, 0.99, 0.3, 0.2), rng, rank=2)
+    one_bad = _starts([good] * 9 + [bad], tensor)
+    two_bad = _starts([good] * 8 + [bad] * 2, tensor)
+    assert select_rank_by_rule(tensor, [(2, one_bad)])[1]["Passes"].item()
+    assert not select_rank_by_rule(tensor, [(2, two_bad)])[1]["Passes"].item()
+
+
+def test_candelinc_energy_keeps_that_share_of_every_mode():
+    tensor = _simulate_cp_tensor((30, 12, 12, 40), rank=3, noise_std=0.3)
+    _core, bases, lost_sq = candelinc_compress(tensor, max_rank=3, energy=0.999)
+    _small, small_bases, small_lost = candelinc_compress(tensor, max_rank=3)
+    assert all(
+        b.shape[1] >= s.shape[1] for b, s in zip(bases, small_bases, strict=True)
+    )
+    assert lost_sq / np.sum(tensor**2) <= 4e-3 < small_lost / np.sum(tensor**2)

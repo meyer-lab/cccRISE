@@ -51,36 +51,35 @@ def test_tensor_cell2cell_elbow_on_rank_three_tensor():
     assert rank == 3
 
 
-def test_pseudobulk_cpd_rank_stops_before_the_rule_fails():
+def test_pseudobulk_cpd_rank_keeps_the_largest_rank_passing_the_rule():
     tensor = _nonneg_cp_tensor((10, 5, 5, 15), rank=2, seed=5, noise=1e-3)
-    rank, diagnostics = pseudobulk_cpd_rank(tensor, max_rank=4)
-    assert list(diagnostics["Rank"]) == [1, 2, 3, 4]
-    assert diagnostics.loc[diagnostics["Rank"] <= rank, "CoreConsistency"].min() >= 85
+    rank, rule, (weights, factors) = pseudobulk_cpd_rank(tensor, max_rank=4)
+    assert list(rule["Rank"]) == [1, 2, 3, 4]
+    assert rule.loc[rule["Rank"] <= rank, "Passes"].all()
     assert rank == 2
+    assert len(weights) == 2 and factors[3].shape == (15, 2)
 
 
 def test_pseudobulk_cpd_rank_stopping_early_selects_the_same_rank():
     tensor = _nonneg_cp_tensor((10, 5, 5, 15), rank=2, seed=5, noise=1e-3)
-    rank, full = pseudobulk_cpd_rank(tensor, max_rank=4)
-    early_rank, early = pseudobulk_cpd_rank(tensor, max_rank=4, stop_at_failure=True)
+    rank, full, _fit = pseudobulk_cpd_rank(tensor, max_rank=4)
+    early_rank, early, _early_fit = pseudobulk_cpd_rank(
+        tensor, max_rank=4, stop_at_failure=True
+    )
     assert early_rank == rank
     assert list(early["Rank"]) == list(range(1, rank + 2))
-    np.testing.assert_allclose(
-        early["CoreConsistency"], full["CoreConsistency"].iloc[: rank + 1]
-    )
+    np.testing.assert_allclose(early["PassShare"], full["PassShare"].iloc[: rank + 1])
 
 
 def test_compressed_pseudobulk_cpd_matches_the_full_rank_and_span():
-    from cccrise.benchmark import _pseudobulk_target, pseudobulk_cpd_fit
+    from cccrise.benchmark import _pseudobulk_target
 
     tensor = _nonneg_cp_tensor((20, 12, 12, 30), rank=2, seed=3, noise=1e-3)
     core, bases, _ = _pseudobulk_target(tensor, True, 3, None, "numpy")
-    assert core.shape == (8, 8, 8, 8)
-    full_rank, _ = pseudobulk_cpd_rank(tensor, max_rank=3)
-    core_rank, _ = pseudobulk_cpd_rank(core, max_rank=3)
+    assert all(k >= 8 for k in core.shape)
+    full_rank, _, (_w, full) = pseudobulk_cpd_rank(tensor, max_rank=3)
+    core_rank, _, (_cw, small) = pseudobulk_cpd_rank(core, max_rank=3)
     assert core_rank == full_rank == 2
-    _, full = pseudobulk_cpd_fit(tensor, 2)
-    _, small = pseudobulk_cpd_fit(core, 2)
     lr = bases[3] @ small[3]
     cos = np.abs(
         (lr / np.linalg.norm(lr, axis=0)).T
@@ -91,8 +90,8 @@ def test_compressed_pseudobulk_cpd_matches_the_full_rank_and_span():
 
 def test_pseudobulk_cpd_rank_never_exceeds_the_smallest_mode():
     tensor = _nonneg_cp_tensor((6, 3, 3, 10), rank=2, seed=2, noise=0.01)
-    _rank, diagnostics = pseudobulk_cpd_rank(tensor, max_rank=10)
-    assert diagnostics["Rank"].max() == 3
+    _rank, rule, _fit = pseudobulk_cpd_rank(tensor, max_rank=10)
+    assert rule["Rank"].max() == 3
 
 
 def test_staccato_order_moves_lr_to_mode_two():
