@@ -4,8 +4,7 @@
 # these ranks were chosen.
 
 dataset: ibd
-dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
-  0)
+dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed 0)
 source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
 source_sha256: 12b8415309e747c16f64d4f9ecd82a27ea0aeea9e8820f3a30f4b0100bcf23a4
 loader_args:
@@ -19,10 +18,10 @@ loader_args:
 condition_key: sanger_sample_id
 celltype_key: broad_cell_type
 group_key: inflammation_status
-dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
-  and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types matching
-  the published DGE tables; `broad_cell_type` holds 8 lineages, of which the mesenchymal one
-  (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy and 111 Crohn''s
+  (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types matching the published DGE tables;
+  `broad_cell_type` holds 8 lineages, of which the mesenchymal one (fibroblasts, endothelial cells, pericytes)
+  is excluded as a biopsy-sampling artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
 rise_n_iter_max: 300
 cp_n_iter_max: 4000
 rise_tol: 1.0e-08
@@ -45,21 +44,29 @@ resulting_dims:
   genes: 23355
   cells: 634534
   lr_pairs: 1255
-interaction_tensor_shape: [343, 60, 60, 1255]
+interaction_tensor_shape:
+- 343
+- 60
+- 60
+- 1255
 r2x_pf2: 0.03451037029778936
-r2x_cp: 0.5912369666566573
+r2x_cp: 0.5775700877676836
 rank_selection:
   rise:
     rank: 60
     sweep_file: cccrise/data/rank_selection_results/rise_rank_ibd.parquet
     notes: BiCV one-SE rank (held-out R2X is highest at rank 85).
   cpd:
-    rank: 8
-    sweep_file: cccrise/data/rank_selection_results/cpd_rank_ibd.parquet
-    notes: Chosen from uncompressed candidate fits at CP 3-10 on this RISE fit.
-generated_by: an exploratory script that calls the same functions as run_ccc_rise (ccc_rise.fit_rise,
-  uncompressed; ccc_rise.fit_ccc_cp, uncompressed; factors.save_ccc_rise_fit) with the settings
-  above. The RISE fit ran once; CP 8 was fit later on the communication tensor rebuilt from
-  that RISE fit as stored here, reproducing the stored CP 3 R2X.
-git_sha: 2b4ddc152810fd5d013c42c32e2dfbd69a250e52
-generated: '2026-10-11T06:36:49+00:00'
+    rank: 6
+    sweep_file: null
+    notes: 'Largest rank whose 10 production SVD starts (cp_start_seeds(42, 10)) pass the collinearity
+      screen (>= 9/10), have median CORCONDIA > 0 and agree (median FMS >= 0.9 within 0.005 R2X); CP 7
+      passes 2/10, CP 8 4/10. Rule: RANK_SELECTION_RULE.md (comparators worktree); sweep: output/cache/story/s0b_ibd_production.summary.parquet
+      there. Replaces CP 8, whose C5/C6 pair is not identified.'
+generated_by: an exploratory script (comparators worktree output/cache/story/refit_ibd_cp.py) that calls
+  ccc_rise.fit_cp (production parafac_multistart, uncompressed, CPU) on the communication tensor rebuilt
+  from the RISE fit stored here, and keeps that RISE fit. It reproduces the multi-start sweep's rank-6
+  production optimum (per-component FMS >= 0.99999).
+git_sha: 0cfaa6ab57cc20c3acd64f07c42c2b0e93ec479a-dirty
+generated: '2026-10-15T14:21:18+00:00'
+cp_n_starts: 5
