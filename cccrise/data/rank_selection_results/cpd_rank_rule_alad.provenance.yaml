@@ -14,9 +14,10 @@ celltype_key: broad_cell_type
 group_key: ALADstatus
 factors_sha256: 01d4749ad4901a54b567a28e834a0fe799c0fa6c40eb57743904b960da884295
 interaction_tensor_shape: [47, 17, 17, 513]
-tensor_source: rebuilt from the factors
+tensor_source: output/cache/story/alad_tensor_rise17.npy
 cp_ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 selected_rank: 5
+pass_share: 0.9
 elbow_diagnostic: 8
 production_starts: 10
 random_starts: 10
@@ -27,10 +28,10 @@ cp_fit_options:
   normalize_factors: true
 cp_n_iter_max: 4000
 cp_tol: 1.0e-12
-backend: cupy
+backend: numpy
 float64: true
 compression_energy: null
 fits_dir: output/cache/cpd_rank_rule/alad_full
 summary_file: cpd_rank_rule_summary_alad.parquet
-git_sha: 622f57f1cdfb9d349140a77a90f475dc383b3848-dirty
-generated: '2026-10-15T15:49:20+00:00'
+git_sha: 4f2d51571c7b5b25ed7ab274b06b3840074f603a-dirty
+generated: '2026-10-15T15:56:49+00:00'

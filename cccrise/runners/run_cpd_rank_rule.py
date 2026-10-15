@@ -36,7 +36,6 @@ from tensorly.cp_tensor import CPTensor
 from tensorly.decomposition import parafac
 from tensorly.decomposition._cp import initialize_cp
 
-from ..benchmark import kneedle_elbow
 from ..ccc_rise import (
     CP_FIT_OPTIONS,
     calculate_interaction_tensor,
@@ -48,10 +47,12 @@ from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..rank_selection import (
     CP_COMPRESSION_ENERGY,
     RULE_N_STARTS,
+    RULE_PASS_SHARE,
     Factors,
     Start,
     candelinc_compress,
     cp_core_consistency,
+    kneedle_elbow,
     matched_congruence,
     r2x_without_reconstruction,
     screen_starts,
@@ -245,7 +246,8 @@ def run(
         "factors_sha256": sha256_file(spec.factors_path()),
         "interaction_tensor_shape": list(tensor.shape),
         "tensor_source": str(tensor_cache) if tensor_cache else "rebuilt from the factors",
-        "cp_ranks": list(ranks), "selected_rank": selected, "elbow_diagnostic": elbow,
+        "cp_ranks": list(ranks), "selected_rank": selected,
+            "pass_share": RULE_PASS_SHARE, "elbow_diagnostic": elbow,
         "production_starts": RULE_N_STARTS, "random_starts": n_random, "random_state": random_state,
         "cp_fit_options": CP_FIT_OPTIONS, "cp_n_iter_max": CP_N_ITER_MAX, "cp_tol": CP_TOL,
         "backend": backend, "float64": True,

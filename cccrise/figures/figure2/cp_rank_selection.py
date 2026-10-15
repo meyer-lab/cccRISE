@@ -9,7 +9,6 @@ Right: the 10 production starts per rank stacked by screen outcome, the 9 of
 the rank needs > 0), and a cross where the passing starts disagree. The
 selected rank is the largest that passes."""
 
-from ...rank_selection import RULE_PASS_SHARE
 from ...runners.datasets import RANK_SELECTION_DIR
 from ...runners.provenance import read_metadata
 from .. import common
@@ -19,18 +18,15 @@ AXES = ("square", "square")
 
 
 def plot(axs, dataset: str = DATASET):
-    starts = common.load_runner_output(
-        f"cpd_rank_rule_{dataset}.parquet", RANK_SELECTION_DIR
-    )
+    name = f"cpd_rank_rule_{dataset}.parquet"
+    starts = common.load_runner_output(name, RANK_SELECTION_DIR)
     summary = common.load_runner_output(
         f"cpd_rank_rule_summary_{dataset}.parquet", RANK_SELECTION_DIR
     )
-    elbow = read_metadata(RANK_SELECTION_DIR / f"cpd_rank_rule_{dataset}.parquet")[
-        "elbow_diagnostic"
-    ]
+    run = read_metadata(RANK_SELECTION_DIR / name)
     rank = common.selected_ranks(dataset)[1]
-    common.plot_rule_r2x(starts, summary, axs[0], rank, elbow)
-    common.plot_rule_screen(starts, summary, axs[1], rank, RULE_PASS_SHARE)
+    common.plot_rule_r2x(starts, summary, axs[0], rank, run["elbow_diagnostic"])
+    common.plot_rule_screen(starts, summary, axs[1], rank, run["pass_share"])
 
 
 def makeFigure():

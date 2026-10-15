@@ -63,6 +63,7 @@ from .rank_selection import (
     RULE_PASS_SHARE,
     RULE_R2X_WINDOW,
     candelinc_compress,
+    kneedle_elbow,
     r2x_without_reconstruction,
     select_rank_by_rule,
 )
@@ -278,45 +279,6 @@ def pseudobulk_cpd_fit(
     return np.asarray(weights), [np.asarray(f) for f in factors]
 
 
-def kneedle_elbow(
-    x: Sequence[float] | np.ndarray, y: Sequence[float] | np.ndarray, S: float = 1.0
-) -> int:
-    """Elbow of a convex, decreasing curve by offline Kneedle.
-
-    Port of what Tensor-cell2cell calls (`kneed.KneeLocator(curve="convex",
-    direction="decreasing", S=1.0).elbow`) without the interpolation step,
-    which is a no-op on integer ranks. Returns the first local maximum of the
-    difference curve that the curve then drops below its threshold from, or
-    the difference curve's argmax if none does.
-    """
-    xs = np.asarray(x, dtype=float)
-    ys = np.asarray(y, dtype=float)
-    if xs.size < 3:
-        return int(xs[np.argmin(ys)])
-
-    def _normalize(v: np.ndarray) -> np.ndarray:
-        span = v.max() - v.min()
-        return (v - v.min()) / span if span > 0 else np.zeros_like(v)
-
-    x_norm = _normalize(xs)
-    y_norm = _normalize(ys)
-    difference = (y_norm.max() - y_norm) - x_norm
-
-    maxima = [
-        i
-        for i in range(1, xs.size - 1)
-        if difference[i] >= difference[i - 1] and difference[i] >= difference[i + 1]
-    ]
-    step = S * float(np.abs(np.diff(x_norm)).mean())
-    for i in maxima:
-        threshold = difference[i] - step
-        later_maxima = [j for j in maxima if j > i]
-        stop = later_maxima[0] if later_maxima else xs.size
-        if np.any(difference[i + 1 : stop] < threshold):
-            return int(xs[i])
-    return int(xs[int(np.argmax(difference))])
-
-
 def _odd_inner_mttkrp(tensor, cp_tensor, mode):
     """tensorly's ``unfolding_dot_khatri_rao`` with the product's inner
     dimension padded by one zero when it is even. On the RTX 5080, cuBLAS's
@@ -427,7 +389,9 @@ def _device_fit_error(device_tensor, rank: int, random_state: int) -> float:
     import cupy
 
     cp = _device_nonneg_cp(device_tensor, rank, random_state)
-    error = float(np.sqrt(max(0.0, 1.0 - r2x_without_reconstruction(device_tensor, *cp))))
+    error = float(
+        np.sqrt(max(0.0, 1.0 - r2x_without_reconstruction(device_tensor, *cp)))
+    )
     del cp
     cupy.get_default_memory_pool().free_all_blocks()
     return error

@@ -285,6 +285,45 @@ def candelinc_r2x(core_r2x: float, core: np.ndarray, lost_sq: float) -> float:
     return float(1.0 - (lost_sq + (1.0 - core_r2x) * core_sq) / norm_sq)
 
 
+def kneedle_elbow(
+    x: Sequence[float] | np.ndarray, y: Sequence[float] | np.ndarray, S: float = 1.0
+) -> int:
+    """Elbow of a convex, decreasing curve by offline Kneedle.
+
+    Port of what Tensor-cell2cell calls (`kneed.KneeLocator(curve="convex",
+    direction="decreasing", S=1.0).elbow`) without the interpolation step,
+    which is a no-op on integer ranks. Returns the first local maximum of the
+    difference curve that the curve then drops below its threshold from, or
+    the difference curve's argmax if none does.
+    """
+    xs = np.asarray(x, dtype=float)
+    ys = np.asarray(y, dtype=float)
+    if xs.size < 3:
+        return int(xs[np.argmin(ys)])
+
+    def _normalize(v: np.ndarray) -> np.ndarray:
+        span = v.max() - v.min()
+        return (v - v.min()) / span if span > 0 else np.zeros_like(v)
+
+    x_norm = _normalize(xs)
+    y_norm = _normalize(ys)
+    difference = (y_norm.max() - y_norm) - x_norm
+
+    maxima = [
+        i
+        for i in range(1, xs.size - 1)
+        if difference[i] >= difference[i - 1] and difference[i] >= difference[i + 1]
+    ]
+    step = S * float(np.abs(np.diff(x_norm)).mean())
+    for i in maxima:
+        threshold = difference[i] - step
+        later_maxima = [j for j in maxima if j > i]
+        stop = later_maxima[0] if later_maxima else xs.size
+        if np.any(difference[i + 1 : stop] < threshold):
+            return int(xs[i])
+    return int(xs[int(np.argmax(difference))])
+
+
 # --- The multi-start rank rule (RANK_SELECTION_RULE.md) --------------------------------
 #
 # Per rank, CP is fit from the production starts. Each fit is screened for
