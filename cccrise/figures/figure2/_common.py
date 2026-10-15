@@ -31,7 +31,7 @@ DOT_SIZE_MAX = 30  # pt^2, a gene detected in every cell of a group
 DOT_FRACTIONS = (0.25, 0.5, 1.0)  # size legend entries
 # Dot plot section names wider than this fraction of their genes' span are
 # abbreviated (`label_sections`), keeping neighbors apart; one still within
-# SECTION_GAP font sizes of its left neighbor is raised a row
+# SECTION_GAP font sizes of its left neighbor is raised a row, until clear
 SECTION_FILL = 0.9
 SECTION_GAP = 0.5
 SECTION_Y = 1.03  # axes fraction
@@ -65,7 +65,7 @@ CELLTYPE_MARKERS = {
     "Proliferating cells": ["MKI67", "TOP2A"],
 }
 # Canonical markers of the epithelial subtypes in the same table, verbatim
-EPITHELIAL_SUBTYPE_MARKERS = {
+TRAVAGLINI_EPITHELIAL_MARKERS = {
     "Club": ["CYP2F2", "SCGB3A2", "CCKAR"],
     "Ciliated": ["FOXJ1", "TUBB1", "TP73", "CCDC78"],
     "Basal": ["KRT5", "KRT14", "TP63", "DAPL1"],
@@ -78,6 +78,49 @@ EPITHELIAL_SUBTYPE_MARKERS = {
     "AT1": ["AGER", "PDPN", "CLIC5"],
     "AT2": ["SFTPB", "SFTPC", "SFTPD", "MUC1", "ETV5"],
 }
+# Markers of each epithelial annotation of the integrated Human Lung Cell Atlas,
+# Sikkema et al. 2023 (Nat. Med.), Supplementary Table 6 ("marker genes"),
+# verbatim: those separating the annotation from its parent lineage (the
+# table's lineage-level markers, e.g. EPCAM, left out). Its nasal-only
+# annotations are left out too: BAL samples the lower airways.
+HLCA_EPITHELIAL_MARKERS = {
+    "AT0": ["SFTPB", "SCGB3A2", "SFTA2"],
+    "AT1": ["CLIC5", "SPOCK2", "TIMP3"],
+    "AT2 proliferating": ["CENPW", "CDKN3", "BIRC5"],
+    "AT2": ["MFSD2A", "C8orf4", "C11orf96"],
+    "Basal resting": ["KRT15", "KRT17", "TP63"],
+    "Club (non-nasal)": ["CYP2F1", "SCGB3A1", "BPIFB1"],
+    "Deuterosomal": ["CDC20B", "KDELC2", "E2F7"],
+    "Goblet (bronchial)": ["GPX8", "ALDH1A3", "CEACAM5"],
+    "Goblet (subsegmental)": ["BPIFB1", "C16orf89", "NPDC1"],
+    "Hillock-like": ["DSG3", "RAB38", "TNS4"],
+    "Ionocyte": ["BSND", "IGF1", "CLCNKB"],
+    "Multiciliated (non-nasal)": ["RSPH1", "C20orf85", "C9orf24"],
+    "SMG duct": ["MGST1", "KRT19", "KLF5"],
+    "SMG mucous": ["BPIFB2", "MUC5B", "NKX3-1"],
+    "SMG serous (bronchial)": ["RP11-1143G9.4", "S100A1", "PRB3"],
+    "Suprabasal": ["KRT5", "SERPINB3"],
+    "Tuft": ["DAB1"],
+    "pre-TB secretory": ["SFTPB", "RNASE1", "SFTA1P"],
+}
+# HLCA annotations pooled into a Travaglini subtype; the rest keep their name
+HLCA_SUBTYPES = {
+    "Basal resting": "Basal",
+    "Suprabasal": "Basal",
+    "Club (non-nasal)": "Club",
+    "Multiciliated (non-nasal)": "Ciliated",
+    "Goblet (bronchial)": "Goblet",
+    "Goblet (subsegmental)": "Goblet",
+    "SMG mucous": "Mucous",
+    "SMG serous (bronchial)": "Serous",
+}
+# Both atlases' markers, pooled per subtype
+EPITHELIAL_SUBTYPE_MARKERS: dict[str, list[str]] = {}
+for _name, _genes in [
+    *TRAVAGLINI_EPITHELIAL_MARKERS.items(),
+    *((HLCA_SUBTYPES.get(n, n), g) for n, g in HLCA_EPITHELIAL_MARKERS.items()),
+]:
+    EPITHELIAL_SUBTYPE_MARKERS.setdefault(_name, []).extend(_genes)
 
 
 def component_weights() -> tuple[np.ndarray, np.ndarray]:
@@ -140,7 +183,12 @@ def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFram
         var=pd.DataFrame(index=adata.var_names),
     )
     sc.tl.rank_genes_groups(
-        test, "group", groups=list(groups), reference=reference, method="wilcoxon"
+        test,
+        "group",
+        groups=list(groups),
+        reference=reference,
+        method="wilcoxon",
+        tie_correct=True,  # sparse genes are mostly tied zeros
     )
     result = test.uns["rank_genes_groups"]
     return {
@@ -233,7 +281,7 @@ def plot_markers(ax, markers: dict[str, list[str]], **kwargs):
 def label_sections(ax, sections: dict[str, list[str]], fontsize: float) -> list[str]:
     """Gene tick labels along x at 45 degrees, each section's name above its
     genes (its `SECTION_ABBREVIATIONS` entry if the name would overrun them,
-    raised a row if it would still crowd its neighbor) and thin lines between
+    on the lowest row where it would not crowd its left neighbor) and thin lines between
     sections, all `fontsize`; returns the genes, one per column (a gene in two
     sections in both)."""
     genes = [g for section in sections.values() for g in section]
@@ -250,7 +298,7 @@ def label_sections(ax, sections: dict[str, list[str]], fontsize: float) -> list[
     renderer = ax.figure.canvas.get_renderer()
     column_width = ax.bbox.width / len(genes)
     gap = SECTION_GAP * fontsize / 72 * ax.figure.dpi
-    start, previous_end = 0, -np.inf
+    start, row_ends = 0, []  # right edge of the last name on each row
     for name, section in sections.items():
         end = start + len(section)
         text = ax.text(
@@ -268,11 +316,11 @@ def label_sections(ax, sections: dict[str, list[str]], fontsize: float) -> list[
         ):
             text.set_text(SECTION_ABBREVIATIONS.get(name, name))
         extent = text.get_window_extent(renderer)
-        if extent.x0 < previous_end + gap:  # crowds its neighbor: raised a row
-            text.set_y(SECTION_Y + extent.height / ax.bbox.height)
-            previous_end = -np.inf
-        else:
-            previous_end = extent.x1
+        row = next(
+            (i for i, e in enumerate(row_ends) if extent.x0 >= e + gap), len(row_ends)
+        )
+        row_ends[row : row + 1] = [extent.x1]  # appends a new row
+        text.set_y(SECTION_Y + row * extent.height / ax.bbox.height)
         if end < len(genes):
             ax.axvline(end - 0.5, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN)
         start = end

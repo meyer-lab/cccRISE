@@ -77,11 +77,11 @@ def plot_volcano(ax, group: str, reference: str, labeled, lims=None) -> None:
     ax.scatter(
         delta, y, c=color, s=style.POINT_SIZE_BACKGROUND, linewidths=0, rasterized=True
     )
-    common.reference_line(ax, -np.log10(common.SIG_ALPHA))
+    threshold = common.reference_line(ax, -np.log10(common.SIG_ALPHA))
     common.reference_line(ax, 0, horizontal=False)
     x_limit, y_limit = limits(delta, y) if lims is None else lims
     ax.set(xlim=(-x_limit, x_limit), ylim=(0, y_limit))
-    _label(ax, labeled, delta, y)
+    _label(ax, labeled, delta, y, threshold)
     ax.set(
         xlabel=f"Detected fraction,\n{group} − {reference}",
         ylabel="−log$_{10}$ q (Wilcoxon)",
@@ -107,11 +107,12 @@ def legend(ax) -> None:
     ax.set_title(" ", pad=height * 72)
 
 
-def _label(ax, genes, delta, y) -> None:
+def _label(ax, genes, delta, y, threshold) -> None:
     """Labels of `genes`, first placed just outward of their points (away
     from zero, where the volcano is empty) and stacked at least a line apart
     on each side (coincident points otherwise trap `adjust_text`), then moved
-    off the points by `adjust_text`, with leader lines to their points."""
+    off the points and the `threshold` line by `adjust_text`, with leader lines
+    to their points."""
     step = (
         LABEL_LINE_SPACING
         * common.FACTOR_LABEL_FONT_SIZE
@@ -141,6 +142,7 @@ def _label(ax, genes, delta, y) -> None:
         texts,
         x=delta.to_numpy(),
         y=y.to_numpy(),
+        objects=[threshold],
         target_x=delta[placed].to_numpy(),
         target_y=y[placed].to_numpy(),
         ax=ax,
