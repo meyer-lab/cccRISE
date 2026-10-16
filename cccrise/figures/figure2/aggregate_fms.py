@@ -15,7 +15,8 @@ STAGE_ORDER = ["RISE", "CPD"]  # pipeline order
 STAGE_LABELS = {"RISE": "RISE", "CPD": "CP"}
 JITTER = 0.25
 REPLICATE_ALPHA = 0.5
-Y_MIN = 0.55  # below every replicate, with room for the legend
+Y_MIN = 0.45  # below every replicate, with room for the legend
+Y_TICK_MIN = 0.55
 AXES = ("square",)
 
 
@@ -63,25 +64,30 @@ def plot(axs):
         offset + (sizes[stages].to_numpy() - 1) / 2, [STAGE_LABELS[s] for s in stages]
     )
     ax.tick_params(axis="x", length=0)
+    # Two columns, filled column-wise: colors on the top row, sizes below
+    colors = [
+        Line2D([], [], ls="", marker="o", color=color, label=label)
+        for color, label in (
+            (style.STABILITY_AXIS_COLORS[a], style.STABILITY_AXIS_LABELS[a])
+            for a in style.STABILITY_AXIS_COLORS
+        )
+    ]
+    sizes = [
+        ax.scatter([], [], s=size, color=style.COLORS["ink"], label=label)
+        for size, label in (
+            (style.POINT_SIZE_FOREGROUND, "Aggregate"),
+            (style.POINT_SIZE_BACKGROUND, "Replicate"),
+        )
+    ]
     ax.legend(
-        handles=[
-            Line2D(
-                [],
-                [],
-                ls="",
-                marker="o",
-                color=color,
-                label=style.STABILITY_AXIS_LABELS[axis],
-            )
-            for axis, color in style.STABILITY_AXIS_COLORS.items()
-        ],
+        handles=[h for pair in zip(colors, sizes) for h in pair],
         loc="lower center",
         ncols=2,
         fontsize=style.FONT_SIZE_DENSE,
         columnspacing=0.8,
     )
     ax.set_ylim(Y_MIN, 1.02)
-    ax.set_yticks(np.arange(Y_MIN, 1.01, 0.2))
+    ax.set_yticks(np.arange(Y_TICK_MIN, 1.01, 0.2))
     ax.set_ylabel("Aggregate FMS")
 
 

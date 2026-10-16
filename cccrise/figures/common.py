@@ -494,16 +494,17 @@ def record_panel_letters(figure: str, fig: Figure) -> None:
 SIG_ALPHA = 0.05
 
 
+RANK_LINE = {
+    "color": style.COLORS["reference"],
+    "linestyle": style.LINE_STYLE_REFERENCE,
+    "linewidth": style.LINE_WIDTH_THIN,
+}
+
+
 def mark_rank(ax: plt.Axes, rank: int | None) -> None:
     """Vertical reference line at the rank the canonical fit uses."""
     if rank is not None:
-        ax.axvline(
-            rank,
-            color=style.COLORS["reference"],
-            linestyle=style.LINE_STYLE_REFERENCE,
-            linewidth=style.LINE_WIDTH_THIN,
-            zorder=0,
-        )
+        ax.axvline(rank, zorder=0, **RANK_LINE)
 
 
 def reference_line(
@@ -532,21 +533,27 @@ def plot_rise_rank(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
     rank, from `cccrise-riserank`. BiCV peaks or plateaus near the rank that
     generalizes to unseen cells and genes."""
     full = sweep[sweep["Metric"] == "Fit R2X"].groupby("Rank")["R2X"].mean()
-    ax.plot(full.index, full, color=style.COLORS["fit_full"], label="Fit (full)")
+    ax.plot(full.index, full, color=style.COLORS["fit_full"], label="Fit")
     repeats = sweep[sweep["Metric"] == "BiCV R2X"].groupby("Rank")
     for column, label, color in (
-        ("Train Block R2X", "Fit (train)", style.COLORS["fit"]),
-        ("R2X", "BiCV", style.COLORS["heldout"]),
+        ("Train Block R2X", "BiCV train", style.COLORS["fit"]),
+        ("R2X", "BiCV test", style.COLORS["heldout"]),
     ):
         mean, sd = repeats[column].mean(), repeats[column].std().fillna(0)
-        ax.plot(mean.index, mean, color=color, label=label)
-        for bound in (mean - sd, mean + sd):
-            ax.plot(mean.index, bound, color=color, linewidth=style.LINE_WIDTH_THIN)
-            ax.fill_between(mean.index, mean, bound, color=color, alpha=0.25, lw=0)
+        plot_mean_sd(ax, mean.index, mean, sd, color, label)
     mark_rank(ax, rank)
     ax.set_xlabel("RISE rank")
     ax.set_ylabel("$R^2X$")
     ax.legend()
+
+
+def plot_mean_sd(ax: plt.Axes, x, mean, sd, color: str, label: str, **kwargs):
+    """`mean` against `x` with a shaded, thinly outlined +/- `sd` band;
+    `kwargs` go to the mean line."""
+    ax.plot(x, mean, color=color, label=label, **kwargs)
+    for bound in (mean - sd, mean + sd):
+        ax.plot(x, bound, color=color, linewidth=style.LINE_WIDTH_THIN)
+        ax.fill_between(x, mean, bound, color=color, alpha=0.25, lw=0)
 
 
 def plot_cpd_fit_r2x(
@@ -556,7 +563,7 @@ def plot_cpd_fit_r2x(
     color: str = style.COLORS["fit"],
 ):
     """Full-tensor CP fit R2X against CP rank, from `cccrise-cpdrank`."""
-    ax.plot(sweep["Rank"], sweep["FitR2X"], marker="o", color=color)
+    ax.plot(sweep["Rank"], sweep["FitR2X"], marker="o", color=color, label="Fit")
     mark_rank(ax, rank)
     ax.set_xlabel("CP rank")
     ax.set_ylabel("Fit $R^2X$")
