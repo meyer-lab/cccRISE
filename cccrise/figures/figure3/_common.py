@@ -44,6 +44,28 @@ ASSOCIATIONS: list[dict[str, Any]] = [
         "name": "6-Month Outcome (4-Way)",
         "group_column": "6monthcondition",
     },
+    # CLAD among survivors; death against every survivor
+    {
+        "name": "6-Month CLAD vs. No CLAD",
+        "group_column": "6monthcondition",
+        "mapping": {
+            "CLAD": "CLAD",
+            "No CLAD/Stable": "No CLAD",
+            "No CLAD/Recovered": "No CLAD",
+        },
+        "control_label": "No CLAD",
+    },
+    {
+        "name": "6-Month Died vs. Alive",
+        "group_column": "6monthcondition",
+        "mapping": {
+            "Died": "Died",
+            "CLAD": "Alive",
+            "No CLAD/Stable": "Alive",
+            "No CLAD/Recovered": "Alive",
+        },
+        "control_label": "Alive",
+    },
     # The one No CLAD/Declined sample fits none of the four groups and is left out
     {
         "name": "1-Year Outcome (4-Way)",
@@ -56,6 +78,33 @@ ASSOCIATIONS: list[dict[str, Any]] = [
             "CLAD/Stable": "CLAD",
             "Died": "Died",
         },
+    },
+    {
+        "name": "1-Year CLAD vs. No CLAD",
+        "group_column": "1yearcondition",
+        "mapping": {
+            "CLAD/Declined": "CLAD",
+            "CLAD/Stable": "CLAD",
+            "No CLAD/Stable": "No CLAD",
+            "No CLAD/Recovered": "No CLAD",
+            "No CLAD/Declined": "No CLAD",
+            "Recovered": "No CLAD",
+        },
+        "control_label": "No CLAD",
+    },
+    {
+        "name": "1-Year Died vs. Alive",
+        "group_column": "1yearcondition",
+        "mapping": {
+            "Died": "Died",
+            "CLAD/Declined": "Alive",
+            "CLAD/Stable": "Alive",
+            "No CLAD/Stable": "Alive",
+            "No CLAD/Recovered": "Alive",
+            "No CLAD/Declined": "Alive",
+            "Recovered": "Alive",
+        },
+        "control_label": "Alive",
     },
     {
         "name": "Acute Rejection (Yes vs. No)",
