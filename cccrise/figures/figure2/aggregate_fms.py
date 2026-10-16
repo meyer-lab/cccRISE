@@ -75,7 +75,7 @@ def plot(axs):
     sizes = [
         ax.scatter([], [], s=size, color=style.COLORS["ink"], label=label)
         for size, label in (
-            (style.POINT_SIZE_FOREGROUND, "Aggregate"),
+            (style.POINT_SIZE_FOREGROUND, "Median"),
             (style.POINT_SIZE_BACKGROUND, "Replicate"),
         )
     ]

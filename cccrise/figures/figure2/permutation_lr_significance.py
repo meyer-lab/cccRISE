@@ -5,12 +5,14 @@ permutation-null scores. The differential-signaling volcano is in
 
 import numpy as np
 import seaborn as sns
+from matplotlib.colors import TwoSlopeNorm
 
 from ...runners.datasets import DATASETS, VALIDATION_DIR
 from .. import common, style
 
 DATASET = "alad"
 AXES = ("square", "square")
+COLORBAR_TICKS = (0, common.SIG_ALPHA, 0.1, 0.2)
 
 
 def plot(axs):
@@ -50,23 +52,25 @@ def _calibration(lr_table, ax):
 
 def _observed_vs_null(lr_table, ax):
     """Mean observed score against the permutation-null mean per LR pair,
-    colored by mean z-score."""
-    observed, null, z = (
-        lr_table[c] for c in ("MeanObserved", "MeanNull", "MeanZScore")
+    colored by its fraction of significant entries, centered on the 5%
+    expected under the null. Not the mean z-score: most entries' null SD is
+    below `summarize_significance_lr`'s 1e-3 floor."""
+    observed, null, fraction = (
+        lr_table[c] for c in ("MeanObserved", "MeanNull", "FractionSignificant_p05")
     )
-    limit = np.abs(z).max()
     points = ax.scatter(
         observed,
         null,
-        c=z,
+        c=fraction,
         cmap=style.CMAPS["diverging"],
-        vmin=-limit,
-        vmax=limit,
+        norm=TwoSlopeNorm(common.SIG_ALPHA, vmin=0, vmax=fraction.max()),
         s=style.POINT_SIZE_BACKGROUND,
         edgecolors="none",
         rasterized=True,
     )
-    common.colorbar(ax, points, "Mean z-score")
+    common.colorbar(ax, points, "Fraction significant\n(p < 0.05)").set_ticks(
+        COLORBAR_TICKS
+    )
     low = min(0.0, observed.min(), null.min())
     high = max(observed.max(), null.max()) * 1.05
     ax.plot(

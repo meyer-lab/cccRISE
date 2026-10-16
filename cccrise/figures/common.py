@@ -561,9 +561,10 @@ def plot_cpd_fit_r2x(
     ax: plt.Axes,
     rank: int | None = None,
     color: str = style.COLORS["fit"],
+    marker: str | None = "o",
 ):
     """Full-tensor CP fit R2X against CP rank, from `cccrise-cpdrank`."""
-    ax.plot(sweep["Rank"], sweep["FitR2X"], marker="o", color=color, label="Fit")
+    ax.plot(sweep["Rank"], sweep["FitR2X"], marker=marker, color=color, label="Fit")
     mark_rank(ax, rank)
     ax.set_xlabel("CP rank")
     ax.set_ylabel("Fit $R^2X$")

@@ -16,7 +16,9 @@ def plot(axs):
         DATASETS[DATASET].cpd_rank_filename(), RANK_SELECTION_DIR
     )
     rank = common.selected_ranks(DATASET)[1]
-    common.plot_cpd_fit_r2x(sweep, axs[0], rank, color=style.COLORS["fit_full"])
+    common.plot_cpd_fit_r2x(
+        sweep, axs[0], rank, color=style.COLORS["fit_full"], marker=None
+    )
     imputation = PLACEHOLDER_IMPUTATION_SCALE * sweep["FitR2X"]
     common.plot_mean_sd(
         axs[0],
@@ -24,12 +26,11 @@ def plot(axs):
         imputation,
         PLACEHOLDER_IMPUTATION_SD * imputation,
         style.COLORS["heldout"],
-        "Masked imputation",
-        marker="o",
+        "Imputation",
     )
     axs[0].set_ylabel("$R^2X$")
     axs[0].set_ylim(bottom=0)  # room for the legend
-    axs[0].legend(loc="lower right", fontsize=style.FONT_SIZE_DENSE, handlelength=1.5)
+    axs[0].legend(loc="lower right")
     common.plot_collinearity(sweep, axs[1], rank)
 
 
