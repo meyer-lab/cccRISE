@@ -46,11 +46,11 @@ Boxes show the median and interquartile range, whiskers 1.5× the interquartile 
 Cells above 30% of either weight's maximum form the sender or receiver group, assigned by the larger relative weight.
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of each group.
 ({{< panel 2 epithelial-markers >}}) Expression of pan-epithelial markers, canonical epithelial subtype markers, and top LR pair genes in each group.
-Subtype markers were drawn from Travaglini et al.\ [@doi:10.1038/s41586-020-2922-4] and kept when q < 0.05 (Wilcoxon rank-sum test, Benjamini--Hochberg corrected over the 18 subtype markers detected in the dataset).
+Markers were curated from Travaglini et al. and Sikkema et al.\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2] and kept when q < 0.05 (Wilcoxon rank-sum test, Benjamini--Hochberg corrected over the 18 subtype markers detected in the dataset).
 :::
 
-We applied CCC-RISE to 47 bronchoalveolar lavage (BAL) samples from 45 lung transplant recipients, 30 with acute lung allograft dysfunction (ALAD), X with chronic lung allograft dysfunction (CLAD), and Y healthy/control\ [@doi:10.1016/j.healun.2024.02.015].
-ALAD is an acute decline in lung function following transplantation that either resolves or progresses to CLAD, a largely irreversible loss of graft function leading to re-transplantation or death\ [@doi:10.1016/j.healun.2024.02.015; @doi:10.1016/j.trre.2021.100626; @doi:10.1016/j.healun.2022.08.012].
+We applied CCC-RISE to 47 bronchoalveolar lavage (BAL) samples from 45 lung transplant recipients, 30 with acute lung allograft dysfunction (ALAD), X with chronic lung allograft dysfunction (CLAD), and Y healthy/control\ [@doi:10.1016/j.healun.2024.02.007].
+ALAD is an acute decline in lung function following transplantation that either resolves or progresses to CLAD, a largely irreversible loss of graft function leading to re-transplantation or death\ [@doi:10.1016/j.trre.2021.100626; @doi:10.1016/j.healun.2022.05.005].
 We used this cohort to establish how a CCC-RISE model is selected, validated, and interpreted.
 
 We first selected the RISE rank by bi-cross-validation (BiCV), which fits RISE to a random half of all cells and genes and scores the fit's ability to predict the held-out block of cells and genes\ [@doi:10.1214/08-AOAS227].
@@ -65,9 +65,8 @@ We next asked whether the communication programs captured by CCC-RISE were stabl
 RISE and CP components were stable over re-initialization and leave-one-patient-out jackknife ({{< fig 2 aggregate-fms >}}, {{< fig cmp-stability >}}).
 We extended CellPhoneDB and CellChat's permuted discrete cluster labels onto the continuous eigen-states by shuffling the cell's expression that each eigen-state projection is paired with, within samples, and recomputed the communication tensor 1,000 times \ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
 Per LR pair, a median of 9.7% of entries exceeded this null at p < 0.05 and mean observed scores exceeded mean null scores for 99% of LR pairs ({{< fig 2 permutation-lr-significance >}}).
-Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring the differential expression of curated downstream gene targets in the component's top receiver cells [@doi:10.1038/s41592-019-0667-5].
-[Placeholder interpretation]
-
+Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring the differential expression of curated downstream gene targets in the component's top receiver cells [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
+[Placeholder NicheNet interpretation]
 
 RISE eigen-states allow cellular identity to be traced from CP component weights back to single-cell gene expression without depending on prior annotations.
 We illustrate this with component 5, whose sender and receiver loadings were spread across several eigen-states ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}), suggesting signaling between populations.
@@ -75,7 +74,7 @@ Combining these loadings with each cell's RISE projections gave per-cell sender 
 We found that these groups both expressed canonical epithelial marker genes (FXYD3, EPCAM, and ELF3) at significantly higher levels relative to cells with low component 5 weight ({{< fig cmp5-identity celltype-markers group-vs-rest >}}).
 Individually, the groups expressed unique epithelial subpopulation markers indicating communication between ciliated sender cells and basal/secretory receiver cells ({{< fig 2 epithelial-markers >}}, {{< fig cmp5-identity sender-vs-receiver >}}).
 These eigen-state--derived epithelial labels closely aligned with available annotations while exceeding their granularity in epithelial subtype definition ({{< fig 2 celltype-composition >}}).
-In sum, a label-free interpretation of CCC-RISE factors isolated a well-validated tissue-repair program, wherein ciliated epithelial cells secrete betacellulin (BTC) that signals to basal and secretory epithelial cells through epidermal growth factor receptors EGFR and ErbB2 ({{< fig 2 cp-factor-matrices.4 >}}) [source].
+In sum, a label-free interpretation of CCC-RISE factors isolated a well-validated tissue-repair and fibrosis program, wherein ciliated epithelial cells secrete betacellulin (BTC) that signals to basal and secretory epithelial cells through epidermal growth factor receptors EGFR and ErbB2 ({{< fig 2 cp-factor-matrices.4 >}}) [@doi:10.1165/ajrcmb.20.5.3308; doi:10.3390/cells11060986; doi:10.1038/ki.2012.43].
 
 ## CCC-RISE reveals severity-associated communication programs in COVID-19 at single-cell resolution
 

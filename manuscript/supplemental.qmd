@@ -28,7 +28,7 @@ Differences beyond the 99.8th percentile of magnitudes are drawn as arrowheads a
 **Figure S4.
 Identity of component 5's sender and receiver cells.** ({{< panel cmp5-identity eigenstate-scatter >}}) Per-cell projection onto the eigen-states most heavily weighted by component 5's sender (eigen-state 17) and receiver (eigen-state 15) factors.
 ({{< panel cmp5-identity cmp-eigenstate-loadings >}}) Component 5 sender and receiver eigen-state loadings.
-({{< panel cmp5-identity celltype-markers >}}) Expression of canonical markers of each annotated cell type\ [@doi:10.1038/s41586-020-2922-4] in component 5's sender and receiver groups and all other cells.
+({{< panel cmp5-identity celltype-markers >}}) Expression of canonical markers of each annotated cell type\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2] in component 5's sender and receiver groups and all other cells.
 ({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Benjamini--Hochberg-corrected Wilcoxon rank-sum q between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and all other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and all other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells, labeling ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial markers and ({{< panel cmp5-identity sender-vs-receiver >}}) epithelium-specific genes selected from those differentially expressed between the groups.
 q is corrected across all genes.
 
