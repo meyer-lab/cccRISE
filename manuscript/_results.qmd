@@ -31,41 +31,51 @@ This allows for the identification of specific cell subpopulations driving commu
 ::: {#fig-2}
 ![](figures/figure2/figure2.svg){width="6.5in"}
 
-**Figure 2.**
-({{< panel 2 rise-rank-selection >}}) Reconstruction error between the full fit and full tensor, the train fit and in-sample tensor, and the train fit and held-out tensor (BiCV) across RISE ranks.
-({{< panel 2 cp-rank-selection.1 >}}) CP fit and imputation R2X and ({{< panel 2 cp-rank-selection.2 >}}) component collinearity across CP ranks.
-({{< panel 2 aggregate-fms >}}) Aggregate RISE and CP factor stability across patient jackknife and model initializations.
+**Figure 2.
+CCC-RISE identifies stable communication programs among epithelial subpopulations.**
+({{< panel 2 rise-rank-selection >}}) RISE R~2~X across ranks of the fit with all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out cells by genes block (BiCV test); mean ± SD over 10 repeats.
+({{< panel 2 cp-rank-selection.1 >}}) CP fit R~2~X and imputation R²X of held-out entries (10-fold, mean ± SD) and ({{< panel 2 cp-rank-selection.2 >}}) the largest number of modes in which any pair of components is collinear (\|cosine\| > 0.9), marked as near-duplicate or canceling (opposite-signed) pairs, across CP ranks.
+({{< panel 2 aggregate-fms >}}) Aggregate factor match score (FMS; mean over components) of RISE and CP factors across leave-one-patient-out jackknife (n = 45) and re-initialization (n = 47) replicates; bars show the 2.5th--97.5th percentiles.
 ({{< panel 2 cp-factor-matrices >}}) CP factor matrices representing ({{< panel 2 cp-factor-matrices.1 >}}) condition, ({{< panel 2 cp-factor-matrices.2 >}}) sender eigen-state, ({{< panel 2 cp-factor-matrices.3 >}}) receiver eigen-state, and ({{< panel 2 cp-factor-matrices.4 >}}) LR pair loadings.
-({{< panel 2 permutation-lr-significance >}}) Condition, sender eigen-state, and receiver eigen-state entries per LR pair slice ({{< panel 2 permutation-lr-significance.1 >}}) significant against entries in cell-permuted communication tensors and ({{< panel 2 permutation-lr-significance.2 >}}) averages in observed and cell-permuted communication tensors.
-({{< panel 2 nichenet >}}) AUROC between all ligands' NicheNet--inferred gene targets and DE genes in each component's top receiver cells (*: p~adj~<0.05 between top ligands and all other ligands).
-({{< panel 2 sender-receiver-strata >}}) Per-cell component 5 sender vs. receiver weight, thresholded into label-free groups.
+({{< panel 2 permutation-lr-significance.1 >}}) Fraction of each LR pair's (n = 513) condition by sender by receiver entries exceeding a null of 1,000 within-sample cell permutations at p < 0.05.
+({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by mean z-score.
+({{< panel 2 nichenet >}}) NicheNet ligand-activity AUROC of each ligand's curated downstream targets against genes ranked by differential expression between each component's top and bottom 10% of receiver cells; opaque points mark each component's top ligands.
+Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
+\*: q < 0.05, two-sided Mann--Whitney test of top against all other ligands, Benjamini--Hochberg corrected across components.
+({{< panel 2 sender-receiver-strata >}}) Per-cell component 5 sender against receiver weight.
+Cells above 30% of either weight's maximum form the sender or receiver group, assigned by the larger relative weight.
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of each group.
-({{< panel 2 epithelial-markers >}}) Enrichment of epithelial subtype and top LR pair genes per group.
+({{< panel 2 epithelial-markers >}}) Expression of pan-epithelial markers, canonical epithelial subtype markers, and top LR pair genes in each group.
+Subtype markers were drawn from Travaglini et al.\ [@doi:10.1038/s41586-020-2922-4] and kept when q < 0.05 (Wilcoxon rank-sum test, Benjamini--Hochberg corrected over the 18 subtype markers detected in the dataset).
 :::
 
-To evaluate the ability of CCC-RISE to resolve communication patterns at single-cell resolution, we applied the framework to 47 bronchoalveolar lavage (BAL) samples collected from 45 lung transplant patients at varying stages of progression through acute/chronic lung allograft dysfunction (ALAD/CLAD) [source].
-ALAD and CLAD are largely idiopathic, sequential disease states characterized by bronchial fibrosis and subsequent decline in forced expiratory volume (FEV).
-We hypothesized that CCC-RISE would capably dissect the tissue-level remodelling that occurs after lung transplant and during ALAD/CLAD progression into concise signaling programs among cell subpopulations.
+We applied CCC-RISE to 47 bronchoalveolar lavage (BAL) samples from 45 lung transplant recipients, 30 with acute lung allograft dysfunction (ALAD), X with chronic lung allograft dysfunction (CLAD), and Y healthy/control\ [@doi:10.1016/j.healun.2024.02.015].
+ALAD is an acute decline in lung function following transplantation that either resolves or progresses to CLAD, a largely irreversible loss of graft function leading to re-transplantation or death\ [@doi:10.1016/j.healun.2024.02.015; @doi:10.1016/j.trre.2021.100626; @doi:10.1016/j.healun.2022.08.012].
+We used this cohort to establish how a CCC-RISE model is selected, validated, and interpreted.
 
-To optimize RISE rank and avoid overfitting, we performed bi-cross validation (BiCV), during which the model is fit across ranks on 50% of all cells and genes, the fits are used to reconstruct the held out cell/gene factors, and the held-out factors are used to reconstruct the held-out tensors [source].
-We selected RISE rank 17---the maximum of the BiCV reconstruction error sweep---to factorize the data and construct a communication tensor ({{< fig 2 rise-rank-selection >}}).
-We subsequently assessed the ability of CPD---across ranks---to produce rank-one tensors that (1) faithfully reconstruct the resulting communication tensor, (2) impute tensor entries held out during fitting through reconstruction, and (3) contain non-collinear components across modes.
-The fit and imputation R2X both increased monotonically with rank, but components became collinear across more than one mode at rank 6, so we selected CP rank 5 ({{< fig 2 cp-rank-selection >}}).
-RISE rank 17 and CP rank 5 yielded factors that were stable across initializations and patient jackknife ({{< fig 2 aggregate-fms >}}, {{< fig cmp-stability >}}) and distinct over conditions, sender eigen-states, receiver eigen-states, and LR pairs ({{< fig 2 cp-factor-matrices >}}, {{< fig rise-factor-matrices >}}).
+We first selected the RISE rank by bi-cross-validation (BiCV), which fits RISE to a random half of all cells and genes and scores the fit's ability to predict the held-out block of cells and genes\ [@doi:10.1214/08-AOAS227].
+Held-out R~2~X rose steeply, plateaued at rank 10, and reached its maximum at rank 17, which we used to construct the communication tensor ({{< fig 2 rise-rank-selection >}}).
+Seeking a similarly definitive rank for CP, we evaluated the imputation accuracy and collinearity of CP models at varying ranks.
+Both CP fit R~2~X and the R~2~X of entries masked during fitting increased with rank, indicating that higher-rank CP models did not lose predictive accuracy ({{< fig 2 cp-rank-selection.1 >}}).
+At rank 6, a pair of components first became collinear in two modes with opposing signs, and every subsequent rank contained a pair collinear in two or more modes.
+At ranks 3--5, one pair of components overlapped in a single mode, as expected when programs share a sender or receiver population.
+We therefore selected CP rank 5 as the lowest rank before the model became degenerate ({{< fig 2 cp-rank-selection.2 >}}).
 
-We next sought to quantify the robustness of CCC-RISE factor matrix entries using strategies inspired by other CCC methods.
-Based on CellPhoneDB/CellChat, we permuted cell--eigen-state projections to construct a null communication tensor and saw that most observed communication tensor entries were significantly larger than their null counterparts ({{< fig 2 permutation-lr-significance >}}) [source].
-Based on scDiffCom, we constructed a null interaction tensor by permuting patient slices, computed differential-expression (DE) of tensor entries between "ALAD" and "control" patients for the null and observed tensors, and saw that many observed entries were significantly different between groups relative to the null ({{< fig significance >}}) [source].
-Last, we compared DE genes in top receiver cells with ligand-associated target genes---based on the NicheNet v2 database---and we observed that one CCC-RISE component's DE receiver cell genes were significantly more predictive of its top ligands' gene targets than those of lower-weighted ligands ({{< fig 2 nichenet >}}) [source].
-In sum, these results show that CCC-RISE produces biological signals stronger than chance that partially agree with external ligand--gene-target inference.
+We next asked whether the communication programs captured by CCC-RISE were stable, exceeded chance, and aligned with external biological validation.
+RISE and CP components were stable over re-initialization and leave-one-patient-out jackknife ({{< fig 2 aggregate-fms >}}, {{< fig cmp-stability >}}).
+We extended CellPhoneDB and CellChat's permuted discrete cluster labels onto the continuous eigen-states by shuffling the cell's expression that each eigen-state projection is paired with, within samples, and recomputed the communication tensor 1,000 times \ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
+Per LR pair, a median of 9.7% of entries exceeded this null at p < 0.05 and mean observed scores exceeded mean null scores for 99% of LR pairs ({{< fig 2 permutation-lr-significance >}}).
+Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring the differential expression of curated downstream gene targets in the component's top receiver cells [@doi:10.1038/s41592-019-0667-5].
+[Placeholder interpretation]
 
-Taking advantage of RISE's ability to group of cells into eigen-states based on shared gene expression patterns, we next conducted a label-free examination of the CCC-RISE factors.
-We chose to investigate CP component 5 because its sender/receiver cells were uniquely spread across eigen-states, which indicated communication among multiple groups of cells ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}).
-These eigen-state loadings collectively stratified cells into mutually exclusive groups of senders and receivers ({{< fig 2 sender-receiver-strata >}}).
-RISE's cell projections allowed us to trace cell identity back to gene expression, and we found that these groups both expressed canonical epithelial marker genes (EPCAM, KRT8, KRT18, and KRT19) at significantly higher levels relative to cells with low component 5 weight ({{< fig cmp5-identity celltype-markers group-vs-rest >}}).
-Individually, the groups expressed unique epithelial subpopulation markers indicating communication between ciliated sender cells and secretory/alveolar receiver cells ({{< fig 2 epithelial-markers >}}, {{< fig cmp5-identity sender-vs-receiver >}}).
-These eigen-state--derived epithelial labels closely aligned with available annotations while exceeding their granularity by defining epithelial subpopulations ({{< fig 2 celltype-composition >}}).
-In sum, a label-free interpretation of CCC-RISE factors isolated a well-validated communication axis implicated in lung-tissue repair, wherein ciliated epithelial cells secrete betacellulin (BTC) that signals to secretory and alveolar epithelial cells through epidermal growth factor receptors EGFR and ErbB2 ({{< fig 2 cp-factor-matrices.4 >}}) [source].
+
+RISE eigen-states allow cellular identity to be traced from CP component weights back to single-cell gene expression without depending on prior annotations.
+We illustrate this with component 5, whose sender and receiver loadings were spread across several eigen-states ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}), suggesting signaling between populations.
+Combining these loadings with each cell's RISE projections gave per-cell sender and receiver weights, which few cells carried simultaneously; thresholding them defined 67 sender and 58 receiver cells ({{< fig 2 sender-receiver-strata >}}).
+We found that these groups both expressed canonical epithelial marker genes (FXYD3, EPCAM, and ELF3) at significantly higher levels relative to cells with low component 5 weight ({{< fig cmp5-identity celltype-markers group-vs-rest >}}).
+Individually, the groups expressed unique epithelial subpopulation markers indicating communication between ciliated sender cells and basal/secretory receiver cells ({{< fig 2 epithelial-markers >}}, {{< fig cmp5-identity sender-vs-receiver >}}).
+These eigen-state--derived epithelial labels closely aligned with available annotations while exceeding their granularity in epithelial subtype definition ({{< fig 2 celltype-composition >}}).
+In sum, a label-free interpretation of CCC-RISE factors isolated a well-validated tissue-repair program, wherein ciliated epithelial cells secrete betacellulin (BTC) that signals to basal and secretory epithelial cells through epidermal growth factor receptors EGFR and ErbB2 ({{< fig 2 cp-factor-matrices.4 >}}) [source].
 
 ## CCC-RISE reveals severity-associated communication programs in COVID-19 at single-cell resolution
 
