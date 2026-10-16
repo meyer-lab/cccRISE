@@ -11,7 +11,7 @@ of permutations reaching its observed difference.
 
 The panel is each of the component's `N_TOP` most heavily weighted pairs'
 permutation null beside its observed difference, both in units of the
-null's standard deviation so the pairs share an axis, labeled with the
+null's standard deviation so the pairs share an axis, colored by the
 pair's Benjamini-Hochberg q across the `N_TOP` pairs. `lr_volcano` shows
 the top pairs of every component.
 """
@@ -55,7 +55,7 @@ def plot(axs):
 def plot_pair_nulls(component: dict, n_top: int, ax) -> None:
     """One row per top pair: its permutation null (violin) and observed
     difference (diamond), standardized by the null's standard deviation,
-    with its BH q across the `n_top` pairs."""
+    colored by its BH q across the `n_top` pairs."""
     top = component["order"][:n_top]
     null = component["null"][:, :n_top]
     sd = null.std(axis=0)
@@ -75,23 +75,6 @@ def plot_pair_nulls(component: dict, n_top: int, ax) -> None:
             q < common.SIG_ALPHA, style.COLORS["emphasis"], style.COLORS["ink"]
         ),
         zorder=3,
-    )
-    for row, qi in zip(rows, q, strict=True):
-        ax.text(
-            1.02,
-            row,
-            f"{qi:.2g}",
-            transform=ax.get_yaxis_transform(),
-            va="center",
-            fontsize=style.FONT_SIZE_DENSE,
-        )
-    ax.text(
-        1.02,
-        n_top - 0.3,
-        "q",
-        transform=ax.get_yaxis_transform(),
-        fontsize=style.FONT_SIZE_DENSE,
-        fontstyle="italic",
     )
     common.reference_line(ax, 0, horizontal=False, linestyle=":")
     ax.set_yticks(rows, LR_NAMES[top], fontsize=common.FACTOR_LABEL_FONT_SIZE)
