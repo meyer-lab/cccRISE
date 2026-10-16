@@ -125,10 +125,10 @@ def default_provenance(section: str, key: str) -> Any:
     return meta[key] if key in meta else meta[section][key]
 
 
-def score_label(method: str, sep: str = " ") -> str:
-    """`method`'s name, followed by its source in parentheses after `sep`."""
+def score_label(method: str) -> str:
+    """`method`'s name, followed by its source in parentheses."""
     source = SCORE_SOURCES.get(method)
-    return f"{SCORE_LABELS[method]}{sep}({source})" if source else SCORE_LABELS[method]
+    return f"{SCORE_LABELS[method]} ({source})" if source else SCORE_LABELS[method]
 
 
 def method_legend(fig) -> None:
