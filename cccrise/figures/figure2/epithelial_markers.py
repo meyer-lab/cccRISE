@@ -20,9 +20,8 @@ MIN_DETECTED_DIFFERENCE = 0.2
 def plot(axs):
     S.plot_markers(
         axs[0],
-        {"Pan-epithelial": S.CELLTYPE_MARKERS["Epithelial cells"]}
-        | stratifying_markers()
-        | {"Top LR pairs": S.top_pair_genes()},
+        # {"Pan-epithelial": S.CELLTYPE_MARKERS["Epithelial cells"]} |
+        stratifying_markers() | {"Top LR pairs": S.top_pair_genes()},
         show_legend=True,
     )
 

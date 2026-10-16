@@ -1,29 +1,40 @@
 fig1: {}
 fig2:
-  rise_rank_selection: [a]
-  cp_rank_selection: [b, c]
-  aggregate_fms: [d]
-  cp_factor_matrices: [e, f, g, h]
-  permutation_lr_significance: [i, j]
-  nichenet: [k]
-  sender_receiver_strata: [l]
-  celltype_composition: [m]
-  epithelial_markers: [n]
-fig3: {}
+    rise_rank_selection: [a]
+    cp_rank_selection: [b, c]
+    aggregate_fms: [d]
+    cp_factor_matrices: [e, f, g, h]
+    permutation_lr_significance: [i, j]
+    nichenet: [k]
+    sender_receiver_strata: [l]
+    epithelial_markers: [m]
+    celltype_composition: [n]
+fig3:
+    outcome_association: [a]
+    celltype_association: [b, c]
+    sender_receiver_scatter: [d]
+    lr_loadings: [e]
+    coordinated_changes: [f, g]
+    pacmaps: [h, i, j]
 fig4: {}
 fig5: {}
-figS_cmp5_identity:
-  eigenstate_scatter: [a]
-  cmp_eigenstate_loadings: [b]
-  celltype_markers: [c]
-  group_vs_rest: [d, e]
-  sender_vs_receiver: [f]
-figS_cmp_stability:
-  rise_fms: [a]
-  cpd_fms: [b]
-  fms_histograms: [c]
 figS_rise_factor_matrices:
-  factors: [a]
-  genes: [b]
-figS_significance: {}
-figS_celltype_eigenstates: {}
+    factors: [a, b]
+    conditions: [a]
+    genes: [b]
+figS_cmp_stability:
+    rise_fms: [a]
+    cpd_fms: [b]
+    fms_histograms: [c]
+figS_cmp5_identity:
+    eigenstate_scatter: [a]
+    cmp_eigenstate_loadings: [b]
+    celltype_markers: [c]
+    group_vs_rest: [d, e]
+    sender_vs_receiver: [f]
+figS_alad_associations:
+    cp_associations: [a]
+    rise_associations: [b]
+    rise_outcome_weights: [c]
+    rise_genes: [d]
+    eigenstate_pacmap: [e]
