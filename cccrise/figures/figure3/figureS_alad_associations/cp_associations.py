@@ -1,5 +1,5 @@
 """Association of every CP component with every ALAD outcome (one-way ANOVA
-eta-squared, FDR-corrected across components within an association)."""
+eta-squared, FDR-corrected across all associations and components)."""
 
 from ... import common
 from .. import _common as S

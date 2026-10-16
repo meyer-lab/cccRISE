@@ -44,12 +44,6 @@ ASSOCIATIONS: list[dict[str, Any]] = [
         "name": "6-Month Outcome (4-Way)",
         "group_column": "6monthcondition",
     },
-    # Two of the seven levels have one sample each
-    {
-        "name": "1-Year Outcome (7-Way)",
-        "group_column": "1yearcondition",
-        "min_group_size": 1,
-    },
     # The one No CLAD/Declined sample fits none of the four groups and is left out
     {
         "name": "1-Year Outcome (4-Way)",
@@ -84,12 +78,13 @@ def factors_adata() -> anndata.AnnData:
 @cache
 def association_table() -> pd.DataFrame:
     """ANOVA of every CP component against every association, FDR-corrected
-    across components within each association."""
+    across all associations and components."""
     return run_multiple_factors_anova(
         factors_adata(),
         ASSOCIATIONS,
         condition_column=SPEC.condition_column,
         correction="fdr_bh",
+        global_correction=True,
     )
 
 
@@ -112,13 +107,14 @@ def rise_conditions_adata() -> anndata.AnnData:
 @cache
 def rise_association_table() -> pd.DataFrame:
     """ANOVA of every RISE component against every association, as
-    `association_table` tests the CP components, FDR-corrected across
-    components within each association."""
+    `association_table` tests the CP components, FDR-corrected across all
+    associations and components."""
     return run_multiple_factors_anova(
         rise_conditions_adata(),
         ASSOCIATIONS,
         condition_column=SPEC.condition_column,
         correction="fdr_bh",
+        global_correction=True,
     )
 
 

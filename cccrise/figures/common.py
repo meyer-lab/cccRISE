@@ -595,8 +595,6 @@ LEVEL_ORDER = [
     "recovered",
     "No CLAD/Stable",
     "No CLAD/Recovered",
-    "Recovered",
-    "No CLAD/Declined",
     "No CLAD",
     "CLAD",
     "CLAD/Declined",

@@ -550,7 +550,6 @@ def server(input, output, session):
                 mapping=cfg.get("mapping"),
                 correction="fdr_bh",
                 association_name=name,
-                min_group_size=cfg.get("min_group_size", 2),
             )
         except ValueError as exc:
             return None, None, str(exc)
