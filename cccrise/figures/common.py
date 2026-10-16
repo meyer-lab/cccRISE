@@ -600,6 +600,7 @@ LEVEL_ORDER = [
     "CLAD/Declined",
     "CLAD/Stable",
     "CLAD/Died",
+    "Alive",
     "Died",
     "no",
     "yes",
@@ -718,6 +719,15 @@ def group_loadings(
     ).dropna(subset=["Status"])
 
 
+#: Outcome levels as figures and the app display them; the source data keep
+#: the original labels.
+LEVEL_LABELS = {"No CLAD/Stable": "No CLAD", "No CLAD/Recovered": "Recovered"}
+
+
+def level_label(level) -> str:
+    return LEVEL_LABELS.get(str(level), str(level))
+
+
 def ordered_levels(levels) -> list:
     """Distinct `levels` in `LEVEL_ORDER`, unlisted ones after alphabetically."""
     rank = {level: i for i, level in enumerate(LEVEL_ORDER)}
@@ -750,6 +760,7 @@ def plot_category_component_weights(
     condition_column: str = "dsco_id",
     palette: Sequence[str] = style.CATEGORICAL,
     read_depth_correct: bool = True,
+    show_counts: bool = True,
     **regrouping,
 ) -> None:
     """Box plot of one component's condition loadings per outcome level,
@@ -757,7 +768,8 @@ def plot_category_component_weights(
     `patient_column` is given. `regrouping` (mapping / levels /
     control_label / other_label) is passed to `anova.prepare_group_labels`;
     `anova_df` adds the component's F, adjusted p, and eta-squared in the
-    corner; `xlabel` (default `group_column`, "" for none) names the outcome."""
+    corner; `xlabel` (default `group_column`, "" for none) names the outcome;
+    `show_counts` adds each level's sample count to its tick label."""
     points = group_loadings(
         adata,
         component,
@@ -798,10 +810,12 @@ def plot_category_component_weights(
         _join_patients(ax, points, adata, condition_column, patient_column)
 
     # Wrapped at "/" rather than rotated, so long levels stay legible.
-    ax.set_xticks(
-        range(len(levels)),
-        [f"{str(level).replace('/', '/\n')}\n(n={counts[level]})" for level in levels],
-    )
+    labels = [level_label(level).replace("/", "/\n") for level in levels]
+    if show_counts:
+        labels = [
+            f"{t}\n(n={counts[lv]})" for t, lv in zip(labels, levels, strict=True)
+        ]
+    ax.set_xticks(range(len(levels)), labels)
     ax.set_xlabel(group_column if xlabel is None else xlabel)
     ax.set_ylabel(f"Component {component} loading")
     ax.text(

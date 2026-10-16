@@ -48,7 +48,10 @@ def _outcome_scatter(ax, x, y, outcome) -> None:
     common.legend(
         ax,
         "below",
-        handles=[Patch(color=colors[level], label=level) for level in levels],
+        handles=[
+            Patch(color=colors[level], label=common.level_label(level))
+            for level in levels
+        ],
         ncols=1,
         fontsize=style.FONT_SIZE_DENSE,
     )
