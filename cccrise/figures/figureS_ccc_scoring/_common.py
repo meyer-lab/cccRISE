@@ -35,10 +35,16 @@ DEFAULT_SCORE = DEFAULT_COMMUNICATION_SCORE
 ALL_SCORES = list(COMMUNICATION_SCORES)
 ALT_SCORES = [m for m in ALL_SCORES if m != DEFAULT_SCORE]
 SCORE_LABELS = {
-    "expression_product": "Product (default)",
+    "expression_product": "Product",
     "expression_mean": "Mean",
     "expression_gmean": "Geometric mean",
     "expression_hill": "Hill",
+}
+#: Tool each score comes from; geometric mean has no single source.
+SCORE_SOURCES = {
+    "expression_product": "CCC-RISE",
+    "expression_mean": "CellPhoneDB",
+    "expression_hill": "CellChat",
 }
 # Blue, orange, green, pink from the shared palette
 SCORE_COLORS = dict(
@@ -119,9 +125,15 @@ def default_provenance(section: str, key: str) -> Any:
     return meta[key] if key in meta else meta[section][key]
 
 
+def score_label(method: str, sep: str = " ") -> str:
+    """`method`'s name, followed by its source in parentheses after `sep`."""
+    source = SCORE_SOURCES.get(method)
+    return f"{SCORE_LABELS[method]}{sep}({source})" if source else SCORE_LABELS[method]
+
+
 def method_legend(fig) -> None:
     """One legend of all methods' colors, above `fig`."""
-    handles = [Patch(color=SCORE_COLORS[m], label=SCORE_LABELS[m]) for m in ALL_SCORES]
+    handles = [Patch(color=SCORE_COLORS[m], label=score_label(m)) for m in ALL_SCORES]
     fig.legend(handles=handles, loc="outside upper center", ncols=len(handles))
 
 
@@ -139,7 +151,7 @@ def grouped_bar(
             offset,
             data[method],
             width,
-            label=SCORE_LABELS[method],
+            label=score_label(method),
             color=SCORE_COLORS[method],
         )
         if sig is not None:
