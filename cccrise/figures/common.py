@@ -595,6 +595,8 @@ LEVEL_ORDER = [
     "recovered",
     "No CLAD/Stable",
     "No CLAD/Recovered",
+    "Recovered",
+    "No CLAD/Declined",
     "No CLAD",
     "CLAD",
     "CLAD/Declined",
@@ -615,15 +617,24 @@ LEVEL_ORDER = [
 
 
 def plot_association_heatmap(
-    table: pd.DataFrame, ax: plt.Axes, xlabel: str = "CP component"
+    table: pd.DataFrame,
+    ax: plt.Axes,
+    xlabel: str = "CP component",
+    p_column: str = "PAdj",
+    p_label: str = "FDR",
 ) -> None:
     """Eta-squared of each component (columns) against each outcome
-    association (rows, in `table` order), from `anova.run_multiple_factors_anova`;
-    bold with a star where the FDR-adjusted p is below `SIG_ALPHA`."""
-    order = list(dict.fromkeys(table["Association"]))
+    association (rows), both in `table` order, from
+    `anova.run_multiple_factors_anova`; bold with a star where `p_column` is
+    below `SIG_ALPHA`."""
+    rows, columns = (
+        list(dict.fromkeys(table[c])) for c in ("Association", "Component")
+    )
     effect, padj = (
-        table.pivot(index="Association", columns="Component", values=v).reindex(order)
-        for v in ("EtaSquared", "PAdj")
+        table.pivot(index="Association", columns="Component", values=v).reindex(
+            index=rows, columns=columns
+        )
+        for v in ("EtaSquared", p_column)
     )
     values = effect.to_numpy(dtype=float)
     vmax = np.nanmax(values)
@@ -645,11 +656,11 @@ def plot_association_heatmap(
             color="white" if value > 0.6 * vmax else style.COLORS["ink"],
         )
     ax.set_xticks(range(effect.shape[1]), effect.columns)
-    ax.set_yticks(range(len(order)), order, fontsize=style.FONT_SIZE_DENSE)
+    ax.set_yticks(range(len(rows)), rows, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
-    colorbar(ax, image, rf"$\eta^2$ (* FDR < {SIG_ALPHA})")
+    colorbar(ax, image, rf"$\eta^2$ (* {p_label} < {SIG_ALPHA})")
 
 
 def plot_association_effect_sizes(

@@ -442,6 +442,7 @@ def run_saved_factors_anova(
     alpha: float = 0.05,
     correction: str | None = "fdr_bh",
     association_name: str | None = None,
+    min_group_size: int = 2,
 ) -> pd.DataFrame:
     """Run one-way ANOVA on a saved factors dataset (e.g. bal_alad_factors.nc).
 
@@ -470,6 +471,8 @@ def run_saved_factors_anova(
         Multiple testing correction method: "fdr_bh", "bonferroni", "holm", or None.
     association_name : str, optional
         Optional name to record in an 'Association' column.
+    min_group_size : int, default=2
+        See `anova_component_associations`.
 
     Returns
     -------
@@ -506,6 +509,7 @@ def run_saved_factors_anova(
         alpha=alpha,
         control_label=control_label,
         correction=correction,
+        min_group_size=min_group_size,
     )
     if association_name is not None:
         df["Association"] = association_name
@@ -531,7 +535,7 @@ def run_multiple_factors_anova(
     associations : Sequence[dict[str, Any] | str]
         List of association configurations. Can be:
         - Dictionaries with keys like 'name', 'group_column', 'levels', 'mapping',
-          'control_label', 'other_label', 'alpha', 'correction'
+          'control_label', 'other_label', 'alpha', 'correction', 'min_group_size'
         - Column names (strings) in `adata.obs` to test across all their levels
     adata : anndata.AnnData, optional
         AnnData containing condition annotations in `obs`.
@@ -564,6 +568,7 @@ def run_multiple_factors_anova(
                 "group_column": item,
                 "alpha": alpha,
                 "correction": correction,
+                "min_group_size": 2,
             }
         elif isinstance(item, dict):
             assoc_dict = {
@@ -575,6 +580,7 @@ def run_multiple_factors_anova(
                 "other_label": item.get("other_label"),
                 "alpha": item.get("alpha", alpha),
                 "correction": item.get("correction", correction),
+                "min_group_size": item.get("min_group_size", 2),
             }
         else:
             raise TypeError(f"Unsupported association item type: {type(item)}")
@@ -598,6 +604,7 @@ def run_multiple_factors_anova(
             else alpha,
             control_label=assoc_dict.get("control_label"),
             correction=corr_to_use,
+            min_group_size=assoc_dict["min_group_size"],
         )
         res["Association"] = assoc_dict["name"]
         res["GroupColumn"] = assoc_dict["group_column"]

@@ -29,11 +29,18 @@ from ...anova import get_sample_to_group, prepare_group_labels
 from ...factors import load_factors_netcdf
 from ...validation.significance import patient_permutation_differential
 from .. import common, style
-from ._common import COMPONENT, DATASET, SPEC, association, factors_adata
+from ._common import COMPONENT, DATASET, SPEC, factors_adata
 from .coordinated_changes import N_TOP, component_lr_scores
 
-CONTRAST = "6-Month CLAD/Died vs. No CLAD"
 CASE_LABEL = "CLAD/Died"
+# 6-month outcome collapsed to CLAD/Died vs. No CLAD
+CONTRAST_COLUMN = "6monthcondition"
+CONTRAST_MAPPING = {
+    "CLAD": CASE_LABEL,
+    "Died": CASE_LABEL,
+    "No CLAD/Stable": "No CLAD",
+    "No CLAD/Recovered": "No CLAD",
+}
 # The groups as axis labels name them, free of the slash in CASE_LABEL
 CASE_DISPLAY = "CLAD+died"
 CONTROL_DISPLAY = "no CLAD"
@@ -123,11 +130,9 @@ def permutation_analysis() -> dict[int, dict]:
     adata = factors_adata()
     obs = cast(pd.DataFrame, adata.obs)
     cond = SPEC.condition_column
-    spec = association(CONTRAST)
     # Condition order is np.unique's, as for the CP condition factor
     labels = prepare_group_labels(
-        get_sample_to_group(adata, cond, spec["group_column"]),
-        mapping=spec.get("mapping"),
+        get_sample_to_group(adata, cond, CONTRAST_COLUMN), mapping=CONTRAST_MAPPING
     )
     case = (labels == CASE_LABEL).to_numpy()
     patients = (
