@@ -105,7 +105,8 @@ HLCA_EPITHELIAL_MARKERS = {
 }
 # The subtype each atlas annotation is pooled into; the rest keep their name.
 # SMG duct is left out (None): submucosal gland ducts are not expected in BAL,
-# and its MGST1 is detected in half the other cells.
+# and its MGST1 is detected in half the other cells. AT2 is left out too: its
+# one stratifying marker, MUC1, is also secretory, not alveolar-specific.
 SUBTYPE_SECTIONS = {
     "Club": "Secretory",
     "Goblet": "Secretory",
@@ -118,9 +119,13 @@ SUBTYPE_SECTIONS = {
     "SMG mucous": "Mucous",
     "SMG serous (bronchial)": "Serous",
     "SMG duct": None,
+    "AT2": None,
+    "AT2 proliferating": None,
 }
-# Both atlases' markers, pooled per subtype
-EPITHELIAL_SUBTYPE_MARKERS: dict[str, list[str]] = {}
+# Both atlases' markers, pooled per subtype, Fig. 2N's sections first in order
+EPITHELIAL_SUBTYPE_MARKERS: dict[str, list[str]] = {
+    s: [] for s in ("Ciliated", "Secretory", "Basal")
+}
 for _name, _genes in [
     *TRAVAGLINI_EPITHELIAL_MARKERS.items(),
     *HLCA_EPITHELIAL_MARKERS.items(),

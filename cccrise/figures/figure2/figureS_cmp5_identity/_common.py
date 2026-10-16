@@ -5,7 +5,6 @@ quadrant (`legend`) and with given genes (e.g. `top_genes`) labeled
 (`_label`)."""
 
 import numpy as np
-from adjustText import adjust_text
 from matplotlib.lines import Line2D
 
 from ... import common, style
@@ -18,9 +17,11 @@ LABEL_DX = (
     0.04  # labels start this far outward of their points, a fraction of the x range
 )
 LABEL_LINE_SPACING = 1.15  # between stacked labels, in font sizes
+ROW_BAND = 1  # lines above or below a label whose points it starts beyond
 REFERENCE_COLORS = {**S.GROUP_COLORS, "rest": style.COLORS["ink"]}
 LABEL_BOX = {"edgecolor": "none", "pad": 0.5}  # pad in points
-LABEL_ZORDER = 2.2  # over the reference lines (2), under the spines (2.5)
+# Labels' boxes hide the reference lines under them, never a point
+REFERENCE_ZORDER, LABEL_ZORDER = 0.5, 0.8  # points at 1
 ARROWPROPS = {
     "arrowstyle": "-",
     "lw": style.LINE_WIDTH_THIN / 2,
@@ -66,10 +67,11 @@ def limits(delta, y) -> tuple[float, float]:
 
 def plot_volcano(ax, group: str, reference: str, labeled, lims=None) -> None:
     """Volcano of `group` against `reference` within `lims` (default `limits`
-    of its own data), labeling `labeled`. A significant gene takes the color
-    of the side of zero it falls on, unless its Wilcoxon score points the
-    other way (ubiquitous genes, e.g. mitochondrial, detected slightly less
-    often but more highly), which stays muted."""
+    of its own data), labeling `labeled` (genes, or {gene: label text}). A
+    significant gene takes the color of the side of zero it falls on, unless
+    its Wilcoxon score points the other way (ubiquitous genes, e.g.
+    mitochondrial, detected slightly less often but more highly), which stays
+    muted."""
     ranking, delta, y = volcano_data(group, reference)
     color = np.where(
         enriched(ranking, delta),
@@ -79,11 +81,16 @@ def plot_volcano(ax, group: str, reference: str, labeled, lims=None) -> None:
     ax.scatter(
         delta, y, c=color, s=style.POINT_SIZE_BACKGROUND, linewidths=0, rasterized=True
     )
-    common.reference_line(ax, -np.log10(common.SIG_ALPHA))
-    common.reference_line(ax, 0, horizontal=False)
+    for line in (
+        common.reference_line(ax, -np.log10(common.SIG_ALPHA)),
+        common.reference_line(ax, 0, horizontal=False),
+    ):
+        line.set_zorder(REFERENCE_ZORDER)
     x_limit, y_limit = limits(delta, y) if lims is None else lims
     ax.set(xlim=(-x_limit, x_limit), ylim=(0, y_limit))
-    _label(ax, labeled, delta, y)
+    _label(
+        ax, labeled if isinstance(labeled, dict) else {g: g for g in labeled}, delta, y
+    )
     ax.set(
         xlabel=f"Detected fraction,\n{group} − {reference}",
         ylabel="−log$_{10}$ q (Wilcoxon)",
@@ -109,12 +116,12 @@ def legend(ax) -> None:
     ax.set_title(" ", pad=height * 72)
 
 
-def _label(ax, genes, delta, y) -> None:
-    """Labels of `genes`, first placed just outward of their points (away
-    from zero, where the volcano is empty) and stacked at least a line apart
-    on each side (coincident points otherwise trap `adjust_text`), then moved
-    off the points by `adjust_text`, with leader lines to their points; each on
-    a background-colored box, hiding the reference lines under it."""
+def _label(ax, labels: dict[str, str], delta, y) -> None:
+    """Labels (`labels`, {gene: text}) of genes, stacked at least a line apart
+    on each side of zero by height (`_stack`), each just outward of every
+    point within `ROW_BAND` lines of it (away from zero, where the volcano is
+    empty), with leader lines to their points; each on a background-colored
+    box, hiding the reference lines under it."""
     step = (
         LABEL_LINE_SPACING
         * common.FACTOR_LABEL_FONT_SIZE
@@ -123,38 +130,31 @@ def _label(ax, genes, delta, y) -> None:
         / ax.bbox.height
         * np.diff(ax.get_ylim())[0]
     )
-    texts = []
+    dx = LABEL_DX * np.diff(ax.get_xlim())[0]
     for side in (1, -1):
         on_side = sorted(
-            (g for g in genes if (delta[g] >= 0) == (side > 0)), key=lambda g: -y[g]
+            (g for g in labels if (delta[g] >= 0) == (side > 0)), key=lambda g: -y[g]
         )
         for g, slot in zip(on_side, _stack(y[on_side].to_numpy(), step), strict=True):
-            texts.append(
-                ax.text(
-                    delta[g] + side * LABEL_DX * np.diff(ax.get_xlim())[0],
-                    slot,
-                    g,
-                    ha="left" if side > 0 else "right",
-                    va="center",
-                    fontsize=common.FACTOR_LABEL_FONT_SIZE,
-                    bbox=LABEL_BOX | {"facecolor": ax.get_facecolor()},
-                    zorder=LABEL_ZORDER,
-                )
+            ax.annotate(
+                labels[g],
+                xy=(delta[g], y[g]),
+                xytext=(side * (_row_edge(delta * side, y, slot, step) + dx), slot),
+                ha="left" if side > 0 else "right",
+                va="center",
+                fontsize=common.FACTOR_LABEL_FONT_SIZE,
+                bbox=LABEL_BOX | {"facecolor": ax.get_facecolor()},
+                zorder=LABEL_ZORDER,
+                arrowprops=ARROWPROPS,
+                annotation_clip=False,
             )
-    placed = [t.get_text() for t in texts]
-    adjust_text(
-        texts,
-        x=delta.to_numpy(),
-        y=y.to_numpy(),
-        target_x=delta[placed].to_numpy(),
-        target_y=y[placed].to_numpy(),
-        ax=ax,
-        expand=(1.3, 1.6),
-        force_text=(0.6, 1.0),
-        force_pull=(0.002, 0.002),
-        time_lim=10,
-        arrowprops=ARROWPROPS,
-    )
+
+
+def _row_edge(outward, y, slot: float, step: float) -> float:
+    """The farthest outward position (`outward`, the detected fraction
+    difference signed so the label's side is positive) of the points within
+    `ROW_BAND` lines of `slot`, or zero."""
+    return np.max(outward[np.abs(y - slot) < ROW_BAND * step].to_numpy(), initial=0)
 
 
 def _stack(heights: np.ndarray, step: float) -> list[float]:
