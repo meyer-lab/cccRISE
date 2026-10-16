@@ -14,7 +14,7 @@ metadata-files:
     - _panels.yml
 shortcodes:
     - _panels.lua
-supplements: [rise_factor_matrices, cmp_stability, cmp5_identity]
+supplements: [alad_cohort, rise_factor_matrices, cmp_stability, cmp5_identity]
 
 crossref:
     fig-prefix: Fig.

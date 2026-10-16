@@ -48,8 +48,9 @@ Markers were curated from Travaglini et al. and Sikkema et al.\ [@doi:10.1038/s4
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of each group.
 :::
 
-We applied CCC-RISE to 47 bronchoalveolar lavage (BAL) samples from 45 lung transplant recipients, of which 17 were stable controls and 30 had acute lung allograft dysfunction (ALAD)\ [@doi:10.1016/j.healun.2024.02.007].
+We applied CCC-RISE to 47 bronchoalveolar lavage (BAL) samples from 45 lung transplant recipients, of which 17 were stable controls and 30 had acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007].
 ALAD is an acute decline in lung function following transplantation that either resolves or progresses to chronic lung allograft dysfunction (CLAD), a largely irreversible loss of graft function that leads to re-transplantation or death\ [@doi:10.1016/j.trre.2021.100626; @doi:10.1016/j.healun.2022.05.005].
+Our ALAD cohort was composed of broad immune and epithelial cell types whose proportional abundances showed no relationship with ALAD status, suggesting that the pathology was driven by altered communication rather than changes in cell number ({{< fig alad-cohort celltype-proportions >}}).
 We used this cohort to establish how a CCC-RISE model is selected, validated, and interpreted.
 
 We first selected the RISE rank by bi-cross-validation (BiCV), which fits RISE to a random half of all cells and genes and scores the fit's ability to predict the held-out block of cells and genes\ [@doi:10.1214/08-AOAS227].

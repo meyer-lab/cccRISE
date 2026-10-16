@@ -38,3 +38,6 @@ figS_alad_associations:
     rise_outcome_weights: [c]
     rise_genes: [d]
     eigenstate_pacmap: [e]
+figS_alad_cohort:
+    cohort: [a]
+    celltype_proportions: [b]

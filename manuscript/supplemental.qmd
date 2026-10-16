@@ -3,21 +3,29 @@ title: "Supplemental Information"
 subtitle: "Resolving cell-cell communication programs beyond cell-type boundaries across conditions"
 ---
 
+![](figures/figureS_alad_cohort/figureS_alad_cohort.svg){width="6.5in"}
+
+**Figure S1. ALAD cohort and cell type composition.**
+({{< panel alad-cohort cohort >}}) ALAD cohort of 47 BAL samples from 45 lung transplant recipients: 17 stable controls and 30 with ALAD, of whom 17 declined and 13 recovered.
+({{< panel alad-cohort celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control (n = 17) and ALAD (n = 30, declined and recovered pooled) samples, on a square-root scale.
+Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
+q: two-sided Mann--Whitney test of control against ALAD samples, Benjamini--Hochberg corrected across cell types.
+
 ![](figures/figureS_rise_factor_matrices/figureS_rise_factor_matrices.svg){width="6.5in"}
 
-**Figure S1. RISE factor matrices.**
+**Figure S2. RISE factor matrices.**
 ({{< panel rise-factor-matrices factors >}}) RISE factor matrices representing component loadings of conditions and genes.
 For visualization, genes outside the top 10% by weight in any component are omitted and each component is normalized to its largest absolute loading.
 
 ![](figures/figureS_cmp_stability/figureS_cmp_stability.svg){width="6.5in"}
 
-**Figure S2. Stability of RISE and CP components.**
+**Figure S3. Stability of RISE and CP components.**
 ({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across component-matched leave-one-patient-out jackknife replicates (n = 45); boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
 ({{< panel cmp-stability fms-histograms >}}) Distributions of RISE component 3 and CP component 2 FMS across jackknife replicates.
 
 ![](figures/figureS_cmp5_identity/figureS_cmp5_identity.svg){width="6.5in"}
 
-**Figure S3. CP component 5 sender and receiver cell identity.**
+**Figure S4. CP component 5 sender and receiver cell identity.**
 ({{< panel cmp5-identity eigenstate-scatter >}}) Per-cell projection onto the eigen-states most heavily weighted by component 5's sender (eigen-state 17) and receiver (eigen-state 15) factors.
 ({{< panel cmp5-identity cmp-eigenstate-loadings >}}) Component 5 sender and receiver eigen-state loadings.
 ({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell type markers\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2] in component 5's sender/receiver groups and all other cells.
