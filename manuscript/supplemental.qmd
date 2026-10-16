@@ -7,9 +7,8 @@ subtitle: "Resolving cell-cell communication programs beyond cell-type boundarie
 
 **Figure S1. ALAD cohort and cell type composition.**
 ({{< panel alad-cohort cohort >}}) ALAD cohort of 47 BAL samples from 45 lung transplant recipients: 17 stable controls and 30 with ALAD, of whom 17 declined and 13 recovered.
-({{< panel alad-cohort celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control (n = 17) and ALAD (n = 30, declined and recovered pooled) samples, on a square-root scale.
+({{< panel alad-cohort celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control (n = 17), declined ALAD (n = 17), and recovered ALAD (n = 13) samples, on a square-root scale.
 Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
-q: two-sided Mann--Whitney test of control against ALAD samples, Benjamini--Hochberg corrected across cell types.
 
 ![](figures/figureS_rise_factor_matrices/figureS_rise_factor_matrices.svg){width="6.5in"}
 
