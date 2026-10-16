@@ -4,6 +4,7 @@ receiver subpopulations, the label-free sender and receiver groups its
 per-cell weights define, and their gene expression."""
 
 import functools
+from collections import Counter
 
 import anndata
 import numpy as np
@@ -47,22 +48,41 @@ SECTION_ABBREVIATIONS = {
     "Pan-epithelial": "Pan-epi.",
     "Top LR pairs": "LR pairs",
 }
+# Markers of the epithelium against the whole integrated Human Lung Cell Atlas,
+# and each proliferating annotation's own markers, Sikkema et al. 2023 (Nat.
+# Med.), Supplementary Table 6 ("marker genes"), verbatim. Proliferating cells
+# are marked by the genes shared by MIN_PROLIFERATING_ANNOTATIONS of these
+# annotations, which span lineages (CENPW, MKI67).
+HLCA_EPITHELIUM_MARKERS = ["FXYD3", "EPCAM", "ELF3"]
+HLCA_PROLIFERATING_MARKERS = {
+    "AT2 proliferating": ["CENPW", "CDKN3", "BIRC5"],
+    "Alveolar Mph proliferating": ["TYMS", "CENPW", "MND1"],
+    "Lymphatic EC proliferating": ["MKI67", "TOP2A"],
+    "T cells proliferating": ["CENPW", "TK1", "MKI67"],
+}
+MIN_PROLIFERATING_ANNOTATIONS = 2
 # Canonical markers of the annotated broad cell types: the union of the
 # canonical markers of their subtypes in Travaglini et al. 2020 (Nature),
 # Supplementary Table 1 (CD16 as FCGR3A; "CD8" as CD8A/CD8B; MHCII, not one
 # gene, left out; the "CD8" listed for CD4+ Mem/Eff T cells taken as a typo).
-# The table has no pan-epithelial or proliferating set, so those two are
-# conventional markers. Only the gene names come from the literature; the
+# The table has no pan-epithelial or proliferating set, so those two come from
+# the HLCA (below). Only the gene names come from the literature; the
 # annotations themselves are not used.
 CELLTYPE_MARKERS = {
-    "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "CDH1"],
+    "Epithelial cells": HLCA_EPITHELIUM_MARKERS,
     "Macrophages": ["MARCO", "MSR1", "MRC1"],
     "Monocytes": ["CD14", "FCGR3A"],
     "Dendritic Cells": ["LILRB4", "IRF8"],
     "CD4 T cells": ["CD4", "COTL1"],
     "CD8 T cells": ["CD3E", "CD8A", "CD8B", "DUSP2", "GZMH", "GZMB"],
     "NK cells": ["KLRD1", "NKG7", "TYROBP"],
-    "Proliferating cells": ["MKI67", "TOP2A"],
+    "Proliferating cells": [
+        g
+        for g, n in Counter(
+            g for genes in HLCA_PROLIFERATING_MARKERS.values() for g in genes
+        ).items()
+        if n >= MIN_PROLIFERATING_ANNOTATIONS
+    ],
 }
 # Canonical markers of the epithelial subtypes in the same table, verbatim
 TRAVAGLINI_EPITHELIAL_MARKERS = {
