@@ -52,3 +52,8 @@ STACCato
 [Uu]pregulated
 Wilcoxon
 Wilk
+ligand's
+[Ii]nterquartile
+AUROCs
+thresholding
+Travaglini
