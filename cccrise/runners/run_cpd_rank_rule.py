@@ -26,6 +26,7 @@ Writes, in ``data/rank_selection_results/``:
 """
 
 import argparse
+import hashlib
 import time
 from pathlib import Path
 
@@ -42,7 +43,7 @@ from ..ccc_rise import (
     cp_start_seeds,
     seeded_cp_fit_options,
 )
-from ..factors import clean_memory, load_factors_to_anndata
+from ..factors import clean_memory, load_factors_netcdf, load_factors_to_anndata
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..rank_selection import (
     CP_COMPRESSION_ENERGY,
@@ -90,6 +91,18 @@ def interaction_tensor(spec: DatasetSpec, cached: Path | None) -> np.ndarray:
         adata, import_ligand_receptor_pairs(), complex_sep="&"
     )
     return tensor
+
+
+def rise_digest(factors_path: Path) -> str:
+    """A digest of what the communication tensor is built from: the factors
+    file's RISE fit and LR pairs (not its CP fit), so checkpoints are shared by
+    every CP refit on one RISE fit and never by two RISE fits."""
+    ds = load_factors_netcdf(factors_path)
+    digest = hashlib.sha256()
+    for name in ("pf2_A", "pf2_B", "pf2_C", "pf2_weights"):
+        digest.update(np.ascontiguousarray(ds[name].values).tobytes())
+    digest.update("\n".join(ds.coords["lr_pair"].values.astype(str)).encode())
+    return digest.hexdigest()[:12]
 
 
 def start_factors(tensor: np.ndarray, rank: int, family: str, seed: int) -> CPTensor:
@@ -224,21 +237,33 @@ def score(tensor, starts_by_rank: dict[int, dict[str, list[Start]]]):
 
 
 def run(
-    spec: DatasetSpec, ranks, backend, compress, n_random, random_state, tensor_cache
+    spec: DatasetSpec,
+    ranks,
+    backend,
+    compress,
+    n_random,
+    random_state,
+    tensor_cache,
+    suffix: str = "",
 ):
     print(
         f"=== CP rank rule: {spec.label}  ranks={ranks}  backend={backend}  compress={compress}"
     )
     tensor = interaction_tensor(spec, tensor_cache)
     setting = "e999" if compress else "full"
-    fits_dir = CHECKPOINT_DIR / f"{spec.output_key}_{setting}"
+    fits_dir = (
+        CHECKPOINT_DIR
+        / f"{spec.output_key}_{setting}_{rise_digest(spec.factors_path())}"
+    )
     fits_dir.mkdir(parents=True, exist_ok=True)
     fitter = Fitter(tensor, backend, compress, fits_dir, n_random, max(ranks))
     starts = {rank: fitter.rank_starts(rank, random_state) for rank in ranks}
     selected, summary, per_start, elbow = score(tensor, starts)
-    per_start_path = RANK_SELECTION_DIR / f"cpd_rank_rule_{spec.output_key}.parquet"
+    per_start_path = (
+        RANK_SELECTION_DIR / f"cpd_rank_rule_{spec.output_key}{suffix}.parquet"
+    )
     summary_path = (
-        RANK_SELECTION_DIR / f"cpd_rank_rule_summary_{spec.output_key}.parquet"
+        RANK_SELECTION_DIR / f"cpd_rank_rule_summary_{spec.output_key}{suffix}.parquet"
     )
     per_start.to_parquet(per_start_path, index=False)
     summary.to_parquet(summary_path, index=False)
@@ -275,6 +300,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Fit on a CANDELINC core keeping CP_COMPRESSION_ENERGY.")  # fmt: skip
     parser.add_argument("--random-starts", type=int, default=RULE_N_STARTS)
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument(
+        "--suffix", default="", help='Tag on the output names, e.g. "_rise34".'
+    )
     parser.add_argument("--tensor-cache", type=Path, default=None,
                         help="A .npy of the communication tensor, to skip rebuilding it.")  # fmt: skip
     return parser
@@ -283,7 +311,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     run(resolve_dataset(args), parse_ranks(args.ranks), args.backend, args.compress,
-        args.random_starts, args.random_state, args.tensor_cache)  # fmt: skip
+        args.random_starts, args.random_state, args.tensor_cache, args.suffix)  # fmt: skip
 
 
 if __name__ == "__main__":

@@ -31,7 +31,7 @@ cp_tol: 1.0e-12
 backend: numpy
 float64: true
 compression_energy: null
-fits_dir: output/cache/cpd_rank_rule/alad_full
+fits_dir: output/cache/cpd_rank_rule/alad_full_8596017184b9
 summary_file: cpd_rank_rule_summary_alad.parquet
-git_sha: 4f2d51571c7b5b25ed7ab274b06b3840074f603a-dirty
-generated: '2026-10-15T15:56:49+00:00'
+git_sha: 5180947d87b97b7cbe4610550a7974fbe9f9002b-dirty
+generated: '2026-10-16T14:48:38+00:00'
