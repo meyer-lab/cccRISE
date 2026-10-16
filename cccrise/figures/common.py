@@ -23,6 +23,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from string import ascii_letters, ascii_uppercase
+from typing import Any
 
 import anndata
 import matplotlib
@@ -494,7 +495,7 @@ def record_panel_letters(figure: str, fig: Figure) -> None:
 SIG_ALPHA = 0.05
 
 
-RANK_LINE = {
+RANK_LINE: dict[str, Any] = {
     "color": style.COLORS["reference"],
     "linestyle": style.LINE_STYLE_REFERENCE,
     "linewidth": style.LINE_WIDTH_THIN,
