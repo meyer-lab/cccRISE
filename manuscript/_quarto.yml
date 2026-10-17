@@ -1,24 +1,36 @@
 project:
-  type: default
-  render:
-    - manuscript.qmd
-    - supplemental.qmd
-    - review-response.qmd
-  output-dir: _output
+    type: default
+    render:
+        - manuscript.qmd
+        - supplemental.qmd
+        - review-response.qmd
+    output-dir: _output
 
 citeproc: true
+
+# Panel letters per figure, written by `cccrise-fbuild`, and supplement numbers
+# (by order of first mention), referenced via the `fig`/`panel` shortcodes.
+metadata-files:
+    - _panels.yml
+shortcodes:
+    - _panels.lua
+supplements: [alad_cohort, rise_factor_matrices, cmp_stability, cmp5_identity]
+
+crossref:
+    fig-prefix: Fig.
+    title-delim: "."
 filters:
-  - pandoc-cite
+    - pandoc-cite
 
 format:
-  html:
-    toc: true
-    number-sections: false
-    embed-resources: true
-    theme: cosmo
-  typst:
-    papersize: us-letter
-    margin:
-      x: 1in
-      y: 1in
-    number-sections: false
+    html:
+        toc: true
+        number-sections: false
+        embed-resources: true
+        theme: cosmo
+    typst:
+        papersize: us-letter
+        margin:
+            x: 1in
+            y: 1in
+        number-sections: false

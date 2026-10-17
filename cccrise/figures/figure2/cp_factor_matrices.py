@@ -27,6 +27,7 @@ MODES = {  # factor matrix: row label, whether to order rows
 EIGENSTATE_TICKS = (1, 5, 10, 15)
 TOP_LR_FRACTION = 0.15
 AXES = ("square",) * len(MODES)
+REL_CUTOFF = 0.4  # percent of a components top-weighted ligand above which LR pairs should be labeled
 
 
 def plot(axs):
@@ -78,7 +79,7 @@ def _top_pairs(D, names: pd.Series) -> dict[int, int]:
     return {
         int(row): c
         for c in range(1, np.shape(D)[1] + 1)
-        for row in top_pairs(D, lr_pairs, c, ligands)
+        for row in top_pairs(D, lr_pairs, c, ligands, rel_cutoff=REL_CUTOFF)
     }
 
 
