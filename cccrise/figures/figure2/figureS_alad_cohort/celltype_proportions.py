@@ -1,13 +1,16 @@
 """Annotated cell type proportion of each ALAD sample by ALAD status (control,
-declined, recovered)."""
+declined, recovered), with each cell type's Kruskal-Wallis q across the three
+statuses, Benjamini-Hochberg corrected across cell types."""
 
 from typing import Any
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.transforms import blended_transform_factory
+from scipy.stats import kruskal
 
-from ....anova import get_sample_to_group
+from ....anova import adjust_pvalues, get_sample_to_group
 from ....runners.datasets import DATASETS
 from ... import common, style
 
@@ -37,6 +40,7 @@ def plot(axs):
     (ax,) = axs
     df = proportions()
     celltypes = style.CELL_TYPES[DATASET]
+    q = composition_q(df, celltypes)
     long = df.melt(id_vars="Status", var_name="Cell type", value_name="Fraction")
     counts = df["Status"].value_counts()
     shared: dict[str, Any] = {
@@ -73,6 +77,17 @@ def plot(axs):
     )
     ax.set_xlabel("")
     ax.set_ylabel("Fraction of cells")
+    top = blended_transform_factory(ax.transData, ax.transAxes)
+    for x, value in enumerate(q):
+        ax.text(
+            x,
+            1,
+            f"q = {value:.2f}",
+            transform=top,
+            ha="center",
+            va="bottom",
+            fontsize=style.FONT_SIZE_DENSE,
+        )
     handles, _ = ax.get_legend_handles_labels()
     common.legend(
         ax,
@@ -80,6 +95,17 @@ def plot(axs):
         handles=handles,
         labels=[f"{s.capitalize()} (n={counts[s]})" for s in STATUS_COLORS],
         ncols=len(STATUS_COLORS),
+    )
+
+
+def composition_q(df: pd.DataFrame, celltypes: list[str]) -> np.ndarray:
+    """Each cell type's Kruskal-Wallis p across `STATUS_COLORS`' statuses,
+    Benjamini-Hochberg corrected across `celltypes`."""
+    return adjust_pvalues(
+        [
+            kruskal(*(df.loc[df["Status"] == s, c] for s in STATUS_COLORS)).pvalue
+            for c in celltypes
+        ]
     )
 
 

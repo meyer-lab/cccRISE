@@ -37,20 +37,21 @@ This allows for the identification of specific cell subpopulations driving commu
 ({{< panel 2 aggregate-fms >}}) Aggregate FMS of RISE and CP factors across leave-one-patient-out jackknife (n = 45) and re-initialization (n = 47) replicates; bars show the 2.5th--97.5th percentiles.
 ({{< panel 2 cp-factor-matrices >}}) CP factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
 ({{< panel 2 permutation-lr-significance.1 >}}) Fraction of each LR pair's (n = 513) condition by sender by receiver entries exceeding a null of 1,000 within-sample cell permutations at p < 0.05.
+p is the fraction of permuted scores at least as large as the observed score, (k + 1)/(1,000 + 1) for k permutations.
 ({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by fraction of entries significant.
-({{< panel 2 nichenet >}}) NicheNet ligand-activity AUROC of each ligand's curated downstream targets against genes ranked by differential expression between each component's top and bottom 10% of receiver cells; opaque points mark each component's top ligands.
+({{< panel 2 nichenet >}}) NicheNet ligand-activity AUROC of each ligand's top 250 predicted downstream targets (by NicheNet v2 ligand--target regulatory potential) against genes ranked by differential expression between each component's top and bottom 10% of receiver cells; opaque points mark each component's top ligands.
 Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
 \*: q < 0.05, two-sided Mann--Whitney test of top against all other ligands, Benjamini--Hochberg corrected across components.
 ({{< panel 2 sender-receiver-strata >}}) Per-cell component 5 sender against receiver weight.
 Cells above 30% of either weight's maximum form the sender or receiver group, assigned by the larger relative weight.
 ({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each group.
-Markers were curated from Travaglini et al. and Sikkema et al.\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2] and kept when q < 0.05 (Wilcoxon rank-sum test, Benjamini--Hochberg corrected over the 18 subtype markers detected in the dataset).
+Markers were curated from Travaglini et al. and Sikkema et al.\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2].
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of each group.
 :::
 
 We applied CCC-RISE to 47 bronchoalveolar lavage (BAL) samples from 45 lung transplant recipients, of which 17 were stable controls and 30 had acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007].
 ALAD is an acute decline in lung function following transplantation that either resolves or progresses to chronic lung allograft dysfunction (CLAD), a largely irreversible loss of graft function that leads to re-transplantation or death\ [@doi:10.1016/j.trre.2021.100626; @doi:10.1016/j.healun.2022.05.005].
-Our ALAD cohort was composed of broad immune and epithelial cell types whose proportional abundances showed no relationship with ALAD status, suggesting that the pathology was driven by altered communication rather than changes in cell number ({{< fig alad-cohort celltype-proportions >}}).
+Our ALAD cohort was composed of broad immune and epithelial cell types whose proportional abundances did not differ significantly between control, declined, and recovered samples ({{< fig alad-cohort celltype-proportions >}}).
 We used this cohort to establish how a CCC-RISE model is selected, validated, and interpreted.
 
 We first selected the RISE rank by bi-cross-validation (BiCV), which fits RISE to a random half of all cells and genes and scores the fit's ability to predict the held-out block of cells and genes\ [@doi:10.1214/08-AOAS227].
@@ -62,10 +63,10 @@ At ranks 3--5, one pair of components overlapped in a single mode, as expected w
 We therefore selected CP rank 5 as the lowest rank before the model became degenerate ({{< fig 2 cp-rank-selection.2 >}}).
 
 We next asked whether the communication programs captured by CCC-RISE were stable, exceeded chance, and aligned with external biological validation.
-RISE and CP components were stable over re-initialization and leave-one-patient-out jackknife ({{< fig 2 aggregate-fms >}}, {{< fig cmp-stability >}}).
-To assess robustness, we extended CellPhoneDB and CellChat's permuted discrete cluster labels onto the continuous eigen-states by shuffling the cell's expression paired with each eigen-state projection and recomputed the communication tensor 1,000 times \ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
+RISE and CP components were stable over re-initialization (aggregate FMS 1.000) and leave-one-patient-out jackknife (aggregate FMS 0.985 for RISE, 0.999 for CP) {{< fig 2 aggregate-fms >}}, {{< fig cmp-stability >}}).
+To assess robustness, we extended the cluster-label permutation of CellPhoneDB and CellChat to continuous eigen-states by shuffling which cell's expression is paired with each eigen-state projection and recomputing the communication tensor\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
 Per LR pair, a median of 9.7% of entries exceeded this null at p < 0.05 and mean observed scores exceeded mean null scores for 99% of LR pairs ({{< fig 2 permutation-lr-significance >}}).
-Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring the differential expression of curated downstream gene targets in the component's top receiver cells [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
+Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring the differential expression of each ligand's NicheNet-predicted downstream gene targets in the component's top receiver cells\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 [Placeholder NicheNet interpretation]
 
 RISE eigen-states allow cellular identity to be traced from CP component weights back to single-cell gene expression without depending on prior annotations.
