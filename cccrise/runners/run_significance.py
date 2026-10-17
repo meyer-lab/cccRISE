@@ -1,24 +1,18 @@
 """
-Runner: permutation-based significance testing of cell-cell communication and
-differential signaling in CCC-RISE.
+Runner: cell-permutation significance testing of CCC-RISE communication.
 
-Performs two complementary significance tests:
-1. Within-condition permutation significance (`compute_communication_significance`):
-   Permutes cell loadings ($P_i$ rows) across cells within each condition $i$ while
-   preserving raw expression ($X_i$) and LR pair annotations. Computes empirical
-   $p$-values and $Z$-score effect sizes for each condition $\times$ sender $\times$ receiver
-   $\times$ LR pair.
-2. Cross-condition differential significance (`compute_differential_significance`):
-   Permutes condition labels across tensor slices to identify sender-receiver-LR
-   signaling axes that differ significantly between condition classes (e.g. control vs ALAD).
+Permutes cell loadings ($P_i$ rows) across cells within each condition $i$
+while preserving raw expression ($X_i$) and LR pair annotations
+(`compute_communication_significance`), and computes empirical $p$-values and
+$Z$-score effect sizes for each condition $\times$ sender $\times$ receiver
+$\times$ LR pair. Group differences between patients are tested separately,
+from the figures, by `validation.significance.patient_permutation_differential`.
 
 Loads a RISE fit produced by `run_ccc_rise` (`--reference-source`) rather
 than fitting PARAFAC2 itself; see `utils.load_rise_reference`.
 
-Writes the primary significance outputs:
-
-    significance_lr_<dataset>.parquet           per-LR pair observed vs null & z-scores
-    significance_differential_<dataset>.parquet   differential sender-receiver-LR comparisons
+Writes the per-LR pair observed vs. null scores and z-scores to
+significance_lr_<dataset>.parquet:
 
     uv run cccrise-significance --dataset alad \
         --reference-source cccrise/data/factors/bal_alad_factors.nc --n-perms 1000
@@ -32,16 +26,13 @@ import pandas as pd
 from ..import_data import import_ligand_receptor_pairs
 from ..validation.significance import (
     fit_significance_pipeline,
-    summarize_significance_differential,
     summarize_significance_lr,
     summarize_significance_overview,
 )
 from ._cli import (
     add_dataset_argument,
-    add_group_arguments,
     add_scoring_arguments,
     dataset_metadata,
-    resolve_group_labels,
     resolve_output,
     resulting_dims,
 )
@@ -58,7 +49,6 @@ def output_paths(spec: DatasetSpec, output_root: Path) -> dict[str, Path]:
     """Map the output file keys to absolute destination paths."""
     return {
         "lr": output_root / spec.significance_lr_filename(),
-        "differential": output_root / spec.significance_differential_filename(),
     }
 
 
@@ -66,14 +56,10 @@ def run_significance(
     spec: DatasetSpec,
     reference_source: str | Path,
     n_perms: int = 1000,
-    group_column: str | None = None,
-    control_label: str | None = None,
-    other_label: str | None = None,
     communication_score: str = "expression_product",
     complex_sep: str | None = "&",
     complex_agg_method: str = "min",
     hill_k: float = 0.5,
-    max_exact_perms: int = 100_000,
     random_state: int = 42,
     output_path: Path | None = None,
     output_root: Path | None = None,
@@ -90,10 +76,6 @@ def run_significance(
         rather than refit.
     n_perms : int, default=1000
         Number of permutations.
-    group_column : str, optional
-        Column in `adata.obs` carrying the binary group label.
-    control_label, other_label : str, optional
-        Values of `group_column` mapped to the reference and other class.
     communication_score : str, default='expression_product'
         Scoring function for ligand-receptor interactions. Independent of
         whichever score `reference_source` itself was built with.
@@ -103,8 +85,6 @@ def run_significance(
         Subunit aggregation method ('min', 'mean', 'gmean').
     hill_k : float, default=0.5
         Half-saturation constant for Hill scoring.
-    max_exact_perms : int, default=100_000
-        Threshold for exact vs Monte Carlo differential permutations.
     random_state : int, default=42
         Seed for permutations.
     output_path : Path, optional
@@ -120,10 +100,6 @@ def run_significance(
     tuple[pd.DataFrame, dict[str, Path]]
         The LR significance table and the mapping of written file paths.
     """
-    group_column, control_label, other_label = resolve_group_labels(
-        spec, group_column, control_label, other_label
-    )
-
     output_root = output_root or scoring_output_dir(communication_score, VALIDATION_DIR)
     paths = output_paths(spec, output_root)
     if output_path is not None:
@@ -137,7 +113,6 @@ def run_significance(
     print(f"=== Permutation Significance Testing: {spec.label} (n_perms {n_perms}) ===")
     print(
         f"    score={communication_score!r}  complex_sep={complex_sep!r}  "
-        f"group_column={group_column!r}  control={control_label!r}  other={other_label!r}  "
         f"reference_source={reference_source!r}"
     )
 
@@ -153,14 +128,10 @@ def run_significance(
         reference_path=reference_source,
         lr_pairs=lr_pairs,
         n_perms=n_perms,
-        group_column=group_column,
-        control_label=control_label,
-        other_label=other_label,
         communication_score=communication_score,
         complex_sep=complex_sep,
         complex_agg_method=complex_agg_method,
         hill_k=hill_k,
-        max_exact_perms=max_exact_perms,
         random_state=random_state,
         validate=False,
     )
@@ -168,7 +139,6 @@ def run_significance(
 
     print("3. Generating summary metrics on the fly...")
     lr_df = summarize_significance_lr(results)
-    diff_df = summarize_significance_differential(results)
     overview_df = summarize_significance_overview(results)
 
     print(overview_df.to_string(index=False))
@@ -176,23 +146,11 @@ def run_significance(
     print(f"4. Writing {len(lr_df)} LR pairs to {paths['lr']}...")
     lr_df.to_parquet(paths["lr"], index=False)
 
-    written_paths = [paths["lr"]]
-
-    if not diff_df.empty and "differential" in paths:
-        print(
-            f"   Writing {len(diff_df)} differential interactions to {paths['differential']}..."
-        )
-        diff_df.to_parquet(paths["differential"], index=False)
-        written_paths.append(paths["differential"])
-
     metadata = build_metadata(
         dataset_metadata(spec)
         | {
             "reference_source": relpath(reference_source),
             "n_perms": n_perms,
-            "group_column": group_column,
-            "control_label": control_label,
-            "other_label": other_label,
             "communication_score": communication_score,
             "complex_sep": complex_sep,
             "complex_agg_method": complex_agg_method,
@@ -211,7 +169,7 @@ def run_significance(
             "resulting_dims": resulting_dims(
                 spec, adata, n_lr_pairs=len(results["filtered_lr_pairs"])
             ),
-            "outputs": [relpath(p) for p in written_paths],
+            "outputs": [relpath(paths["lr"])],
         }
     )
     sidecar = write_metadata(paths["lr"], metadata, header=HEADER)
@@ -227,7 +185,6 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_dataset_argument(parser)
-    add_group_arguments(parser)
     parser.add_argument(
         "--reference-source",
         type=str,
@@ -292,9 +249,6 @@ def main(argv: list[str] | None = None) -> None:
         spec=spec,
         reference_source=args.reference_source,
         n_perms=args.n_perms,
-        group_column=args.group_column,
-        control_label=args.control_label,
-        other_label=args.other_label,
         communication_score=args.communication_score,
         complex_sep=args.complex_sep,
         complex_agg_method=args.complex_agg_method,

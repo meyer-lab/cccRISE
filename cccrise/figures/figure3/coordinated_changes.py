@@ -157,14 +157,22 @@ def coordinated_analysis() -> dict:
 def component_lr_scores(dataset: str, component: int) -> np.ndarray:
     """Each LR pair's per-condition raw communication score in a CP
     component's own sender/receiver context (conditions x LR pairs, in the
-    factors file's LR order).
+    factors file's LR order): each LR pair's slice of `communication_tensor`
+    weighted by the component's sender (B) and receiver (C) eigenstate
+    loadings and summed over eigenstates, so a pair is scored between the
+    same cells the component describes."""
+    factors = load_factors_netcdf(DATASETS[dataset].factors_path())
+    sender, receiver = (
+        factors[k].values[:, component - 1].astype(float) for k in ("cp_B", "cp_C")
+    )
+    return np.einsum("cijl,i,j->cl", communication_tensor(dataset), sender, receiver)
 
-    The raw tensor (condition x sender eigenstate x receiver eigenstate x LR
-    pair) is rebuilt from the saved RISE fit with the scoring the CP was fit
-    on, which reproduces the fit's R2X; each LR pair's slice is then weighted
-    by the component's sender (B) and receiver (C) eigenstate loadings and
-    summed over eigenstates, so a pair is scored between the same cells the
-    component describes."""
+
+@cache
+def communication_tensor(dataset: str) -> np.ndarray:
+    """The raw tensor (condition x sender eigenstate x receiver eigenstate x
+    LR pair, in the factors file's LR order), rebuilt from the saved RISE fit
+    with the scoring the CP was fit on, which reproduces the fit's R2X."""
     spec = DATASETS[dataset]
     factors = load_factors_netcdf(spec.factors_path())
     adata = load_rise_reference(spec.factors_path(), spec.load(), spec.condition_column)
@@ -174,10 +182,7 @@ def component_lr_scores(dataset: str, component: int) -> np.ndarray:
     order = pd.Index(lr_pairs["interaction_symbol"].astype(str)).get_indexer(
         factors["lr_pair"].values.astype(str)
     )
-    sender, receiver = (
-        factors[k].values[:, component - 1].astype(float) for k in ("cp_B", "cp_C")
-    )
-    return np.einsum("cijl,i,j->cl", np.asarray(tensor)[..., order], sender, receiver)
+    return np.asarray(tensor)[..., order]
 
 
 def column_associations(matrix: np.ndarray, adata: anndata.AnnData) -> pd.DataFrame:
