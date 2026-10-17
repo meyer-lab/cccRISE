@@ -5,6 +5,8 @@ from . import (
     celltype_association,
     coordinated_changes,
     lr_loadings,
+    lr_permutation,
+    lr_volcano,
     outcome_association,
     pacmaps,
     sender_receiver_scatter,
@@ -13,6 +15,7 @@ from . import (
 LAYOUT = [
     [outcome_association, celltype_association, sender_receiver_scatter],
     [lr_loadings, coordinated_changes],
+    [lr_permutation, lr_volcano],
     [pacmaps],
 ]
 
