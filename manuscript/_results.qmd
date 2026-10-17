@@ -37,7 +37,7 @@ This allows for the identification of specific cell subpopulations driving commu
 ({{< panel 2 aggregate-fms >}}) Aggregate FMS of RISE and CP factors across leave-one-patient-out jackknife (n = 45) and re-initialization (n = 47) replicates; bars show the 2.5th--97.5th percentiles.
 ({{< panel 2 cp-factor-matrices >}}) CP factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
 ({{< panel 2 permutation-lr-significance.1 >}}) Fraction of each LR pair's (n = 513) condition by sender by receiver entries exceeding a null of 1,000 within-sample cell permutations at p < 0.05.
-({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by fraction of entries signficant.
+({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by fraction of entries significant.
 ({{< panel 2 nichenet >}}) NicheNet ligand-activity AUROC of each ligand's curated downstream targets against genes ranked by differential expression between each component's top and bottom 10% of receiver cells; opaque points mark each component's top ligands.
 Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
 \*: q < 0.05, two-sided Mann--Whitney test of top against all other ligands, Benjamini--Hochberg corrected across components.

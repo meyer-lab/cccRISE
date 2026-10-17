@@ -553,8 +553,6 @@ def summarize_significance_lr(results: dict[str, Any]) -> pd.DataFrame:
     lr_df = results["filtered_lr_pairs"].copy()
 
     # Empirical z-scores per entry: (obs - null_mean) / max(null_std, 1e-3)
-    # TODO: ~92% of ALAD entries have null_std < 1e-3, so this floor, not the
-    # null, sets most z-scores; ~14% have null_std == 0.
     safe_stds = np.maximum(null_stds, 1e-3)
     z_scores = (observed - null_means) / safe_stds
 
