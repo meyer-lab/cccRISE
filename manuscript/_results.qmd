@@ -58,41 +58,79 @@ This was further evidenced by the non-uniform distribution of communication scor
 This interaction is consistent with the established role of mDCs in recruiting lymphocytes to initiate adaptive immunity, a process known to be critical in viral pathogenesis\ [@doi:10.1126/sciimmunol.adc9584; @doi:10.1093/infdis/jiac324; @doi:10.1016/j.cell.2023.09.008; @doi:10.1038/s41467-023-36333-2].
 Furthermore, the absence of CCL19-CCR7 interactions in non-relevant populations, such as macrophages and NK cells, confirmed that the CCC-RISE model correctly avoided an association with these cell types (Supplementary Fig. 1j--k).
 
-## CCC-RISE reveals severity-associated communication programs in COVID-19 at single-cell resolution
+## A coordinated immune communication axis is associated with ALAD outcomes
 
 ![](media/placeholder.svg){width="6.5in"}
 
-**Figure 3.
-Identification of communication components correlated with COVID-19 severity.** (a) Spearman correlation between CCC-RISE condition components and patient disease severity (ranked: healthy, moderate, severe).
-(b, c, g, h) PaCMAP embeddings of RISE projections visualizing single-cell heterogeneity.
-Cells are colored by their loadings for (b, g) sender and (c, h) receiver activity in (b-c) Component 3 and (g-h) Component 5.
-(d, e, i, j) Distribution of epithelial cell weights within (d, e) Component 3 and (i, j) Component 5, stratified by (d, i) sender and (e, j) receiver populations. (f) Average communication scores for the top five Ligand-Receptor (LR) pairs in Component 3, stratified by condition and cell weight.
-(k, n, o) Normalized communication scores for key interactions between top-weighted epithelial sender and receiver cells: (k, o) CDH1-CDH1 (Component 5) and (n) PTN-PTPRZ1 (Component 3 vs 5 comparison).
-(l, m) Comparison of Components 3 and 5, showing correlations between their (l) condition weights and (m) LR pair weights.
+**Figure 3. CCC-RISE identifies a coordinated immune signaling axis associated with ALAD outcomes.**
+(a) CP component 4 condition loadings stratified by six-month outcome---no CLAD (n=21), CLAD-recovered (n=12), CLAD (n=12), and died (n=2). Lines connect samples from the same patient.
+(b--c) Cell projections onto sender and receiver eigen-state factors, aggregated by annotated cell type.
+(d) CP component 4 LR pair loadings sorted by rank. Top 10 LR pairs by weight are labeled.
+(e) Difference in LR pair communication scores between CLAD/died patients and CLAD-free patients for observed and patient-permuted communication tensors ([placeholder test description]).
+(f) Ratio of LR pair communication scores in CLAD/died patients to CLAD-free patients against patient-permuted null p-value [placeholder test description].
+(g) ANOVA association strength of individual LR pair communication scores with six-month outcome.
+(h) Pairwise correlation among different groups of LR pairs. Expression-matched pairs have raw gene expression within [placeholder] of CP component 4 top 10 LR pairs. Other associated LR pairs were the top [placeholder] by six-month associated strength, excluding the component 4 top 10 pairs.
 
-Following the comparison against pseudobulk analysis, we sought to identify specific communication programs tracking with disease progression.
-We found that condition factors for Components 3, 5, and 8 exhibited the strongest correlation with COVID-19 severity (Fig. 3a).
-We first examined Component 3, which was predominantly driven by epithelial cells acting as both senders and receivers (Fig. 3b-c).
-Crucially, the sender and receiver weights were not uniformly distributed across the epithelial population; rather, they highlighted specific high-activity subpopulations, identifying the heterogeneity within this cell type (Fig. 3d-e).
-This subpopulation specificity was mirrored in the ligand-receptor usage: the top-weighted interactions---such as PTN-PTPRZ1, PTN-SDC1, COL4A5-SDC1, MDK-PTPRZ1, and MDK-SDC1---were not ubiquitously expressed but rather restricted to a fraction of epithelial cells (Supplementary Fig. 4a-c).
-Consequently, the highest communication scores were tightly localized to the cells most heavily weighted by the model (Fig. 3f).
-Normalized communication scores further confirmed that key signaling events were absent from the broader epithelial population (Supplementary Fig. 4d-f).
-Biologically, this implicates a distinct subset of cells in a pro-repair program, as PTN/MDK signaling via PTPRZ1/SDC receptors is known to reinforce tight junctions and support epithelial barrier integrity during host defense\ [@doi:10.1002/rmv.1792; @doi:10.3390/microorganisms13092176; @doi:10.3390/cancers15194850].
+Having demonstrated CCC-RISE's capacity to resolve subpopulation heterogeneity, we next determined if CCC-RISE components could stratify conditions.
+ANOVA between component condition weights and patient status variables revealed three outcomes significantly associated with CP component 4 patient weights after multiple-test correction: six-month outcome (four-way) and six-month and one-year deceased status (Fig. 3A, Supplemental Fig. 5a, c--e).
+The same test between RISE components and patient outcome yielded no significant associations.
+Inspection of the component 4 sender and receiver eigen-states revealed a signaling axis mediated by CD4+ T cells, CD8+ T cells, and natural killer (NK) cells (Fig. 3b--c).
+Unlike CP component 5, component 4 represented communication between cells acting as both senders and receivers simultaneously (Supplemental Fig. 5b).
+Component 4's top LR pairs were also more diffuse than component 5---top pairs consisted of markers of immune cell activation/exhaustion (GZMA--F2R, ADORA2A--ENTPD1, and NECTIN3--TIGIT), immune-activating chemokines and receptors (CCL4/CCL5--CCR4/CCR5 and CXCL13--CXCR3), and activating co-stimulatory ligands and receptors (CD70--CD27 and OX40L(TNFSF4)--OX40) (Fig. 2h, Fig. 3d).
+CP component 4 collectively represents an inflammatory communication within activated immune populations that is upregulated in CLAD-positive and deceased patients.
 
-Like Component 3, Component 5 was strongly linked to disease severity and dominated by epithelial sender and receiver populations (Fig. 3g-h).
-However, it represented a distinct communication axis.
-The cellular weights again revealed intra-type heterogeneity, with specific subsets of epithelial cells driving the signal rather than the population as a whole (Fig. 3i-j).
-The molecular drivers here were different, characterized by adherence and junctional interactions such as CDH1-CDH1, OCLN-OCLN, and PRSS3-F2RL1 (Supplementary Fig. 4g).
-Communication scores for these pairs were notably variable; CDH1-CDH1 and OCLN-OCLN showed greater abundance compared to PRSS3-F2RL1, consistent with their higher weighting in the model (Fig. 3k, Supplementary Fig. 4h-i).
+We went on to determine if the LR pairs contained within CP component 4 were especially predictive of ALAD outcome or if they were chosen by chance.....
 
-Despite both Component 3 and 5 being \"epithelial-specific,\" they described non-overlapping biological programs.
-They correlated with severity through distinct patient profiles (Fig. 3l) and utilized mutually exclusive sets of ligand-receptor pairs (Fig. 3m).
-This distinction extended to the cellular level (Fig. 3n-o).
-Cells heavily weighted in Component 3 showed strong PTN-PTPRZ1 communication but minimal involvement in Component 5\'s programs (Fig. 3n).
-Conversely, the CDH1-CDH1 signal was robust specifically within the epithelial subset defined by Component 5 (Fig. 3o).
 
-Finally, Component 8 also tracked with severity but displayed a broader connectivity pattern.
-While epithelial cells remained the primary senders, the signals---mediated largely by PTN-SDC3, PTN-SDC2, and PTN-SDC4 (Supplementary Fig. 4j)---were targeted toward a diverse array of receiver types, including B cells, mast cells, plasma cells, mDCs, and pDCs (Supplementary Fig. 4k--m).
+Given the limited sample size of the ALAD cohort, we validated our observed communication axis and associations with a suite of diverse tests of robustness.
+To this end, we first showed that no covariates shared significant association with any CP component 4-associated status (Supplemental Fig. 5g).
+Further, the association and its significance were robust to patient jackknife (Supplemental Fig. 6)
+We next applied scDiffCom's patient-permutation scheme to our communication tensor to determine if differences across conditions would be observed regardless of patient groups [source].
+Eight of the ten top LR pairs in component 4 had entries significantly larger in CLAD-positive/deceased patients than CLAD-free patients compared with patient-permuted nulls (Fig 3e--f).
+Last, we determined if the associations and biology described by component 4 were artifacts of our specific ligand--receptor interaction scoring methodology by comparing the CP factors constructed by different scoring methods [sources].
+The CP components yielded by different scoring methods generally aggred with CCC-RISE's LR product method (matched-component FMS/cosine similarities between 0.6 and 0.9), and poorly matched components were generally the result of a method describing an entirely different CCC program (Supplemental Fig. 7a).
+The alternate scoring methods shared the six-month outcome-associated component 4 and exhibited similar association strengths among other components (Supplemental Fig. 7b)
+Importantly, the other scoring methods generally captured LR biology similar to that of CCC-RISE, especially in components 3--5 (Supplemental Fig. 7c).
+Some scoring methods differed in sender or receiver populations, but never both.
+For example, where hill ageed entirely with CCC-RISE's product, mean and geometric mean (gmean) also identified T and NK cells as primary senders of immune-activating ligands, but implicated epithelial receiver cells instead of the same immune cells (Supplemental Fig. 7d).
+Overall, the six-month outcome-associated immune CCC program identified by CCC-RISE is robust to covariates, jackknife subsampling, patient permutation, and changes to communication scoring method.
+
+
+<!-- ## CCC-RISE reveals severity-associated communication programs in COVID-19 at single-cell resolution
+
+<!-- ![](media/placeholder.svg){width="6.5in"}
+
+<!-- **Figure 3.
+<!-- Identification of communication components correlated with COVID-19 severity.** (a) Spearman correlation between CCC-RISE condition components and patient disease severity (ranked: healthy, moderate, severe).
+<!-- (b, c, g, h) PaCMAP embeddings of RISE projections visualizing single-cell heterogeneity.
+<!-- Cells are colored by their loadings for (b, g) sender and (c, h) receiver activity in (b-c) Component 3 and (g-h) Component 5.
+<!-- (d, e, i, j) Distribution of epithelial cell weights within (d, e) Component 3 and (i, j) Component 5, stratified by (d, i) sender and (e, j) receiver populations. (f) Average communication scores for the top five Ligand-Receptor (LR) pairs in Component 3, stratified by condition and cell weight.
+<!-- (k, n, o) Normalized communication scores for key interactions between top-weighted epithelial sender and receiver cells: (k, o) CDH1-CDH1 (Component 5) and (n) PTN-PTPRZ1 (Component 3 vs 5 comparison).
+<!-- (l, m) Comparison of Components 3 and 5, showing correlations between their (l) condition weights and (m) LR pair weights.
+
+<!-- Following the comparison against pseudobulk analysis, we sought to identify specific communication programs tracking with disease progression.
+<!-- We found that condition factors for Components 3, 5, and 8 exhibited the strongest correlation with COVID-19 severity (Fig. 3a).
+<!-- We first examined Component 3, which was predominantly driven by epithelial cells acting as both senders and receivers (Fig. 3b-c).
+<!-- Crucially, the sender and receiver weights were not uniformly distributed across the epithelial population; rather, they highlighted specific high-activity subpopulations, identifying the heterogeneity within this cell type (Fig. 3d-e).
+<!-- This subpopulation specificity was mirrored in the ligand-receptor usage: the top-weighted interactions---such as PTN-PTPRZ1, PTN-SDC1, COL4A5-SDC1, MDK-PTPRZ1, and MDK-SDC1---were not ubiquitously expressed but rather restricted to a fraction of epithelial cells (Supplementary Fig. 4a-c).
+<!-- Consequently, the highest communication scores were tightly localized to the cells most heavily weighted by the model (Fig. 3f).
+<!-- Normalized communication scores further confirmed that key signaling events were absent from the broader epithelial population (Supplementary Fig. 4d-f).
+<!-- Biologically, this implicates a distinct subset of cells in a pro-repair program, as PTN/MDK signaling via PTPRZ1/SDC receptors is known to reinforce tight junctions and support epithelial barrier integrity during host defense\ [@doi:10.1002/rmv.1792; @doi:10.3390/microorganisms13092176; @doi:10.3390/cancers15194850].
+
+<!-- Like Component 3, Component 5 was strongly linked to disease severity and dominated by epithelial sender and receiver populations (Fig. 3g-h).
+<!-- However, it represented a distinct communication axis.
+<!-- The cellular weights again revealed intra-type heterogeneity, with specific subsets of epithelial cells driving the signal rather than the population as a whole (Fig. 3i-j).
+<!-- The molecular drivers here were different, characterized by adherence and junctional interactions such as CDH1-CDH1, OCLN-OCLN, and PRSS3-F2RL1 (Supplementary Fig. 4g).
+<!-- Communication scores for these pairs were notably variable; CDH1-CDH1 and OCLN-OCLN showed greater abundance compared to PRSS3-F2RL1, consistent with their higher weighting in the model (Fig. 3k, Supplementary Fig. 4h-i).
+
+<!-- Despite both Component 3 and 5 being \"epithelial-specific,\" they described non-overlapping biological programs.
+<!-- They correlated with severity through distinct patient profiles (Fig. 3l) and utilized mutually exclusive sets of ligand-receptor pairs (Fig. 3m).
+<!-- This distinction extended to the cellular level (Fig. 3n-o).
+<!-- Cells heavily weighted in Component 3 showed strong PTN-PTPRZ1 communication but minimal involvement in Component 5\'s programs (Fig. 3n).
+<!-- Conversely, the CDH1-CDH1 signal was robust specifically within the epithelial subset defined by Component 5 (Fig. 3o).
+
+<!-- Finally, Component 8 also tracked with severity but displayed a broader connectivity pattern.
+<!-- While epithelial cells remained the primary senders, the signals---mediated largely by PTN-SDC3, PTN-SDC2, and PTN-SDC4 (Supplementary Fig. 4j)---were targeted toward a diverse array of receiver types, including B cells, mast cells, plasma cells, mDCs, and pDCs (Supplementary Fig. 4k--m).-->
 
 ## Distinct CD4+ T cell and NK cell signaling programs define ALAD
 
