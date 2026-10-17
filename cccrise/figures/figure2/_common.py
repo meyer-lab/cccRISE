@@ -4,6 +4,7 @@ receiver subpopulations, the label-free sender and receiver groups its
 per-cell weights define, and their gene expression."""
 
 import functools
+from collections import Counter
 
 import anndata
 import numpy as np
@@ -30,8 +31,11 @@ DE_GROUPS = tuple(GROUP_COLORS)  # each tested against "rest"
 DOT_SIZE_MAX = 30  # pt^2, a gene detected in every cell of a group
 DOT_FRACTIONS = (0.25, 0.5, 1.0)  # size legend entries
 # Dot plot section names wider than this fraction of their genes' span are
-# abbreviated (`label_sections`), keeping neighbors apart
+# abbreviated (`label_sections`), keeping neighbors apart; one still within
+# SECTION_GAP font sizes of its left neighbor is raised a row, until clear
 SECTION_FILL = 0.9
+SECTION_GAP = 0.5
+SECTION_Y = 1.03  # axes fraction
 SECTION_ABBREVIATIONS = {
     "Macrophages": "Mac.",
     "Monocytes": "Mono.",
@@ -42,24 +46,112 @@ SECTION_ABBREVIATIONS = {
     "Epithelial cells": "Epithelial",
     "Proliferating cells": "Prolif.",
     "Pan-epithelial": "Pan-epi.",
-    "Secretory": "Secr.",
     "Top LR pairs": "LR pairs",
 }
-# Canonical markers of the annotated broad cell types, from the human lung
-# cell atlas (Travaglini et al. 2020, Nature), chosen to be specific within
-# these eight types (e.g. no pan-T genes shared by the CD4 and CD8 sets).
-# Only the gene names come from the literature; the annotations themselves
-# are not used.
-CELLTYPE_MARKERS = {
-    "Macrophages": ["MARCO", "FABP4", "C1QB", "CD68"],
-    "Monocytes": ["CD14", "FCN1", "VCAN", "S100A8"],
-    "Dendritic Cells": ["CD1C", "FCER1A", "CLEC10A"],
-    "CD4 T cells": ["CD4", "IL7R", "CD40LG"],
-    "CD8 T cells": ["CD8A", "CD8B", "GZMK"],
-    "NK cells": ["KLRF1", "NCAM1", "GNLY"],
-    "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "CDH1"],
-    "Proliferating cells": ["MKI67", "TOP2A"],
+# Markers of the epithelium against the whole integrated Human Lung Cell Atlas,
+# and each proliferating annotation's own markers, Sikkema et al. 2023 (Nat.
+# Med.), Supplementary Table 6 ("marker genes"), verbatim. Proliferating cells
+# are marked by the genes shared by MIN_PROLIFERATING_ANNOTATIONS of these
+# annotations, which span lineages (CENPW, MKI67).
+HLCA_EPITHELIUM_MARKERS = ["FXYD3", "EPCAM", "ELF3"]
+HLCA_PROLIFERATING_MARKERS = {
+    "AT2 proliferating": ["CENPW", "CDKN3", "BIRC5"],
+    "Alveolar Mph proliferating": ["TYMS", "CENPW", "MND1"],
+    "Lymphatic EC proliferating": ["MKI67", "TOP2A"],
+    "T cells proliferating": ["CENPW", "TK1", "MKI67"],
 }
+MIN_PROLIFERATING_ANNOTATIONS = 2
+# Canonical markers of the annotated broad cell types: the union of the
+# canonical markers of their subtypes in Travaglini et al. 2020 (Nature),
+# Supplementary Table 1 (CD16 as FCGR3A; "CD8" as CD8A/CD8B; MHCII, not one
+# gene, left out; the "CD8" listed for CD4+ Mem/Eff T cells taken as a typo).
+# The table has no pan-epithelial or proliferating set, so those two come from
+# the HLCA (below). Only the gene names come from the literature; the
+# annotations themselves are not used.
+CELLTYPE_MARKERS = {
+    "Epithelial cells": HLCA_EPITHELIUM_MARKERS,
+    "Macrophages": ["MARCO", "MSR1", "MRC1"],
+    "Monocytes": ["CD14", "FCGR3A"],
+    "Dendritic Cells": ["LILRB4", "IRF8"],
+    "CD4 T cells": ["CD4", "COTL1"],
+    "CD8 T cells": ["CD3E", "CD8A", "CD8B", "DUSP2", "GZMH", "GZMB"],
+    "NK cells": ["KLRD1", "NKG7", "TYROBP"],
+    "Proliferating cells": [
+        g
+        for g, n in Counter(
+            g for genes in HLCA_PROLIFERATING_MARKERS.values() for g in genes
+        ).items()
+        if n >= MIN_PROLIFERATING_ANNOTATIONS
+    ],
+}
+# Canonical markers of the epithelial subtypes in the same table, verbatim
+TRAVAGLINI_EPITHELIAL_MARKERS = {
+    "Club": ["CYP2F2", "SCGB3A2", "CCKAR"],
+    "Ciliated": ["FOXJ1", "TUBB1", "TP73", "CCDC78"],
+    "Basal": ["KRT5", "KRT14", "TP63", "DAPL1"],
+    "Goblet": ["MUC5B", "MUC5AC", "SPDEF"],
+    "Mucous": ["MUC5B"],
+    "Serous": ["PRR4", "LPO", "LTF"],
+    "Ionocyte": ["CFTR", "FOXI1", "ASCL3"],
+    "Neuroendocrine": ["CALCA", "CHGA", "ASCL1"],
+    "Tuft": ["DCLK1", "ASCL2"],
+    "AT1": ["AGER", "PDPN", "CLIC5"],
+    "AT2": ["SFTPB", "SFTPC", "SFTPD", "MUC1", "ETV5"],
+}
+# Markers of each epithelial annotation of the integrated Human Lung Cell Atlas,
+# Sikkema et al. 2023 (Nat. Med.), Supplementary Table 6 ("marker genes"),
+# verbatim: those separating the annotation from its parent lineage (the
+# table's lineage-level markers, e.g. EPCAM, left out). Its nasal-only
+# annotations are left out too: BAL samples the lower airways.
+HLCA_EPITHELIAL_MARKERS = {
+    "AT0": ["SFTPB", "SCGB3A2", "SFTA2"],
+    "AT1": ["CLIC5", "SPOCK2", "TIMP3"],
+    "AT2 proliferating": ["CENPW", "CDKN3", "BIRC5"],
+    "AT2": ["MFSD2A", "C8orf4", "C11orf96"],
+    "Basal resting": ["KRT15", "KRT17", "TP63"],
+    "Club (non-nasal)": ["CYP2F1", "SCGB3A1", "BPIFB1"],
+    "Deuterosomal": ["CDC20B", "KDELC2", "E2F7"],
+    "Goblet (bronchial)": ["GPX8", "ALDH1A3", "CEACAM5"],
+    "Goblet (subsegmental)": ["BPIFB1", "C16orf89", "NPDC1"],
+    "Hillock-like": ["DSG3", "RAB38", "TNS4"],
+    "Ionocyte": ["BSND", "IGF1", "CLCNKB"],
+    "Multiciliated (non-nasal)": ["RSPH1", "C20orf85", "C9orf24"],
+    "SMG duct": ["MGST1", "KRT19", "KLF5"],
+    "SMG mucous": ["BPIFB2", "MUC5B", "NKX3-1"],
+    "SMG serous (bronchial)": ["RP11-1143G9.4", "S100A1", "PRB3"],
+    "Suprabasal": ["KRT5", "SERPINB3"],
+    "Tuft": ["DAB1"],
+    "pre-TB secretory": ["SFTPB", "RNASE1", "SFTA1P"],
+}
+# The subtype each atlas annotation is pooled into; the rest keep their name.
+# SMG duct is left out (None): submucosal gland ducts are not expected in BAL,
+# and its MGST1 is detected in half the other cells. AT2 is left out too: its
+# one stratifying marker, MUC1, is also secretory, not alveolar-specific.
+SUBTYPE_SECTIONS = {
+    "Club": "Secretory",
+    "Goblet": "Secretory",
+    "Club (non-nasal)": "Secretory",
+    "Goblet (bronchial)": "Secretory",
+    "Goblet (subsegmental)": "Secretory",
+    "Basal resting": "Basal",
+    "Suprabasal": "Basal",
+    "Multiciliated (non-nasal)": "Ciliated",
+    "SMG mucous": "Mucous",
+    "SMG serous (bronchial)": "Serous",
+    "SMG duct": None,
+    "AT2": None,
+    "AT2 proliferating": None,
+}
+# Both atlases' markers, pooled per subtype, Fig. 2N's sections first in order
+EPITHELIAL_SUBTYPE_MARKERS: dict[str, list[str]] = {
+    s: [] for s in ("Ciliated", "Secretory", "Basal")
+}
+for _name, _genes in [
+    *TRAVAGLINI_EPITHELIAL_MARKERS.items(),
+    *HLCA_EPITHELIAL_MARKERS.items(),
+]:
+    if (_section := SUBTYPE_SECTIONS.get(_name, _name)) is not None:
+        EPITHELIAL_SUBTYPE_MARKERS.setdefault(_section, []).extend(_genes)
 
 
 def component_weights() -> tuple[np.ndarray, np.ndarray]:
@@ -112,9 +204,9 @@ def cell_groups() -> pd.Series:
 
 @functools.cache
 def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFrame]:
-    """{group: Wilcoxon score and BH q per gene, highest score first} of each
-    of `groups` against `reference`. Only the scores and q are used: scanpy's
-    fold changes assume natural-log data."""
+    """{group: Wilcoxon score, p, and BH q per gene, highest score first} of each
+    of `groups` against `reference`. scanpy's fold changes are left out: they
+    assume natural-log data."""
     adata = common.get_cell_projections(GRANULARITY_DATASET)
     test = anndata.AnnData(
         X=adata.X,
@@ -122,12 +214,20 @@ def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFram
         var=pd.DataFrame(index=adata.var_names),
     )
     sc.tl.rank_genes_groups(
-        test, "group", groups=list(groups), reference=reference, method="wilcoxon"
+        test,
+        "group",
+        groups=list(groups),
+        reference=reference,
+        method="wilcoxon",
     )
     result = test.uns["rank_genes_groups"]
     return {
         g: pd.DataFrame(
-            {"score": result["scores"][g], "q": result["pvals_adj"][g]},
+            {
+                "score": result["scores"][g],
+                "p": result["pvals"][g],
+                "q": result["pvals_adj"][g],
+            },
             index=result["names"][g],
         )
         for g in groups
@@ -167,10 +267,10 @@ def plot_dotplot(
     `fontsize` (default `FACTOR_LABEL_FONT_SIZE`). With `show_legend`, the colorbar and size legend beside it.
     Returns the dots."""
     fontsize = fontsize or common.FACTOR_LABEL_FONT_SIZE
-    columns = label_sections(ax, sections, fontsize)
-    detected, mean = group_expression(list(columns))
+    genes = label_sections(ax, sections, fontsize)
+    detected, mean = (stat.loc[genes] for stat in group_expression(present(genes)))
     relative = mean / mean.max(axis=1).to_numpy()[:, None]
-    x, y = np.meshgrid(list(columns.values()), np.arange(len(GROUPS)), indexing="ij")
+    x, y = np.meshgrid(np.arange(len(genes)), np.arange(len(GROUPS)), indexing="ij")
     points = ax.scatter(
         x.ravel(),
         y.ravel(),
@@ -208,12 +308,12 @@ def plot_markers(ax, markers: dict[str, list[str]], **kwargs):
     )
 
 
-def label_sections(
-    ax, sections: dict[str, list[str]], fontsize: float
-) -> dict[str, int]:
+def label_sections(ax, sections: dict[str, list[str]], fontsize: float) -> list[str]:
     """Gene tick labels along x at 45 degrees, each section's name above its
-    genes (its `SECTION_ABBREVIATIONS` entry if the name would overrun them)
-    and thin lines between sections, all `fontsize`; returns {gene: column}."""
+    genes (its `SECTION_ABBREVIATIONS` entry if the name would overrun them,
+    on the lowest row where it would not crowd its left neighbor) and thin lines between
+    sections, all `fontsize`; returns the genes, one per column (a gene in two
+    sections in both)."""
     genes = [g for section in sections.values() for g in section]
     ax.set_xticks(
         range(len(genes)),
@@ -227,12 +327,13 @@ def label_sections(
     ax.tick_params(length=0)
     renderer = ax.figure.canvas.get_renderer()
     column_width = ax.bbox.width / len(genes)
-    columns, start = {}, 0
+    gap = SECTION_GAP * fontsize / 72 * ax.figure.dpi
+    start, row_ends = 0, []  # right edge of the last name on each row
     for name, section in sections.items():
         end = start + len(section)
         text = ax.text(
             (start + end - 1) / 2,
-            1.03,
+            SECTION_Y,
             name,
             transform=ax.get_xaxis_transform(),
             ha="center",
@@ -244,11 +345,16 @@ def label_sections(
             > SECTION_FILL * len(section) * column_width
         ):
             text.set_text(SECTION_ABBREVIATIONS.get(name, name))
+        extent = text.get_window_extent(renderer)
+        row = next(
+            (i for i, e in enumerate(row_ends) if extent.x0 >= e + gap), len(row_ends)
+        )
+        row_ends[row : row + 1] = [extent.x1]  # appends a new row
+        text.set_y(SECTION_Y + row * extent.height / ax.bbox.height)
         if end < len(genes):
             ax.axvline(end - 0.5, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN)
-        columns |= {gene: start + i for i, gene in enumerate(section)}
         start = end
-    return columns
+    return genes
 
 
 def plot_weight_scatter(
