@@ -573,10 +573,7 @@ def stability_fit(
     other_label: str | None = None,
 ) -> dict[str, Any]:
     """`fit_stability_pipeline`'s result, from a RISE-fit `adata` and a
-    `ccc_rise.fit_ccc_cp` / `run_ccc_rise_workflow` result.
-
-    Lets a caller that shares one RISE fit across several CP fits (e.g.
-    `run_alt_comm_score`) build each CP fit's stability reference. With
+    `ccc_rise.fit_ccc_cp` / `run_ccc_rise_workflow` result. With
     `group_column`, also carries the fit's `anova_data` and its per-component
     `component_anova` table ('anova_data' and 'anova' are None otherwise).
     """

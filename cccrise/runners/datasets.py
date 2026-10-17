@@ -53,20 +53,14 @@ def scoring_output_dir(communication_score: str, default_dir: Path) -> Path:
     return comparison_output_dir(communication_score)
 
 
-#: The one provenance file `run_alt_comm_score` leaves in each
-#: `comparison_output_dir`, consolidated from its outputs' sidecars.
-COMPARISON_PROVENANCE_FILENAME = "provenance.yaml"
-
-
 def comparison_output_dir(communication_score: str) -> Path:
     """Where `run_alt_comm_score` writes one method's results.
 
     Unlike `scoring_output_dir`, this never collapses to the canonical
     directory for the default score: comparing scoring methods fairly means
-    running all of them -- default included -- at the same
-    (comparison-scale) settings, and that copy of the default's results must
-    not collide with its comprehensive, canonical copy that manuscript
-    figures read.
+    running all of them -- default included -- on one shared RISE fit, and
+    that copy of the default's results must not collide with its canonical
+    copy that manuscript figures read.
     """
     return ALT_SCORE_METHODS_DIR / communication_score
 

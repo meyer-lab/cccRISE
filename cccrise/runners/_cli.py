@@ -24,8 +24,8 @@ RISE_TOL = 1e-8
 CP_TOL = 1e-12
 RISE_N_ITER_MAX = 300
 CP_N_ITER_MAX = 4000
-#: Every replicate-type runner (stability, alt-score comparison, rank sweeps) fits
-#: RISE and CP compressed (significance loads its RISE fit); the core runner never does.
+#: Every replicate-type runner (stability, rank sweeps) fits RISE and CP compressed
+#: (significance loads its RISE fit); the core and alt-score runners never do.
 REPLICATE_COMPRESS = True
 
 
