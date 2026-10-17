@@ -11,6 +11,7 @@ Benjamini-Yekutieli, Bonferroni, Holm) and batch execution of multiple associati
 specifications on saved decomposition factors (e.g. `bal_alad_factors.nc`).
 """
 
+import copy
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, cast
@@ -429,6 +430,14 @@ def _resolve_factors_and_metadata(
     return factors_adata, cond_col, grp_col
 
 
+def read_depth_corrected(adata: anndata.AnnData) -> anndata.AnnData:
+    """A shallow copy of `adata` with `uns["A"]` read-depth corrected
+    (`utils.correct_conditions`)."""
+    corrected = copy.copy(adata)
+    corrected.uns = {**adata.uns, "A": correct_conditions(adata)}
+    return corrected
+
+
 def run_saved_factors_anova(
     factors: str | Path | xr.Dataset | anndata.AnnData,
     adata: anndata.AnnData | None = None,
@@ -442,6 +451,7 @@ def run_saved_factors_anova(
     alpha: float = 0.05,
     correction: str | None = "fdr_bh",
     association_name: str | None = None,
+    read_depth_correct: bool = True,
 ) -> pd.DataFrame:
     """Run one-way ANOVA on a saved factors dataset (e.g. bal_alad_factors.nc).
 
@@ -470,6 +480,11 @@ def run_saved_factors_anova(
         Multiple testing correction method: "fdr_bh", "bonferroni", "holm", or None.
     association_name : str, optional
         Optional name to record in an 'Association' column.
+    read_depth_correct : bool, default=True
+        Test the read-depth-corrected condition loadings
+        (`utils.correct_conditions`), as `prepare_anova_inputs` does; needs
+        the single-cell data in `X`. False tests `uns["A"]` as is, for
+        matrices that are not component loadings.
 
     Returns
     -------
@@ -483,6 +498,8 @@ def run_saved_factors_anova(
         condition_column=condition_column,
         group_column=group_column,
     )
+    if read_depth_correct:
+        factors_adata = read_depth_corrected(factors_adata)
 
     if sample_to_group is None:
         target_grp_col = group_column or grp_col
@@ -521,6 +538,7 @@ def run_multiple_factors_anova(
     alpha: float = 0.05,
     correction: str | None = "fdr_bh",
     global_correction: bool = False,
+    read_depth_correct: bool = True,
 ) -> pd.DataFrame:
     """Run multiple ANOVA phenotype association tests on a saved factors dataset.
 
@@ -544,6 +562,8 @@ def run_multiple_factors_anova(
     global_correction : bool, default=False
         If True, applies multiple hypothesis testing correction across all
         associations and components simultaneously.
+    read_depth_correct : bool, default=True
+        See `run_saved_factors_anova`.
 
     Returns
     -------
@@ -555,6 +575,8 @@ def run_multiple_factors_anova(
         adata=adata,
         condition_column=condition_column,
     )
+    if read_depth_correct:
+        factors_adata = read_depth_corrected(factors_adata)
 
     dfs: list[pd.DataFrame] = []
     for item in associations:

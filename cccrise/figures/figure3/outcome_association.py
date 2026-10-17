@@ -16,8 +16,6 @@ def plot_outcome_weights(ax, association: str, component: int) -> None:
     """CP `component`'s condition loadings per level of `association`, with
     its ANOVA statistics from `S.association_table`. Sample counts are left
     to the caption."""
-    # TODO: plots read-depth-corrected loadings, but `S.association_table`
-    # tests the uncorrected cp_A, so the boxes are not what was tested.
     spec = S.association(association)
     table = S.association_table()
     common.plot_category_component_weights(

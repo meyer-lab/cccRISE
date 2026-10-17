@@ -5,6 +5,8 @@ from ... import common
 from ..outcome_association import plot_outcome_weights
 
 #: (association, CP component) pairs significant after FDR correction
+# TODO: 1-Year Died vs. Alive, comp 5 is no longer significant (PAdj 0.75)
+# with read-depth-corrected loadings; decide whether to keep this panel.
 TESTS = (
     ("6-Month Died vs. Alive", 4),
     ("1-Year Died vs. Alive", 4),
