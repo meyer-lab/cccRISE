@@ -108,7 +108,6 @@ def run_stability(
     hill_k: float = 0.5,
     random_state: int = 42,
     output_path: Path | None = None,
-    reference: dict[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score per-component RISE, CPD and ANOVA stability at fixed ranks.
 
@@ -145,12 +144,6 @@ def run_stability(
         `VALIDATION_DIR` for `communication_score="expression_product"`, or
         `comparison_output_dir(communication_score)`
         (under `validation_results/alt_score_methods/`) for any other score.
-    reference : dict[str, Any], optional
-        A full-cohort fit already built with this call's settings (including
-        the resolved group labels), as `fit_stability_pipeline` returns,
-        and already relabeled to
-        `core_numbering_reference`; fit here when None. Lets
-        `run_alt_comm_score` share one RISE fit between scores.
 
     Returns
     -------
@@ -206,17 +199,14 @@ def run_stability(
     } | anova_kwargs
 
     core = core_numbering_reference(spec, rise_rank, cp_rank)
-    if reference is None:
-        print("2. Fitting the reference model on the full cohort...")
-        reference = fit_stability_pipeline(
-            adata.copy(),
-            lr_pairs,
-            **fit_kwargs,
-            random_state=random_state,
-            numbering_reference=core,
-        )
-    else:
-        print("2. Using the supplied full-cohort reference fit...")
+    print("2. Fitting the reference model on the full cohort...")
+    reference = fit_stability_pipeline(
+        adata.copy(),
+        lr_pairs,
+        **fit_kwargs,
+        random_state=random_state,
+        numbering_reference=core,
+    )
     assert reference["anova"] is not None
     tensor_shape = tuple(int(f.shape[0]) for f in reference["cp_factors"])
     print(f"   Interaction tensor shape: {tensor_shape}")

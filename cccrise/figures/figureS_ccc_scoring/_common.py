@@ -20,12 +20,11 @@ from matplotlib.patches import Patch
 from ...factors import load_factors_netcdf, load_factors_to_anndata
 from ...runners.datasets import (
     COMMUNICATION_SCORES,
-    COMPARISON_PROVENANCE_FILENAME,
     DATASETS,
     DEFAULT_COMMUNICATION_SCORE,
     comparison_output_dir,
 )
-from ...runners.provenance import read_metadata_at
+from ...runners.provenance import read_metadata
 from ...validation.stability import align_to_reference_components
 from .. import common, style
 
@@ -110,13 +109,9 @@ def load_method_output(filename: str, method: str) -> pd.DataFrame:
     )
 
 
-def default_provenance(section: str, key: str) -> Any:
-    """`key` from `section` of the default score's consolidated provenance,
-    where fields shared across sections are hoisted to the top level."""
-    meta = read_metadata_at(
-        comparison_output_dir(DEFAULT_SCORE) / COMPARISON_PROVENANCE_FILENAME
-    )
-    return meta[key] if key in meta else meta[section][key]
+def default_provenance(filename: str, key: str) -> Any:
+    """`key` from the provenance sidecar of the default score's `filename`."""
+    return read_metadata(comparison_output_dir(DEFAULT_SCORE) / filename)[key]
 
 
 def method_legend(fig) -> None:
