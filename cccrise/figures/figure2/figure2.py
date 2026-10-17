@@ -17,7 +17,7 @@ LAYOUT = [
     [rise_rank_selection, cp_rank_selection, aggregate_fms],
     [cp_factor_matrices],
     [permutation_lr_significance, nichenet],
-    [sender_receiver_strata, [celltype_composition, epithelial_markers]],
+    [sender_receiver_strata, [epithelial_markers, celltype_composition]],
 ]
 
 

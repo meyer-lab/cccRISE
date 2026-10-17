@@ -3,30 +3,36 @@ title: "Supplemental Information"
 subtitle: "Resolving cell-cell communication programs beyond cell-type boundaries across conditions"
 ---
 
-![](figures/figureS_cmp_stability/figureS_cmp_stability.svg){width="6.5in"}
+![](figures/figureS_alad_cohort/figureS_alad_cohort.svg){width="6.5in"}
 
-**Figure S1.**
-({{< panel cmp-stability rise-fms >}}) RISE gene factor stability and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor stability across component-matched leave-one-patient-out jackknife replicates.
-({{< panel cmp-stability fms-histograms >}}) Distributions of RISE component 3 and CP components 2 FMS across jackknife replicates.
+**Figure S1. ALAD cohort and cell type composition.**
+({{< panel alad-cohort cohort >}}) ALAD cohort of 47 BAL samples from 45 lung transplant recipients: 17 stable controls and 30 with ALAD, of whom 17 declined and 13 recovered.
+({{< panel alad-cohort celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control (n = 17), declined ALAD (n = 17), and recovered ALAD (n = 13) samples, on a square-root scale.
+Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
+q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
 
 ![](figures/figureS_rise_factor_matrices/figureS_rise_factor_matrices.svg){width="6.5in"}
 
-**Figure S2.**
-({{< panel rise-factor-matrices factors >}}) RISE factor matrices representing ({{< panel rise-factor-matrices factors.1 >}}) condition and ({{< panel rise-factor-matrices genes >}}) gene loadings. For visualization, genes outside the top 10% by weight in any component are filtered and each component is normalized to its largest absolute loading.
+**Figure S2. RISE factor matrices.**
+({{< panel rise-factor-matrices factors >}}) RISE factor matrices representing component loadings of conditions and genes.
+For visualization, genes outside the top 10% by weight in any component are omitted and each component is normalized to its largest absolute loading.
 
-![](figures/figureS_significance/figureS_significance.svg){width="6.5in"}
+![](figures/figureS_cmp_stability/figureS_cmp_stability.svg){width="6.5in"}
 
-**Figure S3.**
-Difference in mean communication score between ALAD and control patients for each sender eigen-state--receiver eigen-state--LR pair entry against their patient-permutation p-values.
-Differences beyond the 99.8th percentile of magnitudes are drawn as arrowheads at the axis limits.
+**Figure S3. Stability of RISE and CP components.**
+({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45).
+Each replicate's components matched to the reference's by the one-to-one assignment maximizing total FMS (Hungarian algorithm).
+Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
+({{< panel cmp-stability fms-histograms >}}) Distributions of RISE component 3 and CP component 2 FMS across jackknife replicates.
 
 ![](figures/figureS_cmp5_identity/figureS_cmp5_identity.svg){width="6.5in"}
 
-**Figure S4.**
+**Figure S4. CP component 5 sender and receiver cell identity.**
 ({{< panel cmp5-identity eigenstate-scatter >}}) Per-cell projection onto the eigen-states most heavily weighted by component 5's sender (eigen-state 17) and receiver (eigen-state 15) factors.
 ({{< panel cmp5-identity cmp-eigenstate-loadings >}}) Component 5 sender and receiver eigen-state loadings.
-({{< panel cmp5-identity celltype-markers >}}) Expression of canonical marker genes for all annotated cell types in component 5 sender/receiver groups and all other cells. Markers are curated from Travaglini et al. [source].
-({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Wilcoxon q between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells, labeling ({{< panel cmp5-identity group-vs-rest >}}) canonical epithelial markers and ({{< panel cmp5-identity sender-vs-receiver >}}) canonical ciliated, secretory, and alveolar epithelial cell markers.
+({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell type markers\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2] in component 5's sender/receiver groups and all other cells.
+({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Wilcoxon rank-sum q (Benjamini--Hochberg corrected across all genes) between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and all other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and all other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells.
+Labeled are ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial markers and ({{< panel cmp5-identity sender-vs-receiver >}}) epithelium-specific genes selected from those differentially expressed between the groups.
 
 <!-- Legacy Supplemental Captions
 

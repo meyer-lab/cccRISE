@@ -1,26 +1,50 @@
 """Label-free identity of the granularity component's sender and receiver
-groups: canonical pan-epithelial markers (`S.CELLTYPE_MARKERS`) and airway
-epithelial subtype markers (`SUBTYPE_MARKERS`, from the same atlas), and the genes of the component's top LR pairs, per group."""
+groups: canonical pan-epithelial markers (`S.CELLTYPE_MARKERS`), the
+epithelial subtype markers of two lung atlases (`S.EPITHELIAL_SUBTYPE_MARKERS`)
+that stratify sender from receiver (`stratifying_markers`), and the genes of
+the component's top LR pairs, per group."""
 
-from .. import common, style
+import numpy as np
+import pandas as pd
+from scipy.stats import false_discovery_control
+
+from .. import common
 from . import _common as S
 
-# Differentially expressed markers
-SUBTYPE_MARKERS = {
-    "Ciliated": ["C20orf85", "RSPH1", "SNTN", "TPPP3", "CCDC146", "CDHR3"],
-    "Secretory": ["CXCL17", "SERPINB3", "KRT19"],
-    "Alveolar": ["KRT7"],
-}
 AXES = ("strip",)
+# Least sender - receiver difference in the fraction of cells detecting a
+# marker shown, leaving out significant differences of a handful of cells
+MIN_DETECTED_DIFFERENCE = 0.2
 
 
 def plot(axs):
     S.plot_markers(
         axs[0],
-        SUBTYPE_MARKERS | {"Top LR pairs": S.top_pair_genes()},
+        # {"Pan-epithelial": S.CELLTYPE_MARKERS["Epithelial cells"]} |
+        stratifying_markers() | {"Top LR pairs": S.top_pair_genes()},
         show_legend=True,
-        fontsize=style.FONT_SIZE_TICK,  # as the group labels
     )
+
+
+def stratifying_markers() -> dict[str, list[str]]:
+    """{subtype: its markers whose sender vs. receiver Wilcoxon p, BH-adjusted
+    over every subtype marker in the fit's gene set alone (the pre-specified
+    hypotheses, not the genome), is below `SIG_ALPHA` and whose detected
+    fractions differ by `MIN_DETECTED_DIFFERENCE`}, subtypes without one left
+    out."""
+    candidates = {
+        name: S.present(genes) for name, genes in S.EPITHELIAL_SUBTYPE_MARKERS.items()
+    }
+    tested = S.present(g for genes in candidates.values() for g in genes)
+    p = S.rank_genes(("sender",), "receiver")["sender"].loc[tested, "p"]
+    detected, _ = S.group_expression(tested)
+    kept = (pd.Series(false_discovery_control(p), index=tested) < common.SIG_ALPHA) & (
+        np.abs(detected["sender"] - detected["receiver"]) >= MIN_DETECTED_DIFFERENCE
+    )
+    selected = {
+        name: [g for g in genes if kept[g]] for name, genes in candidates.items()
+    }
+    return {name: genes for name, genes in selected.items() if genes}
 
 
 def makeFigure():

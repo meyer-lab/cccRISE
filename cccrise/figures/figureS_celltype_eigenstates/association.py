@@ -7,10 +7,10 @@ import anndata
 import numpy as np
 from matplotlib import pyplot as plt
 
-from ....runners.datasets import DATASETS
-from ....utils import celltype_component_association
-from ... import common, style
-from .. import _common as S
+from ...runners.datasets import DATASETS
+from ...utils import celltype_component_association
+from .. import common, style
+from ..figure2 import _common as S
 
 
 def plot(fig):
