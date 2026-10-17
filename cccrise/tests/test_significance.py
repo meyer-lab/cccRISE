@@ -7,6 +7,7 @@ from pathlib import Path
 import anndata
 import numpy as np
 import pandas as pd
+import pytest
 
 from cccrise.ccc_rise import fit_rise
 from cccrise.factors import save_ccc_rise_fit
@@ -14,9 +15,11 @@ from cccrise.import_data import add_cond_idxs
 from cccrise.runners.datasets import DatasetSpec
 from cccrise.runners.run_significance import build_parser, output_paths
 from cccrise.validation.significance import (
+    compute_communication_significance,
     fit_significance_pipeline,
+    patient_block_permutations,
+    patient_permutation_differential,
     significance_to_xarray,
-    summarize_significance_differential,
     summarize_significance_lr,
     summarize_significance_overview,
 )
@@ -66,15 +69,10 @@ def _synthetic_cohort_for_significance(
     samples = [
         f"Sample_{i}" for i in range(n_conditions) for _ in range(cells_per_cond)
     ]
-    groups = [
-        "Control" if i < n_conditions // 2 else "Disease"
-        for i in range(n_conditions)
-        for _ in range(cells_per_cond)
-    ]
     gene_names = [f"Gene_{i}" for i in range(n_genes)]
     adata = anndata.AnnData(
         X=X,
-        obs=pd.DataFrame({"sample": samples, "status": groups}),
+        obs=pd.DataFrame({"sample": samples}),
         var=pd.DataFrame(index=gene_names),
     )
     adata.var["means"] = np.asarray(X.mean(axis=0)).ravel()
@@ -102,9 +100,6 @@ def test_fit_significance_pipeline_end_to_end(tmp_path):
         reference_path=reference_path,
         lr_pairs=lr_pairs,
         n_perms=n_perms,
-        group_column="status",
-        control_label="Control",
-        other_label="Disease",
         random_state=42,
         validate=True,
     )
@@ -121,13 +116,6 @@ def test_fit_significance_pipeline_end_to_end(tmp_path):
     assert np.all(results["pvalue_tensor"] <= 1.0)
     assert np.all(results["null_std_tensor"] >= 0.0)
 
-    # Check differential outputs
-    assert results["diff_observed"] is not None
-    assert results["diff_observed"].shape == (rise_rank, rise_rank, n_lr)
-    assert results["diff_pvalue"].shape == (rise_rank, rise_rank, n_lr)
-    assert np.all(results["diff_pvalue"] >= 0.0)
-    assert np.all(results["diff_pvalue"] <= 1.0)
-
 
 def test_summaries_and_xarray_conversion(tmp_path):
     adata, lr_pairs = _synthetic_cohort_for_significance()
@@ -139,9 +127,6 @@ def test_summaries_and_xarray_conversion(tmp_path):
         reference_path=reference_path,
         lr_pairs=lr_pairs,
         n_perms=10,
-        group_column="status",
-        control_label="Control",
-        other_label="Disease",
         random_state=42,
     )
 
@@ -152,17 +137,8 @@ def test_summaries_and_xarray_conversion(tmp_path):
     assert "MeanObserved" in lr_df.columns
     assert "MeanZScore" in lr_df.columns
     assert "FractionSignificant_p05" in lr_df.columns
-    assert "FractionDiffSignificant_p05" in lr_df.columns
 
-    # 2. Differential summary
-    diff_df = summarize_significance_differential(results)
-    assert isinstance(diff_df, pd.DataFrame)
-    assert len(diff_df) == 2 * 2 * len(results["filtered_lr_pairs"])
-    assert "ObservedDiff" in diff_df.columns
-    assert "PValue" in diff_df.columns
-    assert "ZScore" in diff_df.columns
-
-    # 3. Overview summary
+    # 2. Overview summary
     overview_df = summarize_significance_overview(results)
     assert isinstance(overview_df, pd.DataFrame)
     assert overview_df["TotalEntries"].iloc[0] == 6 * 2 * 2 * len(
@@ -171,11 +147,10 @@ def test_summaries_and_xarray_conversion(tmp_path):
     assert "FractionSignificant_p05" in overview_df.columns
     assert "MedianZScore" in overview_df.columns
 
-    # 4. xarray conversion
+    # 3. xarray conversion
     ds = significance_to_xarray(results)
     assert "observed_communication" in ds.data_vars
     assert "pvalue" in ds.data_vars
-    assert "diff_observed" in ds.data_vars
     assert ds.sizes["condition"] == 6
     assert ds.sizes["sender_rise"] == 2
     assert ds.sizes["receiver_rise"] == 2
@@ -210,9 +185,127 @@ def test_runner_cli_parser_and_paths():
     )
     paths = output_paths(dummy_spec, Path("/tmp"))
     assert "lr" in paths
-    assert "differential" in paths
     assert "tensor" not in paths
     assert str(paths["lr"]).endswith("significance_lr_test_cohort.parquet")
-    assert str(paths["differential"]).endswith(
-        "significance_differential_test_cohort.parquet"
+
+
+def test_patient_block_permutations_keep_patients_together():
+    patients = np.array(["a", "b", "c", "c", "d", "e", "e"])
+    perms = patient_block_permutations(patients, n_perms=50, random_state=0)
+    for perm in perms:
+        assert sorted(perm) == list(range(len(patients)))
+        # Each multi-sample patient's slots receive one whole block
+        for slots in ([2, 3], [5, 6]):
+            assert sorted(perm[slots]) in ([2, 3], [5, 6])
+    assert len({tuple(p) for p in perms}) > 1
+
+
+def test_patient_permutation_differential_matches_group_means():
+    rng = np.random.default_rng(0)
+    scores = rng.normal(size=(8, 3))
+    case = np.array([1, 1, 1, 0, 0, 0, 0, 0], dtype=bool)
+    observed, null = patient_permutation_differential(
+        scores, case, np.arange(8).astype(str), n_perms=20
     )
+    assert np.allclose(observed, scores[case].mean(0) - scores[~case].mean(0))
+    assert null.shape == (20, 3)
+
+
+@pytest.mark.parametrize(
+    "communication_score",
+    ["expression_product", "expression_mean", "expression_gmean", "expression_hill"],
+)
+def test_compute_communication_significance_works_across_scoring_strategies(
+    communication_score,
+):
+    rng = np.random.default_rng(0)
+    n_genes = 4
+    gene_names = ["L1", "R1", "L2", "R2"]
+    lr_pairs = pd.DataFrame(
+        {
+            "ligand": ["L1", "L2"],
+            "receptor": ["R1", "R2"],
+            "interaction_symbol": ["L1^R1", "L2^R2"],
+        }
+    )
+
+    n_cells_per_cond = 12
+    rank = 3
+    X_list = [rng.uniform(0.0, 5.0, size=(n_cells_per_cond, n_genes)) for _ in range(2)]
+    projections = []
+    for _ in range(2):
+        raw = rng.normal(size=(n_cells_per_cond, rank))
+        q, _ = np.linalg.qr(raw)
+        projections.append(q[:, :rank])
+
+    (
+        interaction_tensor,
+        pvalue_tensor,
+        null_mean_tensor,
+        null_std_tensor,
+        filtered_lr_pairs,
+    ) = compute_communication_significance(
+        X_list=X_list,
+        projections=projections,
+        gene_names=gene_names,
+        lr_pairs=lr_pairs,
+        n_perms=25,
+        random_state=0,
+        communication_score=communication_score,
+        validate=True,
+    )
+
+    n_lr = len(filtered_lr_pairs)
+    expected_shape = (2, rank, rank, n_lr)
+    assert interaction_tensor.shape == expected_shape
+    assert pvalue_tensor.shape == expected_shape
+    assert null_mean_tensor.shape == expected_shape
+    assert null_std_tensor.shape == expected_shape
+
+    assert np.all(pvalue_tensor >= 0.0) and np.all(pvalue_tensor <= 1.0)
+    assert np.all(np.isfinite(null_mean_tensor))
+    assert np.all(null_std_tensor >= 0.0)
+
+    if communication_score in ("expression_gmean", "expression_hill"):
+        assert np.all(interaction_tensor >= 0.0)
+    if communication_score == "expression_hill":
+        assert np.all(interaction_tensor < 1.0)
+
+
+def test_compute_communication_significance_gene_means_keeps_tensor_nonnegative():
+    # Raw (uncentered) expression projected through a signed projection can
+    # itself be negative; gene_means should recenter and clip it, just like
+    # calc_communication_score, so the null model stays sign-safe (#139).
+    rng = np.random.default_rng(1)
+    n_genes = 4
+    gene_names = ["L1", "R1", "L2", "R2"]
+    lr_pairs = pd.DataFrame(
+        {
+            "ligand": ["L1", "L2"],
+            "receptor": ["R1", "R2"],
+            "interaction_symbol": ["L1^R1", "L2^R2"],
+        }
+    )
+    n_cells_per_cond = 10
+    rank = 2
+    X_list = [rng.uniform(0.0, 5.0, size=(n_cells_per_cond, n_genes)) for _ in range(2)]
+    gene_means = X_list[0].mean(axis=0)
+    projections = []
+    for _ in range(2):
+        raw = rng.normal(size=(n_cells_per_cond, rank))
+        q, _ = np.linalg.qr(raw)
+        projections.append(q[:, :rank])
+
+    interaction_tensor, pvalue_tensor, _, _, _ = compute_communication_significance(
+        X_list=X_list,
+        projections=projections,
+        gene_names=gene_names,
+        lr_pairs=lr_pairs,
+        n_perms=10,
+        random_state=1,
+        gene_means=gene_means,
+        validate=True,
+    )
+
+    assert np.all(interaction_tensor >= 0.0)
+    assert np.all(pvalue_tensor >= 0.0) and np.all(pvalue_tensor <= 1.0)

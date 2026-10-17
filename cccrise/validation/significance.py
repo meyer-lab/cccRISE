@@ -2,12 +2,14 @@
 Statistical significance testing and summarization utilities for CCC-RISE.
 
 Implements the within-condition cell-loading permutation test
-(`ccc_rise.compute_communication_significance`) and the cross-condition
-sample-label differential test (`ccc_rise.compute_differential_significance`),
-along with functions to summarize per-LR pair, differential, and global
-significance metrics.
+(`compute_communication_significance`) and its vectorized communication
+scoring, with functions to summarize
+its per-LR pair and global significance metrics, and the patient-block
+permutation of condition-level labels (`patient_permutation_differential`)
+that tests group differences in condition-level scores.
 """
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
 
@@ -15,13 +17,15 @@ import anndata
 import numpy as np
 import pandas as pd
 import xarray as xr
+from scipy.sparse import spmatrix
 
+from ..ccc import combine_communication_score
 from ..ccc_rise import (
-    compute_communication_significance,
-    compute_differential_significance,
+    calc_communication_score,
     condition_matrices,
     condition_projections,
 )
+from ..import_data import import_ligand_receptor_pairs
 from ..utils import load_rise_reference
 
 
@@ -31,19 +35,15 @@ def fit_significance_pipeline(
     reference_path: str | Path,
     lr_pairs: pd.DataFrame,
     n_perms: int = 1000,
-    group_column: str | None = None,
-    control_label: str | None = None,
-    other_label: str | None = None,
     communication_score: str = "expression_product",
     complex_sep: str | None = "&",
     complex_agg_method: str = "min",
     hill_k: float = 0.5,
-    max_exact_perms: int = 100_000,
     random_state: int = 42,
     validate: bool = False,
 ) -> dict[str, Any]:
-    """Load a shared RISE fit and compute within-condition and differential
-    communication significance.
+    """Load a shared RISE fit and compute within-condition communication
+    significance.
 
     Parameters
     ----------
@@ -58,13 +58,6 @@ def fit_significance_pipeline(
         Ligand-receptor pairs table with columns 'ligand' and 'receptor'.
     n_perms : int, default=1000
         Number of permutations for significance testing.
-    group_column : str, optional
-        Binary group column in `adata.obs` (e.g. disease status). If provided,
-        differential significance testing is also performed across groups.
-    control_label : str, optional
-        Label indicating the reference/control group.
-    other_label : str, optional
-        Label indicating the comparison/case group.
     communication_score : str, default='expression_product'
         Scoring function ('expression_product', 'expression_mean',
         'expression_gmean', 'expression_hill'), independent of whichever
@@ -75,8 +68,6 @@ def fit_significance_pipeline(
         Method for aggregating subunits within a complex ('min', 'mean', 'gmean').
     hill_k : float, default=0.5
         Half-saturation constant for Hill communication scoring.
-    max_exact_perms : int, default=100_000
-        Maximum combinatorial assignments to enumerate exactly for differential test.
     random_state : int, default=42
         Random seed for permutations.
     validate : bool, default=False
@@ -90,10 +81,6 @@ def fit_significance_pipeline(
         - 'pvalue_tensor': 4D ndarray empirical p-values
         - 'null_mean_tensor': 4D ndarray permutation null mean scores
         - 'null_std_tensor': 4D ndarray permutation null std scores
-        - 'diff_observed': 3D ndarray (senders, receivers, lr_pairs) differential score (if group_column given)
-        - 'diff_pvalue': 3D ndarray differential p-values (if group_column given)
-        - 'diff_null_mean': 3D ndarray differential null means (if group_column given)
-        - 'diff_null_std': 3D ndarray differential null stds (if group_column given)
         - 'filtered_lr_pairs': pd.DataFrame of evaluated LR pairs
         - 'condition_names': list[str] of conditions
         - 'r2x_rise': float PARAFAC2 fit quality (of the loaded reference)
@@ -102,7 +89,7 @@ def fit_significance_pipeline(
     r2x_rise = adata.uns["r2x_pf2"]
     condition_names = np.unique(adata.obs[condition_column]).tolist()
 
-    # 2. Within-condition permutation significance test
+    # Within-condition cell-loading permutation test
     X_list = condition_matrices(adata)
     gene_names = list(adata.var_names)
     gene_means = (
@@ -132,77 +119,412 @@ def fit_significance_pipeline(
         validate=validate,
     )
 
-    # 3. Cross-condition differential significance test (if group info is available)
-    diff_observed = None
-    diff_pvalue = None
-    diff_null_mean = None
-    diff_null_std = None
-
-    if group_column is not None and group_column in adata.obs:
-        cond_to_group = (
-            cast(pd.DataFrame, adata.obs)
-            .groupby(condition_column)[group_column]
-            .first()
-        )
-        unique_vals = set(cond_to_group.dropna().unique())
-        sample_to_group = None
-
-        if control_label is not None and control_label in unique_vals:
-            sample_to_group = np.array(
-                [cond_to_group[c] != control_label for c in condition_names],
-                dtype=bool,
-            )
-        elif other_label is not None:
-            sample_to_group = np.array(
-                [cond_to_group[c] == other_label for c in condition_names],
-                dtype=bool,
-            )
-        else:
-            if len(unique_vals) == 2:
-                vals_list = list(unique_vals)
-                control_label, other_label = str(vals_list[0]), str(vals_list[1])
-                sample_to_group = np.array(
-                    [cond_to_group[c] == other_label for c in condition_names],
-                    dtype=bool,
-                )
-
-        if sample_to_group is not None and 0 < sample_to_group.sum() < len(
-            sample_to_group
-        ):
-            (
-                diff_observed,
-                diff_pvalue,
-                diff_null_mean,
-                diff_null_std,
-            ) = compute_differential_significance(
-                interaction_tensor=observed_tensor,
-                sample_to_group=sample_to_group,
-                n_perms=n_perms,
-                max_exact_perms=max_exact_perms,
-                random_state=random_state,
-            )
-
     return {
         "observed_tensor": observed_tensor,
         "pvalue_tensor": pvalue_tensor,
         "null_mean_tensor": null_mean_tensor,
         "null_std_tensor": null_std_tensor,
-        "diff_observed": diff_observed,
-        "diff_pvalue": diff_pvalue,
-        "diff_null_mean": diff_null_mean,
-        "diff_null_std": diff_null_std,
         "filtered_lr_pairs": filtered_lr_pairs,
         "condition_names": condition_names,
         "r2x_rise": r2x_rise,
         "n_perms": n_perms,
-        "group_column": group_column,
-        "control_label": control_label,
-        "other_label": other_label,
     }
 
 
+def _resolve_subunit_indices(
+    names: pd.Series, gene_index: dict[str, int], complex_sep: str | None
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Map each ligand/receptor entry (possibly a `complex_sep`-joined multimeric
+    complex) to indices into the gene axis, for vectorized expression lookups.
+
+    Returns
+    -------
+    idx : np.ndarray of shape (n_entries, max_subunits)
+        Gene indices for each subunit (padded with 0 where invalid).
+    mask : np.ndarray of shape (n_entries, max_subunits)
+        True where `idx` holds a real subunit.
+    valid : np.ndarray of shape (n_entries,)
+        True where every subunit of the entry was found in `gene_index`
+        (mirrors `add_complexes_to_expression`, which zeroes out the whole
+        complex if any subunit is missing).
+    """
+    split_names = [
+        n.split(complex_sep) if complex_sep is not None else [n] for n in names
+    ]
+    max_subunits = max(len(s) for s in split_names)
+    n = len(split_names)
+
+    idx = np.zeros((n, max_subunits), dtype=np.int64)
+    mask = np.zeros((n, max_subunits), dtype=bool)
+    valid = np.zeros(n, dtype=bool)
+
+    for i, subunits in enumerate(split_names):
+        found = [gene_index.get(s) for s in subunits]
+        if all(f is not None for f in found):
+            valid[i] = True
+            for j, f in enumerate(found):
+                idx[i, j] = cast(int, f)
+                mask[i, j] = True
+
+    return idx, mask, valid
+
+
+def _aggregate_subunit_expression(
+    matrix: np.ndarray,
+    idx: np.ndarray,
+    mask: np.ndarray,
+    valid: np.ndarray,
+    agg_method: str,
+) -> np.ndarray:
+    """
+    Reduce subunit expression to a single value per ligand/receptor entry,
+    for every rank, reproducing `add_complexes_to_expression` without pandas.
+
+    Parameters
+    ----------
+    matrix : np.ndarray of shape (rank, genes)
+    idx, mask, valid : as returned by `_resolve_subunit_indices`
+
+    Returns
+    -------
+    np.ndarray of shape (rank, n_entries)
+    """
+    vals = matrix[:, idx]  # (rank, n_entries, max_subunits)
+    counts = np.maximum(mask.sum(axis=1), 1)
+
+    if agg_method == "min":
+        out = np.where(mask, vals, np.inf).min(axis=2)
+    elif agg_method == "mean":
+        out = np.where(mask, vals, 0.0).sum(axis=2) / counts
+    elif agg_method == "gmean":
+        with np.errstate(divide="ignore"):
+            log_vals = np.where(mask, np.log(vals), 0.0)
+        out = np.exp(log_vals.sum(axis=2) / counts)
+    else:
+        raise ValueError(f"{agg_method} is not a valid agg_method")
+
+    out[:, ~valid] = 0.0
+    return out
+
+
+def _fast_interaction_tensor(
+    projected_matrices: list[np.ndarray],
+    lig_idx: np.ndarray,
+    lig_mask: np.ndarray,
+    lig_valid: np.ndarray,
+    rec_idx: np.ndarray,
+    rec_mask: np.ndarray,
+    rec_valid: np.ndarray,
+    complex_agg_method: str,
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+) -> np.ndarray:
+    """Vectorized communication tensor for a fixed LR pair set, for any of
+    the scoring strategies in `combine_communication_score` (product, mean,
+    gmean, or the CellChat-style Hill function)."""
+    # Written into a preallocated output rather than stacked at the end:
+    # `np.stack` needs the per-condition slabs and the result live at once, and
+    # at cohort scale with a high RISE rank each of those is tens of GB (a
+    # 343 x 70 x 70 x 1372 tensor is 18 GB on its own).
+    out = None
+    for i, matrix in enumerate(projected_matrices):
+        lig = _aggregate_subunit_expression(
+            matrix, lig_idx, lig_mask, lig_valid, complex_agg_method
+        )
+        rec = _aggregate_subunit_expression(
+            matrix, rec_idx, rec_mask, rec_valid, complex_agg_method
+        )
+        raw_product = np.einsum("rl,sl->rsl", lig, rec)
+        raw_sum = lig[:, np.newaxis, :] + rec[np.newaxis, :, :]
+        score = combine_communication_score(
+            raw_product,
+            raw_sum,
+            communication_score=communication_score,
+            hill_k=hill_k,
+        )
+        if out is None:
+            out = np.empty((len(projected_matrices), *score.shape), dtype=score.dtype)
+        out[i] = score
+
+    if out is None:
+        raise ValueError("No projected matrices to build a communication tensor from.")
+    return out
+
+
+def compute_communication_significance(
+    X_list: list[np.ndarray],
+    projections: list[np.ndarray],
+    gene_names: list[str],
+    lr_pairs: pd.DataFrame | None = None,
+    n_perms: int = 1000,
+    random_state: int | None = None,
+    complex_sep: str | None = "&",
+    complex_agg_method: str = "min",
+    communication_score: str = "expression_product",
+    hill_k: float = 0.5,
+    gene_means: np.ndarray | None = None,
+    validate: bool = True,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, pd.DataFrame]:
+    """
+    Assess the significance of every entry of the cccRISE communication
+    tensor against a CellChat-style permutation null.
+
+    CellChat/CellPhoneDB build their null by randomly reassigning cells to
+    cluster labels and recomputing per-cluster mean expression. RISE has no
+    discrete clusters, only a continuous, per-cell loading onto each
+    eigen-state (a row of the PARAFAC2 projection matrix `P_i`). The direct
+    generalization is therefore to permute which cell's expression each
+    loading row is paired with -- i.e. shuffle the rows of `P_i` per
+    condition, holding the raw expression `X_i` and the LR annotation fixed
+    -- and recompute the communication tensor. This breaks the real
+    cell/eigen-state association while preserving cell counts, the loading
+    distribution, and the LR biology, exactly mirroring what a cluster-label
+    permutation tests in the discrete case.
+
+    For efficiency, the communication score (any of the strategies in
+    `combine_communication_score`, with complexes aggregated via
+    `complex_agg_method`) is recomputed for every permutation using a
+    vectorized NumPy implementation rather than by rebuilding the tensor
+    through `calc_communication_score`/Tensor Cell2Cell each time, which
+    dominates runtime for `n_perms` in the hundreds to thousands. The LR
+    pair set and gene lookups are resolved once up front; only the cheap
+    eigen-state/gene outer products are repeated per permutation.
+    `validate=True` checks the vectorized path against the reference
+    implementation once, on the observed (unpermuted) tensor.
+
+    Parameters
+    ----------
+    X_list : list[np.ndarray]
+        Per-condition raw expression matrices, shape (cells, genes).
+    projections : list[np.ndarray]
+        Per-condition RISE/PARAFAC2 projection matrices, shape (cells, rank).
+    gene_names : list[str]
+        Gene names corresponding to the columns of each `X_list` entry.
+    lr_pairs : pd.DataFrame, optional
+        DataFrame with 'ligand' and 'receptor' columns.
+    n_perms : int, default=1000
+        Number of eigen-state/cell permutations forming the null distribution.
+    random_state : int, optional
+        Random seed for reproducibility.
+    complex_sep : str, optional, default="&"
+        Separator for multimeric complexes.
+    complex_agg_method : str, default="min"
+        Method to aggregate subunit expression for complexes.
+    communication_score : str, default='expression_product'
+        Scoring function combining ligand/receptor eigen-state expression
+        into a communication score; see
+        `cccrise.ccc.combine_communication_score` for the
+        available options ('expression_product', 'expression_mean',
+        'expression_gmean', 'expression_hill'). Every entry of the null
+        distribution and the observed tensor uses the same scoring function,
+        so p-values/effect sizes are directly comparable across strategies.
+    hill_k : float, default=0.5
+        Half-saturation constant, used only when
+        `communication_score='expression_hill'`.
+    gene_means : np.ndarray, optional
+        Per-gene mean expression over the full dataset (`adata.var["means"]`).
+        `X_list` here is raw (uncentered) expression, so `P.T @ X` is already
+        a projection of non-negative values -- but its entries can still be
+        negative, since `P`'s columns are signed contrast axes (see #139).
+        When given, `gene_means` is added to each (observed and permuted)
+        projected matrix and clipped at 0, exactly as in
+        `calc_communication_score`, keeping this null model consistent with
+        the sign-safe scoring used by the main pipeline. If None (default),
+        matrices are used unchanged, preserving prior behavior.
+    validate : bool, default=True
+        Cross-check the vectorized observed tensor against
+        `calc_communication_score` and raise if they disagree.
+
+    Returns
+    -------
+    interaction_tensor : np.ndarray
+        Observed 4D communication tensor, shape (conditions, rank, rank, n_lr_pairs).
+    pvalue_tensor : np.ndarray
+        Empirical p-value per entry, same shape as `interaction_tensor`.
+    null_mean_tensor : np.ndarray
+        Per-entry mean of the null distribution, same shape.
+    null_std_tensor : np.ndarray
+        Per-entry standard deviation of the null distribution, same shape;
+        together with `null_mean_tensor` this gives an effect-size/z-score
+        (`(interaction_tensor - null_mean_tensor) / null_std_tensor`) alongside
+        the p-value.
+    filtered_lr_pairs : pd.DataFrame
+        LR pairs corresponding to the tensor's last axis.
+    """
+    if lr_pairs is None:
+        lr_pairs = import_ligand_receptor_pairs()
+
+    # Only densify legacy scipy sparse matrices; leave other array-likes
+    # (e.g. parafac2's mean-centering `SampleArray`) to handle `@` themselves,
+    # matching the convention used in `ccc_rise`.
+    X_arrays = [
+        cast(Any, x).toarray() if isinstance(x, spmatrix) else x for x in X_list
+    ]
+    dense_P = [np.asarray(p) for p in projections]
+    means_row = (
+        np.asarray(gene_means).reshape(1, -1) if gene_means is not None else None
+    )
+
+    def _project_and_recenter(P: np.ndarray, X: np.ndarray) -> np.ndarray:
+        matrix = P.T @ X
+        if means_row is not None:
+            matrix = np.clip(matrix + means_row, 0.0, None)
+        return matrix
+
+    projected_matrices = [
+        _project_and_recenter(P, X) for P, X in zip(dense_P, X_arrays)
+    ]
+
+    interaction_tensor, filtered_lr_pairs = calc_communication_score(
+        projected_matrices=projected_matrices,
+        gene_names=gene_names,
+        lr_pairs=lr_pairs,
+        complex_sep=complex_sep,
+        complex_agg_method=complex_agg_method,
+        communication_score=communication_score,
+        hill_k=hill_k,
+    )
+
+    gene_index = {g: i for i, g in enumerate(gene_names)}
+    lig_idx, lig_mask, lig_valid = _resolve_subunit_indices(
+        filtered_lr_pairs["ligand"], gene_index, complex_sep
+    )
+    rec_idx, rec_mask, rec_valid = _resolve_subunit_indices(
+        filtered_lr_pairs["receptor"], gene_index, complex_sep
+    )
+
+    if validate:
+        _validate_fast_interaction_tensor(
+            interaction_tensor,
+            projected_matrices,
+            lig_idx,
+            lig_mask,
+            lig_valid,
+            rec_idx,
+            rec_mask,
+            rec_valid,
+            complex_agg_method,
+            communication_score,
+            hill_k,
+        )
+
+    pvalue_tensor, null_mean_tensor, null_std_tensor = _run_permutation_null(
+        interaction_tensor,
+        dense_P,
+        X_arrays,
+        _project_and_recenter,
+        lig_idx,
+        lig_mask,
+        lig_valid,
+        rec_idx,
+        rec_mask,
+        rec_valid,
+        complex_agg_method,
+        communication_score,
+        hill_k,
+        n_perms,
+        random_state,
+    )
+
+    return (
+        interaction_tensor,
+        pvalue_tensor,
+        null_mean_tensor,
+        null_std_tensor,
+        filtered_lr_pairs,
+    )
+
+
+def _validate_fast_interaction_tensor(
+    interaction_tensor: np.ndarray,
+    projected_matrices: list[np.ndarray],
+    lig_idx: np.ndarray,
+    lig_mask: np.ndarray,
+    lig_valid: np.ndarray,
+    rec_idx: np.ndarray,
+    rec_mask: np.ndarray,
+    rec_valid: np.ndarray,
+    complex_agg_method: str,
+    communication_score: str,
+    hill_k: float,
+) -> None:
+    """Cross-check the vectorized observed tensor against the reference
+    `calc_communication_score` path, raising if they disagree."""
+    fast_observed = _fast_interaction_tensor(
+        projected_matrices,
+        lig_idx,
+        lig_mask,
+        lig_valid,
+        rec_idx,
+        rec_mask,
+        rec_valid,
+        complex_agg_method,
+        communication_score=communication_score,
+        hill_k=hill_k,
+    )
+    if not np.allclose(fast_observed, interaction_tensor, rtol=1e-5, atol=1e-8):
+        raise RuntimeError(
+            "Vectorized communication score does not match "
+            "calc_communication_score on the observed tensor."
+        )
+
+
+def _run_permutation_null(
+    interaction_tensor: np.ndarray,
+    dense_P: list[np.ndarray],
+    X_arrays: list[Any],
+    project_and_recenter,
+    lig_idx: np.ndarray,
+    lig_mask: np.ndarray,
+    lig_valid: np.ndarray,
+    rec_idx: np.ndarray,
+    rec_mask: np.ndarray,
+    rec_valid: np.ndarray,
+    complex_agg_method: str,
+    communication_score: str,
+    hill_k: float,
+    n_perms: int,
+    random_state: int | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Build the CellChat-style permutation null and return empirical
+    p-values plus the per-entry null mean/std."""
+    rng = np.random.default_rng(random_state)
+    ge_count = np.zeros_like(interaction_tensor, dtype=np.int64)
+    null_sum = np.zeros_like(interaction_tensor, dtype=np.float64)
+    null_sumsq = np.zeros_like(interaction_tensor, dtype=np.float64)
+
+    for _ in range(n_perms):
+        permuted_matrices = [
+            project_and_recenter(P[rng.permutation(P.shape[0]), :], X)
+            for P, X in zip(dense_P, X_arrays)
+        ]
+        null_tensor = _fast_interaction_tensor(
+            permuted_matrices,
+            lig_idx,
+            lig_mask,
+            lig_valid,
+            rec_idx,
+            rec_mask,
+            rec_valid,
+            complex_agg_method,
+            communication_score=communication_score,
+            hill_k=hill_k,
+        )
+        ge_count += null_tensor >= interaction_tensor
+        null_sum += null_tensor
+        null_sumsq += null_tensor**2
+
+    pvalue_tensor = (ge_count + 1.0) / (n_perms + 1.0)
+    null_mean_tensor = null_sum / n_perms
+    null_var_tensor = np.maximum(null_sumsq / n_perms - null_mean_tensor**2, 0.0)
+    null_std_tensor = np.sqrt(null_var_tensor)
+
+    return pvalue_tensor, null_mean_tensor, null_std_tensor
+
+
 def summarize_significance_lr(results: dict[str, Any]) -> pd.DataFrame:
-    """Summarize per-LR pair communication significance and differential testing.
+    """Summarize per-LR pair communication significance.
 
     Parameters
     ----------
@@ -223,8 +545,6 @@ def summarize_significance_lr(results: dict[str, Any]) -> pd.DataFrame:
         - 'FractionSignificant_p05': fraction of (condition, sender, receiver) entries with p < 0.05
         - 'FractionSignificant_p01': fraction of entries with p < 0.01
         - 'MaxObserved': maximum observed communication score
-        - 'MeanDiffObserved': mean differential communication (if differential test was performed)
-        - 'FractionDiffSignificant_p05': fraction of (sender, receiver) differential entries with p < 0.05
     """
     observed = results["observed_tensor"]  # (n_cond, n_send, n_recv, n_lr)
     pvalues = results["pvalue_tensor"]
@@ -267,94 +587,7 @@ def summarize_significance_lr(results: dict[str, Any]) -> pd.DataFrame:
         }
     )
 
-    # Attach differential metrics if available
-    if (
-        results.get("diff_observed") is not None
-        and results.get("diff_pvalue") is not None
-    ):
-        diff_obs = results["diff_observed"]  # (n_send, n_recv, n_lr)
-        diff_pvals = results["diff_pvalue"]
-
-        summary["MeanDiffObserved"] = np.mean(diff_obs, axis=(0, 1))
-        summary["FractionDiffSignificant_p05"] = np.mean(diff_pvals < 0.05, axis=(0, 1))
-        summary["FractionDiffSignificant_p01"] = np.mean(diff_pvals < 0.01, axis=(0, 1))
-
     return summary.sort_values(by="MeanZScore", ascending=False).reset_index(drop=True)
-
-
-def summarize_significance_differential(
-    results: dict[str, Any],
-    top_n: int | None = None,
-) -> pd.DataFrame:
-    """Summarize cross-condition differential signaling by sender-receiver-LR triplets.
-
-    Parameters
-    ----------
-    results : dict[str, Any]
-        Dictionary returned by `fit_significance_pipeline`.
-    top_n : int, optional
-        If specified, return only the top N interactions by significance.
-
-    Returns
-    -------
-    pd.DataFrame
-        Table of differential interactions with columns:
-        - 'Sender': Sender eigen-state component index (1-based)
-        - 'Receiver': Receiver eigen-state component index (1-based)
-        - 'LRPair': Ligand-receptor pair symbol
-        - 'ObservedDiff': Difference in mean communication (Group 1 - Group 0)
-        - 'PValue': Differential permutation p-value
-        - 'NullMean': Differential permutation null mean difference
-        - 'NullStd': Differential permutation null std
-        - 'ZScore': Differential effect size (ObservedDiff - NullMean) / NullStd
-    """
-    if results.get("diff_observed") is None or results.get("diff_pvalue") is None:
-        return pd.DataFrame()
-
-    diff_obs = results["diff_observed"]  # (n_send, n_recv, n_lr)
-    diff_pvals = results["diff_pvalue"]
-    diff_null_mean = results["diff_null_mean"]
-    diff_null_std = results["diff_null_std"]
-    lr_df = results["filtered_lr_pairs"]
-
-    lr_symbols = (
-        lr_df["interaction_symbol"].tolist()
-        if "interaction_symbol" in lr_df
-        else [f"{l}_{r}" for l, r in zip(lr_df["ligand"], lr_df["receptor"])]
-    )
-
-    n_send, n_recv, n_lr = diff_obs.shape
-    rows = []
-
-    for s in range(n_send):
-        for r in range(n_recv):
-            for l in range(n_lr):
-                obs_d = float(diff_obs[s, r, l])
-                pval = float(diff_pvals[s, r, l])
-                nm = float(diff_null_mean[s, r, l])
-                ns = float(diff_null_std[s, r, l])
-                z = (obs_d - nm) / max(ns, 1e-3)
-
-                rows.append(
-                    {
-                        "Sender": s + 1,
-                        "Receiver": r + 1,
-                        "LRPair": lr_symbols[l],
-                        "ObservedDiff": obs_d,
-                        "PValue": pval,
-                        "NullMean": nm,
-                        "NullStd": ns,
-                        "ZScore": z,
-                    }
-                )
-
-    df = pd.DataFrame(rows)
-    df = df.sort_values(by=["PValue", "ZScore"], ascending=[True, False]).reset_index(
-        drop=True
-    )
-    if top_n is not None:
-        df = df.head(top_n)
-    return df
 
 
 def summarize_significance_overview(results: dict[str, Any]) -> pd.DataFrame:
@@ -424,10 +657,6 @@ def significance_to_xarray(results: dict[str, Any]) -> xr.Dataset:
         - 'pvalue'
         - 'null_mean'
         - 'null_std'
-        - 'diff_observed' (if differential test was performed)
-        - 'diff_pvalue'
-        - 'diff_null_mean'
-        - 'diff_null_std'
     """
     condition_names = results["condition_names"]
     rise_rank = results["observed_tensor"].shape[1]
@@ -446,7 +675,6 @@ def significance_to_xarray(results: dict[str, Any]) -> xr.Dataset:
     }
 
     dims_4d = ["condition", "sender_rise", "receiver_rise", "lr_pair"]
-    dims_3d = ["sender_rise", "receiver_rise", "lr_pair"]
 
     data_vars: dict[str, Any] = {
         "observed_communication": (dims_4d, results["observed_tensor"]),
@@ -455,10 +683,47 @@ def significance_to_xarray(results: dict[str, Any]) -> xr.Dataset:
         "null_std": (dims_4d, results["null_std_tensor"]),
     }
 
-    if results.get("diff_observed") is not None:
-        data_vars["diff_observed"] = (dims_3d, results["diff_observed"])
-        data_vars["diff_pvalue"] = (dims_3d, results["diff_pvalue"])
-        data_vars["diff_null_mean"] = (dims_3d, results["diff_null_mean"])
-        data_vars["diff_null_std"] = (dims_3d, results["diff_null_std"])
-
     return xr.Dataset(data_vars=data_vars, coords=coords)
+
+
+def patient_block_permutations(
+    patients: Sequence[str] | np.ndarray, n_perms: int, random_state: int = 0
+) -> np.ndarray:
+    """`n_perms` reorderings of the conditions (n_perms x n_conditions index
+    arrays) that keep each patient's conditions together: single-condition
+    patients are shuffled among themselves, and a patient's block of k
+    conditions swaps only with other patients' blocks of k. Indexing a
+    condition-level label array with a row permutes the labels by patient."""
+    rng = np.random.default_rng(random_state)
+    patients = np.asarray(patients)
+    blocks: dict[int, list[np.ndarray]] = {}
+    for patient in pd.unique(patients):
+        idx = np.flatnonzero(patients == patient)
+        blocks.setdefault(len(idx), []).append(idx)
+    perms = np.tile(np.arange(len(patients)), (n_perms, 1))
+    for same_size in blocks.values():
+        stacked = np.array(same_size)
+        for perm in perms:
+            perm[stacked.ravel()] = stacked[rng.permutation(len(stacked))].ravel()
+    return perms
+
+
+def patient_permutation_differential(
+    scores: np.ndarray,
+    case: np.ndarray,
+    patients: Sequence[str] | np.ndarray,
+    n_perms: int = 10_000,
+    random_state: int = 0,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Case-minus-control mean difference of each column of a conditions x
+    features `scores` matrix, observed and under `patient_block_permutations`
+    of the boolean `case` labels: (observed (features,), null (n_perms x
+    features))."""
+    case = np.asarray(case, dtype=bool)
+
+    def weights(c: np.ndarray) -> np.ndarray:
+        return c / c.sum() - ~c / (~c).sum()
+
+    perms = patient_block_permutations(patients, n_perms, random_state)
+    null = np.stack([weights(case[p]) for p in perms]) @ scores
+    return weights(case) @ scores, null
