@@ -208,11 +208,15 @@ def start_rows(tensor, rank, starts, production_fit: Factors | None) -> pd.DataF
         table["Start"] = range(len(family_starts))
         table["Borderline"] = table["Borderline"].str.len()
         table["CoreConsistency"] = [
-            cp_core_consistency(tensor, w, f) for w, f, _ in family_starts
+            cp_core_consistency(tensor, w, f) if not diverged else np.nan
+            for (w, f, _), diverged in zip(
+                family_starts, table["Diverged"], strict=True
+            )
         ]
         table["FMSToProduction"] = [
-            matched_congruence(production_fit, f).mean() if production_fit else np.nan
-            for _w, f, _r in family_starts
+            matched_congruence(production_fit, f).mean()
+            if production_fit and not diverged else np.nan
+            for (_w, f, _r), diverged in zip(family_starts, table["Diverged"], strict=True)
         ]  # fmt: skip
         frames.append(table)
     return pd.concat(frames, ignore_index=True)

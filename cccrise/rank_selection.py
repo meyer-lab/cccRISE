@@ -383,25 +383,18 @@ def matched_congruence(reference: Factors, factors: Factors) -> np.ndarray:
 def screen_starts(starts: Sequence[Start]) -> pd.DataFrame:
     """Per start: R2X, the screen, its FMS to the best start clear of canceling
     and non-identified pairs, and whether it passes (borderline pairs
-    included, by reproducing in that best start)."""
-    rows = [
-        dict(
-            zip(
-                ("Canceling", "NotIdentified", "Borderline"),
-                screen_pairs(f),
-                strict=True,
-            )
-        )
-        | {"R2X": r2x}
-        for _w, f, r2x in starts
-    ]
+    included, by reproducing in that best start). A start whose factors or
+    R2X are not finite (ALS diverged) is marked ``Diverged`` and fails."""
+    rows = [_screen_row(f, r2x) for _w, f, r2x in starts]
     table = pd.DataFrame(rows)
-    clear = ~table["Canceling"] & ~table["NotIdentified"]
+    clear = ~table["Diverged"] & ~table["Canceling"] & ~table["NotIdentified"]
     table["FMS"], table["Passes"] = np.nan, False
     if not clear.any():
         return table
     reference = starts[int(table.loc[clear, "R2X"].idxmax())][1]
     for k, (_w, f, _r2x) in enumerate(starts):
+        if table.at[k, "Diverged"]:
+            continue
         per = matched_congruence(reference, f)
         table.loc[k, "FMS"] = per.mean()
         reproduced = all(
@@ -409,6 +402,15 @@ def screen_starts(starts: Sequence[Start]) -> pd.DataFrame:
         )
         table.loc[k, "Passes"] = bool(clear[k]) and reproduced
     return table
+
+
+def _screen_row(factors: Factors, r2x: float) -> dict:
+    if not (np.isfinite(r2x) and all(np.isfinite(f).all() for f in factors)):
+        return {"Canceling": False, "NotIdentified": False, "Borderline": [], "R2X": np.nan,
+                "Diverged": True}  # fmt: skip
+    canceling, not_identified, borderline = screen_pairs(factors)
+    return {"Canceling": canceling, "NotIdentified": not_identified, "Borderline": borderline,
+            "R2X": r2x, "Diverged": False}  # fmt: skip
 
 
 def rank_rule_row(tensor: np.ndarray, starts: Sequence[Start]) -> tuple[dict, int]:

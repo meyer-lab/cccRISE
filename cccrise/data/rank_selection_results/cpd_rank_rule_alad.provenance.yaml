@@ -33,5 +33,5 @@ float64: true
 compression_energy: null
 fits_dir: output/cache/cpd_rank_rule/alad_full_8596017184b9
 summary_file: cpd_rank_rule_summary_alad.parquet
-git_sha: 5180947d87b97b7cbe4610550a7974fbe9f9002b-dirty
-generated: '2026-10-16T14:48:38+00:00'
+git_sha: cc0ce9ac224136952b4218a154b35d9b7651b3bf-dirty
+generated: '2026-10-17T00:28:03+00:00'

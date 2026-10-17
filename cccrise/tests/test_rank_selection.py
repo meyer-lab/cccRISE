@@ -408,3 +408,17 @@ def test_cpd_rank_rule_compressed_fit_matches_the_full_one(tmp_path):
     b = core.start(3, "svd", 0, 42)
     assert abs(a[2] - b[2]) < 1e-4
     assert matched_congruence(a[1], b[1]).min() > 0.99
+
+
+def test_screen_starts_fails_a_diverged_start():
+    from cccrise.rank_selection import screen_starts
+
+    tensor = _simulate_cp_tensor((12, 10, 10, 30), rank=2, noise_std=0.01)
+    good = tuple(_cp_fit(tensor, 2)[:2])
+    nan = [np.full_like(f, np.nan) for f in good[1]]
+    table = screen_starts(_starts([good] * 9, tensor) + [(good[0], nan, np.nan)])
+    assert table["Diverged"].tolist() == [False] * 9 + [True]
+    assert table["Passes"].tolist() == [True] * 9 + [False]
+    assert select_rank_by_rule(
+        tensor, [(2, _starts([good] * 9, tensor) + [(good[0], nan, np.nan)])]
+    )[1]["Passes"].item()
