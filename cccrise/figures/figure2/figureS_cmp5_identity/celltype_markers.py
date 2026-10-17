@@ -8,7 +8,7 @@ AXES = ("strip",)
 
 
 def plot(axs):
-    S.plot_markers(axs[0], S.CELLTYPE_MARKERS)
+    S.plot_markers(axs[0], S.CELLTYPE_MARKERS, show_legend=True)
 
 
 def makeFigure():
