@@ -9,7 +9,6 @@ from ....runners.datasets import DATASETS
 
 DATASET = "alad"
 XLABEL = "RISE component"
-TICKS = (1, 5, 10, 15)  # component ticks on narrow heatmaps
 
 
 @cache

@@ -1,6 +1,7 @@
 """Aggregate RISE and CP stability per stability axis (the Methods'
 stability metric: a replicate's mean FMS over components), as the median with
-a 2.5-97.5 percentile band over replicates, from ``uv run cccrise-stability``."""
+a 2.5-97.5 percentile band over replicates, each replicate's aggregate FMS
+jittered beneath, from ``uv run cccrise-stability``."""
 
 import numpy as np
 from matplotlib.lines import Line2D
@@ -12,6 +13,10 @@ from .. import common, style
 DATASET = "alad"
 STAGE_ORDER = ["RISE", "CPD"]  # pipeline order
 STAGE_LABELS = {"RISE": "RISE", "CPD": "CP"}
+JITTER = 0.25
+REPLICATE_ALPHA = 0.5
+Y_MIN = 0.45  # below every replicate, with room for the legend
+Y_TICK_MIN = 0.55
 AXES = ("square",)
 
 
@@ -20,8 +25,9 @@ def plot(axs):
     stability = common.load_runner_output(
         DATASETS[DATASET].stability_filename(), VALIDATION_DIR
     )
+    stability = stability[stability["Axis"].isin(style.STABILITY_AXIS_COLORS)]
     stats = metric_interval(
-        stability[stability["Axis"].isin(style.STABILITY_AXIS_COLORS)],
+        stability,
         "FMS",
         by=("Stage", "Axis"),
         lower=2.5,
@@ -36,6 +42,7 @@ def plot(axs):
     sizes = stats.groupby("Stage").size()
     offset = np.cumsum([0] + [sizes[s] + 1 for s in stages[:-1]])
     x = offset[[stages.index(s) for s in stats["Stage"]]] + within
+    _plot_replicates(ax, stability, dict(zip(zip(stats["Stage"], stats["Axis"]), x)))
     ax.errorbar(
         x,
         stats["Median"],
@@ -57,26 +64,48 @@ def plot(axs):
         offset + (sizes[stages].to_numpy() - 1) / 2, [STAGE_LABELS[s] for s in stages]
     )
     ax.tick_params(axis="x", length=0)
+    # Two columns, filled column-wise: colors on the top row, sizes below
+    colors = [
+        Line2D([], [], ls="", marker="o", color=color, label=label)
+        for color, label in (
+            (style.STABILITY_AXIS_COLORS[a], style.STABILITY_AXIS_LABELS[a])
+            for a in style.STABILITY_AXIS_COLORS
+        )
+    ]
+    sizes = [
+        ax.scatter([], [], s=size, color=style.COLORS["ink"], label=label)
+        for size, label in (
+            (style.POINT_SIZE_FOREGROUND, "Median"),
+            (style.POINT_SIZE_BACKGROUND, "Replicate"),
+        )
+    ]
     ax.legend(
-        handles=[
-            Line2D(
-                [],
-                [],
-                ls="",
-                marker="o",
-                color=color,
-                label=style.STABILITY_AXIS_LABELS[axis],
-            )
-            for axis, color in style.STABILITY_AXIS_COLORS.items()
-        ],
+        handles=[h for pair in zip(colors, sizes) for h in pair],
         loc="lower center",
         ncols=2,
         fontsize=style.FONT_SIZE_DENSE,
         columnspacing=0.8,
     )
-    ax.set_ylim(0, 1.05)
-    ax.set_yticks([0, 0.5, 1])
+    ax.set_ylim(Y_MIN, 1.02)
+    ax.set_yticks(np.arange(Y_TICK_MIN, 1.01, 0.2))
     ax.set_ylabel("Aggregate FMS")
+
+
+def _plot_replicates(ax, stability, positions: dict) -> None:
+    """Each replicate's aggregate FMS (its mean over components), jittered
+    about its (stage, axis) position."""
+    per_replicate = stability.groupby(["Stage", "Axis", "Replicate"])["FMS"].mean()
+    rng = np.random.default_rng(0)
+    for (stage, axis), fms in per_replicate.groupby(["Stage", "Axis"]):
+        ax.scatter(
+            positions[stage, axis] + rng.uniform(-JITTER, JITTER, len(fms)),
+            fms,
+            c=style.STABILITY_AXIS_COLORS[axis],
+            s=style.POINT_SIZE_BACKGROUND,
+            alpha=REPLICATE_ALPHA,
+            linewidths=0,
+            zorder=2,
+        )
 
 
 def makeFigure():

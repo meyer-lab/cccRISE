@@ -1,30 +1,23 @@
 """The RISE condition factor (A; conditions ordered by their most heavily
-loaded component, then by that loading) and mixing factor (B; columns are the
-components, and the fit's is the identity), each component divided by its
+loaded component, then by that loading), each component divided by its
 largest magnitude (keeping sign)."""
-
-import numpy as np
 
 from ... import common
 from . import _common as S
 
-AXES = ("rect", "square")
+AXES = ("wide",)  # as wide as `genes`' "tall", which it sits above
 
 
 def plot(axs):
-    factors = S.rise_factors()
-    conditions = factors["pf2_A"].values.astype(float)
+    (ax,) = axs
+    conditions = S.rise_factors()["pf2_A"].values.astype(float)
     common.plot_factor_heatmap(
-        axs[0], conditions[common.dominant_order(conditions)], S.XLABEL
+        ax, conditions[common.dominant_order(conditions)], S.XLABEL
     )
-    axs[0].set_yticks([])
-    axs[0].set_ylabel(f"Condition (n={len(conditions)})")
-
-    common.plot_factor_heatmap(axs[1], factors["pf2_B"].values.astype(float), S.XLABEL)
-    axs[1].set_yticks(np.array(S.TICKS) - 1, S.TICKS)
-    axs[1].set_ylabel("B row")
-    for ax in axs:
-        ax.set_xticks(np.array(S.TICKS) - 1, S.TICKS)  # all 17 would collide
+    ax.set_xticks([])  # shares `genes`' component axis below it
+    ax.set_xlabel("")
+    ax.set_yticks([])
+    ax.set_ylabel(f"Condition (n={len(conditions)})")
 
 
 def makeFigure():

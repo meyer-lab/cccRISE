@@ -1,5 +1,7 @@
 """RISE rank selection by bi-cross-validation, from ``uv run cccrise-riserank``."""
 
+from matplotlib.lines import Line2D
+
 from ...runners.datasets import DATASETS, RANK_SELECTION_DIR
 from .. import common
 
@@ -13,6 +15,12 @@ def plot(axs):
         DATASETS[DATASET].rise_rank_filename(), RANK_SELECTION_DIR
     )
     common.plot_rise_rank(sweep, ax, rank=common.selected_ranks(DATASET)[0])
+    # The dashed rank line's key, shared by panels A-C
+    ax.add_artist(ax.get_legend())
+    ax.legend(
+        handles=[Line2D([], [], label="Selected rank", **common.RANK_LINE)],
+        loc="lower right",
+    )
 
 
 def makeFigure():

@@ -23,16 +23,19 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from string import ascii_letters, ascii_uppercase
+from typing import Any
 
 import anndata
 import matplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import yaml
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.patches import Patch, Rectangle
+from matplotlib.text import Text
 
 matplotlib.use("AGG")
 
@@ -142,6 +145,8 @@ def selected_ranks(dataset: str) -> tuple[int, int]:
 
 FIGURES_DIR = Path(__file__).parent
 OUTPUT_DIR = FIGURES_DIR.parent.parent / "output"
+# Panel letters of every built figure, read by the manuscript's `meta` shortcodes
+PANELS_PATH = FIGURES_DIR.parent.parent / "manuscript" / "_panels.yml"
 
 
 def panel_grid(
@@ -166,9 +171,10 @@ def panel_grid(
 
 
 def label_panels(panels: dict[str, SubFigure]) -> None:
-    """Label panels A, B, C, ... in order, at each panel's top left."""
-    for letter, panel in zip(ascii_uppercase, panels.values(), strict=False):
-        panel.suptitle(letter, x=0, ha="left")
+    """Label panels A, B, C, ... in order, at each panel's top left, tagged
+    with the panel's name for `record_panel_letters`."""
+    for letter, (name, panel) in zip(ascii_uppercase, panels.items(), strict=False):
+        panel.suptitle(letter, x=0, ha="left", gid=name)
 
 
 def compose(
@@ -179,7 +185,9 @@ def compose(
     fig, subfigs = panel_grid(figsize, layout, **gridspec_kw)
     for name, subfig in subfigs.items():
         panels[name].plot(subfig)
-    label_panels(subfigs)
+    label_panels(
+        {panels[name].__name__.rpartition(".")[2]: sf for name, sf in subfigs.items()}
+    )
     return fig
 
 
@@ -235,7 +243,8 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
 
 
 def _letter_axes(fig: Figure, placements) -> None:
-    """Letter each axes A, B, C, ... at its left margin and its row's top."""
+    """Letter each axes A, B, C, ... at its left margin and its row's top,
+    tagged with its panel module's name for `record_panel_letters`."""
     width, height = fig.get_size_inches()
     for letter, (box, x, _, label_y) in zip(ascii_uppercase, placements, strict=False):
         fig.text(
@@ -246,6 +255,7 @@ def _letter_axes(fig: Figure, placements) -> None:
             va="top",
             fontsize=style.FONT_SIZE_PANEL_LABEL,
             fontweight="bold",
+            gid=box.ax.get_label(),
         )
 
 
@@ -459,7 +469,23 @@ def genFigure():
     output_dir.mkdir(parents=True, exist_ok=True)
     # No bbox_inches="tight": figures are drawn at their final print size.
     fig.savefig(output_dir / f"{panel or f'figure{figure}'}.{extension}")
+    if panel is None:
+        record_panel_letters(figure, fig)
     print(f"Figure {' '.join(args)} is done after {time.time() - start:.1f} s.\n")
+
+
+def record_panel_letters(figure: str, fig: Figure) -> None:
+    """Set `fig<figure>` in `PANELS_PATH` to the letters of each panel
+    module's axes, as tagged by `_letter_axes` or `label_panels`."""
+    letters: dict[str, list[str]] = {}
+    for text in fig.findobj(Text):
+        if module := text.get_gid():
+            letters.setdefault(module, []).append(text.get_text().lower())
+    panels = yaml.safe_load(PANELS_PATH.read_text()) or {}
+    panels[f"fig{figure}"] = letters
+    PANELS_PATH.write_text(
+        yaml.safe_dump(panels, sort_keys=False, default_flow_style=None)
+    )
 
 
 # =============================================================================
@@ -469,16 +495,17 @@ def genFigure():
 SIG_ALPHA = 0.05
 
 
+RANK_LINE: dict[str, Any] = {
+    "color": style.COLORS["reference"],
+    "linestyle": style.LINE_STYLE_REFERENCE,
+    "linewidth": style.LINE_WIDTH_THIN,
+}
+
+
 def mark_rank(ax: plt.Axes, rank: int | None) -> None:
     """Vertical reference line at the rank the canonical fit uses."""
     if rank is not None:
-        ax.axvline(
-            rank,
-            color=style.COLORS["reference"],
-            linestyle=style.LINE_STYLE_REFERENCE,
-            linewidth=style.LINE_WIDTH_THIN,
-            zorder=0,
-        )
+        ax.axvline(rank, zorder=0, **RANK_LINE)
 
 
 def reference_line(
@@ -507,21 +534,27 @@ def plot_rise_rank(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
     rank, from `cccrise-riserank`. BiCV peaks or plateaus near the rank that
     generalizes to unseen cells and genes."""
     full = sweep[sweep["Metric"] == "Fit R2X"].groupby("Rank")["R2X"].mean()
-    ax.plot(full.index, full, color=style.COLORS["fit_full"], label="Fit (full)")
+    ax.plot(full.index, full, color=style.COLORS["fit_full"], label="Fit")
     repeats = sweep[sweep["Metric"] == "BiCV R2X"].groupby("Rank")
     for column, label, color in (
-        ("Train Block R2X", "Fit (train)", style.COLORS["fit"]),
-        ("R2X", "BiCV", style.COLORS["heldout"]),
+        ("Train Block R2X", "BiCV train", style.COLORS["fit"]),
+        ("R2X", "BiCV test", style.COLORS["heldout"]),
     ):
         mean, sd = repeats[column].mean(), repeats[column].std().fillna(0)
-        ax.plot(mean.index, mean, color=color, label=label)
-        for bound in (mean - sd, mean + sd):
-            ax.plot(mean.index, bound, color=color, linewidth=style.LINE_WIDTH_THIN)
-            ax.fill_between(mean.index, mean, bound, color=color, alpha=0.25, lw=0)
+        plot_mean_sd(ax, mean.index, mean, sd, color, label)
     mark_rank(ax, rank)
     ax.set_xlabel("RISE rank")
     ax.set_ylabel("$R^2X$")
     ax.legend()
+
+
+def plot_mean_sd(ax: plt.Axes, x, mean, sd, color: str, label: str, **kwargs):
+    """`mean` against `x` with a shaded, thinly outlined +/- `sd` band;
+    `kwargs` go to the mean line."""
+    ax.plot(x, mean, color=color, label=label, **kwargs)
+    for bound in (mean - sd, mean + sd):
+        ax.plot(x, bound, color=color, linewidth=style.LINE_WIDTH_THIN)
+        ax.fill_between(x, mean, bound, color=color, alpha=0.25, lw=0)
 
 
 def plot_cpd_fit_r2x(
@@ -529,9 +562,10 @@ def plot_cpd_fit_r2x(
     ax: plt.Axes,
     rank: int | None = None,
     color: str = style.COLORS["fit"],
+    marker: str | None = "o",
 ):
     """Full-tensor CP fit R2X against CP rank, from `cccrise-cpdrank`."""
-    ax.plot(sweep["Rank"], sweep["FitR2X"], marker="o", color=color)
+    ax.plot(sweep["Rank"], sweep["FitR2X"], marker=marker, color=color, label="Fit")
     mark_rank(ax, rank)
     ax.set_xlabel("CP rank")
     ax.set_ylabel("Fit $R^2X$")
