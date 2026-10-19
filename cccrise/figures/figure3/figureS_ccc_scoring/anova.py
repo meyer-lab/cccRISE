@@ -3,8 +3,8 @@ score (point estimate), in the default score's component numbering."""
 
 import pandas as pd
 
-from ...validation.stability import align_to_reference_components
-from .. import common, style
+from ....validation.stability import align_to_reference_components
+from ... import common, style
 from . import _common as S
 
 

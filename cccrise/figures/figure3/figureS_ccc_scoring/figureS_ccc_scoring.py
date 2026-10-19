@@ -5,7 +5,7 @@ outcome associations, and what each component represents under each score."""
 from matplotlib.text import Annotation
 from matplotlib.transforms import Bbox
 
-from .. import common, style
+from ... import common, style
 from . import _common as S
 from . import anova, factor_match, interpretation
 

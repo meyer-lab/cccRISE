@@ -264,7 +264,7 @@ def align_to_reference_components(
 
     The replicate loop does not use this -- it matches by the CPD FMS (see
     `_attach_anova`); it relabels per-component values between communication
-    scores' fits (`figures.figureS_ccc_scoring`).
+    scores' fits (`figures.figure3.figureS_ccc_scoring`).
 
     Parameters
     ----------

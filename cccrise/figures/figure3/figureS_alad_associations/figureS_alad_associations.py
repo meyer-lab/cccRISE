@@ -1,6 +1,6 @@
 """Supplementary figure: association of every CP component with the ALAD
-outcomes, the outcome-associated CP component's per-cell sender vs. receiver
-weights, and the loadings of the CP components associated with death;
+outcomes, the loadings of the CP components associated with death, and the
+outcome-associated CP component's per-cell sender vs. receiver weights;
 association of every RISE component with the outcomes; and association of
 each patient covariate with the outcomes."""
 
@@ -14,8 +14,8 @@ from . import (
 )
 
 LAYOUT = [
-    [cp_associations, sender_receiver_scatter],
-    [death_weights],
+    [cp_associations],
+    [death_weights, sender_receiver_scatter],
     [rise_associations],
     [covariates],
 ]

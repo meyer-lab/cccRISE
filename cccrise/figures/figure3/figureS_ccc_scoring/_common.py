@@ -17,16 +17,16 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
 
-from ...factors import load_factors_netcdf, load_factors_to_anndata
-from ...runners.datasets import (
+from ....factors import load_factors_netcdf, load_factors_to_anndata
+from ....runners.datasets import (
     COMMUNICATION_SCORES,
     DATASETS,
     DEFAULT_COMMUNICATION_SCORE,
     comparison_output_dir,
 )
-from ...runners.provenance import read_metadata
-from ...validation.stability import align_to_reference_components
-from .. import common, style
+from ....runners.provenance import read_metadata
+from ....validation.stability import align_to_reference_components
+from ... import common, style
 
 DATASET = "alad"
 SPEC = DATASETS[DATASET]

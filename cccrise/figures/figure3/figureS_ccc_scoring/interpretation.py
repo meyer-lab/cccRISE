@@ -7,7 +7,7 @@ keeping sign, so methods compare by pattern rather than scale."""
 import numpy as np
 import pandas as pd
 
-from .. import common, style
+from ... import common, style
 from . import _common as S
 
 #: Top LR pairs per method; the dot plot shows their union.

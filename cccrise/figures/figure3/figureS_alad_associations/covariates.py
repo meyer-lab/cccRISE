@@ -6,7 +6,6 @@ covariate is coded 0/1, so its eta-squared is the squared Cramér's V."""
 from functools import cache
 
 import anndata
-import numpy as np
 import pandas as pd
 
 from ....anova import run_multiple_factors_anova
@@ -40,7 +39,6 @@ def covariate_table() -> pd.DataFrame:
             "ILD diagnosis": obs["diagnosisgroup"] == "ILD",
             "CMV IgG+": obs["cmvstatus2"] == "IgG+",
             "Baseline FEV1": obs["baselineFEV1"],
-            "log Days post-Tx": np.log10(obs["timeaftertx"].astype(float)),
         }
     ).astype(float)
     adata = anndata.AnnData(obs=obs, uns={"A": covariates.to_numpy()})

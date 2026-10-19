@@ -34,8 +34,8 @@ figS_cmp5_identity:
   sender_vs_receiver: [f]
 figS_alad_associations:
   cp_associations: [a]
-  sender_receiver_scatter: [b]
-  death_weights: [c, d]
+  death_weights: [b, c]
+  sender_receiver_scatter: [d]
   rise_associations: [e]
   covariates: [f]
 figS_alad_cohort:

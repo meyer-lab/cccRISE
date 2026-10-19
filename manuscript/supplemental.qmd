@@ -49,11 +49,11 @@ Labeled are ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial
 **Figure S5. Association of CP components, RISE components, and patient covariates with ALAD outcomes.**
 ({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CP component's condition loadings against each ALAD outcome.
 \*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
-({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CP component 4 sender against receiver weight, with R^2^ across all cells.
 ({{< panel alad-associations death-weights >}}) CP component 4 condition loadings by ({{< panel alad-associations death-weights.1 >}}) six-month and ({{< panel alad-associations death-weights.2 >}}) one-year death.
 Lines connect samples from the same patient.
 Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
 One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outcomes and components.
+({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CP component 4 sender against receiver weight, with R^2^ across all cells.
 ({{< panel alad-associations rise-associations >}}) As in ({{< panel alad-associations cp-associations >}}), for each RISE component's condition loadings.
 ({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
