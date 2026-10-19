@@ -4,8 +4,8 @@ eigenstate `EIGENSTATE`."""
 
 import numpy as np
 
-from ... import common, style
-from .._common import COMPONENT, DATASET
+from .. import common, style
+from ..figure3._common import COMPONENT, DATASET
 
 EIGENSTATE = 16
 #: Values beyond this percentile of |value| saturate the color scale.

@@ -2,7 +2,7 @@
 type, 6-month outcome, the outcome-associated CP component's sender and
 receiver weights, and its RISE eigenstate projection."""
 
-from ... import common, style
+from .. import common, style
 from . import pacmaps, weight_pacmaps
 
 LAYOUT = [[pacmaps], [weight_pacmaps]]

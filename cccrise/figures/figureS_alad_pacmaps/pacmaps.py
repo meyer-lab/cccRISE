@@ -4,8 +4,8 @@
 import numpy as np
 from matplotlib.patches import Patch
 
-from ... import common, style
-from .._common import DATASET, OUTCOME, association
+from .. import common, style
+from ..figure3._common import DATASET, OUTCOME, association
 
 AXES = ("square",) * 2
 

@@ -34,7 +34,7 @@ def plot(fig):
     eta = pd.DataFrame({m: e for m, (e, _) in aligned.items()})
     sig = pd.DataFrame({m: s for m, (_, s) in aligned.items()})
     outcome = S.default_provenance("anova_point_estimate", "group_column")
-    outcome = "6-mo. outcome" if outcome == "6monthcondition" else outcome
+    outcome = common.OUTCOME_LABELS.get(outcome, outcome)
 
     ax = fig.subplots()
     S.grouped_bar(ax, eta, rf"$\eta^2$ ({outcome})", sig=sig)

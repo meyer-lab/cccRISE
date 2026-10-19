@@ -493,6 +493,8 @@ def record_panel_letters(figure: str, fig: Figure) -> None:
 # =============================================================================
 
 SIG_ALPHA = 0.05
+# Axis-label names of outcome `obs` columns
+OUTCOME_LABELS = {"6monthcondition": "6-mo. outcome"}
 
 
 RANK_LINE: dict[str, Any] = {

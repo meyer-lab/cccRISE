@@ -40,9 +40,6 @@ figS_alad_associations:
 figS_alad_cohort:
   cohort: [a]
   celltype_proportions: [b]
-figS_alad_pacmaps:
-  pacmaps: [a, b]
-  weight_pacmaps: [c, d, e]
 figS_anova_stability:
   effect_size_distributions: [a]
 figS_ccc_scoring:

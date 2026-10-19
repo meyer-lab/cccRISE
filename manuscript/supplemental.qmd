@@ -48,21 +48,15 @@ One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outco
 ({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 
-![](figures/figureS_alad_pacmaps/figureS_alad_pacmaps.svg){width="6.5in"}
-
-**Figure S6. Cell embedding of the outcome-associated CP component.**
-PaCMAP embedding of all cells' RISE projections, colored by ({{< panel alad-pacmaps pacmaps.1 >}}) annotated cell type, ({{< panel alad-pacmaps pacmaps.2 >}}) six-month outcome, CP component 4 ({{< panel alad-pacmaps weight-pacmaps.1 >}}) sender and ({{< panel alad-pacmaps weight-pacmaps.2 >}}) receiver weight, and ({{< panel alad-pacmaps weight-pacmaps.3 >}}) projection onto eigen-state 16.
-Color scales saturate at the 99th percentile of absolute values.
-
 ![](figures/figureS_anova_stability/figureS_anova_stability.svg){width="6.5in"}
 
-**Figure S7. Stability of the CP component--outcome associations.**
+**Figure S6. Stability of the CP component--outcome associations.**
 ({{< panel anova-stability effect-size-distributions >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by CP factor match score.
 Diamonds mark the full-cohort η^2^, filled where p < 0.05.
 
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 
-**Figure S8. CCC-RISE components across communication scoring methods.**
+**Figure S7. CCC-RISE components across communication scoring methods.**
 ({{< panel ccc-scoring factor-match >}}) Factor match score (condition and LR pair modes) of each CP component of the product score to its matched component under each alternate score (left), and the matched components' mean sender and receiver \|cosine\| (right), an independent check of the matching.
 ({{< panel ccc-scoring anova >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome under each score, numbered by the matched product-score component.
 \*: p < 0.05.
@@ -111,12 +105,12 @@ LR pairs shown are the union of each score's top 3.
 
 <!-- ![](media/placeholder.svg){width="6.5in"}
 
-<!-- **Figure S7.
+<!-- **Figure S6.
 <!-- CCC-RISE components associate each pattern to specific sender and receiver cells for the scRNA-seq ALAD dataset for a 15-component RISE and 18-component CPD model.** (a-J) PaCMAP of the RISE projections, with (a-r) sender cells and (s-J) receiver cells colored by the weightings for the indicated component.
 
 <!-- ![](media/placeholder.svg){width="6.5in"}
 
-<!-- **Figure S8.
+<!-- **Figure S7.
 <!-- Association of specific CCC-RISE components with clinical metadata and outcomes.** (a) Pearson correlation p-value between condition loadings for components 5, 13, and 7 and clinical variables. (b) T-test p-value between condition loadings for components 5, 13, and 17 stratified by categorical clinical information.
 <!-- (c, f) Component 5 condition weights stratified by (c) 6-month CLAD status and (f) 1-year CLAD status.
 <!-- (d, g) Component 13 condition weights stratified by (d) 6-month CLAD status and (g) 1-year CLAD status.
