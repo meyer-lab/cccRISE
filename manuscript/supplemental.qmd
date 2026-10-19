@@ -28,11 +28,11 @@ Boxes show the median and interquartile range, whiskers 1.5× the interquartile 
 ![](figures/figureS_nichenet/figureS_nichenet.svg){width="6.5in"}
 
 **Figure S4. External validation of CCC-RISE LR weights.**
-({{< panel nichenet ligand-scores >}}) NicheNet target score of each ligand with an expressed target (n = 185) per CP component: the AUROC with which genes ranked by differential expression (Wilcoxon rank-sum test) between the top 10% of cells by receiver weight within the component's receiver cell types and the bottom 10% of all cells recover the ligand's top 250 predicted downstream targets (by NicheNet v2 ligand--target regulatory potential), down-weighting targets shared by many ligands.
-Receiver cell types are those whose mean receiver weight is at least 40% of the largest cell type's, and ranked genes are those detected in at least 10% of either group's cells.
-Points are colored and sized by ligand weight, the root sum of squared loadings of the ligand's LR pairs, relative to the component's largest; opaque points mark the ligands of the component's top LR pairs (\|loading\| ≥ 40% of the largest).
+({{< panel nichenet ligand-scores >}}) NicheNet target score of each ligand with expressed gene targets (n = 185) per CP component: the AUROC with which genes differentially expressed in the component's top receiver cells recover the ligand's predicted downstream targets.
+Points are colored and sized by the ligand's weight in the component; opaque points mark the ligands of the component's top LR pairs.
 Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
-({{< panel nichenet weighted-percentiles >}}) Target-score percentile of each ligand among its component's ligands, each ligand counted in proportion to its ligand weight; boxes show the weighted quartiles, whiskers the weighted 5th--95th percentiles, and diamonds the weighted mean ({{< fig 2 nichenet >}}).
+({{< panel nichenet weighted-percentiles >}}) Target-score percentile of each ligand among its component's ligands, each ligand counted in proportion to its ligand weight.
+Boxes show the weighted quartiles and whiskers show the weighted 5th--95th percentiles, and diamonds the weighted mean.
 Null: the same percentiles on 1,000 copies of the NicheNet prior with ligand--target links reassigned at random, pooled across components.
 
 ![](figures/figureS_cmp5_identity/figureS_cmp5_identity.svg){width="6.5in"}
