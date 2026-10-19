@@ -91,7 +91,7 @@ In sum, label-free interpretation of CCC-RISE factors isolated a well-validated 
 (h) Pairwise correlation among different groups of LR pairs. Expression-matched pairs have raw gene expression within [placeholder] of CP component 4 top 10 LR pairs. Other associated LR pairs were the top [placeholder] by six-month associated strength, excluding the component 4 top 10 pairs.
 
 Having demonstrated CCC-RISE's capacity to resolve subpopulation heterogeneity, we next determined if CCC-RISE components could stratify conditions.
-ANOVA between component condition weights and patient status variables revealed three outcomes significantly associated with CP component 4 patient weights after multiple-test correction: six-month outcome (four-way) and six-month and one-year deceased status (Fig. 3A, Supplemental Fig. 5a, c--e).
+ANOVA between component condition weights and patient status variables revealed three outcomes significantly associated with CP component 4 patient weights after multiple-test correction: six-month outcome (four-way) and six-month and one-year deceased status (Fig. 3A, Supplemental Fig. 5a, c--d).
 The same test between RISE components and patient outcome yielded no significant associations.
 Inspection of the component 4 sender and receiver eigen-states revealed a signaling axis mediated by CD4+ T cells, CD8+ T cells, and natural killer (NK) cells (Fig. 3b--c).
 Unlike CP component 5, component 4 represented communication between cells acting as both senders and receivers simultaneously (Supplemental Fig. 5b).
@@ -102,7 +102,7 @@ We went on to determine if the LR pairs contained within CP component 4 were esp
 
 
 Given the limited sample size of the ALAD cohort, we validated our observed communication axis and associations with a suite of diverse tests of robustness.
-To this end, we first showed that no covariates shared significant association with any CP component 4-associated status (Supplemental Fig. 5g).
+To this end, we first showed that no covariates shared significant association with six-month outcome or six-month deceased status, while time since transplant and Caucasian ethnicity were associated with one-year deceased status (Supplemental Fig. 5f).
 Further, the association and its significance were robust to patient jackknife (Supplemental Fig. 6)
 We next applied scDiffCom's patient-permutation scheme to our communication tensor to determine if differences across conditions would be observed regardless of patient groups [source].
 Eight of the ten top LR pairs in component 4 had entries significantly larger in CLAD-positive/deceased patients than CLAD-free patients compared with patient-permuted nulls (Fig 3e--f).
