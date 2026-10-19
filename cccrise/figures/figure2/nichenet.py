@@ -103,8 +103,9 @@ def plot(axs):
     ax.set_xlim(-0.6, len(components) - 0.4)
     ax.set_xlabel("CP component")
     ax.set_ylabel("Weighted NicheNet\ntarget-score percentile")
-    common.legend(
-        ax,
+    ax.legend(
+        loc="lower center",
+        ncols=2,
         handles=[
             Line2D(
                 [],
@@ -119,7 +120,7 @@ def plot(axs):
                 facecolor=BOX_FACE,
                 edgecolor=style.COLORS["reference"],
                 lw=style.LINE_WIDTH_THIN,
-                label="Shuffled\nNicheNet",
+                label="Shuffled NicheNet",
             ),
         ],
     )
