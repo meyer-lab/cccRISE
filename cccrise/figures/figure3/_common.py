@@ -5,6 +5,7 @@ tested on.
 `ASSOCIATIONS` is also the Shiny app's list of ALAD comparisons.
 """
 
+import copy
 from functools import cache
 from typing import Any, cast
 
@@ -142,24 +143,28 @@ def association(name: str) -> dict[str, Any]:
 
 
 @cache
-def rise_conditions_adata() -> anndata.AnnData:
-    """One obs row per condition, carrying the RISE condition factor
-    (`pf2_A`) in `uns["A"]`."""
-    cond = SPEC.condition_column
-    obs = cast(pd.DataFrame, factors_adata().obs).drop_duplicates(cond)
-    pf2_A = load_factors_netcdf(SPEC.factors_path())["pf2_A"]
-    # `get_sample_to_group` orders labels by `np.unique`, so pf2_A rows must too
-    assert np.array_equal(np.unique(obs[cond]).astype(str), pf2_A.condition.astype(str))
-    return anndata.AnnData(obs=obs, uns={"A": pf2_A.values})
+def condition_obs() -> pd.DataFrame:
+    """One obs row per condition, in the `np.unique` order
+    `get_sample_to_group` gives labels in."""
+    obs = cast(pd.DataFrame, factors_adata().obs)
+    obs = obs.drop_duplicates(SPEC.condition_column)
+    order = np.unique(obs[SPEC.condition_column])
+    return obs.set_index(obs[SPEC.condition_column].to_numpy()).loc[order]
 
 
 @cache
 def rise_association_table() -> pd.DataFrame:
-    """ANOVA of every RISE component against every association, as
-    `association_table` tests the CP components, FDR-corrected across all
-    associations and components."""
+    """ANOVA of every RISE component's condition factor (`pf2_A`) against
+    every association, as `association_table` tests the CP components,
+    FDR-corrected across all associations and components."""
+    pf2_A = load_factors_netcdf(SPEC.factors_path())["pf2_A"]
+    # `get_sample_to_group` orders labels by `np.unique`, so pf2_A rows must too
+    conditions = np.unique(factors_adata().obs[SPEC.condition_column]).astype(str)
+    assert np.array_equal(conditions, pf2_A.condition.astype(str))
+    adata = copy.copy(factors_adata())
+    adata.uns = {**adata.uns, "A": pf2_A.values}
     return run_multiple_factors_anova(
-        rise_conditions_adata(),
+        adata,
         ASSOCIATIONS,
         condition_column=SPEC.condition_column,
         correction="fdr_bh",

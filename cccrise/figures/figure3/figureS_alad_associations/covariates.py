@@ -4,7 +4,6 @@ covariates that could confound a component-outcome association. A binary
 covariate is coded 0/1, so its eta-squared is the squared Cramér's V."""
 
 from functools import cache
-from typing import cast
 
 import anndata
 import numpy as np
@@ -32,7 +31,7 @@ def covariate_table() -> pd.DataFrame:
     """`run_multiple_factors_anova` of each covariate, in place of a
     component, against each of `S.ASSOCIATIONS`, uncorrected: a confounder
     screen should err toward flagging."""
-    obs = cast(pd.DataFrame, S.rise_conditions_adata().obs)
+    obs = S.condition_obs()
     covariates = pd.DataFrame(
         {
             "Age": obs["age"],
@@ -46,7 +45,11 @@ def covariate_table() -> pd.DataFrame:
     ).astype(float)
     adata = anndata.AnnData(obs=obs, uns={"A": covariates.to_numpy()})
     table = run_multiple_factors_anova(
-        adata, S.ASSOCIATIONS, condition_column=S.SPEC.condition_column, correction=None
+        adata,
+        S.ASSOCIATIONS,
+        condition_column=S.SPEC.condition_column,
+        correction=None,
+        read_depth_correct=False,
     )
     table["Component"] = covariates.columns[table["Component"].astype(int) - 1]
     return table

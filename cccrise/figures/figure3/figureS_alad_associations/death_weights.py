@@ -8,18 +8,13 @@ from ..outcome_association import plot_outcome_weights
 TESTS = (
     ("6-Month Died vs. Alive", 4),
     ("1-Year Died vs. Alive", 4),
-    ("1-Year Died vs. Alive", 5),
 )
-#: Fraction of the data range added above it, clearing the ANOVA statistics
-STATS_HEADROOM = 0.5
 AXES = ("square",) * len(TESTS)
 
 
 def plot(axs):
     for ax, (association, component) in zip(axs, TESTS, strict=True):
         plot_outcome_weights(ax, association, component)
-        low, high = ax.get_ylim()
-        ax.set_ylim(low, high + STATS_HEADROOM * (high - low))
 
 
 def makeFigure():
