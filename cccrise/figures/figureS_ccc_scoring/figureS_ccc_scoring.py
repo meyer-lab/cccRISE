@@ -37,7 +37,8 @@ def makeFigure():
 
 def _letter_beside(subfig, ax, letter: str) -> None:
     """Letter `ax` (and the axes right of it) as a panel of its own, level
-    with `subfig`'s panel letter and left of `ax`'s tick labels."""
+    with `subfig`'s panel letter and left of `ax`'s tick labels, tagged with
+    the same panel module for `record_panel_letters`."""
     panel_label = subfig.texts[0]
 
     def left_of_ax(renderer):
@@ -53,5 +54,6 @@ def _letter_beside(subfig, ax, letter: str) -> None:
             va="top",
             fontsize=panel_label.get_fontsize(),
             fontweight=panel_label.get_fontweight(),
+            gid=panel_label.get_gid(),
         )
     )

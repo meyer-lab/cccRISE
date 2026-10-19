@@ -14,7 +14,7 @@ q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected a
 ![](figures/figureS_rise_factor_matrices/figureS_rise_factor_matrices.svg){width="6.5in"}
 
 **Figure S2. RISE factor matrices.**
-({{< panel rise-factor-matrices factors >}}) RISE factor matrices representing component loadings of conditions and genes.
+({{< panel rise-factor-matrices factors genes >}}) RISE factor matrices representing component loadings of conditions and genes.
 For visualization, genes outside the top 10% by weight in any component are omitted and each component is normalized to its largest absolute loading.
 
 ![](figures/figureS_cmp_stability/figureS_cmp_stability.svg){width="6.5in"}
@@ -33,6 +33,41 @@ Boxes show the median and interquartile range, whiskers 1.5× the interquartile 
 ({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell type markers\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2] in component 5's sender/receiver groups and all other cells.
 ({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Wilcoxon rank-sum q (Benjamini--Hochberg corrected across all genes) between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and all other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and all other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells.
 Labeled are ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial markers and ({{< panel cmp5-identity sender-vs-receiver >}}) epithelium-specific genes selected from those differentially expressed between the groups.
+
+![](figures/figureS_alad_associations/figureS_alad_associations.svg){width="6.5in"}
+
+**Figure S5. Association of CP components, RISE components, and patient covariates with ALAD outcomes.**
+({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CP component's condition loadings against each ALAD outcome.
+\*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
+({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CP component 4 sender against receiver weight, with R^2^ across all cells.
+({{< panel alad-associations death-weights >}}) CP component 4 condition loadings by ({{< panel alad-associations death-weights.1 >}}) six-month and ({{< panel alad-associations death-weights.2 >}}) one-year death.
+Lines connect samples from the same patient.
+Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
+One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outcomes and components.
+({{< panel alad-associations rise-associations >}}) As in ({{< panel alad-associations cp-associations >}}), for each RISE component's condition loadings.
+({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.
+\*: p < 0.05, uncorrected.
+
+![](figures/figureS_alad_pacmaps/figureS_alad_pacmaps.svg){width="6.5in"}
+
+**Figure S6. Cell embedding of the outcome-associated CP component.**
+PaCMAP embedding of all cells' RISE projections, colored by ({{< panel alad-pacmaps pacmaps.1 >}}) annotated cell type, ({{< panel alad-pacmaps pacmaps.2 >}}) six-month outcome, CP component 4 ({{< panel alad-pacmaps weight-pacmaps.1 >}}) sender and ({{< panel alad-pacmaps weight-pacmaps.2 >}}) receiver weight, and ({{< panel alad-pacmaps weight-pacmaps.3 >}}) projection onto eigen-state 16.
+Color scales saturate at the 99th percentile of absolute values.
+
+![](figures/figureS_anova_stability/figureS_anova_stability.svg){width="6.5in"}
+
+**Figure S7. Stability of the CP component--outcome associations.**
+({{< panel anova-stability effect-size-distributions >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by CP factor match score.
+Diamonds mark the full-cohort η^2^, filled where p < 0.05.
+
+![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
+
+**Figure S8. CCC-RISE components across communication scoring methods.**
+({{< panel ccc-scoring factor-match >}}) Factor match score (condition and LR pair modes) of each CP component of the product score to its matched component under each alternate score (left), and the matched components' mean sender and receiver \|cosine\| (right), an independent check of the matching.
+({{< panel ccc-scoring anova >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome under each score, numbered by the matched product-score component.
+\*: p < 0.05.
+({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
+LR pairs shown are the union of each score's top 3.
 
 <!-- Legacy Supplemental Captions
 

@@ -79,39 +79,46 @@ In sum, label-free interpretation of CCC-RISE factors isolated a well-validated 
 
 ## A coordinated immune communication axis is associated with ALAD outcomes
 
-![](media/placeholder.svg){width="6.5in"}
+::: {#fig-3}
+![](figures/figure3/figure3.svg){width="6.5in"}
 
-**Figure 3. CCC-RISE identifies a coordinated immune signaling axis associated with ALAD outcomes.**
-(a) CP component 4 condition loadings stratified by six-month outcome---no CLAD (n=21), CLAD-recovered (n=12), CLAD (n=12), and died (n=2). Lines connect samples from the same patient.
-(b--c) Cell projections onto sender and receiver eigen-state factors, aggregated by annotated cell type.
-(d) CP component 4 LR pair loadings sorted by rank. Top 10 LR pairs by weight are labeled.
-(e) Difference in LR pair communication scores between CLAD/died patients and CLAD-free patients for observed and patient-permuted communication tensors ([placeholder test description]).
-(f) Ratio of LR pair communication scores in CLAD/died patients to CLAD-free patients against patient-permuted null p-value [placeholder test description].
-(g) ANOVA association strength of individual LR pair communication scores with six-month outcome.
-(h) Pairwise correlation among different groups of LR pairs. Expression-matched pairs have raw gene expression within [placeholder] of CP component 4 top 10 LR pairs. Other associated LR pairs were the top [placeholder] by six-month associated strength, excluding the component 4 top 10 pairs.
+**CCC-RISE identifies a coordinated immune signaling axis associated with ALAD outcomes.**
+({{< panel 3 outcome-association >}}) CP component 4 condition loadings by six-month outcome: no CLAD (n = 21), recovered (n = 12), CLAD (n = 12), and died (n = 2).
+Lines connect samples from the same patient.
+Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
+One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outcomes and components.
+({{< panel 3 celltype-association >}}) Mean per-cell ({{< panel 3 celltype-association.1 >}}) sender and ({{< panel 3 celltype-association.2 >}}) receiver weight of each annotated cell type on each CP component; component 4 is outlined.
+({{< panel 3 lr-loadings >}}) CP component 4 LR pair loadings against their rank, with the top 10 LR pairs labeled.
+({{< panel 3 lr-permutation >}}) Difference in mean communication score between CLAD/died and no-CLAD samples of each of component 4's top 10 LR pairs (diamonds), against its null over 10,000 permutations of outcome labels between patients (violins), both in standard deviations of the null.
+Each pair is scored per condition in component 4's sender and receiver eigen-states and normalized by the condition's read depth.
+q: one-sided permutation p, Benjamini--Hochberg corrected across the 10 pairs.
+({{< panel 3 lr-volcano >}}) Ratio of mean communication score in CLAD/died to no-CLAD samples against one-sided permutation p for each CP component's top 20 LR pairs by loading, each scored in its own component's sender and receiver eigen-states; component 4's top 10 pairs are labeled where p < 0.05.
+({{< panel 3 coordinated-changes.1 >}}) ANOVA η^2^ of each LR pair's (n = 513) communication scores, in component 4's sender and receiver eigen-states, with six-month outcome, marking component 4's top 10 LR pairs and its condition loadings.
+({{< panel 3 coordinated-changes.2 >}}) Spearman correlation across conditions between each pair of component 4's top 10 LR pairs, and between pairs of 10 LR pairs drawn 2,000 times from the remaining LR pairs: at random, matched in expression (each from the 20 pairs nearest a top pair in log mean score), or among the other LR pairs associated with six-month outcome (q < 0.05).
+:::
 
 Having demonstrated CCC-RISE's capacity to resolve subpopulation heterogeneity, we next determined if CCC-RISE components could stratify conditions.
-ANOVA between component condition weights and patient status variables revealed three outcomes significantly associated with CP component 4 patient weights after multiple-test correction: six-month outcome (four-way) and six-month and one-year deceased status (Fig. 3A, Supplemental Fig. 5a, c--d).
-The same test between RISE components and patient outcome yielded no significant associations.
-Inspection of the component 4 sender and receiver eigen-states revealed a signaling axis mediated by CD4+ T cells, CD8+ T cells, and natural killer (NK) cells (Fig. 3b--c).
-Unlike CP component 5, component 4 represented communication between cells acting as both senders and receivers simultaneously (Supplemental Fig. 5b).
-Component 4's top LR pairs were also more diffuse than component 5---top pairs consisted of markers of immune cell activation/exhaustion (GZMA--F2R, ADORA2A--ENTPD1, and NECTIN3--TIGIT), immune-activating chemokines and receptors (CCL4/CCL5--CCR4/CCR5 and CXCL13--CXCR3), and activating co-stimulatory ligands and receptors (CD70--CD27 and OX40L(TNFSF4)--OX40) (Fig. 2h, Fig. 3d).
+ANOVA between component condition weights and patient status variables revealed three outcomes significantly associated with CP component 4 patient weights after multiple-test correction: six-month outcome (four-way) and six-month and one-year deceased status ({{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}, {{< panel alad-associations death-weights >}}).
+The same test between RISE components and patient outcome yielded no significant associations ({{< fig alad-associations rise-associations >}}).
+Inspection of the component 4 sender and receiver eigen-states revealed a signaling axis mediated by CD4+ T cells, CD8+ T cells, and natural killer (NK) cells ({{< fig 3 celltype-association >}}, {{< fig alad-pacmaps >}}).
+Unlike CP component 5, component 4 represented communication between cells acting as both senders and receivers simultaneously ({{< fig alad-associations sender-receiver-scatter >}}).
+Component 4's top LR pairs were also more diffuse than component 5---top pairs consisted of markers of immune cell activation/exhaustion (GZMA--F2R, ADORA2A--ENTPD1, and NECTIN3--TIGIT), immune-activating chemokines and receptors (CCL4/CCL5--CCR4/CCR5 and CXCL13--CXCR3), and activating co-stimulatory ligands and receptors (CD70--CD27 and OX40L(TNFSF4)--OX40) ({{< fig 2 cp-factor-matrices.4 >}}, {{< fig 3 lr-loadings >}}).
 CP component 4 collectively represents an inflammatory communication within activated immune populations that is upregulated in CLAD-positive and deceased patients.
 
 We went on to determine if the LR pairs contained within CP component 4 were especially predictive of ALAD outcome or if they were chosen by chance.....
 
 
 Given the limited sample size of the ALAD cohort, we validated our observed communication axis and associations with a suite of diverse tests of robustness.
-To this end, we first showed that no covariates shared significant association with six-month outcome or six-month deceased status, while time since transplant and Caucasian ethnicity were associated with one-year deceased status (Supplemental Fig. 5f).
-Further, the association and its significance were robust to patient jackknife (Supplemental Fig. 6)
+To this end, we first showed that no covariates shared significant association with six-month outcome or six-month deceased status, while time since transplant and Caucasian ethnicity were associated with one-year deceased status ({{< fig alad-associations covariates >}}).
+Further, the association and its significance were robust to patient jackknife ({{< fig anova-stability >}}).
 We next applied scDiffCom's patient-permutation scheme to our communication tensor to determine if differences across conditions would be observed regardless of patient groups [source].
-Eight of the ten top LR pairs in component 4 had entries significantly larger in CLAD-positive/deceased patients than CLAD-free patients compared with patient-permuted nulls (Fig 3e--f).
+Eight of the ten top LR pairs in component 4 had entries significantly larger in CLAD-positive/deceased patients than CLAD-free patients compared with patient-permuted nulls ({{< fig 3 lr-permutation lr-volcano >}}).
 Last, we determined if the associations and biology described by component 4 were artifacts of our specific ligand--receptor interaction scoring methodology by comparing the CP factors constructed by different scoring methods [sources].
-The CP components yielded by different scoring methods generally aggred with CCC-RISE's LR product method (matched-component FMS/cosine similarities between 0.6 and 0.9), and poorly matched components were generally the result of a method describing an entirely different CCC program (Supplemental Fig. 7a).
-The alternate scoring methods shared the six-month outcome-associated component 4 and exhibited similar association strengths among other components (Supplemental Fig. 7b)
-Importantly, the other scoring methods generally captured LR biology similar to that of CCC-RISE, especially in components 3--5 (Supplemental Fig. 7c).
+The CP components yielded by different scoring methods generally aggred with CCC-RISE's LR product method (matched-component FMS/cosine similarities between 0.6 and 0.9), and poorly matched components were generally the result of a method describing an entirely different CCC program ({{< fig ccc-scoring factor-match >}}).
+The alternate scoring methods shared the six-month outcome-associated component 4 and exhibited similar association strengths among other components ({{< fig ccc-scoring anova >}}).
+Importantly, the other scoring methods generally captured LR biology similar to that of CCC-RISE, especially in components 3--5 ({{< fig ccc-scoring interpretation.1 >}}).
 Some scoring methods differed in sender or receiver populations, but never both.
-For example, where hill ageed entirely with CCC-RISE's product, mean and geometric mean (gmean) also identified T and NK cells as primary senders of immune-activating ligands, but implicated epithelial receiver cells instead of the same immune cells (Supplemental Fig. 7d).
+For example, where hill ageed entirely with CCC-RISE's product, mean and geometric mean (gmean) also identified T and NK cells as primary senders of immune-activating ligands, but implicated epithelial receiver cells instead of the same immune cells ({{< fig ccc-scoring interpretation.2 >}}).
 Overall, the six-month outcome-associated immune CCC program identified by CCC-RISE is robust to covariates, jackknife subsampling, patient permutation, and changes to communication scoring method.
 
 

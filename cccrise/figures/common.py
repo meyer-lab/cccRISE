@@ -482,7 +482,7 @@ def record_panel_letters(figure: str, fig: Figure) -> None:
         if module := text.get_gid():
             letters.setdefault(module, []).append(text.get_text().lower())
     panels = yaml.safe_load(PANELS_PATH.read_text()) or {}
-    panels[f"fig{figure}"] = letters
+    panels[f"fig{figure}"] = {module: sorted(ls) for module, ls in letters.items()}
     PANELS_PATH.write_text(
         yaml.safe_dump(panels, sort_keys=False, default_flow_style=None)
     )
