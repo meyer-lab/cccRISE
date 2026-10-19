@@ -25,6 +25,14 @@ Each replicate's components matched to the reference's by the one-to-one assignm
 Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
 ({{< panel cmp-stability fms-histograms >}}) Distributions of RISE component 3 and CP component 2 FMS across jackknife replicates.
 
+![](figures/figureS_nichenet/figureS_nichenet.svg){width="6.5in"}
+
+**Figure S4. External validation of CCC-RISE LR weights.**
+({{< panel nichenet ligand-scores >}}) NicheNet ligand-activity AUROC of each ligand's top 250 predicted downstream targets (by NicheNet v2 ligand--target regulatory potential) against genes ranked by differential expression between each component's top and bottom 10% of receiver cells; opaque points mark each component's top ligands.
+({{< panel nichenet weighted-percentiles >}}) Percentile of each ligand's NicheNet score weighted by its corresponding LR component weight.
+Nulls shuffle NicheNet v2 entries and are collected over components into a single box.
+Boxes show the median and interquartile range, whiskers 1.5× the interquartile range.
+
 ![](figures/figureS_cmp5_identity/figureS_cmp5_identity.svg){width="6.5in"}
 
 **Figure S4. CP component 5 sender and receiver cell identity.**
