@@ -39,7 +39,9 @@ This allows for the identification of specific cell subpopulations driving commu
 ({{< panel 2 permutation-lr-significance.1 >}}) Fraction of each LR pair's (n = 513) condition by sender by receiver entries exceeding a null of 1,000 within-sample cell permutations at p < 0.05.
 p is the fraction of permuted scores at least as large as the observed score, (k + 1)/(1,000 + 1) for k permutations.
 ({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by fraction of entries significant.
-({{< panel 2 nichenet >}}) Weighted average of ligand-activity scores within components for observed and shuffled ligand--gene-target sets (from NicheNet v2 ligand--target regulatory potential). \*: q < 0.05, one-sided Monte Carlo permutation test of observed score against null scores, Benjamini--Hochberg corrected over the five components.
+({{< panel 2 nichenet >}}) Ligand-weighted mean NicheNet target-score percentile of each component's ligands (diamonds) against the same mean on 1,000 copies of the NicheNet v2 ligand--target prior with links reassigned at random (boxes show the quartiles, whiskers the 2.5th--97.5th percentiles).
+Target scores and percentiles are detailed in {{< fig nichenet >}}.
+\*: q < 0.05; n.s.: q ≥ 0.05; one-sided permutation test, Benjamini--Hochberg corrected across the five components.
 ({{< panel 2 sender-receiver-strata >}}) Per-cell component 5 sender against receiver weight.
 Cells above 30% of either weight's maximum form the sender or receiver group, assigned by the larger relative weight.
 ({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each group.
@@ -64,8 +66,9 @@ We next asked whether the communication programs captured by CCC-RISE were stabl
 RISE and CP components were stable over re-initialization (aggregate FMS 1.000) and leave-one-patient-out jackknife (aggregate FMS 0.985 for RISE, 0.999 for CP) ({{< fig 2 aggregate-fms >}}, {{< fig cmp-stability >}}).
 To assess robustness, we extended the cluster-label permutation of CellPhoneDB and CellChat to continuous eigen-states by shuffling which cell's expression is paired with each eigen-state projection and recomputing the communication tensor\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
 Per LR pair, a median of 9.7% of entries exceeded this null at p < 0.05 and mean observed scores exceeded mean null scores for 99% of LR pairs ({{< fig 2 permutation-lr-significance >}}).
-Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring the differential expression (DE) of each ligand's NicheNet-predicted downstream gene targets in the component's top receiver cells\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
-Compared with permuted nulls constructed by shuffling target genes paired with each ligand, CCC-RISE components 3--5 describe receiver cell types that overexpress gene targets of their highly weighted ligands ({{< fig nichenet >}}).
+Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring how well differential expression (DE) in the component's top receiver cells recovered each ligand's NicheNet-predicted downstream gene targets\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9] ({{< fig nichenet ligand-scores >}}).
+Averaged with each ligand's weight in the component, ligand target-score percentiles exceeded the median for every component (0.62--0.82) and exceeded those obtained with randomly reassigned ligand--target links for components 3--5 (q < 0.05) ({{< fig 2 nichenet >}}, {{< fig nichenet weighted-percentiles >}}).
+Thus, the receiver cells of components 3--5 upregulate the downstream targets of the ligands these components weight most heavily.
 
 RISE eigen-states allow cellular identity to be traced from CP component weights back to single-cell gene expression without depending on prior annotations.
 We illustrate this with component 5, whose sender and receiver loadings were spread across several eigen-states ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}), suggesting signaling between populations.
