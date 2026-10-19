@@ -67,9 +67,7 @@ def _observed_vs_null(lr_table, ax):
         edgecolors="none",
         rasterized=True,
     )
-    common.colorbar(ax, points, "Fraction significant\n(p < 0.05)").set_ticks(
-        COLORBAR_TICKS
-    )
+    common.colorbar(ax, points, "Fraction significant").set_ticks(COLORBAR_TICKS)
     low = min(0.0, observed.min(), null.min())
     high = max(observed.max(), null.max()) * 1.05
     ax.plot(
