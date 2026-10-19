@@ -33,7 +33,9 @@ def plot(fig):
     aligned = {m: aligned_anova(m) for m in S.ALL_SCORES}
     eta = pd.DataFrame({m: e for m, (e, _) in aligned.items()})
     sig = pd.DataFrame({m: s for m, (_, s) in aligned.items()})
-    outcome = S.default_provenance("anova_point_estimate", "group_column")
+    outcome = S.default_provenance(
+        S.SPEC.anova_point_estimate_filename(), "group_column"
+    )
     outcome = common.OUTCOME_LABELS.get(outcome, outcome)
 
     ax = fig.subplots()
