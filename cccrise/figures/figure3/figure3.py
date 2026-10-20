@@ -12,8 +12,8 @@ from . import (
 
 LAYOUT = [
     [outcome_association, celltype_association],
-    [lr_loadings, lr_permutation, lr_volcano],
-    [coordinated_changes],
+    [lr_loadings, coordinated_changes],
+    [lr_permutation, lr_volcano],
 ]
 
 

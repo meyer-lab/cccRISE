@@ -13,9 +13,9 @@ fig3:
   outcome_association: [a]
   celltype_association: [b, c]
   lr_loadings: [d]
-  lr_permutation: [e]
-  lr_volcano: [f]
-  coordinated_changes: [g, h]
+  coordinated_changes: [e, f]
+  lr_permutation: [g]
+  lr_volcano: [h]
 fig4: {}
 fig5: {}
 figS_rise_factor_matrices:
@@ -35,14 +35,15 @@ figS_cmp5_identity:
 figS_alad_associations:
   cp_associations: [a]
   death_weights: [b, c]
-  sender_receiver_scatter: [d]
-  rise_associations: [e]
+  rise_associations: [d]
+  sender_receiver_scatter: [e]
   covariates: [f]
 figS_alad_cohort:
   cohort: [a]
   celltype_proportions: [b]
 figS_anova_stability:
   effect_size_distributions: [a]
+  significant_fraction: [b]
 figS_ccc_scoring:
   factor_match: [a]
   anova: [b]

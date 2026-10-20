@@ -2,10 +2,10 @@
 jackknifing."""
 
 from ... import common, style
-from . import effect_size_distributions
+from . import effect_size_distributions, significant_fraction
 
-PANELS = {"distributions": effect_size_distributions}
-LAYOUT = [["distributions"]]
+PANELS = {"distributions": effect_size_distributions, "fraction": significant_fraction}
+LAYOUT = [["distributions"] * 2 + ["fraction"]]
 
 
 def makeFigure():

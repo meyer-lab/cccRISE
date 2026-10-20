@@ -14,10 +14,9 @@ from . import (
 )
 
 LAYOUT = [
-    [cp_associations],
-    [death_weights, sender_receiver_scatter],
+    [cp_associations, death_weights],
     [rise_associations],
-    [covariates],
+    [sender_receiver_scatter, covariates],
 ]
 
 
