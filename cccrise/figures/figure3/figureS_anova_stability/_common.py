@@ -37,7 +37,8 @@ def replicates() -> pd.DataFrame:
 
 @cache
 def reference() -> pd.DataFrame:
-    """The full-cohort ANOVA per component, from the sidecar."""
+    """The full-cohort ANOVA per component, from the sidecar, with p
+    Benjamini-Hochberg corrected across components (`PAdj`)."""
     meta = metadata()
     n = len(meta["reference_eta_squared"])
     return pd.DataFrame(
@@ -45,6 +46,7 @@ def reference() -> pd.DataFrame:
             "Component": np.arange(1, n + 1),
             "EtaSquared": meta["reference_eta_squared"],
             "P": meta["reference_p"],
+            "PAdj": meta["reference_p_adj"],
         }
     )
 
@@ -62,8 +64,8 @@ def components() -> list[int]:
 
 
 def reference_markers(ax, x, y) -> None:
-    """Full-cohort values as diamonds, filled where p < alpha."""
-    significant = reference()["P"].to_numpy() < alpha()
+    """Full-cohort values as diamonds, filled where q < alpha."""
+    significant = reference()["PAdj"].to_numpy() < alpha()
     for filled in (True, False):
         keep = significant == filled
         ax.scatter(
@@ -80,7 +82,7 @@ def reference_markers(ax, x, y) -> None:
 
 def reference_legend_handles() -> list:
     return [
-        Line2D([], [], marker="D", color="black", lw=0, label=f"Full cohort, p < {alpha():g}"),
+        Line2D([], [], marker="D", color="black", lw=0, label=f"Full cohort, q < {alpha():g}"),
         Line2D(
             [], [], marker="D", color="black", markerfacecolor="white", lw=0,
             label="Full cohort, n.s.",

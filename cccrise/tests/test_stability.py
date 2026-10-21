@@ -839,6 +839,7 @@ def test_stability_replicates_carries_the_anova_onto_cpd_rows_only():
     assert set(cpd["Axis"]) == {SEED_AXIS, JACKKNIFE_AXIS}
     assert cpd["EtaSquared"].between(0.0, 1.0 + 1e-9).all()
     assert cpd["P"].notna().all()
+    assert (cpd["PAdj"] >= cpd["P"]).all()
     assert df.loc[df["Stage"] == STAGE_RISE, list(ANOVA_COLUMNS)].isna().all().all()
 
 
@@ -875,6 +876,7 @@ def test_attach_anova_reads_the_matched_component_and_corrects_the_sign():
             "EtaSquared": [0.1, 0.5],
             "F": [1.0, 5.0],
             "P": [0.4, 0.01],
+            "PAdj": [0.4, 0.02],
             "GroupMeanDiff": [-1.0, 3.0],
         }
     )
@@ -883,6 +885,7 @@ def test_attach_anova_reads_the_matched_component_and_corrects_the_sign():
 
     np.testing.assert_allclose(out["EtaSquared"], [0.5, 0.1])
     np.testing.assert_allclose(out["P"], [0.01, 0.4])
+    np.testing.assert_allclose(out["PAdj"], [0.02, 0.4])
     # Reference component 1 is replicate component 2, flipped in the condition
     # mode; component 2's condition mode was held out, so the LR mode's sign
     # corrects it.

@@ -36,7 +36,15 @@ from ...import_data import import_ligand_receptor_pairs
 from ...runners.datasets import DATASETS
 from ...utils import load_rise_reference
 from .. import common, style
-from ._common import COMPONENT, DATASET, OUTCOME, SPEC, association, factors_adata
+from ._common import (
+    COMPONENT,
+    DATASET,
+    OUTCOME,
+    SPEC,
+    association,
+    association_table,
+    factors_adata,
+)
 
 # The component's N_TOP most heavily weighted LR pairs are the ones tested
 # for co-variation.
@@ -142,10 +150,13 @@ def coordinated_analysis() -> dict:
     weights = np.asarray(adata.uns["D"])[:, COMPONENT - 1]
     top = np.argsort(-np.abs(weights))[:N_TOP]
     per_lr = column_associations(scores, adata)
-    loading = np.asarray(adata.uns["A"])[:, [COMPONENT - 1]]
+    table = association_table()
+    component = table[
+        (table["Association"] == OUTCOME) & (table["Component"] == COMPONENT)
+    ]
     return {
         "lr_eta": per_lr.EtaSquared.to_numpy(),
-        "component_eta": float(column_associations(loading, adata).EtaSquared.iloc[0]),
+        "component_eta": float(component["EtaSquared"].iloc[0]),
         "top": top,
         "observed": pairwise_rank_correlations(scores, top),
         "baselines": covariation_baselines(
@@ -188,8 +199,9 @@ def communication_tensor(dataset: str) -> np.ndarray:
 def column_associations(matrix: np.ndarray, adata: anndata.AnnData) -> pd.DataFrame:
     """The component ANOVA against OUTCOME, applied to each column of a
     conditions x features `matrix` in place of the component condition
-    loadings: a one-way ANOVA per column over the association's groups,
-    reporting eta^2, FDR-corrected (Benjamini-Hochberg) across columns."""
+    loadings: a one-way ANOVA per column over the association's groups, each
+    condition's row read-depth corrected as the loadings are, reporting
+    eta^2, FDR-corrected (Benjamini-Hochberg) across columns."""
     adata = copy.copy(adata)
     adata.uns = {**adata.uns, "A": matrix}
     return run_multiple_factors_anova(
@@ -221,7 +233,8 @@ def covariation_baselines(
       (without replacement within a draw), so the draw matches the top pairs'
       expression levels.
     - associated: drawn uniformly from the `associated` (boolean mask) pairs,
-      i.e. the other pairs significantly associated with the outcome."""
+      i.e. the other pairs significantly associated with the outcome; all of
+      them when there are fewer than `top`."""
     rng = np.random.default_rng(seed)
     pool = np.setdiff1d(np.arange(scores.shape[1]), top)
     level = np.log10(scores.mean(axis=0) + 1e-12)
@@ -240,7 +253,9 @@ def covariation_baselines(
     draws = {
         "random": lambda: rng.choice(pool, len(top), replace=False),
         "expression_matched": matched_draw,
-        "associated": lambda: rng.choice(associated_pool, len(top), replace=False),
+        "associated": lambda: rng.choice(
+            associated_pool, min(len(top), associated_pool.size), replace=False
+        ),
     }
     return {
         name: np.array(
