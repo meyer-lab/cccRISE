@@ -62,8 +62,9 @@ One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outco
 
 **Figure S7.
 Stability of the CP component--outcome associations.** ({{< panel anova-stability effect-size-distributions >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by CP factor match score.
-Diamonds mark the full-cohort η^2^, filled where p < 0.05.
-({{< panel anova-stability significant-fraction >}}) Fraction of jackknife replicates in which each CP component's association with six-month outcome has p < 0.05.
+Diamonds mark the full-cohort η^2^, filled where q < 0.05.
+({{< panel anova-stability significant-fraction >}}) Fraction of jackknife replicates in which each CP component's association with six-month outcome has q < 0.05.
+q: p Benjamini--Hochberg corrected across the five components of each fit.
 
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 

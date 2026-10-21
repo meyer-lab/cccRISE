@@ -1,5 +1,6 @@
 """Fraction of leave-one-patient-out replicates in which each CP component's
-outcome association stays significant (p < alpha)."""
+outcome association stays significant (q < alpha, Benjamini-Hochberg
+corrected across the replicate's components)."""
 
 from ....validation.stability import JACKKNIFE_AXIS
 from ... import common, style
@@ -8,7 +9,9 @@ from . import _common as S
 
 def plot(fig):
     ax = fig.subplots()
-    significant = (S.replicates()["P"] < S.alpha()).groupby(S.replicates()["Component"])
+    significant = (S.replicates()["PAdj"] < S.alpha()).groupby(
+        S.replicates()["Component"]
+    )
     fraction, count, total = significant.mean(), significant.sum(), significant.size()
     components = S.components()
     ax.bar(
@@ -30,7 +33,7 @@ def plot(fig):
     ax.set_xticks(range(len(components)), components)
     ax.set_ylim(0, 1.15)  # count headroom
     ax.set_xlabel("CP component")
-    ax.set_ylabel(f"Fraction of replicates\nwith p < {S.alpha():g}")
+    ax.set_ylabel(f"Fraction of replicates\nwith q < {S.alpha():g}")
 
 
 def makeFigure():

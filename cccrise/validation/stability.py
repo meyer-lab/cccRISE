@@ -107,7 +107,7 @@ CONDITION_MODE = 0
 LR_MATCH_MODES: tuple[int, ...] = (3,)
 
 #: Per-component ANOVA columns carried onto a replicate's CPD rows.
-ANOVA_COLUMNS = ("EtaSquared", "F", "P", "GroupMeanDiff")
+ANOVA_COLUMNS = ("EtaSquared", "F", "P", "PAdj", "GroupMeanDiff")
 
 #: Name of the reproducibility-ceiling axis: identical data, a different random
 #: seed, refit end to end. `random_state` genuinely moves both stages: `parafac2_nd`
@@ -420,7 +420,11 @@ def component_anova(
         data, cp_factors, condition_column, group_column, control_label, other_label
     )
     return anova_component_associations(
-        X, sample_to_group, control_label=control_label, min_group_size=1
+        X,
+        sample_to_group,
+        control_label=control_label,
+        correction="fdr_bh",
+        min_group_size=1,
     )
 
 
@@ -428,7 +432,7 @@ def _attach_anova(block: pd.DataFrame, anova: pd.DataFrame | None) -> pd.DataFra
     """Carry a replicate's ANOVA statistics onto the CPD rows of
     `per_component_fms`, by the reference component each was matched to.
 
-    F, P and eta-squared do not change under a gauge flip and are read straight
+    F, P, PAdj and eta-squared do not change under a gauge flip and are read straight
     off the matched replicate component. `GroupMeanDiff` is a difference of
     condition-mode loadings, so it is sign-corrected by the condition mode's
     own signed cosine (`SignedCosMode0`) where that mode was compared, and by
@@ -1103,7 +1107,9 @@ def summarize_anova_stability(
     Three things are reported side by side rather than collapsed into one
     number, because they call for different conclusions: how large the effect
     is and how tightly the replicates pin it down (the eta-squared interval);
-    how often the association reaches `alpha` at all (`FracSignificant`); and
+    how often the association reaches `alpha` at all, by its p-value
+    Benjamini-Hochberg corrected across the replicate's components
+    (`FracSignificant`); and
     whether the component was even re-identifiable across replicates
     (`MedianFMS`/`MinFMS`), which is a CP identifiability question rather than
     a question about the phenotype.
@@ -1118,8 +1124,8 @@ def summarize_anova_stability(
         Output of `stability_replicates`, run with a `group_column`.
     reference_anova : pd.DataFrame
         The full-cohort fit's per-component ANOVA table -- `stability_fit`'s
-        ``result["anova"]`` -- carrying 'Component', 'EtaSquared', 'F', 'P' and
-        'GroupMeanDiff'.
+        ``result["anova"]`` -- carrying 'Component', 'EtaSquared', 'F', 'P',
+        'PAdj' and 'GroupMeanDiff'.
     axis : str, default=JACKKNIFE_AXIS
         Axis to summarize.
     ci_level : float, default=95.0
@@ -1134,7 +1140,8 @@ def summarize_anova_stability(
     -------
     pd.DataFrame
         One row per component, sorted by component, with columns 'Component',
-        'ReferenceEtaSquared', 'ReferenceF', 'ReferenceP', 'MeanEtaSquared',
+        'ReferenceEtaSquared', 'ReferenceF', 'ReferenceP', 'ReferencePAdj',
+        'MeanEtaSquared',
         'MedianEtaSquared', 'SDEtaSquared', 'CILow', 'CIHigh', 'MedianP',
         'FracSignificant', 'ReferenceGroupMeanDiff', 'MedianGroupMeanDiff',
         'FracSameSignAsReference' (NaN when the reference group-mean
@@ -1148,6 +1155,7 @@ def summarize_anova_stability(
         component = cast(int, component_key)
         eta = group["EtaSquared"].to_numpy(dtype=float)
         p_values = group["P"].to_numpy(dtype=float)
+        q_values = group["PAdj"].to_numpy(dtype=float)
         diffs = group["GroupMeanDiff"].to_numpy(dtype=float)
         reference = reference_by_component.loc[component]
         reference_diff = float(reference["GroupMeanDiff"])
@@ -1160,6 +1168,7 @@ def summarize_anova_stability(
                 "ReferenceEtaSquared": float(reference["EtaSquared"]),
                 "ReferenceF": float(reference["F"]),
                 "ReferenceP": float(reference["P"]),
+                "ReferencePAdj": float(reference["PAdj"]),
                 "MeanEtaSquared": float(np.nanmean(eta)),
                 "MedianEtaSquared": float(np.nanmedian(eta)),
                 "SDEtaSquared": float(np.nanstd(eta, ddof=1)) if len(eta) > 1 else 0.0,
@@ -1168,7 +1177,7 @@ def summarize_anova_stability(
                 "MedianP": float(np.nanmedian(p_values)),
                 # A replicate whose ANOVA came back degenerate (NaN p) counts
                 # as not significant rather than dropping out of the tally.
-                "FracSignificant": float(np.mean(p_values < alpha)),
+                "FracSignificant": float(np.mean(q_values < alpha)),
                 "ReferenceGroupMeanDiff": reference_diff,
                 "MedianGroupMeanDiff": float(np.nanmedian(diffs)),
                 "FracSameSignAsReference": (

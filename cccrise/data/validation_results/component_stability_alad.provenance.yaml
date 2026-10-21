@@ -5,7 +5,7 @@
 dataset: alad
 dataset_label: ALAD Lung Transplant BAL
 source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
-source_sha256: 19e7056711e65fcdc57c59abd1a62857d76549fa597dc648ff7560448dd3213e
+source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
 loader_args:
   filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
   gene_threshold: 0.001
@@ -18,9 +18,9 @@ cp_rank: 5
 axes:
 - seed_only
 - jackknife
-n_replicates: 47
+n_replicates: 25
 n_replicates_per_axis:
-  seed_only: 47
+  seed_only: 25
   jackknife: 45
 jackknife_unit: patient_id
 group_column: 6monthcondition
@@ -72,26 +72,32 @@ anova_alignment: each replicate's ANOVA statistics carried onto the reference co
 component_numbering: core fit cccrise/data/factors/bal_alad_factors.nc (validation.relabel_workflow_fit)
 lr_roster_stable: true
 interaction_tensor_shape: [47, 17, 17, 513]
-r2x_pf2: 0.031480067032863324
-r2x_cp: 0.44989220095850413
+r2x_pf2: 0.0314801027896493
+r2x_cp: 0.44989390730526313
 reference_eta_squared:
-- 0.07612534860452015
-- 0.037256183784255804
-- 0.0753439856171402
-- 0.28984967594858935
-- 0.05230814224305126
+- 0.07612874919491766
+- 0.03731113329266281
+- 0.07531418160170801
+- 0.2898582587092574
+- 0.05231724507736932
 reference_f:
-- 1.18103683764532
-- 0.5546701956567016
-- 1.1679267140582192
-- 5.850186757964528
-- 0.7911327217600236
+- 1.1810939430246468
+- 0.5555199909575225
+- 1.1674270851199597
+- 5.850430695635435
+- 0.7912779977059385
 reference_p:
-- 0.3281456241252403
-- 0.647800469464072
-- 0.33304234657539716
-- 0.0019197673730881712
-- 0.5055270220173582
+- 0.3281244430881892
+- 0.6472432691775211
+- 0.33323030678151644
+- 0.0019192932228283637
+- 0.5054478291236448
+reference_p_adj:
+- 0.5553838446358608
+- 0.6472432691775211
+- 0.5553838446358608
+- 0.009596466114141819
+- 0.631809786404556
 reference_group_mean_diff:
 - .nan
 - .nan
@@ -105,11 +111,11 @@ reference_top_lr_pair:
 - GZMA^F2R
 - BTC^EGFR
 reference_top_lr_loading:
-- 0.8306845860511824
-- 0.6543506870737406
-- 0.6404843226569262
-- 0.48135855722923737
-- 0.9018986875072079
+- 0.8306876206738312
+- 0.6543580797112921
+- 0.6403408809342237
+- 0.4813470393708595
+- 0.9019617445268338
 n_components_significant: 1
 reference_seed: 42
 first_replicate_seed: 42001
@@ -118,5 +124,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: bb517f34f402fdbfa837c394ded1d67cf46214ad-dirty
-generated: '2026-10-07T19:30:29+00:00'
+git_sha: d62785a4980234c84d45b359d8c51ea9eba4faee-dirty
+generated: '2026-10-20T22:46:12+00:00'
