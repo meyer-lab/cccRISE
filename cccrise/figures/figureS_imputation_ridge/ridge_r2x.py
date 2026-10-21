@@ -23,8 +23,8 @@ def plot(axs):
     ax.scatter(
         core["Rank"],
         core["CoreFitR2X"],
-        marker="D",
-        edgecolors=style.COLORS["ink"],
+        marker="x",
+        color=style.COLORS["ink"],
         label="Core fit (CPU)",
         **S.CORE_MARKER,
     )

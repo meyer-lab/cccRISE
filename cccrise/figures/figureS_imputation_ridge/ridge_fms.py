@@ -29,14 +29,14 @@ def plot(axs):
         label="Ridge vs. no ridge",
     )
     for column, marker, color, label in (
-        ("CoreFMS", "D", style.COLORS["fit"], "Core vs. no ridge"),
-        ("CoreRidgeFMS", "s", style.COLORS["highlight"], "Core vs. ridge"),
+        ("CoreFMS", "+", style.COLORS["fit"], "Core vs. no ridge"),
+        ("CoreRidgeFMS", "x", style.COLORS["highlight"], "Core vs. ridge"),
     ):
         ax.scatter(
             core["Rank"],
             core[column],
             marker=marker,
-            edgecolors=color,
+            color=color,
             label=label,
             **CORE_MARKER,
         )
