@@ -75,6 +75,15 @@ CCC-RISE components across communication scoring methods.** ({{< panel ccc-scori
 ({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
 LR pairs shown are the union of each score's top 3.
 
+![](figures/figureS_imputation_ridge/figureS_imputation_ridge.svg){width="6.5in"}
+
+**Figure S9.
+Ridge regularization used only for masked imputation leaves the full-data CP fit unchanged at the selected rank.** Masked imputation fits ({{< fig 2 cp-rank-selection >}}) use a ridge penalty ($\lambda = 0.1$) that the full-data CP fits do not.
+Fits with and without the ridge were run on the GPU, as masked imputation is; the canonical core fit was run on the CPU.
+({{< panel imputation-ridge ridge-r2x >}}) R2X of full-data CP fits with and without the ridge across CP ranks, and of the core fit at the selected rank.
+({{< panel imputation-ridge ridge-fms >}}) Component-matched FMS between the fits with and without the ridge across CP ranks, with each matched component's congruence product shown as a point, and between the core fit and each of them at the selected rank.
+Dashed lines mark the selected CP rank.
+
 <!-- Legacy Supplemental Captions
 
 <!-- ![](media/placeholder.svg){width="6.5in"}
