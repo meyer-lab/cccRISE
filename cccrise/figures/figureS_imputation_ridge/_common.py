@@ -11,7 +11,8 @@ from .. import common, style
 
 DATASET = "alad"
 #: Open markers for the canonical CPU core fit, drawn over the GPU curves
-CORE_MARKER = {"facecolors": "none", "s": 4 * style.POINT_SIZE, "zorder": 3}
+CORE_MARKER_SIZE = 4 * style.POINT_SIZE
+CORE_MARKER = {"facecolors": "none", "s": CORE_MARKER_SIZE, "zorder": 3}
 
 
 def load() -> tuple[pd.DataFrame, pd.Series, float]:

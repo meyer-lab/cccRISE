@@ -7,6 +7,8 @@ from .. import common, style
 from . import _common as S
 
 AXES = ("square",)
+#: 25% narrower than panel A's core-fit marker (marker area scales as width^2)
+CORE_MARKER = S.CORE_MARKER | {"s": 0.75**2 * S.CORE_MARKER_SIZE}
 
 
 def plot(axs):
@@ -36,7 +38,7 @@ def plot(axs):
             marker=marker,
             edgecolors=color,
             label=label,
-            **S.CORE_MARKER,
+            **CORE_MARKER,
         )
     common.mark_rank(ax, core["Rank"])
     ax.set_xlabel("CP rank")

@@ -77,7 +77,7 @@ MAX_DEFAULT_RANK = 25
 #: The ridge leaves the full-data fit at the selected rank unchanged (the
 #: ridge comparison), so it is applied to masked fits only.
 IMPUTATION_OPTIONS: dict[str, Any] = {"n_folds": 10, "l2_reg": 0.1}
-IMPUTATION_REPEATS = 3
+IMPUTATION_REPEATS = 10
 
 #: Canonical-fit provenance carried into this sweep's sidecar.
 CANONICAL_FIELDS = (

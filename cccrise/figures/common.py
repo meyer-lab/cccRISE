@@ -598,7 +598,7 @@ def plot_cpd_imputation_r2x(sweep: pd.DataFrame, ax: plt.Axes):
     )
     ax.set_ylabel("$R^2X$")
     ax.set_ylim(top=1.25 * sweep["FitR2X"].max())  # headroom for the legend
-    ax.legend(loc="upper left")
+    ax.legend(loc="upper right")
 
 
 def plot_collinearity(
