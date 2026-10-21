@@ -1,4 +1,8 @@
-fig1: {}
+fig1:
+  workflow: [a]
+  embedding: [b]
+  component_interpretation: [c]
+  cell_mapping: [d]
 fig2:
   rise_rank_selection: [a]
   cp_rank_selection: [b, c]
