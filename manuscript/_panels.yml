@@ -12,10 +12,10 @@ fig2:
 fig3:
   outcome_association: [a]
   celltype_association: [b, c]
-  sender_receiver_scatter: [d]
-  lr_loadings: [e]
-  coordinated_changes: [f, g]
-  pacmaps: [h, i, j]
+  lr_loadings: [d]
+  coordinated_changes: [e, f]
+  lr_permutation: [g]
+  lr_volcano: [h]
 fig4: {}
 fig5: {}
 figS_rise_factor_matrices:
@@ -34,13 +34,20 @@ figS_cmp5_identity:
   sender_vs_receiver: [f]
 figS_alad_associations:
   cp_associations: [a]
-  rise_associations: [b]
-  rise_outcome_weights: [c]
-  rise_genes: [d]
-  eigenstate_pacmap: [e]
+  death_weights: [b, c]
+  rise_associations: [d]
+  sender_receiver_scatter: [e]
+  covariates: [f]
 figS_alad_cohort:
   cohort: [a]
   celltype_proportions: [b]
+figS_anova_stability:
+  effect_size_distributions: [a]
+  significant_fraction: [b]
+figS_ccc_scoring:
+  factor_match: [a]
+  anova: [b]
+  interpretation: [c, d]
 figS_nichenet:
   ligand_scores: [a]
   weighted_percentiles: [b]

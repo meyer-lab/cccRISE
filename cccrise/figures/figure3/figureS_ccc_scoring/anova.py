@@ -3,8 +3,8 @@ score (point estimate), in the default score's component numbering."""
 
 import pandas as pd
 
-from ...validation.stability import align_to_reference_components
-from .. import common, style
+from ....validation.stability import align_to_reference_components
+from ... import common, style
 from . import _common as S
 
 
@@ -36,7 +36,7 @@ def plot(fig):
     outcome = S.default_provenance(
         S.SPEC.anova_point_estimate_filename(), "group_column"
     )
-    outcome = "6-mo. outcome" if outcome == "6monthcondition" else outcome
+    outcome = common.OUTCOME_LABELS.get(outcome, outcome)
 
     ax = fig.subplots()
     S.grouped_bar(ax, eta, rf"$\eta^2$ ({outcome})", sig=sig)

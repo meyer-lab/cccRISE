@@ -482,7 +482,7 @@ def record_panel_letters(figure: str, fig: Figure) -> None:
         if module := text.get_gid():
             letters.setdefault(module, []).append(text.get_text().lower())
     panels = yaml.safe_load(PANELS_PATH.read_text()) or {}
-    panels[f"fig{figure}"] = letters
+    panels[f"fig{figure}"] = {module: sorted(ls) for module, ls in letters.items()}
     PANELS_PATH.write_text(
         yaml.safe_dump(panels, sort_keys=False, default_flow_style=None)
     )
@@ -493,6 +493,8 @@ def record_panel_letters(figure: str, fig: Figure) -> None:
 # =============================================================================
 
 SIG_ALPHA = 0.05
+# Axis-label names of outcome `obs` columns
+OUTCOME_LABELS = {"6monthcondition": "6-mo. outcome"}
 
 
 RANK_LINE: dict[str, Any] = {
@@ -634,6 +636,7 @@ LEVEL_ORDER = [
     "CLAD/Declined",
     "CLAD/Stable",
     "CLAD/Died",
+    "Alive",
     "Died",
     "no",
     "yes",
@@ -649,15 +652,24 @@ LEVEL_ORDER = [
 
 
 def plot_association_heatmap(
-    table: pd.DataFrame, ax: plt.Axes, xlabel: str = "CP component"
+    table: pd.DataFrame,
+    ax: plt.Axes,
+    xlabel: str = "CP component",
+    p_column: str = "PAdj",
+    p_label: str = "FDR",
 ) -> None:
     """Eta-squared of each component (columns) against each outcome
-    association (rows, in `table` order), from `anova.run_multiple_factors_anova`;
-    bold with a star where the FDR-adjusted p is below `SIG_ALPHA`."""
-    order = list(dict.fromkeys(table["Association"]))
+    association (rows), both in `table` order, from
+    `anova.run_multiple_factors_anova`; bold with a star where `p_column` is
+    below `SIG_ALPHA`."""
+    rows, columns = (
+        list(dict.fromkeys(table[c])) for c in ("Association", "Component")
+    )
     effect, padj = (
-        table.pivot(index="Association", columns="Component", values=v).reindex(order)
-        for v in ("EtaSquared", "PAdj")
+        table.pivot(index="Association", columns="Component", values=v).reindex(
+            index=rows, columns=columns
+        )
+        for v in ("EtaSquared", p_column)
     )
     values = effect.to_numpy(dtype=float)
     vmax = np.nanmax(values)
@@ -679,11 +691,11 @@ def plot_association_heatmap(
             color="white" if value > 0.6 * vmax else style.COLORS["ink"],
         )
     ax.set_xticks(range(effect.shape[1]), effect.columns)
-    ax.set_yticks(range(len(order)), order, fontsize=style.FONT_SIZE_DENSE)
+    ax.set_yticks(range(len(rows)), rows, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
-    colorbar(ax, image, rf"$\eta^2$ (* FDR < {SIG_ALPHA})")
+    colorbar(ax, image, rf"$\eta^2$ (* {p_label} < {SIG_ALPHA})")
 
 
 def plot_association_effect_sizes(
@@ -743,6 +755,15 @@ def group_loadings(
     ).dropna(subset=["Status"])
 
 
+#: Outcome levels as figures and the app display them; the source data keep
+#: the original labels.
+LEVEL_LABELS = {"No CLAD/Stable": "No CLAD", "No CLAD/Recovered": "Recovered"}
+
+
+def level_label(level) -> str:
+    return LEVEL_LABELS.get(str(level), str(level))
+
+
 def ordered_levels(levels) -> list:
     """Distinct `levels` in `LEVEL_ORDER`, unlisted ones after alphabetically."""
     rank = {level: i for i, level in enumerate(LEVEL_ORDER)}
@@ -775,6 +796,7 @@ def plot_category_component_weights(
     condition_column: str = "dsco_id",
     palette: Sequence[str] = style.CATEGORICAL,
     read_depth_correct: bool = True,
+    show_counts: bool = True,
     **regrouping,
 ) -> None:
     """Box plot of one component's condition loadings per outcome level,
@@ -782,7 +804,8 @@ def plot_category_component_weights(
     `patient_column` is given. `regrouping` (mapping / levels /
     control_label / other_label) is passed to `anova.prepare_group_labels`;
     `anova_df` adds the component's F, adjusted p, and eta-squared in the
-    corner; `xlabel` (default `group_column`, "" for none) names the outcome."""
+    corner; `xlabel` (default `group_column`, "" for none) names the outcome;
+    `show_counts` adds each level's sample count to its tick label."""
     points = group_loadings(
         adata,
         component,
@@ -823,10 +846,12 @@ def plot_category_component_weights(
         _join_patients(ax, points, adata, condition_column, patient_column)
 
     # Wrapped at "/" rather than rotated, so long levels stay legible.
-    ax.set_xticks(
-        range(len(levels)),
-        [f"{str(level).replace('/', '/\n')}\n(n={counts[level]})" for level in levels],
-    )
+    labels = [level_label(level).replace("/", "/\n") for level in levels]
+    if show_counts:
+        labels = [
+            f"{t}\n(n={counts[lv]})" for t, lv in zip(labels, levels, strict=True)
+        ]
+    ax.set_xticks(range(len(levels)), labels)
     ax.set_xlabel(group_column if xlabel is None else xlabel)
     ax.set_ylabel(f"Component {component} loading")
     ax.text(

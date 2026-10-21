@@ -7,14 +7,16 @@ keeping sign, so methods compare by pattern rather than scale."""
 import numpy as np
 import pandas as pd
 
-from .. import common, style
+from ... import common, style
 from . import _common as S
 
 #: Top LR pairs per method; the dot plot shows their union.
 TOP_N_LR = 3
 #: Marker area (pt^2) of a dot with normalized loading magnitude 1.
 DOT_AREA = 40
-METHOD_TICKS = [m.removeprefix("expression_") for m in S.ALL_SCORES]
+METHOD_TICKS = [
+    S.SCORE_LABELS[m].replace("Geometric mean", "Gmean") for m in S.ALL_SCORES
+]
 KINDS = ("lr", "sender", "receiver")
 
 
@@ -73,7 +75,7 @@ def _draw_heatmap(ax, table: pd.DataFrame) -> None:
 
 def _finish(ax, table: pd.DataFrame) -> None:
     ax.set_yticks(range(len(table)), table.index, fontsize=style.FONT_SIZE_DENSE)
-    ax.set_xticks(range(table.shape[1]), METHOD_TICKS, rotation=30, ha="right")
+    ax.set_xticks(range(table.shape[1]), METHOD_TICKS, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlim(-0.5, table.shape[1] - 0.5)
 
 
@@ -95,11 +97,9 @@ def plot(fig):
         ax.set_title(kind)
     fig.colorbar(
         points,
-        ax=axs,
-        location="bottom",
-        shrink=0.3,
-        aspect=40,
-        pad=0.04,
+        ax=axs[:, 1:],
+        location="right",
+        aspect=60,
         label="Loading / max |loading|",
     )
 

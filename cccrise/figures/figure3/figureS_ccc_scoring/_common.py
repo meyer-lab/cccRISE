@@ -17,16 +17,16 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
 
-from ...factors import load_factors_netcdf, load_factors_to_anndata
-from ...runners.datasets import (
+from ....factors import load_factors_netcdf, load_factors_to_anndata
+from ....runners.datasets import (
     COMMUNICATION_SCORES,
     DATASETS,
     DEFAULT_COMMUNICATION_SCORE,
     comparison_output_dir,
 )
-from ...runners.provenance import read_metadata
-from ...validation.stability import align_to_reference_components
-from .. import common, style
+from ....runners.provenance import read_metadata
+from ....validation.stability import align_to_reference_components
+from ... import common, style
 
 DATASET = "alad"
 SPEC = DATASETS[DATASET]
@@ -34,10 +34,16 @@ DEFAULT_SCORE = DEFAULT_COMMUNICATION_SCORE
 ALL_SCORES = list(COMMUNICATION_SCORES)
 ALT_SCORES = [m for m in ALL_SCORES if m != DEFAULT_SCORE]
 SCORE_LABELS = {
-    "expression_product": "Product (default)",
+    "expression_product": "Product",
     "expression_mean": "Mean",
     "expression_gmean": "Geometric mean",
     "expression_hill": "Hill",
+}
+#: Tool each score comes from; geometric mean has no single source.
+SCORE_SOURCES = {
+    "expression_product": "CCC-RISE",
+    "expression_mean": "CellPhoneDB",
+    "expression_hill": "CellChat",
 }
 # Blue, orange, green, pink from the shared palette
 SCORE_COLORS = dict(
@@ -114,9 +120,15 @@ def default_provenance(filename: str, key: str) -> Any:
     return read_metadata(comparison_output_dir(DEFAULT_SCORE) / filename)[key]
 
 
+def score_label(method: str) -> str:
+    """`method`'s name, followed by its source in parentheses."""
+    source = SCORE_SOURCES.get(method)
+    return f"{SCORE_LABELS[method]} ({source})" if source else SCORE_LABELS[method]
+
+
 def method_legend(fig) -> None:
     """One legend of all methods' colors, above `fig`."""
-    handles = [Patch(color=SCORE_COLORS[m], label=SCORE_LABELS[m]) for m in ALL_SCORES]
+    handles = [Patch(color=SCORE_COLORS[m], label=score_label(m)) for m in ALL_SCORES]
     fig.legend(handles=handles, loc="outside upper center", ncols=len(handles))
 
 
@@ -134,7 +146,7 @@ def grouped_bar(
             offset,
             data[method],
             width,
-            label=SCORE_LABELS[method],
+            label=score_label(method),
             color=SCORE_COLORS[method],
         )
         if sig is not None:

@@ -235,7 +235,8 @@ def test_summarize_anova_stability_metrics():
                 "MatchedComponent": 1,
                 "EtaSquared": 0.6 + 0.01 * (b % 5 - 2),
                 "F": 15.0 + (b % 5),
-                "P": 0.001 if b < 95 else 0.06,  # 95% significant (< 0.05)
+                "P": 0.001 if b < 95 else 0.06,
+                "PAdj": 0.003 if b < 95 else 0.09,  # 95% significant (< 0.05)
                 "GroupMeanDiff": 2.0 + 0.1 * (b % 5 - 2),
                 "FMS": 0.95,
             }
@@ -250,6 +251,7 @@ def test_summarize_anova_stability_metrics():
                 "EtaSquared": 0.02 + 0.001 * (b % 5 - 2),
                 "F": 0.5 + 0.1 * (b % 5),
                 "P": 0.40,
+                "PAdj": 0.40,
                 "GroupMeanDiff": 0.0 if b < 80 else 0.5,
                 "FMS": 0.90,
             }
@@ -263,7 +265,8 @@ def test_summarize_anova_stability_metrics():
                 "MatchedComponent": 3,
                 "EtaSquared": 0.3 + 0.02 * (b % 3 - 1),
                 "F": 8.0 + (b % 3),
-                "P": 0.02 if b < 60 else 0.10,  # 60% significant
+                "P": 0.02 if b < 60 else 0.10,
+                "PAdj": 0.03 if b < 60 else 0.15,  # 60% significant
                 "GroupMeanDiff": -1.5 + 0.05 * (b % 3 - 1),
                 "FMS": 0.80,
             }
@@ -271,7 +274,7 @@ def test_summarize_anova_stability_metrics():
 
     df = pd.DataFrame(rows)
     # Rows of other axes and of the RISE stage must not leak into the summary.
-    noise = df.assign(EtaSquared=0.99, P=0.0, FMS=0.0)
+    noise = df.assign(EtaSquared=0.99, P=0.0, PAdj=0.0, FMS=0.0)
     df = pd.concat(
         [
             df,
@@ -286,6 +289,7 @@ def test_summarize_anova_stability_metrics():
             "EtaSquared": [0.6, 0.02, 0.3],
             "F": [15.0, 0.5, 8.0],
             "P": [0.001, 0.40, 0.02],
+            "PAdj": [0.003, 0.40, 0.03],
             "GroupMeanDiff": [2.0, 0.0, -1.5],
         }
     )

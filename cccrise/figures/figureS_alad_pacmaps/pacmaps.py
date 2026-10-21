@@ -1,21 +1,18 @@
-"""Every cell's PaCMAP embedding, colored by cell type, by its sender weight
-on the outcome-associated CP component, and by its sample's 6-month
-outcome."""
+"""Every cell's PaCMAP embedding, colored by cell type and by its sample's
+6-month outcome."""
 
 import numpy as np
 from matplotlib.patches import Patch
 
 from .. import common, style
-from ._common import COMPONENT, DATASET, OUTCOME, association
+from ..figure3._common import DATASET, OUTCOME, association
 
-#: Values beyond this percentile of |value| saturate the color scale.
-SATURATION_PERCENTILE = 99
-AXES = ("square",) * 3
+AXES = ("square",) * 2
 
 
 def plot(axs):
     # PaCMAP coordinates have no units: no ticks or spines (first, so the
-    # outcome legend is placed without tick labels)
+    # legends are placed without tick labels)
     for ax in axs:
         ax.set(xticks=[], yticks=[])
         ax.spines[:].set_visible(False)
@@ -29,34 +26,7 @@ def plot(axs):
         handles=common.celltype_handles(DATASET),
         fontsize=style.FONT_SIZE_DENSE,
     )
-
-    sender = adata.obsm["sc_B"][:, COMPONENT - 1]
-    points = _value_scatter(axs[1], x, y, sender, _saturation(sender))
-    axs[1].set_xlabel(f"Cmp. {COMPONENT} sender weight")
-    common.colorbar(axs[1], points, "Weight")
-
-    _outcome_scatter(axs[2], x, y, adata.obs[association(OUTCOME)["group_column"]])
-
-
-def _saturation(values: np.ndarray) -> float:
-    return float(np.percentile(np.abs(values), SATURATION_PERCENTILE))
-
-
-def _value_scatter(ax, x, y, values, vmax):
-    """Cells colored by `values` on the diverging scale, the largest
-    magnitudes drawn on top."""
-    order = np.argsort(np.abs(values))
-    return ax.scatter(
-        x[order],
-        y[order],
-        c=values[order],
-        cmap=style.CMAPS["diverging"],
-        vmin=-vmax,
-        vmax=vmax,
-        s=style.POINT_SIZE_CELL,
-        linewidths=0,
-        rasterized=True,
-    )
+    _outcome_scatter(axs[1], x, y, adata.obs[association(OUTCOME)["group_column"]])
 
 
 def _outcome_scatter(ax, x, y, outcome) -> None:
@@ -78,7 +48,10 @@ def _outcome_scatter(ax, x, y, outcome) -> None:
     common.legend(
         ax,
         "below",
-        handles=[Patch(color=colors[level], label=level) for level in levels],
+        handles=[
+            Patch(color=colors[level], label=common.level_label(level))
+            for level in levels
+        ],
         ncols=1,
         fontsize=style.FONT_SIZE_DENSE,
     )
