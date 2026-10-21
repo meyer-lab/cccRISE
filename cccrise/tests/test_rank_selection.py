@@ -6,6 +6,8 @@ interaction tensor's own rank criteria and the CANDELINC compression they run
 on, which is a 4-mode CP problem with no upstream home.
 """
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -19,7 +21,9 @@ from cccrise.rank_selection import (
     candelinc_r2x,
     cp_core_consistency,
     cp_core_consistency_sweep,
+    cp_imputation_sweep,
     cpd_component_collinearity,
+    masked_cp_reconstruction,
 )
 
 
@@ -109,6 +113,40 @@ def test_cp_core_consistency_sweep_shape():
     df = cp_core_consistency_sweep(tensor, factors_by_rank)
     assert set(df["Rank"]) == {1, 2, 4}
     assert "CoreConsistency" in df.columns
+
+
+# =============================================================================
+# Entry-masked imputation
+# =============================================================================
+
+IMPUTATION_FIT: dict[str, Any] = {**CP_FIT_OPTIONS, "n_iter_max": 500, "tol": 1e-10}
+
+
+def test_masked_cp_reconstruction_imputes_a_low_rank_tensor():
+    """Held-out entries of a noise-free low-rank tensor are recovered, and the
+    values at those entries never reach the fit."""
+    tensor = _simulate_cp_tensor((8, 9, 9, 20), rank=3, noise_std=0.0, random_state=1)
+    observed = np.random.default_rng(0).uniform(size=tensor.shape) > 0.2
+    recon = masked_cp_reconstruction(tensor, observed, 3, **IMPUTATION_FIT)
+    np.testing.assert_allclose(recon[~observed], tensor[~observed], atol=1e-4)
+
+    corrupted = np.where(observed, tensor, 1e3)
+    np.testing.assert_allclose(
+        masked_cp_reconstruction(corrupted, observed, 3, **IMPUTATION_FIT), recon
+    )
+
+
+def test_cp_imputation_peaks_at_the_true_rank():
+    true_rank = 3
+    tensor = _simulate_cp_tensor(
+        (10, 12, 12, 30), rank=true_rank, noise_std=1.0, random_state=5
+    )
+    df = cp_imputation_sweep(
+        tensor, [1, 2, 3, 6], n_repeats=2, n_folds=5, l2_reg=0.1, **IMPUTATION_FIT
+    )
+    r2x = df.set_index("Rank")["ImputationR2X"]
+    assert r2x.idxmax() == true_rank
+    assert (df["ImputationR2XSD"] < 0.01).all()
 
 
 # =============================================================================
@@ -212,6 +250,31 @@ def test_candelinc_finds_the_true_rank_cliff():
     assert consistency[true_rank + 1] < 50.0
 
 
+def _run_cpd_rank(tensor: np.ndarray, output_path, **kwargs):
+    """`run_cpd_rank_selection` on `tensor` in place of the real ALAD tensor."""
+    from dataclasses import replace
+    from unittest.mock import patch
+
+    import cccrise.runners.run_cpd_rank as runner
+    from cccrise.runners.datasets import DATASETS
+
+    facts = {"resulting_dims": {}, "lr_pairs_annotated": 36, "r2x_pf2": 0.1}
+    with (
+        patch.object(runner, "build_interaction_tensor", return_value=(tensor, facts)),
+        # DATASETS["alad"] points at the real (private, multi-GB) BAL
+        # source file, which isn't present in CI; only the mocked tensor
+        # above should matter here, so stub out the hash of that file.
+        patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
+    ):
+        # CPU backend: the GPU extra (CuPy) isn't installed in CI.
+        return runner.run_cpd_rank_selection(
+            replace(DATASETS["alad"], backend=None),
+            rise_rank=5,
+            output_path=output_path,
+            **kwargs,
+        )
+
+
 def test_runner_compressed_and_uncompressed_agree(tmp_path):
     """`compress=False` and the compressed path the runners take must agree.
 
@@ -223,35 +286,20 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     see the model degrade -- not that they agree on a number. On real data the
     decision sits at the identifiable boundary, where they do agree.
     """
-    from unittest.mock import patch
-
-    import cccrise.runners.run_cpd_rank as runner
-    from cccrise.runners.datasets import DATASETS
-
     true_rank = 3
     tensor = _simulate_cp_tensor((24, 10, 10, 36), rank=true_rank, random_state=22)
-    facts = {"resulting_dims": {}, "lr_pairs_annotated": 36, "r2x_pf2": 0.1}
 
     results = {}
     for compress in (True, False):
-        with (
-            patch.object(
-                runner, "build_interaction_tensor", return_value=(tensor, facts)
-            ),
-            # DATASETS["alad"] points at the real (private, multi-GB) BAL
-            # source file, which isn't present in CI; only the mocked tensor
-            # above should matter here, so stub out the hash of that file.
-            patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
-        ):
-            df, out_path, sidecar = runner.run_cpd_rank_selection(
-                DATASETS["alad"],
-                rise_rank=5,
-                ranks=[1, 2, 3, 4, 5],
-                cp_n_iter_max=2000,
-                cp_tol=1e-12,
-                compress=compress,
-                output_path=tmp_path / f"cpd_{compress}.parquet",
-            )
+        df, out_path, sidecar = _run_cpd_rank(
+            tensor,
+            tmp_path / f"cpd_{compress}.parquet",
+            ranks=[1, 2, 3, 4, 5],
+            cp_n_iter_max=2000,
+            cp_tol=1e-12,
+            compress=compress,
+            imputation_repeats=0,
+        )
         assert out_path.exists() and sidecar.exists()
         assert f"compress: {str(compress).lower()}" in sidecar.read_text()
         results[compress] = df
@@ -282,3 +330,21 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     assert list(compressed.loc[identifiable, "MaxModesCollinear"]) == list(
         full.loc[identifiable, "MaxModesCollinear"]
     )
+
+
+def test_runner_adds_imputation_columns(tmp_path, monkeypatch):
+    import cccrise.runners.run_cpd_rank as runner
+
+    monkeypatch.setitem(runner.IMPUTATION_OPTIONS, "n_folds", 3)
+    tensor = _simulate_cp_tensor((8, 6, 6, 12), rank=2, noise_std=0.3, random_state=3)
+    df, _out, sidecar = _run_cpd_rank(
+        tensor,
+        tmp_path / "cpd.parquet",
+        ranks=[1, 2, 3],
+        cp_n_iter_max=200,
+        cp_tol=1e-8,
+        imputation_repeats=2,
+    )
+    assert df["ImputationR2X"].notna().all() and df["ImputationR2XSD"].notna().all()
+    assert df.set_index("Rank")["ImputationR2X"].idxmax() == 2
+    assert "imputation_repeats: 2" in sidecar.read_text()

@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
+import tensorly as tl
 from tensorly.base import unfold
 from tensorly.cp_tensor import cp_to_tensor
+from tensorly.decomposition import parafac
 from tensorly.tenalg import mode_dot  # ty: ignore[unresolved-import]
 
 Factors = list[np.ndarray]
@@ -156,6 +158,93 @@ def cp_core_consistency_sweep(
         for rank, (weights, factors) in sorted(factors_by_rank.items())
     ]
     return pd.DataFrame(rows)
+
+
+def masked_cp_reconstruction(
+    tensor: np.ndarray,
+    observed: np.ndarray,
+    rank: int,
+    backend: str = "numpy",
+    **parafac_kwargs,
+) -> np.ndarray:
+    """CP reconstruction fit to the `observed` entries only, on tensorly `backend`.
+
+    tensorly's masked ALS imputes unobserved entries with the current model
+    each iteration (EM). They are zeroed first because its SVD init and first
+    ALS sweep read them. Runs in float64: tensorly's CuPy backend otherwise
+    casts to float32, which stalls the convergence check early.
+    """
+    with tl.backend_context(backend):
+        cp = parafac(
+            tl.tensor(np.where(observed, tensor, 0.0), dtype=tl.float64),
+            rank,
+            mask=tl.tensor(observed, dtype=tl.float64),
+            **parafac_kwargs,
+        )
+        return tl.to_numpy(cp_to_tensor(cp))
+
+
+def cp_imputation_r2x(
+    tensor: np.ndarray,
+    rank: int,
+    n_folds: int = 10,
+    random_state: int | None = None,
+    backend: str = "numpy",
+    **parafac_kwargs,
+) -> float:
+    """K-fold entry-masked imputation R2X of a rank-`rank` CP model.
+
+    Entries are split into `n_folds` random folds; each fold is predicted by a
+    CP fit to the others (`masked_cp_reconstruction`), and R2X pools every
+    entry's prediction against the whole tensor, as in `calculate_r2x`.
+    Pooling scores every entry exactly once, so the result doesn't hinge on
+    which of a heavy-tailed tensor's few dominant entries a single random hold
+    out happens to draw.
+    """
+    rng = np.random.default_rng(random_state)
+    fold = (rng.permutation(tensor.size) % n_folds).reshape(tensor.shape)
+    imputed = np.empty_like(tensor, dtype=float)
+    for k in range(n_folds):
+        held_out = fold == k
+        imputed[held_out] = masked_cp_reconstruction(
+            tensor,
+            ~held_out,
+            rank,
+            backend,
+            random_state=random_state,
+            **parafac_kwargs,
+        )[held_out]
+    return float(1.0 - np.sum((tensor - imputed) ** 2) / np.sum(tensor**2))
+
+
+def cp_imputation_sweep(
+    tensor: np.ndarray,
+    ranks: list[int],
+    n_repeats: int = 3,
+    n_folds: int = 10,
+    random_state: int = 0,
+    backend: str = "numpy",
+    **parafac_kwargs,
+) -> pd.DataFrame:
+    """`cp_imputation_r2x` at every rank, as mean and SD over `n_repeats` fold splits.
+
+    Repeat `r` uses the same split at every rank. Columns: 'Rank',
+    'ImputationR2X', 'ImputationR2XSD'.
+    """
+    rows = [
+        {
+            "Rank": rank,
+            "ImputationR2X": cp_imputation_r2x(
+                tensor, rank, n_folds, random_state + r, backend, **parafac_kwargs
+            ),
+        }
+        for r in range(n_repeats)
+        for rank in ranks
+    ]
+    by_rank = pd.DataFrame(rows).groupby("Rank")["ImputationR2X"]
+    return pd.DataFrame(
+        {"ImputationR2X": by_rank.mean(), "ImputationR2XSD": by_rank.std()}
+    ).reset_index()
 
 
 def candelinc_compress(

@@ -573,6 +573,22 @@ def plot_cpd_fit_r2x(
     ax.set_ylabel("Fit $R^2X$")
 
 
+def plot_cpd_imputation_r2x(sweep: pd.DataFrame, ax: plt.Axes):
+    """Overlay k-fold imputation R2X (mean +/- SD over fold splits) on a
+    `plot_cpd_fit_r2x` axis, from `cccrise-cpdrank`."""
+    plot_mean_sd(
+        ax,
+        sweep["Rank"],
+        sweep["ImputationR2X"],
+        sweep["ImputationR2XSD"],
+        style.COLORS["heldout"],
+        "Imputation",
+    )
+    ax.set_ylabel("$R^2X$")
+    ax.set_ylim(top=1.25 * sweep["FitR2X"].max())  # headroom for the legend
+    ax.legend(loc="upper left")
+
+
 def plot_collinearity(
     sweep: pd.DataFrame,
     ax: plt.Axes,
