@@ -160,6 +160,28 @@ def cp_core_consistency_sweep(
     return pd.DataFrame(rows)
 
 
+def fit_cp_on_backend(
+    tensor: np.ndarray,
+    rank: int,
+    backend: str = "numpy",
+    mask: np.ndarray | None = None,
+    **parafac_kwargs,
+) -> tuple[np.ndarray, Factors]:
+    """`parafac` on tensorly `backend`, returning NumPy weights and factors.
+
+    Runs in float64: tensorly's CuPy backend otherwise casts to float32, which
+    stalls the convergence check early.
+    """
+    with tl.backend_context(backend):
+        cp = parafac(
+            tl.tensor(tensor, dtype=tl.float64),
+            rank,
+            mask=None if mask is None else tl.tensor(mask, dtype=tl.float64),
+            **parafac_kwargs,
+        )
+        return tl.to_numpy(cp.weights), [tl.to_numpy(f) for f in cp.factors]
+
+
 def masked_cp_reconstruction(
     tensor: np.ndarray,
     observed: np.ndarray,
@@ -171,17 +193,13 @@ def masked_cp_reconstruction(
 
     tensorly's masked ALS imputes unobserved entries with the current model
     each iteration (EM). They are zeroed first because its SVD init and first
-    ALS sweep read them. Runs in float64: tensorly's CuPy backend otherwise
-    casts to float32, which stalls the convergence check early.
+    ALS sweep read them.
     """
-    with tl.backend_context(backend):
-        cp = parafac(
-            tl.tensor(np.where(observed, tensor, 0.0), dtype=tl.float64),
-            rank,
-            mask=tl.tensor(observed, dtype=tl.float64),
-            **parafac_kwargs,
+    return cp_to_tensor(
+        fit_cp_on_backend(
+            np.where(observed, tensor, 0.0), rank, backend, observed, **parafac_kwargs
         )
-        return tl.to_numpy(cp_to_tensor(cp))
+    )
 
 
 def cp_imputation_r2x(

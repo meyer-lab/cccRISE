@@ -149,6 +149,20 @@ def test_cp_imputation_peaks_at_the_true_rank():
     assert (df["ImputationR2XSD"] < 0.01).all()
 
 
+def test_ridge_comparison_matches_a_weak_ridge_to_the_unregularized_fit():
+    from cccrise.runners.run_cpd_rank import ridge_comparison
+
+    tensor = _simulate_cp_tensor((8, 9, 9, 20), rank=3, random_state=2)
+    df, fits = ridge_comparison(tensor, [2, 3], 1e-3, "numpy", **IMPUTATION_FIT)
+    assert len(fits[3]) == 2
+    assert df.groupby("Rank").size().to_dict() == {2: 2, 3: 3}
+    at_true_rank = df[df["Rank"] == 3]
+    assert (at_true_rank["RidgeComponentFMS"] > 0.99).all()
+    np.testing.assert_allclose(
+        at_true_rank["RidgeFitR2X"], at_true_rank["NoRidgeFitR2X"], atol=1e-3
+    )
+
+
 # =============================================================================
 # CANDELINC compression
 # =============================================================================
@@ -250,17 +264,32 @@ def test_candelinc_finds_the_true_rank_cliff():
     assert consistency[true_rank + 1] < 50.0
 
 
+#: Canonical-fit provenance `_run_cpd_rank` stands in for the factors sidecar.
+CANONICAL_PROVENANCE: dict[str, Any] = {
+    "rank_selection": {"rise": {"rank": 5}, "cpd": {"rank": 2}},
+    "complex_sep": "&",
+    "communication_score": "expression_product",
+    "hill_k": 0.5,
+    "resulting_dims": {},
+    "lr_pairs_annotated": 36,
+    "r2x_pf2": 0.1,
+}
+CORE_COMPARISON = {"CoreFitR2X": 0.5, "CoreFMS": 1.0, "CoreRidgeFMS": 0.99}
+
+
 def _run_cpd_rank(tensor: np.ndarray, output_path, **kwargs):
-    """`run_cpd_rank_selection` on `tensor` in place of the real ALAD tensor."""
+    """`run_cpd_rank_selection` on `tensor` in place of the canonical ALAD
+    tensor, with the canonical fit's provenance and core comparison stubbed."""
     from dataclasses import replace
     from unittest.mock import patch
 
     import cccrise.runners.run_cpd_rank as runner
     from cccrise.runners.datasets import DATASETS
 
-    facts = {"resulting_dims": {}, "lr_pairs_annotated": 36, "r2x_pf2": 0.1}
     with (
-        patch.object(runner, "build_interaction_tensor", return_value=(tensor, facts)),
+        patch.object(runner, "canonical_tensor", return_value=(tensor, None)),
+        patch.object(runner, "read_metadata", return_value=CANONICAL_PROVENANCE),
+        patch.object(runner, "core_comparison", return_value=CORE_COMPARISON),
         # DATASETS["alad"] points at the real (private, multi-GB) BAL
         # source file, which isn't present in CI; only the mocked tensor
         # above should matter here, so stub out the hash of that file.
@@ -268,10 +297,7 @@ def _run_cpd_rank(tensor: np.ndarray, output_path, **kwargs):
     ):
         # CPU backend: the GPU extra (CuPy) isn't installed in CI.
         return runner.run_cpd_rank_selection(
-            replace(DATASETS["alad"], backend=None),
-            rise_rank=5,
-            output_path=output_path,
-            **kwargs,
+            replace(DATASETS["alad"], backend=None), output_path=output_path, **kwargs
         )
 
 
@@ -299,6 +325,7 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
             cp_tol=1e-12,
             compress=compress,
             imputation_repeats=0,
+            compare_ridge=False,
         )
         assert out_path.exists() and sidecar.exists()
         assert f"compress: {str(compress).lower()}" in sidecar.read_text()
@@ -344,7 +371,29 @@ def test_runner_adds_imputation_columns(tmp_path, monkeypatch):
         cp_n_iter_max=200,
         cp_tol=1e-8,
         imputation_repeats=2,
+        compare_ridge=False,
     )
     assert df["ImputationR2X"].notna().all() and df["ImputationR2XSD"].notna().all()
     assert df.set_index("Rank")["ImputationR2X"].idxmax() == 2
     assert "imputation_repeats: 2" in sidecar.read_text()
+
+
+def test_runner_ridge_comparison_adds_one_row_per_component(tmp_path):
+    from cccrise.figures.common import per_rank
+
+    tensor = _simulate_cp_tensor((8, 6, 6, 12), rank=2, noise_std=0.3, random_state=3)
+    df, _out, sidecar = _run_cpd_rank(
+        tensor,
+        tmp_path / "cpd.parquet",
+        ranks=[1, 2, 3],
+        cp_n_iter_max=200,
+        cp_tol=1e-8,
+        imputation_repeats=0,
+    )
+    assert df.groupby("Rank").size().to_dict() == {1: 1, 2: 2, 3: 3}
+    assert list(per_rank(df)["Rank"]) == [1, 2, 3]
+    assert df["RidgeComponentFMS"].between(0.0, 1.0 + 1e-9).all()
+    # The canonical core fit is compared at its own rank only.
+    core_rows = df[list(CORE_COMPARISON)].notna().all(axis=1)
+    assert set(df.loc[core_rows, "Rank"]) == {2}
+    assert "compare_ridge: true" in sidecar.read_text()

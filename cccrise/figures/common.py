@@ -52,7 +52,7 @@ from ..factors import (
     load_or_compute_dataframe,
 )
 from ..import_data import import_alad, import_balf_covid
-from ..runners.datasets import DATASETS
+from ..runners.datasets import DATASETS, RANK_SELECTION_DIR
 from ..runners.provenance import read_metadata
 from ..utils import (
     correct_conditions,
@@ -124,13 +124,25 @@ def load_runner_output(
     if not path.exists():
         hint = hint or (
             "    uv run cccrise-riserank --dataset <dataset> --ranks 1:51\n"
-            "    uv run cccrise-cpdrank  --dataset <dataset> --rise-rank <N>\n"
+            "    uv run cccrise-cpdrank  --dataset <dataset>\n"
             "    uv run cccrise-stability --dataset <dataset> --rise-rank <N> --cp-rank <K>"
         )
         raise FileNotFoundError(
             f"{path} not found. Produce it with the matching runner, e.g.\n{hint}"
         )
     return pd.read_parquet(path)
+
+
+def load_cpd_rank(dataset: str) -> pd.DataFrame:
+    """`cccrise-cpdrank`'s table for `dataset`: one row per (rank, component)
+    when its ridge comparison ran, with per-rank columns repeated (see
+    `per_rank`)."""
+    return load_runner_output(DATASETS[dataset].cpd_rank_filename(), RANK_SELECTION_DIR)
+
+
+def per_rank(sweep: pd.DataFrame) -> pd.DataFrame:
+    """One row per rank of a `load_cpd_rank` table."""
+    return sweep.drop_duplicates("Rank")
 
 
 def selected_ranks(dataset: str) -> tuple[int, int]:
