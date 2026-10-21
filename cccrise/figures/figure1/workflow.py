@@ -1,17 +1,19 @@
-"""Placeholder for an illustration of the CCC-RISE workflow."""
+"""Placeholder for an illustration of the CCC-RISE workflow, one axes per
+step: RISE, communication tensor assembly, and CPD."""
 
 from .. import common
 
-AXES = ("full",)
+STEPS = (
+    "RISE: multi-condition cells\n→ eigen-states",
+    "Communication tensor:\nsender × receiver × LR pair × condition",
+    "CPD: tensor → components",
+)
+AXES = ("full_third",) * len(STEPS)
 
 
 def plot(axs):
-    (ax,) = axs
-    common.placeholder(
-        ax,
-        "CCC-RISE workflow: RISE eigen-states → 4D communication tensor\n"
-        "→ CP components (sender, receiver, LR pair, condition)",
-    )
+    for ax, step in zip(axs, STEPS, strict=True):
+        common.placeholder(ax, step)
 
 
 def makeFigure():

@@ -3,7 +3,7 @@ pair, and condition loadings."""
 
 from .. import common
 
-AXES = ("rect",)
+AXES = ("full",)
 
 
 def plot(axs):

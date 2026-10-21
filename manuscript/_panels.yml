@@ -1,8 +1,8 @@
 fig1:
-  workflow: [a]
-  embedding: [b]
-  component_interpretation: [c]
-  cell_mapping: [d]
+  workflow: [a, b, c]
+  component_interpretation: [d]
+  cell_mapping: [e]
+  embedding: [f]
 fig2:
   rise_rank_selection: [a]
   cp_rank_selection: [b, c]
