@@ -32,7 +32,7 @@ This allows for the identification of specific cell subpopulations driving commu
 ![](figures/figure2/figure2.svg){width="6.5in"}
 
 **CCC-RISE identifies stable communication programs among epithelial subpopulations.** ({{< panel 2 rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats.
-({{< panel 2 cp-rank-selection.1 >}}) CP fit R^2^X and imputation R^2^X of held-out entries (10-fold, mean ± SD) across ranks.
+({{< panel 2 cp-rank-selection.1 >}}) CP fit R^2^X and aggregate imputation R^2^X of held-out entries over 10 folds across ranks (mean ± SD over three replicates per rank).
 ({{< panel 2 cp-rank-selection.2 >}}) The largest number of modes in which any pair of CP components is collinear (\|cosine\| > 0.9), marked as near-duplicate or opposite-signed (cancelling) pairs, across ranks.
 ({{< panel 2 aggregate-fms >}}) Aggregate FMS of RISE and CP factors across leave-one-patient-out jackknife (n = 45) and re-initialization (n = 47) replicates; bars show the 2.5th--97.5th percentiles.
 ({{< panel 2 cp-factor-matrices >}}) CP factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
@@ -55,11 +55,12 @@ Our ALAD cohort was composed of broad immune and epithelial cell types whose pro
 We used this cohort to establish how a CCC-RISE model is selected, validated, and interpreted.
 
 We first selected the RISE rank by bi-cross-validation (BiCV), which fits RISE to a random half of all cells and genes and scores the fit's ability to predict the held-out block of cells and genes\ [@doi:10.1214/08-AOAS227].
-Held-out R^2^X rose steeply, plateaued at rank 10, and reached its maximum at rank 17, which we used to construct the communication tensor ({{< fig 2 rise-rank-selection >}}, {{< fig rise-factor-matrices >}}).
-Seeking a similarly definitive rank for CP, we evaluated the imputation accuracy and collinearity of CP models at varying ranks.
-Both CP fit R^2^X and the R^2^X of entries masked during fitting increased with rank, indicating that higher-rank CP models did not lose predictive accuracy ({{< fig 2 cp-rank-selection.1 >}}).
-At rank 6, a pair of components first became collinear in two modes with opposing signs, and every subsequent rank contained a pair collinear in two or more modes.
-At ranks 3--5, one pair of components overlapped in a single mode, as expected when programs share a sender or receiver population.
+Held-out R^2^X rose steeply, plateaued around rank 10, and reached its maximum at rank 17, which we used to construct the communication tensor ({{< fig 2 rise-rank-selection >}}, {{< fig rise-factor-matrices >}}).
+Seeking a similarly definitive rank-selection criterion for CP, we evaluated the reconstruction and imputation accuracy (i.e., the accuracy the outer product of CP factors in approximating either the original communication tensor or entries held out during fitting, respectively) of CP models at varying ranks.
+Both CP fit R^2^X and imputation R^2^X generally increased with rank, indicating that higher-rank CP models did not lose predictive accuracy ({{< fig 2 cp-rank-selection.1 >}}).
+However, neither reconstruction metric provided a clear choice for CP rank, so we instead computed the cosine similarity between components at each rank, a measurement of collinearity and degeneracy.
+A pair of components first became collinear in two modes with opposing signs at rank 6, and every subsequent rank contained a pair collinear in at least two modes.
+In contrast, ranks 3--5 produced only one pair of components overlapping in a single mode, as expected when programs share a sender or receiver population.
 We therefore selected CP rank 5 as the lowest rank before the model became degenerate ({{< fig 2 cp-rank-selection.2 >}}).
 
 We next asked whether the communication programs captured by CCC-RISE were stable, exceeded chance, and aligned with external biological validation.
