@@ -51,3 +51,6 @@ figS_ccc_scoring:
 figS_nichenet:
   ligand_scores: [a]
   weighted_percentiles: [b]
+figS_imputation_ridge:
+  ridge_r2x: [a]
+  ridge_fms: [b]
