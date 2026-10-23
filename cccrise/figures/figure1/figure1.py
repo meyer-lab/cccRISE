@@ -8,8 +8,8 @@ from . import cell_mapping, component_interpretation, embedding, workflow
 
 LAYOUT = [
     [workflow],
+    [embedding, cell_mapping],
     [component_interpretation],
-    [cell_mapping, embedding],
 ]
 
 

@@ -1,6 +1,6 @@
 ## RESULTS
 
-### CCC-RISE framework overview
+## CCC-RISE framework overview
 
 ::: {#fig-1}
 ![](figures/figure1/figure1.svg){width="6.5in"}
@@ -8,23 +8,23 @@
 **CCC-RISE deconvolves variation in cell communication across single cells and conditions.** ({{< panel 1 workflow.1 >}}) RISE projects multi-condition scRNA-seq data into eigen-states and decomposes the resulting condition by eigen-state by gene tensor.
 ({{< panel 1 workflow.2 >}}) Communication scores are then computed between eigen-states for ligand--receptor (LR) pairs to form a 4D communication tensor.
 ({{< panel 1 workflow.3 >}}) CPD decomposes the communication tensor into factors that describe the component associations with conditions, sender eigen-states, receiver eigen-states, and LR pairs.
-({{< panel 1 component-interpretation >}}) Each CCC-RISE component represents a communication program defined by the association weights across four dimensions: sender cells, receiver cells, LR pairs, and experimental conditions.
-({{< panel 1 cell-mapping >}}) Sender and receiver eigen-state factors are mathematically combined with the RISE projections to map communication patterns back to specific single-cell populations.
 ({{< panel 1 embedding >}}) RISE projections serve as a common embedding basis to visualize cell-to-cell heterogeneity across all conditions.
+({{< panel 1 cell-mapping >}}) Sender and receiver eigen-state factors are mathematically combined with the RISE projections to map communication patterns back to specific single-cell populations.
+({{< panel 1 component-interpretation >}}) Each CCC-RISE component represents a communication program defined by the association weights across four dimensions: experimental conditions, sender cells, receiver cells, and LR pairs.
 :::
 
-RISE projects cells from multiple conditions onto a common reference frame, effectively aligning them based on gene expression without requiring *a priori* labeling \ [@doi:10.1016/j.cels.2025.101294].
-RISE then factorizes the resulting tensor into components representing patterns of variation across conditions, eigen-states, and genes ({{< fig 1 workflow.1 >}}).
-To overcome the limitations of aggregating data into pre-defined cell types CCC-RISE infers communication directly from RISE's unsupervised eigen-states rather than individual cells or broad populations.
-For every experimental condition and ligand--receptor (LR) pair---defined using CellChat's reference database---a score is calculated for all combinations of sender and receiver eigen-states by integrating the ligand expression of the sender with the receptor expression of the receiver [@doi:10.1038/s41467-021-21246-9].
-We elected to score LR communication by taking the product of their expression values, the simplest, most fundamental of the many available continuous CCC scoring methods [@doi:10.1038/s41576-020-00292-x].
-This process yields a four-dimensional tensor describing the data across sender eigen-states, receiver eigen-states, experimental conditions, and LR pairs ({{< fig 1 workflow.2 >}}).
+RISE projects cells from multiple conditions onto a shared set of "eigen-states", effectively aligning them based on gene expression without requiring *a priori* labeling ({{< fig 1 workflow.1 >}})\ [@doi:10.1016/j.cels.2025.101294].
+This alignment step produces a condition by eigen-state by gene tensor that RISE then factorizes into components representing patterns of variation across the three modes.
+To overcome the limitations of aggregating data into pre-defined cell types, CCC-RISE infers communication directly from RISE's unsupervised eigen-states rather than individual cells or broad populations ({{< fig 1 workflow.2 >}}).
+For every experimental condition and ligand--receptor (LR) pair---defined using CellChat's reference database---a score is calculated for all combinations of sender and receiver eigen-states: the product of the sender's ligand expression with the receiver's receptor expression\ [@doi:10.1038/s41467-021-21246-9].
+This process yields a four-dimensional tensor of data across experimental conditions, sender eigen-states, receiver eigen-states, and LR pairs.
+Finally, to extract patterns from this high-dimensional structure, CCC-RISE employs CPD, which decomposes the tensor into distinct components ({{< fig 1 workflow.3 >}}).
+Analogous to matrix factorization by principal component analysis (PCA), CPD approximates the tensor as a sum of rank-one tensors, each representing a communication program defined by a source of variation across the four modes\ [@doi:10.1137/07070111X; @doi:10.1016/j.cels.2024.07.004; @doi:10.1007/0-306-47815-3_5].
 
-To extract patterns from this high-dimensional structure, CCC-RISE employs Canonical Polyadic Decomposition (CPD), which decomposes the 4D tensor into distinct components ({{< fig 1 workflow.3 >}}).
-Akin to principal component analysis (PCA), this decomposition approximates the tensor as a sum of rank-one tensors, each representing a communication program defined by specific variation in conditions, sender and receiver states, and LR pairs ({{< fig 1 component-interpretation >}})\ [@doi:10.1137/07070111X; @doi:10.1016/j.cels.2024.07.004; @doi:10.1007/0-306-47815-3_5].
-Crucially, because the original RISE projections preserve cell-to-cell heterogeneity, the component loadings on eigen-states can be projected back onto individual cells.
-By multiplying the RISE projections with the sender and receiver eigen-state factors, the specific associations of individual cells with each communication component are recovered ({{< fig 1 cell-mapping >}}).
-This enables the tracing of signaling programs across conditions without losing the granularity of the underlying single-cell data ({{< fig 1 embedding >}}).
+CCC-RISE preserves cell identity through the projection matrices and eigen-state--component associations, which allows for interpretation of CP factors with single-cell resolution.
+The eigen-states define shared gene-expression programs, so the projection matrices weight cells from every condition in a common embedding where proximity reflects transcriptional similarity ({{< fig 1 embedding >}}).
+Further, by multiplying the RISE projections with the sender and receiver eigen-state factors, the associations of individual cells with each communication component are recovered ({{< fig 1 cell-mapping >}}).
+The embeddings and CP factor matrices thus trace LR signaling programs across conditions without losing the granularity of the underlying single-cell data ({{< fig 1 component-interpretation >}}).
 
 ## CCC-RISE isolates subpopulation-specific repair signaling in lung transplants
 
@@ -123,7 +123,7 @@ The one exception left out one of the two patients who died within six months, w
 We next applied scDiffCom's condition-label--permutation scheme to our communication tensor to test whether each LR pair's difference in communication score between CLAD/died and no-CLAD samples exceeded those obtained with permuted patient outcome labels\ [@doi:10.1038/s43587-023-00514-x].
 Eight of component 4's ten top LR pairs had significantly higher communication scores in CLAD/died samples than in no-CLAD samples, indicating that communication scores constructed through RISE exceeded chance in their ability to stratify patients ({{< fig 3 lr-permutation lr-volcano >}}).
 
-Choice of CCC scoring method used to construct the communication tensor is a known source of disagreement between tools, so we asked whether component 4 was an artifact of CCC-RISE's communication score\ [@doi:10.1038/s41467-022-30755-0].
+Choice of CCC scoring method used to construct the communication tensor is a known source of disagreement between tools, so we asked whether component 4 was an artifact of CCC-RISE's expression-product scoring method\ [@doi:10.1038/s41467-022-30755-0; @doi:10.1038/s41576-020-00292-x].
 We compared four approaches used to convert expression to LR interaction scores: product, used by CCC-RISE, Tensor-cell2cell, and NATMI\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41467-020-18873-z]; mean, used by CellPhoneDB\ [@doi:10.1038/s41596-020-0292-x]; geometric mean (gmean), used by scDiffCom\ [@doi:10.1038/s43587-023-00514-x]; and Hill function, used by CellChat\ [@doi:10.1038/s41467-021-21246-9].
 Upon recomputing the communication tensor from a single RISE fit using each scoring method, we observed that each alternate score generally yielded a CP fit closely matching that of CCC-RISE's product ({{< fig ccc-scoring factor-match >}}).
 Further, the recovered component remained associated with six-month outcome under every score, although the mean and gmean scores also associated component 3 with outcome ({{< fig ccc-scoring anova >}}).
