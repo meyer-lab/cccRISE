@@ -7,19 +7,18 @@
 
 **CCC-RISE deconvolves variation in cell communication across single cells and conditions.** ({{< panel 1 workflow.1 >}}) RISE projects multi-condition scRNA-seq data into eigen-states and decomposes the resulting condition by eigen-state by gene tensor.
 ({{< panel 1 workflow.2 >}}) Communication scores are then computed between eigen-states for ligand--receptor (LR) pairs to form a 4D communication tensor.
-({{< panel 1 workflow.3 >}}) CPD decomposes the communication tensor into factors that describe the component associations with conditions, sender eigen-states, receiver eigen-states, and LR pairs.
+({{< panel 1 workflow.3 >}}) CPD decomposes the communication tensor into factors wherein each component describes variation across conditions, sender eigen-states, receiver eigen-states, and LR pairs.
 ({{< panel 1 embedding >}}) RISE projections serve as a common embedding basis to visualize cell-to-cell heterogeneity across all conditions.
 ({{< panel 1 cell-mapping >}}) Sender and receiver eigen-state factors are mathematically combined with the RISE projections to map communication patterns back to specific single-cell populations.
 ({{< panel 1 component-interpretation >}}) Each CCC-RISE component represents a communication program defined by the association weights across four dimensions: experimental conditions, sender cells, receiver cells, and LR pairs.
 :::
 
-RISE projects cells from multiple conditions onto a shared set of "eigen-states", effectively aligning them based on gene expression without requiring *a priori* labeling ({{< fig 1 workflow.1 >}})\ [@doi:10.1016/j.cels.2025.101294].
+RISE projects cells from multiple conditions onto a shared set of eigen-states, effectively aligning them based on gene expression without requiring *a priori* labeling ({{< fig 1 workflow.1 >}})\ [@doi:10.1016/j.cels.2025.101294].
 This alignment step produces a condition by eigen-state by gene tensor that RISE then factorizes into components representing patterns of variation across the three modes.
 To overcome the limitations of aggregating data into pre-defined cell types, CCC-RISE infers communication directly from RISE's unsupervised eigen-states rather than individual cells or broad populations ({{< fig 1 workflow.2 >}}).
 For every experimental condition and ligand--receptor (LR) pair---defined using CellChat's reference database---a score is calculated for all combinations of sender and receiver eigen-states: the product of the sender's ligand expression with the receiver's receptor expression\ [@doi:10.1038/s41467-021-21246-9].
 This process yields a four-dimensional tensor of data across experimental conditions, sender eigen-states, receiver eigen-states, and LR pairs.
-Finally, to extract patterns from this high-dimensional structure, CCC-RISE employs CPD, which decomposes the tensor into distinct components ({{< fig 1 workflow.3 >}}).
-Analogous to matrix factorization by principal component analysis (PCA), CPD approximates the tensor as a sum of rank-one tensors, each representing a communication program defined by a source of variation across the four modes\ [@doi:10.1137/07070111X; @doi:10.1016/j.cels.2024.07.004; @doi:10.1007/0-306-47815-3_5].
+Finally, to extract patterns from this high-dimensional structure, CCC-RISE employs CPD, which decomposes the tensor into distinct components, each representing a communication program defined by a source of variation across the four modes ({{< fig 1 workflow.3 >}}).
 
 CCC-RISE preserves cell identity through the projection matrices and eigen-state--component associations, which allows for interpretation of CP factors with single-cell resolution.
 The eigen-states define shared gene-expression programs, so the projection matrices weight cells from every condition in a common embedding where proximity reflects transcriptional similarity ({{< fig 1 embedding >}}).
