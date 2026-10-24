@@ -32,9 +32,9 @@ This allows for the identification of specific cell subpopulations driving commu
 ![](figures/figure2/figure2.svg){width="6.5in"}
 
 **CCC-RISE identifies stable communication programs among epithelial subpopulations.** ({{< panel 2 rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats.
-({{< panel 2 cp-rank-selection.1 >}}) CP fit R^2^X and aggregate imputation R^2^X of held-out entries over 10 folds across ranks (mean ± SD over three replicates per rank).
+({{< panel 2 cp-rank-selection.1 >}}) CP fit R^2^X and aggregate imputation R^2^X of held-out entries over 10 folds across ranks (mean ± SD over 10 repeated fold splits per rank).
 ({{< panel 2 cp-rank-selection.2 >}}) The largest number of modes in which any pair of CP components is collinear (\|cosine\| > 0.9), marked as near-duplicate or opposite-signed (cancelling) pairs, across ranks.
-({{< panel 2 aggregate-fms >}}) Aggregate FMS of RISE and CP factors across leave-one-patient-out jackknife (n = 45) and re-initialization (n = 47) replicates; bars show the 2.5th--97.5th percentiles.
+({{< panel 2 aggregate-fms >}}) Aggregate FMS of RISE and CP factors across leave-one-patient-out jackknife (n = 45) and re-initialization (n = 25) replicates; bars show the 2.5th--97.5th percentiles.
 ({{< panel 2 cp-factor-matrices >}}) CP factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
 ({{< panel 2 permutation-lr-significance.1 >}}) Fraction of each LR pair's (n = 513) condition by sender by receiver entries exceeding a null of 1,000 within-sample cell permutations at p < 0.05.
 p is the fraction of permuted scores at least as large as the observed score, (k + 1)/(1,000 + 1) for k permutations.

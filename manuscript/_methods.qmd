@@ -110,7 +110,7 @@ Analyses requiring many fits (bi-cross-validation, the CP rank sweep, and the ja
 For RISE, the gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations; each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
 For CPD, the core was a sequentially truncated higher-order SVD of the communication tensor, keeping $\min(n, r + 5)$ singular vectors in each mode of size $n$.
 The CP rank sweep compressed the tensor once at the largest rank tested (core of 22 × 17 × 17 × 22), whereas each replicate was compressed at the selected rank.
-Because the bases are orthonormal, the cosines between factor columns and CORCONDIA computed from the core fit equal those of the decompressed factors, and the CP R2X, restated against the full tensor, equals the core-space error plus the energy the projection discards (see Reconstruction Error).
+Because the bases are orthonormal, the cosines between factor columns computed from the core fit equal those of the decompressed factors, and the CP R2X, restated against the full tensor, equals the core-space error plus the energy the projection discards (see Reconstruction Error).
 The RISE and CP fits from which all reported results are derived are uncompressed.
 
 #### Data Normalization, Processing, and Visualization
@@ -189,7 +189,6 @@ Imputation fits were uncompressed and in double precision.
 A ridge penalty ($\lambda$ = 0.1) was applied to the masked fits only, because the communication tensor is heavy-tailed: 67% of its entries are zero and 69 entries hold 54% of its sum of squares, so an unpenalized masked fit can be dominated by the few largest held-out entries.
 The ridge left the full-data fit at the selected rank unchanged (FMS 0.99996 between the rank-5 fits with and without the ridge; {{< fig imputation-ridge >}}).
 We selected the lowest rank before degeneracy, defined as the first rank at which a pair of components became collinear in two or more modes.
-CORCONDIA was also computed at each rank but was not used for rank selection\ [@doi:10.1002/cem.801].
 
 #### Factor Match Score and Component Stability
 

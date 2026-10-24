@@ -69,7 +69,7 @@ q: p Benjamini--Hochberg corrected across the five components of each fit.
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 
 **Figure S8.
-CCC-RISE components across communication scoring methods.** ({{< panel ccc-scoring factor-match >}}) Factor match score (condition and LR pair modes) of each CP component of the product score to its matched component under each alternate score (left), and the matched components' mean sender and receiver \|cosine\| (right), an independent check of the matching.
+CCC-RISE components across communication scoring methods.** ({{< panel ccc-scoring factor-match >}}) Match score (mean \|cosine\| over the condition and LR pair modes) of each CP component of the product score to its matched component under each alternate score (left), and the matched components' mean sender and receiver \|cosine\| (right), an independent check of the matching.
 ({{< panel ccc-scoring anova >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome under each score, numbered by the matched product-score component.
 \*: p < 0.05.
 ({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
