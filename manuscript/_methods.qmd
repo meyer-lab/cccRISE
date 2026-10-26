@@ -221,16 +221,6 @@ The per-cell sender and receiver loadings of all cells are $PD$ and $PE$, respec
 **Visualization.** PaCMAP was applied to the RISE projections of all cells concatenated across conditions, with default parameters, to visualize cell-to-cell variation as an embedding\ [@arxiv:2012.04456].
 In factor heatmaps, each component is divided by its largest absolute loading; RISE gene heatmaps show only the top 10% of genes by weight, and CP LR-pair heatmaps the top 15% of LR pairs.
 
-**Component--outcome association.** Condition loadings scale with each sample's total normalized expression, the sum of normalized expression over all of the sample's cells.
-Because sequencing depth is removed by per-cell normalization, this total is dominated by the number of cells per sample (r = 0.98 with cell count in the ALAD cohort), not by read depth.
-For each set of condition loadings, the norm of each sample's loading row was regressed on the sample's total normalized expression by ordinary least squares with an intercept, and each row was divided by its fitted value.
-
-Associations between components and outcomes were tested with the sample as the unit of analysis, using the corrected CP condition loadings ($G$).
-We tested nine groupings of the ALAD samples: ALAD status (control vs. ALAD, and control, declined, and recovered); six-month outcome (four groups; CLAD vs. no CLAD, excluding deaths; and died vs. alive); one-year outcome (four groups; CLAD vs. no CLAD; and died vs. alive); and acute rejection (yes vs. no).
-For each component and grouping, we report the one-way ANOVA F statistic and effect size, $\eta^{2} = SS_{between}/SS_{total}$, with p-values Benjamini--Hochberg corrected across all 45 component × outcome tests.
-RISE condition loadings ($A$) were corrected and tested in the same way, with correction across all 153 RISE component × outcome tests.
-Patient covariates (age, male sex, Caucasian ethnicity, ILD diagnosis, CMV IgG positivity, and baseline FEV~1~) were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
-
 **Coordinated changes of LR pairs.** For each CP component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($D$) and receiver ($E$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}d_{s}e_{t}$.
 These scores were corrected for total sample expression as above and tested against six-month outcome by one-way ANOVA, with Benjamini--Hochberg correction across the 513 LR pairs.
 For the component's top 10 LR pairs by absolute LR-pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
@@ -244,6 +234,19 @@ Each group was also compared with all other cells, with Benjamini--Hochberg corr
 
 **Cell-type mapping of components.** Components were mapped to annotated cell types by the mean per-cell sender and receiver loading of each broad cell type.
 The agreement of a component's sender and receiver cells was summarized by the R^2^ between per-cell sender and receiver loadings across all cells.
+
+#### Component--outcome Association
+
+**Sample normalization.** Condition loadings scale with each sample's total normalized expression, the sum of normalized expression over all of the sample's cells.
+Because sequencing depth is removed by per-cell normalization, this total is dominated by the number of cells per sample, not by read depth.
+For each set of condition loadings, the norm of each sample's loading row was regressed on the sample's total normalized expression by ordinary least squares with an intercept, and each row was divided by its fitted value.
+
+**Association testing.** Associations between components and outcomes were tested with the sample as the unit of analysis, using the corrected CP condition loadings ($G$).
+We tested nine groupings of the ALAD samples: ALAD status (control vs. ALAD; control, declined, and recovered); six-month outcome (control, recovered, CLAD, and died; CLAD vs. no CLAD, excluding deaths; and died vs. alive); one-year outcome (control, recovered, CLAD, and died; CLAD vs. no CLAD; and died vs. alive); and acute rejection (yes vs. no).
+For each component and grouping, we report the one-way analysis of variance (ANOVA) F statistic and effect size, $\eta^{2} = SS_{between}/SS_{total}$, with p-values Benjamini--Hochberg corrected across all 45 component by outcome tests.
+RISE condition loadings ($A$) were corrected and tested in the same way, with correction across all 153 RISE component by outcome tests.
+
+**Covariate confounder testing.** Patient covariates (age, male sex, Caucasian ethnicity, ILD diagnosis, CMV IgG positivity, and baseline FEV~1~) were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
 
 #### Validation experiments
 
