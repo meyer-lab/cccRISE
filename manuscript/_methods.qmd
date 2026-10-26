@@ -1,7 +1,5 @@
 ## Materials and methods
 
-### RISE, CPD, and CCC-RISE
-
 CCC-RISE infers cell-cell communication (CCC) programs across multiple conditions in three sequential steps, illustrated in Fig. 1: (1) RISE decomposes the multi-condition scRNA-seq data into cell eigen-states; (2) an aligned 4D communication tensor is constructed by scoring ligand-receptor pairs between eigen-states; and (3) CPD decomposes this tensor to extract communication programs.
 Each step is described in turn below, followed by the data processing, rank selection, validation, and interpretation analyses.
 
