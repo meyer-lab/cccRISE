@@ -1,6 +1,6 @@
-## RESULTS
+## Results
 
-## CCC-RISE framework overview
+### CCC-RISE framework overview
 
 ::: {#fig-1}
 ![](figures/figure1/figure1.svg){width="6.5in"}
@@ -25,7 +25,7 @@ The eigen-states define shared gene-expression programs, so the projection matri
 Further, by multiplying the RISE projections with the sender and receiver eigen-state factors, the associations of individual cells with each communication component are recovered ({{< fig 1 cell-mapping >}}).
 The embeddings and CP factor matrices thus trace LR signaling programs across conditions without losing the granularity of the underlying single-cell data ({{< fig 1 component-interpretation >}}).
 
-## CCC-RISE isolates subpopulation-specific repair signaling in lung transplants
+### CCC-RISE isolates subpopulation-specific repair signaling in lung transplants
 
 ::: {#fig-2}
 ![](figures/figure2/figure2.svg){width="6.5in"}
@@ -78,7 +78,7 @@ Individually, the groups expressed unique epithelial subpopulation markers indic
 These eigen-state--derived epithelial labels closely aligned with available annotations while exceeding their granularity in epithelial subtype definitions ({{< fig 2 celltype-composition >}}).
 In sum, label-free interpretation of CCC-RISE factors isolated a well-validated CCC program, wherein ciliated epithelial cells secrete betacellulin (BTC) that binds basal and secretory epithelial cells through epidermal growth factor receptors EGFR and ErbB2, inducing tissue repair and---in unhealthy tissue---fibrosis ({{< fig 2 cp-factor-matrices.4 >}})\ [@doi:10.1165/ajrcmb.20.5.3308; @doi:10.1038/ki.2012.43; @doi:10.3390/cells11060986].
 
-## A coordinated immune communication axis is associated with ALAD outcomes
+### A coordinated immune communication axis is associated with ALAD outcomes
 
 ::: {#fig-3}
 ![](figures/figure3/figure3.svg){width="6.5in"}
@@ -130,43 +130,7 @@ The alternate scores captured LR pairs similar to those of the product score, es
 For component 4, every score identified T and NK cells as senders, and the Hill score identified the same cells as receivers, whereas the mean and gmean scores instead implicated epithelial receivers ({{< fig ccc-scoring interpretation.2 >}}).
 Overall, CCC-RISE's expression product agreed closely with CellChat's expression Hill function, and even lower-FMS scores closely matched the LR pairs and either the sender or receiver eigen-states of components 4 and 5.
 
-<!-- ## CCC-RISE reveals severity-associated communication programs in COVID-19 at single-cell resolution
-
-<!-- ![](media/placeholder.svg){width="6.5in"}
-
-<!-- **Figure 3.
-<!-- Identification of communication components correlated with COVID-19 severity.** (a) Spearman correlation between CCC-RISE condition components and patient disease severity (ranked: healthy, moderate, severe).
-<!-- (b, c, g, h) PaCMAP embeddings of RISE projections visualizing single-cell heterogeneity.
-<!-- Cells are colored by their loadings for (b, g) sender and (c, h) receiver activity in (b-c) Component 3 and (g-h) Component 5.
-<!-- (d, e, i, j) Distribution of epithelial cell weights within (d, e) Component 3 and (i, j) Component 5, stratified by (d, i) sender and (e, j) receiver populations. (f) Average communication scores for the top five Ligand-Receptor (LR) pairs in Component 3, stratified by condition and cell weight.
-<!-- (k, n, o) Normalized communication scores for key interactions between top-weighted epithelial sender and receiver cells: (k, o) CDH1-CDH1 (Component 5) and (n) PTN-PTPRZ1 (Component 3 vs 5 comparison).
-<!-- (l, m) Comparison of Components 3 and 5, showing correlations between their (l) condition weights and (m) LR pair weights.
-
-<!-- Following the comparison against pseudobulk analysis, we sought to identify specific communication programs tracking with disease progression.
-<!-- We found that condition factors for Components 3, 5, and 8 exhibited the strongest correlation with COVID-19 severity (Fig. 3a).
-<!-- We first examined Component 3, which was predominantly driven by epithelial cells acting as both senders and receivers (Fig. 3b-c).
-<!-- Crucially, the sender and receiver weights were not uniformly distributed across the epithelial population; rather, they highlighted specific high-activity subpopulations, identifying the heterogeneity within this cell type (Fig. 3d-e).
-<!-- This subpopulation specificity was mirrored in the ligand-receptor usage: the top-weighted interactions---such as PTN-PTPRZ1, PTN-SDC1, COL4A5-SDC1, MDK-PTPRZ1, and MDK-SDC1---were not ubiquitously expressed but rather restricted to a fraction of epithelial cells (Supplementary Fig. 4a-c).
-<!-- Consequently, the highest communication scores were tightly localized to the cells most heavily weighted by the model (Fig. 3f).
-<!-- Normalized communication scores further confirmed that key signaling events were absent from the broader epithelial population (Supplementary Fig. 4d-f).
-<!-- Biologically, this implicates a distinct subset of cells in a pro-repair program, as PTN/MDK signaling via PTPRZ1/SDC receptors is known to reinforce tight junctions and support epithelial barrier integrity during host defense\ [@doi:10.1002/rmv.1792; @doi:10.3390/microorganisms13092176; @doi:10.3390/cancers15194850].
-
-<!-- Like Component 3, Component 5 was strongly linked to disease severity and dominated by epithelial sender and receiver populations (Fig. 3g-h).
-<!-- However, it represented a distinct communication axis.
-<!-- The cellular weights again revealed intra-type heterogeneity, with specific subsets of epithelial cells driving the signal rather than the population as a whole (Fig. 3i-j).
-<!-- The molecular drivers here were different, characterized by adherence and junctional interactions such as CDH1-CDH1, OCLN-OCLN, and PRSS3-F2RL1 (Supplementary Fig. 4g).
-<!-- Communication scores for these pairs were notably variable; CDH1-CDH1 and OCLN-OCLN showed greater abundance compared to PRSS3-F2RL1, consistent with their higher weighting in the model (Fig. 3k, Supplementary Fig. 4h-i).
-
-<!-- Despite both Component 3 and 5 being \"epithelial-specific,\" they described non-overlapping biological programs.
-<!-- They correlated with severity through distinct patient profiles (Fig. 3l) and utilized mutually exclusive sets of ligand-receptor pairs (Fig. 3m).
-<!-- This distinction extended to the cellular level (Fig. 3n-o).
-<!-- Cells heavily weighted in Component 3 showed strong PTN-PTPRZ1 communication but minimal involvement in Component 5\'s programs (Fig. 3n).
-<!-- Conversely, the CDH1-CDH1 signal was robust specifically within the epithelial subset defined by Component 5 (Fig. 3o).
-
-<!-- Finally, Component 8 also tracked with severity but displayed a broader connectivity pattern.
-<!-- While epithelial cells remained the primary senders, the signals---mediated largely by PTN-SDC3, PTN-SDC2, and PTN-SDC4 (Supplementary Fig. 4j)---were targeted toward a diverse array of receiver types, including B cells, mast cells, plasma cells, mDCs, and pDCs (Supplementary Fig. 4k--m).-->
-
-## Distinct CD4+ T cell and NK cell signaling programs define ALAD
+### Distinct CD4+ T cell and NK cell signaling programs define ALAD
 
 ![](media/placeholder.svg){width="6.5in"}
 
