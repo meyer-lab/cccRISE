@@ -17,25 +17,40 @@ $$
 where $\mathbf{P =}P_{i} \in \mathbb{R}^{J_{sc,i} \times r},\ \ i\  = \ 1,\ 2,\ \ldots,\ I$ are the projection matrices and $r$ is the rank of the RISE decomposition; $diag\left( a_{i} \right)$ is the diagonal matrix whose nonzero entries are equal to the $i$^th^ row of $A \in \mathbb{R}^{I \times r}$, the condition factor matrix; $B \in \mathbb{R}^{r \times r}$ is the cell eigen-state factor matrix; $C \in \mathbb{R}^{K \times r}$ is the gene factor matrix; and $\mathbf{I}$ is the identity matrix\ [@doi:10/cxfskg].
 We fit RISE to obtain $\mathbf{P}$ and the factor matrices, $A$, $B$, and $C$, which are alternately fit.
 <!-- Claude's draft of RISE method with B=I constraint and mean-centering
+
+Changes from the current RISE text (this block, the slice normalization block, and the fitting block below):
+
+- Input data defined in text: $X_{sc,i}$ is now defined, with its dimensions and $K$ genes, as the normalized expression centered on the global per-gene mean $\mu$.
+- B = I: $B$ is removed from the objective, the factor update, and the Procrustes step, matching `fix_B_identity=True` (#203), under which $B$ is fixed and never updated.
+- Slice weights: $w_{i}^{2}$ enters the objective and the aligned slices become $w_{i}P_{i}^{T}X_{sc,i}$, matching `normalize_slices=True` (#203); $A$ is rescaled by $1/w_{i}$ after fitting, so reported factors reconstruct the unweighted data.
+- Factor update: "running PARAFAC on the aligned tensor" becomes "one ALS update of $A$ and $C$", because parafac2 performs a single ALS sweep per outer iteration (`n_inner=1`) rather than fitting PARAFAC to convergence.
+- Procrustes: the old text took the SVD of $Bdiag(a_{i})C^{T}X_{sc,i}^{T}$ (r × J), whose $UV^{T}$ is $P_{i}^{T}$, not $P_{i}$. The SVD of $X_{sc,i}C\,diag(a_{i})$ gives $P_{i}$ directly.
+- Optimizations: Nesterov acceleration and its citation are removed (dropped in parafac2 v1.5.0; all results use v1.10.0). Initialization is stated as $A$ = ones and $C$ from LOBPCG-computed singular vectors, and the post-fit alignment as variance-to-mean ordering, normalization, and sign flipping.
+
+Draft text:
+
 Reduction and Insight in Single-cell Exploration (RISE) is a computational framework based on the PARAFAC2 tensor decomposition method, optimized for analyzing multi-condition scRNA-seq data\ [@doi:10.1016/j.cels.2025.101294].
 A major challenge in scRNA-seq is that the data lacks alignment when reconstructed into a 3D tensor, because the same cell is not measured across conditions.
 RISE overcomes this by using the PARAFAC2 model, which solves for the alignment of the data along one dimension---the cell axis.
-Let $X_{i} \in \mathbb{R}^{J_{i} \times K}$ be the normalized expression of the $J_{i}$ cells of condition $i = 1, \ldots, I$ over $K$ genes, and $\tilde{X}_{i} = X_{i} - \mathbf{1}\mu^{T}$ its deviation from $\mu \in \mathbb{R}^{K}$, the per-gene mean over all cells of all conditions.
+The input to RISE, $X_{sc,i} \in \mathbb{R}^{J_{sc,i} \times K}$, is the normalized expression (see Data Processing) of the $J_{sc,i}$ cells of condition $i = 1, \ldots, I$ over $K$ genes, centered on $\mu \in \mathbb{R}^{K}$, the per-gene mean over all cells of all conditions.
 In fitting the RISE model, we seek:
 
 $$
-  \underset{A,C,\mathbf{P}}{argmin}\sum_{i=1}^{I}w_{i}^{2}\left\| \tilde{X}_{i} - P_{i}diag\left( a_{i} \right)C^{T} \right\|^{2}\text{subject to}\ {P_{i}}^{T}P_{i}\mathbf{\ } = \mathbf{I\ \forall\ }i
+  \underset{A,C,\mathbf{P}}{argmin}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{sc,i} - P_{i}diag\left( a_{i} \right)C^{T} \right\|^{2}\text{subject to}\ {P_{i}}^{T}P_{i}\mathbf{\ } = \mathbf{I\ \forall\ }i
 $$
 
-where $\mathbf{P =}P_{i} \in \mathbb{R}^{J_{i} \times r},\ \ i\  = \ 1,\ 2,\ \ldots,\ I$ are the projection matrices and $r$ is the rank of the RISE decomposition; $diag\left( a_{i} \right)$ is the diagonal matrix whose nonzero entries are equal to the $i$^th^ row of $A \in \mathbb{R}^{I \times r}$, the condition factor matrix; $C \in \mathbb{R}^{K \times r}$ is the gene factor matrix; and $\mathbf{I}$ is the identity matrix\ [@doi:10/cxfskg].
+where $\mathbf{P =}P_{i} \in \mathbb{R}^{J_{sc,i} \times r},\ \ i\  = \ 1,\ 2,\ \ldots,\ I$ are the projection matrices and $r$ is the rank of the RISE decomposition; $diag\left( a_{i} \right)$ is the diagonal matrix whose nonzero entries are equal to the $i$^th^ row of $A \in \mathbb{R}^{I \times r}$, the condition factor matrix; $C \in \mathbb{R}^{K \times r}$ is the gene factor matrix; and $\mathbf{I}$ is the identity matrix\ [@doi:10/cxfskg].
 The general PARAFAC2 model includes a third factor matrix, $B \in \mathbb{R}^{r \times r}$, between $P_{i}$ and $diag\left( a_{i} \right)$; RISE fixes $B = \mathbf{I}$, so each condition's eigen-state coordinates are the orthonormal columns of $P_{i}$.
-The $r$ cell eigen-states are therefore defined jointly by the projections and the gene factor: eigen-state $q$ has gene profile $c_{q}$, scaled by $a_{iq}$ in condition $i$, and column $q$ of $P_{i}$ gives each cell's projection onto it. -->
+The $r$ cell eigen-states are therefore defined jointly by the projections and the gene factor: eigen-state $q$ has gene profile $c_{q}$, scaled by $a_{iq}$ in condition $i$, and column $q$ of $P_{i}$ gives each cell's projection onto it.
+-->
 
 **Slice normalization.**
-<!-- Claude's slice normalization sample text
+
+<!-- Claude's slice normalization sample text:
+
 Conditions differ in cell number and total variance, so without weighting, conditions with many or highly variable cells would dominate the fit.
-Each condition is therefore weighted by the inverse of its mean-centered Frobenius norm, $w_{i} = 1/\left\| \tilde{X}_{i} \right\|_{F}$, so that every sample contributes equally to the objective.
-Equivalently, RISE is fit to the weighted slices $w_{i}\tilde{X}_{i}$, and each row of $A$ is divided by $w_{i}$ after fitting so that the factors reconstruct the unweighted data. -->
+Each condition is therefore weighted by the inverse of its mean-centered Frobenius norm, $w_{i} = 1/\left\| X_{sc,i} \right\|_{F}$, so that every sample contributes equally to the objective.
+Equivalently, RISE is fit to the weighted slices $w_{i}X_{sc,i}$, and each row of $A$ is divided by $w_{i}$ after fitting so that the factors reconstruct the unweighted data. -->
 
 **Fitting.** First, the factor matrices are updated as
 
@@ -55,25 +70,28 @@ For a low-rank decomposition, we update each $\mathbf{P}_{\mathbf{i}}\mathbf{\in
 This process of updating the factor matrices using PARAFAC and the projections via Orthogonal Procrustes is repeated until a specific number of iterations elapses or the difference in R2X between iterations reaches a threshold.
 This cycle of aligning the tensor and then factoring it is repeated until either 100 iterations elapse or the difference in R²X between iterations falls below 1×10⁻⁶.
 RISE enhances the core PARAFAC2 algorithm with key optimizations including a parameter initialization scheme via SVD, the implementation of Nesterov acceleration to improve convergence, and post-factorization alignment procedures to ensure consistent, interpretable results.\ [@doi:10/cxfskg; @doi:10.1016/j.chemolab.2021.104312]
-<!-- Claude's draft of fitting with B=I, slice normalization, and mean-centering
+
+<!-- Claude's draft of fitting with B=I, slice normalization, and mean-centering:
+
 We fit RISE to obtain $\mathbf{P}$ and the factor matrices $A$ and $C$, which are alternately fit.
 First, for fixed projections, the factor matrices are updated as
 
 $$
-  \underset{A,C}{argmin}\sum_{i=1}^{I}w_{i}^{2}\left\| \tilde{X}_{i} - P_{i}diag\left( a_{i} \right)C^{T} \right\|^{2}
+  \underset{A,C}{argmin}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{sc,i} - P_{i}diag\left( a_{i} \right)C^{T} \right\|^{2}
 $$
 
 $$
-  = \underset{A,C}{argmin}\sum_{i=1}^{I}\left\| w_{i}P_{i}^{T}\tilde{X}_{i} - diag\left( a_{i} \right)C^{T} \right\|^{2}
+  = \underset{A,C}{argmin}\sum_{i=1}^{I}\left\| w_{i}P_{i}^{T}X_{sc,i} - diag\left( a_{i} \right)C^{T} \right\|^{2}
 $$
 
-which is equivalent to one alternating least-squares (ALS) update of $A$ and $C$ in a PARAFAC model, with the eigen-state factor fixed to the identity, of the aligned third-order tensor whose $i$^th^ slice along the first mode is $w_{i}P_{i}^{T}\tilde{X}_{i}$.
+which is equivalent to one alternating least-squares (ALS) update of $A$ and $C$ in a PARAFAC model, with the eigen-state factor fixed to the identity, of the aligned third-order tensor whose $i$^th^ slice along the first mode is $w_{i}P_{i}^{T}X_{sc,i}$.
 Then, the projection matrices, $\mathbf{P,}$ are updated by solving the Orthogonal Procrustes problem.
 Given matrices $M,N \in \mathbb{R}^{n \times m}$, the Orthogonal Procrustes problem seeks an orthogonal matrix $Q \in \mathbb{R}^{n \times n}$ that minimizes $\left\| MQ - N \right\|_{F}^{2}$.
 The solution is given by $Q = UV^{T}$, where $U\Sigma V^{T}$ is the singular value decomposition of $N^{T}M$.
-For a low-rank decomposition, we update each $P_{i} \in \mathbf{P}$ as $P_{i} = UV^{T}$, the product of the $r$ left and right singular vectors from the thin SVD $U\Sigma V^{T}$ of $\tilde{X}_{i}C\,diag\left( a_{i} \right)$.
-This cycle of aligning the tensor and then factoring it is repeated until the decrease in the weighted relative squared error, $\sum_{i}w_{i}^{2}\left\| \tilde{X}_{i} - P_{i}diag\left( a_{i} \right)C^{T} \right\|^{2} / \sum_{i}w_{i}^{2}\left\| \tilde{X}_{i} \right\|^{2}$, between iterations falls below 1×10^-8^, or until 300 iterations elapse.
-RISE enhances the core PARAFAC2 algorithm with key optimizations: $A$ is initialized to ones, $C$ is initialized to the leading $r$ right singular vectors of the stacked, centered, and slice-weighted data, (computed with an iterative (LOBPCG) eigensolver from a random start), and fitted components are ordered by the variance-to-mean ratio of their condition loadings, normalized, and sign-flipped to a consistent orientation\ [@doi:10.1137/S1064827500366124]. -->
+For a low-rank decomposition, we update each $P_{i} \in \mathbf{P}$ as $P_{i} = UV^{T}$, the product of the $r$ left and right singular vectors from the thin SVD $U\Sigma V^{T}$ of $X_{sc,i}C\,diag\left( a_{i} \right)$.
+This cycle of aligning the tensor and then factoring it is repeated until the decrease in the weighted relative squared error, $\sum_{i}w_{i}^{2}\left\| X_{sc,i} - P_{i}diag\left( a_{i} \right)C^{T} \right\|^{2} / \sum_{i}w_{i}^{2}\left\| X_{sc,i} \right\|^{2}$, between iterations falls below 1×10^-8^, or until 300 iterations elapse.
+RISE enhances the core PARAFAC2 algorithm with key optimizations: $A$ is initialized to ones, $C$ is initialized to the leading $r$ right singular vectors of the stacked, centered, and slice-weighted data, (computed with an iterative (LOBPCG) eigensolver from a random start), and fitted components are ordered by the variance-to-mean ratio of their condition loadings, normalized, and sign-flipped to a consistent orientation\ [@doi:10.1137/S1064827500366124].
+-->
 
 #### Construction of the Aligned 4D Communication Tensor
 
@@ -83,7 +101,7 @@ From the eigen-state factors that RISE produces, CCC scores are calculated for a
 Pairs were retained only if every ligand and receptor subunit gene was present in the expression data.
 The expression of a multimeric complex was taken as the minimum expression of its subunits.
 
-**Eigen-state expression.** The expression of eigen-state $q$ in condition $i$ is the corresponding row of $P_{i}^{T}\tilde{X}_{i} + \mathbf{1}\mu^{T}$, clipped at 0, where $\mu$ is the per-gene mean that RISE centers on (above).
+**Eigen-state expression.** The expression of eigen-state $q$ in condition $i$ is the corresponding row of $P_{i}^{T}X_{sc,i} + \mathbf{1}\mu^{T}$, clipped at 0, where $\mu$ is the per-gene mean that RISE centers on (above).
 
 **CCC scoring.** To model CCC, we represent the expression of a ligand and its receptor as the outer product of the gene expression for a LR pair.
 This operation captures the combinatorial potential for signaling, where each element in the resulting matrix represents the product of a sender eigen-state's ligand expression and a receiver eigen-state's receptor expression.
@@ -127,15 +145,6 @@ Signs are thus interpretable in every mode except the sender mode, which absorbs
 
 #### Data Processing
 
-**CANDELINC compression.**
-<!-- Claude's sample text:
-Analyses requiring many fits (bi-cross-validation, the CP rank sweep, and the jackknife and re-initialization replicates) used fits compressed by CANDELINC, which fits the decomposition to a small core obtained by projecting the data onto orthonormal bases and maps the factors back through those bases\ [@doi:10.1007/BF02293596].
-For RISE, the gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations; each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
-For CPD, the core was a sequentially truncated higher-order SVD of the communication tensor, keeping $\min(n, r + 5)$ singular vectors in each mode of size $n$.
-The CP rank sweep compressed the tensor once at the largest rank tested (core of 22 × 17 × 17 × 22), whereas each replicate was compressed at the selected rank.
-Because the bases are orthonormal, the cosines between factor columns computed from the core fit equal those of the decompressed factors, and the CP R^2^X, restated against the full tensor, equals the core-space error plus the energy the projection discards (see Reconstruction Error).
-The RISE and CP fits from which all reported results are derived are uncompressed. -->
-
 **ALAD cohort.** The single-cell gene expression and clinical annotations of bronchoalveolar lavage (BAL) samples were obtained from Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
 Cells with 10 or fewer total counts and genes with a mean raw count of 0.001 or less across all cells were removed.
 Each cell was scaled to the median per-cell total count, and each gene was then scaled by its sum across cells.
@@ -148,11 +157,18 @@ $$
 where $x$ is the scaled expression and $g(x)$ the transformed expression.
 Finally, each gene was centered on its mean, $\mu$, which RISE subtracts internally.
 The final dataset consisted of 51,273 cells and 16,675 genes.
-After filtering the CellChatDB list to the genes in the dataset, 513 LR pairs were retained.
+After filtering the CellChatDB list of interacting LR pairs to the genes in the dataset, 513 LR pairs were retained.
 The data were fit with a 17-component RISE model and a 5-component CPD model, selected as described in Rank Selection.
 
-**IBD cohort.**
-<!-- IBD placeholder text -->
+**IBD cohort.** <!-- IBD placeholder text -->
+
+**CANDELINC compression.** <!-- Claude's sample text:
+Analyses requiring many fits (bi-cross-validation, the CP rank sweep, and the jackknife and re-initialization replicates) used fits compressed by CANDELINC, which fits the decomposition to a small core obtained by projecting the data onto orthonormal bases and maps the factors back through those bases\ [@doi:10.1007/BF02293596].
+For RISE, the gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations; each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
+For CPD, the core was a sequentially truncated higher-order SVD of the communication tensor, keeping $\min(n, r + 5)$ singular vectors in each mode of size $n$.
+The CP rank sweep compressed the tensor once at the largest rank tested (core of 22 × 17 × 17 × 22), whereas each replicate was compressed at the selected rank.
+Because the bases are orthonormal, the cosines between factor columns computed from the core fit equal those of the decompressed factors, and the CP R^2^X, restated against the full tensor, equals the core-space error plus the energy the projection discards (see Reconstruction Error).
+The RISE and CP fits from which all reported results are derived are uncompressed. -->
 
 #### Batch, Patient, and Technical Variation
 
@@ -170,7 +186,7 @@ For RISE, the Frobenius norm of the difference between the centered scRNA-seq da
 This difference is normalized by the Frobenius norm of the centered data and subtracted from 1.
 
 $$
-  R^2^X = 1 - \ \frac{\left\| \tilde{X}_{data} - X_{RISE} \right\|^{2}}{\left\| \tilde{X}_{data} \right\|^{2}}
+  R^2^X = 1 - \ \frac{\left\| \{X}_{sc} - X_{RISE} \right\|^{2}}{\left\| \tilde{X}_{data} \right\|^{2}}
 $$
 
 For CPD, the Frobenius norm of the difference between the 4D communication tensor after CCC scoring ($X_{CCC\ 4D\ Tensor}$) and the reconstruction from the CPD factors ($X_{CPD}$) is calculated.
