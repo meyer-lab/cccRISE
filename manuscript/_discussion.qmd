@@ -1,4 +1,4 @@
-## DISCUSSION
+## Discussion
 
 We have demonstrated that CCC-RISE provides a comprehensive framework for investigating cell-cell communication (CCC) across multiple conditions while maintaining single-cell resolution.
 Current computational tools for CCC largely rely on pseudobulking, a process that aggregates single-cell data into pre-defined clusters and obscures the functional diversity of individual cells.
