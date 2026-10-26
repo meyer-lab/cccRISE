@@ -31,7 +31,7 @@ where $\mathbf{P =}P_{i} \in \mathbb{R}^{J_{i} \times r},\ \ i\  = \ 1,\ 2,\ \ld
 The general PARAFAC2 model includes a third factor matrix, $B \in \mathbb{R}^{r \times r}$, between $P_{i}$ and $diag\left( a_{i} \right)$; RISE fixes $B = \mathbf{I}$, so each condition's eigen-state coordinates are the orthonormal columns of $P_{i}$.
 The $r$ cell eigen-states are therefore defined jointly by the projections and the gene factor: eigen-state $q$ has gene profile $c_{q}$, scaled by $a_{iq}$ in condition $i$, and column $q$ of $P_{i}$ gives each cell's projection onto it. -->
 
-**Slice normalization.** 
+**Slice normalization.**
 <!-- Claude's slice normalization sample text
 Conditions differ in cell number and total variance, so without weighting, conditions with many or highly variable cells would dominate the fit.
 Each condition is therefore weighted by the inverse of its mean-centered Frobenius norm, $w_{i} = 1/\left\| \tilde{X}_{i} \right\|_{F}$, so that every sample contributes equally to the objective.
@@ -213,28 +213,6 @@ Imputation fits were uncompressed.
 A ridge penalty ($\lambda$ = 0.1) was applied to the masked fits only, because the communication tensor is heavy-tailed so an unpenalized masked fit could be dominated by the few largest held-out entries.
 We selected the lowest rank before degeneracy, defined as the first rank at which a pair of components became collinear in two or more modes.
 
-#### Factor interpretation
-
-**Per-cell sender and receiver loadings.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CP eigen-state factors can be mapped back to individual cells.
-The per-cell sender and receiver loadings of all cells are $PD$ and $PE$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row.
-
-**Visualization.** PaCMAP was applied to the RISE projections of all cells concatenated across conditions, with default parameters, to visualize cell-to-cell variation as an embedding\ [@arxiv:2012.04456].
-In factor heatmaps, each component is divided by its largest absolute loading; RISE gene heatmaps show only the top 10% of genes by weight, and CP LR-pair heatmaps the top 15% of LR pairs.
-
-**Coordinated changes of LR pairs.** For each CP component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($D$) and receiver ($E$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}d_{s}e_{t}$.
-These scores were corrected for total sample expression as above and tested against six-month outcome by one-way ANOVA, with Benjamini--Hochberg correction across the 513 LR pairs.
-For the component's top 10 LR pairs by absolute LR-pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
-These correlations were compared with those of LR pairs drawn 2,000 times from three baselines: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with six-month outcome (q < 0.05).
-
-**Label-free sender and receiver groups.** To interpret a component without cell-type labels, each cell's per-cell sender and receiver loadings were divided by their respective maxima across cells.
-Cells for which either ratio was at least $\tau = 0.3$ formed the sender or receiver group, assigned to the role with the larger ratio.
-Groups were compared by Wilcoxon rank-sum tests in scanpy without tie correction\ [@doi:10.1186/s13059-017-1382-0].
-Sender and receiver groups were compared on curated epithelial subtype markers (Travaglini et al., Supplementary Table 1; Human Lung Cell Atlas, Sikkema et al., Supplementary Table 6)\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2], with p-values Benjamini--Hochberg corrected across the 36 candidate markers present in the data, and markers reported if q < 0.05 and the difference in the fraction of cells detecting the gene was at least 0.2.
-Each group was also compared with all other cells, with Benjamini--Hochberg correction across all genes.
-
-**Cell-type mapping of components.** Components were mapped to annotated cell types by the mean per-cell sender and receiver loading of each broad cell type.
-The agreement of a component's sender and receiver cells was summarized by the R^2^ between per-cell sender and receiver loadings across all cells.
-
 #### Component--outcome Association
 
 **Sample normalization.** Condition loadings scale with each sample's total normalized expression, the sum of normalized expression over all of the sample's cells.
@@ -247,6 +225,31 @@ For each component and grouping, we report the one-way analysis of variance (ANO
 RISE condition loadings ($A$) were corrected and tested in the same way, with correction across all 153 RISE component by outcome tests.
 
 **Covariate confounder testing.** Patient covariates (age, male sex, Caucasian ethnicity, ILD diagnosis, CMV IgG positivity, and baseline FEV~1~) were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
+
+#### Factor interpretation
+
+**Per-cell sender and receiver loadings.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CP eigen-state factors can be mapped back to individual cells.
+The per-cell sender and receiver loadings of all cells are $PD$ and $PE$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row.
+
+**Visualization.** PaCMAP was applied to the RISE projections of all cells concatenated across conditions, with default parameters, to visualize cell-to-cell variation as an embedding\ [@arxiv:2012.04456].
+In factor heatmaps, each component is divided by its largest absolute loading; RISE gene heatmaps show only the top 10% of genes by weight, and CP LR-pair heatmaps the top 15% of LR pairs.
+
+<!--TODO-->
+**Coordinated changes of LR pairs.** For each CP component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($D$) and receiver ($E$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}d_{s}e_{t}$.
+These scores were corrected for total sample expression as above and tested against six-month outcome by one-way ANOVA, with Benjamini--Hochberg correction across the 513 LR pairs.
+For the component's top 10 LR pairs by absolute LR-pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
+These correlations were compared with those of LR pairs drawn 2,000 times from three baselines: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with six-month outcome (q < 0.05).
+
+<!--TODO-->
+**Label-free sender and receiver groups.** To interpret a component without cell-type labels, each cell's per-cell sender and receiver loadings were divided by their respective maxima across cells.
+Cells for which either ratio was at least $\tau = 0.3$ formed the sender or receiver group, assigned to the role with the larger ratio.
+Groups were compared by Wilcoxon rank-sum tests in scanpy without tie correction\ [@doi:10.1186/s13059-017-1382-0].
+Sender and receiver groups were compared on curated epithelial subtype markers (Travaglini et al., Supplementary Table 1; Human Lung Cell Atlas, Sikkema et al., Supplementary Table 6)\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2], with p-values Benjamini--Hochberg corrected across the 36 candidate markers present in the data, and markers reported if q < 0.05 and the difference in the fraction of cells detecting the gene was at least 0.2.
+Each group was also compared with all other cells, with Benjamini--Hochberg correction across all genes.
+
+<!--TODO-->
+**Cell-type mapping of components.** Components were mapped to annotated cell types by the mean per-cell sender and receiver loading of each broad cell type.
+The agreement of a component's sender and receiver cells was summarized by the R^2^ between per-cell sender and receiver loadings across all cells.
 
 #### Validation experiments
 
@@ -261,12 +264,14 @@ In the jackknife, the condition roster changes, so RISE was compared on the gene
 **Association stability.** In each leave-one-patient-out jackknife replicate, the ANOVA against six-month outcome was repeated on the replicate's corrected CP condition loadings, Benjamini--Hochberg corrected across the components of that fit, and carried onto the reference component matched by FMS.
 For each component, we report the fraction of replicates with q < 0.05.
 
+<!--TODO-->
 **Within-sample cell-permutation null.** To test whether communication scores exceeded chance, we extended the cluster-label permutation of CellPhoneDB and CellChat to continuous eigen-states\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
 Within each condition, the rows of the projection matrix $P_{i}$ were shuffled, permuting which cell is paired with each projection row, and the communication tensor was recomputed from the uncompressed RISE fit.
 This was repeated for 1,000 permutations.
 For each tensor entry, the one-sided empirical p-value was $p = (k + 1)/(N + 1)$, where $k$ is the number of the $N$ permutations scoring at least as high as observed.
 For each LR pair, we report the fraction of its condition × sender × receiver entries with p < 0.05, and its mean observed and mean null scores.
 
+<!--TODO-->
 **NicheNet downstream-target validation.** We tested whether each component's receiver cells upregulate the downstream targets of the component's ligands, using the NicheNet v2 ligand--target prior\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 For each CP component:
 
@@ -277,12 +282,14 @@ For each CP component:
 5. The null was formed by recomputing this weighted mean on 1,000 copies of the prior with the same number of ligand--target links placed at random.
 6. A one-sided permutation p-value, $(k + 1)/(N + 1)$, was computed for each component and Benjamini--Hochberg corrected across components\ [@doi:10.1111/j.2517-6161.1995.tb02031.x].
 
+<!--TODO-->
 **Patient-block label permutation.** Following scDiffCom\ [@doi:10.1038/s43587-023-00514-x], we tested whether each LR pair's per-sample score (as above, divided by the sample's total normalized expression) differed between CLAD or died samples and no-CLAD samples at six months.
 The test statistic was the difference in mean score between the two groups.
 The null was formed by 10,000 permutations of outcome labels between patients, moving the two samples of a two-sample recipient together.
 One-sided p-values, $(k + 1)/(N + 1)$, were Benjamini--Hochberg corrected across the component's top 10 LR pairs.
 For the volcano plot, the effect size of each component's top 20 LR pairs is the log~2~ ratio of the two groups' mean scores.
 
+<!--TODO-->
 **Alternative scoring comparison.** To assess robustness to the communication score, the communication tensor was recomputed from a single shared RISE fit under each alternative scoring function, and each tensor was fit with an uncompressed CPD at the selected rank.
 Components of each alternative fit were matched to the expression-product fit by Hungarian assignment on their mean absolute cosine over the condition and LR-pair modes.
 For each matched component, we report this match score, the mean absolute cosine of the matched sender and receiver eigen-state factors as an independent check of the matching, and the ANOVA $\eta^{2}$ of the corrected condition loadings against six-month outcome.
