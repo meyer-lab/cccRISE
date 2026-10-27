@@ -8,7 +8,7 @@ subtitle: "Resolving cell-cell communication programs beyond cell-type boundarie
 **Figure S1.
 ALAD cohort and cell type composition.** ({{< panel alad-cohort cohort >}}) ALAD cohort of 47 BAL samples from 45 lung transplant recipients: 17 stable controls and 30 with ALAD, of whom 17 declined and 13 recovered\ [@doi:10.1016/j.healun.2024.02.007].
 ({{< panel alad-cohort celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control (n = 17), declined ALAD (n = 17), and recovered ALAD (n = 13) samples, on a square-root scale.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5× the interquartile range.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
 
 ![](figures/figureS_rise_factor_matrices/figureS_rise_factor_matrices.svg){width="6.5in"}
@@ -22,7 +22,7 @@ For visualization, genes outside the top 10% by weight in any component are omit
 **Figure S3.
 Stability of RISE and CP components.** ({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45).
 Each replicate's components were matched to the reference's by Hungarian matching.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5× the interquartile range.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 ({{< panel cmp-stability fms-histograms >}}) Distributions of RISE component 3 and CP component 2 (the two bimodal components) FMS across jackknife replicates.
 
 ![](figures/figureS_nichenet/figureS_nichenet.svg){width="6.5in"}
@@ -30,7 +30,7 @@ Boxes show the median and interquartile range and whiskers show the most extreme
 **Figure S4.
 External validation of CCC-RISE LR weights.** ({{< panel nichenet ligand-scores >}}) NicheNet gene target scores of each ligand (n = 185) per CP component: the AUROC with which genes differentially expressed in the component's top receiver cells recover the ligand's predicted downstream targets.
 Points are colored and sized by the ligand's weight in the component; opaque points mark the ligands of the component's top LR pairs.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5× the interquartile range.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 ({{< panel nichenet weighted-percentiles >}}) Target-score percentile of each ligand among its component's ligands, each ligand counted in proportion to its ligand weight.
 Boxes show the weighted quartiles, whiskers show the weighted 5th--95th percentiles, and diamonds show the weighted mean.
 Null: the same percentiles on 1,000 copies of the NicheNet v2 prior with ligand--target links reassigned at random, pooled across components.
@@ -47,11 +47,11 @@ Labeled are ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial
 ![](figures/figureS_alad_associations/figureS_alad_associations.svg){width="6.5in"}
 
 **Figure S6.
-Association of CP components, RISE components, and patient covariates with ALAD outcomes.** ({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CP component's condition loadings against each ALAD outcome.
+Association of CP components, RISE components, and patient covariates with ALAD outcomes.** ({{< panel alad-associations cp-anova >}}) One-way ANOVA η^2^ of each CP component's condition loadings against each ALAD outcome.
 \*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
 ({{< panel alad-associations death-weights >}}) CP component 4 condition loadings by ({{< panel alad-associations death-weights.1 >}}) six-month and ({{< panel alad-associations death-weights.2 >}}) one-year death.
 Lines connect samples from the same patient.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5× the interquartile range.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outcomes and components.
 ({{< panel alad-associations rise-associations >}}) As in ({{< panel alad-associations cp-associations >}}), for each RISE component's condition loadings.
 ({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CP component 4 sender against receiver weight, with R^2^ across all cells.
@@ -61,15 +61,16 @@ One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outco
 ![](figures/figureS_anova_stability/figureS_anova_stability.svg){width="6.5in"}
 
 **Figure S7.
-Stability of the CP component--outcome associations.** ({{< panel anova-stability effect-size-distributions >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by CP factor match score.
+Stability of CP component--outcome associations.** ({{< panel anova-stability effect-size-distributions >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by Hungarian matching.
 Diamonds mark the full-cohort η^2^, filled where q < 0.05.
 ({{< panel anova-stability significant-fraction >}}) Fraction of jackknife replicates in which each CP component's association with six-month outcome has q < 0.05.
-q: p Benjamini--Hochberg corrected across the five components of each fit.
+q: Benjamini--Hochberg corrected p across the five components of each fit.
 
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 
 **Figure S8.
-CCC-RISE components across communication scoring methods.** ({{< panel ccc-scoring factor-match >}}) Factor match score (condition and LR pair modes) of each CP component of the product score to its matched component under each alternate score (left), and the matched components' mean sender and receiver \|cosine\| (right), an independent check of the matching.
+CCC-RISE components across communication scoring methods.** ({{< panel ccc-scoring factor-match.1 >}}) Factor match score (condition and LR pair modes) of each CP component of the product score to its Hungarian-matched component under each alternate score.
+({{< panel ccc-scoring factor-match.2 >}}) Mean sender and receiver \|cosine\| of the matched components.
 ({{< panel ccc-scoring anova >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome under each score, numbered by the matched product-score component.
 \*: p < 0.05.
 ({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
