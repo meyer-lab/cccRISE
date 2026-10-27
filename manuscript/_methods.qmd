@@ -183,18 +183,18 @@ The RISE and CP fits from which all reported results are derived are uncompresse
 ### Fit Evaluation
 
 **Reconstruction error.** R^2^X, or the fraction of variance explained by the model, was used to evaluate the effectiveness of the data reduction.
-For RISE, the Frobenius norm of the difference between the centered scRNA-seq data ($\tilde{X}_{data}$) and the reconstruction from the RISE factors and projections ($X_{RISE}$) is calculated.
-This difference is normalized by the Frobenius norm of the centered data and subtracted from 1.
+For RISE, the Frobenius norm of the difference between the scRNA-seq data ($X_{sc}$) and the reconstruction from the RISE factors and projections ($X_{RISE}$) is calculated.
+This difference is normalized by the Frobenius norm of the data and subtracted from 1.
 
 $$
-  R^2^X = 1 - \ \frac{\left\| \{X}_{sc} - X_{RISE} \right\|^{2}}{\left\| \tilde{X}_{data} \right\|^{2}}
+  R^{2}X = 1 - \ \frac{\left\| X_{sc} - X_{RISE} \right\|^{2}}{\left\| X_{sc} \right\|^{2}}
 $$
 
 For CPD, the Frobenius norm of the difference between the 4D communication tensor after CCC scoring ($X_{CCC\ 4D\ Tensor}$) and the reconstruction from the CPD factors ($X_{CPD}$) is calculated.
 This difference is normalized by the Frobenius norm of the data and subtracted from 1:
 
 $$
-  R^2^X = 1 - \ \frac{\left\| X_{CCC\ 4D\ Tensor} - X_{CPD} \right\|^{2}}{\left\| X_{CCC\ 4D\ Tensor} \right\|^{2}}
+  R^{2}X = 1 - \ \frac{\left\| X_{CCC\ 4D\ Tensor} - X_{CPD} \right\|^{2}}{\left\| X_{CCC\ 4D\ Tensor} \right\|^{2}}
 $$
 
 R^2^X ranges from 0 to 1, with a score of 1 indicating a perfect reconstruction.
@@ -233,25 +233,29 @@ We selected the lowest rank before degeneracy, defined as the first rank at whic
 ### Component--outcome Association
 
 **Association testing.** Associations between components and outcomes were tested with the sample as the unit of analysis, using the corrected CP condition loadings ($G$).
-We tested nine groupings of the ALAD samples: ALAD status (control vs. ALAD; control, declined, and recovered); six-month outcome (control, recovered, CLAD, and died; CLAD vs. no CLAD, excluding deaths; and died vs. alive); one-year outcome (control, recovered, CLAD, and died; CLAD vs. no CLAD; and died vs. alive); and acute rejection (yes vs. no).
-For each component and grouping, we report the one-way analysis of variance (ANOVA) F statistic and effect size, $\eta^{2} = SS_{between}/SS_{total}$, with p-values corrected across all 45 component by outcome tests.
-RISE condition loadings ($A$) were corrected and tested in the same way, with correction across all 153 RISE component by outcome tests.
+For ALAD, we tested nine groupings of samples: ALAD status (control vs. ALAD; control, declined, and recovered); six-month outcome (control, recovered, CLAD, and died; CLAD vs. no CLAD, excluding deaths; and died vs. alive); one-year outcome (control, recovered, CLAD, and died; CLAD vs. no CLAD; and died vs. alive); and acute rejection (yes vs. no).
+For IBD, we tested [placeholder IBD association tests].
+For each component and grouping, we report the one-way analysis of variance (ANOVA) F statistic and effect size, $\eta^{2} = SS_{between}/SS_{total}$, with p-values corrected across all component by outcome tests.
+RISE condition loadings ($A$) were corrected and tested in the same way, with correction across all RISE component by outcome tests.
 
-**Covariate confounder testing.** Patient covariates (age, male sex, Caucasian ethnicity, ILD diagnosis, CMV IgG positivity, and baseline FEV~1~) were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
+**Covariate confounder testing.** Patient covariates were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
+
+**LR pair association testing.** For each CP component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($D$) and receiver ($E$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}d_{s}e_{t}$.
+These scores were corrected for total sample expression as above and tested against outcome by one-way ANOVA, with correction across the 513 LR pairs.
+For the component's top 10 LR pairs by absolute LR-pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
+These correlations were compared with those of LR pairs drawn 2,000 times from three baselines: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with outcome (q < 0.05).
 
 ### Robustness Tests
 
-**Patient jackknife.** Each patient was left out in turn, with both samples of a two-sample patient left out together, and each replicate was refit end to end (RISE, communication tensor, and CPD) at the selected ranks using compressed RISE and CP fits.
-Replicates were compared with a compressed reference fit to the full data by FMS.
+**Patient jackknife.** Each patient was left out in turn, with both samples of a two-sample patient left out together, and each replicate was refit end to end at the selected ranks using compressed RISE and CP fits.
+Replicates were compared with a compressed reference fit to the full data by Hungarian matching and FMS.
 Because the condition roster changes between replicates, RISE was compared on the gene mode only and CP on the LR-pair mode only; eigen-state modes were never compared.
 To assess the stability of component--outcome associations, the ANOVA for an outcome grouping was repeated on each replicate's corrected CP condition loadings, corrected for multiple testing across the components of that fit, and assigned to the matched reference component.
 
-**Model re-initialization.** The full data were refit end to end with different random seeds, using the same compressed fits and reference as jackknife.
-Because the conditions are unchanged, RISE was compared on the condition and gene modes and CP on the condition and LR-pair modes.
+**Model re-initialization.** The full data were refit end to end with different random seeds, using the same compressed fits and reference as above Because the conditions are unchanged, RISE was compared on the condition and gene modes and CP on the condition and LR-pair modes.
 
-<!--TODO-->
 **Alternative CCC scoring** To assess robustness to the communication score, the communication tensor was recomputed from a single shared, uncompressed RISE fit under each alternative scoring function, and each tensor was fit with an uncompressed CPD at the selected rank.
-Components of each alternative fit were matched to the expression-product fit by their mean absolute cosine over the condition and LR-pair modes by Hungarian matching.
+Components of each alternative fit were matched to the expression-product fit by Hungarian matching and their mean absolute cosine over the condition and LR-pair modes was computed.
 
 ### External Biological Validation
 
@@ -273,27 +277,24 @@ Within each condition, the rows of the projection matrix $P_{i}$ were shuffled, 
 This was repeated for 1,000 permutations.
 For each tensor entry, an empirical one-sided p-value was computed against the permuted scores.
 
-<!--TODO-->
 **Patient-label permutation null.** Following scDiffCom, we tested whether each LR pair's per-sample score (as above, divided by the sample's total normalized expression) differed between patient groups\ [@doi:10.1038/s43587-023-00514-x].
 The test statistic was the difference in mean score between two groups.
-The null was formed by 10,000 permutations of outcome labels between patients, moving the two samples of a two-sample recipient together.
-Empirical one-sided p-values were corrected across the component's top 10 LR pairs.
-For the volcano plot, the effect size of each component's top 20 LR pairs is the log~2~ ratio of the two groups' mean scores.
+The null was formed by 10,000 permutations of outcome labels between patients, moving samples from the same patient together.
+Empirical one-sided p-values were computed and corrected across the component's top 10 LR pairs.
+For volcano plots, the effect size of each component's top 20 LR pairs is the log~2~ ratio of the two groups' mean scores.
 
 ### Mapping CCC-RISE Components to Cells
 
 **Per-cell sender and receiver loadings.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CP eigen-state factors can be mapped back to individual cells.
 The per-cell sender and receiver loadings of all cells are $PD$ and $PE$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row.
-
-<!--TODO-->
-**Cell-type mapping of components.** Components were mapped to annotated cell types by the mean per-cell sender and receiver loading of each broad cell type.
 The agreement of a component's sender and receiver cells was summarized by the R^2^ between per-cell sender and receiver loadings across all cells.
 
-<!--TODO-->
+**Cell-type mapping of components.** Components were mapped to annotated cell types by the mean per-cell sender and receiver loading of each broad cell type.
+
 **Label-free sender and receiver groups.** To interpret a component without cell-type labels, each cell's per-cell sender and receiver loadings were divided by their respective maxima across cells.
 Cells for which either ratio was at least $\tau = 0.3$ formed the sender or receiver group, assigned to the role with the larger ratio.
 Groups were compared by differential gene expression.
-Sender and receiver groups were compared on curated epithelial subtype markers (Travaglini et al., Supplementary Table 1; Human Lung Cell Atlas, Sikkema et al., Supplementary Table 6)\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2], with p-values corrected across the 36 candidate markers present in the data, and markers reported if q < 0.05 and the difference in the fraction of cells detecting the gene was at least 0.2.
+Sender and receiver groups were compared for curated genes, p-values were corrected across candidate markers present in the data, and markers were reported if q < 0.05 and the difference in the fraction of cells detecting the gene was at least 0.2.
 Each group was also compared with all other cells, with correction across all genes.
 
 ### Cell Type Composition
@@ -325,20 +326,11 @@ A recipient's samples are kept together in the jackknife and in outcome-label pe
 Figure captions detail pertinent statistical analyses or metrics, the number of conditions, and confidence interval values.
 Shared metrics are defined below.
 
-**Hungarian matching of components.** Because component order is not fixed, the components of two fits of the same rank were matched one-to-one by the assignment maximizing their total similarity (Hungarian algorithm)\ [@doi:10.1002/nav.3800020109], and the matched fit was relabeled into the reference fit's component numbering.
-Similarity was the FMS for resampled fits and the mean absolute cosine over the compared modes otherwise.
+**Hungarian matching of components.** Because component order is not fixed, the components of two fits of the same rank were matched one-to-one by the assignment maximizing their total similarity (Hungarian algorithm)\ [@doi:10.1002/nav.3800020109].
 
 **Empirical one-sided p.** For a test statistic compared with $N$ draws from a null distribution, the one-sided empirical p-value was $p = (k + 1)/(N + 1)$, where $k$ is the number of null draws at least as large as the observed statistic.
 
 **Differential gene expression.** Two groups of cells were compared gene by gene with Wilcoxon rank-sum tests in scanpy, without tie correction\ [@doi:10.1186/s13059-017-1382-0].
 Effect sizes were reported as the difference between groups in the fraction of cells detecting the gene.
 
-**Benjamini--Hochberg multiple-test correction.** p-values were corrected for multiple testing by the Benjamini--Hochberg procedure across the family of tests stated with each analysis\ [@doi:10.1111/j.2517-6161.1995.tb02031.x], and corrected values are reported as q, with q < 0.05 considered significant.
-
-### ORPHANS
-
-<!--TODO-->
-**Coordinated changes of LR pairs.** For each CP component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($D$) and receiver ($E$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}d_{s}e_{t}$.
-These scores were corrected for total sample expression as above and tested against six-month outcome by one-way ANOVA, with Benjamini--Hochberg correction across the 513 LR pairs.
-For the component's top 10 LR pairs by absolute LR-pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
-These correlations were compared with those of LR pairs drawn 2,000 times from three baselines: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with six-month outcome (q < 0.05).
+**Benjamini--Hochberg multiple-test correction.** p-values were corrected for multiple testing by the Benjamini--Hochberg procedure across the family of tests stated with each analysis and corrected values are reported as q, with q < 0.05 considered significant\ [@doi:10.1111/j.2517-6161.1995.tb02031.x].
