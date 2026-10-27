@@ -63,3 +63,5 @@ gmean
 [Rr]eplicate's
 Sikkema
 [Uu]pregulate(d|s)?
+[Ee]igensolver
+scanpy
