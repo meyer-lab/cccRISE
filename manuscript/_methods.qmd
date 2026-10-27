@@ -3,7 +3,7 @@
 CCC-RISE infers cell-cell communication (CCC) programs across multiple conditions in three sequential steps, illustrated in Fig. 1: (1) RISE decomposes the multi-condition scRNA-seq data into cell eigen-states; (2) an aligned 4D communication tensor is constructed by scoring ligand-receptor pairs between eigen-states; and (3) CPD decomposes this tensor to extract communication programs.
 Each step is described in turn below, followed by the data processing, rank selection, validation, and interpretation analyses.
 
-#### Reduction and Insight in Single-cell Exploration
+### Reduction and Insight in Single-cell Exploration
 
 Reduction and Insight in Single-cell Exploration (RISE) is a computational framework based on the PARAFAC2 tensor decomposition method, optimized for analyzing multi-condition scRNA-seq data.
 A major challenge in scRNA-seq is that the data lacks alignment when reconstructed into a 3D tensor, because the same cell is not measured across conditions.
@@ -94,7 +94,7 @@ This cycle of aligning the tensor and then factoring it is repeated until the de
 RISE enhances the core PARAFAC2 algorithm with key optimizations: $A$ is initialized to ones, $C$ is initialized to the leading $r$ right singular vectors of the stacked, centered, and slice-weighted data, (computed with an iterative (LOBPCG) eigensolver from a random start), and fitted components are ordered by the variance-to-mean ratio of their condition loadings, normalized, and sign-flipped to a consistent orientation\ [@doi:10.1137/S1064827500366124].
 -->
 
-#### Construction of the Aligned 4D Communication Tensor
+### Construction of the Aligned 4D Communication Tensor
 
 From the eigen-state factors that RISE produces, CCC scores are calculated for all relevant LR pairs in each experimental condition, with each pair of eigen-states as sender and receiver.
 
@@ -109,7 +109,6 @@ This operation captures the combinatorial potential for signaling, where each el
 In doing so, we assume the LR interactions are proportional to the mRNA abundance of the ligand and receptor.
 When extended across all LR pairs and conditions, these form an aligned 4D communication tensor with dimensions of condition, sender eigen-state, receiver eigen-state, and LR pair.
 The tensor was assembled with code for Tensor-cell2cell\ [@doi:10.1038/s41467-022-31369-2].
-CPD of this tensor (below) yields four factor matrices, $D$, $E$, $F$, and $G$, corresponding to these four dimensions, respectively.
 
 **Sign convention for the communication score.** RISE eigen-state gene loadings are estimated relative to a fixed per-gene mean computed once over the full dataset ($\mu$), the same reference RISE's own ALS fit subtracts internally; a loading is therefore a deviation from $\mu$, $\Delta$, and can be negative even though real expression cannot.
 Taking the outer product directly on two such deviations, $\Delta_L \Delta_R$, is only the interaction term of the full expansion of actual expression, $(\mu_L + \Delta_L)(\mu_R + \Delta_R) = \mu_L\mu_R + \mu_L\Delta_R + \mu_R\Delta_L + \Delta_L\Delta_R$; discarding the baseline and both main-effect terms lets two negative deviations produce a spuriously large positive score indistinguishable from two positive ones.
@@ -118,10 +117,10 @@ We therefore add $\mu$ back to each eigen-state's ligand/receptor loading before
 **Alternative scoring functions.** Beyond the expression product used for the reported results (and by Tensor-cell2cell), we implemented three alternative ways to combine a sender eigen-state's non-negative ligand expression, $L$, with a receiver eigen-state's non-negative receptor expression, $R$, into a communication score to assess robustness to this choice: an arithmetic mean, $(L + R)/2$, used by CellPhoneDB; a geometric mean, $\sqrt{LR}$, used by scDiffCom; and a CellChat-style saturating Hill function, $LR / (K_h + LR)$, where $K_h = 0.5$ is a half-saturation constant\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41596-020-0292-x; @doi:10.1038/s43587-023-00514-x; @doi:10.1038/s41467-021-21246-9].
 All three require non-negative $L, R$, which our sign-convention correction above provides.
 
-#### Canonical Polyadic Decomposition
+### Canonical Polyadic Decomposition
 
-CPD is applied to the 4D communication tensor, resulting in factor matrices that explain the component associations with each of the four dimensions.
-Canonical Polyadic Decomposition (CPD) is a tensor decomposition method that generalizes PCA to higher-order data structures.
+Canonical Polyadic Decomposition (CPD) is applied to the 4D communication tensor, resulting in factor matrices that explain the component associations with each of the four dimensions (conditions, sender eigen-states, receiver eigen-states, and LR pairs).
+CPD is a tensor decomposition method that generalizes PCA to higher-order data structures.
 While PCA operates on matrices (second-order tensors), CPD extends this logic to third-order (and higher-order) tensors.
 Given a third-order tensor, $\mathbf{X}$, of shape $I \times J \times K$, CPD seeks to approximate $\mathbf{X}$ as a sum of component rank-one tensors.
 This set of component rank-one tensors are collectively represented in factor matrices: $A$ of shape $I \times r$, $B$ of shape $J \times r$, and $C$ of shape $K \times r$, where $r$ is the number of components into which $\mathbf{X}$ is decomposed.
@@ -144,7 +143,7 @@ Components were ordered by the variance-to-mean ratio of their condition factor 
 Signs were then flipped so that the condition, receiver eigen-state, and LR-pair factors have positive column means, with each compensating sign flip, and any negative component weight, moved into the sender eigen-state factor.
 Signs are thus interpretable in every mode except the sender mode, which absorbs the sign indeterminacy.
 
-#### Data Processing
+### Data Processing
 
 **ALAD cohort.** The single-cell gene expression and clinical annotations of bronchoalveolar lavage (BAL) samples were obtained from Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
 Cells with 10 or fewer total counts and genes with a mean raw count of 0.001 or less across all cells were removed.
@@ -175,7 +174,7 @@ The CP rank sweep compressed the tensor once at the largest rank tested (core of
 Because the bases are orthonormal, the cosines between factor columns computed from the core fit equal those of the decompressed factors, and the CP R^2^X, restated against the full tensor, equals the core-space error plus the energy the projection discards (see Reconstruction Error).
 The RISE and CP fits from which all reported results are derived are uncompressed. -->
 
-#### Fit evaluation metrics
+### Fit Evaluation
 
 **Reconstruction error.** R^2^X, or the fraction of variance explained by the model, was used to evaluate the effectiveness of the data reduction.
 For RISE, the Frobenius norm of the difference between the centered scRNA-seq data ($\tilde{X}_{data}$) and the reconstruction from the RISE factors and projections ($X_{RISE}$) is calculated.
@@ -206,7 +205,7 @@ where $M^{(m)}$ and $\widehat{M^{(m)}}$ are the reference and replicate factor m
 Because component order is not fixed, replicate components were matched to the reference by the one-to-one assignment maximizing total FMS (Hungarian algorithm)\ [@doi:10.1002/nav.3800020109], and replicates were relabeled into the core fit's component numbering.
 The aggregate FMS of a replicate is its mean FMS over components.
 
-#### Rank Selection
+### Rank Selection
 
 **RISE.** The RISE rank was selected by bi-cross-validation (BiCV)\ [@doi:10.1214/08-AOAS227].
 In each repeat, 50% of the cells within each condition and 50% of the genes were held out, and RISE was fit to the training cells and training genes.
@@ -225,7 +224,7 @@ Imputation fits were uncompressed.
 A ridge penalty ($\lambda$ = 0.1) was applied to the masked fits only, because the communication tensor is heavy-tailed so an unpenalized masked fit could be dominated by the few largest held-out entries.
 We selected the lowest rank before degeneracy, defined as the first rank at which a pair of components became collinear in two or more modes.
 
-#### Component--outcome Association
+### Component--outcome Association
 
 **Sample normalization.** Condition loadings scale with each sample's total normalized expression, the sum of normalized expression over all of the sample's cells.
 Because sequencing depth is removed by per-cell normalization, this total is dominated by the number of cells per sample, not by read depth.
@@ -238,7 +237,7 @@ RISE condition loadings ($A$) were corrected and tested in the same way, with co
 
 **Covariate confounder testing.** Patient covariates (age, male sex, Caucasian ethnicity, ILD diagnosis, CMV IgG positivity, and baseline FEV~1~) were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
 
-#### Factor interpretation
+### Factor interpretation
 
 **Per-cell sender and receiver loadings.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CP eigen-state factors can be mapped back to individual cells.
 The per-cell sender and receiver loadings of all cells are $PD$ and $PE$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row.
@@ -263,7 +262,7 @@ Each group was also compared with all other cells, with Benjamini--Hochberg corr
 **Cell-type mapping of components.** Components were mapped to annotated cell types by the mean per-cell sender and receiver loading of each broad cell type.
 The agreement of a component's sender and receiver cells was summarized by the R^2^ between per-cell sender and receiver loadings across all cells.
 
-#### Validation experiments
+### Validation Experiments
 
 **Component stability.** Stability was assessed along two axes.
 In the leave-one-patient-out jackknife, each of the 45 recipients was left out in turn (45 replicates), with both samples of a two-sample recipient left out together.
@@ -306,13 +305,13 @@ For the volcano plot, the effect size of each component's top 20 LR pairs is the
 Components of each alternative fit were matched to the expression-product fit by Hungarian assignment on their mean absolute cosine over the condition and LR-pair modes.
 For each matched component, we report this match score, the mean absolute cosine of the matched sender and receiver eigen-state factors as an independent check of the matching, and the ANOVA $\eta^{2}$ of the corrected condition loadings against six-month outcome.
 
-#### Cell Type Composition
+### Cell Type Composition
 
 Cell type composition was analyzed by calculating the fraction of each sample's cells belonging to each broad cell type.
 Fractions were compared across control, declined, and recovered samples by Kruskal--Wallis tests, with Benjamini--Hochberg correction across cell types.
 
 <!--TODO-->
-#### Comparator methods
+### Comparator Methods
 
 <!-- Placeholder pseudobulk text -->
 
@@ -320,7 +319,7 @@ Fractions were compared across control, declined, and recovered samples by Krusk
 
 <!-- Placeholder tensor-based approach text -->
 
-#### Batch, Patient, and Technical Variation
+### Batch, Patient, and Technical Variation
 
 <!-- Claude's sample text (based in part on the drafted reviewer 2 minor #2 response):
 
@@ -330,6 +329,6 @@ Slice normalization prevents samples with many or highly variable cells from dom
 All associations are tested with the sample as the unit of analysis.
 A recipient's samples are kept together in the jackknife and in outcome-label permutations, and the jackknife identifies components or associations driven by a single sample or recipient, as a collapse of their FMS or significance when that recipient is left out. -->
 
-#### Quantification and Statistical Analysis
+### Quantification and Statistical Analysis
 
 Figure captions detail pertinent statistical analyses or metrics, the number of conditions, and confidence interval values.
