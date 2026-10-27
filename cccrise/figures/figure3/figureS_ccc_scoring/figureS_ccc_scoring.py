@@ -2,6 +2,8 @@
 how closely each alternate score's CP components match the default's, their
 outcome associations, and what each component represents under each score."""
 
+from string import ascii_uppercase
+
 from matplotlib.text import Annotation
 from matplotlib.transforms import Bbox
 
@@ -20,6 +22,8 @@ LAYOUT = [
 ]
 # mm per row; the interpretation grid needs ~30 mm per CP component.
 ROW_HEIGHTS = [52, 188]
+# Panels whose second axes (and those right of it) get a letter of their own
+SPLIT_PANELS = {"factor_match", "interpretation"}
 
 
 def makeFigure():
@@ -30,8 +34,11 @@ def makeFigure():
         height_ratios=ROW_HEIGHTS,
     )
     S.method_legend(fig)
-    interp = fig.subfigs[list(PANELS).index("interpretation")]
-    _letter_beside(interp, interp.axes[1], "D")
+    letters = iter(ascii_uppercase)
+    for name, subfig in zip(PANELS, fig.subfigs, strict=True):
+        subfig.texts[0].set_text(next(letters))
+        if name in SPLIT_PANELS:
+            _letter_beside(subfig, subfig.axes[1], next(letters))
     return fig
 
 
