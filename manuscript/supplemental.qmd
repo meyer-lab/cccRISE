@@ -69,12 +69,20 @@ q: Benjamini--Hochberg corrected p across the five components of each fit.
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 
 **Figure S8.
-CCC-RISE components across communication scoring methods.** ({{< panel ccc-scoring factor-match.1 >}}) Factor match score (condition and LR pair modes) of each CP component of the product score to its Hungarian-matched component under each alternate score.
-({{< panel ccc-scoring factor-match.2 >}}) Mean sender and receiver \|cosine\| of the matched components.
+CCC-RISE components across communication scoring methods.** ({{< panel ccc-scoring factor-match.1 >}}) Match score (mean \|cosine\| over the condition and LR pair modes) of each CP component of the product score to its Hungarian-matched component under each alternate score.
+({{< panel ccc-scoring factor-match.2 >}}) Mean sender and receiver \|cosine\| of the matched components, an independent check of the matching.
 ({{< panel ccc-scoring anova >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome under each score, numbered by the matched product-score component.
 \*: p < 0.05.
 ({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
 LR pairs shown are the union of each score's top 3.
+
+![](figures/figureS_imputation_ridge/figureS_imputation_ridge.svg){width="6.5in"}
+
+**Figure S9.
+The masked-imputation ridge leaves the full-data CP fit unchanged at the selected rank.** ({{< panel imputation-ridge ridge-r2x >}}) Fit R^2^X of full-data CP fits of the communication tensor across ranks without and with the ridge penalty (λ = 0.1) used for masked imputation fits.
+×: the uncompressed core CP fit at the selected rank (dashed line).
+({{< panel imputation-ridge ridge-fms >}}) FMS over all four modes between the fits with and without the ridge for each component matched by Hungarian assignment (points) and their mean (line).
+At the selected rank, + and × mark the core fit's aggregate FMS to the fits without and with the ridge.
 
 <!-- Legacy Supplemental Captions
 
