@@ -24,7 +24,7 @@ Classification: Research report
 Cell-cell communication (CCC) coordinates cellular activities that vary dynamically across time, location, and biological context.
 Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, the methods that do preserve single-cell resolution cannot model how communication is regulated across conditions.
 To bridge this gap, we developed CCC-RISE, an extension of the tensor-based method Reduction and Insight in Single-cell Exploration (RISE).
-Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by sender cells, receiver cells, ligand-receptor pairs, and conditions, then maps each program back to the individual cells that drive it.
+Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by conditions, sender cells, receiver cells, and ligand-receptor pairs, then maps each program back to the individual cells that drive it.
 Applied to a COVID-19 severity cohort and a lung transplant cohort with acute allograft dysfunction, CCC-RISE recovered disease-associated communication programs and traced them to specific signaling subpopulations that cross conventional cell-type boundaries: for example, CCL19-CCR7 recruitment signaling restricted to an active subset of mDCs rather than the whole population.
 CCC-RISE thus resolves disease-relevant signaling subpopulations that are invisible to aggregate methods.
 
@@ -32,7 +32,7 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations that are invisi
 
 - CCC-RISE analyzes cell-cell communication across conditions at single-cell resolution, without relying on predefined cell-type labels
 
-- It deconvolves communication into interpretable programs defined by sender cells, receiver cells, ligand-receptor pairs, and conditions
+- It deconvolves communication into interpretable programs defined by conditions, sender cells, receiver cells, and ligand-receptor pairs
 
 - Mapping programs back to individual cells reveals signaling subpopulations that act within and across conventional cell-type boundaries
 
