@@ -37,7 +37,8 @@ figS_cmp5_identity:
   group_vs_rest: [d, e]
   sender_vs_receiver: [f]
 figS_alad_associations:
-  cp_associations: [a]
+  cp_associations: [a, b, c]
+  cp_anova: [a]
   death_weights: [b, c]
   rise_associations: [d]
   sender_receiver_scatter: [e]
@@ -49,9 +50,9 @@ figS_anova_stability:
   effect_size_distributions: [a]
   significant_fraction: [b]
 figS_ccc_scoring:
-  factor_match: [a]
-  anova: [b]
-  interpretation: [c, d]
+  factor_match: [a, b]
+  anova: [c]
+  interpretation: [d, e]
 figS_nichenet:
   ligand_scores: [a]
   weighted_percentiles: [b]
