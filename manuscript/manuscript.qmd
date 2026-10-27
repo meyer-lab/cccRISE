@@ -17,26 +17,27 @@ Email: <ameyer@asmlab.org>
 
 Classification: Research report
 
-**Keywords:** PARAFAC2, tensor decomposition, cell-cell communication, scRNA-seq, ligand-receptor interactions, multi-condition
+**Keywords:** PARAFAC2, tensor decomposition, cell--cell communication, scRNA-seq, ligand--receptor interactions, multi-condition
 
 **Abstract:**
 
-Cell-cell communication (CCC) coordinates cellular activities that vary dynamically across time, location, and biological context.
-Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, the methods that do preserve single-cell resolution cannot model how communication is regulated across conditions.
+Cell--cell communication (CCC) coordinates cellular activities that vary dynamically across time, location, and biological context.
+Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, the methods that do preserve single-cell resolution cannot model how communication is regulated across multiple conditions.
 To bridge this gap, we developed CCC-RISE, an extension of the tensor-based method Reduction and Insight in Single-cell Exploration (RISE).
-Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by sender cells, receiver cells, ligand-receptor pairs, and conditions, then maps each program back to the individual cells that drive it.
-Applied to a COVID-19 severity cohort and a lung transplant cohort with acute allograft dysfunction, CCC-RISE recovered disease-associated communication programs and traced them to specific signaling subpopulations that cross conventional cell-type boundaries: for example, CCL19-CCR7 recruitment signaling restricted to an active subset of mDCs rather than the whole population.
-CCC-RISE thus resolves disease-relevant signaling subpopulations that are invisible to aggregate methods.
+Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by sender cells, receiver cells, ligand--receptor pairs, and conditions, then maps each program back to the individual cells that drive it.
+Applied to a lung transplant cohort with acute allograft dysfunction, CCC-RISE identified sender and receiver subpopulations with more granularity than available cell-type annotations and recovered coordinated communication programs that associated with disease outcome.
+For example, fibrotic BTC--EGFR signaling was a common feature among lung transplant patients that CCC-RISE subdivided into ciliated epithelial sender cells and basal/secretory epithelial receiver cells.
+CCC-RISE thus resolves disease-relevant signaling subpopulations that are invisible to aggregate methods by analyzing multi-condition data while preserving single-cell resolution.
 
 **Highlights:**
 
-- CCC-RISE analyzes cell-cell communication across conditions at single-cell resolution, without relying on predefined cell-type labels
+- CCC-RISE analyzes cell--cell communication across conditions at single-cell resolution, without relying on predefined cell-type labels
 
-- It deconvolves communication into interpretable programs defined by sender cells, receiver cells, ligand-receptor pairs, and conditions
+- It deconvolves communication into interpretable programs defined by sender cells, receiver cells, ligand--receptor pairs, and conditions
 
-- Mapping programs back to individual cells reveals signaling subpopulations that act within and across conventional cell-type boundaries
+- Mapping programs back to individual cells reveals mutually exclusive signaling subpopulations whose granularity exceeds that of available annotations
 
-- In COVID-19 and lung transplant cohorts, CCC-RISE links disease-associated communication programs to specific cell subsets invisible to aggregate methods
+- In a lung transplant cohort, CCC-RISE identifies a coordinated communication axis associated with allograft function and patient survival
 
 {{< include _introduction.qmd >}}
 
