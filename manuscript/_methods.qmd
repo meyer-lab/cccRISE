@@ -26,6 +26,7 @@ Changes from the current RISE text (this block, the slice normalization block, a
 - Factor update: "running PARAFAC on the aligned tensor" becomes "one ALS update of $A$ and $C$", because parafac2 performs a single ALS sweep per outer iteration (`n_inner=1`) rather than fitting PARAFAC to convergence.
 - Procrustes: the old text took the SVD of $Bdiag(a_{i})C^{T}X_{sc,i}^{T}$ (r × J), whose $UV^{T}$ is $P_{i}^{T}$, not $P_{i}$. The SVD of $X_{sc,i}C\,diag(a_{i})$ gives $P_{i}$ directly.
 - Optimizations: Nesterov acceleration and its citation are removed (dropped in parafac2 v1.5.0; all results use v1.10.0). Initialization is stated as $A$ = ones and $C$ from LOBPCG-computed singular vectors, and the post-fit alignment as variance-to-mean ordering, normalization, and sign flipping.
+- Updated convergence criteria
 
 Draft text:
 
@@ -44,7 +45,7 @@ The general PARAFAC2 model includes a third factor matrix, $B \in \mathbb{R}^{r 
 The $r$ cell eigen-states are therefore defined jointly by the projections and the gene factor: eigen-state $q$ has gene profile $c_{q}$, scaled by $a_{iq}$ in condition $i$, and column $q$ of $P_{i}$ gives each cell's projection onto it.
 -->
 
-**Slice normalization.**
+**Slice normalization.** [Placeholder paragraph]
 
 <!-- Claude's slice normalization sample text:
 
@@ -160,24 +161,19 @@ The final dataset consisted of 51,273 cells and 16,675 genes.
 After filtering the CellChatDB list of interacting LR pairs to the genes in the dataset, 513 LR pairs were retained.
 The data were fit with a 17-component RISE model and a 5-component CPD model, selected as described in Rank Selection.
 
-**IBD cohort.** <!-- IBD placeholder text -->
+<!--TODO-->
+**IBD cohort.**
+<!-- IBD placeholder text -->
 
-**CANDELINC compression.** <!-- Claude's sample text:
+<!--TODO-->
+**CANDELINC compression.**
+<!-- Claude's sample text:
 Analyses requiring many fits (bi-cross-validation, the CP rank sweep, and the jackknife and re-initialization replicates) used fits compressed by CANDELINC, which fits the decomposition to a small core obtained by projecting the data onto orthonormal bases and maps the factors back through those bases\ [@doi:10.1007/BF02293596].
 For RISE, the gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations; each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
 For CPD, the core was a sequentially truncated higher-order SVD of the communication tensor, keeping $\min(n, r + 5)$ singular vectors in each mode of size $n$.
 The CP rank sweep compressed the tensor once at the largest rank tested (core of 22 × 17 × 17 × 22), whereas each replicate was compressed at the selected rank.
 Because the bases are orthonormal, the cosines between factor columns computed from the core fit equal those of the decompressed factors, and the CP R^2^X, restated against the full tensor, equals the core-space error plus the energy the projection discards (see Reconstruction Error).
 The RISE and CP fits from which all reported results are derived are uncompressed. -->
-
-#### Batch, Patient, and Technical Variation
-
-<!-- Claude's sample text:
-RISE does not remove batch effects, but its structure isolates sample-level variation.
-Each sample is projected by its own projection matrix onto eigen-states shared across samples, so variation in how strongly a sample expresses a program is carried by its condition loading rather than by the eigen-state definitions.
-Slice normalization prevents samples with many or highly variable cells from dominating the shared eigen-states, and the total-expression correction removes sample-wide scaling of the condition loadings before association testing.
-All associations are tested with the sample as the unit of analysis.
-A recipient's samples are kept together in the jackknife and in outcome-label permutations, and the jackknife identifies components or associations driven by a single sample or recipient, as a collapse of their FMS or significance when that recipient is left out. -->
 
 #### Fit evaluation metrics
 
@@ -315,6 +311,7 @@ For each matched component, we report this match score, the mean absolute cosine
 Cell type composition was analyzed by calculating the fraction of each sample's cells belonging to each broad cell type.
 Fractions were compared across control, declined, and recovered samples by Kruskal--Wallis tests, with Benjamini--Hochberg correction across cell types.
 
+<!--TODO-->
 #### Comparator methods
 
 <!-- Placeholder pseudobulk text -->
@@ -322,6 +319,16 @@ Fractions were compared across control, declined, and recovered samples by Krusk
 <!-- Placeholder matrix-based approach text -->
 
 <!-- Placeholder tensor-based approach text -->
+
+#### Batch, Patient, and Technical Variation
+
+<!-- Claude's sample text (based in part on the drafted reviewer 2 minor #2 response):
+
+RISE does not remove batch effects, but its structure isolates sample-level variation.
+Each sample is projected by its own projection matrix onto eigen-states shared across samples, so variation in how strongly a sample expresses a program is carried by its condition loading rather than by the eigen-state definitions.
+Slice normalization prevents samples with many or highly variable cells from dominating the shared eigen-states, and the total-expression correction removes sample-wide scaling of the condition loadings before association testing.
+All associations are tested with the sample as the unit of analysis.
+A recipient's samples are kept together in the jackknife and in outcome-label permutations, and the jackknife identifies components or associations driven by a single sample or recipient, as a collapse of their FMS or significance when that recipient is left out. -->
 
 #### Quantification and Statistical Analysis
 
