@@ -164,11 +164,9 @@ The final dataset consisted of 51,273 cells and 16,675 genes.
 After filtering the CellChatDB list of interacting LR pairs to the genes in the dataset, 513 LR pairs were retained.
 The uncompressed data were fit with a 17-component RISE model and a 5-component CPD model, selected as described in Rank Selection.
 
-<!--TODO-->
 **IBD cohort.**
 <!-- IBD placeholder text -->
 
-<!--TODO-->
 **CANDELINC compression.**
 <!-- Claude's sample text:
 Analyses requiring many fits (bi-cross-validation, the CP rank sweep, and the jackknife and re-initialization replicates) used fits compressed by CANDELINC, which fits the decomposition to a small core obtained by projecting the data onto orthonormal bases and maps the factors back through those bases\ [@doi:10.1007/BF02293596].
@@ -234,7 +232,7 @@ For each fold, the held-out entries were set to zero and the CP model was fit by
 The predictions of all held-out entries were pooled into a single R^2^X against the full tensor, and this was averaged over 10 repeated fold splits.
 Imputation fits were uncompressed.
 A ridge penalty ($\lambda$ = 0.1) was applied to the masked fits only, because the communication tensor is heavy-tailed so an unpenalized masked fit could be dominated by the few largest held-out entries.
-Third, a collinearity screen counted, for the worst pair of components at each rank, the number of modes in which their factor columns had an absolute cosine above 0.9. 
+Third, a collinearity screen counted, for the worst pair of components at each rank, the number of modes in which their factor columns had an absolute cosine above 0.9.
 Pairs were classified as near-duplicate or, if the product of their cosines' signs was negative, as cancelling.
 Collinearity was counted using the compressed communication tensor.
 We selected the lowest rank before degeneracy, defined as the first rank at which a pair of components became collinear in two or more modes.
@@ -312,7 +310,6 @@ Each group was also compared with all other cells, with correction across all ge
 Cell type composition was analyzed by calculating the fraction of each sample's cells belonging to each broad cell type.
 Fractions were compared across sample groups by Kruskal--Wallis tests, with correction across cell types.
 
-<!--TODO-->
 ### Comparator Methods
 
 <!-- Placeholder pseudobulk text -->
