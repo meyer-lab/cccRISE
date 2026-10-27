@@ -23,6 +23,8 @@ crossref:
     title-delim: "."
 filters:
     - pandoc-cite
+    - path: _bold_fig_prefix.lua
+      at: post-render
 
 format:
     html:
