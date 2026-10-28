@@ -37,7 +37,10 @@ def source_dir(tmp_path, monkeypatch):
     common.style.apply_style()
     monkeypatch.setitem(common._SOURCE, "dir", tmp_path / "source")
     monkeypatch.setitem(common._SOURCE, "cleared", set())
-    return tmp_path / "source"
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / common.SOURCE_INPUTS).write_text("[]")  # as a full build records
+    return source
 
 
 def test_source_data_is_a_no_op_outside_a_build(monkeypatch):
@@ -100,11 +103,32 @@ def test_subfigure_panels_and_missing_data(source_dir, tmp_path):
     assert [r["Panel"] for r in rows] == ["9A", "9B"]
     assert errors == ["Figure 9 without: no source data"]
 
+    (source_dir / common.SOURCE_INPUTS).unlink()  # only a panel was built
+    _, errors = packager.stage_figure(
+        "Figure 9", "9", common.panel_letters(fig), panels, source_dir, tmp_path / "f"
+    )
+    assert "Figure 9: no record of its inputs; build it in full" in errors
+
 
 def test_span():
-    assert packager.span(["b"]) == "B"
-    assert packager.span(["b", "c", "d"]) == "B-D"
-    assert packager.span(["b", "d"]) == "B,D"
+    for letters, span in ((["b"], "B"), (["b", "c", "d"], "B-D"), (["b", "d"], "B,D")):
+        assert packager.span(letters) == span
+        assert packager.letters_of(span) == [x.upper() for x in letters]
+
+
+def test_checklist_has_one_row_per_main_figure_letter():
+    manifest = pd.DataFrame(
+        {
+            "Figure": ["Figure 1", "Figure 2", "Figure 2", "Figure 2", "Figure EV1"],
+            "Panel": ["1A-B", "2A-B", "2B", "2C", "EV1A"],
+            "Status": ["schematic", "data", "data", "missing", "data"],
+        }
+    )
+    rows = packager.checklist(manifest)
+    assert list(rows["Panel"]) == ["A", "B", "A", "B", "C"]  # no EV figures
+    assert list(rows["Provided?"]) == [0, 0, 1, 1, 0]
+    assert rows["Source Data Category"].iloc[0] == "N/A (schematics)"
+    assert rows["Source Data Category"].iloc[-1] == ""
 
 
 def test_supplements_are_labeled_by_class():

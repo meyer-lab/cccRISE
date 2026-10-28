@@ -7,17 +7,23 @@ panel saved with `common.source_data` during its figure's last build:
 
 Each figure becomes `output/source_data/<label>.zip` (e.g. `Figure 2.zip`,
 `Figure EV1.zip`, `Appendix Figure S2.zip`), one folder per panel (`2A/`,
-`EV1A/`, `S2A/`, or `2B-C/` for files spanning a panel module's letters) holding its CSVs and a README, plus a README of the figure's
-provenance. Letters come from `_panels.yml`, as the figure's last full build
+`EV1A/`, `S2A/`, or `2B-C/` for files spanning a panel module's letters)
+holding its CSVs and a README, plus a README of the provenance of every
+factors file and runner output its last full build read. Main figures are
+those `_panels.yml` has letters for, supplements those `_quarto.yml` lists,
+and letters come from `_panels.yml`, as each figure's last full build
 recorded them. Schematic panels (`SCHEMATIC = True`) need no data, and a
-figure of only those gets no zip. Every panel is listed in the manifest, the
-basis of the EMBO Source Data Checklist. Exits non-zero, writing no zips, if
-any panel's data is missing or malformed.
+figure of only those gets no zip. Every panel is listed in the manifest
+(`docs/source_data_manifest.md`), and every main-figure panel letter in
+`checklist.csv`, the rows of the EMBO Source Data Checklist. Exits non-zero,
+writing no zips, if any panel's data is missing or malformed, or a figure
+hasn't been built in full.
 """
 
 import importlib
 import inspect
 import itertools
+import re
 import shutil
 import sys
 import textwrap
@@ -26,11 +32,9 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from ..runners.datasets import DATASETS
 from ..runners.provenance import REPO_ROOT, git_sha, relpath, sidecar_path
 from . import common
 
-MAIN_FIGURES = ("1", "2", "3")
 QUARTO_PATH = REPO_ROOT / "manuscript" / "_quarto.yml"
 SKIPPED_SUPPLEMENTS = {"imputation_ridge"}  # no source data provided
 # MSB's classes of supplementary figure, as `_quarto.yml` lists them: the
@@ -41,8 +45,8 @@ SUPPLEMENT_CLASSES = (
 )
 OUTPUT_DIR = common.OUTPUT_DIR / "source_data"
 MANIFEST_PATH = REPO_ROOT / "docs" / "source_data_manifest.md"
-# Every figure here plots this dataset's canonical fit
-DATASET = "alad"
+# The checklist's source data category of each panel status
+CHECKLIST_CATEGORIES = {"data": "Numerical data", "schematic": "N/A (schematics)"}
 CODE_URL = "https://github.com/meyer-lab/cccRISE"
 
 
@@ -51,12 +55,21 @@ def figures() -> list[tuple[str, str, str]]:
     the main figures, then the Expanded View and Appendix figures, each
     numbered in its `_quarto.yml` list's order."""
     quarto = yaml.safe_load(QUARTO_PATH.read_text())
-    return [(f, f"Figure {f}", f) for f in MAIN_FIGURES] + [
+    return [(f, f"Figure {f}", f) for f in main_figures()] + [
         (f"S_{name}", f"{label}{i}", f"{prefix}{i}")
         for key, label, prefix in SUPPLEMENT_CLASSES
         for i, name in enumerate(quarto[key], start=1)
         if name not in SKIPPED_SUPPLEMENTS
     ]
+
+
+def main_figures() -> list[str]:
+    """The main figures `_panels.yml` has panel letters for, in order."""
+    panels = yaml.safe_load(common.PANELS_PATH.read_text())
+    numbers = [
+        m[1] for k, v in panels.items() if v and (m := re.fullmatch(r"fig(\d+)", k))
+    ]
+    return sorted(numbers, key=int)
 
 
 def main() -> None:
@@ -66,6 +79,7 @@ def main() -> None:
     manifest = pd.DataFrame(rows)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     manifest.to_csv(OUTPUT_DIR / "manifest.csv", index=False)
+    checklist(manifest).to_csv(OUTPUT_DIR / "checklist.csv", index=False)
     if not wanted:
         MANIFEST_PATH.write_text(manifest_markdown(manifest))
     print(manifest[["Figure", "Panel", "Module", "Status", "Size (KB)"]].to_string())
@@ -132,9 +146,33 @@ def stage_figure(
         if status == "missing":
             errors.append(f"{label} {name}: no source data")
         rows.append(row(label, prefix + span(letters[name]), name, module, status))
-    if any(r["Status"] == "data" for r in rows):
-        (out_dir / "README.txt").write_text(figure_readme(label, source_dir, rows))
-    return rows, errors
+    return rows, errors + add_provenance(label, rows, source_dir, out_dir)
+
+
+def add_provenance(label: str, rows: list[dict], source_dir: Path, out_dir: Path):
+    """Write the figure's README of the inputs its last full build read, and
+    list them in its manifest `rows`. Returns an error if it has data but no
+    record of its inputs."""
+    inputs = figure_inputs(source_dir)
+    for r in rows:
+        r["Figure inputs"] = "; ".join(relpath(p) for p in inputs or [])
+    if not any(r["Status"] == "data" for r in rows):
+        return []
+    (out_dir / "README.txt").write_text(figure_readme(label, inputs or [], rows))
+    return (
+        []
+        if inputs is not None
+        else [f"{label}: no record of its inputs; build it in full"]
+    )
+
+
+def figure_inputs(source_dir: Path) -> list[Path] | None:
+    """The factors files and runner outputs the figure's last full build
+    read, or None if it hasn't been built in full."""
+    path = source_dir / common.SOURCE_INPUTS
+    return (
+        [Path(p) for p in yaml.safe_load(path.read_text())] if path.exists() else None
+    )
 
 
 def panel_folders(
@@ -199,12 +237,10 @@ def panel_readme(label: str, folder: str, module, entries) -> str:
     return "\n".join(lines)
 
 
-def figure_readme(label: str, source_dir: Path, rows: list[dict]) -> str:
-    """What the zip holds, its schematic panels, and the provenance of the
-    canonical fit and every runner output its figure build read."""
+def figure_readme(label: str, inputs: list[Path], rows: list[dict]) -> str:
+    """What the zip holds, its schematic panels, and the provenance of every
+    factors file and runner output its figure build read."""
     schematic = [r["Panel"] for r in rows if r["Status"] == "schematic"]
-    inputs_path = source_dir / common.SOURCE_INPUTS
-    inputs = yaml.safe_load(inputs_path.read_text()) if inputs_path.exists() else []
     lines = [
         f"Source data for {label}: one folder per panel, each with CSV files",
         "and a README describing them.",
@@ -215,7 +251,7 @@ def figure_readme(label: str, source_dir: Path, rows: list[dict]) -> str:
     if schematic:
         lines += ["", f"Schematic panels (no numerical data): {', '.join(schematic)}"]
     lines += ["", "Provenance of the analyses plotted", "=" * 34]
-    for path in [DATASETS[DATASET].factors_path(), *map(Path, inputs)]:
+    for path in inputs:
         if (sidecar := sidecar_path(path)).exists():
             lines += ["", f"--- {relpath(path)} ---", sidecar.read_text()]
     return "\n".join(lines)
@@ -228,6 +264,7 @@ def row(label, folder, name, module, status, entries=()) -> dict:
         "Figure": label,
         "Panel": folder,
         "Module": name,
+        "Script": relpath(module.__file__) if hasattr(module, "__file__") else "",
         "Status": status,
         "Files": "; ".join(p.name for p, _ in entries),
         "Size (KB)": round(sum(sizes) / 1e3, 1),
@@ -249,11 +286,48 @@ def manifest_markdown(manifest: pd.DataFrame) -> str:
         "-- do not hand-edit. One row per panel folder in each figure's zip;",
         "status is `data`, `schematic` (no numerical data), or `missing`.",
     ]
-    columns = ["Panel", "Module", "Status", "Files", "Size (KB)", "Description"]
+    columns = ["Panel", "Script", "Status", "Files", "Size (KB)", "Description"]
     for label, rows in manifest.groupby("Figure", sort=False):
-        lines += ["", f"## {label}", "", "| " + " | ".join(columns) + " |"]
+        inputs = rows["Figure inputs"].iloc[0].split("; ")
+        lines += [
+            "",
+            f"## {label}",
+            "",
+            "Analyses plotted (with provenance in the zip's README):",
+        ]
+        lines += [f"- `{p}`" for p in inputs if p] + [
+            "",
+            "| " + " | ".join(columns) + " |",
+        ]
         lines.append("|" + "---|" * len(columns))
         for row in rows[columns].itertuples(index=False):
             cells = [str(c).replace("|", "\\|") for c in row]
             lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines) + "\n"
+
+
+def checklist(manifest: pd.DataFrame) -> pd.DataFrame:
+    """The EMBO Source Data Checklist's rows: each main-figure panel letter,
+    whether source data is provided, and its category ('Numerical data', or
+    'N/A (schematics)'; blank where missing)."""
+    rows = {}
+    for r in manifest[manifest["Figure"].str.fullmatch(r"Figure \d+")].itertuples():
+        figure = r.Figure.removeprefix("Figure ")
+        for letter in letters_of(r.Panel.removeprefix(figure)):
+            if rows.get((figure, letter), {}).get("Provided?") == 1:
+                continue  # a letter's data may be split across folders
+            rows[figure, letter] = {
+                "Figure": f"Fig. {figure}",
+                "Panel": letter,
+                "Provided?": int(r.Status == "data"),
+                "Source Data Category": CHECKLIST_CATEGORIES.get(r.Status, ""),
+            }
+    return pd.DataFrame(rows.values())
+
+
+def letters_of(panels: str) -> list[str]:
+    """The letters of a `span`: 'B' -> [B], 'B-D' -> [B, C, D], 'B,D' -> [B, D]."""
+    if "-" in panels:
+        first, last = panels.split("-")
+        return [chr(c) for c in range(ord(first), ord(last) + 1)]
+    return panels.split(",")

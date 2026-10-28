@@ -52,6 +52,7 @@ from ..factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
     DATA_DIR,
+    LOADED_PATHS,
     clean_memory,
     load_factors_to_anndata,
     load_or_compute_dataframe,
@@ -135,7 +136,7 @@ def load_runner_output(
         raise FileNotFoundError(
             f"{path} not found. Produce it with the matching runner, e.g.\n{hint}"
         )
-    _SOURCE["inputs"].add(path)
+    _SOURCE["inputs"].add(path.resolve())
     return pd.read_parquet(path)
 
 
@@ -508,7 +509,7 @@ def genFigure():
         record_panel_letters(figure, fig)
         _SOURCE["dir"].mkdir(parents=True, exist_ok=True)
         (_SOURCE["dir"] / SOURCE_INPUTS).write_text(
-            yaml.safe_dump(sorted(str(p) for p in _SOURCE["inputs"]))
+            yaml.safe_dump(sorted(str(p) for p in _SOURCE["inputs"] | LOADED_PATHS))
         )
     print(f"Figure {' '.join(args)} is done after {time.time() - start:.1f} s.\n")
 
@@ -535,6 +536,7 @@ def panel_letters(fig: Figure) -> dict[str, list[str]]:
 # Each panel's EMBO source data, saved by `source_data` only while
 # `cccrise-fbuild` builds into `dir`: the panel module being drawn, the panels
 # whose old files were cleared this build, and the runner outputs read
+# (factors files read are in `factors.LOADED_PATHS`)
 SOURCE_DATA_SUBDIR = "source_data"
 SOURCE_INPUTS = "inputs.yaml"
 _SOURCE: dict[str, Any] = {
@@ -552,7 +554,9 @@ def source_data(
     data file `<name>.csv`, explained in the panel's README by `description`
     (which should name any column whose meaning or units its name doesn't
     make plain). Give the individual values behind any summary drawn, and
-    name any integer index that labels rows (an unnamed one is dropped). `part`
+    name any integer index that labels rows (an unnamed one is dropped).
+    Name files `<assay>_<entity>` in snake case, e.g. `bicv_r2x_by_rise_rank`
+    or `de_sender_vs_rest`. `part`
     is the index of the panel module's lettered axes the file belongs to (1:
     the C of a module lettered B-C); by default it spans them all."""
     root, panel = _SOURCE["dir"], _SOURCE["panel"]
