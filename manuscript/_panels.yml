@@ -23,8 +23,7 @@ fig3:
 fig4: {}
 fig5: {}
 figS_rise_factor_matrices:
-  factors: [a, b]
-  conditions: [a]
+  factors: [a]
   genes: [b]
 figS_cmp_stability:
   rise_fms: [a]
@@ -37,8 +36,7 @@ figS_cmp5_identity:
   group_vs_rest: [d, e]
   sender_vs_receiver: [f]
 figS_alad_associations:
-  cp_associations: [a, b, c]
-  cp_anova: [a]
+  cp_associations: [a]
   death_weights: [b, c]
   rise_associations: [d]
   sender_receiver_scatter: [e]
