@@ -15,7 +15,6 @@ from matplotlib.font_manager import FontProperties
 from matplotlib.rcsetup import cycler
 from matplotlib.text import Text
 from matplotlib.ticker import MaxNLocator
-from scrise.plotting import plot_bicv_r2x
 from scrise.plotting import plot_condition_factors as plot_rise_condition_factors
 from scrise.plotting import plot_eigenstate_factors as plot_rise_eigenstate_factors
 from scrise.plotting import plot_gene_factors as plot_rise_gene_factors
@@ -46,11 +45,14 @@ from cccrise.app.plots import (
     plot_weight_boxplot,
     plot_weight_histogram_grid,
 )
+from cccrise.figures import style
 from cccrise.figures.common import (
     plot_association_effect_sizes,
     plot_category_component_weights,
     plot_collinearity,
     plot_cpd_fit_r2x,
+    plot_cpd_imputation_r2x,
+    plot_rise_rank,
 )
 from cccrise.figures.figure3._common import ASSOCIATIONS
 from cccrise.figures.figureS_alad_pacmaps.weight_pacmaps import SATURATION_PERCENTILE
@@ -374,8 +376,10 @@ def server(input, output, session):
             )
         notes = [
             (
-                "Cached rank-selection sweeps: RISE bi-cross-validation (BiCV) "
-                "R2X, and CPD fit R2X and component collinearity. Dashed lines mark the RISE rank "
+                "Cached rank-selection sweeps (as in manuscript Figure 2a-c): RISE "
+                "full-data fit R2X and bi-cross-validation (BiCV) train and test "
+                "R2X, CPD fit and k-fold imputation R2X, and CPD component "
+                "collinearity. Dashed lines mark the RISE rank "
                 f"(**{rise_rank()}**) and CP rank (**{cp_rank()}**) of the loaded "
                 "factors used by the remaining tabs."
             )
@@ -401,7 +405,7 @@ def server(input, output, session):
             axes[0].axis("off")
             axes[0].text(0.5, 0.5, "No cached RISE BiCV sweep", ha="center")
         else:
-            plot_bicv_r2x(sweeps.rise, axes[0])
+            plot_rise_rank(sweeps.rise, axes[0])
             axes[0].set_title("RISE BiCV Rank Selection")
             mark_selected_rank(axes[0], rise_rank())
 
@@ -410,8 +414,11 @@ def server(input, output, session):
                 ax.axis("off")
                 ax.text(0.5, 0.5, "No cached CPD sweep", ha="center")
         else:
-            plot_cpd_fit_r2x(sweeps.cpd, axes[1], color=colors.categorical_colors(1)[0])
-            axes[1].set_title("CPD Fit $R^2X$")
+            plot_cpd_fit_r2x(
+                sweeps.cpd, axes[1], color=style.COLORS["fit_full"], marker=None
+            )
+            plot_cpd_imputation_r2x(sweeps.cpd, axes[1])
+            axes[1].set_title("CPD Fit and Imputation $R^2X$")
             plot_collinearity(
                 sweeps.cpd, axes[2], colors=(colors.GREY, colors.BLUE, colors.ORANGE)
             )
