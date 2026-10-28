@@ -1,5 +1,5 @@
 ---
-title: "Resolving cell-cell communication programs beyond cell-type boundaries across conditions"
+title: "Resolving cell--cell communication programs beyond cell-type boundaries across conditions"
 ---
 
 **Authors:** Andrew Ramirez^1^, Nathaniel Thomas^2^, Daniel R. Calabrese^3,4^, John R. Greenland^3,4^, Aaron S. Meyer^1,5,6\*^
@@ -22,7 +22,7 @@ Classification: Research report
 **Abstract:**
 
 Cell--cell communication (CCC) coordinates cellular activities that vary dynamically across time, location, and biological context.
-Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, the methods that do preserve single-cell resolution cannot model how communication is regulated across multiple conditions.
+Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, methods that preserve single-cell resolution cannot model how communication is regulated across multiple conditions.
 To bridge this gap, we developed CCC-RISE, an extension of the tensor-based method Reduction and Insight in Single-cell Exploration (RISE).
 Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by conditions, sender cells, receiver cells, and ligand--receptor pairs, then maps each program back to the individual cells that drive it.
 Applied to a lung transplant cohort with acute allograft dysfunction, CCC-RISE identified sender and receiver subpopulations with more granularity than available cell-type annotations and recovered coordinated communication programs that associated with disease outcome.

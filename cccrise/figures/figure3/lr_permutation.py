@@ -41,8 +41,8 @@ CONTRAST_MAPPING = {
     "No CLAD/Stable": "No CLAD",
     "No CLAD/Recovered": "No CLAD",
 }
-# The groups as axis labels name them, free of the slash in CASE_LABEL
-CASE_DISPLAY = "CLAD+died"
+# The groups as axis labels name them
+CASE_DISPLAY = "CLAD/died"
 CONTROL_DISPLAY = "no CLAD"
 N_PERMS = 10_000
 AXES = ("square",)

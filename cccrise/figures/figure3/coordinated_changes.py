@@ -53,7 +53,7 @@ COVARIATION_DRAWS = 2000
 N_EXPRESSION_NEIGHBORS = 20  # an expression-matched pair is one of these nearest
 BASELINES = {  # label, color
     "random": ("Random", style.COLORS["muted"]),
-    "expression_matched": ("Expression-matched", style.COLORS["receiver"]),
+    "expression_matched": ("Expr.-matched", style.COLORS["receiver"]),
     "associated": ("Other associated", style.COLORS["up"]),
 }
 AXES = ("square", "square")
