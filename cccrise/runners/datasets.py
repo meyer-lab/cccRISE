@@ -112,6 +112,9 @@ class DatasetSpec:
     def cpd_rank_filename(self) -> str:
         return f"cpd_rank_{self.key}.parquet"
 
+    def cpd_imputation_filename(self) -> str:
+        return f"cpd_imputation_{self.key}.parquet"
+
     def stability_filename(self) -> str:
         return f"component_stability_{self.key}.parquet"
 

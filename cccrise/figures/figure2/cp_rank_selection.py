@@ -13,7 +13,7 @@ def plot(axs):
     common.plot_cpd_fit_r2x(
         sweep, axs[0], rank, color=style.COLORS["fit_full"], marker=None
     )
-    common.plot_cpd_imputation_r2x(sweep, axs[0])
+    common.plot_cpd_imputation_r2x(common.load_cpd_imputation(DATASET), axs[0])
     common.plot_collinearity(sweep, axs[1], rank)
 
 

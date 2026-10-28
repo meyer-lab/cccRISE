@@ -140,6 +140,14 @@ def load_cpd_rank(dataset: str) -> pd.DataFrame:
     return load_runner_output(DATASETS[dataset].cpd_rank_filename(), RANK_SELECTION_DIR)
 
 
+def load_cpd_imputation(dataset: str) -> pd.DataFrame:
+    """`cccrise-cpdrank`'s imputation R2X for `dataset`: one row per (rank,
+    fold split)."""
+    return load_runner_output(
+        DATASETS[dataset].cpd_imputation_filename(), RANK_SELECTION_DIR
+    )
+
+
 def per_rank(sweep: pd.DataFrame) -> pd.DataFrame:
     """One row per rank of a `load_cpd_rank` table."""
     return sweep.drop_duplicates("Rank")
@@ -585,19 +593,14 @@ def plot_cpd_fit_r2x(
     ax.set_ylabel("Fit $R^2X$")
 
 
-def plot_cpd_imputation_r2x(sweep: pd.DataFrame, ax: plt.Axes):
+def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     """Overlay k-fold imputation R2X (mean +/- SD over fold splits) on a
-    `plot_cpd_fit_r2x` axis, from `cccrise-cpdrank`."""
-    plot_mean_sd(
-        ax,
-        sweep["Rank"],
-        sweep["ImputationR2X"],
-        sweep["ImputationR2XSD"],
-        style.COLORS["heldout"],
-        "Imputation",
-    )
+    `plot_cpd_fit_r2x` axis, from `load_cpd_imputation`."""
+    by_rank = repeats.groupby("Rank")["ImputationR2X"]
+    mean, sd = by_rank.mean(), by_rank.std().fillna(0)
+    plot_mean_sd(ax, mean.index, mean, sd, style.COLORS["heldout"], "Imputation")
     ax.set_ylabel("$R^2X$")
-    ax.set_ylim(top=1.25 * sweep["FitR2X"].max())  # headroom for the legend
+    ax.set_ylim(top=1.25 * ax.dataLim.y1)  # headroom for the legend
     ax.legend(loc="upper right")
 
 

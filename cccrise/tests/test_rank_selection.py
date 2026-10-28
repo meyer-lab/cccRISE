@@ -144,9 +144,10 @@ def test_cp_imputation_peaks_at_the_true_rank():
     df = cp_imputation_sweep(
         tensor, [1, 2, 3, 6], n_repeats=2, n_folds=5, l2_reg=0.1, **IMPUTATION_FIT
     )
-    r2x = df.set_index("Rank")["ImputationR2X"]
-    assert r2x.idxmax() == true_rank
-    assert (df["ImputationR2XSD"] < 0.01).all()
+    assert len(df) == 2 * 4 and set(df["Repeat"]) == {0, 1}
+    r2x = df.groupby("Rank")["ImputationR2X"]
+    assert r2x.mean().idxmax() == true_rank
+    assert (r2x.std() < 0.01).all()
 
 
 def test_ridge_comparison_matches_a_weak_ridge_to_the_unregularized_fit():
@@ -359,12 +360,12 @@ def test_runner_compressed_and_uncompressed_agree(tmp_path):
     )
 
 
-def test_runner_adds_imputation_columns(tmp_path, monkeypatch):
+def test_runner_writes_per_split_imputation(tmp_path, monkeypatch):
     import cccrise.runners.run_cpd_rank as runner
 
     monkeypatch.setitem(runner.IMPUTATION_OPTIONS, "n_folds", 3)
     tensor = _simulate_cp_tensor((8, 6, 6, 12), rank=2, noise_std=0.3, random_state=3)
-    df, _out, sidecar = _run_cpd_rank(
+    df, out, sidecar = _run_cpd_rank(
         tensor,
         tmp_path / "cpd.parquet",
         ranks=[1, 2, 3],
@@ -373,9 +374,16 @@ def test_runner_adds_imputation_columns(tmp_path, monkeypatch):
         imputation_repeats=2,
         compare_ridge=False,
     )
-    assert df["ImputationR2X"].notna().all() and df["ImputationR2XSD"].notna().all()
-    assert df.set_index("Rank")["ImputationR2X"].idxmax() == 2
+    from cccrise.runners.datasets import DATASETS
+    from cccrise.runners.provenance import sidecar_path
+
+    assert "ImputationR2X" not in df
+    path = out.with_name(DATASETS["alad"].cpd_imputation_filename())
+    imputation = pd.read_parquet(path)
+    assert len(imputation) == 2 * 3 and imputation["ImputationR2X"].notna().all()
+    assert imputation.groupby("Rank")["ImputationR2X"].mean().idxmax() == 2
     assert "imputation_repeats: 2" in sidecar.read_text()
+    assert sidecar_path(path).exists()
 
 
 def test_runner_ridge_comparison_adds_one_row_per_component(tmp_path):
