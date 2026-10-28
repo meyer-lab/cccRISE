@@ -18,44 +18,12 @@ MIN_DETECTED_DIFFERENCE = 0.2
 
 
 def plot(axs):
-    markers = stratifying_markers() | {"Top LR pairs": S.top_pair_genes()}
     S.plot_markers(
         axs[0],
         # {"Pan-epithelial": S.CELLTYPE_MARKERS["Epithelial cells"]} |
-        markers,
+        stratifying_markers() | {"Top LR pairs": S.top_pair_genes()},
         show_legend=True,
     )
-    common.source_data(
-        "marker_expression_by_group",
-        _dotplot_data(markers),
-        "Per marker gene (under its section) and group: the fraction of the "
-        "group's cells detecting it (dot size) and its mean normalized "
-        "expression, also relative to the gene's largest group mean (color). "
-        "Each cell's group is in this figure's sender vs. receiver scatter "
-        "panel's source data; expression is from the published dataset.",
-    )
-
-
-def _dotplot_data(markers: dict[str, list[str]]) -> pd.DataFrame:
-    rows = []
-    for section, genes in markers.items():
-        detected, mean = S.group_expression(S.present(genes))
-        relative = mean.div(mean.max(axis=1), axis=0)
-        for stat, name in (
-            (detected, "Fraction detected"),
-            (mean, "Mean expression"),
-            (relative, "Mean expression / max group mean"),
-        ):
-            rows.append(
-                stat.rename_axis(index="Gene", columns="Group")
-                .stack()
-                .rename(name)
-                .reset_index()
-                .assign(Section=section)
-            )
-    keys = ["Section", "Gene", "Group"]
-    out = pd.concat(rows).groupby(keys, sort=False).first()
-    return out.reset_index()
 
 
 def stratifying_markers() -> dict[str, list[str]]:

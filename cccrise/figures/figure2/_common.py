@@ -331,9 +331,47 @@ def plot_dotplot(
 
 def plot_markers(ax, markers: dict[str, list[str]], **kwargs):
     """`plot_dotplot` of literature `markers` ({section: genes}), keeping the
-    genes in the fit's gene set."""
-    return plot_dotplot(
-        ax, {name: present(genes) for name, genes in markers.items()}, **kwargs
+    genes in the fit's gene set, saving its values as source data."""
+    sections = {name: present(genes) for name, genes in markers.items()}
+    _save_markers(sections)
+    return plot_dotplot(ax, sections, **kwargs)
+
+
+def _save_markers(sections: dict[str, list[str]]) -> None:
+    """Each section's genes' per-group dot values, and every cell's group and
+    expression of those genes."""
+    genes = present(g for section in sections.values() for g in section)
+    detected, mean = group_expression(genes)
+    common.source_data(
+        "marker_expression_per_group",
+        pd.DataFrame(
+            {
+                "Section": name,
+                "Gene": gene,
+                "Group": group,
+                "Fraction of cells detecting": detected.loc[gene, group],
+                "Mean expression": mean.loc[gene, group],
+                "Mean / gene's largest group mean": mean.loc[gene, group]
+                / mean.loc[gene].max(),
+            }
+            for name, section in sections.items()
+            for gene in section
+            for group in GROUPS
+        ),
+        "One dot per marker gene (under its section) and cell group (sender, "
+        "receiver, rest): the fraction of the group's cells detecting the gene "
+        "(dot size) and its mean normalized expression, also relative to the "
+        "gene's largest group mean (color).",
+    )
+    cells = common.get_cell_projections(GRANULARITY_DATASET)[:, genes].to_df()
+    cells.insert(0, "Group", cell_groups().to_numpy())
+    common.source_data(
+        "marker_expression_per_cell",
+        cells.rename_axis("Cell barcode"),
+        "One row per cell: its group (sender, receiver, or rest, split on its "
+        f"CP component {GRANULARITY_COMPONENT} weights) and normalized "
+        "expression of each plotted marker gene, the values the dot plot "
+        "summarizes.",
     )
 
 
