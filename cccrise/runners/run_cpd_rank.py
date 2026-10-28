@@ -330,7 +330,7 @@ def run_cpd_rank_selection(
             "criteria_backend": "numpy",
             "backend": backend,
             "imputation_repeats": imputation_repeats,
-            "imputation_file": imputation_path.name if imputation_repeats else None,
+            "imputation_file": imputation_path.name,
             "imputation_options": IMPUTATION_OPTIONS,
             "compare_ridge": compare_ridge,
             "random_state": random_state,

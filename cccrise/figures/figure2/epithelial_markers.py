@@ -45,6 +45,11 @@ def stratifying_markers() -> dict[str, list[str]]:
     selected = {
         name: [g for g in genes if kept[g]] for name, genes in candidates.items()
     }
+    _save_tests(candidates, p, q, detected, kept)
+    return {name: genes for name, genes in selected.items() if genes}
+
+
+def _save_tests(candidates, p, q, detected, kept) -> None:
     common.source_data(
         "de_sender_vs_receiver_subtype_markers",
         pd.DataFrame(
@@ -65,7 +70,6 @@ def stratifying_markers() -> dict[str, list[str]]:
         f"markers tested. Shown if q < {common.SIG_ALPHA} and the detected "
         f"fractions differ by at least {MIN_DETECTED_DIFFERENCE}.",
     )
-    return {name: genes for name, genes in selected.items() if genes}
 
 
 def makeFigure():
