@@ -10,9 +10,18 @@ AXES = ("wide",)  # as wide as `genes`' "tall", which it sits above
 
 def plot(axs):
     (ax,) = axs
-    conditions = S.rise_factors()["pf2_A"].values.astype(float)
-    common.plot_factor_heatmap(
-        ax, conditions[common.dominant_order(conditions)], S.XLABEL
+    factor = S.rise_factors()["pf2_A"]
+    conditions = factor.values.astype(float)
+    order = common.dominant_order(conditions)
+    common.plot_factor_heatmap(ax, conditions[order], S.XLABEL)
+    common.source_data(
+        "rise_condition_factor",
+        S.normalized_table(
+            factor["condition"].values[order], conditions[order], "Sample"
+        ),
+        "RISE condition factor (A): each BAL sample's (row, top to bottom as "
+        "plotted) loading on each RISE component, divided by the component's "
+        "largest |loading| (sign kept).",
     )
     ax.set_xticks([])  # shares `genes`' component axis below it
     ax.set_xlabel("")

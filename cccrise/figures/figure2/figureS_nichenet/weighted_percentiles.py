@@ -35,6 +35,29 @@ def plot(axs):
     scores = load_scores()
     groups = {str(c): g for c, g in score_percentiles(scores).groupby("component")}
     groups[NULL_LABEL] = null_weights(load_null(), scores)
+    columns = {
+        "component": "CP component",
+        "ligand": "Ligand",
+        "score_pct": "Target-score percentile",
+        "weight": "Ligand weight",
+    }
+    common.source_data(
+        "nichenet_score_percentile_per_ligand",
+        score_percentiles(scores)[list(columns)].rename(columns=columns),
+        "One row per scored ligand and CP component: the ligand's NicheNet "
+        "target-score percentile among the component's ligands, and its weight "
+        "in the component (each ligand is counted in proportion to it).",
+    )
+    common.source_data(
+        "nichenet_score_percentile_null",
+        groups[NULL_LABEL][["replicate", *columns]].rename(
+            columns={"replicate": "Shuffled prior", **columns}
+        ),
+        "The null: one row per shuffled copy of the NicheNet prior, CP component, "
+        "and ligand, with the ligand's target-score percentile under the shuffled "
+        "prior and its weight in the component; pooled over components and "
+        "shuffles in the plot.",
+    )
     stats = [
         weighted_box(g["score_pct"].to_numpy(), g["weight"].to_numpy())
         for g in groups.values()

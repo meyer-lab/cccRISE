@@ -36,6 +36,28 @@ def stability() -> pd.DataFrame:
     return df[df["Axis"] == JACKKNIFE_AXIS]
 
 
+def replicate_table(rows: pd.DataFrame) -> pd.DataFrame:
+    """`stability()` rows as source data: the replicate, its left-out
+    sample, and each component's match."""
+    return rows[
+        [
+            "Replicate",
+            "LeftOut",
+            "Seed",
+            "Stage",
+            "Component",
+            "MatchedComponent",
+            "FMS",
+        ]
+    ].rename(
+        columns={
+            "LeftOut": "Left-out sample",
+            "Stage": "Model",
+            "MatchedComponent": "Matched replicate component",
+        }
+    )
+
+
 def is_bimodal(fms: np.ndarray) -> bool:
     """Whether `fms` splits into two populations at its largest gap; see
     `BIMODAL_GAP` and `BIMODAL_MINOR_FRACTION`."""
@@ -68,8 +90,16 @@ def plot_stage(fig, stage: str) -> None:
     """Per-component jackknife FMS for `stage` ('RISE' or 'CPD'), one box per
     component."""
     ax = fig.subplots()
+    rows = stability()[stability()["Stage"] == stage]
+    common.source_data(
+        f"jackknife_fms_{COMPONENT_NAMES[stage].lower()}_components",
+        replicate_table(rows),
+        f"One row per leave-one-sample-out jackknife replicate and "
+        f"{COMPONENT_NAMES[stage]} component: the factor match score (FMS) of the "
+        "replicate's best-matching component to the full-cohort component.",
+    )
     sns.boxplot(
-        data=stability()[stability()["Stage"] == stage],
+        data=rows,
         x="Component",
         y="FMS",
         color=COLOR,

@@ -14,12 +14,20 @@ AXES = ("tall",)
 
 def plot(axs):
     (ax,) = axs
-    loadings = S.rise_factors()["pf2_C"].values.astype(float)
+    factor = S.rise_factors()["pf2_C"]
+    loadings = factor.values.astype(float)
     loadings = loadings / np.abs(loadings).max(axis=0)
     n_top = round(TOP_GENE_FRACTION * len(loadings))
-    shown = loadings[np.argsort(-np.abs(loadings).max(axis=1))[:n_top]]
-    image = common.plot_factor_heatmap(
-        ax, shown[common.dominant_order(shown)], S.XLABEL
+    top = np.argsort(-np.abs(loadings).max(axis=1))[:n_top]
+    rows = top[common.dominant_order(loadings[top])]
+    image = common.plot_factor_heatmap(ax, loadings[rows], S.XLABEL)
+    common.source_data(
+        "rise_gene_factor_top_genes",
+        S.normalized_table(factor["gene"].values[rows], loadings[rows], "Gene"),
+        f"RISE gene factor (C) of the top {TOP_GENE_FRACTION:.0%} of genes by "
+        "largest normalized |loading| on any component (rows top to bottom as "
+        "plotted): each gene's loading divided by the component's largest "
+        "|loading| over all genes (sign kept).",
     )
     ax.set_yticks([])
     ax.set_ylabel(f"Top {TOP_GENE_FRACTION:.0%} genes (n={n_top})")
