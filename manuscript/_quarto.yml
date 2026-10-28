@@ -2,7 +2,7 @@ project:
     type: default
     render:
         - manuscript.qmd
-        - supplemental.qmd
+        - appendix.qmd
         - review-response.qmd
     output-dir: _output
 
@@ -10,13 +10,17 @@ citeproc: true
 # Molecular Systems Biology (EMBO Press) author-date style.
 csl: embo-press.csl
 
-# Panel letters per figure, written by `cccrise-fbuild`, and supplement numbers
-# (by order of first mention), referenced via the `fig`/`panel` shortcodes.
+# Panel letters per figure, written by `cccrise-fbuild`, and supplementary
+# figure numbers, referenced via the `fig`/`panel`/`label` shortcodes. MSB has
+# two classes of supplementary figure, each numbered in its list's order:
+# Expanded View figures (at most five; legends in the main text) and Appendix
+# figures (a separate PDF). `cccrise-sourcedata` labels source data the same.
 metadata-files:
     - _panels.yml
 shortcodes:
     - _panels.lua
-supplements: [alad_cohort, rise_factor_matrices, cmp_stability, nichenet, cmp5_identity, alad_associations, anova_stability, ccc_scoring, imputation_ridge]
+ev_figures: [alad_cohort, cmp5_identity, ccc_scoring]
+appendix_figures: [rise_factor_matrices, cmp_stability, nichenet, alad_associations, anova_stability, imputation_ridge]
 
 crossref:
     fig-prefix: Fig.
