@@ -34,17 +34,19 @@ def plot(axs):
         ),
     )
     for ax, (values, xlabel, cbar_label) in zip(axs, panels, strict=True):
-        points = _value_scatter(ax, x, y, values)
+        points = plot_value_scatter(ax, x, y, values)
         # PaCMAP coordinates have no units
         ax.set(xticks=[], yticks=[], xlabel=xlabel)
         ax.spines[:].set_visible(False)
         common.colorbar(ax, points, cbar_label)
 
 
-def _value_scatter(ax, x, y, values):
+def plot_value_scatter(
+    ax, x, y, values, saturation_percentile: float = SATURATION_PERCENTILE
+):
     """Cells colored by `values` on the diverging scale, saturating at
-    `SATURATION_PERCENTILE`, the largest magnitudes drawn on top."""
-    vmax = float(np.percentile(np.abs(values), SATURATION_PERCENTILE))
+    `saturation_percentile`, the largest magnitudes drawn on top."""
+    vmax = float(np.percentile(np.abs(values), saturation_percentile))
     order = np.argsort(np.abs(values))
     return ax.scatter(
         x[order],
