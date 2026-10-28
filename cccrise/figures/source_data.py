@@ -119,7 +119,7 @@ def stage_figure(
         files = sorted((source_dir / name).glob("*.csv"))
         if files:
             folders = panel_folders(files, prefix, letters[name])
-            for folder, entries in folders.items():
+            for folder, entries in sorted(folders.items()):
                 errors += [f"{label} {folder}: {e}" for e in check(entries)]
                 stage_panel(out_dir / folder, label, module, entries)
                 rows.append(row(label, folder, name, module, "data", entries))
@@ -227,9 +227,12 @@ def row(label, folder, name, module, status, entries=()) -> dict:
         "Status": status,
         "Files": "; ".join(p.name for p, _ in entries),
         "Size (KB)": round(sum(sizes) / 1e3, 1),
+        # The docstring's first sentence; the panel README has all of it
         "Description": (inspect.getdoc(module) or "")
-        .split("\n\n")[0]
-        .replace("\n", " "),
+        .replace("\n", " ")
+        .split(". ")[0]
+        .rstrip(".")
+        + ".",
     }
 
 
