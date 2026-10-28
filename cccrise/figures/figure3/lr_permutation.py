@@ -49,7 +49,53 @@ AXES = ("square",)
 
 
 def plot(axs):
-    plot_pair_nulls(permutation_analysis()[COMPONENT], N_TOP, axs[0])
+    component = permutation_analysis()[COMPONENT]
+    plot_pair_nulls(component, N_TOP, axs[0])
+    top = component["order"][:N_TOP]
+    p = component["p"][top]
+    common.source_data(
+        "top_pair_permutation_tests",
+        pd.DataFrame(
+            {
+                "LR pair": LR_NAMES[top],
+                "Observed difference": component["observed"][top],
+                "Null SD": component["null"].std(axis=0),
+                "Permutation p": p,
+                "BH q": false_discovery_control(p),
+            }
+        ),
+        f"The CP component {COMPONENT}'s {N_TOP} most heavily weighted LR pairs: "
+        f"{CASE_DISPLAY} minus {CONTROL_DISPLAY} mean depth-normalized score, "
+        f"the SD of its null over {N_PERMS} patient-block permutations of the "
+        "outcome (the plot's units), one-sided permutation p, and p "
+        f"Benjamini-Hochberg adjusted across the {N_TOP} pairs.",
+    )
+    common.source_data(
+        "top_pair_permutation_null",
+        pd.DataFrame(component["null"], columns=LR_NAMES[top])
+        .rename_axis(index="Permutation", columns="LR pair")
+        .stack()
+        .rename("Null difference")
+        .reset_index(),
+        "Each permutation's group difference for every top pair (seeded).",
+    )
+    common.source_data(
+        "top_pair_scores_by_condition",
+        pd.DataFrame(component["scores"][:, top], columns=LR_NAMES[top])
+        .assign(
+            Condition=component["conditions"],
+            Patient=component["patients"],
+            Group=np.where(component["case"], CASE_LABEL, "No CLAD"),
+        )
+        .melt(
+            id_vars=["Condition", "Patient", "Group"],
+            var_name="LR pair",
+            value_name="Depth-normalized score",
+        ),
+        "Each top pair's per-condition score in the component's sender/receiver "
+        "context, divided by the condition's read depth, with the condition's "
+        "patient (the permutation unit) and outcome group.",
+    )
 
 
 def plot_pair_nulls(component: dict, n_top: int, ax) -> None:
@@ -135,6 +181,10 @@ def permutation_analysis() -> dict[int, dict]:
         )
         order = np.argsort(-np.abs(D.values[:, k - 1]))
         result[k] = {
+            "scores": scores,
+            "conditions": labels.index.to_numpy(),
+            "patients": patients.astype(str).to_numpy(),
+            "case": case,
             "observed": observed,
             "p": ((null >= observed).sum(0) + 1) / (N_PERMS + 1),
             "order": order,

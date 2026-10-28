@@ -6,10 +6,21 @@ from . import _common as S
 
 REGROUPING_KEYS = ("levels", "mapping", "control_label", "other_label")
 AXES = ("rect",)
+ANOVA_COLUMNS = [
+    "Association",
+    "Component",
+    "F",
+    "P",
+    "PAdj",
+    "EtaSquared",
+    "NGroups",
+    "GroupSizes",
+]
 
 
 def plot(axs):
     plot_outcome_weights(axs[0], S.OUTCOME, S.COMPONENT)
+    _source_data(S.OUTCOME, S.COMPONENT)
 
 
 def plot_outcome_weights(ax, association: str, component: int) -> None:
@@ -32,6 +43,35 @@ def plot_outcome_weights(ax, association: str, component: int) -> None:
     )
     ax.set_ylabel(f"CP component {component} loading")
     ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE)
+
+
+def _source_data(association: str, component: int) -> None:
+    """The plotted loadings, with each sample's patient, and their ANOVA."""
+    spec = S.association(association)
+    points = common.group_loadings(
+        S.factors_adata(),
+        component,
+        spec["group_column"],
+        S.SPEC.condition_column,
+        **{k: spec[k] for k in REGROUPING_KEYS if k in spec},
+    )
+    patients = S.condition_obs()[S.SPEC.patient_column]
+    common.source_data(
+        "cp_loadings_by_outcome",
+        points.assign(Patient=patients.loc[points["Condition"]].to_numpy()),
+        f"Each sample's read-depth-corrected loading on CP component {component} "
+        f"and its level of '{association}', with its patient (a patient's "
+        "samples are joined in the plot).",
+    )
+    table = S.association_table()
+    row = table[(table["Association"] == association)]
+    common.source_data(
+        "cp_outcome_anova",
+        row[row["Component"] == component][ANOVA_COLUMNS],
+        "One-way ANOVA of the loadings over the outcome levels: F, p, p "
+        "Benjamini-Hochberg adjusted across every component and association "
+        "tested (PAdj), and eta-squared.",
+    )
 
 
 def makeFigure():

@@ -4,6 +4,7 @@ tail; the component's `N_TOP` most heavily weighted pairs (the pairs tested
 for co-variation in `coordinated_changes`) marked and named."""
 
 import numpy as np
+import pandas as pd
 from adjustText import adjust_text
 
 from ...factors import load_factors_netcdf
@@ -30,6 +31,19 @@ def plot(axs):
 
     order = np.argsort(-loadings)
     ranks = np.arange(1, len(order) + 1)
+    common.source_data(
+        "cp_lr_pair_loadings_ranked",
+        pd.DataFrame(
+            {
+                "Rank": ranks,
+                "LR pair": names[order],
+                f"Cmp {COMPONENT} loading": loadings[order],
+                "Named": ranks <= N_TOP,
+            }
+        ),
+        f"Every LR pair's loading on CP component {COMPONENT} (cp_D), by rank; "
+        f"'Named' marks the {N_TOP} most heavily weighted, labeled in the plot.",
+    )
     top = order[:N_TOP]
     heights = np.linspace(loadings[top[0]], LABEL_FLOOR * loadings[top[0]], N_TOP)
     texts = [
