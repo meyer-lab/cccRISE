@@ -551,7 +551,8 @@ def source_data(
     """Save `data`, values the panel being drawn plots, as its EMBO source
     data file `<name>.csv`, explained in the panel's README by `description`
     (which should name any column whose meaning or units its name doesn't
-    make plain). Give the individual values behind any summary drawn. `part`
+    make plain). Give the individual values behind any summary drawn, and
+    name any integer index that labels rows (an unnamed one is dropped). `part`
     is the index of the panel module's lettered axes the file belongs to (1:
     the C of a module lettered B-C); by default it spans them all."""
     root, panel = _SOURCE["dir"], _SOURCE["panel"]
@@ -563,8 +564,10 @@ def source_data(
         _SOURCE["cleared"].add(panel)
     folder.mkdir(parents=True, exist_ok=True)
     frame = data.to_frame() if isinstance(data, pd.Series) else data
-    if frame.index.names != [None] or not frame.index.equals(pd.RangeIndex(len(frame))):
-        frame = frame.reset_index()  # labels kept as columns
+    # Index labels kept as columns, but not an unnamed integer index: row
+    # positions left over from filtering or sorting
+    positional = frame.index.names == [None] and frame.index.dtype.kind in "iu"
+    frame = frame.reset_index(drop=positional)
     frame.to_csv(folder / f"{name}.csv", index=False)
     (folder / f"{name}.yaml").write_text(
         yaml.safe_dump({"description": description, "part": part})
