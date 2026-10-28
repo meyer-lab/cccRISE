@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 
+from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
 from .. import common, style
 
@@ -232,6 +233,34 @@ def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFram
         )
         for g in groups
     }
+
+
+def cell_table() -> pd.DataFrame:
+    """Each cell's sample, annotated cell type, sender and receiver weight on
+    the granularity component, and group: the per-cell values behind this
+    figure's group panels."""
+    adata = common.get_cell_projections(GRANULARITY_DATASET)
+    spec = DATASETS[GRANULARITY_DATASET]
+    sender, receiver = component_weights()
+    return pd.DataFrame(
+        {
+            "Cell": adata.obs_names,
+            "Sample": adata.obs[spec.condition_column].to_numpy(),
+            "Cell type": adata.obs[spec.celltype_column].to_numpy(),
+            f"Cmp {GRANULARITY_COMPONENT} sender weight": sender,
+            f"Cmp {GRANULARITY_COMPONENT} receiver weight": receiver,
+            "Group": cell_groups().to_numpy(),
+        }
+    )
+
+
+CELL_TABLE_DESCRIPTION = (
+    f"One row per cell: its sample, annotated cell type, sender and receiver "
+    f"weight on CP component {GRANULARITY_COMPONENT}, and group (sender or "
+    f"receiver if either weight is at least {GROUP_TAU} x that weight's "
+    "largest value, assigned to the role of the larger relative weight; rest "
+    "otherwise)."
+)
 
 
 def group_expression(genes: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
