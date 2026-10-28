@@ -45,71 +45,71 @@ status is `data`, `schematic` (no numerical data), or `missing`.
 | 3G | lr_permutation | data | top_pair_permutation_null.csv; top_pair_permutation_tests.csv; top_pair_scores_by_condition.csv | 4052.0 | Patient-permutation test of whether the outcome-associated CP component's top LR pairs are larger in CLAD/Died than in No CLAD samples. |
 | 3H | lr_volcano | data | top_pairs_by_component.csv | 10.1 | Every CP component's `N_SHOWN` most heavily weighted LR pairs, each in its own component's context (`lr_permutation`): log2 ratio of the group means of the depth-normalized scores against the pair's one-sided permutation p. |
 
-## Supplementary Figure S1
+## Figure EV1
 
 | Panel | Module | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S1A | cohort | data | cohort_sample_sizes.csv | 0.1 | Placeholder for a schematic of the ALAD cohort. |
-| S1B | celltype_proportions | data | celltype_fraction_kruskal.csv; celltype_fraction_per_sample.csv | 21.2 | Annotated cell type proportion of each ALAD sample by ALAD status (control, declined, recovered), with each cell type's Kruskal-Wallis q across the three statuses, Benjamini-Hochberg corrected across cell types. |
+| EV1A | cohort | data | cohort_sample_sizes.csv | 0.1 | Placeholder for a schematic of the ALAD cohort. |
+| EV1B | celltype_proportions | data | celltype_fraction_kruskal.csv; celltype_fraction_per_sample.csv | 21.2 | Annotated cell type proportion of each ALAD sample by ALAD status (control, declined, recovered), with each cell type's Kruskal-Wallis q across the three statuses, Benjamini-Hochberg corrected across cell types. |
 
-## Supplementary Figure S2
-
-| Panel | Module | Status | Files | Size (KB) | Description |
-|---|---|---|---|---|---|
-| S2A | factors | data | rise_condition_factor.csv | 16.5 | The RISE condition factor (A; conditions ordered by their most heavily loaded component, then by that loading), each component divided by its largest magnitude (keeping sign). |
-| S2B | genes | data | rise_gene_factor_top_genes.csv | 614.5 | The RISE gene factor (C), each component divided by its largest magnitude (keeping sign). |
-
-## Supplementary Figure S3
+## Figure EV2
 
 | Panel | Module | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S3A | rise_fms | data | jackknife_fms_rise_components.csv | 39.2 | Per-component RISE stability under leave-one-patient-out jackknifing, excluding seed refits (FMS ~1.0; see Figure 2's aggregate panel). |
-| S3B | cpd_fms | data | jackknife_fms_cp_components.csv | 11.2 | Per-component CP stability under leave-one-patient-out jackknifing, excluding seed refits (FMS ~1.0; see Figure 2's aggregate panel). |
-| S3C | fms_histograms | data | jackknife_fms_bimodal_components.csv | 4.6 | Jackknife FMS histogram of every RISE and CP component whose FMS is bimodal (`_common.is_bimodal`): a second population of replicates that lose the component, rather than one or two that do. |
+| EV2A | eigenstate_scatter | data | rise_eigenstate_projection_per_cell.csv | 2439.0 | Per-cell projection onto the RISE eigenstates behind the granularity component's sender (x) and receiver (y) loadings, with dashed lines through the origin. |
+| EV2B | cmp_eigenstate_loadings | data | cp_eigenstate_loadings.csv | 0.5 | The granularity CP component's sender and receiver loadings on each RISE eigenstate. |
+| EV2C | celltype_markers | data | marker_expression_per_cell.csv; marker_expression_per_group.csv | 9167.0 | Canonical markers of each annotated broad cell type (`S.CELLTYPE_MARKERS`) per sender, receiver, and rest group. |
+| EV2D | group_vs_rest | data | de_sender_vs_rest.csv | 2372.5 | Genes distinguishing the sender (left) and receiver (right) group from the rest of the cells (`V.plot_volcano`), on shared axes, labeling the canonical pan-epithelial markers (`S.CELLTYPE_MARKERS`), with the color key shared with the sender vs. |
+| EV2E | group_vs_rest | data | de_receiver_vs_rest.csv | 2375.5 | Genes distinguishing the sender (left) and receiver (right) group from the rest of the cells (`V.plot_volcano`), on shared axes, labeling the canonical pan-epithelial markers (`S.CELLTYPE_MARKERS`), with the color key shared with the sender vs. |
+| EV2F | sender_vs_receiver | data | de_sender_vs_receiver.csv | 1666.7 | Genes differing between the sender and receiver groups (`_common.plot_volcano`), labeling `CURATED_DE_MARKERS`, each tagged with its epithelial subtype. |
 
-## Supplementary Figure S4
-
-| Panel | Module | Status | Files | Size (KB) | Description |
-|---|---|---|---|---|---|
-| S4A | ligand_scores | data | nichenet_target_score_per_ligand.csv | 54.5 | NicheNet target score of every ligand the model sees, per CP component (``nichenet.component_ligand_scores``): the AUROC of the component's receiver ranking for the ligand's downstream targets, targets shared by many ligands down-weighted. |
-| S4B | weighted_percentiles | data | nichenet_score_percentile_null.csv; nichenet_score_percentile_per_ligand.csv | 40436.2 | The per-ligand values behind Figure 2's weight-averaged NicheNet target-score percentiles: per CP component, every ligand's target-score percentile among the component's ligands (``nichenet.score_percentiles``), each ligand counted in proportion to its weight in the component -- box at the weighted quartiles, whiskers at the weighted 5th and 95th percentiles, diamond at the weighted mean (Figure 2's statistic). |
-
-## Supplementary Figure S5
+## Figure EV3
 
 | Panel | Module | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S5A | eigenstate_scatter | data | rise_eigenstate_projection_per_cell.csv | 2439.0 | Per-cell projection onto the RISE eigenstates behind the granularity component's sender (x) and receiver (y) loadings, with dashed lines through the origin. |
-| S5B | cmp_eigenstate_loadings | data | cp_eigenstate_loadings.csv | 0.5 | The granularity CP component's sender and receiver loadings on each RISE eigenstate. |
-| S5C | celltype_markers | data | marker_expression_per_cell.csv; marker_expression_per_group.csv | 9167.0 | Canonical markers of each annotated broad cell type (`S.CELLTYPE_MARKERS`) per sender, receiver, and rest group. |
-| S5D | group_vs_rest | data | de_sender_vs_rest.csv | 2372.5 | Genes distinguishing the sender (left) and receiver (right) group from the rest of the cells (`V.plot_volcano`), on shared axes, labeling the canonical pan-epithelial markers (`S.CELLTYPE_MARKERS`), with the color key shared with the sender vs. |
-| S5E | group_vs_rest | data | de_receiver_vs_rest.csv | 2375.5 | Genes distinguishing the sender (left) and receiver (right) group from the rest of the cells (`V.plot_volcano`), on shared axes, labeling the canonical pan-epithelial markers (`S.CELLTYPE_MARKERS`), with the color key shared with the sender vs. |
-| S5F | sender_vs_receiver | data | de_sender_vs_receiver.csv | 1666.7 | Genes differing between the sender and receiver groups (`_common.plot_volcano`), labeling `CURATED_DE_MARKERS`, each tagged with its epithelial subtype. |
+| EV3A | factor_match | data | factor_match_scores.csv | 0.5 | How closely each alternate score's CP components match the default's: the pairing's match score (condition + LR modes) and the paired components' sender/receiver \|cosine\|, an independent check of the pairing. |
+| EV3B | factor_match | data | factor_match_cosines.csv | 1.1 | How closely each alternate score's CP components match the default's: the pairing's match score (condition + LR modes) and the paired components' sender/receiver \|cosine\|, an independent check of the pairing. |
+| EV3C | anova | data | anova_outcome_by_score.csv; anova_outcome_by_score_components.csv; loading_condition_by_score.csv | 55.8 | ANOVA association of CP components with the dataset's outcome under each score (point estimate), in the default score's component numbering. |
+| EV3D | interpretation | data | loading_lr_by_score.csv | 4.7 | What each CP component represents under each communication score: one row per default-score component, with the union of every method's top LR pairs as a dot plot, and sender and receiver cell-type heatmaps. |
+| EV3E | interpretation | data | loading_celltype_by_score.csv; weight_cells_by_score.csv | 28010.7 | What each CP component represents under each communication score: one row per default-score component, with the union of every method's top LR pairs as a dot plot, and sender and receiver cell-type heatmaps. |
 
-## Supplementary Figure S6
-
-| Panel | Module | Status | Files | Size (KB) | Description |
-|---|---|---|---|---|---|
-| S6A | cp_associations | data | anova_component_outcome.csv; component_values_by_sample.csv | 16.2 | Association of every CP component with every ALAD outcome (one-way ANOVA eta-squared, FDR-corrected across all associations and components). |
-| S6B | death_weights | data | loading_component4_6_month_death.csv | 2.5 | Condition loadings of the CP components significantly associated with death, per group, as Fig. |
-| S6B-C | death_weights | data | anova_component_death.csv | 0.4 | Condition loadings of the CP components significantly associated with death, per group, as Fig. |
-| S6C | death_weights | data | loading_component4_1_year_death.csv | 2.5 | Condition loadings of the CP components significantly associated with death, per group, as Fig. |
-| S6D | rise_associations | data | anova_component_outcome.csv; component_values_by_sample.csv | 43.4 | Association of every RISE component's condition loading (`pf2_A`) with every ALAD outcome tested against the CP components (one-way ANOVA eta-squared, FDR-corrected across all associations and components). |
-| S6E | sender_receiver_scatter | data | weight_component4_cells.csv | 3139.7 | Per-cell sender vs. |
-| S6F | covariates | data | anova_covariate_outcome.csv; covariate_values_by_sample.csv | 14.0 | Association of each patient covariate with every ALAD outcome tested against the components (one-way ANOVA eta-squared, uncorrected p), to flag covariates that could confound a component-outcome association. |
-
-## Supplementary Figure S7
+## Appendix Figure S1
 
 | Panel | Module | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S7A | effect_size_distributions | data | anova_full_cohort.csv; anova_jackknife_replicates.csv | 28.1 | Leave-one-patient-out eta-squared distribution per CP component, with the full-cohort value overlaid (filled where significant). |
-| S7B | significant_fraction | data | anova_full_cohort.csv; anova_jackknife_replicates.csv | 28.1 | Fraction of leave-one-patient-out replicates in which each CP component's outcome association stays significant (q < alpha, Benjamini-Hochberg corrected across the replicate's components). |
+| S1A | factors | data | rise_condition_factor.csv | 16.5 | The RISE condition factor (A; conditions ordered by their most heavily loaded component, then by that loading), each component divided by its largest magnitude (keeping sign). |
+| S1B | genes | data | rise_gene_factor_top_genes.csv | 614.5 | The RISE gene factor (C), each component divided by its largest magnitude (keeping sign). |
 
-## Supplementary Figure S8
+## Appendix Figure S2
 
 | Panel | Module | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S8A | factor_match | data | factor_match_scores.csv | 0.5 | How closely each alternate score's CP components match the default's: the pairing's match score (condition + LR modes) and the paired components' sender/receiver \|cosine\|, an independent check of the pairing. |
-| S8B | factor_match | data | factor_match_cosines.csv | 1.1 | How closely each alternate score's CP components match the default's: the pairing's match score (condition + LR modes) and the paired components' sender/receiver \|cosine\|, an independent check of the pairing. |
-| S8C | anova | data | anova_outcome_by_score.csv; anova_outcome_by_score_components.csv; loading_condition_by_score.csv | 55.8 | ANOVA association of CP components with the dataset's outcome under each score (point estimate), in the default score's component numbering. |
-| S8D | interpretation | data | loading_lr_by_score.csv | 4.7 | What each CP component represents under each communication score: one row per default-score component, with the union of every method's top LR pairs as a dot plot, and sender and receiver cell-type heatmaps. |
-| S8E | interpretation | data | loading_celltype_by_score.csv; weight_cells_by_score.csv | 28010.7 | What each CP component represents under each communication score: one row per default-score component, with the union of every method's top LR pairs as a dot plot, and sender and receiver cell-type heatmaps. |
+| S2A | rise_fms | data | jackknife_fms_rise_components.csv | 39.2 | Per-component RISE stability under leave-one-patient-out jackknifing, excluding seed refits (FMS ~1.0; see Figure 2's aggregate panel). |
+| S2B | cpd_fms | data | jackknife_fms_cp_components.csv | 11.2 | Per-component CP stability under leave-one-patient-out jackknifing, excluding seed refits (FMS ~1.0; see Figure 2's aggregate panel). |
+| S2C | fms_histograms | data | jackknife_fms_bimodal_components.csv | 4.6 | Jackknife FMS histogram of every RISE and CP component whose FMS is bimodal (`_common.is_bimodal`): a second population of replicates that lose the component, rather than one or two that do. |
+
+## Appendix Figure S3
+
+| Panel | Module | Status | Files | Size (KB) | Description |
+|---|---|---|---|---|---|
+| S3A | ligand_scores | data | nichenet_target_score_per_ligand.csv | 54.5 | NicheNet target score of every ligand the model sees, per CP component (``nichenet.component_ligand_scores``): the AUROC of the component's receiver ranking for the ligand's downstream targets, targets shared by many ligands down-weighted. |
+| S3B | weighted_percentiles | data | nichenet_score_percentile_null.csv; nichenet_score_percentile_per_ligand.csv | 40436.2 | The per-ligand values behind Figure 2's weight-averaged NicheNet target-score percentiles: per CP component, every ligand's target-score percentile among the component's ligands (``nichenet.score_percentiles``), each ligand counted in proportion to its weight in the component -- box at the weighted quartiles, whiskers at the weighted 5th and 95th percentiles, diamond at the weighted mean (Figure 2's statistic). |
+
+## Appendix Figure S4
+
+| Panel | Module | Status | Files | Size (KB) | Description |
+|---|---|---|---|---|---|
+| S4A | cp_associations | data | anova_component_outcome.csv; component_values_by_sample.csv | 16.2 | Association of every CP component with every ALAD outcome (one-way ANOVA eta-squared, FDR-corrected across all associations and components). |
+| S4B | death_weights | data | loading_component4_6_month_death.csv | 2.5 | Condition loadings of the CP components significantly associated with death, per group, as Fig. |
+| S4B-C | death_weights | data | anova_component_death.csv | 0.4 | Condition loadings of the CP components significantly associated with death, per group, as Fig. |
+| S4C | death_weights | data | loading_component4_1_year_death.csv | 2.5 | Condition loadings of the CP components significantly associated with death, per group, as Fig. |
+| S4D | rise_associations | data | anova_component_outcome.csv; component_values_by_sample.csv | 43.4 | Association of every RISE component's condition loading (`pf2_A`) with every ALAD outcome tested against the CP components (one-way ANOVA eta-squared, FDR-corrected across all associations and components). |
+| S4E | sender_receiver_scatter | data | weight_component4_cells.csv | 3139.7 | Per-cell sender vs. |
+| S4F | covariates | data | anova_covariate_outcome.csv; covariate_values_by_sample.csv | 14.0 | Association of each patient covariate with every ALAD outcome tested against the components (one-way ANOVA eta-squared, uncorrected p), to flag covariates that could confound a component-outcome association. |
+
+## Appendix Figure S5
+
+| Panel | Module | Status | Files | Size (KB) | Description |
+|---|---|---|---|---|---|
+| S5A | effect_size_distributions | data | anova_full_cohort.csv; anova_jackknife_replicates.csv | 28.1 | Leave-one-patient-out eta-squared distribution per CP component, with the full-cohort value overlaid (filled where significant). |
+| S5B | significant_fraction | data | anova_full_cohort.csv; anova_jackknife_replicates.csv | 28.1 | Fraction of leave-one-patient-out replicates in which each CP component's outcome association stays significant (q < alpha, Benjamini-Hochberg corrected across the replicate's components). |

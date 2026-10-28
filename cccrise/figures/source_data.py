@@ -2,12 +2,12 @@
 EMBO Press source data for the manuscript's figures, packaged from what each
 panel saved with `common.source_data` during its figure's last build:
 
-    uv run cccrise-sourcedata                    # every figure in FIGURES
+    uv run cccrise-sourcedata                    # every figure in `figures()`
     uv run cccrise-sourcedata 2 S_cmp_stability  # some of them
 
-Each figure becomes `output/source_data/<label>.zip` (e.g. `Figure 2.zip`),
-one folder per panel (`2A/`, or `2B-C/` for files spanning a panel module's
-letters) holding its CSVs and a README, plus a README of the figure's
+Each figure becomes `output/source_data/<label>.zip` (e.g. `Figure 2.zip`,
+`Figure EV1.zip`, `Appendix Figure S2.zip`), one folder per panel (`2A/`,
+`EV1A/`, `S2A/`, or `2B-C/` for files spanning a panel module's letters) holding its CSVs and a README, plus a README of the figure's
 provenance. Letters come from `_panels.yml`, as the figure's last full build
 recorded them. Schematic panels (`SCHEMATIC = True`) need no data, and a
 figure of only those gets no zip. Every panel is listed in the manifest, the
@@ -33,10 +33,12 @@ from . import common
 MAIN_FIGURES = ("1", "2", "3")
 QUARTO_PATH = REPO_ROOT / "manuscript" / "_quarto.yml"
 SKIPPED_SUPPLEMENTS = {"imputation_ridge"}  # no source data provided
-# The manuscript's label for supplements. MSB has no "Supplementary" figures:
-# up to five are "Figure EV<n>", the rest "Appendix Figure S<n>". Which is
-# which isn't settled yet, so the manuscript's current label stays.
-SUPPLEMENT_LABEL = "Supplementary Figure S"
+# MSB's classes of supplementary figure, as `_quarto.yml` lists them: the
+# list, the label before each figure's number, and its panel folder prefix
+SUPPLEMENT_CLASSES = (
+    ("ev_figures", "Figure EV", "EV"),
+    ("appendix_figures", "Appendix Figure S", "S"),
+)
 OUTPUT_DIR = common.OUTPUT_DIR / "source_data"
 MANIFEST_PATH = REPO_ROOT / "docs" / "source_data_manifest.md"
 # Every figure here plots this dataset's canonical fit
@@ -46,11 +48,13 @@ CODE_URL = "https://github.com/meyer-lab/cccRISE"
 
 def figures() -> list[tuple[str, str, str]]:
     """(cccrise-fbuild name, label, panel prefix) of each figure packaged:
-    the main figures, then the manuscript's supplements, numbered in order."""
-    supplements = yaml.safe_load(QUARTO_PATH.read_text())["supplements"]
+    the main figures, then the Expanded View and Appendix figures, each
+    numbered in its `_quarto.yml` list's order."""
+    quarto = yaml.safe_load(QUARTO_PATH.read_text())
     return [(f, f"Figure {f}", f) for f in MAIN_FIGURES] + [
-        (f"S_{name}", f"{SUPPLEMENT_LABEL}{i}", f"S{i}")
-        for i, name in enumerate(supplements, start=1)
+        (f"S_{name}", f"{label}{i}", f"{prefix}{i}")
+        for key, label, prefix in SUPPLEMENT_CLASSES
+        for i, name in enumerate(quarto[key], start=1)
         if name not in SKIPPED_SUPPLEMENTS
     ]
 

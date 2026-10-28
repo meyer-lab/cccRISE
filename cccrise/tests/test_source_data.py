@@ -105,3 +105,11 @@ def test_span():
     assert packager.span(["b"]) == "B"
     assert packager.span(["b", "c", "d"]) == "B-D"
     assert packager.span(["b", "d"]) == "B,D"
+
+
+def test_supplements_are_labeled_by_class():
+    labels = {f: (label, prefix) for f, label, prefix in packager.figures()}
+    assert labels["2"] == ("Figure 2", "2")
+    assert labels["S_alad_cohort"] == ("Figure EV1", "EV1")
+    assert labels["S_rise_factor_matrices"] == ("Appendix Figure S1", "S1")
+    assert "S_imputation_ridge" not in labels  # skipped
