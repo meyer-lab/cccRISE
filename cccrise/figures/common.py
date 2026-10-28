@@ -12,11 +12,16 @@ panel, each exposing `plot(fig)` (draws into a Figure or SubFigure) and
 the panels with `panel_grid` and labels them with `label_panels`. Each
 supplementary figure is a `figureS_<name>/` package nested in the main
 figure it supports, or at the top level if it supports no single one.
+
+Each panel saves the values it plots with `source_data` (or declares
+`SCHEMATIC = True`), which `figures/source_data.py` packages as EMBO source
+data.
 """
 
 import functools
 import importlib
 import itertools
+import shutil
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -130,6 +135,7 @@ def load_runner_output(
         raise FileNotFoundError(
             f"{path} not found. Produce it with the matching runner, e.g.\n{hint}"
         )
+    _SOURCE["inputs"].add(path)
     return pd.read_parquet(path)
 
 
@@ -204,6 +210,7 @@ def compose(
     `plot(fig)`) drawn into its `layout` cells, then lettered."""
     fig, subfigs = panel_grid(figsize, layout, **gridspec_kw)
     for name, subfig in subfigs.items():
+        _SOURCE["panel"] = panels[name].__name__.rpartition(".")[2]
         panels[name].plot(subfig)
     label_panels(
         {panels[name].__name__.rpartition(".")[2]: sf for name, sf in subfigs.items()}
@@ -219,6 +226,7 @@ def standalone(
     """One panel drawn on a figure of its own, with `legend(fig)` for panels
     whose master figure shares one legend across panels."""
     fig = plt.figure(figsize=size, layout="constrained")
+    _SOURCE["panel"] = plot.__module__.rpartition(".")[2]
     plot(fig)
     if legend is not None:
         legend(fig)
@@ -386,6 +394,7 @@ def _draw_fixed(fig: Figure, module) -> list[_AxesBox]:
         ax = fig.add_axes((0.4, 0.4, w / FIXED_MEASURE_SIZE, h / FIXED_MEASURE_SIZE))
         ax.set_label(module.__name__.rsplit(".", 1)[-1])  # found by `panel_axes`
         boxes.append(_AxesBox(ax, w, h))
+    _SOURCE["panel"] = module.__name__.rsplit(".", 1)[-1]
     module.plot([b.ax for b in boxes])
     for b in boxes:
         tight, bbox = b.ax.get_tightbbox(), b.ax.bbox
@@ -458,16 +467,19 @@ def placeholder(fig: Figure | SubFigure | plt.Axes, text: str) -> None:
     )
 
 
-def build_figure(figure: str, panel: str | None = None) -> Figure:
-    """Figure `figure` (e.g. '2', 'S_cmp_stability'), or one of its panels."""
-    style.apply_style()
+def figure_package(figure: str) -> str:
+    """Dotted name of figure `figure`'s package (e.g. '2', 'S_cmp_stability')."""
     package = f"figure{figure}"
     # Supplements may be nested in their main figure's package
     (master,) = FIGURES_DIR.glob(f"**/{package}/{package}.py")
-    parts = master.parent.relative_to(FIGURES_DIR).parts
-    module = importlib.import_module(
-        ".".join(("cccrise.figures", *parts, panel or package))
-    )
+    return ".".join(("cccrise.figures", *master.parent.relative_to(FIGURES_DIR).parts))
+
+
+def build_figure(figure: str, panel: str | None = None) -> Figure:
+    """Figure `figure` (e.g. '2', 'S_cmp_stability'), or one of its panels."""
+    style.apply_style()
+    package = figure_package(figure)
+    module = importlib.import_module(f"{package}.{panel or f'figure{figure}'}")
     return module.makeFigure()
 
 
@@ -484,27 +496,78 @@ def genFigure():
     extension = "png" if "--png" in sys.argv else "svg"
     figure, panel = args[0], (args[1] if len(args) > 1 else None)
 
-    fig = build_figure(figure, panel)
     output_dir = OUTPUT_DIR / f"figure{figure}"
+    _SOURCE["dir"] = output_dir / SOURCE_DATA_SUBDIR
+    if panel is None:  # a panel dropped from the figure leaves no data behind
+        shutil.rmtree(_SOURCE["dir"], ignore_errors=True)
+    fig = build_figure(figure, panel)
     output_dir.mkdir(parents=True, exist_ok=True)
     # No bbox_inches="tight": figures are drawn at their final print size.
     fig.savefig(output_dir / f"{panel or f'figure{figure}'}.{extension}")
     if panel is None:
         record_panel_letters(figure, fig)
+        _SOURCE["dir"].mkdir(parents=True, exist_ok=True)
+        (_SOURCE["dir"] / SOURCE_INPUTS).write_text(
+            yaml.safe_dump(sorted(str(p) for p in _SOURCE["inputs"]))
+        )
     print(f"Figure {' '.join(args)} is done after {time.time() - start:.1f} s.\n")
 
 
 def record_panel_letters(figure: str, fig: Figure) -> None:
-    """Set `fig<figure>` in `PANELS_PATH` to the letters of each panel
-    module's axes, as tagged by `_letter_axes` or `label_panels`."""
+    """Set `fig<figure>` in `PANELS_PATH` to `panel_letters(fig)`."""
+    panels = yaml.safe_load(PANELS_PATH.read_text()) or {}
+    panels[f"fig{figure}"] = panel_letters(fig)
+    PANELS_PATH.write_text(
+        yaml.safe_dump(panels, sort_keys=False, default_flow_style=None)
+    )
+
+
+def panel_letters(fig: Figure) -> dict[str, list[str]]:
+    """The letters of each panel module's axes, as tagged by `_letter_axes`
+    or `label_panels`."""
     letters: dict[str, list[str]] = {}
     for text in fig.findobj(Text):
         if module := text.get_gid():
             letters.setdefault(module, []).append(text.get_text().lower())
-    panels = yaml.safe_load(PANELS_PATH.read_text()) or {}
-    panels[f"fig{figure}"] = {module: sorted(ls) for module, ls in letters.items()}
-    PANELS_PATH.write_text(
-        yaml.safe_dump(panels, sort_keys=False, default_flow_style=None)
+    return {module: sorted(ls) for module, ls in letters.items()}
+
+
+# Each panel's EMBO source data, saved by `source_data` only while
+# `cccrise-fbuild` builds into `dir`: the panel module being drawn, the panels
+# whose old files were cleared this build, and the runner outputs read
+SOURCE_DATA_SUBDIR = "source_data"
+SOURCE_INPUTS = "inputs.yaml"
+_SOURCE: dict[str, Any] = {
+    "dir": None,
+    "panel": None,
+    "cleared": set(),
+    "inputs": set(),
+}
+
+
+def source_data(
+    name: str, data: pd.DataFrame | pd.Series, description: str, part: int | None = None
+) -> None:
+    """Save `data`, values the panel being drawn plots, as its EMBO source
+    data file `<name>.csv`, explained in the panel's README by `description`
+    (which should name any column whose meaning or units its name doesn't
+    make plain). Give the individual values behind any summary drawn. `part`
+    is the index of the panel module's lettered axes the file belongs to (1:
+    the C of a module lettered B-C); by default it spans them all."""
+    root, panel = _SOURCE["dir"], _SOURCE["panel"]
+    if root is None:
+        return
+    folder = root / panel
+    if panel not in _SOURCE["cleared"]:
+        shutil.rmtree(folder, ignore_errors=True)
+        _SOURCE["cleared"].add(panel)
+    folder.mkdir(parents=True, exist_ok=True)
+    frame = data.to_frame() if isinstance(data, pd.Series) else data
+    if frame.index.names != [None] or not frame.index.equals(pd.RangeIndex(len(frame))):
+        frame = frame.reset_index()  # labels kept as columns
+    frame.to_csv(folder / f"{name}.csv", index=False)
+    (folder / f"{name}.yaml").write_text(
+        yaml.safe_dump({"description": description, "part": part})
     )
 
 

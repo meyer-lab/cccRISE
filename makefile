@@ -1,4 +1,4 @@
-.PHONY: clean test ty profile_cpu manuscript
+.PHONY: clean test ty profile_cpu manuscript source_data
 
 # One package per figure (cccrise/figures/figure<N>/; a supplement is nested as
 # figure<N>/figureS_<name>/, or top-level if it supports no one figure), built
@@ -17,6 +17,11 @@ all: $(allOutput)
 .SECONDEXPANSION:
 output/%.svg: $$(wildcard $$(call fpkg,$$(notdir $$*))*.py $$(call fparent,$$(notdir $$*))_common.py) $(figureDeps)
 	uv run cccrise-fbuild $(patsubst figure%,%,$(notdir $*))
+
+# EMBO source data: one zip per figure in output/source_data/, from the panel
+# data each figure's build saves, plus docs/source_data_manifest.md
+source_data: all
+	uv run cccrise-sourcedata
 
 profile-cpu: .venv
 	@ echo "Profiling figure $(F)..."
