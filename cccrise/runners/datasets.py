@@ -124,6 +124,9 @@ class DatasetSpec:
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.key}.parquet"
 
+    def significance_entries_filename(self) -> str:
+        return f"significance_entries_{self.key}.nc"
+
     def nichenet_scores_filename(self) -> str:
         return f"nichenet_scores_{self.key}.parquet"
 
