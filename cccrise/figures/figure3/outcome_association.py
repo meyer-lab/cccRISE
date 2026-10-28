@@ -1,6 +1,8 @@
 """Condition loadings of the CP component associated with the 6-month
 outcome, per outcome level, with a patient's paired samples joined."""
 
+import pandas as pd
+
 from .. import common, style
 from . import _common as S
 
@@ -45,8 +47,9 @@ def plot_outcome_weights(ax, association: str, component: int) -> None:
     ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE)
 
 
-def _source_data(association: str, component: int) -> None:
-    """The plotted loadings, with each sample's patient, and their ANOVA."""
+def outcome_points(association: str, component: int) -> pd.DataFrame:
+    """The samples `plot_outcome_weights` draws: each one's loading and
+    level, with its patient."""
     spec = S.association(association)
     points = common.group_loadings(
         S.factors_adata(),
@@ -56,9 +59,14 @@ def _source_data(association: str, component: int) -> None:
         **{k: spec[k] for k in REGROUPING_KEYS if k in spec},
     )
     patients = S.condition_obs()[S.SPEC.patient_column]
+    return points.assign(Patient=patients.loc[points["Condition"]].to_numpy())
+
+
+def _source_data(association: str, component: int) -> None:
+    """The plotted loadings, with each sample's patient, and their ANOVA."""
     common.source_data(
         "cp_loadings_by_outcome",
-        points.assign(Patient=patients.loc[points["Condition"]].to_numpy()),
+        outcome_points(association, component),
         f"Each sample's read-depth-corrected loading on CP component {component} "
         f"and its level of '{association}', with its patient (a patient's "
         "samples are joined in the plot).",
