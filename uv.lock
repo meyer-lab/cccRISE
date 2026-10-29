@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32'",
@@ -223,7 +223,7 @@ requires-dist = [
     { name = "scrise", specifier = ">=1.7.0" },
     { name = "seaborn", specifier = "~=0.13.2" },
     { name = "shiny", specifier = ">=1.7.0" },
-    { name = "tensorly", specifier = ">=0.9.0" },
+    { name = "tensorly", specifier = ">=0.10.0" },
     { name = "tensorly-viz", specifier = ">=0.1.7" },
     { name = "vsparse", specifier = ">=0.2.0" },
     { name = "xarray", specifier = ">=2024.1.0" },
@@ -3296,15 +3296,15 @@ wheels = [
 
 [[package]]
 name = "tensorly"
-version = "0.9.0"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/57/39/76a859505dc5331cf43baba1fc011e85184c8ad0dbe01e6b01fe0f935ea2/tensorly-0.9.0.tar.gz", hash = "sha256:9b970dde47e2267a17b66a1444113e879c0bb77fb22f497a4207eb2b548ff792", size = 7327121, upload-time = "2024-11-12T14:54:20.504Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/65/b51b379b19f7472feedbe623522f80bcf44d8aa6ca206083c026112ced29/tensorly-0.10.0.tar.gz", hash = "sha256:56a2c55062b285f4c39c6dc603e4883e02d9d5d2c318fd36f5610967a4425e9c", size = 7343090, upload-time = "2026-10-05T16:12:26.62Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/ad/83380fb3c85ddf68c509059cf328374c1878f87382070475abc72867c7ba/tensorly-0.9.0-py3-none-any.whl", hash = "sha256:a393022ff1616a36c021496f46a955d94234d6bc8c42793f477a6be8849f4873", size = 7414316, upload-time = "2024-11-12T14:54:17.431Z" },
+    { url = "https://files.pythonhosted.org/packages/17/02/0269a1573b9f2ea6365e12b87debaf8b2cdad8e3fc4f84d9f4dc6be68adb/tensorly-0.10.0-py3-none-any.whl", hash = "sha256:90becb3d28023638ec60d19fbf8d87735b4ce1537fe3eb881897d69e107b882d", size = 7431542, upload-time = "2026-10-05T16:12:24.211Z" },
 ]
 
 [[package]]

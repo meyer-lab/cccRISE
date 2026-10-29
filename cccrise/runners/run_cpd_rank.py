@@ -17,7 +17,8 @@ With `REPLICATE_COMPRESS`, the sweep runs on a CANDELINC core, which is proven
 invariant to the three criteria.
 
 A fourth, imputation R2X (`rank_selection.cp_imputation_sweep`), refits every
-rank with entries held out. Masks select entries of the original tensor, so it
+rank with entries held out, once per fold split; its per-split values go to
+`cpd_imputation_<dataset>.parquet` beside the sweep table. Masks select entries of the original tensor, so it
 runs uncompressed, on the GPU when the dataset's backend is 'cupy'. Its masked
 fits carry a ridge (`IMPUTATION_OPTIONS["l2_reg"]`) that no other CP fit uses,
 so a ridge comparison then refits the full tensor with and without it at every
@@ -248,7 +249,9 @@ def run_cpd_rank_selection(
 
     The table has one row per (rank, component) when the ridge comparison runs,
     with per-rank columns repeated, and one row per rank otherwise; the 'Core*'
-    columns are filled at the canonical CP rank only.
+    columns are filled at the canonical CP rank only. Imputation R2X, one row
+    per (rank, fold split), is written beside it as
+    `spec.cpd_imputation_filename()`.
 
     Returns the sweep results, the output path, and the sidecar path.
     """
@@ -276,9 +279,10 @@ def run_cpd_rank_selection(
         tensor, ranks, compress, random_state=random_state, **fit_kwargs
     )
 
+    imputation_path = output_path.with_name(spec.cpd_imputation_filename())
     if imputation_repeats:
         print(f"3. Imputation R2X ({imputation_repeats} repeats)...")
-        imputation_df = cp_imputation_sweep(
+        imputation = cp_imputation_sweep(
             tensor,
             ranks,
             n_repeats=imputation_repeats,
@@ -288,7 +292,8 @@ def run_cpd_rank_selection(
             **IMPUTATION_OPTIONS,
             **CP_FIT_OPTIONS,
         )
-        df = df.merge(imputation_df, on="Rank")
+        print(f"   Writing {imputation_path}...")
+        imputation.to_parquet(imputation_path, index=False)
 
     if compare_ridge:
         print("4. Fitting CP with and without the imputation ridge...")
@@ -325,6 +330,7 @@ def run_cpd_rank_selection(
             "criteria_backend": "numpy",
             "backend": backend,
             "imputation_repeats": imputation_repeats,
+            "imputation_file": imputation_path.name,
             "imputation_options": IMPUTATION_OPTIONS,
             "compare_ridge": compare_ridge,
             "random_state": random_state,
@@ -334,6 +340,8 @@ def run_cpd_rank_selection(
         | compression_facts,
     )
     sidecar = write_metadata(output_path, metadata, header=HEADER)
+    if imputation_repeats:
+        write_metadata(imputation_path, metadata, header=HEADER)
     print(f"   Wrote provenance to {sidecar}")
     return df, output_path, sidecar
 

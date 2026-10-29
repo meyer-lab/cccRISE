@@ -43,6 +43,23 @@ def plot(axs):
     q = composition_q(df, celltypes)
     long = df.melt(id_vars="Status", var_name="Cell type", value_name="Fraction")
     counts = df["Status"].value_counts()
+    common.source_data(
+        "celltype_fraction_per_sample",
+        df.rename_axis("Sample")
+        .reset_index()
+        .melt(
+            id_vars=["Sample", "Status"], var_name="Cell type", value_name="Fraction"
+        ),
+        "Fraction of each BAL sample's cells annotated as each broad cell type, "
+        "with the sample's ALAD status.",
+    )
+    common.source_data(
+        "celltype_fraction_kruskal",
+        pd.DataFrame({"Cell type": celltypes, "Kruskal-Wallis q": q}),
+        "Kruskal-Wallis test of each cell type's per-sample fraction across the "
+        "three ALAD statuses; p-values Benjamini-Hochberg corrected across cell "
+        "types (q).",
+    )
     shared: dict[str, Any] = {
         "data": long,
         "x": "Cell type",

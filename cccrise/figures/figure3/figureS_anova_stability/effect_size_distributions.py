@@ -31,6 +31,7 @@ def plot(fig):
     outcome = common.OUTCOME_LABELS.get(S.outcome(), S.outcome())
     ax.set_ylabel(rf"Jackknife $\eta^2$ ({outcome})")
     ax.legend(handles=S.reference_legend_handles(), loc="upper center", ncols=2)
+    S.save_source_data()
 
 
 def makeFigure():

@@ -3,6 +3,7 @@ embedding across conditions."""
 
 from .. import common
 
+SCHEMATIC = True  # an illustration: no source data
 AXES = ("square",)
 
 

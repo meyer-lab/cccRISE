@@ -70,14 +70,21 @@ def _raw_dataset():
 
 
 @cache
-def celltype_loadings(method: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Mean sender (sc_B) and receiver (rc_C) loading per cell type (rows)
-    and component (columns), rows in `style.CELL_TYPES` order."""
-    ad = load_factors_to_anndata(
+def method_adata(method: str):
+    """The single-cell data with `method`'s fit attached: per-cell sender
+    (`obsm["sc_B"]`) and receiver (`obsm["rc_C"]`) weights, and its factors."""
+    return load_factors_to_anndata(
         comparison_output_dir(method) / SPEC.factors_filename,
         adata=_raw_dataset(),
         condition_column=SPEC.condition_column,
     )
+
+
+@cache
+def celltype_loadings(method: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Mean sender (sc_B) and receiver (rc_C) loading per cell type (rows)
+    and component (columns), rows in `style.CELL_TYPES` order."""
+    ad = method_adata(method)
     celltypes = ad.obs[SPEC.celltype_column].to_numpy()
     means = [
         pd.DataFrame(ad.obsm[key], index=celltypes).groupby(level=0).mean()

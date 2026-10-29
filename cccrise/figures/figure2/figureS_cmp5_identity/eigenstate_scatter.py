@@ -2,6 +2,8 @@
 component's sender (x) and receiver (y) loadings, with dashed lines through
 the origin."""
 
+import pandas as pd
+
 from ... import common, style
 from .. import _common as S
 
@@ -10,9 +12,22 @@ AXES = ("square",)
 
 def plot(axs):
     (ax,) = axs
-    projections = common.get_cell_projections(S.GRANULARITY_DATASET).obsm["projections"]
+    adata = common.get_cell_projections(S.GRANULARITY_DATASET)
+    projections = adata.obsm["projections"]
     x = projections[:, S.GRANULARITY_SENDER_EIGENSTATE - 1]
     y = projections[:, S.GRANULARITY_RECEIVER_EIGENSTATE - 1]
+    common.source_data(
+        "rise_eigenstate_projection_per_cell",
+        pd.DataFrame(
+            {
+                f"Eigenstate {S.GRANULARITY_SENDER_EIGENSTATE} projection": x,
+                f"Eigenstate {S.GRANULARITY_RECEIVER_EIGENSTATE} projection": y,
+            },
+            index=adata.obs_names.rename("Cell barcode"),
+        ),
+        "One row per cell: its projection onto the two RISE eigenstates with the "
+        "granularity component's largest sender (x) and receiver (y) loadings.",
+    )
     ax.scatter(
         x,
         y,

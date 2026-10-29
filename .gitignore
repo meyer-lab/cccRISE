@@ -172,6 +172,8 @@ nohup.out
 
 data/
 !cccrise/data/
+# Entry-level significance results (~100 MB), deposited rather than committed
+cccrise/data/validation_results/significance_entries_*.nc
 *.h5ad
 # Quarto manuscript build outputs
 manuscript/_output/

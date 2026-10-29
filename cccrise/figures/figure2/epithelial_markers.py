@@ -38,13 +38,38 @@ def stratifying_markers() -> dict[str, list[str]]:
     tested = S.present(g for genes in candidates.values() for g in genes)
     p = S.rank_genes(("sender",), "receiver")["sender"].loc[tested, "p"]
     detected, _ = S.group_expression(tested)
-    kept = (pd.Series(false_discovery_control(p), index=tested) < common.SIG_ALPHA) & (
+    q = pd.Series(false_discovery_control(p), index=tested)
+    kept = (q < common.SIG_ALPHA) & (
         np.abs(detected["sender"] - detected["receiver"]) >= MIN_DETECTED_DIFFERENCE
     )
     selected = {
         name: [g for g in genes if kept[g]] for name, genes in candidates.items()
     }
+    _save_tests(candidates, p, q, detected, kept)
     return {name: genes for name, genes in selected.items() if genes}
+
+
+def _save_tests(candidates, p, q, detected, kept) -> None:
+    common.source_data(
+        "de_sender_vs_receiver_subtype_markers",
+        pd.DataFrame(
+            {
+                "Subtype": name,
+                "Gene": g,
+                "Wilcoxon p": p[g],
+                "BH q": q[g],
+                "Fraction detected (sender)": detected.loc[g, "sender"],
+                "Fraction detected (receiver)": detected.loc[g, "receiver"],
+                "Shown": kept[g],
+            }
+            for name, genes in candidates.items()
+            for g in genes
+        ),
+        "Every epithelial subtype marker tested, sender against receiver cells: "
+        "two-sided Wilcoxon rank-sum p, Benjamini-Hochberg adjusted over all "
+        f"markers tested. Shown if q < {common.SIG_ALPHA} and the detected "
+        f"fractions differ by at least {MIN_DETECTED_DIFFERENCE}.",
+    )
 
 
 def makeFigure():

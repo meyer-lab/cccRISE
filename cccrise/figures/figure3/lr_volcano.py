@@ -6,6 +6,7 @@ named where p < 0.05, and its next `N_SHOWN - N_TOP` set off from the other
 components' pairs."""
 
 import numpy as np
+import pandas as pd
 from adjustText import adjust_text
 
 from ...factors import load_factors_netcdf
@@ -32,6 +33,16 @@ def plot(axs):
         )
         for k, r in result.items()
     }
+    common.source_data(
+        "top_pairs_by_component",
+        _volcano_data(result),
+        f"Every CP component's {N_SHOWN} most heavily weighted LR pairs (by "
+        f"|loading| rank), in their own component's context: {CASE_DISPLAY} and "
+        f"{CONTROL_DISPLAY} mean depth-normalized scores, the log2 ratio "
+        "plotted (means offset by 1e-3 x the component's median positive mean), "
+        "and the one-sided patient-permutation p. Per-condition scores of "
+        f"component {COMPONENT}'s top pairs are in the permutation panel's data.",
+    )
     others = [v for k, v in points.items() if k != COMPONENT]
     x, y = points[COMPONENT]
     tiers = [  # x, y, size, color, label
@@ -80,6 +91,28 @@ def plot(axs):
         fontsize=style.FONT_SIZE_DENSE,
         title_fontsize=style.FONT_SIZE_DENSE,
     )
+
+
+def _volcano_data(result: dict) -> pd.DataFrame:
+    lr_names = load_factors_netcdf(SPEC.factors_path())["lr_pair"].values.astype(str)
+    frames = []
+    for k, r in result.items():
+        shown = r["order"][:N_SHOWN]
+        case, control = r["means"]
+        frames.append(
+            pd.DataFrame(
+                {
+                    "Component": k,
+                    "Loading rank": np.arange(1, N_SHOWN + 1),
+                    "LR pair": lr_names[shown],
+                    f"{CASE_DISPLAY} mean": case[shown],
+                    f"{CONTROL_DISPLAY} mean": control[shown],
+                    "log2 mean ratio": mean_log2_ratio(r)[shown],
+                    "Permutation p": r["p"][shown],
+                }
+            )
+        )
+    return pd.concat(frames)
 
 
 def mean_log2_ratio(component: dict) -> np.ndarray:

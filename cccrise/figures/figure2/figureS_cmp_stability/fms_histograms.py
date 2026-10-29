@@ -14,6 +14,14 @@ BINS = np.linspace(0, 1, 11)
 def plot(fig):
     df = S.stability()
     bimodal = S.bimodal_components(df)
+    shown = df.set_index(["Stage", "Component"]).loc[bimodal].reset_index()
+    common.source_data(
+        "jackknife_fms_bimodal_components",
+        S.replicate_table(shown),
+        "One row per leave-one-sample-out jackknife replicate of each RISE (model "
+        "RISE) and CP (model CPD) component with a bimodal factor match score "
+        "(FMS) distribution, the values histogrammed (bins of 0.1).",
+    )
     n_cols = min(N_COLS, max(1, len(bimodal)))
     n_rows = max(1, -(-len(bimodal) // n_cols))
     grid = fig.subplots(n_rows, n_cols, sharex=True, squeeze=False)
