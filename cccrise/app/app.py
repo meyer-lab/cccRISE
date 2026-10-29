@@ -417,7 +417,8 @@ def server(input, output, session):
             plot_cpd_fit_r2x(
                 sweeps.cpd, axes[1], color=style.COLORS["fit_full"], marker=None
             )
-            plot_cpd_imputation_r2x(sweeps.cpd, axes[1])
+            if sweeps.cpd_imputation is not None:
+                plot_cpd_imputation_r2x(sweeps.cpd_imputation, axes[1])
             axes[1].set_title("CPD Fit and Imputation $R^2X$")
             plot_collinearity(
                 sweeps.cpd, axes[2], colors=(colors.GREY, colors.BLUE, colors.ORANGE)
