@@ -68,14 +68,9 @@ This study did not generate new unique reagents.
 **Data and Code Availability**
 
 - The single-cell gene expression and clinical annotations analyzed here were obtained from Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
-  <!-- TODO(#226): add the dataset's public accession, or how to access the patient-level data. -->
-
-- The fitted factors and analysis results underlying every figure (rank selection, stability, permutation significance including every tested entry, and NicheNet validation), each with a record of the code version and parameters that produced it, are deposited at Zenodo (DOI to be added).
-  <!-- TODO(#226): upload `make deposit`'s output/deposit/cccrise_results.zip and add its DOI. -->
 
 - Source data for Figs 2--3 and Figs EV1--EV3 are provided with this article.
 
-- CCC-RISE and all analyses were implemented in Python 3.13 and are available at https://github.com/meyer-lab/cccRISE; the version used to generate the figures is archived at Zenodo (DOI to be added).
-  <!-- TODO(#226): tag the release the figures were built from, archive it on Zenodo, and add its DOI. -->
+- CCC-RISE and all analyses were implemented in Python 3.13 and are available at https://github.com/meyer-lab/cccRISE.
 
 - Any additional information required to reproduce this work is available from the Lead Contact.

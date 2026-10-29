@@ -1,4 +1,4 @@
-.PHONY: clean test ty profile_cpu manuscript source_data source_data_check deposit
+.PHONY: clean test ty profile_cpu manuscript source_data source_data_check
 
 # One package per figure (cccrise/figures/figure<N>/; a supplement is nested as
 # figure<N>/figureS_<name>/, or top-level if it supports no one figure), built
@@ -30,10 +30,6 @@ source_data_check: source_data
 	$(MAKE) -B source_data
 	diff -r -x '*.zip' output/source_data_previous output/source_data
 	@echo "Source data reproduced exactly"
-
-# Results (factor fits, runner outputs) bundled for public deposit
-deposit:
-	uv run cccrise-deposit
 
 profile-cpu: .venv
 	@ echo "Profiling figure $(F)..."
