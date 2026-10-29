@@ -4,7 +4,9 @@ built (`figures.common.source_data`) and its packaging into panel folders
 (`figures.source_data`).
 """
 
+import zipfile
 from types import SimpleNamespace
+from xml.etree import ElementTree
 
 import numpy as np
 import pandas as pd
@@ -137,3 +139,25 @@ def test_supplements_are_labeled_by_class():
     assert labels["S_alad_cohort"] == ("Figure EV1", "EV1")
     assert labels["S_rise_factor_matrices"] == ("Appendix Figure S1", "S1")
     assert "S_imputation_ridge" not in labels  # skipped
+
+
+def test_checklist_fills_the_embo_template(tmp_path):
+    rows = pd.DataFrame(
+        {
+            "Figure": ["Fig. 1", "Fig. 2"],
+            "Panel": ["A", "C"],
+            "Provided?": [0, 1],
+            "Source Data Category": ["N/A (schematics)", "Numerical data"],
+        }
+    )
+    packager.fill_checklist(rows, tmp_path / "checklist.xlsx")
+    with zipfile.ZipFile(tmp_path / "checklist.xlsx") as filled:
+        sheet = filled.read(packager.CHECKLIST_SHEET).decode()
+        with zipfile.ZipFile(packager.CHECKLIST_TEMPLATE) as template:
+            assert filled.namelist() == template.namelist()  # checkboxes, drawings
+    ElementTree.fromstring(sheet)  # still well-formed
+    # Fig. 1 is columns F-H, Fig. 2 I-K; panel A is row 8
+    assert '<c r="G8" s="13" t="b"><v>0</v></c>' in sheet
+    assert '<c r="J10" s="13" t="b"><v>1</v></c>' in sheet
+    assert "<t>Numerical data</t>" in sheet and "<t>MSB-2026-13900</t>" in sheet
+    assert packager.column_name(27) == "AA"
