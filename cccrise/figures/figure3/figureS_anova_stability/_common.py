@@ -51,6 +51,42 @@ def reference() -> pd.DataFrame:
     )
 
 
+#: Columns of `replicates` exported as source data
+REPLICATE_COLUMNS = [
+    "Replicate",
+    "Seed",
+    "LeftOut",
+    "Component",
+    "MatchedComponent",
+    "FMS",
+    "F",
+    "EtaSquared",
+    "P",
+    "PAdj",
+]
+
+
+def save_source_data() -> None:
+    """Every jackknife replicate's ANOVA per component, and the full-cohort
+    reference, as this figure's panels draw them."""
+    common.source_data(
+        "anova_jackknife_replicates",
+        replicates()[REPLICATE_COLUMNS],
+        "One row per (leave-one-patient-out replicate, CP component): the "
+        "left-out patient (LeftOut), the refit component matched to the "
+        "full-cohort component (MatchedComponent, by factor match score FMS), "
+        f"and its one-way ANOVA against {outcome()}. P is raw; PAdj is "
+        "Benjamini-Hochberg corrected across the replicate's components.",
+    )
+    common.source_data(
+        "anova_full_cohort",
+        reference(),
+        f"One row per CP component: its full-cohort one-way ANOVA against "
+        f"{outcome()} (the diamonds). P is raw; PAdj is Benjamini-Hochberg "
+        f"corrected across components; filled where PAdj < {alpha():g}.",
+    )
+
+
 def alpha() -> float:
     return float(metadata()["alpha"])
 

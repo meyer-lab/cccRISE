@@ -736,7 +736,7 @@ def stability_replicates(
     other_label: str | None = None,
     patient_column: str | None = None,
     axes: tuple[str, ...] = DEFAULT_AXES,
-    n_replicates: int = 20,
+    n_replicates: int = 100,
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
@@ -790,7 +790,7 @@ def stability_replicates(
         them (`condition_column` when None).
     axes : tuple[str, ...], default=DEFAULT_AXES
         Which axes to run.
-    n_replicates : int, default=20
+    n_replicates : int, default=100
         Replicates on `SEED_AXIS`; `JACKKNIFE_AXIS` always runs one per
         patient.
     rise_n_iter_max, rise_tol : int, float

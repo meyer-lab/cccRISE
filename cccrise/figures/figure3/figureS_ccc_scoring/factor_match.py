@@ -13,22 +13,55 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     return float(abs(a @ b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
-def similarity_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """(component x alternate method) match scores and mean B/C |cosine|."""
+def similarity() -> pd.DataFrame:
+    """One row per (alternate method, default component): its matched
+    component, the match score, and the paired components' sender (B) and
+    receiver (C) |cosine| and their mean."""
     ref, _ = S.cp_factors(S.DEFAULT_SCORE)
-    match, cosine = {}, {}
+    frames = []
     for method in S.ALT_SCORES:
         alt, _ = S.cp_factors(method)
-        scores = S.match_components(method).set_index("Component")["MatchScore"]
-        match[method] = scores
-        cosine[method] = pd.Series(
-            [
-                np.mean([_cosine(ref[m][:, i], alt[m][:, j]) for m in (1, 2)])
+        frame = S.match_components(method)[
+            ["Component", "MatchedComponent", "MatchScore"]
+        ].assign(Method=S.SCORE_LABELS[method])
+        for mode, name in ((1, "SenderCosine"), (2, "ReceiverCosine")):
+            frame[name] = [
+                _cosine(ref[mode][:, i], alt[mode][:, j])
                 for i, j in S.matched_pairs(method)
-            ],
-            index=scores.index,
-        )
-    return pd.DataFrame(match), pd.DataFrame(cosine)
+            ]
+        frame["MeanCosine"] = frame[["SenderCosine", "ReceiverCosine"]].mean(axis=1)
+        frames.append(frame)
+    return pd.concat(frames, ignore_index=True)
+
+
+def similarity_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(component x alternate method) match scores and mean B/C |cosine|,
+    saved as source data."""
+    table = similarity()
+    common.source_data(
+        "factor_match_scores",
+        table[["Method", "Component", "MatchedComponent", "MatchScore"]],
+        "One row per (alternate score, default-score CP component): the "
+        "alternate score's paired component and their match score (factor "
+        "match score on the condition and LR modes).",
+        part=0,
+    )
+    common.source_data(
+        "factor_match_cosines",
+        table.drop(columns="MatchScore"),
+        "One row per (alternate score, default-score CP component): the |cosine| "
+        "between the paired components' sender (B) and receiver (C) eigenstate "
+        "loadings, and their mean (the bars).",
+        part=1,
+    )
+    methods = {S.SCORE_LABELS[m]: m for m in S.ALT_SCORES}
+    match, cosine = (
+        table.pivot(index="Component", columns="Method", values=v).rename(
+            columns=methods
+        )[S.ALT_SCORES]
+        for v in ("MatchScore", "MeanCosine")
+    )
+    return match, cosine
 
 
 def plot(fig):

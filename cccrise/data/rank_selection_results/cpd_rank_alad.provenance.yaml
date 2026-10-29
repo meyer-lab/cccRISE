@@ -28,6 +28,7 @@ cp_compression_options:
 criteria_backend: numpy
 backend: cupy
 imputation_repeats: 10
+imputation_file: cpd_imputation_alad.parquet
 imputation_options:
   n_folds: 10
   l2_reg: 0.1
@@ -47,5 +48,5 @@ r2x_pf2: 0.03151461990700155
 core_shape: [22, 17, 17, 22]
 compression_ratio: 49.81611570247934
 retained_fraction: 0.8062849668215918
-git_sha: 3dba548c7fc369e9da76e1dce9b5a9196bd608e6
-generated: '2026-10-22T01:39:10+00:00'
+git_sha: 86549917fb8e7433439abde1b07d5dc56ef39c88-dirty
+generated: '2026-10-29T02:02:07+00:00'

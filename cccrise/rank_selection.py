@@ -244,25 +244,23 @@ def cp_imputation_sweep(
     backend: str = "numpy",
     **parafac_kwargs,
 ) -> pd.DataFrame:
-    """`cp_imputation_r2x` at every rank, as mean and SD over `n_repeats` fold splits.
+    """`cp_imputation_r2x` at every rank, once per fold split.
 
-    Repeat `r` uses the same split at every rank. Columns: 'Rank',
-    'ImputationR2X', 'ImputationR2XSD'.
+    Repeat `r` uses the same split (seeded `random_state + r`) at every rank.
+    Columns: 'Rank', 'Repeat', 'Seed', 'ImputationR2X'.
     """
-    rows = [
+    return pd.DataFrame(
         {
             "Rank": rank,
+            "Repeat": r,
+            "Seed": random_state + r,
             "ImputationR2X": cp_imputation_r2x(
                 tensor, rank, n_folds, random_state + r, backend, **parafac_kwargs
             ),
         }
         for r in range(n_repeats)
         for rank in ranks
-    ]
-    by_rank = pd.DataFrame(rows).groupby("Rank")["ImputationR2X"]
-    return pd.DataFrame(
-        {"ImputationR2X": by_rank.mean(), "ImputationR2XSD": by_rank.std()}
-    ).reset_index()
+    )
 
 
 def candelinc_compress(

@@ -36,6 +36,12 @@ def plot(axs):
     stats = stats.sort_values(
         "Stage", key=lambda s: s.map(STAGE_ORDER.index), kind="stable"
     )
+    common.source_data(
+        "stability_aggregate_fms_summary",
+        stats,
+        "Median and 2.5-97.5 percentile interval of the aggregate FMS over "
+        "replicates, per pipeline stage and stability axis.",
+    )
     # Points grouped by stage, one per stability axis, a blank slot between.
     stages = list(dict.fromkeys(stats["Stage"]))
     within = stats.groupby("Stage").cumcount().to_numpy()
@@ -95,6 +101,13 @@ def _plot_replicates(ax, stability, positions: dict) -> None:
     """Each replicate's aggregate FMS (its mean over components), jittered
     about its (stage, axis) position."""
     per_replicate = stability.groupby(["Stage", "Axis", "Replicate"])["FMS"].mean()
+    common.source_data(
+        "stability_aggregate_fms_by_replicate",
+        per_replicate.rename("Aggregate FMS"),
+        "Each stability replicate's aggregate FMS (mean factor match score to "
+        "the full-cohort fit over components), per pipeline stage (RISE or CP) "
+        "and stability axis.",
+    )
     rng = np.random.default_rng(0)
     for (stage, axis), fms in per_replicate.groupby(["Stage", "Axis"]):
         ax.scatter(

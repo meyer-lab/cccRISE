@@ -3,6 +3,7 @@ pair, and condition loadings."""
 
 from .. import common
 
+SCHEMATIC = True  # an illustration: no source data
 AXES = ("full",)
 
 

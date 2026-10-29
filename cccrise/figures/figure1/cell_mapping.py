@@ -3,6 +3,7 @@ loadings combined with RISE projections into per-cell weights."""
 
 from .. import common
 
+SCHEMATIC = True  # an illustration: no source data
 AXES = ("rect",)
 
 

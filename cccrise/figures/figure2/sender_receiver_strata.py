@@ -21,6 +21,7 @@ def plot(axs):
         rest_label="Rest",
     )
     _plot_boundary(ax, sender.max(), receiver.max())
+    common.source_data("cell_weights_groups", S.cell_table(), S.CELL_TABLE_DESCRIPTION)
     handles, labels = ax.get_legend_handles_labels()  # rest first: drawn beneath
     legend = common.legend(
         ax,

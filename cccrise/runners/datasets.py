@@ -112,6 +112,9 @@ class DatasetSpec:
     def cpd_rank_filename(self) -> str:
         return f"cpd_rank_{self.key}.parquet"
 
+    def cpd_imputation_filename(self) -> str:
+        return f"cpd_imputation_{self.key}.parquet"
+
     def stability_filename(self) -> str:
         return f"component_stability_{self.key}.parquet"
 
@@ -120,6 +123,9 @@ class DatasetSpec:
 
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.key}.parquet"
+
+    def significance_entries_filename(self) -> str:
+        return f"significance_entries_{self.key}.nc"
 
     def nichenet_scores_filename(self) -> str:
         return f"nichenet_scores_{self.key}.parquet"
