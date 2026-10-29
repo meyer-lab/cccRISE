@@ -14,9 +14,7 @@ those `_panels.yml` has letters for, supplements those `_quarto.yml` lists,
 and letters come from `_panels.yml`, as each figure's last full build
 recorded them. Schematic panels (`SCHEMATIC = True`) need no data, and a
 figure of only those gets no zip. Every panel is listed in the manifest
-(`docs/source_data_manifest.md`), and every main-figure panel letter in
-`checklist.csv` and the filled-in EMBO Source Data Checklist
-(`EMBO_Source_Data_Checklist.xlsx`, from the template in `docs/`). Exits non-zero,
+(`docs/source_data_manifest.md`). Exits non-zero,
 writing no zips, if any panel's data is missing or malformed, or a figure
 hasn't been built in full.
 """
@@ -28,9 +26,7 @@ import re
 import shutil
 import sys
 import textwrap
-import zipfile
 from pathlib import Path
-from xml.sax.saxutils import escape
 
 import pandas as pd
 import yaml
@@ -48,17 +44,6 @@ SUPPLEMENT_CLASSES = (
 )
 OUTPUT_DIR = common.OUTPUT_DIR / "source_data"
 MANIFEST_PATH = REPO_ROOT / "docs" / "source_data_manifest.md"
-# The checklist's source data category of each panel status
-CHECKLIST_CATEGORIES = {"data": "Numerical data", "schematic": "N/A (schematics)"}
-# EMBO's Source Data Checklist, as downloaded, and where its main figures sheet
-# ("MAIN FIGURES") puts each figure: a block of three columns (panel,
-# provided?, category) per figure from column F, one row per panel letter
-CHECKLIST_TEMPLATE = REPO_ROOT / "docs" / "EMBO_Source_Data_Checklist_template.xlsx"
-CHECKLIST_SHEET = "xl/worksheets/sheet2.xml"
-MANUSCRIPT_NUMBER = "MSB-2026-13900"
-MANUSCRIPT_NUMBER_CELL = "E2"
-FIRST_FIGURE_COLUMN = 6  # F
-FIRST_PANEL_ROW = 8  # panel A
 CODE_URL = "https://github.com/meyer-lab/cccRISE"
 
 
@@ -91,9 +76,6 @@ def main() -> None:
     manifest = pd.DataFrame(rows)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     manifest.to_csv(OUTPUT_DIR / "manifest.csv", index=False)
-    rows = checklist(manifest)
-    rows.to_csv(OUTPUT_DIR / "checklist.csv", index=False)
-    fill_checklist(rows, OUTPUT_DIR / "EMBO_Source_Data_Checklist.xlsx")
     if not wanted:
         MANIFEST_PATH.write_text(manifest_markdown(manifest))
     print(manifest[["Figure", "Panel", "Module", "Status", "Size (KB)"]].to_string())
@@ -318,80 +300,3 @@ def manifest_markdown(manifest: pd.DataFrame) -> str:
             cells = [str(c).replace("|", "\\|") for c in row]
             lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines) + "\n"
-
-
-def checklist(manifest: pd.DataFrame) -> pd.DataFrame:
-    """The EMBO Source Data Checklist's rows: each main-figure panel letter,
-    whether source data is provided, and its category ('Numerical data', or
-    'N/A (schematics)'; blank where missing)."""
-    rows = {}
-    for r in manifest[manifest["Figure"].str.fullmatch(r"Figure \d+")].itertuples():
-        figure = r.Figure.removeprefix("Figure ")
-        for letter in letters_of(r.Panel.removeprefix(figure)):
-            if rows.get((figure, letter), {}).get("Provided?") == 1:
-                continue  # a letter's data may be split across folders
-            rows[figure, letter] = {
-                "Figure": f"Fig. {figure}",
-                "Panel": letter,
-                "Provided?": int(r.Status == "data"),
-                "Source Data Category": CHECKLIST_CATEGORIES.get(r.Status, ""),
-            }
-    return pd.DataFrame(rows.values())
-
-
-def letters_of(panels: str) -> list[str]:
-    """The letters of a `span`: 'B' -> [B], 'B-D' -> [B, C, D], 'B,D' -> [B, D]."""
-    if "-" in panels:
-        first, last = panels.split("-")
-        return [chr(c) for c in range(ord(first), ord(last) + 1)]
-    return panels.split(",")
-
-
-def fill_checklist(rows: pd.DataFrame, path: Path) -> None:
-    """EMBO's checklist template with the manuscript number and `checklist`
-    `rows` filled in. Cells are edited in the sheet's XML in place, keeping the
-    template's in-cell checkboxes and drawings, which openpyxl would drop."""
-    with zipfile.ZipFile(CHECKLIST_TEMPLATE) as template:
-        sheet = template.read(CHECKLIST_SHEET).decode()
-        for ref, value in checklist_cells(rows).items():
-            sheet = set_cell(sheet, ref, value)
-        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as out:
-            for item in template.infolist():
-                data = sheet.encode() if item.filename == CHECKLIST_SHEET else None
-                out.writestr(item, data or template.read(item))
-
-
-def checklist_cells(rows: pd.DataFrame) -> dict[str, str | bool]:
-    """{cell reference: value} of the manuscript number and each panel's
-    provided checkbox and source data category."""
-    cells: dict[str, str | bool] = {MANUSCRIPT_NUMBER_CELL: MANUSCRIPT_NUMBER}
-    for r in rows.to_dict("records"):
-        figure = int(r["Figure"].removeprefix("Fig. "))
-        column = FIRST_FIGURE_COLUMN + 3 * (figure - 1)
-        row = FIRST_PANEL_ROW + ord(r["Panel"]) - ord("A")
-        cells[f"{column_name(column + 1)}{row}"] = bool(r["Provided?"])
-        if r["Source Data Category"]:
-            cells[f"{column_name(column + 2)}{row}"] = r["Source Data Category"]
-    return cells
-
-
-def set_cell(sheet: str, ref: str, value: str | bool) -> str:
-    """The sheet XML with cell `ref` set to `value` (a checkbox's boolean, or
-    text), keeping the cell's style."""
-    match = re.search(rf'<c r="{ref}"( s="\d+")?[^>]*?(/>|>.*?</c>)', sheet)
-    assert match, f"checklist template has no cell {ref}"
-    if isinstance(value, bool):
-        content = f' t="b"><v>{int(value)}</v></c>'
-    else:
-        content = f' t="inlineStr"><is><t>{escape(value)}</t></is></c>'
-    cell = f'<c r="{ref}"{match[1] or ""}{content}'
-    return sheet[: match.start()] + cell + sheet[match.end() :]
-
-
-def column_name(index: int) -> str:
-    """A spreadsheet column's letters from its 1-based index: 6 -> 'F', 27 -> 'AA'."""
-    name = ""
-    while index:
-        index, remainder = divmod(index - 1, 26)
-        name = chr(ord("A") + remainder) + name
-    return name
