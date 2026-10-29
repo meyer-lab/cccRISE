@@ -18,12 +18,21 @@ Analyses plotted (with provenance in the zip's README):
 ## Figure 2
 
 Analyses plotted (with provenance in the zip's README):
+- `cccrise/data/factors/bal_alad_factors.nc`
+- `cccrise/data/rank_selection_results/cpd_imputation_alad.parquet`
+- `cccrise/data/rank_selection_results/cpd_rank_alad.parquet`
+- `cccrise/data/rank_selection_results/rise_rank_alad.parquet`
+- `cccrise/data/validation_results/component_stability_alad.parquet`
+- `cccrise/data/validation_results/nichenet_null_alad.parquet`
+- `cccrise/data/validation_results/nichenet_scores_alad.parquet`
+- `cccrise/data/validation_results/significance_lr_alad.parquet`
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
 | 2A | cccrise/figures/figure2/rise_rank_selection.py | data | bicv_r2x_by_rise_rank.csv | 50.7 | RISE rank selection by bi-cross-validation, from ``uv run cccrise-riserank``. |
-| 2B-C | cccrise/figures/figure2/cp_rank_selection.py | missing |  | 0.0 | CP rank selection: fit and imputation R2X, and component collinearity, from ``uv run cccrise-cpdrank`` (on the canonical RISE fit's tensor). |
-| 2D | cccrise/figures/figure2/aggregate_fms.py | data | stability_aggregate_fms_by_replicate.csv; stability_aggregate_fms_summary.csv | 5.7 | Aggregate RISE and CP stability per stability axis (the Methods' stability metric: a replicate's mean FMS over components), as the median with a 2.5-97.5 percentile band over replicates, each replicate's aggregate FMS jittered beneath, from ``uv run cccrise-stability``. |
+| 2B | cccrise/figures/figure2/cp_rank_selection.py | data | cp_fit_r2x_by_rank.csv; cp_imputation_r2x_by_rank.csv | 5.0 | CP rank selection: fit and imputation R2X, and component collinearity, from ``uv run cccrise-cpdrank`` (on the canonical RISE fit's tensor). |
+| 2C | cccrise/figures/figure2/cp_rank_selection.py | data | cp_collinearity_by_rank.csv | 0.3 | CP rank selection: fit and imputation R2X, and component collinearity, from ``uv run cccrise-cpdrank`` (on the canonical RISE fit's tensor). |
+| 2D | cccrise/figures/figure2/aggregate_fms.py | data | stability_aggregate_fms_by_replicate.csv; stability_aggregate_fms_summary.csv | 11.1 | Aggregate RISE and CP stability per stability axis (the Methods' stability metric: a replicate's mean FMS over components), as the median with a 2.5-97.5 percentile band over replicates, each replicate's aggregate FMS jittered beneath, from ``uv run cccrise-stability``. |
 | 2E | cccrise/figures/figure2/cp_factor_matrices.py | data | cp_condition_loadings.csv | 5.6 | The canonical ALAD CP factor matrices: condition (A), sender eigenstate (B), receiver eigenstate (C), and LR pair (D) loadings per component, each divided by its largest magnitude within the component (keeping sign). |
 | 2F | cccrise/figures/figure2/cp_factor_matrices.py | data | cp_sender_eigenstate_loadings.csv | 1.8 | The canonical ALAD CP factor matrices: condition (A), sender eigenstate (B), receiver eigenstate (C), and LR pair (D) loadings per component, each divided by its largest magnitude within the component (keeping sign). |
 | 2G | cccrise/figures/figure2/cp_factor_matrices.py | data | cp_receiver_eigenstate_loadings.csv | 1.8 | The canonical ALAD CP factor matrices: condition (A), sender eigenstate (B), receiver eigenstate (C), and LR pair (D) loadings per component, each divided by its largest magnitude within the component (keeping sign). |

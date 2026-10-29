@@ -57,3 +57,9 @@ figS_nichenet:
 figS_imputation_ridge:
   ridge_r2x: [a]
   ridge_fms: [b]
+figS_alad_pacmaps:
+  pacmaps: [a, b]
+  weight_pacmaps: [c, d, e]
+figS_celltype_eigenstates: {}
+figS_comparators:
+  method_comparison: [a]
