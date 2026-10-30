@@ -3,7 +3,7 @@ and CP panels, and the bimodality rule its histogram panel selects components
 by, from ``uv run cccrise-stability``.
 
 Only the jackknife is shown: seed refits reproduce every component at FMS
-~1.0, so they appear only in Figure 2's aggregate panel.
+~1.0, so they appear only in the aggregate panel.
 """
 
 from functools import cache

@@ -6,7 +6,7 @@ fig1:
 fig2:
   rise_rank_selection: [a]
   cp_rank_selection: [b, c]
-  aggregate_fms: [d]
+  cp_minima: [d]
   cp_factor_matrices: [e, f, g, h]
   permutation_lr_significance: [i, j]
   nichenet: [k]
@@ -26,9 +26,10 @@ figS_rise_factor_matrices:
   factors: [a]
   genes: [b]
 figS_cmp_stability:
-  rise_fms: [a]
-  cpd_fms: [b]
-  fms_histograms: [c]
+  aggregate_fms: [a]
+  rise_fms: [b]
+  cpd_fms: [c]
+  fms_histograms: [d]
 figS_cmp5_identity:
   eigenstate_scatter: [a]
   cmp_eigenstate_loadings: [b]
@@ -63,3 +64,8 @@ figS_alad_pacmaps:
 figS_celltype_eigenstates: {}
 figS_comparators:
   method_comparison: [a]
+figS_rank_selection:
+  rise_rank_selection: [a]
+  cp_r2x_starts: [b]
+  cp_collinearity: [c]
+  cp_minima: [d]

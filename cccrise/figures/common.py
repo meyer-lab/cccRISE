@@ -141,10 +141,23 @@ def load_runner_output(
 
 
 def load_cpd_rank(dataset: str) -> pd.DataFrame:
-    """`cccrise-cpdrank`'s table for `dataset`: one row per (rank, component)
-    when its ridge comparison ran, with per-rank columns repeated (see
-    `per_rank`)."""
+    """`cccrise-cpdrank`'s sweep for `dataset`: one row per CP rank and
+    seeded start (see `production_fits`)."""
     return load_runner_output(DATASETS[dataset].cpd_rank_filename(), RANK_SELECTION_DIR)
+
+
+def production_fits(sweep: pd.DataFrame) -> pd.DataFrame:
+    """The production start's row (start 0) at each rank of a `load_cpd_rank`
+    sweep."""
+    return sweep[sweep["Start"] == 0]
+
+
+def load_cpd_ridge(dataset: str) -> pd.DataFrame:
+    """`cccrise-cpdrank`'s ridge comparison for `dataset`: one row per (rank,
+    component), with per-rank columns repeated (see `per_rank`)."""
+    return load_runner_output(
+        DATASETS[dataset].cpd_ridge_filename(), RANK_SELECTION_DIR
+    )
 
 
 def load_cpd_imputation(dataset: str) -> pd.DataFrame:
@@ -156,7 +169,7 @@ def load_cpd_imputation(dataset: str) -> pd.DataFrame:
 
 
 def per_rank(sweep: pd.DataFrame) -> pd.DataFrame:
-    """One row per rank of a `load_cpd_rank` table."""
+    """One row per rank of a `load_cpd_ridge` table."""
     return sweep.drop_duplicates("Rank")
 
 
@@ -672,54 +685,6 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     ax.set_ylabel("$R^2X$")
     ax.set_ylim(top=1.25 * ax.dataLim.y1)  # headroom for the legend
     ax.legend(loc="upper right")
-
-
-def plot_collinearity(
-    sweep: pd.DataFrame,
-    ax: plt.Axes,
-    rank: int | None = None,
-    colors: tuple[str, str, str] = (
-        style.COLORS["muted"],
-        style.COLORS["emphasis"],
-        style.COLORS["up"],
-    ),
-):
-    """Number of modes the most collinear component pair is collinear in, per
-    CP rank, marked by whether that pair duplicates or cancels itself. A
-    canceling pair (collinear in >= 2 modes with opposing signs) flags a
-    degenerate fit. `colors` is (no collinear pair, near-duplicate,
-    canceling)."""
-    none_color, duplicate_color, canceling_color = colors
-    ax.plot(
-        sweep["Rank"],
-        sweep["MaxModesCollinear"],
-        color=style.COLORS["muted"],
-        zorder=1,
-    )
-    # NaN = no collinear pair; `fillna` keeps those rows out of both masks.
-    flag = sweep["WorstPairCanceling"]
-    none_found = flag.isna()
-    canceling = flag.fillna(False).astype(bool) & ~none_found
-    for mask, color, marker, label in (
-        (none_found, none_color, "o", "None collinear"),
-        (~canceling & ~none_found, duplicate_color, "o", "Near-duplicate"),
-        (canceling, canceling_color, "D", "Canceling"),
-    ):
-        ax.scatter(
-            sweep.loc[mask, "Rank"],
-            sweep.loc[mask, "MaxModesCollinear"],
-            color=color,
-            marker=marker,
-            s=style.POINT_SIZE,
-            label=label,
-            zorder=2,
-        )
-    mark_rank(ax, rank)
-    ax.set_ylim(-0.3, 7.5)  # headroom for the legend
-    ax.set_yticks(range(5))
-    ax.set_xlabel("CP rank")
-    ax.set_ylabel("Modes collinear")
-    ax.legend(loc="upper right", fontsize=style.FONT_SIZE_DENSE)
 
 
 # --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------

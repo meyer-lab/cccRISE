@@ -9,6 +9,7 @@ from cccrise.import_data import (
     ALAD_PATIENT_OF,
     add_alad_patient_id,
     add_cond_idxs,
+    cap_cells_per_condition,
     import_ligand_receptor_pairs,
     prepare_dataset,
     use_gene_symbols,
@@ -205,3 +206,63 @@ def test_add_alad_patient_id_leaves_a_singleton_dsco_id_unpaired():
 
     assert list(result.obs["patient_id"]) == dsco_ids
     assert set(ALAD_PATIENT_OF) & set(dsco_ids) == set()
+
+
+def _conditions(sizes: dict[str, int]) -> np.ndarray:
+    return np.concatenate([[name] * n for name, n in sizes.items()])
+
+
+def test_cap_cells_per_condition_caps_large_and_keeps_small_conditions():
+    conditions = _conditions({"big": 50, "small": 5, "exact": 10})
+
+    keep = cap_cells_per_condition(conditions, max_cells=10, seed=0)
+
+    kept = pd.Series(conditions[keep]).value_counts()
+    assert kept["big"] == 10
+    assert kept["small"] == 5
+    assert kept["exact"] == 10
+
+
+def test_cap_cells_per_condition_is_deterministic_in_the_seed():
+    conditions = _conditions({"a": 100, "b": 80})
+
+    first = cap_cells_per_condition(conditions, max_cells=20, seed=3)
+    again = cap_cells_per_condition(conditions, max_cells=20, seed=3)
+    other = cap_cells_per_condition(conditions, max_cells=20, seed=4)
+
+    np.testing.assert_array_equal(first, again)
+    assert not np.array_equal(first, other)
+
+
+def test_cap_cells_per_condition_nests_smaller_caps_inside_larger_ones():
+    """A smaller cap's cells are a subset of a larger cap's, same seed."""
+    conditions = _conditions({"a": 100, "b": 60})
+
+    small = cap_cells_per_condition(conditions, max_cells=10, seed=0)
+    large = cap_cells_per_condition(conditions, max_cells=40, seed=0)
+
+    assert np.all(large[small])
+
+
+def test_cap_cells_per_condition_ignores_the_other_conditions():
+    """A condition's draw depends on its own name and cells, not its neighbors'."""
+    alone = _conditions({"a": 100})
+    with_neighbor = _conditions({"z": 30, "a": 100})
+
+    keep_alone = cap_cells_per_condition(alone, max_cells=10, seed=0)
+    keep_with = cap_cells_per_condition(with_neighbor, max_cells=10, seed=0)
+
+    np.testing.assert_array_equal(keep_alone, keep_with[30:])
+
+
+def test_cap_cells_per_condition_draws_only_eligible_cells():
+    conditions = _conditions({"a": 30})
+    eligible = np.arange(30) % 2 == 0  # 15 eligible cells
+
+    keep = cap_cells_per_condition(conditions, max_cells=10, eligible=eligible)
+
+    assert keep.sum() == 10
+    assert not np.any(keep & ~eligible)
+
+    keep_all = cap_cells_per_condition(conditions, max_cells=20, eligible=eligible)
+    np.testing.assert_array_equal(keep_all, eligible)

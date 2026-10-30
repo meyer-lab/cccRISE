@@ -1,5 +1,5 @@
 """Per-component CP stability under leave-one-patient-out jackknifing,
-excluding seed refits (FMS ~1.0; see Figure 2's aggregate panel)."""
+excluding seed refits (FMS ~1.0; see the aggregate panel)."""
 
 from ....validation.stability import STAGE_CPD
 from ... import common, style

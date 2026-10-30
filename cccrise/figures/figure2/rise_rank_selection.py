@@ -10,11 +10,16 @@ AXES = ("rect",)
 
 
 def plot(axs):
-    (ax,) = axs
+    draw(axs[0], DATASET)
+
+
+def draw(ax, dataset: str, key_loc: str = "lower right") -> None:
+    """`dataset`'s BiCV sweep, its selected RISE rank marked, with the
+    selected-rank line's key at `key_loc`."""
     sweep = common.load_runner_output(
-        DATASETS[DATASET].rise_rank_filename(), RANK_SELECTION_DIR
+        DATASETS[dataset].rise_rank_filename(), RANK_SELECTION_DIR
     )
-    common.plot_rise_rank(sweep, ax, rank=common.selected_ranks(DATASET)[0])
+    common.plot_rise_rank(sweep, ax, rank=common.selected_ranks(dataset)[0])
     common.source_data(
         "bicv_r2x_by_rise_rank",
         sweep,
@@ -27,7 +32,7 @@ def plot(axs):
     ax.add_artist(ax.get_legend())
     ax.legend(
         handles=[Line2D([], [], label="Selected rank", **common.RANK_LINE)],
-        loc="lower right",
+        loc=key_loc,
     )
 
 

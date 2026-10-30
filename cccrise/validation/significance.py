@@ -22,10 +22,9 @@ from scipy.sparse import spmatrix
 from ..ccc import combine_communication_score
 from ..ccc_rise import (
     calc_communication_score,
-    condition_matrices,
     condition_projections,
 )
-from ..import_data import import_ligand_receptor_pairs
+from ..import_data import condition_matrices, import_ligand_receptor_pairs
 from ..utils import load_rise_reference
 
 

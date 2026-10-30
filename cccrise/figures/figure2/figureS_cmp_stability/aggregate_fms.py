@@ -6,9 +6,9 @@ jittered beneath, from ``uv run cccrise-stability``."""
 import numpy as np
 from matplotlib.lines import Line2D
 
-from ...runners.datasets import DATASETS, VALIDATION_DIR
-from ...validation.stability import metric_interval
-from .. import common, style
+from ....runners.datasets import DATASETS, VALIDATION_DIR
+from ....validation.stability import metric_interval
+from ... import common, style
 
 DATASET = "alad"
 STAGE_ORDER = ["RISE", "CPD"]  # pipeline order
@@ -17,11 +17,10 @@ JITTER = 0.25
 REPLICATE_ALPHA = 0.5
 Y_MIN = 0.45  # below every replicate, with room for the legend
 Y_TICK_MIN = 0.55
-AXES = ("square",)
 
 
-def plot(axs):
-    (ax,) = axs
+def plot(fig):
+    ax = fig.subplots()
     stability = common.load_runner_output(
         DATASETS[DATASET].stability_filename(), VALIDATION_DIR
     )
@@ -122,4 +121,4 @@ def _plot_replicates(ax, stability, positions: dict) -> None:
 
 
 def makeFigure():
-    return common.standalone_fixed(__name__)
+    return common.standalone(plot, style.PANEL_SIZE["third"])
