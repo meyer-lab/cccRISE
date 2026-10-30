@@ -1,0 +1,35 @@
+# # Comparator LR columns not contained in cccRISE's span, one row each: their
+# # pre-registered class, outcome association and the cccRISE rank that
+# # contains them.
+
+dataset: alad
+dataset_label: ALAD Lung Transplant BAL
+source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+loader_args:
+  filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+  gene_threshold: 0.001
+  normalize: true
+condition_key: dsco_id
+celltype_key: broad_cell_type
+group_key: ALADstatus
+rise_factors:
+  canonical:
+    path: /home/ehurt/Workspaces/cccRISE-comparators/cccrise/data/factors/bal_alad_factors.nc
+    sha256: 01d4749ad4901a54b567a28e834a0fe799c0fa6c40eb57743904b960da884295
+  alad_rise34:
+    path: output/cache/story/factors/alad_rise34.nc
+    sha256: fe0631cb0be8bb8378773988cad68e9cd6961c296a63ecbb75fdd52931922654
+  alad_rise51:
+    path: output/cache/story/factors/alad_rise51.nc
+    sha256: 19b980d693a18708bd90983dea8d139bb40f3b089e26f962e6fc08aeadadf1bb
+contained: 0.85
+one_sample: 1.5
+marker_fold: 4.0
+marker_detected: 0.25
+abundance_rho: 0.7
+outcomes:
+- 6-Month Outcome (4-Way)
+- 6-Month CLAD/Died vs. No CLAD
+git_sha: d6f51648109a8e46b89a064b144a54f1ecf512c2-dirty
+generated: '2026-10-20T09:30:27+00:00'
