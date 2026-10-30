@@ -468,3 +468,137 @@ def select_rank_by_rule(
     passing = table.loc[table["Passes"], "Rank"]
     rank = int(passing.max()) if len(passing) else int(table["Rank"].iloc[0])
     return rank, table, chosen[rank]
+
+
+#: Entry folds for the imputation R2X of CP rank selection (`entry_folds`).
+CP_IMPUTATION_FOLDS = 10
+
+
+def entry_folds(
+    shape: tuple[int, ...],
+    n_folds: int = CP_IMPUTATION_FOLDS,
+    random_state: int | None = None,
+) -> np.ndarray:
+    """Each entry's fold (int8, drawn uniformly), one draw for every rank, so
+    all ranks are scored on the same held-out entries."""
+    rng = np.random.default_rng(random_state)
+    return rng.integers(n_folds, size=shape, dtype=np.int8)
+
+
+def _mode_indices(held: np.ndarray, shape: tuple[int, ...], xp) -> list:
+    """Per-mode indices of the flat C-order entries `held`, each in the
+    smallest integer type that holds its mode."""
+    strides = np.cumprod((1, *shape[:0:-1]))[::-1]
+    return [
+        ((held // int(stride)) % size).astype(np.min_scalar_type(size - 1))
+        for stride, size in zip(strides, shape, strict=True)
+    ]
+
+
+def _model_at(index: list, weights, factors: Factors, xp):
+    """The CP model's values at the entries `index` (one array per mode)."""
+    values = xp.zeros(index[0].shape, dtype=factors[0].dtype)
+    for r in range(len(weights)):
+        term = weights[r] * factors[0][index[0], r]
+        for factor, i in zip(factors[1:], index[1:], strict=True):
+            term *= factor[i, r]
+        values += term
+    return values
+
+
+def _gram_product(factors: Factors, skip: int | None, xp):
+    """Hadamard product of the factors' Gram matrices, leaving out `skip`."""
+    product = xp.ones((factors[0].shape[1],) * 2, dtype=factors[0].dtype)
+    for mode, factor in enumerate(factors):
+        if mode != skip:
+            product *= factor.T @ factor
+    return product
+
+
+def _als_update(mttkrp, weights, factors: Factors, mode: int, xp):
+    """tensorly's ALS solve for one mode, given its weighted MTTKRP."""
+    pseudo_inverse = weights[:, None] * _gram_product(factors, mode, xp) * weights[None, :]
+    return xp.linalg.solve(pseudo_inverse.T, mttkrp.T).T
+
+
+def _cp_normalize(weights, factors: Factors, xp):
+    """`tensorly.cp_tensor.cp_normalize`: weights into the first factor, then
+    every column to unit norm, its norm into the weights."""
+    factors = [factors[0] * weights, *factors[1:]]
+    weights = xp.ones_like(weights)
+    for mode, factor in enumerate(factors):
+        scales = xp.linalg.norm(factor, axis=0)
+        weights = weights * scales
+        factors[mode] = factor / xp.where(scales == 0, 1.0, scales)
+    return weights, factors
+
+
+def masked_parafac(
+    tensor,
+    held: np.ndarray,
+    init: tuple,
+    n_iter_max: int,
+    tol: float,
+) -> tuple:
+    """CP-ALS with the entries `held` (flat C-order indices) missing:
+    tensorly's masked ALS (``parafac(mask=..., normalize_factors=True)``),
+    restated so that the only dense array is the tensor itself.
+
+    `tensor` is a 4-way NumPy or CuPy array holding zeros at `held`; it is
+    overwritten in place, as tensorly overwrites its copy. Each sweep is
+    tensorly's: every mode solved from the current fill-in, then the held
+    entries refilled with the model's values, the relative error on the
+    filled tensor taken, and the factors normalised. Here the fill-in is
+    written to the held entries alone, and the error is assembled from the
+    MTTKRP and the held values instead of a dense reconstruction.
+
+    Returns the weights, factors, the model's values at `held`, and the
+    sweeps run.
+    """
+    xp = _array_module(tensor)
+    shape = tensor.shape
+    rows = tensor.reshape(-1, shape[-1])
+    flat = rows.reshape(-1)
+    held = xp.asarray(held)
+    index = _mode_indices(held, shape, xp)
+    weights = xp.asarray(init[0], dtype=tensor.dtype)
+    factors = [xp.asarray(f, dtype=tensor.dtype) for f in init[1]]
+    # a GEMM, not a dot: CuPy forms a vector dot's full-size product first
+    observed_sq = float(xp.trace(rows.T @ rows))
+    filled = xp.zeros(held.shape, dtype=tensor.dtype)
+    errors: list[float] = []
+    for _sweep in range(n_iter_max):
+        last_mode = (rows @ factors[3]).reshape(*shape[:3], -1)
+        for mode, spec in enumerate(("ijkr,jr,kr->ir", "ijkr,ir,kr->jr", "ijkr,ir,jr->kr")):
+            others = [f for m, f in enumerate(factors[:3]) if m != mode]
+            mttkrp = xp.einsum(spec, last_mode, *others) * weights
+            factors[mode] = _als_update(mttkrp, weights, factors, mode, xp)
+        rank = factors[0].shape[1]
+        khatri_rao = (
+            factors[0][:, None, None, :] * factors[1][None, :, None, :] * factors[2][None, None, :, :]
+        ).reshape(-1, rank)
+        unweighted = rows.T @ khatri_rao
+        factors[3] = _als_update(unweighted * weights, weights, factors, 3, xp)
+        values = _model_at(index, weights, factors, xp)
+        # <current fill-in, model> less the held part gives <observed, model>
+        observed_inner = float(xp.sum(weights * xp.sum(factors[3] * unweighted, axis=0)))
+        observed_inner -= float(filled @ values)
+        model_sq = float(xp.sum(xp.outer(weights, weights) * _gram_product(factors, None, xp)))
+        held_sq = float(values @ values)
+        error_sq = observed_sq - 2 * observed_inner + model_sq - held_sq
+        errors.append(np.sqrt(max(error_sq, 0.0) / (observed_sq + held_sq)))
+        flat[held] = values
+        filled = values
+        if len(errors) > 1 and abs(errors[-2] - errors[-1]) < tol:
+            break
+        weights, factors = _cp_normalize(weights, factors, xp)
+    return weights, factors, filled, len(errors)
+
+
+def _array_module(array):
+    """NumPy, or CuPy for a CuPy array."""
+    if type(array).__module__.startswith("cupy"):
+        import cupy
+
+        return cupy
+    return np
