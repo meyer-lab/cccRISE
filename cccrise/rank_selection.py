@@ -1,3 +1,5 @@
+from collections.abc import Hashable
+
 import numpy as np
 import pandas as pd
 import tensorly as tl
@@ -95,7 +97,7 @@ def distinct_minima(
 
 
 def _rank_minima(
-    rank: int, pairs: pd.DataFrame, r2x: pd.Series, same_minimum_fms: float
+    rank: Hashable, pairs: pd.DataFrame, r2x: pd.Series, same_minimum_fms: float
 ) -> pd.DataFrame:
     seeds = sorted(set(pairs["SeedA"]) | set(pairs["SeedB"]))
     index = {seed: i for i, seed in enumerate(seeds)}
@@ -216,7 +218,7 @@ def cp_backend(device: str | None = None) -> str:
 
 def _gpu_available() -> bool:
     try:
-        import cupy
+        import cupy  # ty: ignore[unresolved-import]
 
         return cupy.cuda.runtime.getDeviceCount() > 0
     except Exception:  # no CuPy, or CuPy installed without a visible GPU
@@ -232,7 +234,7 @@ def _real_conj_on_cupy() -> None:
     runs a 24 GB GPU out of memory; the conjugate of a real array is the
     array itself, so nothing numerical changes.
     """
-    import cupy
+    import cupy  # ty: ignore[unresolved-import]
 
     with tl.backend_context("cupy"):
         tl.backend.core.Backend._available_backends["cupy"].register_method(

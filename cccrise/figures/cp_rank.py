@@ -2,6 +2,8 @@
 starts (ALAD Figure 2, IBD Figure 5's supplement): fit R2X across starts, each
 mode's collinearity, and the distinct minima the starts reach."""
 
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -211,7 +213,10 @@ def _minima_key(ax: plt.Axes, palette: list[str]) -> None:
     key.set_xlim(0, 1)
     key.set_ylim(0, len(palette))
     key.axis("off")
-    text = {"fontsize": style.FONT_SIZE_DENSE, "color": style.COLORS["ink"]}
+    text: dict[str, Any] = {
+        "fontsize": style.FONT_SIZE_DENSE,
+        "color": style.COLORS["ink"],
+    }
     key.text(1.5, 0.5, FMAX, ha="left", va="center", **text)
     key.text(
         -0.4, len(palette) / 2, "minima", rotation=90, ha="right", va="center", **text

@@ -259,10 +259,9 @@ def _run_cpd_rank(tensor: np.ndarray, output_path, **kwargs):
         patch("cccrise.runners._cli.sha256_file", return_value="0" * 64),
     ):
         # CPU: the GPU extra (CuPy) isn't installed in CI.
+        kwargs.setdefault("cp_device", "cpu")
         return runner.run_cpd_rank_selection(
-            replace(DATASETS["alad"], backend=None),
-            output_path=output_path,
-            **{"cp_device": "cpu"} | kwargs,
+            replace(DATASETS["alad"], backend=None), output_path=output_path, **kwargs
         )
 
 

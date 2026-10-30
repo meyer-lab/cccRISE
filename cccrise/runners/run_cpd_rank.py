@@ -305,7 +305,7 @@ def run_cpd_rank_selection(
 
     print(f"2. Fitting CP from {n_starts} seeded starts at every rank...")
     df, agreement = start_sweep(tensor, ranks, seeds, **fit_kwargs)
-    paths = {"sweep": output_path, "start_fms": spec.cpd_start_fms_filename()}
+    paths = {"sweep": output_path.name, "start_fms": spec.cpd_start_fms_filename()}
     agreement.to_parquet(output_path.with_name(paths["start_fms"]), index=False)
 
     if imputation_repeats:
