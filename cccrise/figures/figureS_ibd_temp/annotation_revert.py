@@ -14,7 +14,7 @@ B. Every fine type except the Secretory lineage's, which stays pooled apart
 C. The same for the single-type components: Mono SOD2+ (C1, C5), ILC (C2,
    C6) and Mast (C2), broken out of lineage labels (top) or kept apart
    from an otherwise pooled lineage in the fine labelling (bottom).
-D. The sampled labellings that recovered C3 or C4 (CP 8: C4, C5/C6) with both
+D. The sampled labellings that recovered C3 or C4 with both
    carriers broken out (s36 repeats 0, 3, 4), then each with one carrier
    reverted to its lineage label (``-EE`` etc.).
 

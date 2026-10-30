@@ -109,7 +109,11 @@ def build_cache(spec: DatasetSpec) -> dict:
     path.parent.mkdir(parents=True, exist_ok=True)
     # labels as fixed-width strings, so the cache loads without pickle
     np.savez_compressed(
-        path, **{k: v.astype(str) if v.dtype == object else v for k, v in out.items()}
+        path,
+        **{
+            k: v.astype(str) if v.dtype == object else v
+            for k, v in ((k, np.asarray(v)) for k, v in out.items())
+        },
     )
     write_metadata(
         path,
