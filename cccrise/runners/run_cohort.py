@@ -29,7 +29,7 @@ checks before projecting the cells. Writes four tables:
 
 import argparse
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import anndata
 import numpy as np
@@ -143,7 +143,7 @@ def carrier_expression(
     missing = set(genes) - set(adata.var_names)
     assert not missing, f"LR genes absent from the data: {sorted(missing)}"
     expression = pd.DataFrame(
-        np.asarray(adata[:, genes].X.toarray()), columns=pd.Index(genes, name="gene")
+        cast(Any, adata[:, genes].X).toarray(), columns=pd.Index(genes, name="gene")
     )
     keys = [
         adata.obs[spec.condition_column].astype(str).to_numpy(),
@@ -151,15 +151,12 @@ def carrier_expression(
     ]
     grouped = expression.groupby(keys)
     names = {"level_0": "condition", "level_1": "celltype"}
-    means, detected = (
-        frame.stack().rename(name)
-        for frame, name in (
-            (grouped.mean(), "mean_expression"),
-            ((expression > 0).groupby(keys).mean(), "fraction_detected"),
-        )
-    )
+    means = cast(pd.Series, grouped.mean().stack()).rename("mean_expression")
+    detected = (expression > 0).groupby(keys).mean().stack()
+    detected = cast(pd.Series, detected).rename("fraction_detected")
     table = pd.concat([means, detected], axis=1).reset_index().rename(columns=names)
-    n_cells = grouped.size().rename("n_cells").reset_index().rename(columns=names)
+    n_cells = cast(pd.Series, grouped.size()).rename("n_cells").reset_index()
+    n_cells = n_cells.rename(columns=names)
     return n_cells.merge(table, on=["condition", "celltype"])
 
 

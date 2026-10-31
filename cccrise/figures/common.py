@@ -723,11 +723,13 @@ def plot_association_heatmap(
     xlabel: str = "CP component",
     p_column: str = "PAdj",
     p_label: str = "FDR",
+    annotate: bool = True,
 ) -> None:
     """Eta-squared of each component (columns) against each outcome
     association (rows), both in `table` order, from
     `anova.run_multiple_factors_anova`; bold with a star where `p_column` is
-    below `SIG_ALPHA`."""
+    below `SIG_ALPHA`. Without `annotate` (too many columns for the values)
+    only the stars are written."""
     rows, columns = (
         list(dict.fromkeys(table[c])) for c in ("Association", "Component")
     )
@@ -742,26 +744,34 @@ def plot_association_heatmap(
     image = ax.imshow(
         values, cmap=style.CMAPS["weight"], vmin=0, vmax=vmax, aspect="auto"
     )
-    for (i, j), value in np.ndenumerate(values):
-        if not np.isfinite(value):
-            continue
-        significant = padj.iloc[i, j] < SIG_ALPHA
-        ax.text(
-            j,
-            i,
-            f"{value:.2f}" + ("*" if significant else ""),
-            ha="center",
-            va="center",
-            fontsize=style.FONT_SIZE_DENSE,
-            fontweight="bold" if significant else "normal",
-            color="white" if value > 0.6 * vmax else style.COLORS["ink"],
-        )
+    _label_association_cells(ax, values, padj.to_numpy() < SIG_ALPHA, annotate)
     ax.set_xticks(range(effect.shape[1]), effect.columns)
     ax.set_yticks(range(len(rows)), rows, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
     colorbar(ax, image, rf"$\eta^2$ (* {p_label} < {SIG_ALPHA})")
+
+
+def _label_association_cells(
+    ax: plt.Axes, values: np.ndarray, significant: np.ndarray, annotate: bool
+) -> None:
+    """Each finite cell's value (if `annotate`), starred and bold where
+    `significant`."""
+    vmax = np.nanmax(values)
+    for (i, j), value in np.ndenumerate(values):
+        if not np.isfinite(value) or not (annotate or significant[i, j]):
+            continue
+        ax.text(
+            j,
+            i,
+            (f"{value:.2f}" if annotate else "") + ("*" if significant[i, j] else ""),
+            ha="center",
+            va="center",
+            fontsize=style.FONT_SIZE_DENSE,
+            fontweight="bold" if significant[i, j] else "normal",
+            color="white" if value > 0.6 * vmax else style.COLORS["ink"],
+        )
 
 
 def plot_association_effect_sizes(

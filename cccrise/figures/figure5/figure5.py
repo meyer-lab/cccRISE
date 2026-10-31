@@ -2,11 +2,21 @@
 Crohn's disease biopsies (IBDverse terminal ileum)."""
 
 from .. import common, style
-from . import cohort, cp_factor_matrices
+from . import (
+    carrier_expression,
+    celltype_weights,
+    cohort,
+    cp_factor_matrices,
+    effective_samples,
+    group_loadings,
+)
 
 LAYOUT = [
     [cohort],
     [cp_factor_matrices],
+    [effective_samples, celltype_weights],
+    [group_loadings],
+    [carrier_expression],
 ]
 
 

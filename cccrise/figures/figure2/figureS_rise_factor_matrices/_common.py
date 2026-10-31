@@ -1,4 +1,5 @@
-"""The canonical ALAD RISE (PARAFAC2) fit shared by this figure's panels."""
+"""The canonical RISE (PARAFAC2) fit of a dataset, shared by this figure's
+panels and their IBD counterparts (`figure5.figureS_ibd_rise_factor_matrices`)."""
 
 from functools import cache
 
@@ -14,8 +15,8 @@ XLABEL = "RISE component"
 
 
 @cache
-def rise_factors() -> xr.Dataset:
-    return load_factors_netcdf(DATASETS[DATASET].factors_path())
+def rise_factors(dataset: str = DATASET) -> xr.Dataset:
+    return load_factors_netcdf(DATASETS[dataset].factors_path())
 
 
 def normalized_table(labels, loadings: np.ndarray, label: str) -> pd.DataFrame:
