@@ -21,7 +21,9 @@ fig3:
   lr_permutation: [g]
   lr_volcano: [h]
 fig4: {}
-fig5: {}
+fig5:
+  cohort: [a]
+  cp_factor_matrices: [b, c, d, e]
 figS_rise_factor_matrices:
   factors: [a]
   genes: [b]

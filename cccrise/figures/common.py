@@ -1077,15 +1077,15 @@ def label_heatmap_cells(
 ) -> None:
     """Outline each (drawn row, component column, name) cell of a heatmap of
     `shape` and label it beside its column, toward the wider blank side:
-    rightward up to the middle component, leftward after it, each side's
-    labels stacked `FACTOR_LABEL_GAP` apart."""
+    rightward up to the middle component, leftward after it. Labels are
+    stacked `FACTOR_LABEL_GAP` apart across both sides, so two labels of one
+    row never share a height."""
     n_rows, n_cols = shape
     gap = FACTOR_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows  # in rows
-    for rightward in (True, False):
-        side = sorted(e for e in entries if (e[1] <= n_cols // 2) == rightward)
-        heights = _spread_labels([row for row, _, _ in side], gap, n_rows)
-        for (row, col, name), y in zip(side, heights, strict=True):
-            _label_cell(ax, row, col, name, y, rightward)
+    entries = sorted(entries)
+    heights = _spread_labels([row for row, _, _ in entries], gap, n_rows)
+    for (row, col, name), y in zip(entries, heights, strict=True):
+        _label_cell(ax, row, col, name, y, rightward=col < n_cols / 2)
 
 
 def _label_cell(
@@ -1116,15 +1116,22 @@ def _label_cell(
 
 
 def _spread_labels(rows: list[float], gap: float, n_rows: int) -> np.ndarray:
-    """Heights for sorted `rows` at least `gap` apart, centered on them and
-    kept within the heatmap."""
-    placed = np.array(rows, dtype=float)
-    for i in range(1, len(placed)):
-        placed[i] = max(placed[i], placed[i - 1] + gap)
-    if len(placed):
-        placed -= placed.mean() - np.mean(rows)
-        placed -= max(placed[-1] - (n_rows - 1), 0) + min(placed[0], 0)
-    return placed
+    """Heights for sorted `rows` at least `gap` apart: each run of labels too
+    close to fit is centered on its own rows, and kept within the heatmap."""
+    clusters: list[list[float]] = []  # [first height, n labels, sum of rows]
+    for row in rows:
+        clusters.append([row, 1, row])
+        while True:
+            _, n, total = clusters[-1]
+            top = min(max(total / n - (n - 1) * gap / 2, 0), n_rows - 1 - (n - 1) * gap)
+            clusters[-1][0] = top
+            if len(clusters) < 2 or clusters[-2][0] + clusters[-2][1] * gap <= top:
+                break
+            _, n_prev, total_prev = clusters.pop(-2)
+            clusters[-1][1:] = [n + n_prev, total + total_prev]
+    return np.concatenate(
+        [first + gap * np.arange(n) for first, n, _ in clusters] or [np.empty(0)]
+    )
 
 
 # =============================================================================
