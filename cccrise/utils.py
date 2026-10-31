@@ -150,23 +150,25 @@ def resample_tensor(
 
 def correct_conditions(X: anndata.AnnData) -> np.ndarray:
     """Correct the conditions factors by overall read depth."""
-    sgIndex = X.obs["condition_unique_idxs"]
+    return correct_by_read_depth(X.uns["A"], condition_read_depths(X))
 
-    counts = np.zeros((np.amax(sgIndex.to_numpy()) + 1, 1))
 
-    cond_mean = np.linalg.norm(X.uns["A"], axis=1)
+def condition_read_depths(X: anndata.AnnData) -> np.ndarray:
+    """Each condition's total `X` (its read depth), in `condition_unique_idxs`
+    order: what `correct_conditions` corrects for."""
+    sgIndex = X.obs["condition_unique_idxs"].to_numpy()
+    x_count = np.asarray(cast(Any, X.X).sum(axis=1)).reshape(-1)
+    return np.bincount(sgIndex, weights=x_count, minlength=np.amax(sgIndex) + 1)
 
-    x_count = cast(Any, X.X).sum(axis=1)
 
-    for ii in range(counts.size):
-        counts[ii] = np.sum(x_count[X.obs["condition_unique_idxs"] == ii])
-
+def correct_by_read_depth(A: np.ndarray, read_depths: np.ndarray) -> np.ndarray:
+    """Condition factor `A` (conditions x components) divided by each
+    condition's read-depth trend: the linear fit of its rows' norms on
+    `read_depths`, as `correct_conditions` does from the cells."""
+    counts = np.asarray(read_depths, dtype=float).reshape(-1, 1)
     lr = LinearRegression()
-    lr.fit(counts, cond_mean.reshape(-1, 1))
-
-    counts_correct = lr.predict(counts)
-
-    return X.uns["A"] / counts_correct
+    lr.fit(counts, np.linalg.norm(A, axis=1).reshape(-1, 1))
+    return A / lr.predict(counts)
 
 
 def pseudobulk_X(
