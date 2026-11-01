@@ -14,15 +14,13 @@ def plot(axs):
     draw(axs[0], DATASET)
 
 
-def draw(ax, dataset: str, test_ax=None) -> None:
-    """`dataset`'s BiCV sweep from R2X 0, its selected RISE rank marked, and
-    BiCV test on `test_ax` if given, keyed in two columns above the curves."""
+def draw(ax, dataset: str) -> None:
+    """`dataset`'s BiCV sweep from R2X 0, its selected RISE rank marked, keyed
+    in two columns above the curves."""
     sweep = common.load_runner_output(
         DATASETS[dataset].rise_rank_filename(), RANK_SELECTION_DIR
     )
-    lines = common.plot_rise_rank(
-        sweep, ax, rank=common.selected_ranks(dataset)[0], test_ax=test_ax
-    )
+    lines = common.plot_rise_rank(sweep, ax, rank=common.selected_ranks(dataset)[0])
     common.source_data(
         "bicv_r2x_by_rise_rank",
         sweep,

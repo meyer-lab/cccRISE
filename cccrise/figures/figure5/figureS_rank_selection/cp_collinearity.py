@@ -9,8 +9,8 @@ AXES = ("square",)
 
 
 def plot(axs):
-    common.plot_collinearity(
-        axs[0], DATASET, modes=("D",), rank=common.selected_ranks(DATASET)[1]
+    common.plot_collinearity_boxes(
+        axs[0], DATASET, rank=common.selected_ranks(DATASET)[1]
     )
 
 

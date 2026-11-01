@@ -8,7 +8,7 @@ AXES = ("square",)
 
 
 def plot(axs):
-    common.plot_minima(axs[0], DATASET)
+    common.plot_minima(axs[0], DATASET, common.selected_ranks(DATASET)[1])
 
 
 def makeFigure():

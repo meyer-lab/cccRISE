@@ -30,7 +30,7 @@ def plot(axs):
         "fold split (with its seed); plotted as mean +/- SD over repeats.",
         part=0,
     )
-    common.plot_collinearity(axs[1], DATASET, modes=("D",), rank=rank, part=1)
+    common.plot_collinearity_boxes(axs[1], DATASET, rank=rank, part=1)
 
 
 def makeFigure():

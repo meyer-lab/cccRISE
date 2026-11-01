@@ -10,7 +10,7 @@ AXES = ("wide",)
 
 
 def plot(axs):
-    common.plot_collinearity(
+    common.plot_collinearity_medians(
         axs[0], DATASET, modes=MODES, rank=common.selected_ranks(DATASET)[1]
     )
 

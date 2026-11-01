@@ -25,7 +25,7 @@ For visualization, genes outside the top 10% by weight in any component are omit
 **{{< label cmp-stability >}}.
 Stability of RISE and CP components, and collinearity of CP modes.** ({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
 Each replicate's components were matched to the reference's by Hungarian matching.
-({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, for each of 10 seeded SVD starts per rank (points); the LR pair mode is shown in {{< fig 2 cp-rank-selection.2 >}}.
+({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, as the median (line) and interquartile range (band) over 10 seeded SVD starts per rank; the LR pair mode is shown in {{< fig 2 cp-rank-selection.2 >}}.
 The dashed line marks the selected rank.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 
@@ -72,20 +72,19 @@ At the selected rank, + and × mark the core fit's aggregate FMS to the fits wit
 ![](figures/figureS_rank_selection/figureS_rank_selection.svg){width="6.5in"}
 
 **{{< label rank-selection >}}.
-IBD rank selection.** ({{< panel rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test, on the right axis); mean ± SD over 10 repeats per rank.
+IBD rank selection.** ({{< panel rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
 ({{< panel rank-selection cp-r2x-starts >}}) CP fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
 Circle: the elbow of the median curve located by Kneedle.
 ({{< panel rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CP components across ranks, for each start (points); the other modes are shown in {{< fig ibd-collinearity >}}.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-({{< panel rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct minimum across ranks (starts joined at FMS ≥ 0.95), stacked from the minimum most starts reach ($f_{\max}$, bottom) to those fewest starts reach.
-Dashed lines mark the selected ranks.
+({{< panel rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom; of two tied, the one with the higher fit R^2^X) and each other solution (grey).
+Dashed lines ({{< panel rank-selection rise-rank-selection cp-collinearity >}}) and the triangle ({{< panel rank-selection cp-minima >}}) mark the selected ranks.
 
 ![](figures/figureS_ibd_collinearity/figureS_ibd_collinearity.svg){width="6.5in"}
 
 **{{< label ibd-collinearity >}}.
-Collinearity of IBD CP modes.** Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, for each of 10 seeded SVD starts per rank (points); the LR pair mode is shown in {{< panel rank-selection cp-collinearity >}}.
+Collinearity of IBD CP modes.** Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, as the median (line) and interquartile range (band) over 10 seeded SVD starts per rank; the LR pair mode is shown in {{< panel rank-selection cp-collinearity >}}.
 The dashed line marks the selected rank.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 
 <!-- Legacy Supplemental Captions
 

@@ -10,7 +10,7 @@ MODES = ("A", "B", "C")
 
 def plot(fig):
     ax = fig.subplots()
-    common.plot_collinearity(
+    common.plot_collinearity_medians(
         ax, DATASET, modes=MODES, rank=common.selected_ranks(DATASET)[1]
     )
 
