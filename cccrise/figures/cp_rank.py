@@ -1,6 +1,9 @@
-"""CP rank-selection panels drawn from ``uv run cccrise-cpdrank``'s seeded
-starts (ALAD Figure 2, IBD Figure 5's supplement): fit R2X across starts, each
-mode's collinearity, and the distinct minima the starts reach."""
+"""CP rank-selection panels drawn from seeded-start sweeps (``uv run
+cccrise-cpdrank``'s for cccRISE, ALAD Figure 2 and IBD Figure 5's supplement;
+``uv run cccrise-comparators``' for pseudobulk CPD): fit R2X across starts,
+each mode's collinearity, and the distinct minima the starts reach. Each panel
+takes the sweep table (one row per rank and start) and, for the minima, its
+starts' pairwise FMS (`load_minima`)."""
 
 from typing import Any
 
@@ -10,14 +13,16 @@ import pandas as pd
 from matplotlib.colors import to_hex
 from matplotlib.patches import Rectangle
 
-from ..rank_selection import distinct_minima
+from ..rank_selection import distinct_minima, kneedle_elbow
 from ..runners.datasets import DATASETS, RANK_SELECTION_DIR
 from . import common, style
 
 MODES = {"A": "Condition", "B": "Sender", "C": "Receiver", "D": "LR pair"}
 #: Color slots for distinct minima: slot 0 is f_max, the minimum most starts
-#: reach. Sized for the most either dataset needs (ALAD rank 17: eight
-#: minima, shifted one slot by a tie), so a slot is one color in every figure.
+#: reach. Sized for the most cccRISE needs on either dataset (ALAD rank 17:
+#: eight minima, shifted one slot by a tie), so a slot is one color in every
+#: cccRISE figure; a sweep reaching more (pseudobulk CPD on fine labels)
+#: spreads the ramp over its own count.
 MINIMA_SLOTS = 9
 FMAX = r"$f_{\max}$"
 FMAX_EDGE = "#e34948"
@@ -25,49 +30,34 @@ KNEEDLE_EDGE = FMAX_EDGE
 TOP_STRIP = 0.28  # fraction of the minima panel's height the starts strip takes
 
 
-def load_minima(dataset: str) -> pd.DataFrame:
-    """`rank_selection.distinct_minima` of `dataset`'s starts, with each
+def load_minima(sweep: pd.DataFrame, start_fms: pd.DataFrame) -> pd.DataFrame:
+    """`rank_selection.distinct_minima` of a sweep's starts, with each
     minimum's color 'Slot' (`Order` - 1, shifted one where there is no
     f_max)."""
-    start_fms = common.load_runner_output(
-        DATASETS[dataset].cpd_start_fms_filename(), RANK_SELECTION_DIR
-    )
-    r2x = common.load_cpd_rank(dataset).set_index(["Rank", "Seed"])["FitR2X"]
-    minima = distinct_minima(start_fms, r2x)
+    minima = distinct_minima(start_fms, sweep.set_index(["Rank", "Seed"])["FitR2X"])
     return minima.assign(Slot=minima["Order"] - 1 + minima["Tied"].astype(int))
 
 
+def dataset_minima(dataset: str) -> pd.DataFrame:
+    """`load_minima` of cccRISE's sweep on `dataset`."""
+    start_fms = common.load_runner_output(
+        DATASETS[dataset].cpd_start_fms_filename(), RANK_SELECTION_DIR
+    )
+    return load_minima(common.load_cpd_rank(dataset), start_fms)
+
+
 def rank_axis(ax: plt.Axes, ranks) -> None:
+    """Rank ticks: every rank up to 10, odd ranks up to 17, then every fourth."""
     ranks = np.asarray(ranks)
-    ax.set_xticks(ranks[ranks % 2 == 1] if ranks.max() > 10 else ranks)
+    step = 1 if ranks.max() <= 10 else 2 if ranks.max() <= 17 else 4
+    ax.set_xticks(ranks[(ranks - 1) % step == 0])
     ax.set_xlim(0.4, ranks.max() + 0.6)
     ax.set_xlabel("CP rank")
 
 
-def kneedle_elbow(x, y) -> int:
-    """Elbow of a convex, decreasing curve by offline Kneedle (Satopaa et al.
-    2011, sensitivity 1, as `kneed.KneeLocator(curve="convex",
-    direction="decreasing")`)."""
-    x, y = np.asarray(x, float), np.asarray(y, float)
-    xn, yn = ((v - v.min()) / (v.max() - v.min()) for v in (x, y))
-    diff = (yn.max() - yn) - xn
-    maxima = [
-        i
-        for i in range(1, x.size - 1)
-        if diff[i] >= diff[i - 1] and diff[i] >= diff[i + 1]
-    ]
-    step = float(np.abs(np.diff(xn)).mean())
-    for i, m in enumerate(maxima):
-        stop = maxima[i + 1] if i + 1 < len(maxima) else x.size
-        if np.any(diff[m + 1 : stop] < diff[m] - step):
-            return int(x[m])
-    return int(x[int(np.argmax(diff))])
-
-
-def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
+def plot_r2x_starts(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -> None:
     """Fit R2X against CP rank: the median over starts, banded by their
     range, with the Kneedle elbow of the median curve circled."""
-    sweep = common.load_cpd_rank(dataset)
     common.source_data(
         "cp_fit_r2x_by_rank_and_start",
         sweep[["Rank", "Start", "Seed", "FitR2X"]],
@@ -83,9 +73,18 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
     )
     ax.plot(median.index, median, color=color, label="Median start")
     elbow = kneedle_elbow(median.index, 1 - median.to_numpy())
+    if elbow is not None:
+        mark_elbow(ax, elbow, median[elbow])
+    common.mark_rank(ax, rank)
+    rank_axis(ax, median.index)
+    ax.set_ylabel("Fit $R^2X$")
+
+
+def mark_elbow(ax: plt.Axes, rank: int, value: float) -> None:
+    """Circle the Kneedle elbow at (`rank`, `value`) and label it."""
     ax.plot(
-        elbow,
-        median[elbow],
+        rank,
+        value,
         marker="o",
         markersize=3 * style.MARKER_SIZE,
         fillstyle="none",
@@ -95,23 +94,24 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
     )
     ax.annotate(
         "Kneedle",
-        (elbow, median[elbow]),
+        (rank, value),
         xytext=(6, -10),
         textcoords="offset points",
         fontsize=style.FONT_SIZE_DENSE,
     )
-    common.mark_rank(ax, rank)
-    rank_axis(ax, median.index)
-    ax.set_ylabel("Fit $R^2X$")
 
 
 def plot_mode_collinearity(
-    ax: plt.Axes, dataset: str, rank: int | None = None, part: int | None = None
+    ax: plt.Axes,
+    sweep: pd.DataFrame,
+    rank: int | None = None,
+    part: int | None = None,
+    legend_side: str | None = None,
 ) -> None:
     """Per mode, the largest |cosine| between two components: the median
     over starts, banded by their range, with `rank` marked. `part` is
-    `common.source_data`'s."""
-    sweep = common.load_cpd_rank(dataset)
+    `common.source_data`'s; the legend sits in the lower right, or outside on
+    `legend_side` (`common.legend`)."""
     columns = [f"MaxCos{m}" for m in MODES]
     common.source_data(
         "cp_max_cosine_by_rank",
@@ -142,19 +142,23 @@ def plot_mode_collinearity(
     rank_axis(ax, np.arange(1, sweep["Rank"].max() + 1))
     ax.set_ylim(0, 1.05)
     ax.set_ylabel("Max |cosine|")
-    ax.legend(loc="lower right", fontsize=style.FONT_SIZE_DENSE)
+    if legend_side is None:
+        ax.legend(loc="lower right", fontsize=style.FONT_SIZE_DENSE)
+    else:
+        common.legend(ax, legend_side, fontsize=style.FONT_SIZE_DENSE)
 
 
-def minima_palette() -> list[str]:
-    """f_max blue, then an orange -> purple ramp for the other minima."""
-    ramp = plt.get_cmap("plasma")(np.linspace(0.78, 0.08, MINIMA_SLOTS - 1))
+def minima_palette(slots: int = MINIMA_SLOTS) -> list[str]:
+    """f_max blue, then an orange -> purple ramp for the other minima, over
+    `slots` colors."""
+    ramp = plt.get_cmap("plasma")(np.linspace(0.78, 0.08, slots - 1))
     return [style.CATEGORICAL[0], *(to_hex(c) for c in ramp)]
 
 
-def plot_minima(ax: plt.Axes, dataset: str) -> None:
+def plot_minima(ax: plt.Axes, table: pd.DataFrame) -> None:
     """`ax` split into two strips sharing the rank axis: the starts reaching
-    each distinct minimum (top) and its FMS to f_max (bottom)."""
-    table = load_minima(dataset)
+    each distinct minimum (top) and its FMS to f_max (bottom); `table` is
+    `load_minima`'s."""
     common.source_data(
         "cp_minima_by_rank",
         table,
@@ -163,7 +167,7 @@ def plot_minima(ax: plt.Axes, dataset: str) -> None:
         "starts reach (f_max; where two minima tie for most, 'Tied', to the "
         "one with the higher R2X), its order by starts, and its color slot.",
     )
-    palette = minima_palette()
+    palette = minima_palette(max(MINIMA_SLOTS, int(table["Slot"].max()) + 1))
     colors = [palette[s] for s in table["Slot"]]
     ax.axis("off")
     top = ax.inset_axes((0, 1 - TOP_STRIP, 1, TOP_STRIP))

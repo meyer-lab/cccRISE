@@ -8,7 +8,9 @@ AXES = ("square",)
 
 
 def plot(axs):
-    cp_rank.plot_r2x_starts(axs[0], DATASET, common.selected_ranks(DATASET)[1])
+    cp_rank.plot_r2x_starts(
+        axs[0], common.load_cpd_rank(DATASET), common.selected_ranks(DATASET)[1]
+    )
 
 
 def makeFigure():

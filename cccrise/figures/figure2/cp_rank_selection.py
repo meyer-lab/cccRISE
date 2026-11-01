@@ -29,7 +29,7 @@ def plot(axs):
         "fold split (with its seed); plotted as mean +/- SD over repeats.",
         part=0,
     )
-    cp_rank.plot_mode_collinearity(axs[1], DATASET, rank, part=1)
+    cp_rank.plot_mode_collinearity(axs[1], common.load_cpd_rank(DATASET), rank, part=1)
 
 
 def makeFigure():
