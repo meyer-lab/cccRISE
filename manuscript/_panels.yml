@@ -26,10 +26,9 @@ figS_rise_factor_matrices:
   factors: [a]
   genes: [b]
 figS_cmp_stability:
-  aggregate_fms: [a]
-  rise_fms: [b]
-  cpd_fms: [c]
-  fms_histograms: [d]
+  rise_fms: [a]
+  cpd_fms: [b]
+  cp_collinearity: [c]
 figS_cmp5_identity:
   eigenstate_scatter: [a]
   cmp_eigenstate_loadings: [b]
@@ -69,3 +68,4 @@ figS_rank_selection:
   cp_r2x_starts: [b]
   cp_collinearity: [c]
   cp_minima: [d]
+figS_ibd_collinearity: {}

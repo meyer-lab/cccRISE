@@ -32,8 +32,10 @@ The embeddings and CP factor matrices thus trace LR signaling programs across co
 
 **CCC-RISE isolates stable, robust communication programs among epithelial subpopulations.** ({{< panel 2 rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
 ({{< panel 2 cp-rank-selection.1 >}}) CP fit R^2^X and aggregate imputation R^2^X of held-out entries over 10 folds across ranks; mean ± SD over 10 repeated fold splits per rank.
-({{< panel 2 cp-rank-selection.2 >}}) The largest number of modes in which any pair of CP components is collinear (\|cosine\| > 0.9), marked as near-duplicate or opposite-signed (cancelling) pairs, across ranks.
-({{< panel 2 aggregate-fms >}}) Aggregate FMS of RISE and CP factors across leave-one-patient-out jackknife (n = 45) and re-initialization (n = 25) replicates; bars show the 2.5th--97.5th percentiles.
+({{< panel 2 cp-rank-selection.2 >}}) Largest absolute cosine between the LR pair factors of any two CP components across ranks, for each of 10 seeded SVD starts per rank (points); the other modes are shown in {{< fig cmp-stability >}}.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
+({{< panel 2 cp-minima >}}) Number of the 10 starts reaching each distinct minimum across ranks (starts joined at FMS ≥ 0.95), stacked from the minimum most starts reach ($f_{\max}$, bottom) to those fewest starts reach.
+Dashed lines mark the selected ranks.
 ({{< panel 2 cp-factor-matrices >}}) CP factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
 ({{< panel 2 permutation-lr-significance.1 >}}) Fraction of each LR pair's (n = 513) condition by sender by receiver entries exceeding a null of 1,000 within-sample cell permutations at p < 0.05 (one-sided empirical test).
 ({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by fraction of entries significant.

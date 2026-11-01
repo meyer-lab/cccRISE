@@ -1,14 +1,14 @@
 """Distinct minima the ten seeded SVD starts reach at each CP rank: how many
-starts reach each, and its FMS to the one most starts reach (f_max)."""
+starts reach each, stacked from the one most starts reach (f_max)."""
 
-from .. import common, cp_rank
+from .. import common
 
 DATASET = "alad"
 AXES = ("square",)
 
 
 def plot(axs):
-    cp_rank.plot_minima(axs[0], DATASET)
+    common.plot_minima(axs[0], DATASET)
 
 
 def makeFigure():

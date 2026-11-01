@@ -38,9 +38,12 @@ import seaborn as sns
 import yaml
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import BoundaryNorm, ListedColormap, to_hex
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.text import Text
+from matplotlib.transforms import Bbox
 
 matplotlib.use("AGG")
 
@@ -58,6 +61,7 @@ from ..factors import (
     load_or_compute_dataframe,
 )
 from ..import_data import import_alad, import_balf_covid
+from ..rank_selection import distinct_minima
 from ..runners.datasets import DATASETS, RANK_SELECTION_DIR
 from ..runners.provenance import read_metadata
 from ..utils import (
@@ -411,8 +415,11 @@ def _draw_fixed(fig: Figure, module) -> list[_AxesBox]:
     _SOURCE["panel"] = module.__name__.rsplit(".", 1)[-1]
     module.plot([b.ax for b in boxes])
     for b in boxes:
-        tight, bbox = b.ax.get_tightbbox(), b.ax.bbox
-        assert tight is not None
+        # A twin axes (e.g. a second y axis) shares the box and its margins
+        tight = Bbox.union(
+            [a.get_tightbbox() for a in b.ax.get_shared_x_axes().get_siblings(b.ax)]
+        )
+        bbox = b.ax.bbox
         b.left, b.right, b.top, b.bottom = (
             max(d, 0) / fig.dpi
             for d in (
@@ -630,36 +637,44 @@ def reference_line(
     )
 
 
-# --- Rank selection (ALAD Fig 2, IBD Figs 4-5) --------------------------------
+# --- Rank selection (ALAD Fig 2, IBD Fig 5) ------------------------------------
 
 
-def plot_rise_rank(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
+def plot_rise_rank(
+    sweep: pd.DataFrame,
+    ax: plt.Axes,
+    rank: int | None = None,
+    test_ax: plt.Axes | None = None,
+):
     """In-sample R2X of the full-data fit, and in-sample (training block) and
     held-out BiCV R2X as mean +/- SD over the BiCV repeats, against RISE
     rank, from `cccrise-riserank`. BiCV peaks or plateaus near the rank that
-    generalizes to unseen cells and genes."""
+    generalizes to unseen cells and genes. BiCV test goes on `test_ax` (e.g.
+    a twin y axis) if given. Returns the three mean lines."""
     full = sweep[sweep["Metric"] == "Fit R2X"].groupby("Rank")["R2X"].mean()
-    ax.plot(full.index, full, color=style.COLORS["fit_full"], label="Fit")
+    lines = ax.plot(full.index, full, color=style.COLORS["fit_full"], label="Fit")
     repeats = sweep[sweep["Metric"] == "BiCV R2X"].groupby("Rank")
-    for column, label, color in (
-        ("Train Block R2X", "BiCV train", style.COLORS["fit"]),
-        ("R2X", "BiCV test", style.COLORS["heldout"]),
+    for column, label, color, target in (
+        ("Train Block R2X", "BiCV train", style.COLORS["fit"], ax),
+        ("R2X", "BiCV test", style.COLORS["heldout"], test_ax or ax),
     ):
         mean, sd = repeats[column].mean(), repeats[column].std().fillna(0)
-        plot_mean_sd(ax, mean.index, mean, sd, color, label)
+        lines.append(plot_mean_sd(target, mean.index, mean, sd, color, label))
     mark_rank(ax, rank)
     ax.set_xlabel("RISE rank")
     ax.set_ylabel("$R^2X$")
-    ax.legend()
+    ax.legend(handles=lines)
+    return lines
 
 
 def plot_mean_sd(ax: plt.Axes, x, mean, sd, color: str, label: str, **kwargs):
     """`mean` against `x` with a shaded, thinly outlined +/- `sd` band;
-    `kwargs` go to the mean line."""
-    ax.plot(x, mean, color=color, label=label, **kwargs)
+    `kwargs` go to the mean line, which is returned."""
+    (line,) = ax.plot(x, mean, color=color, label=label, **kwargs)
     for bound in (mean - sd, mean + sd):
         ax.plot(x, bound, color=color, linewidth=style.LINE_WIDTH_THIN)
         ax.fill_between(x, mean, bound, color=color, alpha=0.25, lw=0)
+    return line
 
 
 def plot_cpd_fit_r2x(
@@ -685,6 +700,206 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     ax.set_ylabel("$R^2X$")
     ax.set_ylim(top=1.25 * ax.dataLim.y1)  # headroom for the legend
     ax.legend(loc="upper right")
+
+
+# --- CP rank selection across seeded starts (ALAD Fig 2, IBD Fig 5) -----------
+# Drawn from `cccrise-cpdrank`'s seeded starts: fit R2X across starts, each
+# mode's collinearity, and the distinct minima the starts reach.
+
+CP_MODES = {"A": "Condition", "B": "Sender", "C": "Receiver", "D": "LR pair"}
+#: Color slots for distinct minima: slot 0 is f_max, the minimum most starts
+#: reach. Sized for the most either dataset needs (ALAD rank 17: eight
+#: minima, shifted one slot by a tie), so a slot is one color in every figure.
+MINIMA_SLOTS = 9
+FMAX = r"$f_{\max}$"
+KNEEDLE_EDGE = "#e34948"
+BOX_SPAN = 0.8  # width a rank's boxes take, split between modes
+
+
+def load_minima(dataset: str) -> pd.DataFrame:
+    """`rank_selection.distinct_minima` of `dataset`'s starts, with each
+    minimum's color 'Slot' (`Order` - 1, shifted one where there is no
+    f_max)."""
+    start_fms = load_runner_output(
+        DATASETS[dataset].cpd_start_fms_filename(), RANK_SELECTION_DIR
+    )
+    r2x = load_cpd_rank(dataset).set_index(["Rank", "Seed"])["FitR2X"]
+    minima = distinct_minima(start_fms, r2x)
+    return minima.assign(Slot=minima["Order"] - 1 + minima["Tied"].astype(int))
+
+
+def rank_axis(ax: plt.Axes, ranks) -> None:
+    ranks = np.asarray(ranks)
+    ax.set_xticks(ranks[ranks % 2 == 1] if ranks.max() > 10 else ranks)
+    ax.set_xlim(0.4, ranks.max() + 0.6)
+    ax.set_xlabel("CP rank")
+
+
+def kneedle_elbow(x, y) -> int:
+    """Elbow of a convex, decreasing curve by offline Kneedle (Satopaa et al.
+    2011, sensitivity 1, as `kneed.KneeLocator(curve="convex",
+    direction="decreasing")`)."""
+    x, y = np.asarray(x, float), np.asarray(y, float)
+    xn, yn = ((v - v.min()) / (v.max() - v.min()) for v in (x, y))
+    diff = (yn.max() - yn) - xn
+    maxima = [
+        i
+        for i in range(1, x.size - 1)
+        if diff[i] >= diff[i - 1] and diff[i] >= diff[i + 1]
+    ]
+    step = float(np.abs(np.diff(xn)).mean())
+    for i, m in enumerate(maxima):
+        stop = maxima[i + 1] if i + 1 < len(maxima) else x.size
+        if np.any(diff[m + 1 : stop] < diff[m] - step):
+            return int(x[m])
+    return int(x[int(np.argmax(diff))])
+
+
+def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
+    """Fit R2X against CP rank: the median over starts, banded by their
+    range, with the Kneedle elbow of the median curve circled."""
+    sweep = load_cpd_rank(dataset)
+    source_data(
+        "cp_fit_r2x_by_rank_and_start",
+        sweep[["Rank", "Start", "Seed", "FitR2X"]],
+        "Fit R2X of every seeded SVD start at every CP rank (start 0 is the "
+        "production fit); plotted as the median over starts, banded by their "
+        "range.",
+    )
+    by_rank = sweep.groupby("Rank")["FitR2X"]
+    median = by_rank.median()
+    color = style.COLORS["fit"]
+    ax.fill_between(
+        median.index, by_rank.min(), by_rank.max(), color=color, alpha=0.2, lw=0
+    )
+    ax.plot(median.index, median, color=color, label="Median start")
+    elbow = kneedle_elbow(median.index, 1 - median.to_numpy())
+    ax.plot(
+        elbow,
+        median[elbow],
+        marker="o",
+        markersize=3 * style.MARKER_SIZE,
+        fillstyle="none",
+        markeredgecolor=KNEEDLE_EDGE,
+        markeredgewidth=style.LINE_WIDTH,
+        zorder=4,
+    )
+    ax.annotate(
+        "Kneedle",
+        (elbow, median[elbow]),
+        xytext=(6, -10),
+        textcoords="offset points",
+        fontsize=style.FONT_SIZE_DENSE,
+    )
+    mark_rank(ax, rank)
+    rank_axis(ax, median.index)
+    ax.set_ylabel("Fit $R^2X$")
+
+
+def plot_collinearity(
+    ax: plt.Axes,
+    dataset: str,
+    modes: Sequence[str] = tuple(CP_MODES),
+    rank: int | None = None,
+    part: int | None = None,
+) -> None:
+    """Per CP rank and mode in `modes` (`CP_MODES` keys), the largest |cosine|
+    between two components: a box over the seeded starts with each start
+    overlaid, several modes' boxes side by side. `part` is `source_data`'s."""
+    sweep = load_cpd_rank(dataset)
+    columns = [f"MaxCos{m}" for m in modes]
+    source_data(
+        "cp_max_cosine_by_rank",
+        sweep[["Rank", "Start", "Seed", *columns]],
+        "Per CP rank and seeded SVD start, the largest absolute cosine between "
+        "two components in each mode (MaxCosA condition, B sender, C receiver, "
+        "D ligand-receptor pair).",
+        part=part,
+    )
+    long = sweep[sweep["Rank"] > 1].melt(
+        id_vars="Rank", value_vars=columns, var_name="Mode", value_name="MaxCos"
+    )
+    long["Mode"] = long["Mode"].str[-1].map(CP_MODES)
+    palette = {CP_MODES[m]: style.CATEGORICAL[list(CP_MODES).index(m)] for m in modes}
+    kw = {
+        "data": long,
+        "x": "Rank",
+        "y": "MaxCos",
+        "hue": "Mode",
+        "hue_order": list(palette),
+        "palette": palette,
+        "native_scale": True,
+        "legend": False,
+        "ax": ax,
+    }
+    sns.boxplot(
+        **kw,
+        width=BOX_SPAN,
+        gap=0.15,
+        showfliers=False,
+        linewidth=style.LINE_WIDTH_THIN,
+        boxprops={"alpha": 0.5},
+    )
+    sns.stripplot(
+        **kw,
+        dodge=len(modes) > 1,
+        jitter=0.25 * BOX_SPAN / len(modes),
+        size=1.5,
+        edgecolor=style.COLORS["ink"],
+        linewidth=0.2,
+    )
+    mark_rank(ax, rank)
+    rank_axis(ax, np.arange(1, long["Rank"].max() + 1))
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("LR pair max |cosine|" if list(modes) == ["D"] else "Max |cosine|")
+    if len(modes) > 1:
+        legend(
+            ax,
+            handles=[Patch(color=c, alpha=0.7, label=m) for m, c in palette.items()],
+        )
+
+
+def minima_palette() -> list[str]:
+    """f_max blue, then an orange -> purple ramp for the other minima."""
+    ramp = plt.get_cmap("plasma")(np.linspace(0.78, 0.08, MINIMA_SLOTS - 1))
+    return [style.CATEGORICAL[0], *(to_hex(c) for c in ramp)]
+
+
+def plot_minima(ax: plt.Axes, dataset: str) -> None:
+    """The starts reaching each distinct minimum at each CP rank, stacked
+    from f_max up, with the minima's colors keyed beside the axes."""
+    table = load_minima(dataset)
+    source_data(
+        "cp_minima_by_rank",
+        table,
+        "Distinct minima per CP rank (starts joined at FMS >= 0.95): the "
+        "starts reaching each, its best R2X, its FMS to the minimum most "
+        "starts reach (f_max; where two minima tie for most, 'Tied', to the "
+        "one with the higher R2X), its order by starts, and its color slot.",
+    )
+    palette = minima_palette()
+    for _, g in table.groupby("Rank"):
+        ax.bar(
+            g["Rank"],
+            g["Starts"],
+            bottom=g["Starts"].cumsum() - g["Starts"],
+            width=0.72,
+            color=[palette[s] for s in g["Slot"]],
+            edgecolor="white",
+            lw=0.6,
+        )
+    n_starts = int(table.groupby("Rank")["Starts"].sum().max())
+    ax.set_ylim(0, n_starts)
+    ax.set_ylabel("Starts")
+    rank_axis(ax, table["Rank"].unique())
+    cmap = ListedColormap(palette)
+    key = colorbar(
+        ax,
+        ScalarMappable(BoundaryNorm(np.arange(MINIMA_SLOTS + 1), cmap.N), cmap),
+        "Distinct minima",
+    )
+    key.set_ticks([0.5], labels=[FMAX])
+    key.ax.tick_params(length=0)
 
 
 # --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------

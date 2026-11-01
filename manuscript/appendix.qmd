@@ -6,11 +6,13 @@ subtitle: "Resolving cell-cell communication programs beyond cell-type boundarie
 ## Table of Contents
 
 - {{< label rise-factor-matrices >}}: RISE factor matrices
-- {{< label cmp-stability >}}: Stability of RISE and CP components
+- {{< label cmp-stability >}}: Stability of RISE and CP components, and collinearity of CP modes
 - {{< label nichenet >}}: External validation of CCC-RISE LR weights
 - {{< label alad-associations >}}: Association of CP components, RISE components, and patient covariates with ALAD outcomes
 - {{< label anova-stability >}}: Stability of CP component--outcome associations
 - {{< label imputation-ridge >}}: The masked-imputation ridge leaves the full-data CP fit unchanged at the selected rank
+- {{< label rank-selection >}}: IBD rank selection
+- {{< label ibd-collinearity >}}: Collinearity of IBD CP modes
 
 ![](figures/figureS_rise_factor_matrices/figureS_rise_factor_matrices.svg){width="6.5in"}
 
@@ -21,10 +23,11 @@ For visualization, genes outside the top 10% by weight in any component are omit
 ![](figures/figureS_cmp_stability/figureS_cmp_stability.svg){width="6.5in"}
 
 **{{< label cmp-stability >}}.
-Stability of RISE and CP components.** ({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45).
+Stability of RISE and CP components, and collinearity of CP modes.** ({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
 Each replicate's components were matched to the reference's by Hungarian matching.
+({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, for each of 10 seeded SVD starts per rank (points); the LR pair mode is shown in {{< fig 2 cp-rank-selection.2 >}}.
+The dashed line marks the selected rank.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-({{< panel cmp-stability fms-histograms >}}) Distributions of RISE component 3 and CP component 2 (the two bimodal components) FMS across jackknife replicates.
 
 ![](figures/figureS_nichenet/figureS_nichenet.svg){width="6.5in"}
 
@@ -65,6 +68,24 @@ The masked-imputation ridge leaves the full-data CP fit unchanged at the selecte
 ×: the uncompressed core CP fit at the selected rank (dashed line).
 ({{< panel imputation-ridge ridge-fms >}}) FMS over all four modes between the fits with and without the ridge for each component matched by Hungarian assignment (points) and their mean (line).
 At the selected rank, + and × mark the core fit's aggregate FMS to the fits without and with the ridge.
+
+![](figures/figureS_rank_selection/figureS_rank_selection.svg){width="6.5in"}
+
+**{{< label rank-selection >}}.
+IBD rank selection.** ({{< panel rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test, on the right axis); mean ± SD over 10 repeats per rank.
+({{< panel rank-selection cp-r2x-starts >}}) CP fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
+Circle: the elbow of the median curve located by Kneedle.
+({{< panel rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CP components across ranks, for each start (points); the other modes are shown in {{< fig ibd-collinearity >}}.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
+({{< panel rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct minimum across ranks (starts joined at FMS ≥ 0.95), stacked from the minimum most starts reach ($f_{\max}$, bottom) to those fewest starts reach.
+Dashed lines mark the selected ranks.
+
+![](figures/figureS_ibd_collinearity/figureS_ibd_collinearity.svg){width="6.5in"}
+
+**{{< label ibd-collinearity >}}.
+Collinearity of IBD CP modes.** Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, for each of 10 seeded SVD starts per rank (points); the LR pair mode is shown in {{< panel rank-selection cp-collinearity >}}.
+The dashed line marks the selected rank.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 
 <!-- Legacy Supplemental Captions
 
