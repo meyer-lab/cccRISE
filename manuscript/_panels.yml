@@ -88,13 +88,6 @@ figS_comparator_rank_selection:
   tc2c_minima_fine: [l]
   stac_shares_coarse: [m]
   stac_shares_fine: [n]
-figS_comparator_containment:
-  sample_reach_coarse: [a]
-  sample_reach_fine: [b]
-  outside_coarse: [c]
-  outside_fine: [d]
-  pairwise_coarse: [e]
-  pairwise_fine: [f]
 figS_comparator_inner:
   losses: [a]
   program_losses_coarse: [b]
@@ -116,9 +109,6 @@ figS_comparator_clinical:
 figS_comparator_covariation:
   all_pairs: [a]
   disjoint: [b]
-figS_comparator_representability:
-  representability_coarse: [a]
-  representability_fine: [b]
 figS_comparator_properties:
   coarse_to_fine: [a]
   breadth: [b]

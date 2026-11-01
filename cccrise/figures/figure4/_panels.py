@@ -1,30 +1,18 @@
-"""Figure 4's supplementary drawing functions, each for one labelling (and,
-where a supplement widens it, a set of methods), bound into panels with the
-panel modules: reach (cccRISE's programs in each comparator, LR or sample
-mode), each comparator LR column in cccRISE by audit class, containment
-between every pair of methods, representability, and what Tensor-cell2cell's
-published construction drops."""
+"""Figure 4's supplementary drawing functions, each for one labelling, bound
+into panels with the panel modules: reach (cccRISE's programs in each
+comparator) and what Tensor-cell2cell's published construction drops."""
 
 import itertools
 
 import numpy as np
 import pandas as pd
-from matplotlib.patches import Patch, Rectangle
+from matplotlib.patches import Rectangle
 
 from ...comparators.scores import CONTAINED
 from .. import common, style
 from ._common import COMPARATORS, METHOD_COLORS, METHOD_LABELS, load
 
 MODE_LABELS = {"lr": "LR", "sample": "sample"}
-#: Audit classes, bottom of the stack first, and their colors.
-CLASSES = {
-    "contained in cccRISE": style.COLORS["emphasis"],
-    "one sample": "0.55",
-    "marker or homophilic": "0.75",
-    "abundance readout": style.CATEGORICAL[8],
-    "diffuse": style.CATEGORICAL[5],
-    "candidate biology": style.COLORS["highlight"],
-}
 
 
 def containment(labelling: str, of: str, mode: str) -> pd.DataFrame:
@@ -136,131 +124,6 @@ def _mark_sample_contained(ax, labelling: str, values: pd.DataFrame) -> None:
     for (i, j), _ in np.ndenumerate(values.to_numpy()):
         if sample.loc[values.index[i], values.columns[j]]:
             ax.plot(j + 0.32, i - 0.3, "o", color="white", markersize=2.5, mec="black")
-
-
-def outside(axs, labelling: str, methods=COMPARATORS) -> None:
-    """Each comparator LR column's containment in cccRISE's LR span, colored
-    by its audit class."""
-    ax = axs[0]
-    table = load("containment", labelling)
-    table = table[
-        (table["In"] == "cccRISE") & (table["Mode"] == "lr") & table["Of"].isin(methods)
-    ]
-    classes = load("audit", labelling).set_index(["Method", "Component"])["Class"]
-    keys = pd.MultiIndex.from_arrays([table["Of"], table["Component"]])
-    table = table.assign(
-        Class=classes.reindex(keys).fillna("contained in cccRISE").to_numpy()
-    )
-    common.source_data(
-        "comparator_lr_containment_in_cccrise",
-        table.drop(columns=["In", "Mode"]).rename(columns={"Of": "Method"}),
-        "Each comparator LR column's share of squared norm in cccRISE's LR "
-        "span, its permutation-null 95th percentile, and its audit class.",
-    )
-    rng = np.random.default_rng(0)
-    for x, method in enumerate(methods):
-        group = table[table["Of"] == method]
-        ax.scatter(
-            x + rng.uniform(-0.2, 0.2, len(group)),
-            group["Containment"],
-            c=[CLASSES[c] for c in group["Class"]],
-            s=style.POINT_SIZE,
-            edgecolor="white",
-            lw=0.3,
-        )
-    common.reference_line(ax, CONTAINED)
-    ax.set_xticks(
-        range(len(methods)),
-        [METHOD_LABELS[m] for m in methods],
-        rotation=30,
-        ha="right",
-    )
-    ax.set_ylim(-0.03, 1.03)
-    ax.set_ylabel("LR containment in cccRISE")
-    handles = [Patch(color=color, label=name) for name, color in CLASSES.items()]
-    common.legend(ax, "below", handles=handles, ncol=2, fontsize=style.FONT_SIZE_DENSE)
-
-
-def pairwise(axs, labelling: str, methods=("cccRISE", *COMPARATORS)) -> None:
-    """Mean LR containment of each method's columns (rows) in each other
-    method's span (columns), with the share contained."""
-    ax = axs[0]
-    table = load("containment", labelling)
-    table = table[
-        (table["Mode"] == "lr") & table["Of"].isin(methods) & table["In"].isin(methods)
-    ]
-    summary = table.groupby(["Of", "In"]).agg(
-        Mean=("Containment", "mean"),
-        Contained=("Contained", "sum"),
-        Columns=("Contained", "size"),
-    )
-    common.source_data(
-        "pairwise_lr_containment",
-        summary,
-        "Mean LR containment of one method's columns (Of) in another's span "
-        "(In), and how many of its columns are contained.",
-    )
-    mean = summary["Mean"].unstack().reindex(index=methods, columns=methods)
-    image = ax.imshow(
-        mean.to_numpy(), cmap=style.CMAPS["weight"], vmin=0, vmax=1, aspect="auto"
-    )
-    for (i, j), value in np.ndenumerate(mean.to_numpy()):
-        if np.isnan(value):
-            continue
-        row = summary.loc[(methods[i], methods[j])]
-        ax.text(
-            j,
-            i,
-            f"{value:.2f}\n{int(row['Contained'])}/{int(row['Columns'])}",
-            ha="center",
-            va="center",
-            fontsize=style.FONT_SIZE_DENSE - 1,
-            color=_ink(value),
-        )
-    names = [METHOD_LABELS[m] for m in methods]
-    ax.set_xticks(range(len(methods)), names, rotation=30, ha="right")
-    ax.set_yticks(range(len(methods)), names)
-    ax.set_xlabel("In the span of")
-    ax.set_ylabel("Columns of")
-    ax.tick_params(length=0)
-    common.colorbar(ax, image, "Mean LR containment")
-
-
-def representability(axs, labelling: str) -> None:
-    """Each cccRISE program's per-cell sender and receiver weight explained
-    by its (sample, cell type) means (bars), against random splits of the
-    same sizes within each sample (95th percentile, black tick) and by sample
-    means alone (white dot)."""
-    ax = axs[0]
-    table = load("representability", labelling)
-    common.source_data(
-        "representability_by_sample_and_type",
-        table,
-        "Per cccRISE component and side: the share of per-cell weight variance "
-        "explained by (sample, cell type) means (R2), by sample means alone "
-        "(SampleR2), and by (sample, random group) means with each sample's "
-        "cell types shuffled among its cells (mean and 95th percentile of 200).",
-    )
-    width = 0.38
-    for offset, side in ((-0.5, "sender"), (0.5, "receiver")):
-        rows = table[table["Side"] == side]
-        x = rows["Component"].to_numpy() + offset * width
-        ax.bar(x, rows["R2"], width, color=style.COLORS[side], label=side.capitalize())
-        ax.hlines(rows["NullQ95"], x - width / 2, x + width / 2, color="black", lw=1)
-        ax.scatter(
-            x,
-            rows["SampleR2"],
-            s=style.POINT_SIZE / 2,
-            color="white",
-            ec="black",
-            lw=0.4,
-        )
-    components = sorted(table["Component"].unique())
-    ax.set_xticks(components, [f"C{c}" for c in components])
-    ax.set_ylim(0, 1)
-    ax.set_ylabel("$R^2$, (sample, type) means")
-    ax.set_title(f"{labelling.capitalize()} labels", loc="left")
-    ax.legend(loc="upper left", fontsize=style.FONT_SIZE_DENSE)
 
 
 INNER_MEASURES = ("cell types", "cells", "observed entries", "signal")
