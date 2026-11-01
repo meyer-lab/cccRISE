@@ -23,5 +23,5 @@ n_random_splits: 200
 random_state: 42
 contained: 0.85
 diffuse_lr_pairs: 10.0
-git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
-generated: '2026-11-01T02:40:51+00:00'
+git_sha: 425561c62d83ef7d99d5af1e795cf50792e7f637
+generated: '2026-11-01T02:50:50+00:00'
