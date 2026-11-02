@@ -162,8 +162,8 @@ def load_rank_selection(key: str) -> RankSelection:
     cpd = _read_sweep(runner_spec.cpd_rank_filename())
     cpd_rise_rank = None
     if cpd is not None:
-        # One row per (rank, component) when the ridge comparison ran
-        cpd = cpd.drop_duplicates("Rank")
+        # One row per rank and seeded start; start 0 is the production fit
+        cpd = cpd[cpd["Start"] == 0]
         sidecar = sidecar_path(RANK_SELECTION_DIR / runner_spec.cpd_rank_filename())
         if sidecar.exists():
             cpd_rise_rank = yaml.safe_load(sidecar.read_text()).get("rise_rank")

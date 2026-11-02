@@ -14,25 +14,24 @@ from .ccc import (
 )
 from .import_data import (
     add_cond_idxs,
-    condition_matrices,
     import_ligand_receptor_pairs,
+    iter_condition_matrices,
 )
 from .rank_selection import (
+    CP_DTYPE,
     Factors,
     calculate_r2x,
-    candelinc_compress,
-    candelinc_r2x,
-    cp_core_consistency,
     cpd_component_collinearity,
+    fit_cp_on_device,
 )
 
 #: PARAFAC2 options every CCC-RISE fit uses, including `bicv` in `run_rise_rank`.
 RISE_FIT_OPTIONS: dict[str, Any] = {"normalize_slices": True, "fix_B_identity": True}
-#: Compression options for runs with `compress=True`. RISE's are parafac2's
-#: default, passed explicitly so `fit_rise` and `bicv` (`compression_kwarg`,
-#: which must be non-empty for `bicv` to compress once per fold) provably match.
+#: RISE compression options for runs with `compress=True` (CP is never
+#: compressed). parafac2's default, passed explicitly so `fit_rise` and `bicv`
+#: (`compression_kwarg`, which must be non-empty for `bicv` to compress once
+#: per fold) provably match.
 RISE_COMPRESSION_OPTIONS: dict[str, Any] = {"n_power_iter": 20}
-CP_COMPRESSION_OPTIONS: dict[str, Any] = {"oversample": 5}
 #: CP options every CCC-RISE fit uses, including the rank sweep in `run_cpd_rank`.
 CP_FIT_OPTIONS: dict[str, Any] = {
     "init": "svd",
@@ -243,6 +242,8 @@ def run_ccc_rise_workflow(
     hill_k: float = 0.5,
     backend: str | None = None,
     compress: bool = False,
+    cp_device: str | None = None,
+    cp_dtype: str = CP_DTYPE,
     doEmbedding: bool = False,
     keep_tensor: bool = False,
     *,
@@ -279,7 +280,9 @@ def run_ccc_rise_workflow(
     backend : str, optional
         RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect).
     compress : bool, default=False
-        Fit both RISE and CP compressed (see `fit_rise` and `fit_cp`).
+        Fit RISE compressed (see `fit_rise`). CP is never compressed.
+    cp_device, cp_dtype
+        Device and precision of the CP fit; see `fit_cp`.
     doEmbedding : bool, default=False
         Fit a PaCMAP embedding of the per-cell projections.
     keep_tensor : bool, default=False
@@ -312,7 +315,8 @@ def run_ccc_rise_workflow(
         communication_score=communication_score,
         hill_k=hill_k,
         random_state=random_state,
-        compress=compress,
+        cp_device=cp_device,
+        cp_dtype=cp_dtype,
         cp_n_iter_max=cp_n_iter_max,
         cp_tol=cp_tol,
     )
@@ -339,7 +343,8 @@ def fit_ccc_cp(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int | None = None,
-    compress: bool = False,
+    cp_device: str | None = None,
+    cp_dtype: str = CP_DTYPE,
     *,
     cp_n_iter_max: int,
     cp_tol: float,
@@ -369,7 +374,8 @@ def fit_ccc_cp(
         n_iter_max=cp_n_iter_max,
         tol=cp_tol,
         random_state=random_state,
-        compress=compress,
+        device=cp_device,
+        dtype=cp_dtype,
     )
     return {
         "tensor": tensor,
@@ -432,7 +438,8 @@ def calculate_interaction_tensor(
 
     Projects each mean-centered condition matrix onto its RISE projections
     (``P_k^T X_k``) and scores ligand-receptor communication between the
-    resulting eigen-states. All conditions are densified at once.
+    resulting eigen-states. Only one condition is dense at a time: the whole
+    IBD cohort dense is hundreds of GB.
 
     Parameters
     ----------
@@ -461,7 +468,7 @@ def calculate_interaction_tensor(
     projected_matrices = [
         P.T @ X
         for P, X in zip(
-            condition_projections(adata), condition_matrices(adata), strict=True
+            condition_projections(adata), iter_condition_matrices(adata), strict=True
         )
     ]
     # Per-gene mean subtracted before fitting RISE (see `prepare_dataset`); added
@@ -488,63 +495,46 @@ def fit_cp(
     n_iter_max: int,
     tol: float,
     random_state: int | None = None,
-    compress: bool = False,
+    device: str | None = None,
+    dtype: str = CP_DTYPE,
 ) -> tuple[np.ndarray, Factors, float, dict[str, Any]]:
     """Fit CP at a fixed rank with `CP_FIT_OPTIONS` and standardize the factors
     (`standardize_cc_pf2`).
 
-    `compress` fits against a CANDELINC core sized for `rank`
-    (`rank_selection.candelinc_compress` with `CP_COMPRESSION_OPTIONS`)
-    instead of the full tensor, then maps the factors back onto the tensor's
-    own modes with ``A_n = U_n F_n``.
-    R2X (via `rank_selection.candelinc_r2x`), core consistency and
-    collinearity are each invariant to that substitution, so compression is a
-    speed optimization only.
+    The fit runs on `device` ('gpu', 'cpu', or None for the GPU when there is
+    one) in `dtype` (`rank_selection.fit_cp_on_device`); those are its only
+    speed options.
 
-    Returns weights, factors (in `tensor`'s own space), R2X against `tensor`,
-    and the `_cpd_diagnostics` dict -- each computed in the (cheaper) core
-    space when compressed.
+    Returns weights, factors, R2X against `tensor`, and the
+    `_cpd_diagnostics` dict.
     """
     validate_cp_rank(rank, tensor.shape)
-    fit_target = tensor
-    bases: Factors | None = None
-    lost_sq = 0.0
-    if compress:
-        fit_target, bases, lost_sq = candelinc_compress(
-            tensor, max_rank=rank, **CP_COMPRESSION_OPTIONS
-        )
-
-    weights, factors = parafac(
-        fit_target,
+    weights, factors = fit_cp_on_device(
+        tensor,
         rank,
+        device,
+        dtype,
         n_iter_max=n_iter_max,
         tol=tol,
         random_state=random_state,
         **CP_FIT_OPTIONS,
     )
-    diagnostics = _cpd_diagnostics(fit_target, weights, factors, rank)
-    r2x = candelinc_r2x(
-        calculate_r2x(weights, factors, fit_target), fit_target, lost_sq
-    )
-
-    if bases is not None:
-        factors = [b @ f for b, f in zip(bases, factors, strict=True)]
-
+    diagnostics = _cpd_diagnostics(weights, factors, rank)
+    r2x = calculate_r2x(weights, factors, tensor)
     weights, factors = standardize_cc_pf2(weights, factors)
     return weights, factors, r2x, diagnostics
 
 
 def _cpd_diagnostics(
-    tensor: np.ndarray, weights: np.ndarray, factors: Factors, rank: int
+    weights: np.ndarray, factors: Factors, rank: int
 ) -> dict[str, Any]:
-    """CP fit diagnostics at the fixed rank: core consistency and collinearity.
+    """CP fit collinearity at the fixed rank.
 
-    Lets a wide replicate spread traceable to a poor or degenerate fit be
-    told apart from genuine component instability.
+    Lets a wide replicate spread traceable to a degenerate fit be told apart
+    from genuine component instability.
     """
     collinearity = cpd_component_collinearity({rank: (weights, factors)}).iloc[0]
     return {
-        "CoreConsistency": cp_core_consistency(tensor, weights, factors),
         "MaxModesCollinear": int(collinearity["MaxModesCollinear"]),
         "WorstPairCanceling": collinearity["WorstPairCanceling"],
     }

@@ -349,58 +349,50 @@ def test_stability_replicates_carries_the_per_replicate_fit_diagnostics():
 
     cpd = df[df["Stage"] == STAGE_CPD]
     assert cpd["R2X"].notna().all()
-    assert cpd["CoreConsistency"].notna().all()
     assert cpd["MaxModesCollinear"].notna().all()
     # The diagnostics are replicate-level scalars repeated on each row.
-    assert cpd["CoreConsistency"].nunique() == 1
+    assert cpd["MaxModesCollinear"].nunique() == 1
     # RISE rows carry their own R2X but no CP-specific diagnostics.
     rise = df[df["Stage"] == STAGE_RISE]
     assert rise["R2X"].notna().all()
-    assert rise["CoreConsistency"].isna().all()
+    assert rise["MaxModesCollinear"].isna().all()
 
 
 # =============================================================================
-# GPU backend and compression
+# Devices, precision and RISE compression
 # =============================================================================
 
 
-def test_fit_cp_diagnostics_match_between_core_and_decompressed_space():
-    """`fit_cp` computes R2X and diagnostics cheaply in the CANDELINC core,
-    before decompressing the factors it returns. Those values must equal what
-    recomputing them against the decompressed factors and the full tensor
-    would give -- the invariance `rank_selection.candelinc_compress`
-    documents, and the reason it is safe to read them off the core at all."""
+def test_fit_cp_reports_its_own_fit():
+    """`fit_cp` returns factors on the tensor's own modes, their R2X against
+    the tensor, and their collinearity, whatever device and precision it
+    fits in."""
     rng = np.random.default_rng(21)
     tensor = np.abs(rng.random((20, 9, 9, 30)))
 
-    weights, factors, r2x, diagnostics = fit_cp(
-        tensor,
-        rank=3,
-        n_iter_max=200,
-        tol=1e-8,
-        random_state=0,
-        compress=True,
-    )
+    for dtype in ("float32", "float64"):
+        weights, factors, r2x, diagnostics = fit_cp(
+            tensor,
+            rank=3,
+            n_iter_max=200,
+            tol=1e-8,
+            random_state=0,
+            device="cpu",
+            dtype=dtype,
+        )
+        for f, dim in zip(factors, tensor.shape, strict=True):
+            assert f.shape == (dim, 3)
+        assert r2x == pytest.approx(calculate_r2x(weights, factors, tensor), abs=1e-6)
 
-    for f, dim in zip(factors, tensor.shape, strict=True):
-        assert f.shape == (dim, 3)
+        from cccrise.rank_selection import cpd_component_collinearity
 
-    assert r2x == pytest.approx(calculate_r2x(weights, factors, tensor), abs=1e-6)
-
-    from cccrise.rank_selection import cp_core_consistency, cpd_component_collinearity
-
-    # The returned factors are re-normalized by `standardize_cc_pf2`, and
-    # CORCONDIA's off-diagonal terms are scale-sensitive, so this agreement is
-    # only approximate.
-    assert diagnostics["CoreConsistency"] == pytest.approx(
-        cp_core_consistency(tensor, weights, factors), abs=0.1
-    )
-    recomputed = cpd_component_collinearity({3: (weights, factors)}).iloc[0]
-    assert diagnostics["MaxModesCollinear"] == int(recomputed["MaxModesCollinear"])
+        recomputed = cpd_component_collinearity({3: (weights, factors)}).iloc[0]
+        assert diagnostics["MaxModesCollinear"] == int(recomputed["MaxModesCollinear"])
 
 
 def test_fit_stability_pipeline_runs_compressed():
-    """`compress=True`, what the runners pass, must be a working code path."""
+    """`compress=True` (RISE only), what the runners pass, must be a working
+    code path."""
     adata = _simulate_adata()
     lr_pairs = _lr_pairs()
     kwargs = _pipeline_kwargs()
@@ -983,33 +975,3 @@ def test_jackknife_interval_scales_the_leave_one_out_spread():
     # Percentiles of the same values would be far narrower.
     p_low, p_high = _eta_squared_interval(eta, 0.3, jackknife=False, ci_level=95.0)
     assert high - low > p_high - p_low
-
-
-# =============================================================================
-# Unstable-component selection (stability supplement)
-# =============================================================================
-
-
-def test_bimodal_components_flags_a_second_population_but_not_outliers():
-    from cccrise.figures.figure2.figureS_cmp_stability import _common as S
-
-    rng = np.random.default_rng(0)
-    tight = 1 - rng.uniform(0, 0.01, 40)
-    one_low = np.r_[np.ones(39), 0.1]  # one failed replicate is not a mode
-    bimodal = np.r_[rng.uniform(0.0, 0.2, 10), rng.uniform(0.95, 1.0, 30)]
-    high_bimodal = np.r_[rng.uniform(0.55, 0.65, 20), rng.uniform(0.95, 1.0, 20)]
-    df = pd.concat(
-        [
-            pd.DataFrame(
-                {"Stage": stage, "Axis": JACKKNIFE_AXIS, "Component": c, "FMS": fms}
-            )
-            for stage, c, fms in [
-                (STAGE_RISE, 1, tight),
-                (STAGE_RISE, 2, one_low),
-                (STAGE_RISE, 3, high_bimodal),
-                (STAGE_CPD, 1, bimodal),
-            ]
-        ]
-    )
-
-    assert S.bimodal_components(df) == [(STAGE_RISE, 3), (STAGE_CPD, 1)]

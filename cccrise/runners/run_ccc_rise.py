@@ -27,7 +27,12 @@ from typing import Any
 
 import anndata
 
-from ..ccc_rise import CP_FIT_OPTIONS, run_ccc_rise_workflow, validate_cp_rank
+from ..ccc_rise import (
+    CP_DTYPE,
+    CP_FIT_OPTIONS,
+    run_ccc_rise_workflow,
+    validate_cp_rank,
+)
 from ..factors import save_ccc_rise_fit
 from ..import_data import import_ligand_receptor_pairs
 from ._cli import (
@@ -35,14 +40,16 @@ from ._cli import (
     CP_TOL,
     RISE_N_ITER_MAX,
     RISE_TOL,
+    add_cp_device_arguments,
     add_dataset_argument,
     add_scoring_arguments,
+    cp_device_metadata,
     dataset_metadata,
+    resolve_dataset,
     resolve_output,
     resulting_dims,
 )
 from .datasets import (
-    DATASETS,
     FACTORS_DIR,
     RANK_SELECTION_DIR,
     DatasetSpec,
@@ -99,6 +106,8 @@ def run_pipeline(
     rise_rank_notes: str | None = None,
     cpd_rank_notes: str | None = None,
     do_embedding: bool = True,
+    cp_device: str | None = None,
+    cp_dtype: str = CP_DTYPE,
 ) -> tuple[anndata.AnnData, Path, Path]:
     """Run cccRISE end to end and serialize the factor model plus provenance.
 
@@ -127,6 +136,8 @@ def run_pipeline(
         (under `validation_results/alt_score_methods/`) for any other score.
     rise_rank_notes, cpd_rank_notes : str, optional
         Rationale for each chosen rank, written into the provenance file.
+    cp_device, cp_dtype
+        Device and precision of the CP fit; see `ccc_rise.fit_cp`.
     do_embedding : bool, default=True
         Fit a PaCMAP embedding of the per-cell projections and store it with
         them, for the Shiny explorer's cell projection views.
@@ -174,6 +185,8 @@ def run_pipeline(
         doEmbedding=do_embedding,
         backend=spec.backend,
         compress=False,
+        cp_device=cp_device,
+        cp_dtype=cp_dtype,
         communication_score=communication_score,
         hill_k=hill_k,
     )
@@ -208,6 +221,7 @@ def run_pipeline(
             "complex_sep": complex_sep,
             "cp_fit_options": CP_FIT_OPTIONS,
             "backend": spec.backend or "auto",
+            **cp_device_metadata(cp_device, cp_dtype),
             "communication_score": communication_score,
             "hill_k": hill_k,
             "pacmap_embedding": do_embedding,
@@ -240,6 +254,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
     parser.add_argument("--cp-tol", type=float, default=CP_TOL)
+    add_cp_device_arguments(parser)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--complex-sep", type=str, default="&")
     add_scoring_arguments(parser)
@@ -273,7 +288,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_pipeline(
         spec,
         rise_rank=args.rise_rank,
@@ -294,6 +309,8 @@ def main(argv: list[str] | None = None) -> None:
         rise_rank_notes=args.rise_rank_notes,
         cpd_rank_notes=args.cpd_rank_notes,
         do_embedding=args.do_embedding,
+        cp_device=args.cp_device,
+        cp_dtype=args.cp_dtype,
     )
 
 

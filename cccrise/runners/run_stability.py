@@ -41,7 +41,7 @@ from typing import Any
 import pandas as pd
 
 from ..ccc_rise import (
-    CP_COMPRESSION_OPTIONS,
+    CP_DTYPE,
     CP_FIT_OPTIONS,
     RISE_COMPRESSION_OPTIONS,
 )
@@ -68,17 +68,20 @@ from ._cli import (
     REPLICATE_COMPRESS,
     RISE_N_ITER_MAX,
     RISE_TOL,
+    add_cp_device_arguments,
     add_dataset_argument,
     add_group_arguments,
     add_scoring_arguments,
     component_numbering,
     core_numbering_reference,
+    cp_device_metadata,
     dataset_metadata,
     resolve_anova_labels,
+    resolve_dataset,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec, scoring_output_dir
+from .datasets import VALIDATION_DIR, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, write_metadata
 
 HEADER = """\
@@ -107,6 +110,8 @@ def run_stability(
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int = 42,
+    cp_device: str | None = None,
+    cp_dtype: str = CP_DTYPE,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score per-component RISE, CPD and ANOVA stability at fixed ranks.
@@ -139,6 +144,8 @@ def run_stability(
         Communication-tensor options; see `ccc_rise.calc_communication_score`.
     random_state : int, default=42
         Base seed for the reference fit and the replicates.
+    cp_device, cp_dtype
+        Device and precision of every CP fit; see `ccc_rise.fit_cp`.
     output_path : Path, optional
         Parquet destination; defaults to the registry's stability filename under
         `VALIDATION_DIR` for `communication_score="expression_product"`, or
@@ -169,7 +176,10 @@ def run_stability(
         f"    alpha={alpha}  group_column={group_column!r}  "
         f"control={control_label!r}  other={other_label!r}"
     )
-    print(f"    backend={spec.backend or 'auto'}  compress={REPLICATE_COMPRESS}")
+    print(
+        f"    backend={spec.backend or 'auto'}  compress (RISE)={REPLICATE_COMPRESS}"
+        f"  cp_device={cp_device or 'auto'}  cp_dtype={cp_dtype}"
+    )
 
     print("1. Loading data...")
     adata = spec.load()
@@ -196,6 +206,8 @@ def run_stability(
         "hill_k": hill_k,
         "backend": spec.backend,
         "compress": REPLICATE_COMPRESS,
+        "cp_device": cp_device,
+        "cp_dtype": cp_dtype,
     } | anova_kwargs
 
     core = core_numbering_reference(spec, rise_rank, cp_rank)
@@ -262,8 +274,8 @@ def run_stability(
             "random_state": random_state,
             "backend": spec.backend or "auto",
             "compress": REPLICATE_COMPRESS,
+            **cp_device_metadata(cp_device, cp_dtype),
             "rise_compression_options": RISE_COMPRESSION_OPTIONS,
-            "cp_compression_options": CP_COMPRESSION_OPTIONS,
             "seed_formula": (
                 "random_state * 1000 + replicate + 1 seeds a replicate's RISE "
                 "and CP fits (see validation.replicate_seed). On the seed_only "
@@ -426,6 +438,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rise-tol", type=float, default=RISE_TOL)
     parser.add_argument("--cp-n-iter-max", type=int, default=CP_N_ITER_MAX)
     parser.add_argument("--cp-tol", type=float, default=CP_TOL)
+    add_cp_device_arguments(parser)
     parser.add_argument("--complex-sep", type=str, default="&")
     add_scoring_arguments(parser)
     parser.add_argument("--random-state", type=int, default=42)
@@ -442,7 +455,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_stability(
         spec,
         rise_rank=args.rise_rank,
@@ -462,6 +475,8 @@ def main(argv: list[str] | None = None) -> None:
         communication_score=args.communication_score,
         hill_k=args.hill_k,
         random_state=args.random_state,
+        cp_device=args.cp_device,
+        cp_dtype=args.cp_dtype,
         output_path=resolve_output(
             args.output,
             scoring_output_dir(args.communication_score, VALIDATION_DIR),
