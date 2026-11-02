@@ -33,6 +33,20 @@ NULL_HANDLE = Line2D(
     markersize=6,
     label="stricter null, 95th pct.",
 )
+UNTESTABLE_HANDLE = Line2D(
+    [],
+    [],
+    marker="x",
+    ls="",
+    color="0.35",
+    markersize=3.5,
+    mew=0.7,
+    label="no gene-disjoint pairs",
+)
+#: Where `UNTESTABLE_HANDLE`'s x sits on a co-variation axis.
+UNTESTABLE_Y = 0.04
+#: Pads a two-column key's shorter column.
+BLANK_HANDLE = Line2D([], [], ls="", label="")
 
 
 def method_handles(methods, markersize=4) -> list[Line2D]:
@@ -54,9 +68,14 @@ def _tick_label(method: str, labelling: str) -> str:
     return METHOD_LABELS[method] if method == "cccRISE" else labelling[0].upper()
 
 
-def fit_axis(ax, slots, method_offset=-12) -> None:
+def fit_axis(ax, slots, method_offset=-12, labelled: bool = True) -> None:
     """C/F ticks at each (method, labelling, x) of `slots`, cccRISE named at
-    its own tick, and each comparator's name below, centred on its fits."""
+    its own tick, and each comparator's name below, centred on its fits;
+    unless `labelled` is false, which leaves the bare ticks (an axis stacked
+    above another that names them)."""
+    if not labelled:
+        ax.set_xticks([x for *_, x in slots], [])
+        return
     ax.set_xticks(
         [x for *_, x in slots],
         [_tick_label(m, lab) for m, lab, _ in slots],
@@ -64,6 +83,12 @@ def fit_axis(ax, slots, method_offset=-12) -> None:
     )
     for label, (m, *_) in zip(ax.get_xticklabels(), slots, strict=True):
         label.set_fontsize(style.FONT_SIZE_DENSE - (1 if m == "cccRISE" else 0))
+    _method_names(ax, slots, method_offset)
+
+
+def _method_names(ax, slots, offset) -> None:
+    """Each comparator's name `offset` points below the axis, centred on
+    its fits."""
     names = {}
     for m, _, x in slots:
         if m != "cccRISE":
@@ -73,7 +98,7 @@ def fit_axis(ax, slots, method_offset=-12) -> None:
             METHOD_LABELS[m],
             (np.mean(xs), 0),
             xycoords=("data", "axes fraction"),
-            xytext=(0, method_offset),
+            xytext=(0, offset),
             textcoords="offset points",
             ha="center",
             va="top",
@@ -128,20 +153,25 @@ def spread_slots(tables, slots=SLOTS) -> tuple[pd.DataFrame, list]:
 
 def label_above(ax, points, stagger=False, size=style.FONT_SIZE_DENSE - 1.5) -> None:
     """Each row of `points` (X, Y, Text) labelled just above its point; with
-    `stagger`, labels of neighbouring x alternate between two heights."""
-    previous, raised = -np.inf, True
+    `stagger`, a label next to (x within 1 of) the last one takes whichever
+    of two heights sits further from it, so neighbours don't collide."""
+    to_points = 72 / ax.figure.dpi
+    previous = None  # the last label's x and baseline, in points
     for r in points.sort_values("X").itertuples():
-        raised = stagger and (not raised if r.X - previous <= 1 else False)
+        y = ax.transData.transform((r.X, r.Y))[1] * to_points
+        offset = 3.5
+        if stagger and previous is not None and r.X - previous[0] <= 1:
+            offset = max((3.5, 9), key=lambda o: abs(y + o - previous[1]))
+        previous = (r.X, y + offset)
         ax.annotate(
             r.Text,
             (r.X, r.Y),
-            xytext=(0, 9 if raised else 3.5),
+            xytext=(0, offset),
             textcoords="offset points",
             ha="center",
             va="bottom",
             fontsize=size,
         )
-        previous = r.X
 
 
 def _obstacle_boxes(ax, obstacles) -> list[Bbox]:

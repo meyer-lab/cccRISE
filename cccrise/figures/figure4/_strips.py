@@ -4,17 +4,19 @@ outcome associations, and LR-loading shares."""
 
 import numpy as np
 import pandas as pd
-from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 from .. import common, style
-from ._common import METHOD_COLORS
+from ._common import COMPARATORS, METHOD_COLORS
 from ._data import CLASSES, HOMOPHILIC, SINGLE_PAIR, beyond, both, classified, short
 from ._layout import (
+    BLANK_HANDLE,
     LABELLING_HANDLES,
     LABELLING_MARKERS,
     NULL_HANDLE,
     SLOTS,
+    UNTESTABLE_HANDLE,
+    UNTESTABLE_Y,
     fit_axis,
     label_above,
     label_sides,
@@ -24,6 +26,8 @@ from ._layout import (
 )
 
 SINGLE_HATCH = "////"
+#: Figure 4B and C's keys sit this far (axes fraction) off the bottom.
+KEY_RAISE = 0.07
 #: Main Figure 4B and C's fits: no PB.
 MAIN_SLOTS = [slot for slot in SLOTS if slot[0] != "PB"]
 #: Short names of the ALAD associations.
@@ -42,13 +46,14 @@ OUTCOME = "6-Month Outcome (4-Way)"
 
 
 def covariation_tables(disjoint: bool) -> dict[str, pd.DataFrame]:
-    """Each labelling's co-variation, with this version's (`disjoint`: pairs
-    of pairs sharing no gene) ρ̄ as Observed, its stricter null as
+    """Each labelling's co-variation, single-pair columns (nothing for their
+    top pair to co-vary with) left out, with this version's (`disjoint`:
+    pairs of pairs sharing no gene) ρ̄ as Observed, its stricter null as
     Threshold, whether it is above (Beyond) and whether it is above in
     either version (Either)."""
     sfx = "_disjoint" if disjoint else ""
     return {
-        lab: t.assign(
+        lab: t[(t["TopShare"] < SINGLE_PAIR) & (t["PairsUsed"] >= 2)].assign(
             Observed=t[f"Observed{sfx}"],
             Threshold=t[[f"random_q95{sfx}", f"expression_matched_q95{sfx}"]].max(
                 axis=1
@@ -66,9 +71,12 @@ def _ylabel(disjoint: bool) -> str:
     ) + r"$\bar{\rho}$"
 
 
-def _covariation_axes(ax, t, centres, disjoint: bool, half_width: float) -> None:
-    """Each component's null tick (`half_width` either side) and point, the
-    fit axis, limits and y label."""
+def _covariation_axes(
+    ax, t, centres, disjoint: bool, half_width: float, labelled: bool = True
+) -> None:
+    """Each component's null tick (`half_width` either side) joined by a
+    line to its point, an x for each without gene-disjoint pairs, the fit
+    axis (`fit_axis`, `labelled`), limits and y label."""
     ax.hlines(
         t["Threshold"],
         t["X"] - half_width,
@@ -77,8 +85,19 @@ def _covariation_axes(ax, t, centres, disjoint: bool, half_width: float) -> None
         lw=0.9,
         zorder=2,
     )
+    ax.vlines(t["X"], t["Threshold"], t["Observed"], color="0.45", lw=0.7, zorder=1)
     _components(ax, t)
-    fit_axis(ax, centres)
+    for method, g in t[t["Observed"].isna()].groupby("Method"):
+        ax.scatter(
+            g["X"],
+            np.full(len(g), UNTESTABLE_Y),
+            marker="x",
+            s=style.POINT_SIZE,
+            color=METHOD_COLORS[method],
+            lw=0.7,
+            zorder=3,
+        )
+    fit_axis(ax, centres, labelled=labelled)
     ax.set(
         xlim=(t["X"].min() - 1, t["X"].max() + 1),
         ylim=(0, 1.05),
@@ -115,27 +134,30 @@ def _components(ax, t) -> None:
 def covariation_main(axs, disjoint: bool = False, key: bool = False) -> None:
     """The components above the stricter null in either version (no PB),
     each at its own x, its null's 95th percentile a tick joined by a line to
-    its ρ̄; solid, and labelled, when above the null in this version. `key`
-    adds the method and labelling keys to the tick's."""
+    its ρ̄; solid, and labelled, when above the null in this version, an x
+    when it has no gene-disjoint pairs. `key` adds the method (PB too, for
+    the panels after) and labelling keys to the tick's."""
     ax = axs[0]
     tables = {lab: t[t["Either"]] for lab, t in covariation_tables(disjoint).items()}
     t, centres = spread_slots(tables, MAIN_SLOTS)
     _covariation_axes(ax, t, centres, disjoint, 0.38)
-    ax.vlines(t["X"], t["Threshold"], t["Observed"], color="0.45", lw=0.7, zorder=1)
     label_above(ax, _hits(t, lambda h: h["Observed"]), stagger=True)
-    keys = [([NULL_HANDLE], "lower left", 1)]
+    ticks = [NULL_HANDLE, UNTESTABLE_HANDLE] if disjoint else [NULL_HANDLE]
+    keys = [(ticks, "lower left", (0, KEY_RAISE), 1)]
     if key:
-        keys.append(
-            (
-                method_handles(("cccRISE", "TC2C", "STAC")) + LABELLING_HANDLES,
-                "lower right",
-                2,
-            )
+        methods = method_handles(("cccRISE", *COMPARATORS))
+        labellings = LABELLING_HANDLES + [BLANK_HANDLE] * (
+            len(methods) - len(LABELLING_HANDLES)
         )
-    for handles, loc, ncol in keys:
+        keys.append((methods + labellings, "lower right", (1, KEY_RAISE), 2))
+    for handles, loc, anchor, ncol in keys:
         ax.add_artist(
             ax.legend(
-                handles=handles, loc=loc, ncol=ncol, fontsize=style.FONT_SIZE_DENSE - 1
+                handles=handles,
+                loc=loc,
+                bbox_to_anchor=anchor,
+                ncol=ncol,
+                fontsize=style.FONT_SIZE_DENSE - 1,
             )
         )
 
@@ -160,52 +182,53 @@ def _dividers(ax, t) -> None:
         )
 
 
+def pairs_used(axs) -> None:
+    """How many top pairs each component of every fit tests, at its
+    `covariation_spread` x (bare ticks: the panels below name them); the
+    figure's key above, left."""
+    ax = axs[0]
+    t, centres = spread_slots(covariation_tables(False))
+    for method, g in t.groupby("Method"):
+        ax.bar(g["X"], g["PairsUsed"], width=0.7, color=METHOD_COLORS[method], lw=0)
+    _dividers(ax, t)
+    fit_axis(ax, centres, labelled=False)
+    ax.set(
+        xlim=(t["X"].min() - 1, t["X"].max() + 1),
+        ylim=(0, 10.5),
+        yticks=[2, 5, 10],
+        ylabel="Pairs used",
+    )
+    ax.legend(
+        handles=[
+            *method_handles(("cccRISE", *COMPARATORS), 3.5),
+            NULL_HANDLE,
+            UNTESTABLE_HANDLE,
+        ],
+        loc="lower left",
+        bbox_to_anchor=(0, 1),
+        ncol=6,
+        fontsize=style.FONT_SIZE_DENSE - 1,
+        frameon=False,
+        handletextpad=0.2,
+        columnspacing=1.0,
+        borderaxespad=0.2,
+    )
+
+
 def covariation_spread(axs, disjoint: bool = False) -> None:
-    """Every component of every fit at its own x, its null's 95th percentile
-    a tick; solid, and labelled, when above it. All pairs carries the method
-    and labelling keys in cccRISE's column; both carry the tick's."""
+    """Every component of every fit at its own x, as `covariation_main`
+    draws them; the x axis named only under the gene-disjoint panel, the
+    bottom one. `pairs_used` carries the key."""
     ax = axs[0]
     t, centres = spread_slots(covariation_tables(disjoint))
-    _covariation_axes(ax, t, centres, disjoint, 0.4)
+    _covariation_axes(ax, t, centres, disjoint, 0.4, labelled=disjoint)
     _dividers(ax, t)
     label_above(ax, _hits(t, lambda h: np.maximum(h["Observed"], h["Threshold"])))
-    dense = style.FONT_SIZE_DENSE - 1.5
-    tick = Line2D(
-        [],
-        [],
-        marker="_",
-        ls="",
-        color=style.COLORS["reference"],
-        markersize=6,
-        label="stricter null,\n95th pct.",
-    )
-    keys = [([tick], (0, 0), "lower left")]
-    if not disjoint:
-        span = ax.get_xlim()[1] - ax.get_xlim()[0]
-        shapes_at = (
-            t.loc[t["Method"] == "cccRISE", "X"].max() - ax.get_xlim()[0]
-        ) / span
-        keys += [
-            (
-                method_handles(("cccRISE", "PB", "TC2C", "STAC"), 3.5),
-                (0, 1),
-                "upper left",
-            ),
-            (LABELLING_HANDLES, (shapes_at, 1), "upper left"),
-        ]
-    for handles, anchor, loc in keys:
-        ax.add_artist(
-            ax.legend(
-                handles=handles,
-                loc=loc,
-                bbox_to_anchor=anchor,
-                fontsize=dense,
-                handletextpad=0.2,
-                borderaxespad=0.2,
-                labelspacing=0.25,
-                frameon=False,
-            )
-        )
+    low = min(0.0, float(t["Observed"].min()))
+    # Headroom for labels at ρ̄ near 1; below 0 only for a negative ρ̄
+    ax.set(ylim=(low - 0.06 if low < 0 else 0, 1.17), yticks=[0, 0.5, 1])
+    if low < 0:
+        common.reference_line(ax, 0)
 
 
 def depth(axs) -> None:

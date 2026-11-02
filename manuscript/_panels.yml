@@ -107,8 +107,9 @@ figS_comparator_clinical:
   capture_s11: [g]
   sample_profiles: [h]
 figS_comparator_covariation:
-  all_pairs: [a]
-  disjoint: [b]
+  pairs_used: [a]
+  all_pairs: [b]
+  disjoint: [c]
 figS_comparator_properties:
   coarse_to_fine: [a]
   breadth: [b]

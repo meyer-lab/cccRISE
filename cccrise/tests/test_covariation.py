@@ -17,6 +17,13 @@ def test_top_pairs_are_the_heaviest_by_magnitude():
     assert covariation.top_pairs(np.array([0.1, -3, 2, 0.5]), n=2).tolist() == [1, 2]
 
 
+def test_carrying_pairs_stop_once_the_share_is_carried():
+    lr = np.array([0.1, -3, 2, 1, 0.5])  # squared shares .00, .63, .28, .07, .02
+    assert covariation.carrying_pairs(lr, share=0.9).tolist() == [1, 2]
+    assert covariation.carrying_pairs(lr, share=0.95).tolist() == [1, 2, 3]
+    assert covariation.carrying_pairs(lr, share=0.95, cap=2).tolist() == [1, 2]
+
+
 def test_baselines_without_associated_pairs_match_those_with():
     rng = np.random.default_rng(0)
     scores = rng.random((12, 40))

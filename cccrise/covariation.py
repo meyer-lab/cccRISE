@@ -4,7 +4,8 @@
 Each LR pair is scored per condition in the component's own sender/receiver
 context (`context_scores`: the communication tensor's slice for that pair,
 weighted by the component's sender and receiver loadings and summed). Its
-`N_TOP` most heavily weighted pairs are compared by their Spearman
+most heavily weighted pairs (`N_TOP` in Figure 3; in Figure 4 the fewest
+carrying `CARRIED_SHARE` of its squared loading, `carrying_pairs`) are compared by their Spearman
 correlation across conditions (`pairwise_rank_correlations`), against the
 same correlations of LR pairs drawn from outside them (`covariation_baselines`).
 """
@@ -20,8 +21,12 @@ from .factors import load_factors_netcdf
 from .import_data import import_ligand_receptor_pairs
 from .utils import load_rise_reference
 
-#: The component's most heavily weighted LR pairs tested for co-variation.
+#: The component's most heavily weighted LR pairs tested for co-variation
+#: (Figure 3); at most this many in Figure 4 (`carrying_pairs`).
 N_TOP = 10
+#: Figure 4 tests the fewest top pairs carrying this share of a component's
+#: squared LR loading (`carrying_pairs`).
+CARRIED_SHARE = 0.9
 COVARIATION_DRAWS = 2000
 #: An expression-matched pair is one of a top pair's this many nearest.
 N_EXPRESSION_NEIGHBORS = 20
@@ -58,6 +63,17 @@ def context_scores(
 def top_pairs(lr_loadings: np.ndarray, n: int = N_TOP) -> np.ndarray:
     """The indices of the `n` largest |LR loadings|, heaviest first."""
     return np.argsort(-np.abs(lr_loadings))[:n]
+
+
+def carrying_pairs(
+    lr_loadings: np.ndarray, share: float = CARRIED_SHARE, cap: int = N_TOP
+) -> np.ndarray:
+    """`top_pairs`, as many as the fewest that carry `share` of the squared
+    loading, at most `cap`."""
+    squared = np.sort(lr_loadings**2)[::-1]
+    carried = np.cumsum(squared) / squared.sum()
+    n = int(np.searchsorted(carried, share - 1e-12)) + 1
+    return top_pairs(lr_loadings, min(n, cap))
 
 
 def pairwise_rank_correlations(scores: np.ndarray, columns, genes=None) -> np.ndarray:

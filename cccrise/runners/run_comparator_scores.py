@@ -24,8 +24,10 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
   across samples (`covariation`, Figure 3E's test for every component of
   every method): each pair scored in the component's own sender/receiver
   context on its own method's tensor, the mean Spearman correlation of its
-  `covariation.N_TOP` pairs against random and expression-matched draws,
-  over all pairs of pairs and (``_disjoint``) over those sharing no gene.
+  top pairs (`covariation.carrying_pairs`; ``PairsUsed``) against random
+  and expression-matched draws, over all pairs of pairs and (``_disjoint``)
+  over those sharing no gene; with its top pair's share of squared loading
+  (``TopShare``).
 - ``program_capture_*`` and ``program_covariation_*``: each comparator's
   best-matching LR column for each cccRISE program, its loadings on the
   program's top pairs, and whether those pairs co-vary in its context.
@@ -327,11 +329,16 @@ def component_contexts(fits, comparators, cccrise_context, tensors) -> list[dict
 def covariation_summary(context: dict, top: np.ndarray, genes=None) -> dict:
     """The mean pairwise rank correlation of the LR pairs `top` scored in
     `context` (`covariation`), and the mean and 95th percentile of that mean
-    over each baseline's draws; with `genes`, over gene-disjoint pairs only."""
+    over each baseline's draws; with `genes`, over gene-disjoint pairs only.
+    All NaN when `top` leaves no pair of pairs to correlate."""
+    if len(top) < 2:  # nothing to co-vary with
+        return {"Observed": np.nan}
     scored = covariation.context_scores(
         context["tensor"], context["sender"], context["receiver"]
     )
     observed = covariation.pairwise_rank_correlations(scored, top, genes)
+    if np.isnan(observed).all():  # every pair of pairs shares a gene
+        return {"Observed": np.nan}
     summary = {"Observed": np.nanmean(observed)}
     for name, draws in covariation.covariation_baselines(
         scored, top, genes=genes
@@ -345,18 +352,20 @@ def covariation_summary(context: dict, top: np.ndarray, genes=None) -> dict:
 
 
 def covariation_rows(contexts: list[dict], genes: list[set[str]]) -> pd.DataFrame:
-    """Every component's top-pair co-variation over all pairs of its top
-    pairs and, suffixed ``_disjoint``, over those sharing no gene."""
+    """Every component's top-pair co-variation (`covariation.carrying_pairs`)
+    over all pairs of its top pairs and, suffixed ``_disjoint``, over those
+    sharing no gene."""
     rows = []
     for context in contexts:
-        top = covariation.top_pairs(context["lr"])
+        top = covariation.carrying_pairs(context["lr"])
         disjoint = covariation_summary(context, top, genes)
+        lr = pd.DataFrame(context["lr"])
         rows.append(
             {"Method": context["Method"], "Component": context["Component"]}
             | {
-                "EffectiveLR": scores.effective_number(
-                    pd.DataFrame(context["lr"])
-                ).iloc[0]
+                "EffectiveLR": scores.effective_number(lr).iloc[0],
+                "TopShare": scores.top_share(lr).iloc[0],
+                "PairsUsed": len(top),
             }
             | covariation_summary(context, top)
             | {f"{k}_disjoint": v for k, v in disjoint.items()}
