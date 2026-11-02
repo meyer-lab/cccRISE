@@ -118,7 +118,7 @@ def distinct_minima(
     most starts reach (f_max), and its 'Order' within the rank (1 = most
     starts; ties: higher R2X). 'Tied' marks ranks whose two most-reached
     minima tie, which have no f_max; their FMS is to the tied minimum with
-    the higher R2X.
+    the higher R2X. 'Seeds' lists the seeds of the starts reaching it.
     """
     frames = [
         _rank_minima(rank, pairs, r2x.loc[rank], same_minimum_fms)
@@ -141,7 +141,7 @@ def _rank_minima(
     for label in np.unique(labels):
         members = np.flatnonzero(labels == label)
         best = members[fit[members].argmax()]
-        groups.append((len(members), fit[best], best))
+        groups.append((len(members), fit[best], best, members))
     groups.sort(key=lambda g: (-g[0], -g[1]))
     reference = groups[0][2]
     return pd.DataFrame(
@@ -152,8 +152,9 @@ def _rank_minima(
             "FMS": fms[best, reference],
             "Order": order,
             "Tied": len(groups) > 1 and groups[0][0] == groups[1][0],
+            "Seeds": tuple(seeds[m] for m in members),
         }
-        for order, (n, best_r2x, best) in enumerate(groups, start=1)
+        for order, (n, best_r2x, best, members) in enumerate(groups, start=1)
     )
 
 

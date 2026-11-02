@@ -1,4 +1,4 @@
-"""Pseudobulk CPD's fit R2X across seeded starts and each mode's collinearity (fine labels)."""
+"""Pseudobulk CPD's fit R2X across seeded starts and its LR pair mode's collinearity per start (fine labels)."""
 
 from ... import common
 from ._panels import DATASET, pb_collinearity, pb_fit
