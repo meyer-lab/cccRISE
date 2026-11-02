@@ -18,7 +18,7 @@ CORE_MARKER = {"s": CORE_MARKER_SIZE, "zorder": 3}
 def load() -> tuple[pd.DataFrame, pd.Series, float]:
     """Per-component rows, the selected rank's row (with the 'Core*' columns),
     and the ridge strength."""
-    df = common.load_cpd_rank(DATASET)
-    sidecar = read_metadata(RANK_SELECTION_DIR / DATASETS[DATASET].cpd_rank_filename())
+    df = common.load_cpd_ridge(DATASET)
+    sidecar = read_metadata(RANK_SELECTION_DIR / DATASETS[DATASET].cpd_ridge_filename())
     rank = common.selected_ranks(DATASET)[1]
     return df, df[df["Rank"] == rank].iloc[0], sidecar["imputation_options"]["l2_reg"]

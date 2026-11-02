@@ -9,7 +9,7 @@ continuous colormaps (heatmaps, weighted PaCMAPs).
 import seaborn as sns
 from matplotlib.colors import to_hex
 
-TEAL, ORANGE, BLUE, PINK, GREEN, YELLOW, TAN, GREY = (
+TEAL, ORANGE, BLUE, PINK, GREEN, YELLOW, TAN, _ = (
     to_hex(c) for c in sns.color_palette("Set2")
 )
 LIGHT_GREY = "#dddddd"

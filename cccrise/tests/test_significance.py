@@ -183,7 +183,7 @@ def test_runner_cli_parser_and_paths():
 
     dummy_spec = DatasetSpec(
         key="test_cohort",
-        label="Test Cohort",
+        cohort_label="Test Cohort",
         loader=lambda **kwargs: anndata.AnnData(),
         condition_column="sample",
         celltype_column="celltype",

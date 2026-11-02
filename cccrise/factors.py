@@ -20,6 +20,7 @@ from .runners.datasets import DATASETS
 DATA_DIR = Path(__file__).parent / "data"
 COVID19_FACTORS_PATH = DATA_DIR / "bal_covid19_factors.nc"
 ALAD_FACTORS_PATH = DATASETS["alad"].factors_path()
+IBD_FACTORS_PATH = DATASETS["ibd"].factors_path()
 #: Factors-file attribute fingerprinting the fit's cells (see `save_ccc_rise_fit`).
 CELL_IDS_ATTR = "cell_ids_sha256"
 #: Every factors file loaded in this process, so a figure build can record

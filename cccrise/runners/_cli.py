@@ -2,9 +2,11 @@ import argparse
 from pathlib import Path
 
 from ..factors import load_factors_netcdf
+from ..rank_selection import CP_DEVICES, CP_DTYPE, CP_DTYPES, cp_backend
 from .datasets import (
     COMMUNICATION_SCORES,
     DATASET_KEYS,
+    DATASETS,
     DEFAULT_COMMUNICATION_SCORE,
     DatasetSpec,
 )
@@ -16,7 +18,7 @@ from .provenance import relpath, sha256_file
 # explicitly.
 DEFAULT_GROUP_LABELS: dict[str, tuple[str, str]] = {
     "alad": ("control", "alad"),
-    "ibd": ("healthy", "inflamed"),
+    "ibd": ("Healthy", "Crohn's"),
 }
 
 # Fit controls shared by every runner's RISE (PARAFAC2) and CP decompositions.
@@ -24,8 +26,10 @@ RISE_TOL = 1e-8
 CP_TOL = 1e-12
 RISE_N_ITER_MAX = 300
 CP_N_ITER_MAX = 4000
-#: Every replicate-type runner (stability, rank sweeps) fits RISE and CP compressed
-#: (significance loads its RISE fit); the core and alt-score runners never do.
+#: Every replicate-type runner (stability, RISE rank sweep) fits RISE
+#: compressed (significance loads its RISE fit); the core and alt-score runners
+#: never do. CP is never compressed: its only speed options are the device and
+#: precision (`add_cp_device_arguments`).
 REPLICATE_COMPRESS = True
 
 
@@ -56,6 +60,28 @@ def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
         choices=DATASET_KEYS,
         help="Dataset label from the runner registry.",
     )
+    parser.add_argument(
+        "--max-cells-per-condition",
+        type=int,
+        default=None,
+        help="Randomly cap every condition at this many cells (default: the "
+        "registry's cap, if any, else keep all). Outputs at any other cap are "
+        "named for it, e.g. ibd_cap500.",
+    )
+    parser.add_argument(
+        "--cell-cap-seed",
+        type=int,
+        default=0,
+        help="Seed for --max-cells-per-condition's per-condition draw.",
+    )
+
+
+def resolve_dataset(args: argparse.Namespace) -> DatasetSpec:
+    """The registry entry `add_dataset_argument`'s arguments select."""
+    spec = DATASETS[args.dataset]
+    if args.max_cells_per_condition is not None:
+        spec = spec.with_cell_cap(args.max_cells_per_condition, args.cell_cap_seed)
+    return spec
 
 
 def add_group_arguments(parser: argparse.ArgumentParser) -> None:
@@ -217,3 +243,28 @@ def resolve_output(explicit: str | None, default_dir: Path, default_name: str) -
     path = Path(explicit) if explicit else default_dir / default_name
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def add_cp_device_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the device and precision every CP fit of the runner uses."""
+    parser.add_argument(
+        "--cp-device",
+        choices=CP_DEVICES,
+        default=None,
+        help="Device the CP fits run on (default: the GPU when there is one).",
+    )
+    parser.add_argument(
+        "--cp-dtype",
+        choices=CP_DTYPES,
+        default=CP_DTYPE,
+        help=f"Precision the CP fits run in (default: {CP_DTYPE}).",
+    )
+
+
+def cp_device_metadata(device: str | None, dtype: str) -> dict[str, str]:
+    """Sidecar fields recording where and in what precision CP was fit."""
+    return {
+        "cp_device": device or "auto",
+        "cp_backend": cp_backend(device),
+        "cp_dtype": dtype,
+    }
