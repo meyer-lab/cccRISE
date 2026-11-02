@@ -53,11 +53,10 @@ def replicate_table(rows: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def plot_stage(fig, stage: str) -> None:
+def plot_stage(ax, stage: str) -> None:
     """Jackknife FMS for `stage` ('RISE' or 'CPD'), one box per component,
     then one box per stability axis of the replicates' aggregate FMS, past a
-    divider."""
-    ax = fig.subplots()
+    solid divider (dashed lines mark selected ranks elsewhere)."""
     rows = stability()[stability()["Stage"] == stage]
     name = COMPONENT_NAMES[stage]
     jackknife = rows[rows["Axis"] == JACKKNIFE_AXIS]
@@ -97,7 +96,7 @@ def plot_stage(fig, stage: str) -> None:
         linewidth=style.LINE_WIDTH_THIN,
         ax=ax,
     )
-    common.reference_line(ax, len(components), horizontal=False)
+    common.reference_line(ax, len(components), horizontal=False, linestyle="-")
     ax.set_xticks(ax.get_xticks(), ax.get_xticklabels())
     for tick in ax.get_xticklabels()[-len(labels) :]:
         tick.set(rotation=45, ha="right", rotation_mode="anchor")

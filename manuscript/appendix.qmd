@@ -22,7 +22,7 @@ For visualization, genes outside the top 10% by weight in any component are omit
 ![](figures/figureS_cmp_stability/figureS_cmp_stability.svg){width="6.5in"}
 
 **{{< label cmp-stability >}}.
-Collinearity and stability of RISE and CP components.** ({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CP components across ranks, as the median (line and points) and interquartile range (band) over 10 seeded SVD starts per rank; {{< fig 2 cp-rank-selection.2 >}} shows each start's LR pair value.
+Collinearity and stability of RISE and CP components.** ({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CP components across ranks, as the median (line and points) and interquartile range (band) over 10 seeded SVD starts per rank.
 The dashed line marks the selected rank.
 ({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
 Each replicate's components were matched to the reference's by Hungarian matching.
@@ -72,7 +72,7 @@ At the selected rank, + and × mark the core fit's aggregate FMS to the fits wit
 
 **{{< label ibd-rank-selection >}}.
 IBD rank selection.** ({{< panel ibd-rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
-({{< panel ibd-rank-selection bicv-test >}}) BiCV test R^2^X from ({{< panel ibd-rank-selection rise-rank-selection >}}) on its own blown-up axis.
+({{< panel ibd-rank-selection bicv-test >}}) BiCV test R^2^X from ({{< panel ibd-rank-selection rise-rank-selection >}}) on its own magnified axis.
 ({{< panel ibd-rank-selection cp-r2x-starts >}}) CP fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
 Circle: the elbow of the median curve located by Kneedle\ [@doi:10.1109/ICDCSW.2011.20].
 ({{< panel ibd-rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CP components across ranks, for each start (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey).

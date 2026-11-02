@@ -858,15 +858,18 @@ def plot_collinearity_medians(
     modes: Sequence[str] = tuple(CP_MODES),
     rank: int | None = None,
     part: int | None = None,
+    key_rank: bool = True,
 ) -> None:
     """Per CP rank and mode in `modes` (`CP_MODES` keys), the largest |cosine|
     between two components: the median over the seeded starts in an
-    interquartile-range band, keyed to the right. `part` is `source_data`'s."""
+    interquartile-range band, keyed at the lower right with `rank`'s line if
+    `key_rank`. `part` is `source_data`'s."""
     sweep = _collinearity_sweep(dataset, modes, part)
+    handles = []
     for mode in modes:
         by_rank = sweep.groupby("Rank")[f"MaxCos{mode}"]
         median = by_rank.median()
-        plot_band(
+        line = plot_band(
             ax,
             median.index,
             median,
@@ -877,9 +880,12 @@ def plot_collinearity_medians(
             marker="o",
             markersize=style.MARKER_SIZE,
         )
+        handles.append(line)
     _collinearity_axes(ax, sweep, rank)
     ax.set_ylabel("Max |cosine|")
-    legend(ax)
+    if rank is not None and key_rank:
+        handles.append(Line2D([], [], label="Selected rank", **RANK_LINE))
+    ax.legend(handles=handles, loc="lower right", fontsize=style.FONT_SIZE_DENSE)
 
 
 def _collinearity_sweep(

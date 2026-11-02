@@ -55,11 +55,11 @@ We first selected the RISE rank by bi-cross-validation (BiCV), which fits RISE t
 Held-out R^2^X rose steeply, plateaued around rank 10, and reached its maximum at rank 17, which we used to construct the communication tensor ({{< fig 2 rise-rank-selection >}}, {{< fig rise-factor-matrices >}}).
 Seeking a similarly definitive rank-selection criterion for CP, we evaluated the reconstruction and imputation accuracy (i.e., the accuracy at which the outer product of CP factors approximates either the original communication tensor or entries held out during fitting, respectively) of CP models at varying ranks.
 Both CP fit R^2^X and imputation R^2^X generally increased with rank, indicating that higher-rank CP models did not lose predictive accuracy ({{< fig 2 cp-rank-selection.1 >}}).
-However, neither reconstruction metric provided a clear choice for CP rank, so we instead measured the collinearity between components across ranks and refactorizations with varying SVD initialization seeds.
-The cosine similarity between components in the condition, sender eigen-state, and receiver eigen-state modes increased rapidly with rank, a trend that was stable across starts ({{< panel cmp-stability cp-collinearity >}}).
-The LR pair mode became collinear in at least one start at rank 6 ({{< panel 2 cp-rank-selection.2 >}}).
+However, neither reconstruction metric provided a clear choice for CP rank, so we instead evaluated collinearity and degeneracy using the cosine similarity between components across ranks and refactorizations with varying SVD initialization seeds.
+The cosine similarity between components in the condition, sender eigen-state, and receiver eigen-state modes increased rapidly with rank, a trend that was stable across starts ({{< fig cmp-stability cp-collinearity >}}).
+Conversely, the LR pair mode became collinear in at least one start at rank 6 ({{< fig 2 cp-rank-selection.2 >}}).
 As the largest of the four modes, collinearity in LR pairs indicated problematic degeneracy---shared patterns in smaller modes were expected because of the limited number of variation sources amongst conditions and eigen-states, whereas we expected the LR pairs involved in communication to remain diverse up to higher ranks.
-This, combined with emergent instability in factorization results at rank 6, encouraged us to decompose the communication tensor using CP rank 5 ({{< panel 2 cp-minima >}}, {{< panel 2 cp-factor-matrices >}}).
+Further, re-initialized factorizations became unstable at rank 6 and beyond, which, combined with the emergence of collinearity at rank 6, encouraged us to decompose the communication tensor using CP rank 5 ({{< fig 2 cp-minima >}}, {{< fig 2 cp-factor-matrices >}}).
 
 We next asked whether the communication programs captured by CCC-RISE were stable, exceeded chance, and aligned with external biological validation.
 At the selected rank, RISE and CP components were stable over re-initialization (aggregate FMS 1.000) and leave-one-patient-out jackknife (aggregate FMS 0.985 for RISE, 0.999 for CP) ({{< fig cmp-stability rise-fms cpd-fms >}}).
