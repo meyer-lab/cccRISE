@@ -23,7 +23,6 @@ For visualization, genes outside the top 10% by weight in any component are omit
 
 **{{< label cmp-stability >}}.
 Collinearity and stability of RISE and CP components.** ({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CP components across ranks, as the median (line and points) and interquartile range (band) over 10 seeded SVD starts per rank.
-The dashed line marks the selected rank.
 ({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
 Each replicate's components were matched to the reference's by Hungarian matching.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
@@ -79,7 +78,6 @@ Circle: the elbow of the median curve located by Kneedle\ [@doi:10.1109/ICDCSW.2
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 ({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
 ({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, as the median (line and points) and interquartile range (band) over the starts.
-Dashed lines ({{< panel ibd-rank-selection rise-rank-selection cp-collinearity >}}, {{< panel ibd-rank-selection mode-collinearity >}}) and the triangle ({{< panel ibd-rank-selection cp-minima >}}) mark the selected ranks.
 
 <!-- Legacy Supplemental Captions
 
