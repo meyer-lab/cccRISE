@@ -42,6 +42,7 @@ from matplotlib.figure import Figure, SubFigure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.text import Text
+from matplotlib.typing import LegendLocType
 
 matplotlib.use("AGG")
 
@@ -824,7 +825,7 @@ def plot_start_boxes(
     minima: pd.DataFrame,
     rank: int | None = None,
     wrap_key: bool = False,
-    key_loc: str | None = "lower right",
+    key_loc: LegendLocType | None = "lower right",
 ) -> None:
     """Per CP rank, `column` of a seeded-start `sweep` ('Rank', 'Seed'): a
     box over the starts with each start overlaid, colored by whether it

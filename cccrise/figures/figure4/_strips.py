@@ -93,7 +93,7 @@ def _covariation_axes(
             np.full(len(g), UNTESTABLE_Y),
             marker="x",
             s=style.POINT_SIZE,
-            color=METHOD_COLORS[method],
+            color=METHOD_COLORS[str(method)],
             lw=0.7,
             zorder=3,
         )
@@ -189,7 +189,9 @@ def pairs_used(axs) -> None:
     ax = axs[0]
     t, centres = spread_slots(covariation_tables(False))
     for method, g in t.groupby("Method"):
-        ax.bar(g["X"], g["PairsUsed"], width=0.7, color=METHOD_COLORS[method], lw=0)
+        ax.bar(
+            g["X"], g["PairsUsed"], width=0.7, color=METHOD_COLORS[str(method)], lw=0
+        )
     _dividers(ax, t)
     fit_axis(ax, centres, labelled=False)
     ax.set(
