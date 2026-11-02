@@ -4,12 +4,11 @@ from ... import common
 from ...figure2.rise_rank_selection import draw
 
 DATASET = "ibd"
-AXES = ("rect",)
+AXES = ("square",)
 
 
 def plot(axs):
-    # IBD's BiCV test curve runs along the bottom of the panel
-    draw(axs[0], DATASET, key_loc="center right")
+    draw(axs[0], DATASET)
 
 
 def makeFigure():
