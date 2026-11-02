@@ -1,12 +1,12 @@
 """IBD CP collinearity of the condition, sender, and receiver modes across
 ten seeded SVD starts per rank, from ``uv run cccrise-cpdrank``; the LR pair
-mode's is in `figureS_rank_selection`."""
+mode's is in `cp_collinearity`."""
 
 from ... import common
 
 DATASET = "ibd"
 MODES = ("A", "B", "C")
-AXES = ("wide",)
+AXES = ("rect",)
 
 
 def plot(axs):

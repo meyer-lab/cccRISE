@@ -1,6 +1,6 @@
 """IBD CP collinearity of the LR pair mode across ten seeded SVD starts per
 rank, from ``uv run cccrise-cpdrank``; the other modes' are in
-`figureS_ibd_collinearity`."""
+`mode_collinearity`."""
 
 from ... import common
 

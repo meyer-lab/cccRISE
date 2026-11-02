@@ -1,11 +1,10 @@
-"""CP collinearity of the condition, sender, and receiver modes across ten
-seeded SVD starts per rank, from ``uv run cccrise-cpdrank``; the LR pair
-mode's is in Figure 2."""
+"""CP collinearity of every mode across ten seeded SVD starts per rank, from
+``uv run cccrise-cpdrank``; Figure 2 shows the LR pair mode's per start."""
 
 from ... import common, style
 
 DATASET = "alad"
-MODES = ("A", "B", "C")
+MODES = ("A", "B", "C", "D")
 
 
 def plot(fig):

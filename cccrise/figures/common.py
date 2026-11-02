@@ -702,8 +702,10 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
 
 CP_MODES = {"A": "Condition", "B": "Sender", "C": "Receiver", "D": "LR pair"}
 KNEEDLE_EDGE = "#e34948"
-#: Fraction of the minima panel's height above its bars, for the key
-MINIMA_HEADROOM = 0.42
+#: Whether a start reaches its rank's most common solution -> color, label
+SOLUTION_COLORS = {True: style.CATEGORICAL[0], False: style.COLORS["muted"]}
+SOLUTION_LABELS = {True: "Most common solution", False: "Other solutions"}
+COLLINEARITY_BOX_COLOR = "0.9"
 #: The selected rank's marker above its bar in the minima panel
 RANK_MARKER: dict[str, Any] = {
     "marker": "v",
@@ -793,34 +795,61 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
 def plot_collinearity_boxes(
     ax: plt.Axes,
     dataset: str,
-    mode: str = "D",
     rank: int | None = None,
     part: int | None = None,
+    wrap_key: bool = False,
 ) -> None:
-    """Per CP rank, the largest |cosine| between two components in `mode` (a
-    `CP_MODES` key): a box over the seeded starts with each start overlaid.
+    """Per CP rank, the largest |cosine| between two components' LR pair
+    factors: a box over the seeded starts with each start overlaid, colored
+    by whether it reaches its rank's most common solution (`plot_minima`) and
+    keyed at the lower right, its labels on two lines each if `wrap_key`.
     `part` is `source_data`'s."""
-    sweep = _collinearity_sweep(dataset, [mode], part)
-    kw = {
-        "data": sweep,
-        "x": "Rank",
-        "y": f"MaxCos{mode}",
-        "color": style.CATEGORICAL[list(CP_MODES).index(mode)],
-        "native_scale": True,
-        "ax": ax,
-    }
+    sweep = _collinearity_sweep(dataset, ["D"], part)
+    common_seeds = load_minima(dataset).query("Order == 1").set_index("Rank")["Seeds"]
+    sweep = sweep.assign(
+        Common=[s in common_seeds[r] for r, s in zip(sweep["Rank"], sweep["Seed"])]
+    )
+    kw = {"data": sweep, "x": "Rank", "y": "MaxCosD", "native_scale": True, "ax": ax}
     sns.boxplot(
         **kw,
+        color=COLLINEARITY_BOX_COLOR,
         width=0.7,
         showfliers=False,
         linewidth=style.LINE_WIDTH_THIN,
-        boxprops={"alpha": 0.5},
     )
     sns.stripplot(
-        **kw, jitter=0.2, size=1.5, edgecolor=style.COLORS["ink"], linewidth=0.2
+        **kw,
+        hue="Common",
+        hue_order=[True, False],
+        palette=SOLUTION_COLORS,
+        legend=False,
+        jitter=0.2,
+        size=1.8,
+        edgecolor=style.COLORS["ink"],
+        linewidth=0.2,
     )
     _collinearity_axes(ax, sweep, rank)
-    ax.set_ylabel(f"{CP_MODES[mode]} max |cosine|")
+    ax.set_ylabel("LR pair max |cosine|")
+    handles = [
+        Line2D(
+            [],
+            [],
+            ls="",
+            marker="o",
+            markersize=style.MARKER_SIZE,
+            color=SOLUTION_COLORS[c],
+            label=SOLUTION_LABELS[c].replace(" s", "\ns" if wrap_key else " s"),
+        )
+        for c in (True, False)
+    ]
+    ax.legend(
+        handles=handles,
+        loc="lower right",
+        fontsize=style.FONT_SIZE_DENSE,
+        handlelength=0.5,
+        handletextpad=0.3,
+        borderaxespad=0.1,
+    )
 
 
 def plot_collinearity_medians(
@@ -845,6 +874,8 @@ def plot_collinearity_medians(
             by_rank.quantile(0.75),
             style.CATEGORICAL[list(CP_MODES).index(mode)],
             CP_MODES[mode],
+            marker="o",
+            markersize=style.MARKER_SIZE,
         )
     _collinearity_axes(ax, sweep, rank)
     ax.set_ylabel("Max |cosine|")
@@ -878,7 +909,8 @@ def _collinearity_axes(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None) -> N
 def plot_minima(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
     """The starts reaching each distinct minimum at each CP rank, stacked
     from the one most starts reach (blue; of two tied, the one with the
-    higher R2X) up, the others grey, with `rank` marked above its bar."""
+    higher R2X) up, the others grey (keyed by `plot_collinearity_boxes`),
+    with `rank` marked above its bar."""
     table = load_minima(dataset)
     source_data(
         "cp_minima_by_rank",
@@ -886,37 +918,26 @@ def plot_minima(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
         "Distinct minima per CP rank (starts joined at FMS >= 0.95): the "
         "starts reaching each, its best R2X, its FMS to the minimum most "
         "starts reach (where two minima tie for most, 'Tied', to the one with "
-        "the higher R2X), and its order by starts (1 = most; ties: higher R2X).",
+        "the higher R2X), its order by starts (1 = most; ties: higher R2X), "
+        "and the seeds of the starts reaching it.",
     )
-    colors = {True: style.CATEGORICAL[0], False: style.COLORS["muted"]}
     for _, g in table.groupby("Rank"):
         ax.bar(
             g["Rank"],
             g["Starts"],
             bottom=g["Starts"].cumsum() - g["Starts"],
             width=0.72,
-            color=[colors[o == 1] for o in g["Order"]],
+            color=[SOLUTION_COLORS[o == 1] for o in g["Order"]],
             edgecolor="white",
             lw=0.6,
         )
     n_starts = int(table.groupby("Rank")["Starts"].sum().max())
-    handles = [
-        Patch(color=colors[True], label="Most common solution"),
-        Patch(color=colors[False], label="Other solutions"),
-    ]
     if rank is not None:
-        ax.plot(rank, 1.07 * n_starts, **RANK_MARKER)
-        handles.append(Line2D([], [], label="Selected rank", **RANK_MARKER))
-    ax.set_ylim(0, n_starts / (1 - MINIMA_HEADROOM))
+        ax.plot(rank, 1.07 * n_starts, clip_on=False, **RANK_MARKER)
+    ax.set_ylim(0, n_starts)
     ax.set_yticks(np.arange(0, n_starts + 1, n_starts // 2))
-    ax.spines["left"].set_bounds(0, n_starts)
-    ax.set_ylabel("Starts", y=(1 - MINIMA_HEADROOM) / 2)  # centered on the spine
+    ax.set_ylabel("Starts")
     rank_axis(ax, table["Rank"].unique())
-    ax.legend(
-        handles=handles,
-        loc="upper left",
-        fontsize=style.FONT_SIZE_DENSE,
-    )
 
 
 # --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------

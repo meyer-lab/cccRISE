@@ -130,6 +130,7 @@ def test_distinct_minima_groups_starts_by_agreement():
     assert minima["FMS"].tolist() == [1.0, 0.6]
     assert minima["Order"].tolist() == [1, 2]
     assert not minima["Tied"].any()
+    assert minima["Seeds"].tolist() == [(0, 1, 2), (3,)]
 
 
 def test_distinct_minima_ties_have_no_fmax():
