@@ -23,10 +23,10 @@ For visualization, genes outside the top 10% by weight in any component are omit
 ![](figures/figureS_cmp_stability/figureS_cmp_stability.svg){width="6.5in"}
 
 **{{< label cmp-stability >}}.
-Stability of RISE and CP components, and collinearity of CP modes.** ({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
-Each replicate's components were matched to the reference's by Hungarian matching.
-({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, as the median (line) and interquartile range (band) over 10 seeded SVD starts per rank; the LR pair mode is shown in {{< fig 2 cp-rank-selection.2 >}}.
+Collinearity and stability of RISE and CP components.** ({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, as the median (line) and interquartile range (band) over 10 seeded SVD starts per rank; the LR pair mode is shown in {{< fig 2 cp-rank-selection.2 >}}.
 The dashed line marks the selected rank.
+({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
+Each replicate's components were matched to the reference's by Hungarian matching.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 
 ![](figures/figureS_nichenet/figureS_nichenet.svg){width="6.5in"}
