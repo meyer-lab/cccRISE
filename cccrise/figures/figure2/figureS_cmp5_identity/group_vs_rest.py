@@ -1,5 +1,5 @@
-"""Genes distinguishing the sender (left) and receiver (right) group from the
-rest of the cells (`V.plot_volcano`), on shared axes, labeling the canonical
+"""Genes distinguishing the sender (left) and receiver (right) group from
+every other cell (`V.plot_volcano`), on shared axes, labeling the canonical
 pan-epithelial markers (`S.CELLTYPE_MARKERS`), with the color key shared with
 the sender vs. receiver volcano below the receiver's."""
 
