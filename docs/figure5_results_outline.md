@@ -22,7 +22,8 @@ module, `figureS_ibd_*`. Their EV or Appendix numbers are still to be assigned i
   - Every biopsy is from a different individual (343 individuals), so biopsies are the unit
     of every test.
 - **Model.** RISE rank 60, CP rank 6 (`figureS_ibd_rank_selection`, chosen as Figure 2A–D
-  chooses ALAD's). `figureS_ibd_rise_factor_matrices` shows the RISE factors as for ALAD.
+  chooses ALAD's). `figureS_ibd_rank_selection` G–H shows the RISE condition and gene
+  factors as for ALAD.
 - **Cohort.** `figureS_ibd_cohort` gives the schematic placeholder and the lineage and fine
   cell-type composition by status, as ALAD's cohort supplement does.
 - **Per-cell weights.** Projections @ cp_B (sender) or cp_C (receiver), unscaled, as in

@@ -85,6 +85,8 @@ figS_ibd_rank_selection:
   cp_collinearity: [d]
   cp_minima: [e]
   mode_collinearity: [f]
+  factors: [g]
+  genes: [h]
 figS_ibd_cohort:
   cohort: [a]
   lineage_proportions: [b]

@@ -1,5 +1,5 @@
 """The canonical RISE (PARAFAC2) fit of a dataset, shared by this figure's
-panels and their IBD counterparts (`figure5.figureS_ibd_rise_factor_matrices`)."""
+panels and their IBD counterparts (`figure5.figureS_ibd_rank_selection`)."""
 
 from functools import cache
 

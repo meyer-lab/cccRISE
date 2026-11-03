@@ -78,6 +78,7 @@ Circle: the elbow of the median curve located by Kneedle\ [@doi:10.1109/ICDCSW.2
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 ({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
 ({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, as the median (line and points) and interquartile range (band) over the starts.
+({{< panel ibd-rank-selection factors genes >}}) RISE factor matrices at the selected rank representing component loadings of conditions and genes, drawn as in {{< fig rise-factor-matrices >}}.
 
 <!-- Legacy Supplemental Captions
 

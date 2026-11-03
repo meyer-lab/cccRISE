@@ -14,10 +14,11 @@ def makeFigure():
     return stacked(LAYOUT)
 
 
-def stacked(layout) -> Figure:
+def stacked(layout, width: float | None = None) -> Figure:
     """`layout`'s condition-factor heatmap (module `factors`) stacked on its
-    gene-factor heatmap (module `genes`), sharing one colorbar."""
-    fig = common.compose_fixed(layout)
+    gene-factor heatmap (module `genes`) in its last row, sharing one
+    colorbar."""
+    fig = common.compose_fixed(layout, width)
     top, bottom = common.panel_axes(fig, "factors"), common.panel_axes(fig, "genes")
     _close_gap(fig, top, bottom)
     _span_colorbar(fig, top, bottom)
@@ -26,8 +27,9 @@ def stacked(layout) -> Figure:
 
 def _close_gap(fig: Figure, top: plt.Axes, bottom: plt.Axes) -> None:
     """Shrink the gap the stack leaves above `bottom` (for its letter) to
-    `style.ROW_GAP`, cutting it from the figure's height, and letter `bottom`
-    in its left margin beside its top edge instead."""
+    `style.ROW_GAP`, cutting it from the figure's height (moving everything
+    above it down), and letter `bottom` in its left margin beside its top
+    edge instead."""
     _, height = fig.get_size_inches()
     upper, lower = top.get_position(), bottom.get_position()
     cut = (upper.y0 - lower.y1) * height - style.ROW_GAP
@@ -36,14 +38,16 @@ def _close_gap(fig: Figure, top: plt.Axes, bottom: plt.Axes) -> None:
     def inches_up(y: float, shift: float = 0) -> float:  # fraction -> new fraction
         return (y * height - shift) / new_height
 
-    top.set_position(
-        (upper.x0, inches_up(upper.y0, cut), upper.width, inches_up(upper.height))
-    )
-    bottom.set_position(
-        (lower.x0, inches_up(lower.y0), lower.width, inches_up(lower.height))
-    )
+    for ax in fig.axes:
+        box = ax.get_position()
+        shift = cut if box.y0 >= upper.y0 else 0
+        ax.set_position(
+            (box.x0, inches_up(box.y0, shift), box.width, inches_up(box.height))
+        )
+    for text in fig.texts:
+        y = text.get_position()[1]
+        text.set_y(inches_up(y, cut if y > lower.y1 else 0))
     letters = {text.get_gid(): text for text in fig.texts}
-    letters["factors"].set_y(inches_up(letters["factors"].get_position()[1], cut))
     letters["genes"].set_y(inches_up(lower.y1))
     fig.set_size_inches(fig.get_size_inches()[0], new_height)
 
