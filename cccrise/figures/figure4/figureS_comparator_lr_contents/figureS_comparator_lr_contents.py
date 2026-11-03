@@ -16,7 +16,7 @@ from matplotlib.patches import Rectangle
 from ....comparators import scores
 from ... import style
 from .._common import COMPARATORS, METHOD_COLORS, METHOD_LABELS
-from .._data import LABELLINGS, fit_components, short
+from .._data import LABELLINGS, fit_lr, short
 
 #: A pair under this share of a column's squared loading is never named.
 MIN_SHARE = 0.01
@@ -37,7 +37,7 @@ ROW_IN, PITCH_IN, BAR_IN, NAME_IN, GAP_IN, TITLE_IN, CHAR_IN = (
 def components(method: str, labelling: str) -> list[dict]:
     """Each LR column of `method`'s fit: its pairs' shares of squared
     loading (heaviest first) and signs, after orienting the column."""
-    lr = fit_components(method, labelling).modes["lr"]
+    lr = fit_lr(method, labelling)
     rows = []
     for c in lr.columns:
         v = scores.oriented(lr[[c]])[c]

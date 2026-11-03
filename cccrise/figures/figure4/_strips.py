@@ -6,9 +6,19 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Patch
 
+from ... import covariation
 from .. import common, style
 from ._common import COMPARATORS, METHOD_COLORS
-from ._data import CLASSES, HOMOPHILIC, SINGLE_PAIR, beyond, both, classified, short
+from ._data import (
+    CLASSES,
+    HOMOPHILIC,
+    SINGLE_PAIR,
+    beyond,
+    both,
+    classified,
+    short,
+    source_data,
+)
 from ._layout import (
     BLANK_HANDLE,
     LABELLING_HANDLES,
@@ -63,6 +73,35 @@ def covariation_tables(disjoint: bool) -> dict[str, pd.DataFrame]:
         )
         for lab, t in both("covariation").items()
     }
+
+
+def _covariation_source(t, disjoint: bool) -> None:
+    """The components `t` shows (`covariation_tables`), as source data."""
+    sfx = "_disjoint" if disjoint else ""
+    pairs = "gene-disjoint pairs" if disjoint else "pairs"
+    source_data(
+        ("gene_disjoint_" if disjoint else "") + "top_pair_covariation_by_component",
+        t,
+        {
+            "PairsUsed": "Top pairs",
+            "TopShare": "Top pair share",
+            "Observed": "Mean rho",
+            f"random_q95{sfx}": "Random null 95th pct.",
+            f"expression_matched_q95{sfx}": "Expression-matched null 95th pct.",
+            "Threshold": "Stricter null 95th pct.",
+            "Beyond": "Above null",
+        },
+        "Each component's top LR pairs (the fewest carrying "
+        f"{covariation.CARRIED_SHARE:.0%} of its squared LR loading, at most "
+        f"{covariation.N_TOP}; Top pairs), each scored per sample in the "
+        "component's own sender/receiver context on its method's tensor: their "
+        f"mean pairwise Spearman correlation across samples over {pairs} of "
+        "them (Mean rho; empty where no pair of pairs is gene-disjoint, an x), "
+        "against the 95th percentiles of the same mean over random and "
+        "expression-matched draws of LR pairs, and whether it is above the "
+        "stricter (filled). Top pair share is the top pair's share of squared "
+        f"LR loading; columns of {SINGLE_PAIR} or more are left out.",
+    )
 
 
 def _ylabel(disjoint: bool) -> str:
@@ -140,6 +179,7 @@ def covariation_main(axs, disjoint: bool = False, key: bool = False) -> None:
     ax = axs[0]
     tables = {lab: t[t["Either"]] for lab, t in covariation_tables(disjoint).items()}
     t, centres = spread_slots(tables, MAIN_SLOTS)
+    _covariation_source(t, disjoint)
     _covariation_axes(ax, t, centres, disjoint, 0.38)
     label_above(ax, _hits(t, lambda h: h["Observed"]), stagger=True)
     ticks = [NULL_HANDLE, UNTESTABLE_HANDLE] if disjoint else [NULL_HANDLE]
@@ -223,6 +263,7 @@ def covariation_spread(axs, disjoint: bool = False) -> None:
     bottom one. `pairs_used` carries the key."""
     ax = axs[0]
     t, centres = spread_slots(covariation_tables(disjoint))
+    _covariation_source(t, disjoint)
     _covariation_axes(ax, t, centres, disjoint, 0.4, labelled=disjoint)
     _dividers(ax, t)
     label_above(ax, _hits(t, lambda h: np.maximum(h["Observed"], h["Threshold"])))
@@ -238,7 +279,14 @@ def depth(axs) -> None:
     spread as a box plot behind its points."""
     ax = axs[0]
     tables = both("depth")
-    strips(ax, tables, "AbsRho")
+    source_data(
+        "depth_tracking_by_component",
+        strips(ax, tables, "AbsRho"),
+        {"AbsRho": "|rho|"},
+        "|Spearman correlation| between each component's |sample profile| and "
+        "per-sample depth (median genes detected per cell); the box plots "
+        "summarise each fit's.",
+    )
     for method, lab, x in SLOTS:
         values = tables[lab].loc[tables[lab]["Method"] == method, "AbsRho"]
         ax.boxplot(
@@ -288,6 +336,23 @@ def classes(axs) -> None:
     """What each LR column is (`_data.CLASSES`), one stacked bar per fit."""
     ax = axs[0]
     t = classified()
+    source_data(
+        "lr_column_classes",
+        t,
+        {
+            "Class": "Class",
+            "SinglePair": "Single-pair",
+            "BestFDR": "Lowest association FDR",
+            "Contained": "Contained in cccRISE",
+            "HomophilicShare": "Homophilic share",
+            "TopShare": "Top pair share",
+        },
+        "What each LR column is (the bars count them): associated (an outcome "
+        f"association below FDR {common.SIG_ALPHA}), else contained in cccRISE's "
+        "LR span (comparators only), else homophilic (homophilic pairs carry at "
+        f"least {HOMOPHILIC} of its squared LR loading), else other; single-pair "
+        f"(hatched) where its top pair carries at least {SINGLE_PAIR}.",
+    )
     for m, lab, x in SLOTS:
         _class_blocks(ax, t[(t["Method"] == m) & (t["Labelling"] == lab)], x)
     fit_axis(ax, SLOTS)

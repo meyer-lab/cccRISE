@@ -27,10 +27,13 @@ METHOD_COLORS = {
 }
 
 
-def load(what: str, labelling: str) -> pd.DataFrame:
-    """One scores table (`run_comparator_scores`) of `labelling`."""
-    return common.load_runner_output(
-        scores_filename(what, DATASET, labelling),
-        COMPARATOR_SCORES_DIR,
-        HINT,
+def load(what: str, labelling: str | None = None) -> pd.DataFrame:
+    """One scores table (`run_comparator_scores`): every labelling's rows,
+    or only `labelling`'s, without the ``Labelling`` column."""
+    t = common.load_runner_output(
+        scores_filename(what, DATASET), COMPARATOR_SCORES_DIR, HINT
     )
+    if labelling is None:
+        return t
+    rows = t[t["Labelling"] == labelling]
+    return rows.drop(columns="Labelling").reset_index(drop=True)

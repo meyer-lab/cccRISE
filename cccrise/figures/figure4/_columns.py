@@ -12,9 +12,20 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import MultipleLocator
 from scipy.stats import spearmanr
 
+from ...comparators import scores
 from .. import common, style
 from ._common import COMPARATORS, METHOD_COLORS, METHOD_LABELS
-from ._data import LABELLINGS, abs_cos, both, capture_margin, load, lr_columns, short
+from ._data import (
+    LABELLINGS,
+    NO_MATCH,
+    abs_cos,
+    both,
+    capture_margin,
+    load,
+    lr_columns,
+    short,
+    source_data,
+)
 from ._layout import LABELLING_HANDLES, LABELLING_MARKERS, SLOTS, method_handles
 from ._panels import _frame, label_points
 from ._strips import ASSOCIATION_NAMES
@@ -49,19 +60,52 @@ def _method_names_below(ax, xs, offset=-12) -> None:
         )
 
 
+#: Source data names of the containment table's columns.
+CONTAINMENT_COLUMNS = {
+    "Containment": "LR containment",
+    "NullQ95": "Null 95th pct.",
+    "Contained": "Contained",
+}
+CONTAINMENT_TEXT = (
+    "LR containment is the squared norm of the column's projection onto the "
+    "span of the other fit's LR columns (Null 95th pct.: its row-permutation "
+    "null's); Contained (framed) is LR containment of at least "
+    f"{scores.CONTAINED} and above the null."
+)
+
+
+def lr_containment(of: str | None, in_: str | None) -> pd.DataFrame:
+    """Each comparator fit's (`GROUPS`) containment rows of LR columns of
+    `of` in the span of `in_`, the comparator's place given as None; with
+    the comparator fit as Method and Labelling."""
+    frames = []
+    for method, lab in GROUPS:
+        t = load("containment", lab)
+        t = t[
+            (t["Of"] == (of or method))
+            & (t["In"] == (in_ or method))
+            & (t["Mode"] == "lr")
+        ].sort_values("Component")
+        frames.append(t.assign(Method=method, Labelling=lab))
+    return pd.concat(frames, ignore_index=True)
+
+
 def reach(axs) -> None:
     """cccRISE's programs' LR containment in each comparator fit; contained
     cells framed."""
     ax = axs[0]
-    values, contained = [], []
-    for method, lab in GROUPS:
-        t = load("containment", lab)
-        t = t[
-            (t["Of"] == "cccRISE") & (t["In"] == method) & (t["Mode"] == "lr")
-        ].sort_values("Component")
-        values.append(t["Containment"].to_numpy())
-        contained.append(t["Contained"].to_numpy())
-    values, contained = np.array(values).T, np.array(contained).T
+    t = lr_containment("cccRISE", None)
+    common.source_data(
+        "lr_containment_of_cccrise_programs",
+        t.assign(Program="C" + t["Component"].astype(str))[
+            ["Program", "Method", "Labelling", *CONTAINMENT_COLUMNS]
+        ].rename(columns=CONTAINMENT_COLUMNS),
+        "Each cccRISE program's LR column (Program) in each comparator fit "
+        "(Method, Labelling). " + CONTAINMENT_TEXT,
+    )
+    grid = t.pivot(index="Component", columns=["Method", "Labelling"])
+    values = grid["Containment"][GROUPS].to_numpy(float)
+    contained = grid["Contained"][GROUPS].to_numpy(bool)
     image = ax.imshow(values, cmap=style.CMAPS["weight"], vmin=0, vmax=1, aspect="auto")
     for (i, j), v in np.ndenumerate(values):
         ax.text(
@@ -71,7 +115,7 @@ def reach(axs) -> None:
             ha="center",
             va="center",
             fontsize=style.FONT_SIZE_DENSE - 1,
-            color="white" if v > 0.7 else style.COLORS["ink"],
+            color="white" if float(v) > 0.7 else style.COLORS["ink"],
         )
         if contained[i, j]:
             ax.add_patch(_frame(j, i))
@@ -116,11 +160,15 @@ def columns_in_cccrise(axs) -> None:
         0.6,
         0,
     )  # in cell widths; x clears the panel letter
+    columns = lr_containment(None, "cccRISE")
+    source_data(
+        "lr_containment_in_cccrise_by_column",
+        columns,
+        CONTAINMENT_COLUMNS,
+        "Each comparator LR column in cccRISE's LR span. " + CONTAINMENT_TEXT,
+    )
     for method, lab in GROUPS:
-        t = load("containment", lab)
-        t = t[
-            (t["Of"] == method) & (t["In"] == "cccRISE") & (t["Mode"] == "lr")
-        ].sort_values("Component")
+        t = columns[(columns["Method"] == method) & (columns["Labelling"] == lab)]
         x += label_room
         _containment_strip(ax, x, t)
         ax.text(
@@ -157,7 +205,11 @@ def _capture_labels(ax, reference, shown, columns) -> None:
     size = style.FONT_SIZE_DENSE - 1
     target = columns[reference].to_numpy()
     rows = [
-        [*_column_name(k), f"{cos:.2f}", capture_margin(reference, k, cos)]
+        [
+            *_column_name(k),
+            f"{cos:.2f}",
+            _margin_text(capture_margin(reference, k, cos)),
+        ]
         for k in shown
         for cos in [abs_cos(columns[k].to_numpy(), target)]
     ]
@@ -176,6 +228,44 @@ def _capture_labels(ax, reference, shown, columns) -> None:
                 fontweight="bold" if j == 0 else "normal",
                 annotation_clip=False,
             )
+
+
+def _margin_text(margin: float) -> str:
+    return "—" if np.isnan(margin) else f"{margin:+.2f}"
+
+
+def _capture_source(reference, shown, pairs, values, columns) -> None:
+    names = [" ".join(_column_name(k)) for k in shown]
+    common.source_data(
+        "relative_lr_loadings_of_top_pairs",
+        pd.DataFrame(values, index=[q.replace("^", "–") for q in pairs], columns=names)
+        .rename_axis(index="LR pair", columns="Column")
+        .stack()
+        .rename("|Loading| / heaviest")
+        .reset_index(),
+        f"{names[0]}'s heaviest LR pairs' |loading| in each column, relative to "
+        "that column's heaviest pair.",
+    )
+    target = columns[reference].to_numpy()
+    cos = [abs_cos(columns[k].to_numpy(), target) for k in shown]
+    common.source_data(
+        "column_match_to_reference",
+        pd.DataFrame(
+            {
+                "Column": names,
+                "|cos|": cos,
+                "Delta rho": [
+                    capture_margin(reference, k, c)
+                    for k, c in zip(shown, cos, strict=True)
+                ],
+            }
+        ),
+        f"Each column's LR |cosine| with {names[0]}, and Delta rho: the mean "
+        f"pairwise Spearman correlation across samples of {names[0]}'s top LR "
+        "pairs, scored in the column's sender/receiver context, minus the "
+        "stricter of its random and expression-matched nulls' 95th "
+        f"percentiles (empty where |cos| < {NO_MATCH}).",
+    )
 
 
 def capture(
@@ -198,6 +288,7 @@ def capture(
     values = np.column_stack(
         [columns[k].abs().loc[pairs] / columns[k].abs().max() for k in shown]
     )
+    _capture_source(reference, shown, pairs, values, columns)
     image = ax.imshow(values, cmap=style.CMAPS["weight"], vmin=0, vmax=1, aspect="auto")
     ax.set_yticks(
         range(len(pairs)),
@@ -256,6 +347,34 @@ def _significance_box(ax, t, sig) -> None:
     ax.add_artist(box)
 
 
+ASSOCIATION_COLUMNS = {
+    "Association": "Association",
+    "EtaSquared": "Eta squared",
+    "P": "p",
+    "PAdj": "FDR",
+}
+
+
+def _association_source(t, best, sig) -> None:
+    source_data(
+        "strongest_association_by_component",
+        best,
+        ASSOCIATION_COLUMNS,
+        "Each component's lowest-FDR outcome association (ties to the larger "
+        "eta squared): one-way ANOVA of its read-depth-corrected sample "
+        "profile over the association's groups, Benjamini-Hochberg adjusted "
+        "across the fit's associations and components (FDR).",
+    )
+    keys = sig[["Method", "Labelling", "Component"]]
+    source_data(
+        "significant_associations_by_component",
+        t[t["PAdj"] < common.SIG_ALPHA].merge(keys),
+        ASSOCIATION_COLUMNS,
+        f"Every association below FDR {common.SIG_ALPHA} of each component "
+        "whose strongest one is (the boxed list), tested as above.",
+    )
+
+
 def strongest_association(axs) -> None:
     """Each component's strongest association: η² against −log10 FDR,
     cccRISE and every comparator fit; the significant ones labelled and
@@ -267,6 +386,8 @@ def strongest_association(axs) -> None:
         & ((t["Method"] != "cccRISE") | (t["Labelling"] == "coarse"))
     ]
     best = _strongest(t)
+    sig = best[best["PAdj"] < common.SIG_ALPHA].sort_values("PAdj")
+    _association_source(t, best, sig)
     for method, lab, _ in SLOTS:
         g = best[(best["Method"] == method) & (best["Labelling"] == lab)]
         ax.scatter(
@@ -292,7 +413,6 @@ def strongest_association(axs) -> None:
         ylim=(0, best["NegLog"].max() * 1.3),
     )
     ax.xaxis.set_minor_locator(MultipleLocator(0.025))
-    sig = best[best["PAdj"] < common.SIG_ALPHA].sort_values("PAdj")
     label_points(
         ax,
         sig["EtaSquared"].to_numpy(),
