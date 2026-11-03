@@ -7,8 +7,10 @@ read from the sparse expression, complexes from a separate dense block. The
 parity gate's scores stage checks the port against R (exact with R's control
 genes; within the seed-to-seed spread with its own draws).
 
-Checkpoints after every program (scores_port/<side>/<k>.npy plus the RNG
-state), so an interruption resumes with the same random stream. Writes
+Draws every program's control genes first (the RNG never touches expression),
+then computes row means as one sparse product per batch of programs,
+checkpointed per batch (scores_port/<side>/<k>.npy), so an interruption
+resumes with the same random stream. Writes
 scores_port/scores_<side>.npy (cells x kept programs, float32), cells.txt and
 programs.txt.
 
@@ -71,27 +73,50 @@ class Features:
         return total / len(pos)
 
 
-def score_side(feat: Features, programs: dict, side: int, out: Path, seed: int = 1):
-    """One side's scores, checkpointed per program."""
+def _weights(feat: Features, groups: list[list[str]]) -> tuple[np.ndarray, np.ndarray]:
+    """Column-averaging weights (genes x groups, complexes x groups): 1/len on
+    each group's features, so X @ Wg + C @ Wc is every group's row mean."""
+    wg = np.zeros((len(feat.genes), len(groups)))
+    wc = np.zeros((len(feat.complexes), len(groups)))
+    for j, group in enumerate(groups):
+        pos = feat.names.get_indexer(list(group))
+        g, c = pos[pos < len(feat.genes)], pos[pos >= len(feat.genes)] - len(feat.genes)
+        wg[g, j] = 1.0 / len(pos)
+        wc[c, j] = 1.0 / len(pos)
+    return wg, wc
+
+
+def score_side(
+    feat: Features, programs: dict, side: int, out: Path, seed: int = 1, batch: int = 32
+):
+    """One side's scores. All control sets are drawn first (the RNG never
+    touches expression, so the stream is `score_programs`' exactly); the row
+    means are then one sparse product per batch of programs, checkpointed
+    per batch (one .npy per program)."""
     out.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(seed)
     names = list(programs)
-    for k, name in enumerate(names):
-        f, state = out / f"{k}.npy", out / f"{k}.rng.json"
-        if f.exists() and state.exists():
-            rng.bit_generator.state = json.loads(state.read_text())
-            continue
+    sets = []
+    for name in names:
         feats = [
             x
             for x in scriabin.program_sides(programs[name])[side]
             if x in feat.means.index
         ]
-        controls = scriabin.control_genes(feat.means, feats, rng)
-        score = feat.row_mean(feats) - feat.row_mean(controls)
-        np.save(out / f"{k}.partial.npy", score)
-        (out / f"{k}.rng.partial.json").write_text(json.dumps(rng.bit_generator.state))
-        (out / f"{k}.partial.npy").replace(f)
-        (out / f"{k}.rng.partial.json").replace(state)
+        sets.append((feats, scriabin.control_genes(feat.means, feats, rng)))
+    for start in range(0, len(names), batch):
+        ks = [
+            k
+            for k in range(start, min(start + batch, len(names)))
+            if not (out / f"{k}.npy").exists()
+        ]
+        if not ks:
+            continue
+        wg, wc = _weights(feat, [sets[k][0] for k in ks] + [sets[k][1] for k in ks])
+        means = np.asarray(feat.X @ wg) + feat.C @ wc
+        for i, k in enumerate(ks):
+            np.save(out / f"{k}.partial.npy", means[:, i] - means[:, len(ks) + i])
+            (out / f"{k}.partial.npy").replace(out / f"{k}.npy")
     return np.column_stack([np.load(out / f"{k}.npy") for k in range(len(names))])
 
 
