@@ -29,6 +29,7 @@ dependencies = [
     "pyreadr>=0.5.6",
     "pyyaml>=6.0",
     "adjusttext>=1.4.0",
+    "kneed>=0.8.5",
 ]
 
 readme = "README.md"
@@ -55,6 +56,8 @@ cccrise-factor = "cccrise.imports:factorSave"
 cccrise-run = "cccrise.runners.run_ccc_rise:main"
 cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
+cccrise-comparators = "cccrise.runners.run_comparators:main"
+cccrise-comparator-scores = "cccrise.runners.run_comparator_scores:main"
 cccrise-stability = "cccrise.runners.run_stability:main"
 cccrise-significance = "cccrise.runners.run_significance:main"
 cccrise-nichenet = "cccrise.runners.run_nichenet:main"

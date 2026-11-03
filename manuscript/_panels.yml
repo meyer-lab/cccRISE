@@ -20,7 +20,15 @@ fig3:
   coordinated_changes: [e, f]
   lr_permutation: [g]
   lr_volcano: [h]
-fig4: {}
+fig4:
+  reach: [a]
+  covariation: [b]
+  covariation_disjoint: [c]
+  depth: [d]
+  columns_in_cccrise: [e]
+  classes: [f]
+  strongest_association: [g]
+  program_capture: [h]
 fig5:
   cohort: [a]
   cp_factor_matrices: [b, c, d, e]
@@ -90,3 +98,43 @@ figS_ibd_nichenet:
   nichenet: [a]
   ligand_scores: [b]
   weighted_percentiles: [c]
+figS_comparator_rank_selection:
+  pb_rank_selection_coarse: [a, b]
+  pb_minima_coarse: [c]
+  tc2c_rank_selection_coarse: [d, e]
+  tc2c_minima_coarse: [f]
+  pb_rank_selection_fine: [g, h]
+  pb_minima_fine: [i]
+  tc2c_rank_selection_fine: [j, k]
+  tc2c_minima_fine: [l]
+  stac_shares_coarse: [m]
+  stac_shares_fine: [n]
+figS_comparator_inner:
+  losses: [a]
+  program_losses_coarse: [b]
+  program_losses_fine: [c]
+  reach_coarse: [d]
+  reach_fine: [e]
+figS_comparator_rank_weight:
+  lr_weights_coarse: [a, b, c, d]
+  lr_weights_fine: [e, f, g, h]
+figS_comparator_clinical:
+  outcome: [a]
+  death_6mo: [b]
+  death_1yr: [c]
+  rejection: [d]
+  capture_p1: [e]
+  capture_p5: [f]
+  capture_s11: [g]
+  sample_profiles: [h]
+figS_comparator_covariation:
+  pairs_used: [a]
+  all_pairs: [b]
+  disjoint: [c]
+figS_comparator_properties:
+  coarse_to_fine: [a]
+  breadth: [b]
+  inputs: [c]
+  homophily: [d]
+  top_share: [e]
+figS_comparator_lr_contents: {}
