@@ -446,6 +446,22 @@ def sample_profiles(axs) -> None:
     floor), samples grouped by 6-month outcome."""
     ax = axs[0]
     t = _profiles()
+    names = [name for _, name in PROFILED]
+    common.source_data(
+        "scaled_sample_profiles",
+        t.rename_axis("Sample")
+        .reset_index()
+        .melt(
+            id_vars=["Sample", "Group"],
+            value_vars=names,
+            var_name="Column",
+            value_name="Scaled loading",
+        )
+        .rename(columns={"Group": "6-month outcome"}),
+        "Each column's sample profile (cccRISE's sample loadings; a comparator "
+        "LR column's as its outcome associations use it) divided by its "
+        "largest |loading|; the bars show the positive part.",
+    )
     n = len(PROFILED)
     line = {"color": style.COLORS["ink"], "lw": ax.spines["bottom"].get_linewidth()}
     for k, ((key, name), floor) in enumerate(
@@ -552,10 +568,38 @@ def _flow_block(ax, method, x) -> None:
         ax.text(xs, -0.1, letter, ha="center", fontsize=style.FONT_SIZE_DENSE - 1)
 
 
+def _flow_source() -> None:
+    frames = []
+    for m in COMPARATORS:
+        cos, coarse, fine = _shift(m)
+        frames.append(
+            pd.DataFrame(
+                cos,
+                index=[short(m, k[2]) for k in coarse],
+                columns=[short(m, k[2]) for k in fine],
+            )
+            .rename_axis(index="Coarse column", columns="Fine column")
+            .stack()
+            .rename("LR |cos|")
+            .reset_index()
+            .assign(Method=m)
+        )
+    t = pd.concat(frames, ignore_index=True)
+    common.source_data(
+        "coarse_to_fine_lr_cosine",
+        t.assign(Drawn=t["LR |cos|"] >= FLOW_FROM)[
+            ["Method", "Coarse column", "Fine column", "LR |cos|", "Drawn"]
+        ],
+        "|Cosine| between each comparator's coarse and fine LR columns, on "
+        f"cccRISE's LR pairs; Drawn (a line) at {FLOW_FROM} or more.",
+    )
+
+
 def coarse_to_fine(axs) -> None:
     """Each comparator's coarse LR columns (left) joined to its fine ones
     (right) where LR |cos| >= `FLOW_FROM`, line width stepping with |cos|."""
     ax = axs[0]
+    _flow_source()
     for i, m in enumerate(COMPARATORS):
         _flow_block(ax, m, 1.75 * i)
     ax.set(xlim=(-0.35, 1.75 * len(COMPARATORS) - 0.4), ylim=(-0.15, 1.15))
@@ -580,6 +624,7 @@ def breadth(axs) -> None:
     """Effective LR pairs against effective samples (inverse Simpson indices
     of squared loadings; a column's sample profile), every fit."""
     ax = axs[0]
+    drawn = []
     for lab, b in both("breadth").items():
         lr = b[b["Mode"] == "lr"].set_index(["Method", "Component"])["Effective"]
         samples = (
@@ -591,6 +636,17 @@ def breadth(axs) -> None:
             if method == "cccRISE" and lab != "coarse":
                 continue
             keys = [k for k in samples.index if k[0] == method]
+            drawn.append(
+                pd.DataFrame(
+                    {
+                        "Method": method,
+                        "Labelling": lab,
+                        "Component": [k[1] for k in keys],
+                        "EffectiveLR": lr.loc[keys].to_numpy(),
+                        "EffectiveSamples": samples.loc[keys].to_numpy(),
+                    }
+                )
+            )
             ax.scatter(
                 lr.loc[keys],
                 samples.loc[keys],
@@ -601,6 +657,14 @@ def breadth(axs) -> None:
                 lw=0.4,
                 zorder=3 if method == "cccRISE" else 2,
             )
+    source_data(
+        "effective_lr_pairs_and_samples",
+        pd.concat(drawn, ignore_index=True),
+        {"EffectiveLR": "Effective LR pairs", "EffectiveSamples": "Effective samples"},
+        "Each component's effective number of LR pairs and of samples: the "
+        "inverse Simpson index of its squared LR loadings and of its squared "
+        "sample profile.",
+    )
     ax.set_xscale("log")
     ax.set(xlabel="Effective LR pairs", ylabel="Effective samples", ylim=(0, 47))
     ax.legend(
@@ -615,9 +679,25 @@ def inputs(axs) -> None:
     (z-scored) against depth, with their Spearman ρ."""
     ax = axs[0]
     t = load("inputs", "coarse")
+    t = t.assign(
+        Z=t.groupby("Method")["Mean"].transform(lambda v: (v - v.mean()) / v.std())
+    )
+    common.source_data(
+        "input_tensor_mean_by_sample",
+        t[["Method", "Sample", "Depth", "Mean", "Z"]].rename(
+            columns={
+                "Depth": "Median genes detected per cell",
+                "Mean": "Input tensor mean",
+                "Z": "z-score",
+            }
+        ),
+        "Each method's input tensor (coarse labels) averaged per sample over "
+        "its observed entries, z-scored within the method, against the "
+        "sample's depth; the legend gives their Spearman correlation.",
+    )
     for m in t["Method"].unique():
         g = t[t["Method"] == m]
-        z = (g["Mean"] - g["Mean"].mean()) / g["Mean"].std()
+        z = g["Z"]
         rho = spearmanr(g["Mean"], g["Depth"]).statistic
         ax.scatter(
             g["Depth"],

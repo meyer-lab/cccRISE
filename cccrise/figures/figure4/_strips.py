@@ -228,6 +228,15 @@ def pairs_used(axs) -> None:
     figure's key above, left."""
     ax = axs[0]
     t, centres = spread_slots(covariation_tables(False))
+    source_data(
+        "top_pairs_tested_by_component",
+        t,
+        {"PairsUsed": "Top pairs"},
+        "How many top LR pairs each component's co-variation tests: the fewest "
+        f"carrying {covariation.CARRIED_SHARE:.0%} of its squared LR loading, "
+        f"at most {covariation.N_TOP}; columns whose top pair carries "
+        f"{SINGLE_PAIR} or more are left out.",
+    )
     for method, g in t.groupby("Method"):
         ax.bar(
             g["X"], g["PairsUsed"], width=0.7, color=METHOD_COLORS[str(method)], lw=0
@@ -387,6 +396,22 @@ def association_strip(
         for lab, t in both("associations").items()
     }
     drawn = strips(ax, tables, "EtaSquared", "Significant")
+    source_data(
+        "association_eta_squared_by_component",
+        drawn,
+        {
+            "Association": "Association",
+            "EtaSquared": "Eta squared",
+            "P": "p",
+            "PAdj": "FDR",
+            "Significant": "Significant",
+        },
+        f"Each component's association with '{association}': one-way ANOVA of "
+        "its read-depth-corrected sample profile over the association's "
+        "groups (eta squared), Benjamini-Hochberg adjusted across the fit's "
+        f"associations and components (FDR); Significant (filled) below FDR "
+        f"{common.SIG_ALPHA}.",
+    )
     ax.set(
         ylabel=ASSOCIATION_NAMES[association].capitalize() + r" $\eta^2$",
         ylim=(0, drawn["EtaSquared"].max() * 1.3),
@@ -406,9 +431,12 @@ def association_strip(
     )
 
 
-def _share(axs, column: str, flag: str, ylabel: str, threshold: float) -> None:
+def _share(
+    axs, column: str, flag: str, ylabel: str, threshold: float, source: dict
+) -> None:
     """Each component's `column` of `classified`, the columns where `flag`
-    is true labelled, `threshold` dashed."""
+    is true labelled, `threshold` dashed; saved as source data by `source`'s
+    name and description."""
     ax = axs[0]
     t = classified()
     rng = np.random.default_rng(0)
@@ -435,6 +463,12 @@ def _share(axs, column: str, flag: str, ylabel: str, threshold: float) -> None:
             )
         )
     drawn = pd.concat(drawn, ignore_index=True)
+    source_data(
+        source["name"],
+        drawn,
+        {column: ylabel.replace("\n", " "), flag: flag},
+        source["description"],
+    )
     ax.axhline(
         threshold,
         color=style.COLORS["reference"],
@@ -461,6 +495,15 @@ def homophilic_share(axs) -> None:
         "IsHomophilic",
         "Homophilic share of\nsquared LR loading",
         HOMOPHILIC,
+        {
+            "name": "homophilic_share_by_component",
+            "description": (
+                "Each component's share of squared LR loading on homophilic pairs "
+                "(a ligand whose genes are its receptor's); IsHomophilic (labelled) "
+                f"at {HOMOPHILIC} or more, unless the column is associated with an "
+                "outcome or contained in cccRISE's LR span (`lr_column_classes`)."
+            ),
+        },
     )
 
 
@@ -473,4 +516,11 @@ def top_share(axs) -> None:
         "SinglePair",
         "Top pair's share of\nsquared LR loading",
         SINGLE_PAIR,
+        {
+            "name": "top_pair_share_by_component",
+            "description": (
+                "Each component's top LR pair's share of its squared LR loading; "
+                f"SinglePair (labelled) at {SINGLE_PAIR} or more."
+            ),
+        },
     )

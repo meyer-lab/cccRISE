@@ -5,7 +5,8 @@ For each labelling of the dataset (`DatasetSpec.labellings`: its coarse and
 fine cell types) it builds the comparators' communication tensors
 (`comparators.tensors`) and runs each method's own rank selection and fit
 (`comparators.methods`), writing to ``data/comparators/`` (one file per
-method, dataset and labelling; `datasets.comparator_filename`):
+method, dataset and labelling; `datasets.comparator_filename`), each file
+recorded in its folder's ``provenance.yaml`` (`provenance.record_output`):
 
 - **pb** (pseudobulk CPD): ``rank_selection/pb_rank_*`` and ``pb_start_fms_*``,
   cccRISE's own sweep (`run_cpd_rank.start_sweep`: seeded SVD starts per rank,
@@ -57,6 +58,7 @@ from ._cli import (
     add_dataset_argument,
     cp_device_metadata,
     dataset_metadata,
+    parse_command,
     resolve_dataset,
 )
 from .datasets import (
@@ -65,7 +67,7 @@ from .datasets import (
     DatasetSpec,
     comparator_filename,
 )
-from .provenance import build_metadata, git_sha, sha256_file, write_metadata
+from .provenance import build_metadata, git_sha, record_output, sha256_file
 from .run_cpd_rank import MAX_DEFAULT_RANK, N_STARTS, start_agreement, start_sweep
 
 METHODS = ("pb", "tc2c", "tc2c_inner", "stac")
@@ -123,6 +125,7 @@ def run_pb(pooled: PooledTensor, rank, random_state, fit_kwargs) -> dict:
     weights, factors = fit_cp_on_device(
         pooled.values, rank, random_state=random_state, **fit_kwargs, **CP_FIT_OPTIONS
     )
+    out["settings"]["rank"] = rank
     out["fit"] = methods.fit_dataset(pooled, factors, weights, rank=str(rank))
     return out
 
@@ -221,9 +224,15 @@ def run_stac(pooled: PooledTensor, random_state) -> dict:
 
 
 def write_outputs(
-    result: dict, method: str, spec: DatasetSpec, labelling: str, metadata: dict
+    result: dict,
+    method: str,
+    spec: DatasetSpec,
+    labelling: str,
+    metadata: dict,
+    command: str,
 ) -> None:
-    """Each table and the fit of one method's `result`, with sidecars."""
+    """Each table and the fit of one method's `result`, each recorded in its
+    folder's provenance file as written by `command`."""
     metadata = build_metadata(
         metadata
         | {"method": method, "labelling": labelling, method: result["settings"]}
@@ -239,7 +248,7 @@ def write_outputs(
             value.to_netcdf(path, engine="h5netcdf")
         else:
             value.to_parquet(path, index=False)
-        write_metadata(path, metadata, header=HEADER)
+        record_output(path, metadata, command, header=HEADER)
         print(f"   wrote {path.name}")
 
 
@@ -276,12 +285,13 @@ def run_comparators(
     random_state: int = 42,
     tc2c_from_sweep: bool = False,
     workers: int = 1,
+    command: str = "uv run cccrise-comparators",
 ) -> None:
     """Rank selection and fits of `method_names` on each of `labellings`
     (module docstring); with `pb_ranks`, only pseudobulk CPD's fit at each
     given labelling's rank; with `tc2c_from_sweep`, Tensor-cell2cell's fit
     from its saved sweep. `workers` processes share Tensor-cell2cell's elbow
-    fits."""
+    fits. `command` is recorded as what wrote the outputs."""
     git_sha()
     print(f"=== Comparators: {spec.label}; {', '.join(labellings)} ===")
     adata = spec.load()
@@ -319,7 +329,7 @@ def run_comparators(
                 "celltype_key": spec.labellings[labelling],
                 "tensor": tensor_metadata(pooled[method]),
             }
-            write_outputs(result, method, spec, labelling, metadata)
+            write_outputs(result, method, spec, labelling, metadata, command)
 
 
 def _pb_rank(text: str) -> tuple[str, int]:
@@ -366,7 +376,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
+    args, command = parse_command(build_parser(), "cccrise-comparators", argv)
     spec = resolve_dataset(args)
     pb_ranks = dict(args.pb_rank)
     run_comparators(
@@ -379,6 +389,7 @@ def main(argv: list[str] | None = None) -> None:
         random_state=args.random_state,
         tc2c_from_sweep=args.tc2c_from_sweep,
         workers=args.workers,
+        command=command,
     )
 
 

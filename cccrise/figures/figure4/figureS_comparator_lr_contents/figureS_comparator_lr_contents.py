@@ -9,12 +9,13 @@ time across a block's components while new ones fit its width, never one
 under `MIN_SHARE` of a column's squared loading."""
 
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.colors import to_rgb
 from matplotlib.patches import Rectangle
 
 from ....comparators import scores
-from ... import style
+from ... import common, style
 from .._common import COMPARATORS, METHOD_COLORS, METHOD_LABELS
 from .._data import LABELLINGS, fit_lr, short
 
@@ -251,11 +252,42 @@ def _block_left(method, labelling, coarse_columns, width) -> float:
     return width / 2 + NAME_IN
 
 
+def _source_data(blocks, chosen) -> None:
+    """The pairs each component names, with their shares and signs, and
+    the share left unnamed."""
+    records = []
+    for (method, lab), rows in blocks.items():
+        for r, k in zip(rows, chosen[(method, lab)][0], strict=True):
+            key = {"Component": r["Name"], "Method": method, "Labelling": lab}
+            records += [
+                key
+                | {
+                    "Rank": j + 1,
+                    "LR pair": r["Pairs"][j].replace("^", "–"),
+                    "Share": r["Shares"][j],
+                    "Sign": int(r["Signs"][j]),
+                }
+                for j in range(k)
+            ]
+            records.append(
+                key | {"LR pair": "rest", "Share": 1 - r["Shares"][:k].sum()}
+            )
+    common.source_data(
+        "lr_pair_shares_by_component",
+        pd.DataFrame(records).astype({"Rank": "Int64", "Sign": "Int64"}),
+        "Each comparator LR column's heaviest LR pairs, as named in the figure, "
+        "by rank: each pair's share of the column's squared LR loading and its "
+        "sign after orienting the column (largest entry positive); 'rest' is "
+        "the share of every other pair (the white segment).",
+    )
+
+
 def makeFigure():
     width = style.FIGURE_WIDTH_DOUBLE
     max_columns = int((width / 2 - NAME_IN - BAR_IN - GAP_IN - 0.15) / PITCH_IN)
     blocks = {(m, lab): components(m, lab) for m in COMPARATORS for lab in LABELLINGS}
     chosen = {k: chosen_pairs(rows, max_columns) for k, rows in blocks.items()}
+    _source_data(blocks, chosen)
     bands = {
         m: _band(
             [blocks[(m, lab)] for lab in LABELLINGS],

@@ -5,7 +5,8 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
 (``uv run cccrise-comparators``) and writes one table per analysis to
 ``data/comparators/scores/<table>_<dataset>.parquet``
 (`datasets.scores_filename`), every method and labelling in it (a
-``Labelling`` column), as `comparators.scores` defines them:
+``Labelling`` column), each recorded in the folder's ``provenance.yaml``
+(`provenance.record_output`), as `comparators.scores` defines them:
 
 - ``containment``: the sample and LR columns of every fit ('Of') in the
   span of every other ('In'), cccRISE and each comparator alike, with the
@@ -79,7 +80,7 @@ from ..comparators.tensors import (
 from ..factors import load_factors_netcdf, load_factors_to_anndata
 from ..figures.figure3._common import ASSOCIATIONS
 from ..import_data import import_ligand_receptor_pairs
-from ._cli import add_dataset_argument, dataset_metadata, resolve_dataset
+from ._cli import add_dataset_argument, dataset_metadata, parse_command, resolve_dataset
 from .datasets import (
     COMPARATOR_FITS_DIR,
     COMPARATOR_SCORES_DIR,
@@ -87,7 +88,7 @@ from .datasets import (
     comparator_filename,
     scores_filename,
 )
-from .provenance import build_metadata, git_sha, sha256_file, write_metadata
+from .provenance import build_metadata, git_sha, record_output, sha256_file
 
 METHODS = {"pb": "PB", "tc2c": "TC2C", "tc2c_inner": "TC2C inner", "stac": "STAC"}
 N_NULL = 1000
@@ -542,7 +543,13 @@ def score_labelling(
     return tables, contexts
 
 
-def run_comparator_scores(spec: DatasetSpec, random_state: int) -> None:
+def run_comparator_scores(
+    spec: DatasetSpec,
+    random_state: int,
+    command: str = "uv run cccrise-comparator-scores",
+) -> None:
+    """Every table (module docstring) of `spec`, its provenance recorded as
+    written by `command`."""
     git_sha()
     labellings = list(spec.labellings)
     print(f"=== Comparator scores: {spec.label}; {', '.join(labellings)} ===")
@@ -568,7 +575,7 @@ def run_comparator_scores(spec: DatasetSpec, random_state: int) -> None:
         for what in tables[labellings[0]]
     }
     merged["pair_covariation"] = pair_covariation_rows(contexts, associations)
-    write_tables(spec, merged, _metadata(spec, labellings, random_state))
+    write_tables(spec, merged, _metadata(spec, labellings, random_state), command)
 
 
 def _metadata(spec: DatasetSpec, labellings, random_state: int) -> dict:
@@ -593,12 +600,12 @@ def _metadata(spec: DatasetSpec, labellings, random_state: int) -> dict:
     )
 
 
-def write_tables(spec: DatasetSpec, tables: dict, metadata: dict) -> None:
+def write_tables(spec: DatasetSpec, tables: dict, metadata: dict, command: str) -> None:
     for what, table in tables.items():
         path = COMPARATOR_SCORES_DIR / scores_filename(what, spec.output_key)
         path.parent.mkdir(parents=True, exist_ok=True)
         table.to_parquet(path, index=False)
-        write_metadata(path, metadata, header=HEADER)
+        record_output(path, metadata, command, header=HEADER)
         print(f"   wrote {path.name}")
 
 
@@ -612,9 +619,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
+    args, command = parse_command(build_parser(), "cccrise-comparator-scores", argv)
     spec = resolve_dataset(args)
-    run_comparator_scores(spec, args.random_state)
+    run_comparator_scores(
+        spec,
+        args.random_state,
+        command,
+    )
 
 
 if __name__ == "__main__":
