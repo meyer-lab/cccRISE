@@ -1,0 +1,7 @@
+Package: scriabin
+Version: 0.0.0.9000
+Title: Stub exposing upstream scriabin::mapvalues and LoadLR for the R checks
+Description: mapvalues and LoadLR copied verbatim from scriabin R/utils.R at
+    bce695b, with its inst/lr_resources.rds (the LIANA-collected LR databases).
+License: MIT
+Imports: magrittr, dplyr

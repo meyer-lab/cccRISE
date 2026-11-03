@@ -1,265 +1,142 @@
-"""Python re-implementation of NICHES (msraredon/NICHES, R).
+"""Python re-implementation of NICHES (msraredon/NICHES, R; pinned at
+``5d932b8``).
 
-See :func:`niches`'s docstring for what algorithm this reproduces, how it
-differs from the original R package, and how to compare its output against
-cccRISE.
+NICHES (Raredon et al., Bioinformatics 2023) has no model: it writes the
+per-cell ligand x receptor products out as a new matrix whose columns are
+cell pairs or cells, and then analyses that matrix like expression data.
+Ported modes:
+
+- `cell_to_cell` / `cell_to_cell_pairs` (``RunCellToCell``): for every ordered
+  pair of cell types (autocrine included), ``min(n_a, n_b)`` sender and
+  receiver cells drawn without replacement and paired by position; the
+  column is ``L(sender) * R(receiver)``. This is NICHES' only random step.
+- `system_to_cell` (``RunSystemToCell``): every cell as a receiver, against
+  the whole system's ligand (``blend``: mean (default), sum, or mean over
+  expressing cells, ``mean.adj``), i.e. ``op_i L(i) * R(j)``.
+- `cell_to_system` (``RunCellToSystem``): the mirror, ``L(i) * op_j R(j)``.
+- `filter_ground_truth` / `filter_cells_per_type` (``FilterGroundTruth``,
+  ``PrepNodeObject``'s ``min.cells.per.ident``).
+
+Outputs are the raw products, as upstream returns them: under Seurat v5 its
+``data`` layer is overwritten with ``counts``, so no normalization is applied.
+NICHES runs per condition, as upstream recommends: cells are paired with, and
+the "system" spans, cells of the same sample only.
+
+Differences from upstream, all deliberate (see `cccrise.comparators.inputs`):
+
+- the expression is cccRISE's normalized ``adata.X`` (upstream:
+  log-normalized or ALRA-imputed ``data``); there is no imputation, since
+  cccRISE does none;
+- the LR table is the cccRISE fit's (upstream: FANTOM5);
+- complexes use cccRISE's ``min`` aggregation (upstream multiplies subunits,
+  available as ``agg="product"`` in `inputs.lr_expression` and used by the R
+  checks);
+- random draws are NumPy's; `cell_to_cell` takes the pairs as an argument so
+  the R checks can score R's own draws;
+- ``min.cells.per.gene`` (counted on raw counts) is not applied, since the
+  gene universe is cccRISE's.
+
+Comparing against cccRISE: NICHES enters as a model-free per-cell reference.
+A cccRISE program's per-cell signal is compared with the NICHES
+SystemToCell / CellToSystem scores over that program's LR pairs (weighted by
+its LR loadings), within cell type. Per-cell-pair (edge) concordance is not
+used: the NICHES and Scriabin edges both rank cell pairs by L * R, so they are
+one reference rather than two, and cccRISE's per-edge reconstruction does not
+recover per-cell expression (`notes/ANALYSIS_RECORD.md` §4.5, E16/E17).
 """
 
 from collections.abc import Sequence
-from typing import Any, cast
 
-import anndata
 import numpy as np
 import pandas as pd
-from scipy.sparse import issparse
 
-from ..ccc import get_genes_from_complexes
-from ..ccc_rise import add_complexes_to_expression
-from ..import_data import import_ligand_receptor_pairs
+BLENDS = ("mean", "sum", "mean.adj")
 
 
-def _dense_gene_by_cell(
-    adata: anndata.AnnData, cell_ids: Sequence[str]
+def _blend(values: np.ndarray, blend: str) -> np.ndarray:
+    """Combine a (cells x LR) matrix over cells: mean, sum, or ``mean.adj``
+    (mean divided by the fraction of expressing cells, so NaN for an entity no
+    cell expresses, as upstream)."""
+    if blend == "mean":
+        return values.mean(axis=0)
+    if blend == "sum":
+        return values.sum(axis=0)
+    if blend == "mean.adj":
+        with np.errstate(invalid="ignore", divide="ignore"):
+            return values.mean(axis=0) / (values > 0).mean(axis=0)
+    raise ValueError(f"blend must be one of {BLENDS}, not {blend!r}")
+
+
+def system_to_cell(lig: np.ndarray, rec: np.ndarray, blend: str = "mean") -> np.ndarray:
+    """``RunSystemToCell``: (cells x LR), the system's blended ligand times each
+    cell's receptor."""
+    return _blend(lig, blend)[None, :] * rec
+
+
+def cell_to_system(lig: np.ndarray, rec: np.ndarray, blend: str = "mean") -> np.ndarray:
+    """``RunCellToSystem``: (cells x LR), each cell's ligand times the system's
+    blended receptor."""
+    return lig * _blend(rec, blend)[None, :]
+
+
+def cell_to_cell_pairs(
+    cell_types: Sequence[str] | np.ndarray, rng: np.random.Generator
 ) -> pd.DataFrame:
-    """Densify ``adata[cell_ids]`` into a ``(genes x cells)`` DataFrame."""
-    sub = adata[list(cell_ids), :]
-    X = sub.X
-    X = cast(Any, X).toarray() if issparse(X) else np.asarray(X)
-    return pd.DataFrame(np.asarray(X).T, index=sub.var_names, columns=sub.obs_names)
-
-
-def niches(
-    adata: anndata.AnnData,
-    groupby: str,
-    lr_pairs: pd.DataFrame | None = None,
-    complex_sep: str = "&",
-    complex_agg_method: str = "min",
-    random_state: int | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Re-implementation of NICHES' cell-to-cell signal matrix.
-
-    This is a from-scratch Python re-implementation of ``NICHES::RunCellToCell()``
-    (msraredon/NICHES, R) as called by ``RunNICHES(..., CellToCell = TRUE)`` --
-    reconstructed by reading that function's decompiled body -- it is not a
-    wrapper around the R package, and NICHES is not a dependency of this
-    project. It is meant to let cccRISE be benchmarked against NICHES'
-    single-cell-resolution approach without an R runtime (this project
-    previously ran the actual R package via an `R/` comparator harness,
-    since removed in favor of this module). Only the ``CellToCell`` mode is
-    reproduced -- ``CellToSystem``/``SystemToCell``/spatial-neighborhood
-    modes upstream also offers weren't used by that harness either.
-
-    Upstream algorithm: for every pair of cell groups (sender type, receiver
-    type -- including a type paired with itself), it builds a per-cell
-    ligand-complex expression vector and a per-cell receptor-complex
-    expression vector (multi-subunit complexes combined via an elementwise
-    product across subunits), then -- rather than exhaustively enumerating
-    every (sender cell, receiver cell) combination -- draws a random
-    same-size subsample from each type's cell pool (size
-    ``min(n_cells_sender_type, n_cells_receiver_type)``) and takes the
-    elementwise product of the two subsamples, positionally paired. This
-    scales to large datasets by sampling representative pairs per
-    (sender-type, receiver-type) combination instead of computing the full
-    cross product. This function reproduces that same sampling scheme, with
-    ``add_complexes_to_expression`` used for the complex step (matching
-    cccRISE's own complex handling) instead of NICHES' internal
-    subunit-product code.
-
-    Known differences from upstream:
-
-    - **LR database**: this uses this project's shared, complex-aware LR
-      table (:func:`cccrise.import_data.import_ligand_receptor_pairs`,
-      the same one cccRISE uses) instead of NICHES' own bundled "fantom5"
-      database, so the comparison isolates the algorithmic approach rather
-      than database choice (this project's R harness used NICHES' own
-      database instead, since NICHES doesn't directly consume an external
-      LR table the way the other R comparators do).
-    - **No post-hoc re-normalization**: upstream log-normalizes the
-      resulting signal matrix itself (treating it like a second expression
-      matrix, via ``Seurat::NormalizeData``) before returning it. This
-      returns the raw elementwise-product signal; apply your own
-      normalization if you want to match that step.
-    - **No ``min.cells.per.ident``/``min.cells.per.gene`` filtering**:
-      upstream drops sparsely-represented groups/genes by default; this
-      function scores every group and every LR pair in ``lr_pairs`` --
-      filter ``adata``/``lr_pairs`` yourself beforehand if you want that
-      behavior.
-
-    Comparing against cccRISE
-    ---------------------------
-    Like Scriabin, NICHES has no fitted model to compare component-for-
-    component -- it's a per-cell-pair score, so (per Reviewer #1's ask for
-    "additional single-cell-resolution concordance") the comparison is the
-    same concordance analysis proposed for Scriabin
-    (see :mod:`cccrise.comparators.scriabin`):
-
-    1. Reconstruct a matching per-cell-pair score from cccRISE by combining
-       its per-cell RISE projections (``adata.obsm["sc_B"]``/
-       ``adata.obsm["rc_C"]``) with the CP factors (``B``/``C``/``D``),
-       evaluated at individual cells rather than celltype/condition
-       aggregates.
-    2. For the same (sender-type, receiver-type) sampled cell pairs this
-       function draws (fix ``random_state`` for reproducibility), compute a
-       Spearman/Pearson correlation between this function's signal values
-       and cccRISE's reconstructed per-cell-pair score, per LR pair or
-       pooled across pairs.
-    3. Use NICHES' broader per-celltype-pair coverage (every group x group
-       combination, not just one sampled sender/receiver group like
-       Scriabin) to check whether concordance with cccRISE holds uniformly
-       across celltype pairs or is concentrated in a few.
-
-    Parameters
-    ----------
-    adata : anndata.AnnData
-        Already-normalized (log-transformed) expression data, matching the
-        normalization convention cccRISE itself assumes -- this function
-        does no normalization of its own.
-    groupby : str
-        ``adata.obs`` column naming each cell's group (e.g. celltype).
-    lr_pairs : pd.DataFrame, optional
-        LR pair table with ``ligand``/``receptor`` columns (and, if present,
-        ``interaction_symbol`` for pair labels). Defaults to
-        ``import_ligand_receptor_pairs()``, the same table cccRISE uses.
-    complex_sep : str, default "&"
-        Subunit separator for multi-gene complexes, matching cccRISE's own
-        default.
-    complex_agg_method : str, default "min"
-        How to aggregate subunit expression into a complex's expression --
-        passed through to ``add_complexes_to_expression`` (``"min"``,
-        ``"mean"``, or ``"gmean"``).
-    random_state : int, optional
-        Seed for the per-(sender-type, receiver-type) cell subsampling.
-
-    Returns
-    -------
-    signal_matrix : pd.DataFrame
-        LR pair x edge matrix (edge = one sampled sender-receiver cell
-        pair), values are the elementwise ligand x receptor product.
-    edge_metadata : pd.DataFrame
-        One row per edge (matching ``signal_matrix`` columns), with
-        ``sending_type``, ``receiving_type``, ``sender_cell``,
-        ``receiver_cell``.
-    """
-    if lr_pairs is None:
-        lr_pairs = import_ligand_receptor_pairs()
-
-    _, _, _, _, complexes = get_genes_from_complexes(
-        lr_pairs, complex_sep=complex_sep, interaction_columns=("ligand", "receptor")
-    )
-    pair_labels = _lr_pair_labels(lr_pairs)
-
-    groups = sorted(adata.obs[groupby].unique())
-    cells_by_group, ligand_mat_by_group, receptor_mat_by_group = (
-        _prepare_group_expression(
-            adata, groupby, groups, lr_pairs, complexes, complex_agg_method
-        )
-    )
-
-    rng = np.random.default_rng(random_state)
-
-    signal_blocks: list[pd.DataFrame] = []
-    meta_blocks: list[pd.DataFrame] = []
-    for sender_type in groups:
-        for receiver_type in groups:
-            edge = _sample_edge_block(
-                sender_type,
-                receiver_type,
-                cells_by_group,
-                ligand_mat_by_group,
-                receptor_mat_by_group,
-                pair_labels,
-                rng,
+    """``RunCellToCell``'s sampling: for each sender type, then each receiver
+    type (sorted, as ``table(Idents)`` orders them), ``min(n_send, n_recv)``
+    sender cells and, independently, as many receiver cells, each drawn
+    without replacement and paired by position. Returns one row per edge:
+    ``sender``, ``receiver`` (cell indices), ``sending_type``,
+    ``receiving_type``."""
+    cell_types = np.asarray(cell_types)
+    types = np.unique(cell_types)
+    pools = {t: np.nonzero(cell_types == t)[0] for t in types}
+    blocks = []
+    for s in types:
+        n = {r: min(len(pools[s]), len(pools[r])) for r in types}
+        senders = [rng.choice(pools[s], size=n[r], replace=False) for r in types]
+        receivers = [rng.choice(pools[r], size=n[r], replace=False) for r in types]
+        for r, snd, rcv in zip(types, senders, receivers, strict=True):
+            blocks.append(
+                pd.DataFrame(
+                    {
+                        "sender": snd,
+                        "receiver": rcv,
+                        "sending_type": s,
+                        "receiving_type": r,
+                    }
+                )
             )
-            if edge is None:
-                continue
-            signal_df, meta_df = edge
-            signal_blocks.append(signal_df)
-            meta_blocks.append(meta_df)
-
-    signal_matrix = pd.concat(signal_blocks, axis=1)
-    edge_metadata = pd.concat(meta_blocks, axis=0)
-    return signal_matrix, edge_metadata
+    return pd.concat(blocks, ignore_index=True)
 
 
-def _lr_pair_labels(lr_pairs: pd.DataFrame) -> np.ndarray:
-    """Return a display label per LR pair, preferring `interaction_symbol`."""
-    if "interaction_symbol" in lr_pairs.columns:
-        return lr_pairs["interaction_symbol"].to_numpy()
-    ligand_names = lr_pairs["ligand"].to_numpy()
-    receptor_names = lr_pairs["receptor"].to_numpy()
-    return np.array([f"{lg}^{rc}" for lg, rc in zip(ligand_names, receptor_names)])
+def cell_to_cell(lig: np.ndarray, rec: np.ndarray, pairs: pd.DataFrame) -> np.ndarray:
+    """(edges x LR) CellToCell matrix for the sampled `pairs`:
+    ``L(sender) * R(receiver)``."""
+    return lig[pairs["sender"].to_numpy()] * rec[pairs["receiver"].to_numpy()]
 
 
-def _prepare_group_expression(
-    adata: anndata.AnnData,
-    groupby: str,
-    groups: list,
-    lr_pairs: pd.DataFrame,
-    complexes,
-    complex_agg_method: str,
-) -> tuple[dict, dict, dict]:
-    """Per-group cell ids and complex-aggregated ligand/receptor expression matrices."""
-    cells_by_group = {
-        g: adata.obs_names[adata.obs[groupby] == g].to_numpy() for g in groups
-    }
-    expr_by_group = {
-        g: add_complexes_to_expression(
-            _dense_gene_by_cell(adata, cells_by_group[g]),
-            complexes,
-            agg_method=complex_agg_method,
-        )
-        for g in groups
-    }
-    ligand_names = lr_pairs["ligand"].to_numpy()
-    receptor_names = lr_pairs["receptor"].to_numpy()
-    ligand_mat_by_group = {
-        g: expr_by_group[g].reindex(ligand_names).fillna(0.0).to_numpy() for g in groups
-    }
-    receptor_mat_by_group = {
-        g: expr_by_group[g].reindex(receptor_names).fillna(0.0).to_numpy()
-        for g in groups
-    }
-    return cells_by_group, ligand_mat_by_group, receptor_mat_by_group
+def filter_ground_truth(
+    lr_pairs: pd.DataFrame, gene_names: Sequence[str], complex_sep: str = "&"
+) -> pd.DataFrame:
+    """``FilterGroundTruth``: keep mechanisms whose every ligand and receptor
+    subunit is a gene of the dataset."""
+    genes = set(gene_names)
+
+    def present(entity: str) -> bool:
+        return all(g in genes for g in entity.split(complex_sep))
+
+    keep = lr_pairs["ligand"].map(present) & lr_pairs["receptor"].map(present)
+    return lr_pairs[keep.to_numpy()].reset_index(drop=True)
 
 
-def _sample_edge_block(
-    sender_type,
-    receiver_type,
-    cells_by_group: dict,
-    ligand_mat_by_group: dict,
-    receptor_mat_by_group: dict,
-    pair_labels: np.ndarray,
-    rng: np.random.Generator,
-) -> tuple[pd.DataFrame, pd.DataFrame] | None:
-    """Sample a same-size sender/receiver cell subsample and score their signal.
-
-    Returns None if either group is empty.
-    """
-    sender_pool = cells_by_group[sender_type]
-    receiver_pool = cells_by_group[receiver_type]
-    n_pair_cells = min(len(sender_pool), len(receiver_pool))
-    if n_pair_cells == 0:
-        return None
-
-    sender_idx = rng.choice(len(sender_pool), size=n_pair_cells, replace=False)
-    receiver_idx = rng.choice(len(receiver_pool), size=n_pair_cells, replace=False)
-
-    signal = (
-        ligand_mat_by_group[sender_type][:, sender_idx]
-        * receptor_mat_by_group[receiver_type][:, receiver_idx]
-    )
-    sender_cells = sender_pool[sender_idx]
-    receiver_cells = receiver_pool[receiver_idx]
-    edge_ids = [f"{s}—{r}" for s, r in zip(sender_cells, receiver_cells)]
-
-    signal_df = pd.DataFrame(signal, index=pair_labels, columns=edge_ids)
-    meta_df = pd.DataFrame(
-        {
-            "sending_type": sender_type,
-            "receiving_type": receiver_type,
-            "sender_cell": sender_cells,
-            "receiver_cell": receiver_cells,
-        },
-        index=edge_ids,
-    )
-    return signal_df, meta_df
+def filter_cells_per_type(
+    cell_types: Sequence[str] | np.ndarray, min_cells_per_ident: int | None
+) -> np.ndarray:
+    """``PrepNodeObject``'s ``min.cells.per.ident``: mask of cells whose type
+    has strictly more than that many cells (all cells when None)."""
+    cell_types = np.asarray(cell_types)
+    if min_cells_per_ident is None:
+        return np.ones(len(cell_types), dtype=bool)
+    types, counts = np.unique(cell_types, return_counts=True)
+    return np.isin(cell_types, types[counts > min_cells_per_ident])
