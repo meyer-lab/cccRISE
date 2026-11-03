@@ -77,7 +77,8 @@ save_ip <- function(ip, cells, file) {
                connectivity = ip$connectivity, cells = cells), partial)
   # the soft power upstream picked (it is not returned): same call, same rule
   sp <- suppressWarnings(suppressMessages(
-    pickSoftThreshold.fromSimilarity(ip$cor_mat, RsquaredCut = cfg$r2_cutoff, verbose = 0)))
+    pickSoftThreshold.fromSimilarity(ip$cor_mat, RsquaredCut = cfg$r2_cutoff,
+                                    blockSize = ncol(ip$cor_mat), verbose = 0)))
   est <- sp$powerEstimate
   write_json(list(n_cells = length(cells), n_lr = nrow(ip$cor_mat),
                   power_estimate = est,
