@@ -12,6 +12,7 @@ from typing import Any, cast
 import anndata
 import numpy as np
 import pandas as pd
+from adjustText import adjust_text
 from matplotlib import pyplot as plt
 
 from ...anova import _resolve_factors_and_metadata, run_multiple_factors_anova
@@ -197,3 +198,47 @@ def plot_ranked_loadings(
     low, high = float(loadings.min()), float(loadings.max())
     ax.set_ylim(low - 0.05 * (high - low), high + 0.05 * (high - low))
     ax.set_xlim(0, len(order) + 1)
+
+
+def label_ranked_head(
+    ax: plt.Axes,
+    loadings: np.ndarray,
+    names: np.ndarray,
+    n_top: int,
+    label_rank: float,
+    floor: float,
+) -> None:
+    """Names of the `n_top` largest `loadings` on their rank curve, in a column
+    at `label_rank` spread from the top loading down to `floor` of it, moved
+    only vertically off the curve (`adjust_text`), with leader lines."""
+    order = np.argsort(-loadings)
+    ranks = np.arange(1, len(order) + 1)
+    top = order[:n_top]
+    heights = np.linspace(loadings[top[0]], floor * loadings[top[0]], n_top)
+    texts = [
+        ax.text(
+            label_rank,
+            y,
+            str(names[i]),
+            va="center",
+            fontsize=common.FACTOR_LABEL_FONT_SIZE,
+        )
+        for y, i in zip(heights, top, strict=True)
+    ]
+    # Every point on the curve is an obstacle, so no label sits on it; labels
+    # move only vertically, keeping their column
+    adjust_text(
+        texts,
+        x=ranks,
+        y=loadings[order],
+        target_x=ranks[:n_top],
+        target_y=loadings[top],
+        ax=ax,
+        only_move={"text": "y", "static": "y", "explode": "y", "pull": "y"},
+        time_lim=10,
+        arrowprops={
+            "arrowstyle": "-",
+            "lw": style.LINE_WIDTH_THIN / 2,
+            "color": style.COLORS["reference"],
+        },
+    )

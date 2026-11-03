@@ -89,6 +89,8 @@ AXIS_SIZE = {
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
+    # Ranked curves with a column of many labels
+    "rect_tall": (AXIS_WIDTH, 1.6 * AXIS_HEIGHT),
 }
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
