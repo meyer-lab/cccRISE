@@ -1,14 +1,20 @@
-"""Per-component CP stability under leave-one-patient-out jackknifing,
-excluding seed refits (FMS ~1.0; see the aggregate panel)."""
+"""Per-component CP stability under leave-one-patient-out jackknifing, and
+aggregate CP stability under the jackknife and seed refits, on `rise_fms`'s
+FMS axis (labeled there)."""
 
 from ....validation.stability import STAGE_CPD
-from ... import common, style
+from ... import common
 from . import _common as S
 
+AXES = ("rect",)
 
-def plot(fig):
-    S.plot_stage(fig, STAGE_CPD)
+
+def plot(axs):
+    ax = axs[0]
+    S.plot_stage(ax, STAGE_CPD)
+    ax.set_ylabel("")
+    ax.tick_params(axis="y", labelleft=False)
 
 
 def makeFigure():
-    return common.standalone(plot, style.PANEL_SIZE["half"])
+    return common.standalone_fixed(__name__)
