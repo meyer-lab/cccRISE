@@ -17,12 +17,21 @@ SIG_SEEDS="1111 2"
 MEM=${MEM_CAP:-48G}
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 IP_LR_CSV=$IN/lr.csv
 mkdir -p $OUT/logs
-capped() { systemd-run --user --scope -q -p MemoryMax=$MEM -p MemorySwapMax=0 nice -n 10 "$@"; }
+# Each step in its own named scope, stopped with the script (stopping the
+# service alone leaves a scope's processes running)
+SCOPE=""
+capped() {
+  SCOPE=cccrise-conc-$DATASET-step.scope
+  systemctl --user stop $SCOPE 2>/dev/null || true
+  systemd-run --user --scope -q --unit $SCOPE -p MemoryMax=$MEM -p MemorySwapMax=0 nice -n 10 "$@"
+}
+trap '[ -n "$SCOPE" ] && systemctl --user stop $SCOPE; exit 143' TERM INT
 step() { echo "$(date +%H:%M:%S) == $*"; }
-# Workers from current load: leave 4 cores spare, 2..MAX_WORKERS
+# Workers from current load: leave 4 cores spare, 2..MAX_WORKERS (nproc --all:
+# plain nproc honours OMP_NUM_THREADS=1)
 workers() {
   local load; load=$(cut -d' ' -f1 /proc/loadavg)
-  awk -v n="$(nproc)" -v l="$load" -v m="${MAX_WORKERS:-16}" \
+  awk -v n="$(nproc --all)" -v l="$load" -v m="${MAX_WORKERS:-16}" \
     'BEGIN { w = int(n - l - 4); if (w > m) w = m; if (w < 2) w = 2; print w }'
 }
 n_samples=$(Rscript -e 'cat(length(unique(readRDS("'$IN'/meta.rds")$sample)))')

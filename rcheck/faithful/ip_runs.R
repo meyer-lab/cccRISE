@@ -70,8 +70,10 @@ run_ip <- function(cells, seed, ...) {
 
 save_ip <- function(ip, cells, file) {
   # TOM dropped: significance testing and the merge never read it
+  # .rds last and atomically: it is the per-sample checkpoint
+  partial <- paste0(file, ".partial")
   saveRDS(list(cor_mat = ip$cor_mat, modules = ip$modules,
-               connectivity = ip$connectivity, cells = cells), file)
+               connectivity = ip$connectivity, cells = cells), partial)
   # the soft power upstream picked (it is not returned): same call, same rule
   sp <- suppressWarnings(suppressMessages(
     pickSoftThreshold.fromSimilarity(ip$cor_mat, RsquaredCut = cfg$r2_cutoff, verbose = 0)))
@@ -82,6 +84,7 @@ save_ip <- function(ip, cells, file) {
                   max_r2_power_le3 = max(sp$fitIndices$SFT.R.sq[sp$fitIndices$Power <= 3]),
                   modules = ip$modules),
              sub("\\.rds$", ".json", file), auto_unbox = TRUE, na = "null")
+  file.rename(partial, file)
 }
 
 if (mode == "programs") {

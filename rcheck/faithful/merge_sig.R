@@ -63,7 +63,8 @@ if (mode == "merge") {
                    error = function(e) e)
     # no program significant in this sample: upstream's data.frame step errors
     if (inherits(df, "error")) df <- data.frame(name = character(), lr_pair = character())
-    saveRDS(df, file.path(sig, paste0(s, ".rds")))
+    out_file <- file.path(sig, paste0(s, ".rds"))
+    saveRDS(df, paste0(out_file, ".partial")); file.rename(paste0(out_file, ".partial"), out_file)
     paste(s, length(unique(df$name)), "significant,",
           format(round(difftime(Sys.time(), t0, units = "secs"))))
   }, mc.cores = workers, mc.preschedule = FALSE)
