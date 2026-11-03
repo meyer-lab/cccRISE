@@ -18,6 +18,9 @@ MEM=${MEM_CAP:-48G}
 # Merge engine: upstream R (default), or the port's exact incremental merge
 # (MERGE=port; IBD, where the R merge takes days per seed)
 MERGE=${MERGE:-r}
+# Significance engine: upstream R (default), or none (skip: IBD, pending a
+# decision; R is ~1,400 CPU-h per seed there)
+SIG_ENGINE=${SIG_ENGINE:-r}
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 IP_LR_CSV=$IN/lr.csv
 mkdir -p $OUT/logs
 # Each step in its own named scope, stopped with the script (stopping the
@@ -58,6 +61,7 @@ for seed in $SEEDS; do
   fi
 done
 
+[ "$SIG_ENGINE" = none ] && { step "significance skipped (SIG_ENGINE=none)"; step done; exit 0; }
 for seed in $SIG_SEEDS; do
   run=$OUT/seed$seed
   [ -f $run/merged.json ] || continue
