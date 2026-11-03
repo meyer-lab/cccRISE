@@ -50,10 +50,11 @@ def comparator_filename(method: str, what: str, dataset: str, labelling: str) ->
     return f"{method}_{what}_{dataset}_{labelling}.{suffix}"
 
 
-def scores_filename(what: str, dataset: str, labelling: str) -> str:
-    """A comparator scores table's name, ``<what>_<dataset>_<labelling>.parquet``
-    (e.g. ``containment_alad_coarse.parquet``)."""
-    return f"{what}_{dataset}_{labelling}.parquet"
+def scores_filename(what: str, dataset: str) -> str:
+    """A comparator scores table's name, ``<what>_<dataset>.parquet`` (e.g.
+    ``containment_alad.parquet``): one table per analysis, every method and
+    labelling in it."""
+    return f"{what}_{dataset}.parquet"
 
 
 #: `communication_score` value every runner defaults to; its results are the

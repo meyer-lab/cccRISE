@@ -515,6 +515,8 @@ def genFigure():
 
     output_dir = OUTPUT_DIR / f"figure{figure}"
     _SOURCE["dir"] = output_dir / SOURCE_DATA_SUBDIR
+    # An unlettered figure is one panel: its own module (panels override)
+    _SOURCE["panel"] = panel or f"figure{figure}"
     if panel is None:  # a panel dropped from the figure leaves no data behind
         shutil.rmtree(_SOURCE["dir"], ignore_errors=True)
     fig = build_figure(figure, panel)
@@ -599,6 +601,8 @@ def source_data(
 # =============================================================================
 
 SIG_ALPHA = 0.05
+#: Seed of every strip plot's jitter (`stripplot`).
+JITTER_SEED = 0
 # Axis-label names of outcome `obs` columns
 OUTCOME_LABELS = {"6monthcondition": "6-mo. outcome"}
 
@@ -608,6 +612,18 @@ RANK_LINE: dict[str, Any] = {
     "linestyle": style.LINE_STYLE_REFERENCE,
     "linewidth": style.LINE_WIDTH_THIN,
 }
+
+
+def stripplot(**kwargs):
+    """`sns.stripplot`, its jitter seeded by `JITTER_SEED` so each build
+    draws the same. Seaborn jitters from NumPy's global random state, which
+    is restored afterwards."""
+    state = np.random.get_state()
+    np.random.seed(JITTER_SEED)
+    try:
+        return sns.stripplot(**kwargs)
+    finally:
+        np.random.set_state(state)
 
 
 def mark_rank(ax: plt.Axes, rank: int | None) -> None:
@@ -844,7 +860,7 @@ def plot_start_boxes(
         showfliers=False,
         linewidth=style.LINE_WIDTH_THIN,
     )
-    sns.stripplot(
+    stripplot(
         **kw,
         hue="Common",
         hue_order=[True, False],

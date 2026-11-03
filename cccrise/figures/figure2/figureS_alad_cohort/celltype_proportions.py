@@ -94,7 +94,7 @@ def draw(
         linewidth=style.LINE_WIDTH_THIN,
         boxprops={"alpha": 0.8},
     )
-    sns.stripplot(
+    common.stripplot(
         **shared,
         palette=[style.COLORS["ink"]] * len(colors),
         size=0.8 if vertical else 1.5,

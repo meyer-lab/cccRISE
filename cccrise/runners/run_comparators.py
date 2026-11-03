@@ -5,13 +5,15 @@ For each labelling of the dataset (`DatasetSpec.labellings`: its coarse and
 fine cell types) it builds the comparators' communication tensors
 (`comparators.tensors`) and runs each method's own rank selection and fit
 (`comparators.methods`), writing to ``data/comparators/`` (one file per
-method, dataset and labelling; `datasets.comparator_filename`):
+method, dataset and labelling; `datasets.comparator_filename`), each file
+recorded in its folder's ``provenance.yaml`` (`provenance.record_output`):
 
 - **pb** (pseudobulk CPD): ``rank_selection/pb_rank_*`` and ``pb_start_fms_*``,
   cccRISE's own sweep (`run_cpd_rank.start_sweep`: seeded SVD starts per rank,
   up to the tensor's smallest mode). The rank is chosen from these by hand;
-  ``--pb-rank <labelling>=<rank>`` writes the production start (seed
-  `random_state`) at that rank as ``fits/pb_*``.
+  ``--pb-rank <labelling>=<rank>`` writes the best start (highest fit R2X)
+  of the minimum most of that rank's saved starts reach (f_max;
+  `rank_selection.distinct_minima`) as ``fits/pb_*``.
 - **tc2c** (Tensor-cell2cell): ``rank_selection/tc2c_elbow_*`` (every run's
   error at every rank), ``tc2c_start_fms_*`` (the FMS
   between every pair of a rank's runs), ``tc2c_starts_*.nc`` (every run's
@@ -34,6 +36,7 @@ Usage:
 """
 
 import argparse
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -49,7 +52,7 @@ from ..comparators.tensors import (
 )
 from ..factors import load_factors_netcdf
 from ..import_data import import_ligand_receptor_pairs
-from ..rank_selection import fit_cp_on_device
+from ..rank_selection import distinct_minima, fit_cp_on_device
 from ._cli import (
     CP_N_ITER_MAX,
     CP_TOL,
@@ -57,6 +60,7 @@ from ._cli import (
     add_dataset_argument,
     cp_device_metadata,
     dataset_metadata,
+    parse_command,
     resolve_dataset,
 )
 from .datasets import (
@@ -65,7 +69,7 @@ from .datasets import (
     DatasetSpec,
     comparator_filename,
 )
-from .provenance import build_metadata, git_sha, sha256_file, write_metadata
+from .provenance import build_metadata, git_sha, record_output, sha256_file
 from .run_cpd_rank import MAX_DEFAULT_RANK, N_STARTS, start_agreement, start_sweep
 
 METHODS = ("pb", "tc2c", "tc2c_inner", "stac")
@@ -103,8 +107,19 @@ def tensor_metadata(pooled: PooledTensor) -> dict:
     }
 
 
-def run_pb(pooled: PooledTensor, rank, random_state, fit_kwargs) -> dict:
-    """Pseudobulk CPD's start sweep (tables) and, at `rank`, its fit."""
+def fmax_best_seed(sweep: dict[str, Path], rank: int) -> int:
+    """The seed of the best start (highest fit R2X) of the minimum most of
+    `rank`'s starts reach (f_max) in pseudobulk CPD's saved `sweep`."""
+    r2x = pd.read_parquet(sweep["rank"]).set_index(["Rank", "Seed"])["FitR2X"]
+    fms = pd.read_parquet(sweep["start_fms"])
+    minima = distinct_minima(fms[fms["Rank"] == rank], r2x.loc[[rank]])
+    seeds = list(minima.loc[minima["Order"] == 1, "Seeds"].item())
+    return int(r2x.loc[rank].loc[seeds].idxmax())
+
+
+def run_pb(pooled: PooledTensor, rank, random_state, fit_kwargs, sweep) -> dict:
+    """Pseudobulk CPD's start sweep (tables) and, at `rank`, its fit: the
+    best f_max start of the saved `sweep` (`fmax_best_seed`)."""
     ranks = list(range(1, min(MAX_DEFAULT_RANK, *pooled.values.shape) + 1))
     seeds = list(range(random_state, random_state + N_STARTS))
     out = {
@@ -120,8 +135,10 @@ def run_pb(pooled: PooledTensor, rank, random_state, fit_kwargs) -> dict:
             pooled.values, ranks, seeds, **fit_kwargs
         )
         return out
+    out["settings"]["rank"] = rank
+    out["settings"]["fit_seed"] = seed = fmax_best_seed(sweep, rank)
     weights, factors = fit_cp_on_device(
-        pooled.values, rank, random_state=random_state, **fit_kwargs, **CP_FIT_OPTIONS
+        pooled.values, rank, random_state=seed, **fit_kwargs, **CP_FIT_OPTIONS
     )
     out["fit"] = methods.fit_dataset(pooled, factors, weights, rank=str(rank))
     return out
@@ -221,9 +238,15 @@ def run_stac(pooled: PooledTensor, random_state) -> dict:
 
 
 def write_outputs(
-    result: dict, method: str, spec: DatasetSpec, labelling: str, metadata: dict
+    result: dict,
+    method: str,
+    spec: DatasetSpec,
+    labelling: str,
+    metadata: dict,
+    command: str,
 ) -> None:
-    """Each table and the fit of one method's `result`, with sidecars."""
+    """Each table and the fit of one method's `result`, each recorded in its
+    folder's provenance file as written by `command`."""
     metadata = build_metadata(
         metadata
         | {"method": method, "labelling": labelling, method: result["settings"]}
@@ -239,8 +262,17 @@ def write_outputs(
             value.to_netcdf(path, engine="h5netcdf")
         else:
             value.to_parquet(path, index=False)
-        write_metadata(path, metadata, header=HEADER)
+        record_output(path, metadata, command, header=HEADER)
         print(f"   wrote {path.name}")
+
+
+def saved_sweep(method: str, spec: DatasetSpec, labelling: str, whats) -> dict:
+    """The paths of `method`'s saved sweep tables `whats` for one labelling."""
+    return {
+        what: COMPARATOR_RANKS_DIR
+        / comparator_filename(method, what, spec.output_key, labelling)
+        for what in whats
+    }
 
 
 def run_tensor_cell2cell(
@@ -258,11 +290,7 @@ def run_tensor_cell2cell(
     if workers is not None:
         upper_rank = methods.TC2C_UPPER_RANKS[labelling]
         return run_tc2c(pooled, upper_rank, random_state, fit_kwargs, workers)
-    sweep = {
-        what: COMPARATOR_RANKS_DIR
-        / comparator_filename(method, what, spec.output_key, labelling)
-        for what in ("elbow", "starts")
-    }
+    sweep = saved_sweep(method, spec, labelling, ("elbow", "starts"))
     return run_tc2c_from_sweep(pooled, sweep, random_state, fit_kwargs)
 
 
@@ -276,12 +304,13 @@ def run_comparators(
     random_state: int = 42,
     tc2c_from_sweep: bool = False,
     workers: int = 1,
+    command: str = "uv run cccrise-comparators",
 ) -> None:
     """Rank selection and fits of `method_names` on each of `labellings`
     (module docstring); with `pb_ranks`, only pseudobulk CPD's fit at each
     given labelling's rank; with `tc2c_from_sweep`, Tensor-cell2cell's fit
     from its saved sweep. `workers` processes share Tensor-cell2cell's elbow
-    fits."""
+    fits. `command` is recorded as what wrote the outputs."""
     git_sha()
     print(f"=== Comparators: {spec.label}; {', '.join(labellings)} ===")
     adata = spec.load()
@@ -301,7 +330,11 @@ def run_comparators(
             print(f"-- {labelling}: {method} on {pooled[method].values.shape}")
             if method == "pb":
                 result = run_pb(
-                    pooled["pb"], pb_ranks.get(labelling), random_state, fit_kwargs
+                    pooled["pb"],
+                    pb_ranks.get(labelling),
+                    random_state,
+                    fit_kwargs,
+                    saved_sweep("pb", spec, labelling, ("rank", "start_fms")),
                 )
             elif method == "stac":
                 result = run_stac(pooled["stac"], random_state)
@@ -319,7 +352,7 @@ def run_comparators(
                 "celltype_key": spec.labellings[labelling],
                 "tensor": tensor_metadata(pooled[method]),
             }
-            write_outputs(result, method, spec, labelling, metadata)
+            write_outputs(result, method, spec, labelling, metadata, command)
 
 
 def _pb_rank(text: str) -> tuple[str, int]:
@@ -366,7 +399,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
+    args, command = parse_command(build_parser(), "cccrise-comparators", argv)
     spec = resolve_dataset(args)
     pb_ranks = dict(args.pb_rank)
     run_comparators(
@@ -379,6 +412,7 @@ def main(argv: list[str] | None = None) -> None:
         random_state=args.random_state,
         tc2c_from_sweep=args.tc2c_from_sweep,
         workers=args.workers,
+        command=command,
     )
 
 

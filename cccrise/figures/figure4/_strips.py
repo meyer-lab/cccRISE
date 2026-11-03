@@ -6,9 +6,19 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Patch
 
+from ... import covariation
 from .. import common, style
 from ._common import COMPARATORS, METHOD_COLORS
-from ._data import CLASSES, HOMOPHILIC, SINGLE_PAIR, beyond, both, classified, short
+from ._data import (
+    CLASSES,
+    HOMOPHILIC,
+    SINGLE_PAIR,
+    beyond,
+    both,
+    classified,
+    short,
+    source_data,
+)
 from ._layout import (
     BLANK_HANDLE,
     LABELLING_HANDLES,
@@ -63,6 +73,35 @@ def covariation_tables(disjoint: bool) -> dict[str, pd.DataFrame]:
         )
         for lab, t in both("covariation").items()
     }
+
+
+def _covariation_source(t, disjoint: bool) -> None:
+    """The components `t` shows (`covariation_tables`), as source data."""
+    sfx = "_disjoint" if disjoint else ""
+    pairs = "gene-disjoint pairs" if disjoint else "pairs"
+    source_data(
+        ("gene_disjoint_" if disjoint else "") + "top_pair_covariation_by_component",
+        t,
+        {
+            "PairsUsed": "Top pairs",
+            "TopShare": "Top pair share",
+            "Observed": "Mean rho",
+            f"random_q95{sfx}": "Random null 95th pct.",
+            f"expression_matched_q95{sfx}": "Expression-matched null 95th pct.",
+            "Threshold": "Stricter null 95th pct.",
+            "Beyond": "Above null",
+        },
+        "Each component's top LR pairs (the fewest carrying "
+        f"{covariation.CARRIED_SHARE:.0%} of its squared LR loading, at most "
+        f"{covariation.N_TOP}; Top pairs), each scored per sample in the "
+        "component's own sender/receiver context on its method's tensor: their "
+        f"mean pairwise Spearman correlation across samples over {pairs} of "
+        "them (Mean rho; empty where no pair of pairs is gene-disjoint, an x), "
+        "against the 95th percentiles of the same mean over random and "
+        "expression-matched draws of LR pairs, and whether it is above the "
+        "stricter (filled). Top pair share is the top pair's share of squared "
+        f"LR loading; columns of {SINGLE_PAIR} or more are left out.",
+    )
 
 
 def _ylabel(disjoint: bool) -> str:
@@ -140,6 +179,7 @@ def covariation_main(axs, disjoint: bool = False, key: bool = False) -> None:
     ax = axs[0]
     tables = {lab: t[t["Either"]] for lab, t in covariation_tables(disjoint).items()}
     t, centres = spread_slots(tables, MAIN_SLOTS)
+    _covariation_source(t, disjoint)
     _covariation_axes(ax, t, centres, disjoint, 0.38)
     label_above(ax, _hits(t, lambda h: h["Observed"]), stagger=True)
     ticks = [NULL_HANDLE, UNTESTABLE_HANDLE] if disjoint else [NULL_HANDLE]
@@ -188,6 +228,15 @@ def pairs_used(axs) -> None:
     figure's key above, left."""
     ax = axs[0]
     t, centres = spread_slots(covariation_tables(False))
+    source_data(
+        "top_pairs_tested_by_component",
+        t,
+        {"PairsUsed": "Top pairs"},
+        "How many top LR pairs each component's co-variation tests: the fewest "
+        f"carrying {covariation.CARRIED_SHARE:.0%} of its squared LR loading, "
+        f"at most {covariation.N_TOP}; columns whose top pair carries "
+        f"{SINGLE_PAIR} or more are left out.",
+    )
     for method, g in t.groupby("Method"):
         ax.bar(
             g["X"], g["PairsUsed"], width=0.7, color=METHOD_COLORS[str(method)], lw=0
@@ -223,6 +272,7 @@ def covariation_spread(axs, disjoint: bool = False) -> None:
     bottom one. `pairs_used` carries the key."""
     ax = axs[0]
     t, centres = spread_slots(covariation_tables(disjoint))
+    _covariation_source(t, disjoint)
     _covariation_axes(ax, t, centres, disjoint, 0.4, labelled=disjoint)
     _dividers(ax, t)
     label_above(ax, _hits(t, lambda h: np.maximum(h["Observed"], h["Threshold"])))
@@ -238,7 +288,14 @@ def depth(axs) -> None:
     spread as a box plot behind its points."""
     ax = axs[0]
     tables = both("depth")
-    strips(ax, tables, "AbsRho")
+    source_data(
+        "depth_tracking_by_component",
+        strips(ax, tables, "AbsRho"),
+        {"AbsRho": "|rho|"},
+        "|Spearman correlation| between each component's |sample profile| and "
+        "per-sample depth (median genes detected per cell); the box plots "
+        "summarise each fit's.",
+    )
     for method, lab, x in SLOTS:
         values = tables[lab].loc[tables[lab]["Method"] == method, "AbsRho"]
         ax.boxplot(
@@ -288,6 +345,23 @@ def classes(axs) -> None:
     """What each LR column is (`_data.CLASSES`), one stacked bar per fit."""
     ax = axs[0]
     t = classified()
+    source_data(
+        "lr_column_classes",
+        t,
+        {
+            "Class": "Class",
+            "SinglePair": "Single-pair",
+            "BestFDR": "Lowest association FDR",
+            "Contained": "Contained in cccRISE",
+            "HomophilicShare": "Homophilic share",
+            "TopShare": "Top pair share",
+        },
+        "What each LR column is (the bars count them): associated (an outcome "
+        f"association below FDR {common.SIG_ALPHA}), else contained in cccRISE's "
+        "LR span (comparators only), else homophilic (homophilic pairs carry at "
+        f"least {HOMOPHILIC} of its squared LR loading), else other; single-pair "
+        f"(hatched) where its top pair carries at least {SINGLE_PAIR}.",
+    )
     for m, lab, x in SLOTS:
         _class_blocks(ax, t[(t["Method"] == m) & (t["Labelling"] == lab)], x)
     fit_axis(ax, SLOTS)
@@ -322,6 +396,22 @@ def association_strip(
         for lab, t in both("associations").items()
     }
     drawn = strips(ax, tables, "EtaSquared", "Significant")
+    source_data(
+        "association_eta_squared_by_component",
+        drawn,
+        {
+            "Association": "Association",
+            "EtaSquared": "Eta squared",
+            "P": "p",
+            "PAdj": "FDR",
+            "Significant": "Significant",
+        },
+        f"Each component's association with '{association}': one-way ANOVA of "
+        "its read-depth-corrected sample profile over the association's "
+        "groups (eta squared), Benjamini-Hochberg adjusted across the fit's "
+        f"associations and components (FDR); Significant (filled) below FDR "
+        f"{common.SIG_ALPHA}.",
+    )
     ax.set(
         ylabel=ASSOCIATION_NAMES[association].capitalize() + r" $\eta^2$",
         ylim=(0, drawn["EtaSquared"].max() * 1.3),
@@ -341,9 +431,12 @@ def association_strip(
     )
 
 
-def _share(axs, column: str, flag: str, ylabel: str, threshold: float) -> None:
+def _share(
+    axs, column: str, flag: str, ylabel: str, threshold: float, source: dict
+) -> None:
     """Each component's `column` of `classified`, the columns where `flag`
-    is true labelled, `threshold` dashed."""
+    is true labelled, `threshold` dashed; saved as source data by `source`'s
+    name and description."""
     ax = axs[0]
     t = classified()
     rng = np.random.default_rng(0)
@@ -370,6 +463,12 @@ def _share(axs, column: str, flag: str, ylabel: str, threshold: float) -> None:
             )
         )
     drawn = pd.concat(drawn, ignore_index=True)
+    source_data(
+        source["name"],
+        drawn,
+        {column: ylabel.replace("\n", " "), flag: flag},
+        source["description"],
+    )
     ax.axhline(
         threshold,
         color=style.COLORS["reference"],
@@ -396,6 +495,15 @@ def homophilic_share(axs) -> None:
         "IsHomophilic",
         "Homophilic share of\nsquared LR loading",
         HOMOPHILIC,
+        {
+            "name": "homophilic_share_by_component",
+            "description": (
+                "Each component's share of squared LR loading on homophilic pairs "
+                "(a ligand whose genes are its receptor's); IsHomophilic (labelled) "
+                f"at {HOMOPHILIC} or more, unless the column is associated with an "
+                "outcome or contained in cccRISE's LR span (`lr_column_classes`)."
+            ),
+        },
     )
 
 
@@ -408,4 +516,11 @@ def top_share(axs) -> None:
         "SinglePair",
         "Top pair's share of\nsquared LR loading",
         SINGLE_PAIR,
+        {
+            "name": "top_pair_share_by_component",
+            "description": (
+                "Each component's top LR pair's share of its squared LR loading; "
+                f"SinglePair (labelled) at {SINGLE_PAIR} or more."
+            ),
+        },
     )

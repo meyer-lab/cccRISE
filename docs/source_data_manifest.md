@@ -61,6 +61,29 @@ Analyses plotted (with provenance in the zip's README):
 | 3G | cccrise/figures/figure3/lr_permutation.py | data | top_pair_permutation_null.csv; top_pair_permutation_tests.csv; top_pair_scores_by_condition.csv | 4052.0 | Patient-permutation test of whether the outcome-associated CP component's top LR pairs are larger in CLAD/Died than in No CLAD samples. |
 | 3H | cccrise/figures/figure3/lr_volcano.py | data | top_pairs_by_component.csv | 10.1 | Every CP component's `N_SHOWN` most heavily weighted LR pairs, each in its own component's context (`lr_permutation`): log2 ratio of the group means of the depth-normalized scores against the pair's one-sided permutation p. |
 
+## Figure 4
+
+Analyses plotted (with provenance in the zip's README):
+- `cccrise/data/comparators/scores/associations_alad.parquet`
+- `cccrise/data/comparators/scores/breadth_alad.parquet`
+- `cccrise/data/comparators/scores/containment_alad.parquet`
+- `cccrise/data/comparators/scores/covariation_alad.parquet`
+- `cccrise/data/comparators/scores/depth_alad.parquet`
+- `cccrise/data/comparators/scores/homophily_alad.parquet`
+- `cccrise/data/comparators/scores/lr_loadings_alad.parquet`
+- `cccrise/data/comparators/scores/pair_covariation_alad.parquet`
+
+| Panel | Script | Status | Files | Size (KB) | Description |
+|---|---|---|---|---|---|
+| 4A | cccrise/figures/figure4/reach.py | data | lr_containment_of_cccrise_programs.csv | 1.8 | Figure 4A: cccRISE's programs' LR containment in each comparator fit. |
+| 4B | cccrise/figures/figure4/covariation.py | data | top_pair_covariation_by_component.csv | 2.0 | Figure 4B: top-pair co-variation over all pairs, the components above a stricter null in either version. |
+| 4C | cccrise/figures/figure4/covariation_disjoint.py | data | gene_disjoint_top_pair_covariation_by_component.csv | 1.8 | Figure 4C: top-pair co-variation over gene-disjoint pairs, as 4B. |
+| 4D | cccrise/figures/figure4/depth.py | data | depth_tracking_by_component.csv | 2.0 | Figure 4D: how much each component's sample profile tracks depth. |
+| 4E | cccrise/figures/figure4/columns_in_cccrise.py | data | lr_containment_in_cccrise_by_column.csv | 3.3 | Figure 4E: each comparator LR column's containment in cccRISE's LR span. |
+| 4F | cccrise/figures/figure4/classes.py | data | lr_column_classes.csv | 5.5 | Figure 4F: what each LR column is. |
+| 4G | cccrise/figures/figure4/strongest_association.py | data | significant_associations_by_component.csv; strongest_association_by_component.csv | 6.5 | Figure 4G: each component's strongest outcome association. |
+| 4H | cccrise/figures/figure4/program_capture.py | data | column_match_to_reference.csv; relative_lr_loadings_of_top_pairs.csv | 2.4 | Figure 4H: cccRISE C4's top pairs in C4 and its closest comparator columns. |
+
 ## Figure EV1
 
 Analyses plotted (with provenance in the zip's README):

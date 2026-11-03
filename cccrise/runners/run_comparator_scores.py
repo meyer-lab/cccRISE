@@ -2,25 +2,24 @@
 Runner: how cccRISE's components and the comparators' compare (Figure 4).
 
 Reads cccRISE's canonical fit and each comparator's fit on each labelling
-(``uv run cccrise-comparators``) and writes these tables per labelling to
-``data/comparators/scores/`` (`datasets.scores_filename`), as
-`comparators.scores` defines them:
+(``uv run cccrise-comparators``) and writes one table per analysis to
+``data/comparators/scores/<table>_<dataset>.parquet``
+(`datasets.scores_filename`), every method and labelling in it (a
+``Labelling`` column), each recorded in the folder's ``provenance.yaml``
+(`provenance.record_output`), as `comparators.scores` defines them:
 
-- ``containment_*``: the sample and LR columns of every fit ('Of') in the
+- ``containment``: the sample and LR columns of every fit ('Of') in the
   span of every other ('In'), cccRISE and each comparator alike, with the
   row-permutation null.
-- ``breadth_*``: every component's effective number and top share per mode
+- ``breadth``: every component's effective number and top share per mode
   (LR pairs, senders, receivers, samples), with its top label.
-- ``audit_*``: every comparator LR column not contained in cccRISE's LR span,
-  its top pair and cell types, effective LR pairs and samples, and class.
-- ``inner_loss_*`` and ``inner_program_loss_*``: what Tensor-cell2cell's
+- ``lr_loadings``: every fit's LR columns, one row per LR pair and
+  component.
+- ``inner_loss`` and ``inner_program_loss``: what Tensor-cell2cell's
   published construction (only the cell types in every sample) drops from
   the masked tensor (`scores.inner_losses`), and the share of each cccRISE
   program's per-cell sender and receiver weight in the dropped types.
-- ``representability_*``: every cccRISE component's per-cell sender and
-  receiver weight explained by its (sample, cell type) means, against
-  size-matched random splits (`N_SPLITS`).
-- ``covariation_*``: whether each component's top LR pairs move together
+- ``covariation``: whether each component's top LR pairs move together
   across samples (`covariation`, Figure 3E's test for every component of
   every method): each pair scored in the component's own sender/receiver
   context on its own method's tensor, the mean Spearman correlation of its
@@ -28,28 +27,29 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
   and expression-matched draws, over all pairs of pairs and (``_disjoint``)
   over those sharing no gene; with its top pair's share of squared loading
   (``TopShare``).
-- ``program_capture_*`` and ``program_covariation_*``: each comparator's
-  best-matching LR column for each cccRISE program, its loadings on the
-  program's top pairs, and whether those pairs co-vary in its context.
-- ``associations_*``: each component's sample loadings, cccRISE's and each
+- ``associations``: each component's sample loadings, cccRISE's and each
   comparator's, against every ALAD outcome association, as Figure 3 tests
   cccRISE's
   (`anova.run_multiple_factors_anova`: read-depth corrected, FDR across the
   fit's associations and components); a STACCato LR column's sample profile
   is its leading core vector mapped through the sample factor.
-- ``profiles_*``: every component's sample profile (cccRISE's sample
+- ``profiles``: every component's sample profile (cccRISE's sample
   loadings; a comparator LR column's as ``associations_*`` uses it), with each
   sample's 6-month outcome.
-- ``homophily_*``: every component's share of squared LR loading on
+- ``homophily``: every component's share of squared LR loading on
   homophilic pairs (a ligand whose genes are its receptor's).
-- ``depth_*``: |Spearman ρ| between every component's |sample profile| and
+- ``depth``: |Spearman ρ| between every component's |sample profile| and
   per-sample depth (median genes detected per cell).
-- ``inputs_*``: each method's input tensor, its per-sample mean (observed
+- ``inputs``: each method's input tensor, its per-sample mean (observed
   entries only, for Tensor-cell2cell's masked tensor), against depth.
-- ``pair_covariation_<dataset>_both``: for every component with an outcome
-  association (FDR < `SIG_ALPHA`), whether its top LR pairs co-vary in the
-  context of each of the `CLOSEST` LR columns of greatest |cosine| with it
-  from any other fit, either labelling (`covariation_summary`).
+- ``pair_covariation``: for every component with an outcome association
+  (FDR < `SIG_ALPHA`), whether its top LR pairs co-vary in the context of
+  each of the `CLOSEST` LR columns of greatest |cosine| with it from any
+  other fit, either labelling (`covariation_summary`); its own
+  ``RefLabelling`` and ``Labelling`` columns name both fits' labellings.
+
+Each labelling's permutation nulls draw from their own generator, seeded
+by ``--random-state``, so no table's draws depend on another's.
 
 Usage:
 
@@ -80,7 +80,7 @@ from ..comparators.tensors import (
 from ..factors import load_factors_netcdf, load_factors_to_anndata
 from ..figures.figure3._common import ASSOCIATIONS
 from ..import_data import import_ligand_receptor_pairs
-from ._cli import add_dataset_argument, dataset_metadata, resolve_dataset
+from ._cli import add_dataset_argument, dataset_metadata, parse_command, resolve_dataset
 from .datasets import (
     COMPARATOR_FITS_DIR,
     COMPARATOR_SCORES_DIR,
@@ -88,11 +88,10 @@ from .datasets import (
     comparator_filename,
     scores_filename,
 )
-from .provenance import build_metadata, git_sha, sha256_file, write_metadata
+from .provenance import build_metadata, git_sha, record_output, sha256_file
 
 METHODS = {"pb": "PB", "tc2c": "TC2C", "tc2c_inner": "TC2C inner", "stac": "STAC"}
 N_NULL = 1000
-N_SPLITS = 200
 #: An association counts below this FDR (`pair_covariation_rows`).
 SIG_ALPHA = 0.05
 #: How many closest columns of other fits each associated component's top
@@ -101,7 +100,7 @@ CLOSEST = 5
 #: The sample annotation `profiles_*` carries.
 OUTCOME_COLUMN = "6monthcondition"
 HEADER = """\
-cccRISE against the annotation-pooled comparators: containment, breadth, audit.
+cccRISE against the annotation-pooled comparators (Figure 4).
 Generated by cccrise.runners.run_comparator_scores -- do not hand-edit.
 """
 
@@ -165,62 +164,6 @@ def column_profiles(
     return {m: scores.oriented(f)[column] for m, f in frames.items()}
 
 
-def audit_rows(
-    fits: dict[str, xr.Dataset],
-    comparators: list[Components],
-    containment: pd.DataFrame,
-    adata,
-    spec: DatasetSpec,
-    celltype_column: str,
-) -> pd.DataFrame:
-    """Every comparator LR column outside cccRISE's LR span, classed."""
-    missed = containment[
-        (containment["In"] == "cccRISE")
-        & (containment["Mode"] == "lr")
-        & ~containment["Contained"]
-    ]
-    pairs = scored_lr_pairs(import_ligand_receptor_pairs(), adata.var_names)
-    pairs = pairs.set_index("lr_pair")
-    records = []
-    for other in comparators:
-        for _, row in missed[missed["Of"] == other.method].iterrows():
-            column = row["Component"]
-            lr = scores.oriented(other.modes["lr"][[column]])[column]
-            profiles = column_profiles(fits[other.method], other, column)
-            records.append(
-                {
-                    "Method": other.method,
-                    "Component": column,
-                    "Containment": row["Containment"],
-                    "LRPair": lr.idxmax(),
-                    "Ligand": pairs.loc[lr.idxmax(), "ligand"],
-                    "Receptor": pairs.loc[lr.idxmax(), "receptor"],
-                    "TopSender": profiles["sender"].idxmax(),
-                    "TopReceiver": profiles["receiver"].idxmax(),
-                    "EffectiveLR": scores.effective_number(lr.to_frame()).iloc[0],
-                    "EffectiveSamples": scores.effective_number(
-                        profiles["sample"].to_frame()
-                    ).iloc[0],
-                    "SampleProfile": profiles["sample"],
-                }
-            )
-    genes = [
-        g
-        for r in records
-        for side in ("Ligand", "Receptor")
-        for g in subunits(str(r[side]))
-    ]
-    fold, detected = scores.marker_stats(adata, celltype_column, genes)
-    fractions = pd.crosstab(
-        adata.obs[spec.condition_column].astype(str),
-        adata.obs[celltype_column].astype(str),
-        normalize="index",
-    )
-    for record in records:
-        record["Class"] = scores.classify(record, fold, detected, fractions)
-    return pd.DataFrame(records).drop(columns="SampleProfile")
-
-
 def inner_loss_tables(cells, column: str, tensors: dict[str, PooledTensor]) -> dict:
     """What the published Tensor-cell2cell construction drops (module
     docstring), from `context_tensors`' masked and published tensors."""
@@ -248,26 +191,6 @@ def inner_loss_tables(cells, column: str, tensors: dict[str, PooledTensor]) -> d
         ignore_index=True,
     )
     return {"inner_loss": losses, "inner_program_loss": programs}
-
-
-def representability_rows(cells, spec: DatasetSpec, column: str, rng) -> pd.DataFrame:
-    """`scores.representability` of cccRISE's sender and receiver weights."""
-    samples = cells.obs[spec.condition_column].astype(str).to_numpy()
-    celltypes = cells.obs[column].astype(str).to_numpy()
-    names = np.arange(1, cells.obsm["sc_B"].shape[1] + 1)
-    return pd.concat(
-        [
-            scores.representability(
-                pd.DataFrame(cells.obsm[key], columns=names),
-                samples,
-                celltypes,
-                N_SPLITS,
-                rng,
-            ).assign(Side=side)
-            for side, key in (("sender", "sc_B"), ("receiver", "rc_C"))
-        ],
-        ignore_index=True,
-    )
 
 
 def context_tensors(spec: DatasetSpec, adata, column: str) -> dict[str, PooledTensor]:
@@ -377,48 +300,6 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     return abs(a @ b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-def best_matches(program: dict, contexts: list[dict]) -> list[dict]:
-    """`program` (a cccRISE context) and, per comparator, its LR column of
-    greatest |cosine| with the program's."""
-    methods = dict.fromkeys(c["Method"] for c in contexts if c["Method"] != "cccRISE")
-    return [program] + [
-        max(
-            (c for c in contexts if c["Method"] == method),
-            key=lambda c: _cosine(program["lr"], c["lr"]),
-        )
-        for method in methods
-    ]
-
-
-def program_capture_tables(contexts: list[dict], pairs: np.ndarray) -> dict:
-    """How each comparator captures each cccRISE program: its best-matching
-    LR column (`best_matches`), that column's loadings on the program's top
-    pairs relative to its heaviest (``program_capture``), and whether the
-    program's top pairs co-vary when scored in that column's context
-    (``program_covariation``; the program's own context for cccRISE)."""
-    loadings, coordination = [], []
-    for program in (c for c in contexts if c["Method"] == "cccRISE"):
-        top = covariation.top_pairs(program["lr"])
-        for candidate in best_matches(program, contexts):
-            key = {
-                "Program": program["Component"],
-                "Method": candidate["Method"],
-                "Column": candidate["Component"],
-                "Cosine": _cosine(program["lr"], candidate["lr"]),
-            }
-            relative = np.abs(candidate["lr"]) / np.abs(candidate["lr"]).max()
-            loadings += [
-                key
-                | {"Pair": pairs[p], "PairRank": i + 1, "RelativeLoading": relative[p]}
-                for i, p in enumerate(top)
-            ]
-            coordination.append(key | covariation_summary(candidate, top))
-    return {
-        "program_capture": pd.DataFrame(loadings),
-        "program_covariation": pd.DataFrame(coordination),
-    }
-
-
 def sample_profiles(fits, comparators, cccrise: Components) -> dict:
     """Every component's sample profile, keyed (method, component): cccRISE's
     sample loadings, each comparator LR column's `column_profiles`."""
@@ -474,6 +355,22 @@ def depth_rows(profiles: dict, obs: pd.DataFrame) -> pd.DataFrame:
         ).statistic
         rows.append({"Method": m, "Component": c, "AbsRho": abs(float(rho))})
     return pd.DataFrame(rows)
+
+
+def lr_loading_rows(components: list[Components]) -> pd.DataFrame:
+    """Every fit's LR columns, long: one row per LR pair and component."""
+    return pd.concat(
+        [
+            comp.modes["lr"]
+            .rename_axis(index="LRPair", columns="Component")
+            .stack()
+            .rename("Loading")
+            .reset_index()
+            .assign(Method=comp.method)
+            for comp in components
+        ],
+        ignore_index=True,
+    )[["Method", "Component", "LRPair", "Loading"]]
 
 
 def homophily_rows(components: list[Components], adata) -> pd.DataFrame:
@@ -613,10 +510,11 @@ def _associations(adata, spec: DatasetSpec) -> pd.DataFrame:
 
 
 def score_labelling(
-    spec: DatasetSpec, adata, cells, labelling: str, rng, cccrise_context
+    spec: DatasetSpec, adata, cells, labelling: str, random_state: int, cccrise_context
 ) -> tuple[dict, list[dict]]:
     """The tables of one labelling (module docstring), and its components'
     scoring contexts."""
+    rng = np.random.default_rng(random_state)
     column = spec.labellings[labelling]
     fits = load_fits(spec, labelling)
     comparators = [
@@ -626,20 +524,17 @@ def score_labelling(
     cccrise = scores.cccrise_components(
         load_factors_netcdf(spec.factors_path()), cells, column, celltypes
     )
-    containment = containment_rows([cccrise, *comparators], rng)
     tensors = context_tensors(spec, adata, column)
     contexts = component_contexts(fits, comparators, cccrise_context, tensors)
     profiles = sample_profiles(fits, comparators, cccrise)
     obs = sample_obs(spec, adata)
     tables = {
-        "containment": containment,
+        "containment": containment_rows([cccrise, *comparators], rng),
         "breadth": breadth_rows([cccrise, *comparators]),
-        "audit": audit_rows(fits, comparators, containment, adata, spec, column),
-        "representability": representability_rows(cells, spec, column, rng),
+        "lr_loadings": lr_loading_rows([cccrise, *comparators]),
         **inner_loss_tables(cells, column, tensors),
         "associations": association_rows(spec, fits, comparators),
         "covariation": covariation_rows(contexts, lr_genes(adata)),
-        **program_capture_tables(contexts, cccrise.modes["lr"].index.to_numpy()),
         "profiles": profile_rows(profiles, obs),
         "homophily": homophily_rows([cccrise, *comparators], adata),
         "depth": depth_rows(profiles, obs),
@@ -648,33 +543,39 @@ def score_labelling(
     return tables, contexts
 
 
-def run_comparator_scores(spec: DatasetSpec, labellings, random_state: int) -> None:
+def run_comparator_scores(
+    spec: DatasetSpec,
+    random_state: int,
+    command: str = "uv run cccrise-comparator-scores",
+) -> None:
+    """Every table (module docstring) of `spec`, its provenance recorded as
+    written by `command`."""
     git_sha()
+    labellings = list(spec.labellings)
     print(f"=== Comparator scores: {spec.label}; {', '.join(labellings)} ===")
     adata = spec.load()
     cells = load_factors_to_anndata(spec.factors_path(), adata=adata)
-    rng = np.random.default_rng(random_state)
     factors = load_factors_netcdf(spec.factors_path())
     cccrise_context = (
         covariation.cccrise_tensor(spec.factors_path(), adata, spec.condition_column),
         *(factors[k].to_numpy().astype(float) for k in ("cp_B", "cp_C", "cp_D")),
     )
-    contexts, associations = {}, {}
+    tables, contexts = {}, {}
     for labelling in labellings:
-        tables, contexts[labelling] = score_labelling(
-            spec, adata, cells, labelling, rng, cccrise_context
+        tables[labelling], contexts[labelling] = score_labelling(
+            spec, adata, cells, labelling, random_state, cccrise_context
         )
-        associations[labelling] = tables["associations"]
-        write_tables(
-            spec, labelling, tables, _metadata(spec, [labelling], random_state)
+    associations = {lab: t["associations"] for lab, t in tables.items()}
+    merged = {
+        what: pd.concat(
+            {lab: t[what] for lab, t in tables.items()}, names=["Labelling"]
         )
-    if len(labellings) > 1:
-        write_tables(
-            spec,
-            "both",
-            {"pair_covariation": pair_covariation_rows(contexts, associations)},
-            _metadata(spec, labellings, random_state),
-        )
+        .reset_index(level="Labelling")
+        .reset_index(drop=True)
+        for what in tables[labellings[0]]
+    }
+    merged["pair_covariation"] = pair_covariation_rows(contexts, associations)
+    write_tables(spec, merged, _metadata(spec, labellings, random_state), command)
 
 
 def _metadata(spec: DatasetSpec, labellings, random_state: int) -> dict:
@@ -693,22 +594,18 @@ def _metadata(spec: DatasetSpec, labellings, random_state: int) -> dict:
             "celltype_key": " and ".join(spec.labellings[lab] for lab in labellings),
             "fit_sha256": inputs,
             "n_null": N_NULL,
-            "n_random_splits": N_SPLITS,
             "random_state": random_state,
             "contained": scores.CONTAINED,
-            "diffuse_lr_pairs": scores.DIFFUSE_LR,
         }
     )
 
 
-def write_tables(
-    spec: DatasetSpec, labelling: str, tables: dict, metadata: dict
-) -> None:
+def write_tables(spec: DatasetSpec, tables: dict, metadata: dict, command: str) -> None:
     for what, table in tables.items():
-        path = COMPARATOR_SCORES_DIR / scores_filename(what, spec.output_key, labelling)
+        path = COMPARATOR_SCORES_DIR / scores_filename(what, spec.output_key)
         path.parent.mkdir(parents=True, exist_ok=True)
         table.to_parquet(path, index=False)
-        write_metadata(path, metadata, header=HEADER)
+        record_output(path, metadata, command, header=HEADER)
         print(f"   wrote {path.name}")
 
 
@@ -717,16 +614,17 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     add_dataset_argument(parser)
-    parser.add_argument("--labellings", nargs="+", default=None)
     parser.add_argument("--random-state", type=int, default=42)
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
+    args, command = parse_command(build_parser(), "cccrise-comparator-scores", argv)
     spec = resolve_dataset(args)
     run_comparator_scores(
-        spec, args.labellings or list(spec.labellings), args.random_state
+        spec,
+        args.random_state,
+        command,
     )
 
 

@@ -61,46 +61,6 @@ def test_tucker_column_profiles_map_a_rank_one_core_slice():
         assert abs(cosine) == pytest.approx(1)
 
 
-def _column(**overrides):
-    samples = [f"s{i}" for i in range(6)]
-    column = {
-        "EffectiveSamples": 3.0,
-        "EffectiveLR": 2.0,
-        "Ligand": "L",
-        "Receptor": "R",
-        "TopSender": "a",
-        "TopReceiver": "b",
-        "SampleProfile": pd.Series([1.0, 3, 2, 5, 4, 6], index=samples),
-    }
-    return column | overrides
-
-
-def test_classify_takes_the_first_matching_class():
-    fold = pd.DataFrame({"L": [5.0, 1], "R": [1.0, 1]}, index=["a", "b"])
-    detected = pd.DataFrame({"L": [0.5, 0.5], "R": [0.5, 0.5]}, index=["a", "b"])
-    samples = [f"s{i}" for i in range(6)]
-    fractions = pd.DataFrame(
-        {"a": [0.2, 0.1, 0.3, 0.1, 0.2, 0.1], "b": [6.0, 5, 4, 3, 2, 1]},
-        index=samples,
-    )
-    flat = pd.DataFrame(
-        {"a": [0.3, 0.1, 0.2, 0.2, 0.1, 0.3], "b": [0.2, 0.3, 0.1, 0.2, 0.3, 0.1]},
-        samples,
-    )
-
-    def classed(**overrides):
-        return scores.classify(_column(**overrides), fold, detected, flat)
-
-    assert classed(EffectiveSamples=1.2) == "one sample"
-    assert classed(Receptor="L") == "marker or homophilic"
-    assert classed() == "candidate biology"
-    assert classed(EffectiveLR=40.0) == "diffuse"
-    fold.loc["a", "R"] = 5.0
-    assert classed() == "marker or homophilic"
-    fold.loc["a", "R"] = 1.0
-    assert scores.classify(_column(), fold, detected, fractions) == "abundance readout"
-
-
 def test_inner_losses_count_what_dropping_a_type_removes():
     values = np.ones((2, 2, 2, 1))
     mask = np.ones_like(values)

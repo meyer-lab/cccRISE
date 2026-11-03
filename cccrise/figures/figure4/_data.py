@@ -5,22 +5,11 @@ from functools import cache
 
 import numpy as np
 import pandas as pd
-import xarray as xr
 
-from ...comparators import scores
-from ...factors import load_factors_netcdf
-from ...runners.datasets import (
-    COMPARATOR_FITS_DIR,
-    COMPARATOR_SCORES_DIR,
-    DATASETS,
-    comparator_filename,
-    scores_filename,
-)
 from .. import common, style
-from ._common import COMPARATORS, DATASET, HINT, load
+from ._common import COMPARATORS, load
 
 LABELLINGS = ("coarse", "fine")
-KEYS = {"PB": "pb", "TC2C": "tc2c", "STAC": "stac"}
 #: Shorthand for a method's components: C (cccRISE), P, T, S.
 SHORT = {"cccRISE": "C", "PB": "P", "TC2C": "T", "STAC": "S"}
 #: What an LR column is, in stacking order, and its color. A column is
@@ -47,18 +36,22 @@ def short(method: str, column) -> str:
     return f"{SHORT[method]}{int(column)}"
 
 
+def source_data(name: str, t: pd.DataFrame, columns: dict, description: str) -> None:
+    """`common.source_data` of `t`'s components, each named as the figure
+    names it (`short`) with its method and labelling, and `t`'s `columns`
+    renamed to their values."""
+    named = t.assign(
+        Name=[short(m, c) for m, c in zip(t["Method"], t["Component"], strict=True)]
+    )
+    keys = {"Name": "Component", "Method": "Method", "Labelling": "Labelling"}
+    common.source_data(
+        name, named[list(keys | columns)].rename(columns=keys | columns), description
+    )
+
+
 def both(what: str) -> dict[str, pd.DataFrame]:
     """One scores table, keyed by labelling."""
     return {lab: load(what, lab) for lab in LABELLINGS}
-
-
-def pair_covariation() -> pd.DataFrame:
-    """The runner's cross-labelling ``pair_covariation`` table."""
-    return common.load_runner_output(
-        scores_filename("pair_covariation", DATASET, "both"),
-        COMPARATOR_SCORES_DIR,
-        HINT,
-    )
 
 
 def beyond(t: pd.DataFrame, suffix: str = "") -> pd.Series:
@@ -68,30 +61,25 @@ def beyond(t: pd.DataFrame, suffix: str = "") -> pd.Series:
     return t[f"Observed{suffix}"] > nulls
 
 
-@cache
-def fit_components(method: str, labelling: str) -> scores.Components:
-    path = COMPARATOR_FITS_DIR / comparator_filename(
-        KEYS[method], "fit", DATASET, labelling
+def fit_lr(method: str, labelling: str) -> pd.DataFrame:
+    """`method`'s LR columns (one per component) on every LR pair its fit
+    has, from the runner's ``lr_loadings``."""
+    t = load("lr_loadings", labelling)
+    return t[t["Method"] == method].pivot(
+        index="LRPair", columns="Component", values="Loading"
     )
-    with xr.open_dataset(path, engine="h5netcdf") as fit:
-        return scores.comparator_components(method, fit.load())
 
 
 @cache
 def lr_columns() -> dict[tuple, pd.Series]:
     """Every fit's LR columns on cccRISE's LR pairs, keyed (method,
     labelling, column); cccRISE's once, as coarse."""
-    factors = load_factors_netcdf(DATASETS[DATASET].factors_path())
-    index = factors["lr_pair"].values.astype(str)
-    columns = {
-        ("cccRISE", "coarse", k + 1): pd.Series(
-            factors["cp_D"].values[:, k], index=index
-        )
-        for k in range(factors.sizes["cp_component"])
-    }
+    reference = fit_lr("cccRISE", "coarse")
+    index = reference.index
+    columns = {("cccRISE", "coarse", int(c)): reference[c] for c in reference}
     for lab in LABELLINGS:
         for m in COMPARATORS:
-            lr = fit_components(m, lab).modes["lr"]
+            lr = fit_lr(m, lab)
             columns |= {(m, lab, int(c)): lr[c].loc[index] for c in lr.columns}
     return columns
 
@@ -143,10 +131,10 @@ def classified() -> pd.DataFrame:
     return t[(t["Method"] != "cccRISE") | (t["Labelling"] == "coarse")]
 
 
-def capture_margin(reference: tuple, column: tuple, cos: float) -> str:
+def capture_margin(reference: tuple, column: tuple, cos: float) -> float:
     """Δρ of `reference`'s top pairs in `column`'s context over the stricter
-    null's 95th percentile (``pair_covariation``); "—" below `NO_MATCH`."""
-    t = pair_covariation()
+    null's 95th percentile (``pair_covariation``); NaN below `NO_MATCH`."""
+    t = load("pair_covariation")
     keys = ("RefMethod", "RefLabelling", "RefColumn", "Method", "Labelling", "Column")
     match = t[
         np.logical_and.reduce(
@@ -154,6 +142,6 @@ def capture_margin(reference: tuple, column: tuple, cos: float) -> str:
         )
     ]
     if cos < NO_MATCH or match.empty:
-        return "—"
+        return np.nan
     r = match.iloc[0]
-    return f"{r['Observed'] - max(r['random_q95'], r['expression_matched_q95']):+.2f}"
+    return r["Observed"] - max(r["random_q95"], r["expression_matched_q95"])

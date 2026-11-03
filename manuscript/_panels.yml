@@ -115,9 +115,6 @@ figS_comparator_inner:
   program_losses_fine: [c]
   reach_coarse: [d]
   reach_fine: [e]
-figS_comparator_rank_weight:
-  lr_weights_coarse: [a, b, c, d]
-  lr_weights_fine: [e, f, g, h]
 figS_comparator_clinical:
   outcome: [a]
   death_6mo: [b]

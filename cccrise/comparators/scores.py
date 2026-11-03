@@ -13,20 +13,9 @@ modes are left out and its sample and LR columns are scored on their own.
   it is also above the 95th percentile of a row-permutation null.
 - `effective_number`: the inverse Simpson index of a column's squared
   loadings, ``(sum x^2)^2 / sum x^4``; k equal entries give k. For samples it
-  is the participation ratio, below `ONE_SAMPLE` read as one sample.
-- `classify`: why a comparator LR column outside cccRISE's span is there,
-  first match winning: one sample, a marker or homophilic pair, an abundance
-  readout, diffuse, or else candidate biology. The first three were fixed
-  before computing (2026-10-20); "diffuse" (more than `DIFFUSE_LR` effective
-  LR pairs: no single interaction to read) was added on 2026-10-30, after
-  Tensor-cell2cell's columns on its own tensor proved to be spread over tens
-  of broadly expressed pairs.
+  is the participation ratio.
 - `inner_losses`: what Tensor-cell2cell's published construction (only the
   cell types present in every sample) drops from its masked tensor.
-- `representability`: how much of a cccRISE component's per-cell sender or
-  receiver weight a (sample x cell type) pseudobulk could hold: the variance
-  its (sample, type) means explain, against cells split at random into
-  groups of the same sizes within each sample.
 """
 
 from dataclasses import dataclass
@@ -34,25 +23,12 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 import xarray as xr
-from scipy import sparse
-from scipy.stats import spearmanr
 
 from .methods import MODES
 from .tensors import subunits
 
 #: Containment at or above this, and above the null, calls a column contained.
 CONTAINED = 0.85
-#: Effective samples below this are one sample.
-ONE_SAMPLE = 1.5
-#: A gene marks a type expressed at this many times the other cells' mean...
-MARKER_FOLD = 4.0
-#: ...and detected in at least this share of the type's cells.
-MARKER_DETECTED = 0.25
-#: |Spearman rho| between a column's sample profile and its top type's
-#: per-sample fraction at or above this reads it as that type's abundance.
-ABUNDANCE_RHO = 0.7
-#: More effective LR pairs than this is diffuse (cccRISE's most: about 6).
-DIFFUSE_LR = 10.0
 
 
 @dataclass(frozen=True)
@@ -90,56 +66,6 @@ def weight_share(weights: pd.DataFrame, in_group: np.ndarray) -> pd.Series:
     |weight| carried by the cells `in_group` marks."""
     magnitude = weights.abs()
     return magnitude[in_group].sum() / magnitude.sum()
-
-
-def group_r2(values: np.ndarray, groups: np.ndarray) -> np.ndarray:
-    """Per column of `values` (cells x components), the share of its variance
-    its means within `groups` (an integer code per cell) explain."""
-    counts = np.bincount(groups)[:, None]
-    sums = np.zeros((counts.shape[0], values.shape[1]))
-    np.add.at(sums, groups, values)
-    means = sums / np.maximum(counts, 1)
-    within = ((values - means[groups]) ** 2).sum(axis=0)
-    total = ((values - values.mean(axis=0)) ** 2).sum(axis=0)
-    return 1 - within / total
-
-
-def representability(
-    weights: pd.DataFrame,
-    samples: np.ndarray,
-    celltypes: np.ndarray,
-    n_null: int,
-    rng: np.random.Generator,
-) -> pd.DataFrame:
-    """Per column of `weights` (one row per cell): the variance its
-    (sample, cell type) means explain ('R2'), its sample means alone
-    ('SampleR2'), and the mean and 95th percentile of the first with each
-    sample's cell types shuffled among its cells ('NullMean', 'NullQ95'):
-    random splits of the same sizes."""
-    values = weights.to_numpy(float)
-    sample = pd.factorize(samples)[0]
-    blocks = [np.flatnonzero(sample == s) for s in range(sample.max() + 1)]
-
-    def r2(types: np.ndarray) -> np.ndarray:
-        return group_r2(values, pd.factorize(sample * 10_000 + types)[0])
-
-    types = pd.factorize(celltypes)[0]
-    shuffled = types.copy()
-    null = []
-    for _ in range(n_null):
-        for block in blocks:
-            shuffled[block] = types[rng.permutation(block)]
-        null.append(r2(shuffled))
-    null = np.array(null)
-    return pd.DataFrame(
-        {
-            "Component": weights.columns,
-            "R2": r2(types),
-            "SampleR2": group_r2(values, sample),
-            "NullMean": null.mean(axis=0),
-            "NullQ95": np.quantile(null, 0.95, axis=0),
-        }
-    )
 
 
 def unit_columns(matrix: np.ndarray) -> np.ndarray:
@@ -258,62 +184,5 @@ def tucker_column_profiles(fit: xr.Dataset, column: int) -> dict[str, np.ndarray
     return profiles
 
 
-def marker_stats(
-    adata, celltype_column: str, genes
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Per (type, gene of `genes`): its mean expression over the other
-    cells' (fold) and the share of the type's cells expressing it."""
-    genes = [g for g in dict.fromkeys(genes) if g in adata.var_names]
-    x = adata[:, genes].X
-    x = x.toarray() if sparse.issparse(x) else np.asarray(x)
-    types = adata.obs[celltype_column].astype(str).to_numpy()
-    fold, detected = {}, {}
-    for t in np.unique(types):
-        inside = types == t
-        rest = x[~inside].mean(axis=0)
-        fold[t] = x[inside].mean(axis=0) / np.where(rest > 0, rest, np.nan)
-        detected[t] = (x[inside] > 0).mean(axis=0)
-    return (
-        pd.DataFrame(fold, index=genes).T.fillna(np.inf),
-        pd.DataFrame(detected, index=genes).T,
-    )
-
-
 def is_homophilic(ligand: str, receptor: str) -> bool:
     return set(subunits(ligand)) == set(subunits(receptor))
-
-
-def is_marker_pair(ligand: str, receptor: str, celltype: str, fold, detected) -> bool:
-    """Every subunit of the pair is a marker of `celltype`."""
-    genes = subunits(ligand) + subunits(receptor)
-    return all(
-        g in fold.columns
-        and fold.loc[celltype, g] >= MARKER_FOLD
-        and detected.loc[celltype, g] >= MARKER_DETECTED
-        for g in genes
-    )
-
-
-def classify(column: dict, fold, detected, fractions: pd.DataFrame) -> str:
-    """`column`'s audit class (module docstring). `column` holds its
-    'EffectiveSamples', 'EffectiveLR', top 'Ligand' and 'Receptor',
-    'TopSender', 'TopReceiver' and 'SampleProfile' (indexed like `fractions`,
-    the per-sample fraction of each type's cells)."""
-    if column["EffectiveSamples"] < ONE_SAMPLE:
-        return "one sample"
-    pair = column["Ligand"], column["Receptor"]
-    tops = column["TopSender"], column["TopReceiver"]
-    if is_homophilic(*pair) or any(
-        is_marker_pair(*pair, t, fold, detected) for t in tops
-    ):
-        return "marker or homophilic"
-    profile = column["SampleProfile"]
-    if any(
-        abs(spearmanr(profile, fractions.loc[profile.index, t]).statistic)
-        >= ABUNDANCE_RHO
-        for t in tops
-    ):
-        return "abundance readout"
-    if column["EffectiveLR"] > DIFFUSE_LR:
-        return "diffuse"
-    return "candidate biology"

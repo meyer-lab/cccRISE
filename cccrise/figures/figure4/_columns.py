@@ -12,9 +12,20 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import MultipleLocator
 from scipy.stats import spearmanr
 
+from ...comparators import scores
 from .. import common, style
 from ._common import COMPARATORS, METHOD_COLORS, METHOD_LABELS
-from ._data import LABELLINGS, abs_cos, both, capture_margin, load, lr_columns, short
+from ._data import (
+    LABELLINGS,
+    NO_MATCH,
+    abs_cos,
+    both,
+    capture_margin,
+    load,
+    lr_columns,
+    short,
+    source_data,
+)
 from ._layout import LABELLING_HANDLES, LABELLING_MARKERS, SLOTS, method_handles
 from ._panels import _frame, label_points
 from ._strips import ASSOCIATION_NAMES
@@ -49,19 +60,52 @@ def _method_names_below(ax, xs, offset=-12) -> None:
         )
 
 
+#: Source data names of the containment table's columns.
+CONTAINMENT_COLUMNS = {
+    "Containment": "LR containment",
+    "NullQ95": "Null 95th pct.",
+    "Contained": "Contained",
+}
+CONTAINMENT_TEXT = (
+    "LR containment is the squared norm of the column's projection onto the "
+    "span of the other fit's LR columns (Null 95th pct.: its row-permutation "
+    "null's); Contained (framed) is LR containment of at least "
+    f"{scores.CONTAINED} and above the null."
+)
+
+
+def lr_containment(of: str | None, in_: str | None) -> pd.DataFrame:
+    """Each comparator fit's (`GROUPS`) containment rows of LR columns of
+    `of` in the span of `in_`, the comparator's place given as None; with
+    the comparator fit as Method and Labelling."""
+    frames = []
+    for method, lab in GROUPS:
+        t = load("containment", lab)
+        t = t[
+            (t["Of"] == (of or method))
+            & (t["In"] == (in_ or method))
+            & (t["Mode"] == "lr")
+        ].sort_values("Component")
+        frames.append(t.assign(Method=method, Labelling=lab))
+    return pd.concat(frames, ignore_index=True)
+
+
 def reach(axs) -> None:
     """cccRISE's programs' LR containment in each comparator fit; contained
     cells framed."""
     ax = axs[0]
-    values, contained = [], []
-    for method, lab in GROUPS:
-        t = load("containment", lab)
-        t = t[
-            (t["Of"] == "cccRISE") & (t["In"] == method) & (t["Mode"] == "lr")
-        ].sort_values("Component")
-        values.append(t["Containment"].to_numpy())
-        contained.append(t["Contained"].to_numpy())
-    values, contained = np.array(values).T, np.array(contained).T
+    t = lr_containment("cccRISE", None)
+    common.source_data(
+        "lr_containment_of_cccrise_programs",
+        t.assign(Program="C" + t["Component"].astype(str))[
+            ["Program", "Method", "Labelling", *CONTAINMENT_COLUMNS]
+        ].rename(columns=CONTAINMENT_COLUMNS),
+        "Each cccRISE program's LR column (Program) in each comparator fit "
+        "(Method, Labelling). " + CONTAINMENT_TEXT,
+    )
+    grid = t.pivot(index="Component", columns=["Method", "Labelling"])
+    values = grid["Containment"][GROUPS].to_numpy(float)
+    contained = grid["Contained"][GROUPS].to_numpy(bool)
     image = ax.imshow(values, cmap=style.CMAPS["weight"], vmin=0, vmax=1, aspect="auto")
     for (i, j), v in np.ndenumerate(values):
         ax.text(
@@ -71,7 +115,7 @@ def reach(axs) -> None:
             ha="center",
             va="center",
             fontsize=style.FONT_SIZE_DENSE - 1,
-            color="white" if v > 0.7 else style.COLORS["ink"],
+            color="white" if float(v) > 0.7 else style.COLORS["ink"],
         )
         if contained[i, j]:
             ax.add_patch(_frame(j, i))
@@ -116,11 +160,15 @@ def columns_in_cccrise(axs) -> None:
         0.6,
         0,
     )  # in cell widths; x clears the panel letter
+    columns = lr_containment(None, "cccRISE")
+    source_data(
+        "lr_containment_in_cccrise_by_column",
+        columns,
+        CONTAINMENT_COLUMNS,
+        "Each comparator LR column in cccRISE's LR span. " + CONTAINMENT_TEXT,
+    )
     for method, lab in GROUPS:
-        t = load("containment", lab)
-        t = t[
-            (t["Of"] == method) & (t["In"] == "cccRISE") & (t["Mode"] == "lr")
-        ].sort_values("Component")
+        t = columns[(columns["Method"] == method) & (columns["Labelling"] == lab)]
         x += label_room
         _containment_strip(ax, x, t)
         ax.text(
@@ -157,7 +205,11 @@ def _capture_labels(ax, reference, shown, columns) -> None:
     size = style.FONT_SIZE_DENSE - 1
     target = columns[reference].to_numpy()
     rows = [
-        [*_column_name(k), f"{cos:.2f}", capture_margin(reference, k, cos)]
+        [
+            *_column_name(k),
+            f"{cos:.2f}",
+            _margin_text(capture_margin(reference, k, cos)),
+        ]
         for k in shown
         for cos in [abs_cos(columns[k].to_numpy(), target)]
     ]
@@ -176,6 +228,44 @@ def _capture_labels(ax, reference, shown, columns) -> None:
                 fontweight="bold" if j == 0 else "normal",
                 annotation_clip=False,
             )
+
+
+def _margin_text(margin: float) -> str:
+    return "—" if np.isnan(margin) else f"{margin:+.2f}"
+
+
+def _capture_source(reference, shown, pairs, values, columns) -> None:
+    names = [" ".join(_column_name(k)) for k in shown]
+    common.source_data(
+        "relative_lr_loadings_of_top_pairs",
+        pd.DataFrame(values, index=[q.replace("^", "–") for q in pairs], columns=names)
+        .rename_axis(index="LR pair", columns="Column")
+        .stack()
+        .rename("|Loading| / heaviest")
+        .reset_index(),
+        f"{names[0]}'s heaviest LR pairs' |loading| in each column, relative to "
+        "that column's heaviest pair.",
+    )
+    target = columns[reference].to_numpy()
+    cos = [abs_cos(columns[k].to_numpy(), target) for k in shown]
+    common.source_data(
+        "column_match_to_reference",
+        pd.DataFrame(
+            {
+                "Column": names,
+                "|cos|": cos,
+                "Delta rho": [
+                    capture_margin(reference, k, c)
+                    for k, c in zip(shown, cos, strict=True)
+                ],
+            }
+        ),
+        f"Each column's LR |cosine| with {names[0]}, and Delta rho: the mean "
+        f"pairwise Spearman correlation across samples of {names[0]}'s top LR "
+        "pairs, scored in the column's sender/receiver context, minus the "
+        "stricter of its random and expression-matched nulls' 95th "
+        f"percentiles (empty where |cos| < {NO_MATCH}).",
+    )
 
 
 def capture(
@@ -198,6 +288,7 @@ def capture(
     values = np.column_stack(
         [columns[k].abs().loc[pairs] / columns[k].abs().max() for k in shown]
     )
+    _capture_source(reference, shown, pairs, values, columns)
     image = ax.imshow(values, cmap=style.CMAPS["weight"], vmin=0, vmax=1, aspect="auto")
     ax.set_yticks(
         range(len(pairs)),
@@ -256,6 +347,34 @@ def _significance_box(ax, t, sig) -> None:
     ax.add_artist(box)
 
 
+ASSOCIATION_COLUMNS = {
+    "Association": "Association",
+    "EtaSquared": "Eta squared",
+    "P": "p",
+    "PAdj": "FDR",
+}
+
+
+def _association_source(t, best, sig) -> None:
+    source_data(
+        "strongest_association_by_component",
+        best,
+        ASSOCIATION_COLUMNS,
+        "Each component's lowest-FDR outcome association (ties to the larger "
+        "eta squared): one-way ANOVA of its read-depth-corrected sample "
+        "profile over the association's groups, Benjamini-Hochberg adjusted "
+        "across the fit's associations and components (FDR).",
+    )
+    keys = sig[["Method", "Labelling", "Component"]]
+    source_data(
+        "significant_associations_by_component",
+        t[t["PAdj"] < common.SIG_ALPHA].merge(keys),
+        ASSOCIATION_COLUMNS,
+        f"Every association below FDR {common.SIG_ALPHA} of each component "
+        "whose strongest one is (the boxed list), tested as above.",
+    )
+
+
 def strongest_association(axs) -> None:
     """Each component's strongest association: η² against −log10 FDR,
     cccRISE and every comparator fit; the significant ones labelled and
@@ -267,6 +386,8 @@ def strongest_association(axs) -> None:
         & ((t["Method"] != "cccRISE") | (t["Labelling"] == "coarse"))
     ]
     best = _strongest(t)
+    sig = best[best["PAdj"] < common.SIG_ALPHA].sort_values("PAdj")
+    _association_source(t, best, sig)
     for method, lab, _ in SLOTS:
         g = best[(best["Method"] == method) & (best["Labelling"] == lab)]
         ax.scatter(
@@ -292,7 +413,6 @@ def strongest_association(axs) -> None:
         ylim=(0, best["NegLog"].max() * 1.3),
     )
     ax.xaxis.set_minor_locator(MultipleLocator(0.025))
-    sig = best[best["PAdj"] < common.SIG_ALPHA].sort_values("PAdj")
     label_points(
         ax,
         sig["EtaSquared"].to_numpy(),
@@ -326,6 +446,22 @@ def sample_profiles(axs) -> None:
     floor), samples grouped by 6-month outcome."""
     ax = axs[0]
     t = _profiles()
+    names = [name for _, name in PROFILED]
+    common.source_data(
+        "scaled_sample_profiles",
+        t.rename_axis("Sample")
+        .reset_index()
+        .melt(
+            id_vars=["Sample", "Group"],
+            value_vars=names,
+            var_name="Column",
+            value_name="Scaled loading",
+        )
+        .rename(columns={"Group": "6-month outcome"}),
+        "Each column's sample profile (cccRISE's sample loadings; a comparator "
+        "LR column's as its outcome associations use it) divided by its "
+        "largest |loading|; the bars show the positive part.",
+    )
     n = len(PROFILED)
     line = {"color": style.COLORS["ink"], "lw": ax.spines["bottom"].get_linewidth()}
     for k, ((key, name), floor) in enumerate(
@@ -432,10 +568,38 @@ def _flow_block(ax, method, x) -> None:
         ax.text(xs, -0.1, letter, ha="center", fontsize=style.FONT_SIZE_DENSE - 1)
 
 
+def _flow_source() -> None:
+    frames = []
+    for m in COMPARATORS:
+        cos, coarse, fine = _shift(m)
+        frames.append(
+            pd.DataFrame(
+                cos,
+                index=[short(m, k[2]) for k in coarse],
+                columns=[short(m, k[2]) for k in fine],
+            )
+            .rename_axis(index="Coarse column", columns="Fine column")
+            .stack()
+            .rename("LR |cos|")
+            .reset_index()
+            .assign(Method=m)
+        )
+    t = pd.concat(frames, ignore_index=True)
+    common.source_data(
+        "coarse_to_fine_lr_cosine",
+        t.assign(Drawn=t["LR |cos|"] >= FLOW_FROM)[
+            ["Method", "Coarse column", "Fine column", "LR |cos|", "Drawn"]
+        ],
+        "|Cosine| between each comparator's coarse and fine LR columns, on "
+        f"cccRISE's LR pairs; Drawn (a line) at {FLOW_FROM} or more.",
+    )
+
+
 def coarse_to_fine(axs) -> None:
     """Each comparator's coarse LR columns (left) joined to its fine ones
     (right) where LR |cos| >= `FLOW_FROM`, line width stepping with |cos|."""
     ax = axs[0]
+    _flow_source()
     for i, m in enumerate(COMPARATORS):
         _flow_block(ax, m, 1.75 * i)
     ax.set(xlim=(-0.35, 1.75 * len(COMPARATORS) - 0.4), ylim=(-0.15, 1.15))
@@ -460,6 +624,7 @@ def breadth(axs) -> None:
     """Effective LR pairs against effective samples (inverse Simpson indices
     of squared loadings; a column's sample profile), every fit."""
     ax = axs[0]
+    drawn = []
     for lab, b in both("breadth").items():
         lr = b[b["Mode"] == "lr"].set_index(["Method", "Component"])["Effective"]
         samples = (
@@ -471,6 +636,17 @@ def breadth(axs) -> None:
             if method == "cccRISE" and lab != "coarse":
                 continue
             keys = [k for k in samples.index if k[0] == method]
+            drawn.append(
+                pd.DataFrame(
+                    {
+                        "Method": method,
+                        "Labelling": lab,
+                        "Component": [k[1] for k in keys],
+                        "EffectiveLR": lr.loc[keys].to_numpy(),
+                        "EffectiveSamples": samples.loc[keys].to_numpy(),
+                    }
+                )
+            )
             ax.scatter(
                 lr.loc[keys],
                 samples.loc[keys],
@@ -481,6 +657,14 @@ def breadth(axs) -> None:
                 lw=0.4,
                 zorder=3 if method == "cccRISE" else 2,
             )
+    source_data(
+        "effective_lr_pairs_and_samples",
+        pd.concat(drawn, ignore_index=True),
+        {"EffectiveLR": "Effective LR pairs", "EffectiveSamples": "Effective samples"},
+        "Each component's effective number of LR pairs and of samples: the "
+        "inverse Simpson index of its squared LR loadings and of its squared "
+        "sample profile.",
+    )
     ax.set_xscale("log")
     ax.set(xlabel="Effective LR pairs", ylabel="Effective samples", ylim=(0, 47))
     ax.legend(
@@ -495,9 +679,25 @@ def inputs(axs) -> None:
     (z-scored) against depth, with their Spearman ρ."""
     ax = axs[0]
     t = load("inputs", "coarse")
+    t = t.assign(
+        Z=t.groupby("Method")["Mean"].transform(lambda v: (v - v.mean()) / v.std())
+    )
+    common.source_data(
+        "input_tensor_mean_by_sample",
+        t[["Method", "Sample", "Depth", "Mean", "Z"]].rename(
+            columns={
+                "Depth": "Median genes detected per cell",
+                "Mean": "Input tensor mean",
+                "Z": "z-score",
+            }
+        ),
+        "Each method's input tensor (coarse labels) averaged per sample over "
+        "its observed entries, z-scored within the method, against the "
+        "sample's depth; the legend gives their Spearman correlation.",
+    )
     for m in t["Method"].unique():
         g = t[t["Method"] == m]
-        z = (g["Mean"] - g["Mean"].mean()) / g["Mean"].std()
+        z = g["Z"]
         rho = spearmanr(g["Mean"], g["Depth"]).statistic
         ax.scatter(
             g["Depth"],
