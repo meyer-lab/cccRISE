@@ -129,11 +129,9 @@ The uncompressed data were fit with a 17-component RISE model and a 5-component 
 **IBD cohort.**
 <!-- IBD placeholder text -->
 
-**CANDELINC compression.** [Claude's sample text:] Analyses requiring many fits (bi-cross-validation, the CP rank sweep, and the jackknife and re-initialization replicates) used fits compressed by CANDELINC, which fits the decomposition to a small core obtained by projecting the data onto orthonormal bases and maps the factors back through those bases\ [@doi:10.1007/BF02293596].
-For RISE, the gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations; each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
-For CPD, the core was a sequentially truncated higher-order SVD of the communication tensor, keeping $\min(n, r + 5)$ singular vectors in each mode of size $n$.
-The CP rank sweep compressed the tensor once at the largest rank tested (core of 22 × 17 × 17 × 22), whereas each replicate was compressed at the selected rank.
-Because the bases are orthonormal, the cosines between factor columns computed from the core fit equal those of the decompressed factors, and the CP R^2^X, restated against the full tensor, equals the core-space error plus the energy the projection discards (see Reconstruction Error).
+**RISE compression.** [Claude's sample text:] Analyses requiring many RISE fits (bi-cross-validation, and the jackknife and re-initialization replicates) used compressed RISE fits.
+The gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations; each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
+CPD was never compressed: its fits ran in single precision on a GPU, except the masked imputation fits, which ran in double precision.
 The RISE and CP fits from which all reported results are derived are uncompressed.
 
 ### Fit Evaluation
@@ -184,18 +182,19 @@ The held-out genes' loadings were estimated by least squares from the training c
 The held-out R^2^X was then computed on the block of held-out cells and held-out genes.
 This was repeated 10 times for each rank from 1 to 50, using compressed RISE fits, and we selected the rank maximizing the mean held-out R^2^X.
 
-**CPD.** CP ranks from 1 to the selected RISE rank were evaluated on the communication tensor from the uncompressed RISE fit by three criteria.
-First, the fit R^2^X was computed at each rank, using the compressed communication tensor.
+**CPD.** CP ranks from 1 to the selected RISE rank were evaluated on the communication tensor from the uncompressed RISE fit.
+At each rank, CP was fit from 10 seeded starts of the same SVD initialization used for the reported fit (randomized SVD, seeds 42--51), in single precision on a GPU.
+First, the fit R^2^X of each start was computed, and the elbow of the median R^2^X across starts was located by Kneedle\ [@doi:10.1109/ICDCSW.2011.20].
 Second, the masked imputation R^2^X was computed.
 Tensor entries were split into 10 random folds, so that every entry was held out once.
 For each fold, the held-out entries were set to zero and the CP model was fit by masked ALS, which iteratively fills the held-out entries with the current reconstruction.
 The predictions of all held-out entries were pooled into a single R^2^X against the full tensor, and this was averaged over 10 repeated fold splits.
-Imputation fits were uncompressed.
+Imputation fits ran in double precision, because single-precision masked fits diverged at higher ranks.
 A ridge penalty ($\lambda$ = 0.1) was applied to the masked fits only, because the communication tensor is heavy-tailed so an unpenalized masked fit could be dominated by the few largest held-out entries.
-Third, a collinearity screen counted, for the worst pair of components at each rank, the number of modes in which their factor columns had an absolute cosine above 0.9.
-Pairs were classified as near-duplicate or, if the product of their cosines' signs was negative, as cancelling.
-Collinearity was counted using the compressed communication tensor.
-We selected the lowest rank before degeneracy, defined as the first rank at which a pair of components became collinear in two or more modes.
+Third, the collinearity of each fit was measured in each mode as the largest absolute cosine between the factor columns of two of its components.
+Fourth, the agreement between starts was measured by the FMS between every pair of a rank's starts.
+Starts with FMS ≥ 0.95 were joined, and each connected group of starts was taken as a distinct minimum; the minimum reached by the most starts is denoted $f_{\max}$.
+[placeholder: how the CP rank was chosen from these criteria]
 
 ### Component--outcome Association
 
@@ -214,12 +213,12 @@ These correlations were compared with those of LR pairs drawn 2,000 times from t
 
 ### Robustness Tests
 
-**Patient jackknife.** Each patient was left out in turn, with both samples of a two-sample patient left out together, and each replicate was refit end to end at the selected ranks using compressed RISE and CP fits.
-Replicates were compared with a compressed reference fit on the full data by Hungarian matching and FMS.
+**Patient jackknife.** Each patient was left out in turn, with both samples of a two-sample patient left out together, and each replicate was refit end to end at the selected ranks using compressed RISE fits and uncompressed, single-precision CP fits.
+Replicates were compared with a reference fit on the full data with the same settings by Hungarian matching and FMS.
 Because the condition roster changed between replicates, RISE was compared on the gene mode only and CP on the LR-pair mode only; eigen-state modes were never compared.
 To assess the stability of component--outcome associations, the ANOVA for an outcome grouping was repeated on each replicate's corrected CP condition loadings, corrected for multiple testing across the components of that fit, and assigned to the matched reference component.
 
-**Model re-initialization.** The full data were refit end to end with different random seeds, using the same compressed fits and reference as above.
+**Model re-initialization.** The full data were refit end to end with different random seeds, using the same fits and reference as above.
 Because the conditions were unchanged, RISE was compared on the condition and gene modes and CP on the condition and LR-pair modes.
 
 **Alternative CCC scoring** To assess robustness to the communication score, the communication tensor was recomputed from a single shared, uncompressed RISE fit under each alternative scoring function, and each tensor was fit with an uncompressed CPD at the selected rank.

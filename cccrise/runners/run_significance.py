@@ -12,7 +12,9 @@ Loads a RISE fit produced by `run_ccc_rise` (`--reference-source`) rather
 than fitting PARAFAC2 itself; see `utils.load_rise_reference`.
 
 Writes the per-LR pair observed vs. null scores and z-scores to
-significance_lr_<dataset>.parquet:
+significance_lr_<dataset>.parquet, and every entry's observed score, p-value,
+and null mean and SD to significance_entries_<dataset>.nc (float32, ~100 MB
+for ALAD: ignored by version control and deposited with the source data):
 
     uv run cccrise-significance --dataset alad \
         --reference-source cccrise/data/factors/bal_alad_factors.nc --n-perms 1000
@@ -26,6 +28,7 @@ import pandas as pd
 from ..import_data import import_ligand_receptor_pairs
 from ..validation.significance import (
     fit_significance_pipeline,
+    significance_to_xarray,
     summarize_significance_lr,
     summarize_significance_overview,
 )
@@ -33,10 +36,11 @@ from ._cli import (
     add_dataset_argument,
     add_scoring_arguments,
     dataset_metadata,
+    resolve_dataset,
     resolve_output,
     resulting_dims,
 )
-from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec, scoring_output_dir
+from .datasets import VALIDATION_DIR, DatasetSpec, scoring_output_dir
 from .provenance import build_metadata, git_sha, relpath, write_metadata
 
 HEADER = """\
@@ -49,7 +53,17 @@ def output_paths(spec: DatasetSpec, output_root: Path) -> dict[str, Path]:
     """Map the output file keys to absolute destination paths."""
     return {
         "lr": output_root / spec.significance_lr_filename(),
+        "entries": output_root / spec.significance_entries_filename(),
     }
+
+
+def write_entries(results: dict, path: Path) -> None:
+    """Every entry's observed score, p-value, and null mean and SD, as a
+    compressed float32 NetCDF (`significance_to_xarray`)."""
+    entries = significance_to_xarray(results).astype("float32")
+    entries.to_netcdf(
+        path, encoding={v: {"zlib": True, "complevel": 4} for v in entries.data_vars}
+    )
 
 
 def run_significance(
@@ -104,6 +118,7 @@ def run_significance(
     paths = output_paths(spec, output_root)
     if output_path is not None:
         paths["lr"] = output_path
+        paths["entries"] = output_path.with_name(spec.significance_entries_filename())
 
     for path in paths.values():
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -145,6 +160,8 @@ def run_significance(
 
     print(f"4. Writing {len(lr_df)} LR pairs to {paths['lr']}...")
     lr_df.to_parquet(paths["lr"], index=False)
+    print(f"   Writing every entry to {paths['entries']}...")
+    write_entries(results, paths["entries"])
 
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -169,7 +186,7 @@ def run_significance(
             "resulting_dims": resulting_dims(
                 spec, adata, n_lr_pairs=len(results["filtered_lr_pairs"])
             ),
-            "outputs": [relpath(paths["lr"])],
+            "outputs": [relpath(p) for p in paths.values()],
         }
     )
     sidecar = write_metadata(paths["lr"], metadata, header=HEADER)
@@ -240,7 +257,7 @@ def main(argv: list[str] | None = None) -> None:
     """Entry point for cccrise-significance."""
     parser = build_parser()
     args = parser.parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     output_root = args.output_root or scoring_output_dir(
         args.communication_score, VALIDATION_DIR
     )

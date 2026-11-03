@@ -38,7 +38,10 @@ def plot(axs):
         labeled = {}
         if key == "D":
             rows, labeled = _shown_lr_pairs(adata, loadings)
+            _source_data(key, adata, loadings, rows)
             loadings = loadings[rows]
+        else:
+            _source_data(key, adata, loadings)
             ylabel = f"Top {TOP_LR_FRACTION:.0%} LR pair"
         order = common.dominant_order(loadings) if ordered else np.arange(len(loadings))
         image = common.plot_factor_heatmap(ax, loadings[order], "CP component")
@@ -55,6 +58,29 @@ def plot(axs):
             loadings.shape,
         )
     common.colorbar(axs[-1], image, "Loading / max |loading|")
+
+
+def _source_data(key: str, adata, loadings, shown=None) -> None:
+    """Factor matrix `key`'s normalized loadings, one row per condition,
+    eigenstate, or LR pair (every one, with whether it's shown)."""
+    ylabel = MODES[key][0]
+    labels = {"A": adata.obs_names, "D": np.asarray(adata.uns["lr_pairs"])}
+    df = pd.DataFrame(
+        loadings,
+        columns=[f"Component {c}" for c in range(1, loadings.shape[1] + 1)],
+    )
+    df.insert(0, ylabel, labels.get(key, np.arange(1, len(df) + 1)))
+    if shown is not None:
+        df["Shown"] = np.isin(np.arange(len(df)), shown)
+    common.source_data(
+        f"cp_{ylabel.lower().replace(' ', '_')}_loadings",
+        df,
+        f"CP factor matrix {key}: each {ylabel.lower().replace('lr', 'LR')}'s "
+        "loading on every CP "
+        "component, divided by the component's largest |loading| in this matrix."
+        + (" 'Shown' marks the LR pairs drawn." if shown is not None else ""),
+        part=list(MODES).index(key),
+    )
 
 
 def _shown_lr_pairs(adata, loadings) -> tuple[np.ndarray, dict[int, tuple]]:

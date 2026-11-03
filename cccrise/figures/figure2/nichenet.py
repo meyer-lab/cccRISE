@@ -66,6 +66,21 @@ def _load(filename: str) -> pd.DataFrame:
 def plot(axs):
     (ax,) = axs
     tests, null = weighted_percentile_tests(load_scores(), load_null())
+    common.source_data(
+        "nichenet_weighted_percentile_tests",
+        tests,
+        "Per CP component: its top ligands, the weight-averaged NicheNet "
+        "target-score percentile of its ligands (weighted_pct), the mean of "
+        "that average over shuffled NicheNet priors (null_mean), and the "
+        "one-sided permutation p, Benjamini-Hochberg adjusted across "
+        "components (q).",
+    )
+    common.source_data(
+        "nichenet_shuffled_prior_percentiles",
+        null.rename("weighted_pct"),
+        "The weight-averaged target-score percentile per CP component on each "
+        "shuffled NicheNet prior (replicate): the null distribution boxed.",
+    )
     tests = tests.set_index("component")
     components = list(tests.index)
     positions = range(len(components))

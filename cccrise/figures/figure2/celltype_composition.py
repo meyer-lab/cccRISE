@@ -24,6 +24,14 @@ def plot(axs):
         columns=style.CELL_TYPES[S.GRANULARITY_DATASET],
         fill_value=0,
     )
+    common.source_data(
+        "cell_groups_celltypes", S.cell_table(), S.CELL_TABLE_DESCRIPTION
+    )
+    common.source_data(
+        "celltype_fraction_by_group",
+        fractions.rename_axis(index="Group", columns=None),
+        "Fraction of each group's cells in each annotated cell type.",
+    )
     left = 0
     for celltype, color in style.CELL_TYPE_COLORS[S.GRANULARITY_DATASET].items():
         ax.barh(

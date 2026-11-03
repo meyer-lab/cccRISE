@@ -126,7 +126,7 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 Factorization
 ~~~~~~~~~~~~~
 
-.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", random_state: int = None, complex_sep: str = "&", communication_score: str = "expression_product", hill_k: float = 0.5, backend: str = None, compress: bool = False, doEmbedding: bool = False, keep_tensor: bool = False, *, rise_n_iter_max: int, cp_n_iter_max: int, rise_tol: float, cp_tol: float)
+.. py:function:: run_ccc_rise_workflow(adata: anndata.AnnData, rise_rank: int, lr_pairs: pd.DataFrame, cp_rank: int = None, condition_column: str = "sample", random_state: int = None, complex_sep: str = "&", communication_score: str = "expression_product", hill_k: float = 0.5, backend: str = None, compress: bool = False, cp_device: str = None, cp_dtype: str = "float32", doEmbedding: bool = False, keep_tensor: bool = False, *, rise_n_iter_max: int, cp_n_iter_max: int, rise_tol: float, cp_tol: float)
    :module: cccrise.ccc_rise
 
    Execute the complete cccRISE workflow: RISE decomposition, interaction tensor, CPD factorization, and result storage.
@@ -156,8 +156,12 @@ Factorization
    :type hill_k: float, optional
    :param backend: RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect).
    :type backend: str, optional
-   :param compress: Fit RISE in a compressed gene/cell subspace and CPD inside a CANDELINC core (see ``fit_rise`` and ``fit_cp``). The replicate runners compress; the core runner does not.
+   :param compress: Fit RISE in a compressed gene/cell subspace (see ``fit_rise``). The replicate runners compress; the core runner does not. CPD is never compressed.
    :type compress: bool, optional
+   :param cp_device: Device the CPD fit runs on ('gpu', 'cpu', or None for the GPU when there is one).
+   :type cp_device: str, optional
+   :param cp_dtype: Precision of the CPD fit ('float32' or 'float64').
+   :type cp_dtype: str, optional
    :param doEmbedding: If True, computes PaCMAP embeddings for visualization and stores in adata.obsm["PaCMAP"].
    :type doEmbedding: bool, optional
    :param keep_tensor: If True, the interaction tensor is returned.
@@ -170,7 +174,7 @@ Factorization
    :type rise_tol: float
    :param cp_tol: Convergence tolerance for the CP fit.
    :type cp_tol: float
-   :returns: Dict with keys 'adata', 'tensor' (None unless keep_tensor), 'filtered_lr_pairs', 'cp_weights', 'cp_factors', 'r2x_rise', 'r2x_cp' and 'diagnostics' (CPD core consistency and collinearity).
+   :returns: Dict with keys 'adata', 'tensor' (None unless keep_tensor), 'filtered_lr_pairs', 'cp_weights', 'cp_factors', 'r2x_rise', 'r2x_cp' and 'diagnostics' (CPD component collinearity).
    :rtype: dict
 
 .. py:function:: calculate_interaction_tensor(adata: anndata.AnnData, lr_pairs: pd.DataFrame, complex_sep: str | None = "&", communication_score: str = "expression_product", hill_k: float = 0.5)

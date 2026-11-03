@@ -34,6 +34,7 @@ def plot(fig):
     ax.set_ylim(0, 1.15)  # count headroom
     ax.set_xlabel("CP component")
     ax.set_ylabel(f"Fraction of replicates\nwith q < {S.alpha():g}")
+    S.save_source_data()
 
 
 def makeFigure():

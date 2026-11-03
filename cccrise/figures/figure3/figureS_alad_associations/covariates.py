@@ -11,14 +11,23 @@ import pandas as pd
 from ....anova import run_multiple_factors_anova
 from ... import common
 from .. import _common as S
+from ._common import save_association_data
 
 AXES = ("rect",)
 
 
 def plot(axs):
     (ax,) = axs
+    table = covariate_table()
     common.plot_association_heatmap(
-        covariate_table(), ax, xlabel="Covariate", p_column="P", p_label="p"
+        table, ax, xlabel="Covariate", p_column="P", p_label="p"
+    )
+    save_association_data(
+        table,
+        covariates(),
+        "covariate",
+        "each patient covariate (binary covariates coded 0/1; age in years, "
+        "baseline FEV1 as recorded)",
     )
     ax.tick_params(axis="x", rotation=45)
     for label in ax.get_xticklabels():
@@ -26,12 +35,10 @@ def plot(axs):
 
 
 @cache
-def covariate_table() -> pd.DataFrame:
-    """`run_multiple_factors_anova` of each covariate, in place of a
-    component, against each of `S.ASSOCIATIONS`, uncorrected: a confounder
-    screen should err toward flagging."""
+def covariates() -> pd.DataFrame:
+    """Each condition's covariates, in `S.condition_obs` order."""
     obs = S.condition_obs()
-    covariates = pd.DataFrame(
+    return pd.DataFrame(
         {
             "Age": obs["age"],
             "Male": obs["sex"] == "male",
@@ -41,7 +48,15 @@ def covariate_table() -> pd.DataFrame:
             "Baseline FEV1": obs["baselineFEV1"],
         }
     ).astype(float)
-    adata = anndata.AnnData(obs=obs, uns={"A": covariates.to_numpy()})
+
+
+@cache
+def covariate_table() -> pd.DataFrame:
+    """`run_multiple_factors_anova` of each covariate, in place of a
+    component, against each of `S.ASSOCIATIONS`, uncorrected: a confounder
+    screen should err toward flagging."""
+    values = covariates()
+    adata = anndata.AnnData(obs=S.condition_obs(), uns={"A": values.to_numpy()})
     table = run_multiple_factors_anova(
         adata,
         S.ASSOCIATIONS,
@@ -49,7 +64,7 @@ def covariate_table() -> pd.DataFrame:
         correction=None,
         read_depth_correct=False,
     )
-    table["Component"] = covariates.columns[table["Component"].astype(int) - 1]
+    table["Component"] = values.columns[table["Component"].astype(int) - 1]
     return table
 
 

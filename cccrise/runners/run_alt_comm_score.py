@@ -25,7 +25,7 @@ from typing import Any
 import anndata
 
 from ..anova import anova_component_associations, prepare_anova_inputs
-from ..ccc_rise import CP_FIT_OPTIONS, fit_ccc_cp, fit_rise
+from ..ccc_rise import CP_DTYPE, CP_FIT_OPTIONS, fit_ccc_cp, fit_rise
 from ..factors import load_factors_netcdf, save_ccc_rise_fit
 from ..import_data import add_cond_idxs, import_ligand_receptor_pairs
 from ..validation.stability import relabel_cp_fit, relabel_rise
@@ -37,12 +37,13 @@ from ._cli import (
     add_dataset_argument,
     component_numbering,
     core_numbering_reference,
+    cp_device_metadata,
     dataset_metadata,
     resolve_anova_labels,
+    resolve_dataset,
 )
 from .datasets import (
     COMMUNICATION_SCORES,
-    DATASETS,
     DatasetSpec,
     comparison_output_dir,
 )
@@ -223,6 +224,8 @@ def run_alt_comm_score(
                 "rise_rank": rise_rank,
                 "cp_rank": cp_rank,
                 "backend": spec.backend or "auto",
+                # CP fits use `ccc_rise.fit_cp`'s defaults
+                **cp_device_metadata(None, CP_DTYPE),
                 "component_numbering": component_numbering(core),
             }
             | FIT_PROVENANCE,
@@ -275,7 +278,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_alt_comm_score(
         spec,
         rise_rank=args.rise_rank,

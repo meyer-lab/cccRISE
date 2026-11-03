@@ -32,5 +32,6 @@ resulting_dims:
   lr_pairs: 513
 outputs:
 - cccrise/data/validation_results/significance_lr_alad.parquet
-git_sha: cb3e2aaccc0835c03294a3cc783896a624090205
-generated: '2026-10-15T20:59:44+00:00'
+- cccrise/data/validation_results/significance_entries_alad.nc
+git_sha: 155b23d1b52b41dfae1f7aae3bd855c5f6f47839
+generated: '2026-10-28T21:15:45+00:00'

@@ -8,12 +8,13 @@ import anndata
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 
 from cccrise.ccc_rise import fit_rise
 from cccrise.factors import save_ccc_rise_fit
 from cccrise.import_data import add_cond_idxs
 from cccrise.runners.datasets import DatasetSpec
-from cccrise.runners.run_significance import build_parser, output_paths
+from cccrise.runners.run_significance import build_parser, output_paths, write_entries
 from cccrise.validation.significance import (
     compute_communication_significance,
     fit_significance_pipeline,
@@ -155,6 +156,12 @@ def test_summaries_and_xarray_conversion(tmp_path):
     assert ds.sizes["sender_rise"] == 2
     assert ds.sizes["receiver_rise"] == 2
 
+    # 4. The runner's entry-level file
+    write_entries(results, tmp_path / "entries.nc")
+    with xr.open_dataset(tmp_path / "entries.nc") as saved:
+        assert saved["pvalue"].dtype == np.float32
+        np.testing.assert_allclose(saved["pvalue"], ds["pvalue"], rtol=1e-6)
+
 
 def test_runner_cli_parser_and_paths():
     parser = build_parser()
@@ -176,7 +183,7 @@ def test_runner_cli_parser_and_paths():
 
     dummy_spec = DatasetSpec(
         key="test_cohort",
-        label="Test Cohort",
+        cohort_label="Test Cohort",
         loader=lambda **kwargs: anndata.AnnData(),
         condition_column="sample",
         celltype_column="celltype",
@@ -185,7 +192,7 @@ def test_runner_cli_parser_and_paths():
     )
     paths = output_paths(dummy_spec, Path("/tmp"))
     assert "lr" in paths
-    assert "tensor" not in paths
+    assert str(paths["entries"]).endswith("significance_entries_test_cohort.nc")
     assert str(paths["lr"]).endswith("significance_lr_test_cohort.parquet")
 
 

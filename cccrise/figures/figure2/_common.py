@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 
+from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
 from .. import common, style
 
@@ -234,6 +235,34 @@ def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFram
     }
 
 
+def cell_table() -> pd.DataFrame:
+    """Each cell's sample, annotated cell type, sender and receiver weight on
+    the granularity component, and group: the per-cell values behind this
+    figure's group panels."""
+    adata = common.get_cell_projections(GRANULARITY_DATASET)
+    spec = DATASETS[GRANULARITY_DATASET]
+    sender, receiver = component_weights()
+    return pd.DataFrame(
+        {
+            "Cell": adata.obs_names,
+            "Sample": adata.obs[spec.condition_column].to_numpy(),
+            "Cell type": adata.obs[spec.celltype_column].to_numpy(),
+            f"Cmp {GRANULARITY_COMPONENT} sender weight": sender,
+            f"Cmp {GRANULARITY_COMPONENT} receiver weight": receiver,
+            "Group": cell_groups().to_numpy(),
+        }
+    )
+
+
+CELL_TABLE_DESCRIPTION = (
+    f"One row per cell: its sample, annotated cell type, sender and receiver "
+    f"weight on CP component {GRANULARITY_COMPONENT}, and group (sender or "
+    f"receiver if either weight is at least {GROUP_TAU} x that weight's "
+    "largest value, assigned to the role of the larger relative weight; rest "
+    "otherwise)."
+)
+
+
 def group_expression(genes: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
     """(fraction of cells detecting, mean expression) of `genes` (rows) in
     each group (columns)."""
@@ -302,9 +331,47 @@ def plot_dotplot(
 
 def plot_markers(ax, markers: dict[str, list[str]], **kwargs):
     """`plot_dotplot` of literature `markers` ({section: genes}), keeping the
-    genes in the fit's gene set."""
-    return plot_dotplot(
-        ax, {name: present(genes) for name, genes in markers.items()}, **kwargs
+    genes in the fit's gene set, saving its values as source data."""
+    sections = {name: present(genes) for name, genes in markers.items()}
+    _save_markers(sections)
+    return plot_dotplot(ax, sections, **kwargs)
+
+
+def _save_markers(sections: dict[str, list[str]]) -> None:
+    """Each section's genes' per-group dot values, and every cell's group and
+    expression of those genes."""
+    genes = present(g for section in sections.values() for g in section)
+    detected, mean = group_expression(genes)
+    common.source_data(
+        "marker_expression_per_group",
+        pd.DataFrame(
+            {
+                "Section": name,
+                "Gene": gene,
+                "Group": group,
+                "Fraction of cells detecting": detected.loc[gene, group],
+                "Mean expression": mean.loc[gene, group],
+                "Mean / gene's largest group mean": mean.loc[gene, group]
+                / mean.loc[gene].max(),
+            }
+            for name, section in sections.items()
+            for gene in section
+            for group in GROUPS
+        ),
+        "One dot per marker gene (under its section) and cell group (sender, "
+        "receiver, rest): the fraction of the group's cells detecting the gene "
+        "(dot size) and its mean normalized expression, also relative to the "
+        "gene's largest group mean (color).",
+    )
+    cells = common.get_cell_projections(GRANULARITY_DATASET)[:, genes].to_df()
+    cells.insert(0, "Group", cell_groups().to_numpy())
+    common.source_data(
+        "marker_expression_per_cell",
+        cells.rename_axis("Cell barcode"),
+        "One row per cell: its group (sender, receiver, or rest, split on its "
+        f"CP component {GRANULARITY_COMPONENT} weights) and normalized "
+        "expression of each plotted marker gene, the values the dot plot "
+        "summarizes.",
     )
 
 

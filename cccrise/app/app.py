@@ -10,13 +10,11 @@ import functools
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.collections import EllipseCollection
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
 from matplotlib.rcsetup import cycler
 from matplotlib.text import Text
 from matplotlib.ticker import MaxNLocator
-from scrise.plotting import plot_bicv_r2x
 from scrise.plotting import plot_condition_factors as plot_rise_condition_factors
 from scrise.plotting import plot_eigenstate_factors as plot_rise_eigenstate_factors
 from scrise.plotting import plot_gene_factors as plot_rise_gene_factors
@@ -33,33 +31,31 @@ from cccrise.app.data import (
     load_rise_factors,
 )
 from cccrise.app.lr_pairs import parse_lr_pairs
+from cccrise.app.plots import (
+    celltype_grid_shape,
+    enlarge_points,
+    pacmap_axes,
+    plot_categorical_scatter,
+    plot_celltype_association,
+    plot_celltype_points,
+    plot_cp_factor_heatmaps,
+    plot_interaction_heatmap,
+    plot_lr_rank,
+    plot_value_pacmap,
+    plot_weight_boxplot,
+    plot_weight_histogram_grid,
+)
+from cccrise.figures import style
 from cccrise.figures.common import (
     plot_association_effect_sizes,
     plot_category_component_weights,
-    plot_collinearity,
+    plot_collinearity_medians,
     plot_cpd_fit_r2x,
+    plot_cpd_imputation_r2x,
+    plot_rise_rank,
 )
 from cccrise.figures.figure3._common import ASSOCIATIONS
-from cccrise.figures.legacy.commonFuncs.plotFactors import (
-    plot_celltype_association,
-    plot_condition_factors,
-    plot_eigenstate_factors,
-    plot_interaction_heatmap,
-    plot_lr_factor_rank,
-    plot_lr_factors,
-)
-from cccrise.figures.legacy.commonFuncs.plotGeneral import (
-    celltype_grid_shape,
-    plot_wc_histogram_grid,
-)
-from cccrise.figures.legacy.commonFuncs.plotPaCMAP import (
-    assign_labels,
-    plot_categorical_scatter,
-    plot_eigenstate_pacmap,
-    plot_labels_pacmap,
-    plot_wc_pacmap,
-    plot_wc_per_celltype,
-)
+from cccrise.figures.figureS_alad_pacmaps.weight_pacmaps import SATURATION_PERCENTILE
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.utils import celltype_component_association
 
@@ -220,18 +216,13 @@ def figure_tick_size(fig: Figure) -> float:
 
 def place_legends(fig: Figure) -> None:
     """Move in-axes legends to matplotlib's least-overlapping spot ("best").
-    "best" can't see datashader images (PaCMAPs, the sender/receiver
-    scatter), so those axes get their legend just outside on the right.
-    Legends already anchored elsewhere (e.g. beside a heatmap) are left alone."""
+    Legends already anchored elsewhere (e.g. beside a heatmap or a per-cell
+    scatter) are left alone."""
     for ax in fig.axes:
         legend = ax.get_legend()
         if legend is None or getattr(legend, "_bbox_to_anchor", None) is not None:
             continue
-        if ax.images:
-            legend.set_loc("upper left")
-            legend.set_bbox_to_anchor((1.01, 1), transform=ax.transAxes)
-        else:
-            legend.set_loc("best")
+        legend.set_loc("best")
 
 
 def styled_figure(scale_ticks: bool = True):
@@ -260,39 +251,9 @@ def mark_selected_rank(ax: plt.Axes, rank: int) -> None:
 
 
 def plot_celltype_pacmap(ds: LoadedDataset, ax: plt.Axes) -> None:
-    X = ds.adata
-    plot_labels_pacmap(
-        X,
-        labelType=ds.spec.celltype_col,
-        ax=ax,
-        color_key=colors.celltype_colors(X.obs[ds.spec.celltype_col].nunique()),
-    )
+    plot_celltype_points(ax, ds.adata, ds.spec.key, np.asarray(ds.adata.obsm["PaCMAP"]))
+    pacmap_axes(ax)
     ax.set_title("Cell Type")
-
-
-def enlarge_points(
-    ax: plt.Axes, points: np.ndarray, point_colors: list[str], scale: float
-) -> None:
-    """Redraw `points` over the axes' datashader image as circles `scale`
-    times the diameter of a circle with one canvas pixel's area. Sized in
-    data units, so they track the image when Shiny resizes the figure."""
-    image = ax.images[0]
-    x0, x1, y0, y1 = image.get_extent()
-    n_rows, n_cols = image.get_size()
-    diameter = scale * 2 / np.sqrt(np.pi)
-    ax.add_collection(
-        EllipseCollection(
-            widths=diameter * abs(x1 - x0) / n_cols,
-            heights=diameter * abs(y1 - y0) / n_rows,
-            angles=0,
-            units="xy",
-            offsets=points,
-            offset_transform=ax.transData,
-            facecolors=point_colors,
-            linewidths=0,
-        ),
-        autolim=False,
-    )
 
 
 def top_perc_slider(input_id: str) -> ui.Tag:
@@ -415,8 +376,10 @@ def server(input, output, session):
             )
         notes = [
             (
-                "Cached rank-selection sweeps: RISE bi-cross-validation (BiCV) "
-                "R2X, and CPD fit R2X and component collinearity. Dashed lines mark the RISE rank "
+                "Cached rank-selection sweeps (as in manuscript Figure 2a-c): RISE "
+                "full-data fit R2X and bi-cross-validation (BiCV) train and test "
+                "R2X, CPD fit and k-fold imputation R2X, and CPD component "
+                "collinearity. Dashed lines mark the RISE rank "
                 f"(**{rise_rank()}**) and CP rank (**{cp_rank()}**) of the loaded "
                 "factors used by the remaining tabs."
             )
@@ -442,7 +405,7 @@ def server(input, output, session):
             axes[0].axis("off")
             axes[0].text(0.5, 0.5, "No cached RISE BiCV sweep", ha="center")
         else:
-            plot_bicv_r2x(sweeps.rise, axes[0])
+            plot_rise_rank(sweeps.rise, axes[0])
             axes[0].set_title("RISE BiCV Rank Selection")
             mark_selected_rank(axes[0], rise_rank())
 
@@ -451,12 +414,14 @@ def server(input, output, session):
                 ax.axis("off")
                 ax.text(0.5, 0.5, "No cached CPD sweep", ha="center")
         else:
-            plot_cpd_fit_r2x(sweeps.cpd, axes[1], color=colors.categorical_colors(1)[0])
-            axes[1].set_title("CPD Fit $R^2X$")
-            plot_collinearity(
-                sweeps.cpd, axes[2], colors=(colors.GREY, colors.BLUE, colors.ORANGE)
+            plot_cpd_fit_r2x(
+                sweeps.cpd, axes[1], color=style.COLORS["fit_full"], marker=None
             )
-            axes[2].set_title("CPD Component Collinearity Screen")
+            if sweeps.cpd_imputation is not None:
+                plot_cpd_imputation_r2x(sweeps.cpd_imputation, axes[1])
+            axes[1].set_title("CPD Fit and Imputation $R^2X$")
+            plot_collinearity_medians(axes[2], input.dataset())
+            axes[2].set_title("CPD Collinearity by Mode (10 Seeded Starts)")
             for ax in axes[1:]:
                 mark_selected_rank(ax, cp_rank())
         for ax in axes:
@@ -502,18 +467,18 @@ def server(input, output, session):
         ds = dataset()
         X = ds.adata
         fig, axes = plt.subplots(1, 4, figsize=(20, 8), layout="tight")
-
-        plot_condition_factors(X, axes[0], cond=ds.spec.condition_col)
-        axes[0].set_title("Condition Factor (A)")
-
-        plot_eigenstate_factors(X, axes[1], factor_type="B")
-        axes[1].set_title("Sender Eigenstate Factor (B)")
-
-        plot_eigenstate_factors(X, axes[2], factor_type="C")
-        axes[2].set_title("Receiver Eigenstate Factor (C)")
-
-        plot_lr_factors(X, axes[3], trim=True, weight=input.lr_weight())
-        axes[3].set_title("Ligand-Receptor Factor (D)")
+        plot_cp_factor_heatmaps(X, axes, ds.spec.condition_col, input.lr_weight())
+        for ax, title in zip(
+            axes,
+            (
+                "Condition Factor (A)",
+                "Sender Eigenstate Factor (B)",
+                "Receiver Eigenstate Factor (C)",
+                "Ligand-Receptor Factor (D)",
+            ),
+            strict=True,
+        ):
+            ax.set_title(title)
 
         return fig
 
@@ -753,7 +718,7 @@ def server(input, output, session):
         max_labels = int(input.lr_max_labels() or 10)
 
         fig, ax = plt.subplots(figsize=(10, 4.5), layout="tight")
-        plot_lr_factor_rank(
+        plot_lr_rank(
             X,
             cmp,
             ax,
@@ -779,39 +744,26 @@ def server(input, output, session):
             fig, axes = plt.subplots(
                 nrows, ncols, figsize=(4.5 * ncols, 3.2 * nrows), layout="tight"
             )
-            plot_wc_histogram_grid(
+            plot_weight_histogram_grid(
                 X,
                 cmp,
                 axes,
                 celltype_col=celltype_col,
                 top_perc=top_perc,
                 log_y=input.dist_log_y(),
-                show_stats=False,
-                colors=[colors.SENDER, colors.RECEIVER],
+                colors=(colors.SENDER, colors.RECEIVER),
             )
             return fig
 
         else:
             fig, axes = plt.subplots(1, 2, figsize=(16, 6), layout="tight")
-            plot_wc_per_celltype(
-                X,
-                cmp,
-                axes[0],
-                cellType=celltype_col,
-                factor_matrix="B",
-                color=colors.SENDER,
-            )
-            axes[0].set_title(f"Cmp. {cmp} Sender Weight by Cell Type")
-
-            plot_wc_per_celltype(
-                X,
-                cmp,
-                axes[1],
-                cellType=celltype_col,
-                factor_matrix="C",
-                color=colors.RECEIVER,
-            )
-            axes[1].set_title(f"Cmp. {cmp} Receiver Weight by Cell Type")
+            for ax, role, color in zip(
+                axes,
+                ("sender", "receiver"),
+                (colors.SENDER, colors.RECEIVER),
+                strict=True,
+            ):
+                plot_weight_boxplot(X, cmp, ax, celltype_col, role, color)
             return fig
 
     @render.plot
@@ -851,9 +803,7 @@ def server(input, output, session):
                 celltype_col=celltype_col,
                 stat=stat,
                 top_perc=top_perc,
-                normalize="global",
                 scale=scale,
-                show_counts=True,
                 cbar=ft == "receiver",
             )
             ax.set_title(f"{label} Cell Type Association")
@@ -1233,14 +1183,7 @@ def server(input, output, session):
 
         points = np.asarray(ds.adata.obsm["PaCMAP"])
         fig, ax = plt.subplots(figsize=(6.5, 5.5), layout="tight")
-        # `plot_categorical_scatter` takes one color per present category, in
-        # sorted order; a category can be empty (e.g. no "Both" cells)
-        plot_categorical_scatter(
-            points,
-            pd.Series(categories),
-            ax,
-            color_key=[STRENGTH_CATEGORY_COLORS[c] for c in np.unique(categories)],
-        )
+        plot_categorical_scatter(ax, points, categories, STRENGTH_CATEGORY_COLORS)
         selected = np.flatnonzero(selected_celltype_mask())
         # Strong senders/receivers drawn last, over the "Neither" majority
         selected = selected[
@@ -1252,7 +1195,7 @@ def server(input, output, session):
             [STRENGTH_CATEGORY_COLORS[c] for c in categories[selected]],
             scale=1 + input.tt_point_size() / 100,
         )
-        assign_labels(ax)
+        pacmap_axes(ax)
         return fig
 
     @render.plot
@@ -1277,11 +1220,8 @@ def server(input, output, session):
         for ax_row, role_row in zip(axes, role_grid, strict=True):
             for ax, (x_role, y_role) in zip(ax_row, role_row, strict=True):
                 plot_weight_scatter(ax, (x_cmp, x_role), (y_cmp, y_role))
-        # Grid panels fill equal cells instead of following each pair's data
-        # aspect; one shared cell type legend, on the top-right panel.
+        # One shared cell type legend, on the top-right panel
         for i, ax in enumerate(axes.flat):
-            if n > 1:
-                ax.set_aspect("auto")
             if i != n - 1:
                 ax.get_legend().remove()
         return fig
@@ -1311,26 +1251,13 @@ def server(input, output, session):
         """Per-cell 2D `points` colored by cell type, `celltype`'s points
         enlarged on top, and optional (x, y) dashed threshold lines."""
         ds = dataset()
-        celltypes = ds.adata.obs[ds.spec.celltype_col]
-        color_key = colors.celltype_colors(celltypes.nunique())
-        # Most abundant cell type drawn beneath the rest (the selected cell
-        # type's enlarged points still go on top)
-        plot_categorical_scatter(
+        plot_celltype_points(
+            ax,
+            ds.adata,
+            ds.spec.key,
             points,
-            celltypes,
-            ax,
-            color_key=color_key,
-            background_label=celltypes.value_counts().idxmax(),
-        )
-
-        # Same cell type -> color assignment `plot_categorical_scatter` makes
-        selected = celltypes.to_numpy() == celltype
-        celltype_color = dict(zip(np.unique(celltypes), color_key))[celltype]
-        enlarge_points(
-            ax,
-            points[selected],
-            [celltype_color] * int(selected.sum()),
-            scale=1 + input.tt_point_size() / 100,
+            selected=celltype,
+            selected_scale=1 + input.tt_point_size() / 100,
         )
         if thresholds is not None:
             ax.axvline(thresholds[0], color="0.3", ls="--", lw=1.0)
@@ -1348,8 +1275,6 @@ def server(input, output, session):
         plot_celltype_scatter(
             ax, projections[:, [x_eig - 1, y_eig - 1]], input.eig_scatter_celltype()
         )
-        # Fill the panel rather than follow the pair's data aspect
-        ax.set_aspect("auto")
         ax.set(
             xlabel=f"Eigenstate {x_eig} Projection",
             ylabel=f"Eigenstate {y_eig} Projection",
@@ -1362,29 +1287,31 @@ def server(input, output, session):
         ds = dataset()
         X = ds.adata
         cmp = input.component()
-        factor_matrix = "B" if input.weight_source() == "sender" else "C"
+        weights = X.obsm[ROLE_WEIGHT_KEYS[input.weight_source().capitalize()]]
 
         fig, axes = plt.subplots(1, 3, figsize=(20, 6.5), layout="tight")
 
-        plot_wc_pacmap(
+        plot_value_pacmap(
             X,
-            cmp,
+            weights[:, cmp - 1],
             axes[0],
-            cbarMax=0.3,
-            factor_matrix=factor_matrix,
-            cbar_match_height=True,
+            f"Cmp. {cmp} {input.weight_source().capitalize()} Weight",
+            "Weight",
+            SATURATION_PERCENTILE,
         )
-        axes[0].set_title(f"Cmp. {cmp} {input.weight_source().capitalize()} Weight")
 
         plot_celltype_pacmap(ds, axes[1])
 
         if ds.spec.group_col is not None and ds.spec.group_col in X.obs:
-            plot_labels_pacmap(
-                X,
-                labelType=ds.spec.group_col,
-                ax=axes[2],
-                color_key=colors.categorical_colors(X.obs[ds.spec.group_col].nunique()),
+            groups = X.obs[ds.spec.group_col].astype(str).to_numpy()
+            levels = np.unique(groups)
+            plot_categorical_scatter(
+                axes[2],
+                np.asarray(X.obsm["PaCMAP"]),
+                groups,
+                dict(zip(levels, colors.categorical_colors(len(levels)), strict=True)),
             )
+            pacmap_axes(axes[2])
             axes[2].set_title(ds.spec.group_col)
         else:
             axes[2].axis("off")
@@ -1396,12 +1323,14 @@ def server(input, output, session):
     def eigenstate_pacmap_plot():
         ds = dataset()
         fig, axes = plt.subplots(1, 2, figsize=(16, 6.5), layout="tight")
-        plot_eigenstate_pacmap(
+        eigenstate = input.eigenstate()
+        plot_value_pacmap(
             ds.adata,
-            input.eigenstate(),
+            np.asarray(ds.adata.obsm["projections"])[:, eigenstate - 1],
             axes[0],
-            span_percentile=input.eig_span_percentile(),
-            cbar_match_height=True,
+            f"Eigenstate {eigenstate} Weight",
+            "Projection",
+            input.eig_span_percentile(),
         )
         plot_celltype_pacmap(ds, axes[1])
         return fig
@@ -1418,8 +1347,6 @@ def server(input, output, session):
             celltype_col=ds.spec.celltype_col,
             stat=input.eig_assoc_stat(),
             top_perc=float(input.eig_top_perc()),
-            normalize="global",
-            show_counts=True,
         )
         ax.set_title("Cell Type Association with Eigenstates")
 

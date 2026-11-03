@@ -48,8 +48,7 @@ def component_tables() -> list[dict[str, pd.DataFrame]]:
 
 
 def _draw_lr_dots(ax, lr: pd.DataFrame):
-    in_top = (lr.abs().rank(ascending=False, method="first") <= TOP_N_LR).any(axis=1)
-    table = lr[in_top]
+    table = _shown_pairs(lr)
     table = table.loc[table.abs().mean(axis=1).sort_values(ascending=False).index]
     x, y = np.meshgrid(np.arange(table.shape[1]), np.arange(table.shape[0]))
     points = ax.scatter(
@@ -79,8 +78,80 @@ def _finish(ax, table: pd.DataFrame) -> None:
     ax.set_xlim(-0.5, table.shape[1] - 0.5)
 
 
+def save_source_data(tables: list[dict[str, pd.DataFrame]]) -> None:
+    """The plotted normalized loadings per default component, and the per-cell
+    weights the cell type heatmaps average."""
+    labels = {m: S.SCORE_LABELS[m] for m in S.ALL_SCORES}
+
+    def long(kind: str, entry: str, select) -> pd.DataFrame:
+        return pd.concat(
+            select(table[kind])
+            .rename(columns=labels)
+            .rename_axis(entry)
+            .reset_index()
+            .melt(id_vars=entry, var_name="Method", value_name="Normalized loading")
+            .assign(Component=i)
+            for i, table in enumerate(tables, start=1)
+        )
+
+    common.source_data(
+        "loading_lr_by_score",
+        long("lr", "LR pair", _shown_pairs),
+        "One row per (default-score CP component, LR pair shown, score): the LR "
+        "loading of the score's paired component divided by its largest "
+        f"|loading| (dot color and area); shown are each score's top {TOP_N_LR} "
+        "pairs.",
+        part=0,
+    )
+    common.source_data(
+        "loading_celltype_by_score",
+        pd.concat(
+            long(kind, "Cell type", lambda t: t).assign(Role=role)
+            for kind, role in (("sender", "Sender"), ("receiver", "Receiver"))
+        ),
+        "One row per (default-score CP component, role, cell type, score): the "
+        "cell type's mean per-cell sender or receiver weight on the score's "
+        "paired component, divided by its largest |mean| across cell types "
+        "(the heatmaps).",
+        part=1,
+    )
+    common.source_data(
+        "weight_cells_by_score",
+        cell_weights(),
+        "One row per cell: its cell type and, for each score, its per-cell "
+        "sender and receiver weight on the component paired with each "
+        "default-score component (numbered by the default score), the values "
+        "the cell type heatmaps average.",
+        part=1,
+    )
+
+
+def cell_weights() -> pd.DataFrame:
+    """Per cell, every score's sender and receiver weight per default
+    component."""
+    ad = S.method_adata(S.DEFAULT_SCORE)
+    columns = {
+        "Cell": ad.obs_names,
+        "Cell type": ad.obs[S.SPEC.celltype_column].to_numpy(),
+    }
+    for method in S.ALL_SCORES:
+        obsm = S.method_adata(method).obsm
+        for i, j in S.matched_pairs(method):
+            for key, role in (("sc_B", "sender"), ("rc_C", "receiver")):
+                columns[f"{S.SCORE_LABELS[method]} {role} cmp {i + 1}"] = obsm[key][
+                    :, j
+                ]
+    return pd.DataFrame(columns)
+
+
+def _shown_pairs(lr: pd.DataFrame) -> pd.DataFrame:
+    """The LR pairs `_draw_lr_dots` shows: each method's top `TOP_N_LR`."""
+    return lr[(lr.abs().rank(ascending=False, method="first") <= TOP_N_LR).any(axis=1)]
+
+
 def plot(fig):
     tables = component_tables()
+    save_source_data(tables)
     axs = fig.subplots(len(tables), 3, squeeze=False, sharex=True)
     for i, (row, component) in enumerate(zip(axs, tables, strict=True), start=1):
         points = _draw_lr_dots(row[0], component["lr"])

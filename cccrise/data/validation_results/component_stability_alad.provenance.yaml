@@ -18,9 +18,9 @@ cp_rank: 5
 axes:
 - seed_only
 - jackknife
-n_replicates: 25
+n_replicates: 100
 n_replicates_per_axis:
-  seed_only: 25
+  seed_only: 100
   jackknife: 45
 jackknife_unit: patient_id
 group_column: 6monthcondition
@@ -43,10 +43,11 @@ hill_k: 0.5
 random_state: 42
 backend: cupy
 compress: true
+cp_device: auto
+cp_backend: cupy
+cp_dtype: float32
 rise_compression_options:
   n_power_iter: 20
-cp_compression_options:
-  oversample: 5
 seed_formula: 'random_state * 1000 + replicate + 1 seeds a replicate''s RISE and CP fits (see
   validation.replicate_seed). On the seed_only axis the seed is the only thing that differs
   from the reference: same cells, same conditions, same ligand-receptor pairs'
@@ -72,32 +73,32 @@ anova_alignment: each replicate's ANOVA statistics carried onto the reference co
 component_numbering: core fit cccrise/data/factors/bal_alad_factors.nc (validation.relabel_workflow_fit)
 lr_roster_stable: true
 interaction_tensor_shape: [47, 17, 17, 513]
-r2x_pf2: 0.0314801027896493
-r2x_cp: 0.44989390730526313
+r2x_pf2: 0.03148006712529483
+r2x_cp: 0.452614790263307
 reference_eta_squared:
-- 0.07612874919491766
-- 0.03731113329266281
-- 0.07531418160170801
-- 0.2898582587092574
-- 0.05231724507736932
+- 0.07686459031132442
+- 0.04217258174022018
+- 0.09200758718580275
+- 0.27686212164234
+- 0.05365755687160538
 reference_f:
-- 1.1810939430246468
-- 0.5555199909575225
-- 1.1674270851199597
-- 5.850430695635435
-- 0.7912779977059385
+- 1.1934606590747836
+- 0.6310882942858901
+- 1.452407969183881
+- 5.487690792641363
+- 0.8126990964819957
 reference_p:
-- 0.3281244430881892
-- 0.6472432691775211
-- 0.33323030678151644
-- 0.0019192932228283637
-- 0.5054478291236448
+- 0.32356756482534255
+- 0.5989592150754028
+- 0.2408885095762918
+- 0.0027788670022262235
+- 0.4938825609325844
 reference_p_adj:
-- 0.5553838446358608
-- 0.6472432691775211
-- 0.5553838446358608
-- 0.009596466114141819
-- 0.631809786404556
+- 0.5392792747089042
+- 0.5989592150754028
+- 0.5392792747089042
+- 0.013894335011131118
+- 0.5989592150754028
 reference_group_mean_diff:
 - .nan
 - .nan
@@ -111,11 +112,11 @@ reference_top_lr_pair:
 - GZMA^F2R
 - BTC^EGFR
 reference_top_lr_loading:
-- 0.8306876206738312
-- 0.6543580797112921
-- 0.6403408809342237
-- 0.4813470393708595
-- 0.9019617445268338
+- 0.8458078671481302
+- 0.6662258628944466
+- 0.6358331293592551
+- 0.48089726945421296
+- 0.856528135801986
 n_components_significant: 1
 reference_seed: 42
 first_replicate_seed: 42001
@@ -124,5 +125,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 513
-git_sha: d62785a4980234c84d45b359d8c51ea9eba4faee-dirty
-generated: '2026-10-20T22:46:12+00:00'
+git_sha: 5c9cc1b71aa4a3a337827f043decac278098ce64
+generated: '2026-10-30T08:03:31+00:00'

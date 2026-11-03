@@ -19,6 +19,17 @@ def plot(axs):
     lr_table = common.load_runner_output(
         spec.significance_lr_filename(), VALIDATION_DIR
     )
+    common.source_data(
+        "permutation_significance_by_lr_pair",
+        lr_table,
+        "One row per LR pair, over every condition x sender eigenstate x "
+        "receiver eigenstate entry: mean observed communication score, mean of "
+        "its cell-permutation null, mean and median z-score against the null, "
+        "fraction of entries with permutation p < 0.05 and < 0.01 (uncorrected), "
+        "and the largest observed score. Each entry's observed score, p-value, "
+        "and null mean and SD are deposited separately "
+        "(significance_entries_alad.nc).",
+    )
     _calibration(lr_table, axs[0])
     _observed_vs_null(lr_table, axs[1])
 

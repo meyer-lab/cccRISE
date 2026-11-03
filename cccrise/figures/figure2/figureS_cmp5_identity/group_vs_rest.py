@@ -18,8 +18,9 @@ def plot(axs):
         [V.limits(*V.volcano_data(g, "rest")[1:]) for g in S.DE_GROUPS], axis=0
     )
     markers = S.CELLTYPE_MARKERS["Epithelial cells"]
-    for ax, group in zip(axs, S.DE_GROUPS, strict=True):
+    for part, (ax, group) in enumerate(zip(axs, S.DE_GROUPS, strict=True)):
         V.plot_volcano(ax, group, "rest", markers, lims)
+        V.save_volcano(group, "rest", part)
     V.legend(axs[1])
 
 

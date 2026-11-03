@@ -47,4 +47,6 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations that are invisi
 
 {{< include _methods.qmd >}}
 
+{{< include _ev_figures.qmd >}}
+
 # References

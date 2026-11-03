@@ -5,6 +5,7 @@ quadrant (`legend`) and with given genes (e.g. `top_genes`) labeled
 (`_label`)."""
 
 import numpy as np
+import pandas as pd
 from matplotlib.lines import Line2D
 
 from ... import common, style
@@ -39,6 +40,41 @@ def volcano_data(group: str, reference: str):
     detected, _ = S.group_expression(ranking.index.tolist())
     delta = detected[group] - detected[reference]
     return ranking, delta, -np.log10(np.clip(ranking["q"], Q_FLOOR, 1))
+
+
+def volcano_table(group: str, reference: str) -> pd.DataFrame:
+    """Every gene's point on the volcano of `group` against `reference`, with
+    its Wilcoxon statistics and detected fractions, as source data."""
+    ranking, delta, y = volcano_data(group, reference)
+    detected, _ = S.group_expression(ranking.index.tolist())
+    return pd.DataFrame(
+        {
+            "Gene": ranking.index,
+            "Wilcoxon score": ranking["score"].to_numpy(),
+            "p": ranking["p"].to_numpy(),
+            "q (BH)": ranking["q"].to_numpy(),
+            f"Detected fraction, {group}": detected[group].to_numpy(),
+            f"Detected fraction, {reference}": detected[reference].to_numpy(),
+            "Detected fraction difference": delta.to_numpy(),
+            f"-log10 q (plotted, floored at q = {Q_FLOOR:g})": y.to_numpy(),
+            "Enriched": enriched(ranking, delta).to_numpy(),
+        }
+    )
+
+
+def save_volcano(group: str, reference: str, part: int | None = None) -> None:
+    """`volcano_table` of `group` against `reference` as the panel's source data."""
+    common.source_data(
+        f"de_{group}_vs_{reference}",
+        volcano_table(group, reference),
+        f"One row per gene: two-sided Wilcoxon rank-sum test (scanpy) of the "
+        f"{group} group's cells against the {reference} cells' normalized "
+        "expression, p-values Benjamini-Hochberg corrected across genes (q); the "
+        "fraction of each group's cells detecting the gene and their difference "
+        "(x axis); 'Enriched' marks a gene with q < 0.05 whose Wilcoxon score has "
+        "the same sign as its detected fraction difference (colored).",
+        part=part,
+    )
 
 
 def enriched(ranking, delta):

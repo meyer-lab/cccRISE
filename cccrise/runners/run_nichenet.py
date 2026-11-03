@@ -38,8 +38,14 @@ from ..validation.nichenet import (
     shuffled_percentiles,
     weighted_percentile_tests,
 )
-from ._cli import add_dataset_argument, dataset_metadata, resolve_output, resulting_dims
-from .datasets import DATASETS, VALIDATION_DIR, DatasetSpec
+from ._cli import (
+    add_dataset_argument,
+    dataset_metadata,
+    resolve_dataset,
+    resolve_output,
+    resulting_dims,
+)
+from .datasets import VALIDATION_DIR, DatasetSpec
 from .provenance import build_metadata, git_sha, relpath, sha256_file, write_metadata
 
 HEADER = """\
@@ -211,7 +217,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    spec = DATASETS[args.dataset]
+    spec = resolve_dataset(args)
     run_nichenet(
         spec,
         top_perc=args.top_perc,

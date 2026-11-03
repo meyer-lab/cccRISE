@@ -12,11 +12,16 @@ panel, each exposing `plot(fig)` (draws into a Figure or SubFigure) and
 the panels with `panel_grid` and labels them with `label_panels`. Each
 supplementary figure is a `figureS_<name>/` package nested in the main
 figure it supports, or at the top level if it supports no single one.
+
+Each panel saves the values it plots with `source_data` (or declares
+`SCHEMATIC = True`), which `figures/source_data.py` packages as EMBO source
+data.
 """
 
 import functools
 import importlib
 import itertools
+import shutil
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -34,6 +39,7 @@ import yaml
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure, SubFigure
+from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.text import Text
 
@@ -47,11 +53,13 @@ from ..factors import (
     ALAD_FACTORS_PATH,
     COVID19_FACTORS_PATH,
     DATA_DIR,
+    LOADED_PATHS,
     clean_memory,
     load_factors_to_anndata,
     load_or_compute_dataframe,
 )
 from ..import_data import import_alad, import_balf_covid
+from ..rank_selection import distinct_minima
 from ..runners.datasets import DATASETS, RANK_SELECTION_DIR
 from ..runners.provenance import read_metadata
 from ..utils import (
@@ -130,18 +138,40 @@ def load_runner_output(
         raise FileNotFoundError(
             f"{path} not found. Produce it with the matching runner, e.g.\n{hint}"
         )
+    _SOURCE["inputs"].add(path.resolve())
     return pd.read_parquet(path)
 
 
 def load_cpd_rank(dataset: str) -> pd.DataFrame:
-    """`cccrise-cpdrank`'s table for `dataset`: one row per (rank, component)
-    when its ridge comparison ran, with per-rank columns repeated (see
-    `per_rank`)."""
+    """`cccrise-cpdrank`'s sweep for `dataset`: one row per CP rank and
+    seeded start (see `production_fits`)."""
     return load_runner_output(DATASETS[dataset].cpd_rank_filename(), RANK_SELECTION_DIR)
 
 
+def production_fits(sweep: pd.DataFrame) -> pd.DataFrame:
+    """The production start's row (start 0) at each rank of a `load_cpd_rank`
+    sweep."""
+    return sweep[sweep["Start"] == 0]
+
+
+def load_cpd_ridge(dataset: str) -> pd.DataFrame:
+    """`cccrise-cpdrank`'s ridge comparison for `dataset`: one row per (rank,
+    component), with per-rank columns repeated (see `per_rank`)."""
+    return load_runner_output(
+        DATASETS[dataset].cpd_ridge_filename(), RANK_SELECTION_DIR
+    )
+
+
+def load_cpd_imputation(dataset: str) -> pd.DataFrame:
+    """`cccrise-cpdrank`'s imputation R2X for `dataset`: one row per (rank,
+    fold split)."""
+    return load_runner_output(
+        DATASETS[dataset].cpd_imputation_filename(), RANK_SELECTION_DIR
+    )
+
+
 def per_rank(sweep: pd.DataFrame) -> pd.DataFrame:
-    """One row per rank of a `load_cpd_rank` table."""
+    """One row per rank of a `load_cpd_ridge` table."""
     return sweep.drop_duplicates("Rank")
 
 
@@ -196,6 +226,7 @@ def compose(
     `plot(fig)`) drawn into its `layout` cells, then lettered."""
     fig, subfigs = panel_grid(figsize, layout, **gridspec_kw)
     for name, subfig in subfigs.items():
+        _SOURCE["panel"] = panels[name].__name__.rpartition(".")[2]
         panels[name].plot(subfig)
     label_panels(
         {panels[name].__name__.rpartition(".")[2]: sf for name, sf in subfigs.items()}
@@ -211,6 +242,7 @@ def standalone(
     """One panel drawn on a figure of its own, with `legend(fig)` for panels
     whose master figure shares one legend across panels."""
     fig = plt.figure(figsize=size, layout="constrained")
+    _SOURCE["panel"] = plot.__module__.rpartition(".")[2]
     plot(fig)
     if legend is not None:
         legend(fig)
@@ -378,6 +410,7 @@ def _draw_fixed(fig: Figure, module) -> list[_AxesBox]:
         ax = fig.add_axes((0.4, 0.4, w / FIXED_MEASURE_SIZE, h / FIXED_MEASURE_SIZE))
         ax.set_label(module.__name__.rsplit(".", 1)[-1])  # found by `panel_axes`
         boxes.append(_AxesBox(ax, w, h))
+    _SOURCE["panel"] = module.__name__.rsplit(".", 1)[-1]
     module.plot([b.ax for b in boxes])
     for b in boxes:
         tight, bbox = b.ax.get_tightbbox(), b.ax.bbox
@@ -450,16 +483,19 @@ def placeholder(fig: Figure | SubFigure | plt.Axes, text: str) -> None:
     )
 
 
-def build_figure(figure: str, panel: str | None = None) -> Figure:
-    """Figure `figure` (e.g. '2', 'S_cmp_stability'), or one of its panels."""
-    style.apply_style()
+def figure_package(figure: str) -> str:
+    """Dotted name of figure `figure`'s package (e.g. '2', 'S_cmp_stability')."""
     package = f"figure{figure}"
     # Supplements may be nested in their main figure's package
     (master,) = FIGURES_DIR.glob(f"**/{package}/{package}.py")
-    parts = master.parent.relative_to(FIGURES_DIR).parts
-    module = importlib.import_module(
-        ".".join(("cccrise.figures", *parts, panel or package))
-    )
+    return ".".join(("cccrise.figures", *master.parent.relative_to(FIGURES_DIR).parts))
+
+
+def build_figure(figure: str, panel: str | None = None) -> Figure:
+    """Figure `figure` (e.g. '2', 'S_cmp_stability'), or one of its panels."""
+    style.apply_style()
+    package = figure_package(figure)
+    module = importlib.import_module(f"{package}.{panel or f'figure{figure}'}")
     return module.makeFigure()
 
 
@@ -476,27 +512,84 @@ def genFigure():
     extension = "png" if "--png" in sys.argv else "svg"
     figure, panel = args[0], (args[1] if len(args) > 1 else None)
 
-    fig = build_figure(figure, panel)
     output_dir = OUTPUT_DIR / f"figure{figure}"
+    _SOURCE["dir"] = output_dir / SOURCE_DATA_SUBDIR
+    if panel is None:  # a panel dropped from the figure leaves no data behind
+        shutil.rmtree(_SOURCE["dir"], ignore_errors=True)
+    fig = build_figure(figure, panel)
     output_dir.mkdir(parents=True, exist_ok=True)
     # No bbox_inches="tight": figures are drawn at their final print size.
     fig.savefig(output_dir / f"{panel or f'figure{figure}'}.{extension}")
     if panel is None:
         record_panel_letters(figure, fig)
+        _SOURCE["dir"].mkdir(parents=True, exist_ok=True)
+        (_SOURCE["dir"] / SOURCE_INPUTS).write_text(
+            yaml.safe_dump(sorted(str(p) for p in _SOURCE["inputs"] | LOADED_PATHS))
+        )
     print(f"Figure {' '.join(args)} is done after {time.time() - start:.1f} s.\n")
 
 
 def record_panel_letters(figure: str, fig: Figure) -> None:
-    """Set `fig<figure>` in `PANELS_PATH` to the letters of each panel
-    module's axes, as tagged by `_letter_axes` or `label_panels`."""
+    """Set `fig<figure>` in `PANELS_PATH` to `panel_letters(fig)`."""
+    panels = yaml.safe_load(PANELS_PATH.read_text()) or {}
+    panels[f"fig{figure}"] = panel_letters(fig)
+    PANELS_PATH.write_text(
+        yaml.safe_dump(panels, sort_keys=False, default_flow_style=None)
+    )
+
+
+def panel_letters(fig: Figure) -> dict[str, list[str]]:
+    """The letters of each panel module's axes, as tagged by `_letter_axes`
+    or `label_panels`."""
     letters: dict[str, list[str]] = {}
     for text in fig.findobj(Text):
         if module := text.get_gid():
             letters.setdefault(module, []).append(text.get_text().lower())
-    panels = yaml.safe_load(PANELS_PATH.read_text()) or {}
-    panels[f"fig{figure}"] = {module: sorted(ls) for module, ls in letters.items()}
-    PANELS_PATH.write_text(
-        yaml.safe_dump(panels, sort_keys=False, default_flow_style=None)
+    return {module: sorted(ls) for module, ls in letters.items()}
+
+
+# Each panel's EMBO source data, saved by `source_data` only while
+# `cccrise-fbuild` builds into `dir`: the panel module being drawn, the panels
+# whose old files were cleared this build, and the runner outputs read
+# (factors files read are in `factors.LOADED_PATHS`)
+SOURCE_DATA_SUBDIR = "source_data"
+SOURCE_INPUTS = "inputs.yaml"
+_SOURCE: dict[str, Any] = {
+    "dir": None,
+    "panel": None,
+    "cleared": set(),
+    "inputs": set(),
+}
+
+
+def source_data(
+    name: str, data: pd.DataFrame | pd.Series, description: str, part: int | None = None
+) -> None:
+    """Save `data`, values the panel being drawn plots, as its EMBO source
+    data file `<name>.csv`, explained in the panel's README by `description`
+    (which should name any column whose meaning or units its name doesn't
+    make plain). Give the individual values behind any summary drawn, and
+    name any integer index that labels rows (an unnamed one is dropped).
+    Name files `<assay>_<entity>` in snake case, e.g. `bicv_r2x_by_rise_rank`
+    or `de_sender_vs_rest`. `part`
+    is the index of the panel module's lettered axes the file belongs to (1:
+    the C of a module lettered B-C); by default it spans them all."""
+    root, panel = _SOURCE["dir"], _SOURCE["panel"]
+    if root is None:
+        return
+    folder = root / panel
+    if panel not in _SOURCE["cleared"]:
+        shutil.rmtree(folder, ignore_errors=True)
+        _SOURCE["cleared"].add(panel)
+    folder.mkdir(parents=True, exist_ok=True)
+    frame = data.to_frame() if isinstance(data, pd.Series) else data
+    # Index labels kept as columns, but not an unnamed integer index: row
+    # positions left over from filtering or sorting
+    positional = frame.index.names == [None] and frame.index.dtype.kind in "iu"
+    frame = frame.reset_index(drop=positional)
+    frame.to_csv(folder / f"{name}.csv", index=False)
+    (folder / f"{name}.yaml").write_text(
+        yaml.safe_dump({"description": description, "part": part})
     )
 
 
@@ -539,36 +632,43 @@ def reference_line(
     )
 
 
-# --- Rank selection (ALAD Fig 2, IBD Figs 4-5) --------------------------------
+# --- Rank selection (ALAD Fig 2, IBD Fig 5) ------------------------------------
 
 
 def plot_rise_rank(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
     """In-sample R2X of the full-data fit, and in-sample (training block) and
     held-out BiCV R2X as mean +/- SD over the BiCV repeats, against RISE
     rank, from `cccrise-riserank`. BiCV peaks or plateaus near the rank that
-    generalizes to unseen cells and genes."""
+    generalizes to unseen cells and genes. Returns the three mean lines."""
     full = sweep[sweep["Metric"] == "Fit R2X"].groupby("Rank")["R2X"].mean()
-    ax.plot(full.index, full, color=style.COLORS["fit_full"], label="Fit")
+    lines = ax.plot(full.index, full, color=style.COLORS["fit_full"], label="Fit")
     repeats = sweep[sweep["Metric"] == "BiCV R2X"].groupby("Rank")
     for column, label, color in (
         ("Train Block R2X", "BiCV train", style.COLORS["fit"]),
         ("R2X", "BiCV test", style.COLORS["heldout"]),
     ):
         mean, sd = repeats[column].mean(), repeats[column].std().fillna(0)
-        plot_mean_sd(ax, mean.index, mean, sd, color, label)
+        lines.append(plot_mean_sd(ax, mean.index, mean, sd, color, label))
     mark_rank(ax, rank)
     ax.set_xlabel("RISE rank")
     ax.set_ylabel("$R^2X$")
-    ax.legend()
+    ax.legend(handles=lines)
+    return lines
 
 
 def plot_mean_sd(ax: plt.Axes, x, mean, sd, color: str, label: str, **kwargs):
-    """`mean` against `x` with a shaded, thinly outlined +/- `sd` band;
-    `kwargs` go to the mean line."""
-    ax.plot(x, mean, color=color, label=label, **kwargs)
-    for bound in (mean - sd, mean + sd):
+    """`mean` against `x` with a +/- `sd` `plot_band`; returns the mean line."""
+    return plot_band(ax, x, mean, mean - sd, mean + sd, color, label, **kwargs)
+
+
+def plot_band(ax: plt.Axes, x, center, lower, upper, color: str, label: str, **kwargs):
+    """`center` against `x` with a shaded, thinly outlined band from `lower`
+    to `upper`; `kwargs` go to the center line, which is returned."""
+    (line,) = ax.plot(x, center, color=color, label=label, **kwargs)
+    for bound in (lower, upper):
         ax.plot(x, bound, color=color, linewidth=style.LINE_WIDTH_THIN)
-        ax.fill_between(x, mean, bound, color=color, alpha=0.25, lw=0)
+        ax.fill_between(x, center, bound, color=color, alpha=0.25, lw=0)
+    return line
 
 
 def plot_cpd_fit_r2x(
@@ -585,68 +685,265 @@ def plot_cpd_fit_r2x(
     ax.set_ylabel("Fit $R^2X$")
 
 
-def plot_cpd_imputation_r2x(sweep: pd.DataFrame, ax: plt.Axes):
+def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     """Overlay k-fold imputation R2X (mean +/- SD over fold splits) on a
-    `plot_cpd_fit_r2x` axis, from `cccrise-cpdrank`."""
-    plot_mean_sd(
-        ax,
-        sweep["Rank"],
-        sweep["ImputationR2X"],
-        sweep["ImputationR2XSD"],
-        style.COLORS["heldout"],
-        "Imputation",
-    )
+    `plot_cpd_fit_r2x` axis, from `load_cpd_imputation`."""
+    by_rank = repeats.groupby("Rank")["ImputationR2X"]
+    mean, sd = by_rank.mean(), by_rank.std().fillna(0)
+    plot_mean_sd(ax, mean.index, mean, sd, style.COLORS["heldout"], "Imputation")
     ax.set_ylabel("$R^2X$")
-    ax.set_ylim(top=1.25 * sweep["FitR2X"].max())  # headroom for the legend
+    ax.set_ylim(top=1.25 * ax.dataLim.y1)  # headroom for the legend
     ax.legend(loc="upper right")
 
 
-def plot_collinearity(
-    sweep: pd.DataFrame,
-    ax: plt.Axes,
-    rank: int | None = None,
-    colors: tuple[str, str, str] = (
-        style.COLORS["muted"],
-        style.COLORS["emphasis"],
-        style.COLORS["up"],
-    ),
-):
-    """Number of modes the most collinear component pair is collinear in, per
-    CP rank, marked by whether that pair duplicates or cancels itself. A
-    canceling pair (collinear in >= 2 modes with opposing signs) flags a
-    degenerate fit. `colors` is (no collinear pair, near-duplicate,
-    canceling)."""
-    none_color, duplicate_color, canceling_color = colors
-    ax.plot(
-        sweep["Rank"],
-        sweep["MaxModesCollinear"],
-        color=style.COLORS["muted"],
-        zorder=1,
+# --- CP rank selection across seeded starts (ALAD Fig 2, IBD Fig 5) -----------
+# Drawn from `cccrise-cpdrank`'s seeded starts: fit R2X across starts, each
+# mode's collinearity, and the distinct minima the starts reach.
+
+CP_MODES = {"A": "Condition", "B": "Sender", "C": "Receiver", "D": "LR pair"}
+KNEEDLE_EDGE = "#e34948"
+#: Whether a start reaches its rank's most common solution -> color, label
+SOLUTION_COLORS = {True: style.CATEGORICAL[0], False: style.COLORS["muted"]}
+SOLUTION_LABELS = {True: "Most common solution", False: "Other solutions"}
+COLLINEARITY_BOX_COLOR = "0.9"
+#: The selected rank's marker above its bar in the minima panel
+RANK_MARKER: dict[str, Any] = {
+    "marker": "v",
+    "color": style.COLORS["reference"],
+    "markersize": 1.3 * style.MARKER_SIZE,
+    "linestyle": "",
+}
+
+
+def load_minima(dataset: str) -> pd.DataFrame:
+    """`rank_selection.distinct_minima` of `dataset`'s starts."""
+    start_fms = load_runner_output(
+        DATASETS[dataset].cpd_start_fms_filename(), RANK_SELECTION_DIR
     )
-    # NaN = no collinear pair; `fillna` keeps those rows out of both masks.
-    flag = sweep["WorstPairCanceling"]
-    none_found = flag.isna()
-    canceling = flag.fillna(False).astype(bool) & ~none_found
-    for mask, color, marker, label in (
-        (none_found, none_color, "o", "None collinear"),
-        (~canceling & ~none_found, duplicate_color, "o", "Near-duplicate"),
-        (canceling, canceling_color, "D", "Canceling"),
-    ):
-        ax.scatter(
-            sweep.loc[mask, "Rank"],
-            sweep.loc[mask, "MaxModesCollinear"],
-            color=color,
-            marker=marker,
-            s=style.POINT_SIZE,
-            label=label,
-            zorder=2,
-        )
-    mark_rank(ax, rank)
-    ax.set_ylim(-0.3, 7.5)  # headroom for the legend
-    ax.set_yticks(range(5))
+    r2x = load_cpd_rank(dataset).set_index(["Rank", "Seed"])["FitR2X"]
+    return distinct_minima(start_fms, r2x)
+
+
+def rank_axis(ax: plt.Axes, ranks) -> None:
+    ranks = np.asarray(ranks)
+    ax.set_xticks(ranks[ranks % 2 == 1] if ranks.max() > 10 else ranks)
+    ax.set_xlim(0.4, ranks.max() + 0.6)
     ax.set_xlabel("CP rank")
-    ax.set_ylabel("Modes collinear")
-    ax.legend(loc="upper right", fontsize=style.FONT_SIZE_DENSE)
+
+
+def kneedle_elbow(x, y) -> int:
+    """Elbow of a convex, decreasing curve by offline Kneedle (Satopaa et al.
+    2011, sensitivity 1, as `kneed.KneeLocator(curve="convex",
+    direction="decreasing")`)."""
+    x, y = np.asarray(x, float), np.asarray(y, float)
+    xn, yn = ((v - v.min()) / (v.max() - v.min()) for v in (x, y))
+    diff = (yn.max() - yn) - xn
+    maxima = [
+        i
+        for i in range(1, x.size - 1)
+        if diff[i] >= diff[i - 1] and diff[i] >= diff[i + 1]
+    ]
+    step = float(np.abs(np.diff(xn)).mean())
+    for i, m in enumerate(maxima):
+        stop = maxima[i + 1] if i + 1 < len(maxima) else x.size
+        if np.any(diff[m + 1 : stop] < diff[m] - step):
+            return int(x[m])
+    return int(x[int(np.argmax(diff))])
+
+
+def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
+    """Fit R2X against CP rank: the median over starts, banded by their
+    range, with the Kneedle elbow of the median curve circled."""
+    sweep = load_cpd_rank(dataset)
+    source_data(
+        "cp_fit_r2x_by_rank_and_start",
+        sweep[["Rank", "Start", "Seed", "FitR2X"]],
+        "Fit R2X of every seeded SVD start at every CP rank (start 0 is the "
+        "production fit); plotted as the median over starts, banded by their "
+        "range.",
+    )
+    by_rank = sweep.groupby("Rank")["FitR2X"]
+    median = by_rank.median()
+    color = style.COLORS["fit"]
+    ax.fill_between(
+        median.index, by_rank.min(), by_rank.max(), color=color, alpha=0.2, lw=0
+    )
+    ax.plot(median.index, median, color=color, label="Median start")
+    elbow = kneedle_elbow(median.index, 1 - median.to_numpy())
+    ax.plot(
+        elbow,
+        median[elbow],
+        marker="o",
+        markersize=3 * style.MARKER_SIZE,
+        fillstyle="none",
+        markeredgecolor=KNEEDLE_EDGE,
+        markeredgewidth=style.LINE_WIDTH,
+        zorder=4,
+    )
+    ax.annotate(
+        "Kneedle",
+        (elbow, median[elbow]),
+        xytext=(6, -10),
+        textcoords="offset points",
+        fontsize=style.FONT_SIZE_DENSE,
+    )
+    mark_rank(ax, rank)
+    rank_axis(ax, median.index)
+    ax.set_ylabel("Fit $R^2X$")
+
+
+def plot_collinearity_boxes(
+    ax: plt.Axes,
+    dataset: str,
+    rank: int | None = None,
+    part: int | None = None,
+    wrap_key: bool = False,
+) -> None:
+    """Per CP rank, the largest |cosine| between two components' LR pair
+    factors: a box over the seeded starts with each start overlaid, colored
+    by whether it reaches its rank's most common solution (`plot_minima`) and
+    keyed at the lower right, its labels on two lines each if `wrap_key`.
+    `part` is `source_data`'s."""
+    sweep = _collinearity_sweep(dataset, ["D"], part)
+    common_seeds = load_minima(dataset).query("Order == 1").set_index("Rank")["Seeds"]
+    sweep = sweep.assign(
+        Common=[s in common_seeds[r] for r, s in zip(sweep["Rank"], sweep["Seed"])]
+    )
+    kw = {"data": sweep, "x": "Rank", "y": "MaxCosD", "native_scale": True, "ax": ax}
+    sns.boxplot(
+        **kw,
+        color=COLLINEARITY_BOX_COLOR,
+        width=0.7,
+        showfliers=False,
+        linewidth=style.LINE_WIDTH_THIN,
+    )
+    sns.stripplot(
+        **kw,
+        hue="Common",
+        hue_order=[True, False],
+        palette=SOLUTION_COLORS,
+        legend=False,
+        jitter=0.2,
+        size=1.8,
+        edgecolor=style.COLORS["ink"],
+        linewidth=0.2,
+    )
+    _collinearity_axes(ax, sweep, rank)
+    ax.set_ylabel("LR pair max |cosine|")
+    handles = [
+        Line2D(
+            [],
+            [],
+            ls="",
+            marker="o",
+            markersize=style.MARKER_SIZE,
+            color=SOLUTION_COLORS[c],
+            label=SOLUTION_LABELS[c].replace(" s", "\ns" if wrap_key else " s"),
+        )
+        for c in (True, False)
+    ]
+    ax.legend(
+        handles=handles,
+        loc="lower right",
+        fontsize=style.FONT_SIZE_DENSE,
+        handlelength=0.5,
+        handletextpad=0.3,
+        borderaxespad=0.1,
+    )
+
+
+def plot_collinearity_medians(
+    ax: plt.Axes,
+    dataset: str,
+    modes: Sequence[str] = tuple(CP_MODES),
+    rank: int | None = None,
+    part: int | None = None,
+    key_rank: bool = True,
+) -> None:
+    """Per CP rank and mode in `modes` (`CP_MODES` keys), the largest |cosine|
+    between two components: the median over the seeded starts in an
+    interquartile-range band, keyed at the lower right with `rank`'s line if
+    `key_rank`. `part` is `source_data`'s."""
+    sweep = _collinearity_sweep(dataset, modes, part)
+    handles = []
+    for mode in modes:
+        by_rank = sweep.groupby("Rank")[f"MaxCos{mode}"]
+        median = by_rank.median()
+        line = plot_band(
+            ax,
+            median.index,
+            median,
+            by_rank.quantile(0.25),
+            by_rank.quantile(0.75),
+            style.CATEGORICAL[list(CP_MODES).index(mode)],
+            CP_MODES[mode],
+            marker="o",
+            markersize=style.MARKER_SIZE,
+        )
+        handles.append(line)
+    _collinearity_axes(ax, sweep, rank)
+    ax.set_ylabel("Max |cosine|")
+    if rank is not None and key_rank:
+        handles.append(Line2D([], [], label="Selected rank", **RANK_LINE))
+    ax.legend(handles=handles, loc="lower right", fontsize=style.FONT_SIZE_DENSE)
+
+
+def _collinearity_sweep(
+    dataset: str, modes: Sequence[str], part: int | None
+) -> pd.DataFrame:
+    """`dataset`'s CP sweep from rank 2 (one component has no pair), its
+    `modes`' collinearity saved as source data."""
+    sweep = load_cpd_rank(dataset)
+    columns = [f"MaxCos{m}" for m in modes]
+    source_data(
+        "cp_max_cosine_by_rank",
+        sweep[["Rank", "Start", "Seed", *columns]],
+        "Per CP rank and seeded SVD start, the largest absolute cosine between "
+        "two components in each mode (MaxCosA condition, B sender, C receiver, "
+        "D ligand-receptor pair).",
+        part=part,
+    )
+    return sweep[sweep["Rank"] > 1]
+
+
+def _collinearity_axes(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None) -> None:
+    mark_rank(ax, rank)
+    rank_axis(ax, np.arange(1, sweep["Rank"].max() + 1))
+    ax.set_ylim(0, 1.05)
+
+
+def plot_minima(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
+    """The starts reaching each distinct minimum at each CP rank, stacked
+    from the one most starts reach (blue; of two tied, the one with the
+    higher R2X) up, the others grey (keyed by `plot_collinearity_boxes`),
+    with `rank` marked above its bar."""
+    table = load_minima(dataset)
+    source_data(
+        "cp_minima_by_rank",
+        table,
+        "Distinct minima per CP rank (starts joined at FMS >= 0.95): the "
+        "starts reaching each, its best R2X, its FMS to the minimum most "
+        "starts reach (where two minima tie for most, 'Tied', to the one with "
+        "the higher R2X), its order by starts (1 = most; ties: higher R2X), "
+        "and the seeds of the starts reaching it.",
+    )
+    for _, g in table.groupby("Rank"):
+        ax.bar(
+            g["Rank"],
+            g["Starts"],
+            bottom=g["Starts"].cumsum() - g["Starts"],
+            width=0.72,
+            color=[SOLUTION_COLORS[o == 1] for o in g["Order"]],
+            edgecolor="white",
+            lw=0.6,
+        )
+    n_starts = int(table.groupby("Rank")["Starts"].sum().max())
+    if rank is not None:
+        ax.plot(rank, 1.07 * n_starts, clip_on=False, **RANK_MARKER)
+    ax.set_ylim(0, n_starts)
+    ax.set_yticks(np.arange(0, n_starts + 1, n_starts // 2))
+    ax.set_ylabel("Starts")
+    rank_axis(ax, table["Rank"].unique())
 
 
 # --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------

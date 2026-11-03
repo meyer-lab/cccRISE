@@ -241,12 +241,13 @@ The ``run_ccc_rise_workflow`` function executes the complete cccRISE pipeline:
 - ``communication_score``, ``hill_k``: Communication scoring function and its Hill constant (default: "expression_product", 0.5)
 - ``doEmbedding``: If True, computes PaCMAP embeddings for visualization (default: False)
 - ``backend``: RISE backend ('cpu', 'cupy', 'mlx', or None to auto-detect; default: None)
-- ``compress``: Fit RISE in a compressed gene/cell subspace and CPD inside a CANDELINC core (default: False)
+- ``compress``: Fit RISE in a compressed gene/cell subspace (default: False); CPD is never compressed
+- ``cp_device``, ``cp_dtype``: Device and precision of the CPD fit (default: the GPU when there is one, in float32)
 - ``keep_tensor``: Return the interaction tensor (default: False)
 
 **What Gets Stored**
 
-The function returns a dict with keys ``adata``, ``tensor`` (``None`` unless ``keep_tensor``), ``filtered_lr_pairs``, ``cp_weights``, ``cp_factors``, ``r2x_rise``, ``r2x_cp`` and ``diagnostics`` (CPD core consistency and collinearity). The following are stored in the AnnData object:
+The function returns a dict with keys ``adata``, ``tensor`` (``None`` unless ``keep_tensor``), ``filtered_lr_pairs``, ``cp_weights``, ``cp_factors``, ``r2x_rise``, ``r2x_cp`` and ``diagnostics`` (CPD component collinearity). The following are stored in the AnnData object:
 
 **Factor Matrices** (in ``X.uns``):
 

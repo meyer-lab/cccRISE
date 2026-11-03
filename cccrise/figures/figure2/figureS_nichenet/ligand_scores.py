@@ -21,6 +21,26 @@ AXES = ("rect",)
 def plot(axs):
     (ax,) = axs
     scores = load_scores().dropna(subset=["auroc"])
+    common.source_data(
+        "nichenet_target_score_per_ligand",
+        scores[
+            ["component", "ligand", "auroc", "weight", "rel_weight", "is_top"]
+        ].rename(
+            columns={
+                "component": "CP component",
+                "ligand": "Ligand",
+                "auroc": "NicheNet target score (AUROC)",
+                "weight": "Ligand weight",
+                "rel_weight": "Relative ligand weight",
+                "is_top": "Top ligand",
+            }
+        ),
+        "One row per ligand NicheNet scores and CP component: the AUROC of the "
+        "component's receiver ranking for the ligand's downstream targets; the "
+        "ligand's weight in the component (and relative to the component's "
+        "largest, plotted floored at 1e-3); whether it is one of the "
+        "component's top ligands.",
+    )
     components = sorted(scores["component"].unique())
     rng = np.random.default_rng(0)
     for x, component in enumerate(components):

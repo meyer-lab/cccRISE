@@ -28,7 +28,6 @@ This module computes and tracks two distinct categories of metrics:
    Diagnostics evaluating the reconstruction quality, identifiability, and
    numerical conditioning of an *individual* model fit on a specific dataset:
    - `R2X`: Variance explained (reconstruction quality) of the RISE or CPD fit.
-   - `CoreConsistency`: Tucker core consistency (CORCONDIA) of the CPD fit.
    - `MaxModesCollinear` & `WorstPairCanceling`: Collinearity and degenerate
      canceling pairs between CP component vectors within a fit.
    These diagnostics are replicate-level scalars that characterize the fit
@@ -77,6 +76,7 @@ from scipy.stats import norm
 
 from ..anova import anova_component_associations, prepare_anova_inputs
 from ..ccc_rise import (
+    CP_DTYPE,
     add_cell_embeddings,
     run_ccc_rise_workflow,
     save_ccc_rise_results,
@@ -492,6 +492,8 @@ def fit_stability_pipeline(
     random_state: int = 42,
     backend: str | None = None,
     compress: bool = False,
+    cp_device: str | None = None,
+    cp_dtype: str = CP_DTYPE,
     numbering_reference: xr.Dataset | Path | None = None,
     *,
     rise_n_iter_max: int,
@@ -534,7 +536,9 @@ def fit_stability_pipeline(
         Backend the RISE fit runs on ('cpu', 'cupy', 'mlx', or None to
         auto-detect); passed straight through to `ccc_rise.fit_rise`.
     compress : bool, default=False
-        Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
+        Fit RISE compressed; see `ccc_rise.run_ccc_rise_workflow`.
+    cp_device, cp_dtype
+        Device and precision of the CP fits; see `ccc_rise.fit_cp`.
     numbering_reference : xr.Dataset | Path | None, optional
         Core factors fit to relabel components into (`relabel_workflow_fit`);
         the reference pass sets it, replicates are matched to that reference.
@@ -560,6 +564,8 @@ def fit_stability_pipeline(
         random_state=random_state,
         backend=backend,
         compress=compress,
+        cp_device=cp_device,
+        cp_dtype=cp_dtype,
     )
     if numbering_reference is not None:
         fit = relabel_workflow_fit(fit, numbering_reference, condition_column)
@@ -736,13 +742,15 @@ def stability_replicates(
     other_label: str | None = None,
     patient_column: str | None = None,
     axes: tuple[str, ...] = DEFAULT_AXES,
-    n_replicates: int = 20,
+    n_replicates: int = 100,
     complex_sep: str | None = "&",
     communication_score: str = "expression_product",
     hill_k: float = 0.5,
     random_state: int = 42,
     backend: str | None = None,
     compress: bool = False,
+    cp_device: str | None = None,
+    cp_dtype: str = CP_DTYPE,
     *,
     rise_n_iter_max: int,
     cp_n_iter_max: int,
@@ -790,7 +798,7 @@ def stability_replicates(
         them (`condition_column` when None).
     axes : tuple[str, ...], default=DEFAULT_AXES
         Which axes to run.
-    n_replicates : int, default=20
+    n_replicates : int, default=100
         Replicates on `SEED_AXIS`; `JACKKNIFE_AXIS` always runs one per
         patient.
     rise_n_iter_max, rise_tol : int, float
@@ -806,7 +814,9 @@ def stability_replicates(
         Backend each replicate's RISE refit runs on; see
         `fit_stability_pipeline`.
     compress : bool, default=False
-        Fit RISE and CP compressed; see `ccc_rise.run_ccc_rise_workflow`.
+        Fit RISE compressed; see `ccc_rise.run_ccc_rise_workflow`.
+    cp_device, cp_dtype
+        Device and precision of the CP fits; see `ccc_rise.fit_cp`.
 
     Returns
     -------
@@ -838,6 +848,8 @@ def stability_replicates(
         "hill_k": hill_k,
         "backend": backend,
         "compress": compress,
+        "cp_device": cp_device,
+        "cp_dtype": cp_dtype,
     }
     unit_column = patient_column or condition_column
     patients = jackknife_units(adata, unit_column)
@@ -887,7 +899,7 @@ def _stage_block(
     )
     block.insert(0, "Stage", stage)
     block["R2X"] = r2x
-    for column in ("CoreConsistency", "MaxModesCollinear", "WorstPairCanceling"):
+    for column in ("MaxModesCollinear", "WorstPairCanceling"):
         block[column] = (diagnostics or {}).get(column, np.nan)
     return _attach_anova(block, anova)
 

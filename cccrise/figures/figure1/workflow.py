@@ -8,6 +8,7 @@ STEPS = (
     "Communication tensor:\nsender × receiver × LR pair × condition",
     "CPD: tensor → components",
 )
+SCHEMATIC = True  # an illustration: no source data
 AXES = ("full_third",) * len(STEPS)
 
 

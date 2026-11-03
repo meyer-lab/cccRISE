@@ -141,6 +141,8 @@ class RankSelection:
 
     rise: pd.DataFrame | None
     cpd: pd.DataFrame | None
+    #: The CPD sweep's imputation R2X, one row per (rank, fold split).
+    cpd_imputation: pd.DataFrame | None
     #: RISE rank the CPD sweep's interaction tensor was built at.
     cpd_rise_rank: int | None
 
@@ -154,17 +156,20 @@ def _read_sweep(filename: str) -> pd.DataFrame | None:
 def load_rank_selection(key: str) -> RankSelection:
     runner_spec = RUNNER_DATASETS.get(key)
     if runner_spec is None:
-        return RankSelection(rise=None, cpd=None, cpd_rise_rank=None)
+        return RankSelection(
+            rise=None, cpd=None, cpd_imputation=None, cpd_rise_rank=None
+        )
     cpd = _read_sweep(runner_spec.cpd_rank_filename())
     cpd_rise_rank = None
     if cpd is not None:
-        # One row per (rank, component) when the ridge comparison ran
-        cpd = cpd.drop_duplicates("Rank")
+        # One row per rank and seeded start; start 0 is the production fit
+        cpd = cpd[cpd["Start"] == 0]
         sidecar = sidecar_path(RANK_SELECTION_DIR / runner_spec.cpd_rank_filename())
         if sidecar.exists():
             cpd_rise_rank = yaml.safe_load(sidecar.read_text()).get("rise_rank")
     return RankSelection(
         rise=_read_sweep(runner_spec.rise_rank_filename()),
         cpd=cpd,
+        cpd_imputation=_read_sweep(runner_spec.cpd_imputation_filename()),
         cpd_rise_rank=cpd_rise_rank,
     )

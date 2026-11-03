@@ -324,7 +324,6 @@ def test_full_ccc_rise_workflow_synthetic(communication_score):
     assert out_adata.uns["r2x_pf2"] == fit["r2x_rise"]
     assert fit["tensor"].shape == (n_cond, rise_rank, rise_rank, len(lr_pairs))
     assert set(fit["diagnostics"]) == {
-        "CoreConsistency",
         "MaxModesCollinear",
         "WorstPairCanceling",
     }
@@ -408,8 +407,8 @@ def test_fit_rise_compressed_matches_exact(monkeypatch):
 
 
 def test_workflow_compressed_and_exact_agree():
-    """One `compress` flag compresses both RISE and CP; the fits stay close to
-    the exact ones."""
+    """`compress` compresses RISE (CP is never compressed); the fits stay
+    close to the exact ones."""
     adata, lr_pairs = _synthetic_adata(n_cells=160, n_cond=4, n_pairs=30, seed=3)
     kw: dict[str, Any] = FIT_KW | {
         "rise_n_iter_max": 200,

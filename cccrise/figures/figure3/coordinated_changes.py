@@ -43,6 +43,7 @@ from ._common import (
     SPEC,
     association,
     association_table,
+    condition_obs,
     factors_adata,
 )
 
@@ -61,6 +62,7 @@ AXES = ("square", "square")
 
 def plot(axs):
     result = coordinated_analysis()
+    _source_data(result)
     plot_lr_association_distribution(
         result["lr_eta"], result["component_eta"], result["top"], axs[0]
     )
@@ -155,6 +157,8 @@ def coordinated_analysis() -> dict:
         (table["Association"] == OUTCOME) & (table["Component"] == COMPONENT)
     ]
     return {
+        "scores": scores,
+        "per_lr": per_lr,
         "lr_eta": per_lr.EtaSquared.to_numpy(),
         "component_eta": float(component["EtaSquared"].iloc[0]),
         "top": top,
@@ -163,6 +167,69 @@ def coordinated_analysis() -> dict:
             scores, top, per_lr.PAdj.to_numpy() < common.SIG_ALPHA
         ),
     }
+
+
+def _source_data(result: dict) -> None:
+    """Each LR pair's per-condition scores and outcome ANOVA (association
+    panel), and the pairwise correlations of the top pairs and baselines
+    (co-variation panel)."""
+    adata = factors_adata()
+    names = np.asarray(adata.uns["lr_pairs"]).astype(str)
+    conditions = condition_obs().index
+    common.source_data(
+        "component_context_lr_scores",
+        pd.DataFrame(result["scores"], index=conditions, columns=names).rename_axis(
+            index="Condition"
+        ),
+        f"Each LR pair's raw communication score per condition in CP component "
+        f"{COMPONENT}'s sender/receiver context (the tensor slice weighted by "
+        "the component's sender and receiver eigenstate loadings, summed).",
+    )
+    top = np.isin(np.arange(len(names)), result["top"])
+    common.source_data(
+        "lr_pair_outcome_anova",
+        result["per_lr"][["F", "P", "PAdj", "EtaSquared"]].assign(
+            **{"LR pair": names, f"Cmp {COMPONENT} top {N_TOP}": top}
+        ),
+        f"One-way ANOVA of each LR pair's read-depth-corrected scores over "
+        f"'{OUTCOME}': F, p, Benjamini-Hochberg-adjusted p across LR pairs, and "
+        f"eta-squared (histogram). The whole component's eta-squared is "
+        f"{result['component_eta']:.4f}.",
+        part=0,
+    )
+    pairs = np.triu_indices(N_TOP, 1)
+    top_names = names[result["top"]]
+    common.source_data(
+        "top_pair_rank_correlations",
+        pd.DataFrame(
+            {
+                "LR pair 1": top_names[pairs[0]],
+                "LR pair 2": top_names[pairs[1]],
+                "Spearman correlation": result["observed"],
+            }
+        ),
+        f"Spearman correlation across conditions of every pair of the component's "
+        f"top {N_TOP} LR pairs.",
+        part=1,
+    )
+    common.source_data(
+        "baseline_rank_correlations",
+        pd.concat(
+            pd.DataFrame(draws)
+            .rename_axis(index="Draw", columns="Pair of pairs")
+            .stack()
+            .rename("Spearman correlation")
+            .reset_index()
+            .assign(Baseline=BASELINES[name][0])
+            for name, draws in result["baselines"].items()
+        ),
+        f"The same correlations for {COVARIATION_DRAWS} draws (seeded) of "
+        f"{N_TOP} LR pairs from outside the top pairs, per baseline: random, "
+        f"expression-matched (one per top pair from its {N_EXPRESSION_NEIGHBORS} "
+        "nearest pairs in log mean score), and other outcome-associated pairs "
+        "(adjusted p < 0.05).",
+        part=1,
+    )
 
 
 def component_lr_scores(dataset: str, component: int) -> np.ndarray:
