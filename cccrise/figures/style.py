@@ -81,6 +81,8 @@ AXIS_WIDTH = 46 * MM
 AXIS_SIZE = {
     "rect": (AXIS_WIDTH, AXIS_HEIGHT),
     "square": (AXIS_HEIGHT, AXIS_HEIGHT),
+    # Narrow factor matrices of few components
+    "slim": (0.7 * AXIS_HEIGHT, AXIS_HEIGHT),
     "full": (FIGURE_WIDTH_DOUBLE - 14 * MM, AXIS_HEIGHT),
     # Supplementary heatmaps with too many columns for "rect"
     "wide": (2.5 * AXIS_WIDTH, AXIS_HEIGHT),

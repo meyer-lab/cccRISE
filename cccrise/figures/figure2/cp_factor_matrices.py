@@ -6,8 +6,9 @@ component are shown, plus each component's top pairs, which are outlined and
 labeled: those with |loading| at least 0.4 x the component's largest, the
 rule `nichenet` picks its tested ligands by (`validation.nichenet.top_pairs`),
 here over every LR pair rather than only those NicheNet can score.
-Conditions and LR pairs are ordered by their most heavily loaded component,
-then by that loading."""
+Conditions are grouped by ALAD status, then six-month outcome
+(`common.condition_strips`), and within a group, like LR pairs, ordered by
+their most heavily loaded component, then by that loading."""
 
 import numpy as np
 import pandas as pd
@@ -15,6 +16,7 @@ import pandas as pd
 from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
 from .. import common
+from ..figure3._common import condition_obs
 
 DATASET = "alad"
 
@@ -26,7 +28,7 @@ MODES = {  # factor matrix: row label, whether to order rows
 }
 EIGENSTATE_TICKS = (1, 5, 10, 15)
 TOP_LR_FRACTION = 0.15
-AXES = ("square",) * len(MODES)
+AXES = ("slim", "slim", "slim", "square")
 REL_CUTOFF = 0.4  # percent of a components top-weighted ligand above which LR pairs should be labeled
 
 
@@ -40,10 +42,13 @@ def plot(axs):
             rows, labeled = _shown_lr_pairs(adata, loadings)
             _source_data(key, adata, loadings, rows)
             loadings = loadings[rows]
+            ylabel = f"Top {TOP_LR_FRACTION:.0%} LR pair"
         else:
             _source_data(key, adata, loadings)
-            ylabel = f"Top {TOP_LR_FRACTION:.0%} LR pair"
         order = common.dominant_order(loadings) if ordered else np.arange(len(loadings))
+        if key == "A":
+            groups = condition_obs().loc[adata.obs_names]
+            order = common.group_conditions(groups, order)
         image = common.plot_factor_heatmap(ax, loadings[order], "CP component")
         if ordered:
             ax.set_yticks([])
@@ -51,6 +56,8 @@ def plot(axs):
         else:
             ax.set_yticks([t - 1 for t in EIGENSTATE_TICKS], EIGENSTATE_TICKS)
         ax.set_ylabel(ylabel)
+        if key == "A":
+            common.condition_strips(ax, groups.iloc[order])
         position = np.argsort(order)  # row index -> drawn row
         common.label_heatmap_cells(
             ax,

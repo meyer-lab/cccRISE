@@ -38,6 +38,7 @@ import seaborn as sns
 import yaml
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
+from matplotlib.colors import to_rgb
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
@@ -1323,6 +1324,76 @@ def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
     return image
+
+
+#: ALAD condition groupings drawn as color strips beside condition factor
+#: matrices: obs column -> (legend title, {level: color}). Status in greys so
+#: its colors don't collide with the outcomes' (Fig. 3A's)
+CONDITION_STRIPS = {
+    "ALADstatus": (
+        "ALAD status",
+        {"control": "0.85", "declined": "0.25", "recovered": "0.55"},
+    ),
+    "6monthcondition": (
+        "6-mo outcome",
+        dict(
+            zip(
+                ("No CLAD/Stable", "No CLAD/Recovered", "CLAD", "Died"),
+                style.CATEGORICAL,
+                strict=False,
+            )
+        ),
+    ),
+}
+STRIP_WIDTH = 1.2 * style.MM
+STRIP_GAP = 0.4 * style.MM
+
+
+def group_conditions(groups: pd.DataFrame, order: np.ndarray) -> np.ndarray:
+    """Conditions (rows of `groups`, their obs) in `order` (e.g.
+    `dominant_order`) regrouped by each `CONDITION_STRIPS` column in turn,
+    levels in its order."""
+    ranks = [
+        groups[column].map({level: i for i, level in enumerate(colors)}).to_numpy()
+        for column, (_, colors) in CONDITION_STRIPS.items()
+    ]
+    return np.lexsort((np.argsort(order), *ranks[::-1]))
+
+
+def condition_strips(ax: plt.Axes, groups: pd.DataFrame) -> None:
+    """A color strip per `CONDITION_STRIPS` column left of a condition factor
+    matrix (rows in `groups`' order), the y label moved left of them, and
+    their legend, titled per strip, right of the matrix."""
+    inches = ax.bbox.width / ax.figure.dpi
+    step = (STRIP_WIDTH + STRIP_GAP) / inches
+    for i, (column, (_, colors)) in enumerate(reversed(CONDITION_STRIPS.items())):
+        strip = ax.inset_axes((-(i + 1) * step, 0, STRIP_WIDTH / inches, 1))
+        rgb = [to_rgb(colors[level]) for level in groups[column]]
+        strip.imshow(np.array(rgb)[:, None], aspect="auto", interpolation="nearest")
+        strip.set(xticks=[], yticks=[])
+        strip.spines[:].set_visible(False)
+    strip.set_ylabel(ax.get_ylabel())  # the leftmost strip
+    ax.set_ylabel("")
+    titles = [title for title, _ in CONDITION_STRIPS.values()]
+    entries = [
+        entry
+        for title, colors in CONDITION_STRIPS.values()
+        for entry in [
+            Patch(color="none", label=title),
+            *(
+                Patch(color=c, label=_sentence_case(level_label(level)))
+                for level, c in colors.items()
+            ),
+        ]
+    ]
+    key = legend(ax, "right", handles=entries, handlelength=0.8)
+    for text in key.get_texts():
+        if text.get_text() in titles:
+            text.set_fontweight("bold")
+
+
+def _sentence_case(label: str) -> str:
+    return label[0].upper() + label[1:]
 
 
 def dominant_order(loadings: np.ndarray) -> np.ndarray:

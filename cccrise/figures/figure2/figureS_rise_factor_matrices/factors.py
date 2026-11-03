@@ -1,19 +1,23 @@
-"""The RISE condition factor (A; conditions ordered by their most heavily
-loaded component, then by that loading), each component divided by its
-largest magnitude (keeping sign)."""
+"""The RISE condition factor (A), each component divided by its largest
+magnitude (keeping sign); conditions grouped by ALAD status, then six-month
+outcome (`common.condition_strips`), and within a group ordered by their most
+heavily loaded component, then by that loading."""
 
 from ... import common
+from ...figure3._common import condition_obs
 from . import _common as S
 
-AXES = ("wide",)  # as wide as `genes`' "tall", which it sits above
+AXES = ("rect",)
 
 
 def plot(axs):
     (ax,) = axs
     factor = S.rise_factors()["pf2_A"]
     conditions = factor.values.astype(float)
-    order = common.dominant_order(conditions)
+    groups = condition_obs().loc[factor["condition"].values.astype(str)]
+    order = common.group_conditions(groups, common.dominant_order(conditions))
     common.plot_factor_heatmap(ax, conditions[order], S.XLABEL)
+    S.odd_component_ticks(ax, conditions.shape[1])
     common.source_data(
         "rise_condition_factor",
         S.normalized_table(
@@ -23,10 +27,9 @@ def plot(axs):
         "plotted) loading on each RISE component, divided by the component's "
         "largest |loading| (sign kept).",
     )
-    ax.set_xticks([])  # shares `genes`' component axis below it
-    ax.set_xlabel("")
     ax.set_yticks([])
-    ax.set_ylabel(f"Condition (n={len(conditions)})")
+    ax.set_ylabel(f"Conditions (n={len(conditions)})")
+    common.condition_strips(ax, groups.iloc[order])
 
 
 def makeFigure():

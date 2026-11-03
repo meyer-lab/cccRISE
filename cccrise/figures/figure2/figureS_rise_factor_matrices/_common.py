@@ -13,6 +13,11 @@ DATASET = "alad"
 XLABEL = "RISE component"
 
 
+def odd_component_ticks(ax, n: int) -> None:
+    """Label every other component, as 17 crowd a CP-sized matrix's axis."""
+    ax.set_xticks(range(0, n, 2), range(1, n + 1, 2))
+
+
 @cache
 def rise_factors() -> xr.Dataset:
     return load_factors_netcdf(DATASETS[DATASET].factors_path())
