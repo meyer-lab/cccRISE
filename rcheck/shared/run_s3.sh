@@ -18,6 +18,6 @@ echo "$(date '+%F %T') == S3 $DATASET, ${P:-4} at a time"
 systemd-run --user --scope -q --unit $SCOPE -p MemoryMax=${MEM:-48G} -p MemorySwapMax=0 nice -n 10 \
   bash -c '
   tail -n +2 $OUT/../drops.csv | awk -F, "{a[\$1]=a[\$1]\" \"\$3} END {for (s in a) print s a[s]}" |
-    xargs -P '"${P:-4}"' -L 1 bash -c '"'"'Rscript rcheck/faithful/ip_runs.R drop $IN/lr_data.rds $IN/meta.rds $OUT "$@" > $OUT/logs/$0.log 2>&1; echo "$(date +%T) $0 exit $?"'"'"'
+    xargs -P '"${P:-4}"' -L 1 bash -c '"'"'Rscript rcheck/faithful/ip_runs.R drop $IN/lr_data.rds $IN/meta.rds $OUT "$0" "$@" > $OUT/logs/$0.log 2>&1; echo "$(date +%T) $0 exit $?"'"'"'
   '
 echo "$(date '+%F %T') == done ($(ls $OUT/*.rds | wc -l) runs)"
