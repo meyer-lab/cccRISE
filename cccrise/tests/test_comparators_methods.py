@@ -223,3 +223,23 @@ def test_staccato_tensor_applies_lianas_filters(adata):
     few = staccato_tensor(adata, "sample", "type", LR, expr_prop=0.0, min_cells=2)
     assert np.all(few.values[0, 1] == 0) and np.all(few.values[0, :, 1] == 0)
     assert few.values[0, 0, 0, 1] == pytest.approx(1.0)
+
+
+def test_fmax_best_seed_is_the_best_start_of_the_most_reached_minimum(tmp_path):
+    from cccrise.runners.run_comparators import fmax_best_seed
+
+    # Seeds 1-3 reach one minimum, seed 4 (the best fit) another
+    r2x = pd.DataFrame(
+        {"Rank": 2, "Seed": [1, 2, 3, 4], "FitR2X": [0.80, 0.81, 0.79, 0.90]}
+    )
+    fms = pd.DataFrame(
+        [
+            {"Rank": 2, "SeedA": a, "SeedB": b, "FMS": 1.0 if b < 4 else 0.5}
+            for a in range(1, 5)
+            for b in range(a + 1, 5)
+        ]
+    )
+    sweep = {"rank": tmp_path / "rank.parquet", "start_fms": tmp_path / "fms.parquet"}
+    r2x.to_parquet(sweep["rank"])
+    fms.to_parquet(sweep["start_fms"])
+    assert fmax_best_seed(sweep, 2) == 2
