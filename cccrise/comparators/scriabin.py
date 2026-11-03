@@ -169,7 +169,8 @@ def averaged_similarity(
     """The LR-pair similarity ``InteractionPrograms`` clusters: one per
     subsample (all ordered pairs of its cells, self-pairs included), averaged
     elementwise over the union of LR pairs, ignoring pairs absent from a
-    subsample."""
+    subsample. Entries one rounding step outside [0, 1] are clamped, as the
+    R arms do (`rcheck/upstream_fixes.R`; upstream WGCNA stops on them)."""
     names = np.asarray(lr_names)
     mats = []
     for cells in subsamples:
@@ -179,7 +180,7 @@ def averaged_similarity(
     stack = np.stack([m.reindex(index=union, columns=union).to_numpy() for m in mats])
     with np.errstate(invalid="ignore"):
         mean = np.nanmean(stack, axis=0) if len(mats) > 1 else stack[0]
-    return pd.DataFrame(mean, index=union, columns=union)
+    return pd.DataFrame(np.clip(mean, 0.0, 1.0), index=union, columns=union)
 
 
 @dataclass

@@ -30,7 +30,8 @@ suppressPackageStartupMessages({
 })
 pboptions(type = "none")
 `%notin%` <- Negate(`%in%`)
-source("rcheck/upstream/scriabin/R/interaction_programs.R")
+# upstream with the defect-2 range fix (see the file)
+source("rcheck/upstream_fixes.R"); source_upstream_ip()
 lr_args <- list()
 if (nzchar(Sys.getenv("IP_LR_CSV"))) {
   lr_tab <- read.csv(Sys.getenv("IP_LR_CSV"))
