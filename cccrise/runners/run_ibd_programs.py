@@ -62,7 +62,7 @@ from ._cli import (
     resulting_dims,
 )
 from .datasets import IBD_PROGRAMS_DIR, DatasetSpec, scores_filename
-from .provenance import build_metadata, record_output, relpath, sha256_file
+from .provenance import build_metadata, git_sha, record_output, relpath, sha256_file
 
 HEADER = """\
 The IBD tables behind Figure 5's program panels, from the finalized factor
@@ -362,6 +362,7 @@ def write(
 
 
 def run_ibd_programs(spec: DatasetSpec, random_state: int, command: str) -> None:
+    git_sha()  # pin the code version before anything runs (`provenance.git_sha`)
     factors = load_factors_netcdf(spec.factors_path())
     print("1. Loading the cohort and rebuilding its tensor...", flush=True)
     raw = spec.load()
