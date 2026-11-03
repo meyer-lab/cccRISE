@@ -651,7 +651,7 @@ def plot_rise_rank(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
         lines.append(plot_mean_sd(ax, mean.index, mean, sd, color, label))
     mark_rank(ax, rank)
     ax.set_xlabel("RISE rank")
-    ax.set_ylabel("$R^2X$")
+    ax.set_ylabel("R²X")
     ax.legend(handles=lines)
     return lines
 
@@ -682,7 +682,7 @@ def plot_cpd_fit_r2x(
     ax.plot(sweep["Rank"], sweep["FitR2X"], marker=marker, color=color, label="Fit")
     mark_rank(ax, rank)
     ax.set_xlabel("CP rank")
-    ax.set_ylabel("Fit $R^2X$")
+    ax.set_ylabel("Fit R²X")
 
 
 def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
@@ -691,7 +691,7 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     by_rank = repeats.groupby("Rank")["ImputationR2X"]
     mean, sd = by_rank.mean(), by_rank.std().fillna(0)
     plot_mean_sd(ax, mean.index, mean, sd, style.COLORS["heldout"], "Imputation")
-    ax.set_ylabel("$R^2X$")
+    ax.set_ylabel("R²X")
     ax.set_ylim(top=1.25 * ax.dataLim.y1)  # headroom for the legend
     ax.legend(loc="upper right")
 
@@ -789,7 +789,7 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
     )
     mark_rank(ax, rank)
     rank_axis(ax, median.index)
-    ax.set_ylabel("Fit $R^2X$")
+    ax.set_ylabel("Fit R²X")
 
 
 def plot_collinearity_boxes(
