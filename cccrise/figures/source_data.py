@@ -8,7 +8,8 @@ panel saved with `common.source_data` during its figure's last build:
 Each figure becomes `output/source_data/<label>.zip` (e.g. `Figure 2.zip`,
 `Figure EV1.zip`, `Appendix Figure S2.zip`), one folder per panel (`2A/`,
 `EV1A/`, `S2A/`, or `2B-C/` for files spanning a panel module's letters)
-holding its CSVs and a README, plus a README of the provenance of every
+holding its CSVs and a README (a figure without panel letters is one
+folder, `EV4/`), plus a README of the provenance of every
 factors file and runner output its last full build read. Main figures are
 those `_panels.yml` has letters for, supplements those `_quarto.yml` lists,
 and letters come from `_panels.yml`, as each figure's last full build
@@ -31,7 +32,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from ..runners.provenance import REPO_ROOT, git_sha, relpath, sidecar_path
+from ..runners.provenance import REPO_ROOT, git_sha, provenance_text, relpath
 from . import common
 
 QUARTO_PATH = REPO_ROOT / "manuscript" / "_quarto.yml"
@@ -98,9 +99,10 @@ def stage_figures(chosen: list[tuple[str, str, str]]) -> tuple[list[dict], list[
     letters = yaml.safe_load(common.PANELS_PATH.read_text())
     rows, errors = [], []
     for figure, label, prefix in chosen:
-        figure_letters = letters.get(f"fig{figure}") or {}
-        if not figure_letters:
+        if f"fig{figure}" not in letters:
             errors.append(f"{label}: no panel letters; build it in full first")
+        # A figure built without lettered panels is one panel, its own module
+        figure_letters = letters.get(f"fig{figure}") or {f"figure{figure}": []}
         package = common.figure_package(figure)
         figure_rows, figure_errors = stage_figure(
             label,
@@ -248,8 +250,8 @@ def figure_readme(label: str, inputs: list[Path], rows: list[dict]) -> str:
         lines += ["", f"Schematic panels (no numerical data): {', '.join(schematic)}"]
     lines += ["", "Provenance of the analyses plotted", "=" * 34]
     for path in inputs:
-        if (sidecar := sidecar_path(path)).exists():
-            lines += ["", f"--- {relpath(path)} ---", sidecar.read_text()]
+        if (text := provenance_text(path)) is not None:
+            lines += ["", f"--- {relpath(path)} ---", text]
     return "\n".join(lines)
 
 

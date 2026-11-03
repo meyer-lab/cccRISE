@@ -3,6 +3,7 @@ from collections.abc import Hashable
 import numpy as np
 import pandas as pd
 import tensorly as tl
+from kneed import KneeLocator
 from scipy.sparse.csgraph import connected_components
 from tensorly.cp_tensor import cp_to_tensor
 from tensorly.decomposition import parafac
@@ -60,6 +61,21 @@ def calculate_r2x(weights: np.ndarray, factors: Factors, tensor: np.ndarray) -> 
     return float(1.0 - norm_residual_sq / norm_tensor_sq)
 
 
+def kneedle_elbow(x, y) -> int | None:
+    """Elbow of a convex, decreasing curve by offline Kneedle (Satopaa et al.
+    2011), as Tensor-cell2cell finds its rank: `kneed.KneeLocator` with
+    sensitivity 1 and its default interpolation. None when Kneedle finds no
+    elbow."""
+    elbow = KneeLocator(
+        np.asarray(x, float),
+        np.asarray(y, float),
+        S=1.0,
+        curve="convex",
+        direction="decreasing",
+    ).elbow
+    return None if elbow is None else int(elbow)
+
+
 def max_mode_cosines(factors: Factors) -> list[float]:
     """Per mode, the largest |cosine| between two of the fit's components
     (NaN for a rank-1 fit): how collinear its most collinear pair is there."""
@@ -70,6 +86,21 @@ def max_mode_cosines(factors: Factors) -> list[float]:
         np.fill_diagonal(gram, np.nan)
         cosines.append(float(np.nanmax(gram)) if f.shape[1] > 1 else np.nan)
     return cosines
+
+
+def max_congruence(factors: Factors) -> float:
+    """The largest congruence product between two of the fit's components,
+    the product over modes of their |cosine| (NaN for a rank-1 fit): near 1
+    when two components nearly duplicate each other in every mode."""
+    if factors[0].shape[1] < 2:
+        return np.nan
+    product = np.ones((factors[0].shape[1],) * 2)
+    for f in factors:
+        unit = f / np.linalg.norm(f, axis=0, keepdims=True)
+        product *= unit.T @ unit
+    product = np.abs(product)
+    np.fill_diagonal(product, np.nan)
+    return float(np.nanmax(product))
 
 
 def distinct_minima(
@@ -87,7 +118,7 @@ def distinct_minima(
     most starts reach (f_max), and its 'Order' within the rank (1 = most
     starts; ties: higher R2X). 'Tied' marks ranks whose two most-reached
     minima tie, which have no f_max; their FMS is to the tied minimum with
-    the higher R2X.
+    the higher R2X. 'Seeds' lists the seeds of the starts reaching it.
     """
     frames = [
         _rank_minima(rank, pairs, r2x.loc[rank], same_minimum_fms)
@@ -110,7 +141,7 @@ def _rank_minima(
     for label in np.unique(labels):
         members = np.flatnonzero(labels == label)
         best = members[fit[members].argmax()]
-        groups.append((len(members), fit[best], best))
+        groups.append((len(members), fit[best], best, members))
     groups.sort(key=lambda g: (-g[0], -g[1]))
     reference = groups[0][2]
     return pd.DataFrame(
@@ -121,8 +152,9 @@ def _rank_minima(
             "FMS": fms[best, reference],
             "Order": order,
             "Tied": len(groups) > 1 and groups[0][0] == groups[1][0],
+            "Seeds": tuple(seeds[m] for m in members),
         }
-        for order, (n, best_r2x, best) in enumerate(groups, start=1)
+        for order, (n, best_r2x, best, members) in enumerate(groups, start=1)
     )
 
 

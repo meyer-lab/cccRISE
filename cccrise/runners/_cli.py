@@ -1,4 +1,6 @@
 import argparse
+import shlex
+import sys
 from pathlib import Path
 
 from ..factors import load_factors_netcdf
@@ -51,6 +53,15 @@ def parse_ranks(spec: str) -> list[int]:
         else:
             ranks.add(int(chunk))
     return sorted(ranks)
+
+
+def parse_command(
+    parser: argparse.ArgumentParser, script: str, argv: list[str] | None
+) -> tuple[argparse.Namespace, str]:
+    """`argv` (by default the command line's) parsed by `parser`, and the
+    command it makes, ``uv run <script> ...``, for a provenance record."""
+    argv = sys.argv[1:] if argv is None else argv
+    return parser.parse_args(argv), shlex.join(["uv", "run", script, *argv])
 
 
 def add_dataset_argument(parser: argparse.ArgumentParser) -> None:

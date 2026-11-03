@@ -30,11 +30,18 @@ import numpy as np
 import pandas as pd
 
 from ...anova import run_multiple_factors_anova
-from ...ccc_rise import calculate_interaction_tensor
+from ...covariation import (
+    COVARIATION_DRAWS,
+    N_EXPRESSION_NEIGHBORS,
+    N_TOP,
+    cccrise_tensor,
+    context_scores,
+    covariation_baselines,
+    pairwise_rank_correlations,
+    top_pairs,
+)
 from ...factors import load_factors_netcdf
-from ...import_data import import_ligand_receptor_pairs
 from ...runners.datasets import DATASETS
-from ...utils import load_rise_reference
 from .. import common, style
 from ._common import (
     COMPONENT,
@@ -47,11 +54,6 @@ from ._common import (
     factors_adata,
 )
 
-# The component's N_TOP most heavily weighted LR pairs are the ones tested
-# for co-variation.
-N_TOP = 10
-COVARIATION_DRAWS = 2000
-N_EXPRESSION_NEIGHBORS = 20  # an expression-matched pair is one of these nearest
 BASELINES = {  # label, color
     "random": ("Random", style.COLORS["muted"]),
     "expression_matched": ("Expression-matched", style.COLORS["receiver"]),
@@ -149,8 +151,7 @@ def coordinated_analysis() -> dict:
     `covariation_baselines`."""
     adata = factors_adata()
     scores = component_lr_scores(DATASET, COMPONENT)
-    weights = np.asarray(adata.uns["D"])[:, COMPONENT - 1]
-    top = np.argsort(-np.abs(weights))[:N_TOP]
+    top = top_pairs(np.asarray(adata.uns["D"])[:, COMPONENT - 1])
     per_lr = column_associations(scores, adata)
     table = association_table()
     component = table[
@@ -243,7 +244,7 @@ def component_lr_scores(dataset: str, component: int) -> np.ndarray:
     sender, receiver = (
         factors[k].values[:, component - 1].astype(float) for k in ("cp_B", "cp_C")
     )
-    return np.einsum("cijl,i,j->cl", communication_tensor(dataset), sender, receiver)
+    return context_scores(communication_tensor(dataset), sender, receiver)
 
 
 @cache
@@ -252,15 +253,7 @@ def communication_tensor(dataset: str) -> np.ndarray:
     LR pair, in the factors file's LR order), rebuilt from the saved RISE fit
     with the scoring the CP was fit on, which reproduces the fit's R2X."""
     spec = DATASETS[dataset]
-    factors = load_factors_netcdf(spec.factors_path())
-    adata = load_rise_reference(spec.factors_path(), spec.load(), spec.condition_column)
-    tensor, lr_pairs = calculate_interaction_tensor(
-        adata, import_ligand_receptor_pairs(), complex_sep=factors.attrs["complex_sep"]
-    )
-    order = pd.Index(lr_pairs["interaction_symbol"].astype(str)).get_indexer(
-        factors["lr_pair"].values.astype(str)
-    )
-    return np.asarray(tensor)[..., order]
+    return cccrise_tensor(spec.factors_path(), spec.load(), spec.condition_column)
 
 
 def column_associations(matrix: np.ndarray, adata: anndata.AnnData) -> pd.DataFrame:
@@ -277,62 +270,6 @@ def column_associations(matrix: np.ndarray, adata: anndata.AnnData) -> pd.DataFr
         condition_column=SPEC.condition_column,
         correction="fdr_bh",
     )
-
-
-def pairwise_rank_correlations(scores: np.ndarray, columns) -> np.ndarray:
-    """Spearman correlation across conditions of every pair of `columns`
-    (upper triangle): each LR pair's scores are ranked across conditions and
-    the Pearson correlation of those ranks taken."""
-    ranks = np.argsort(np.argsort(scores[:, columns], axis=0), axis=0)
-    return np.corrcoef(ranks.T)[np.triu_indices(len(columns), 1)]
-
-
-def covariation_baselines(
-    scores: np.ndarray, top: np.ndarray, associated: np.ndarray, seed: int = 0
-) -> dict[str, np.ndarray]:
-    """`pairwise_rank_correlations` (draws x pairs of pairs) of as many LR
-    pairs as `top`, drawn `COVARIATION_DRAWS` times from the LR pairs outside
-    `top`, under three baselines:
-
-    - random: drawn uniformly without replacement.
-    - expression_matched: one pair per top pair, each drawn from that top
-      pair's `N_EXPRESSION_NEIGHBORS` nearest pairs in log mean score
-      (without replacement within a draw), so the draw matches the top pairs'
-      expression levels.
-    - associated: drawn uniformly from the `associated` (boolean mask) pairs,
-      i.e. the other pairs significantly associated with the outcome; all of
-      them when there are fewer than `top`."""
-    rng = np.random.default_rng(seed)
-    pool = np.setdiff1d(np.arange(scores.shape[1]), top)
-    level = np.log10(scores.mean(axis=0) + 1e-12)
-    neighbors = [
-        pool[np.argsort(np.abs(level[pool] - level[t]))[:N_EXPRESSION_NEIGHBORS]]
-        for t in top
-    ]
-
-    def matched_draw():
-        draw = []
-        for candidates in neighbors:
-            draw.append(rng.choice(np.setdiff1d(candidates, draw)))
-        return draw
-
-    associated_pool = np.setdiff1d(np.flatnonzero(associated), top)
-    draws = {
-        "random": lambda: rng.choice(pool, len(top), replace=False),
-        "expression_matched": matched_draw,
-        "associated": lambda: rng.choice(
-            associated_pool, min(len(top), associated_pool.size), replace=False
-        ),
-    }
-    return {
-        name: np.array(
-            [
-                pairwise_rank_correlations(scores, draw())
-                for _ in range(COVARIATION_DRAWS)
-            ]
-        )
-        for name, draw in draws.items()
-    }
 
 
 def makeFigure():

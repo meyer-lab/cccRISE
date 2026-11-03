@@ -1,8 +1,9 @@
 """CP rank selection: fit and imputation R2X from ``uv run cccrise-cpdrank``
-(on the canonical RISE fit's tensor), and each mode's collinearity across ten
-seeded SVD starts per rank."""
+(on the canonical RISE fit's tensor), and the LR pair mode's collinearity
+across ten seeded SVD starts per rank (the other modes' are in the stability
+supplement)."""
 
-from .. import common, cp_rank, style
+from .. import common, style
 
 DATASET = "alad"
 AXES = ("square", "square")
@@ -29,7 +30,8 @@ def plot(axs):
         "fold split (with its seed); plotted as mean +/- SD over repeats.",
         part=0,
     )
-    cp_rank.plot_mode_collinearity(axs[1], DATASET, rank, part=1)
+    # A narrow key fits right of the rank 3-7 starts
+    common.plot_collinearity_boxes(axs[1], DATASET, rank=rank, part=1, wrap_key=True)
 
 
 def makeFigure():

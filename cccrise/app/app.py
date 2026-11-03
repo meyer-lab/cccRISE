@@ -49,11 +49,11 @@ from cccrise.figures import style
 from cccrise.figures.common import (
     plot_association_effect_sizes,
     plot_category_component_weights,
+    plot_collinearity_medians,
     plot_cpd_fit_r2x,
     plot_cpd_imputation_r2x,
     plot_rise_rank,
 )
-from cccrise.figures.cp_rank import plot_mode_collinearity
 from cccrise.figures.figure3._common import ASSOCIATIONS
 from cccrise.figures.figureS_alad_pacmaps.weight_pacmaps import SATURATION_PERCENTILE
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
@@ -420,7 +420,7 @@ def server(input, output, session):
             if sweeps.cpd_imputation is not None:
                 plot_cpd_imputation_r2x(sweeps.cpd_imputation, axes[1])
             axes[1].set_title("CPD Fit and Imputation $R^2X$")
-            plot_mode_collinearity(axes[2], input.dataset())
+            plot_collinearity_medians(axes[2], input.dataset())
             axes[2].set_title("CPD Collinearity by Mode (10 Seeded Starts)")
             for ax in axes[1:]:
                 mark_selected_rank(ax, cp_rank())
