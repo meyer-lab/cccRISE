@@ -99,14 +99,6 @@ ignore = [
     "BLE001", # figure scripts deliberately catch broad exceptions to keep batch analyses running
 ]
 
-[tool.ty.src]
-# Legacy figures still reference the pre-ANOVA logreg API and will be
-# removed along with the rest of the outdated figure/manuscript files.
-exclude = [
-    "cccrise/figures/legacy/figure4.py",
-    "cccrise/figures/legacy/figureA6d.py",
-]
-
 [tool.ty.rules]
 unused-ignore-comment = "ignore"
 
