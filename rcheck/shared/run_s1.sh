@@ -27,12 +27,12 @@ capped() {
 }
 trap '[ -n "$SCOPE" ] && systemctl --user stop $SCOPE; exit 143' TERM INT
 step() { echo "$(date +%H:%M:%S) == $*"; }
-# Workers from current load: leave 4 cores spare, 2..MAX_WORKERS (nproc --all:
-# plain nproc honours OMP_NUM_THREADS=1)
+# Workers: leave 4 cores spare beyond current load (nproc --all: plain nproc
+# honours OMP_NUM_THREADS=1), at most MEM_CAP / MEM_PER_WORKER (GB; IBD
+# 2,000-cell samples peak at 4.8 GB per worker), within 2..MAX_WORKERS
 workers() {
   local load; load=$(cut -d' ' -f1 /proc/loadavg)
-  awk -v n="$(nproc --all)" -v l="$load" -v m="${MAX_WORKERS:-16}" \
-    'BEGIN { w = int(n - l - 4); if (w > m) w = m; if (w < 2) w = 2; print w }'
+  awk -v n="$(nproc --all)" -v l="$load" -v m="${MAX_WORKERS:-16}"       -v cap="${MEM%G}" -v per="${MEM_PER_WORKER:-5}"     'BEGIN { w = int(n - l - 4); if (w > m) w = m; if (w > int(cap / per)) w = int(cap / per); if (w < 2) w = 2; print w }'
 }
 n_samples=$(Rscript -e 'cat(length(unique(readRDS("'$IN'/meta.rds")$sample)))')
 
