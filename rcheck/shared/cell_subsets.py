@@ -22,7 +22,7 @@ CACHE = Path("singlecell_cache/shared")
 OUT = Path("rcheck/out/shared")
 S2 = {"alad": ((0.9, 0.75, 0.5), 3), "ibd": ((0.75, 0.5), 2)}
 #: ALAD: every sample <= 300 cells (no subsampling upstream) plus three larger,
-#: spanning size; IBD: six spanning size (most are at the 2,000-cell cap).
+#: spanning size; IBD: see below.
 S3 = {
     "alad": [
         "ALAD1-HS58-E1",
@@ -34,6 +34,17 @@ S3 = {
         "ALAD1-HS3-E1",
         "ALAD1-HS40-E1",
         "ALAD1-HS72-E1",
+    ],
+    # R's full CCIM densifies (n^2 x LR): a 2,000-cell IBD sample needs >48 GB,
+    # so R runs on six samples spanning 311-1,490 cells; the port adds
+    # 2,000-cell ones (rcheck/shared/s3_port.py)
+    "ibd": [
+        "OTARscRNA12924808",
+        "OTARscRNA13669873",
+        "OTARscRNA9294504",
+        "OTARscRNA8356590",
+        "OTARscRNA14592794",
+        "OTARscRNA12808346",
     ],
 }
 N_DROPS = 10

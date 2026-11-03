@@ -184,6 +184,39 @@ def n_iterations(
     return int(np.round(np.sqrt(n_cells / n_target)))
 
 
+#: Above this many subsamples, `averaged_similarity` keeps running sums
+#: instead of stacking every matrix (S7's n.iterate 32 / 128; upstream's own
+#: n.iterate stays at or below 4 on ALAD and IBD).
+STREAM_ABOVE = 4
+
+
+def _subsample_similarity(lig, rec, cells, factored: bool):
+    if factored:
+        return ccim_similarity(lig[cells], rec[cells])
+    return lr_similarity(ccim(lig[cells], rec[cells]))
+
+
+def _streamed_mean(lig, rec, names, subsamples, factored):
+    """`averaged_similarity`'s mean as running sums over all LR pairs (same
+    union order; summation order differs from ``nanmean``: float64
+    rounding)."""
+    total = np.zeros((len(names), len(names)))
+    count = np.zeros((len(names), len(names)))
+    seen: list[np.ndarray] = []
+    for cells in subsamples:
+        keep, sim = _subsample_similarity(lig, rec, cells, factored)
+        pos = np.flatnonzero(keep)
+        block = np.ix_(pos, pos)
+        finite = np.isfinite(sim)
+        total[block] += np.where(finite, sim, 0.0)
+        count[block] += finite
+        seen.append(pos)
+    order = pd.unique(np.concatenate(seen))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        mean = total[np.ix_(order, order)] / count[np.ix_(order, order)]
+    return order, mean
+
+
 def averaged_similarity(
     lig: np.ndarray,
     rec: np.ndarray,
@@ -196,14 +229,16 @@ def averaged_similarity(
     elementwise over the union of LR pairs, ignoring pairs absent from a
     subsample. Entries one rounding step outside [0, 1] are clamped, as the
     R arms do (`rcheck/upstream_fixes.R`; upstream WGCNA stops on them).
-    `factored` computes each subsample's via `ccim_similarity`."""
+    `factored` computes each subsample's via `ccim_similarity`; above
+    `STREAM_ABOVE` subsamples the mean is kept as running sums."""
     names = np.asarray(lr_names)
+    if len(subsamples) > STREAM_ABOVE:
+        order, mean = _streamed_mean(lig, rec, names, subsamples, factored)
+        union = pd.Index(names[order])
+        return pd.DataFrame(np.clip(mean, 0.0, 1.0), index=union, columns=union)
     mats = []
     for cells in subsamples:
-        if factored:
-            keep, sim = ccim_similarity(lig[cells], rec[cells])
-        else:
-            keep, sim = lr_similarity(ccim(lig[cells], rec[cells]))
+        keep, sim = _subsample_similarity(lig, rec, cells, factored)
         mats.append(pd.DataFrame(sim, index=names[keep], columns=names[keep]))
     union = pd.Index(pd.unique(np.concatenate([m.index.to_numpy() for m in mats])))
     stack = np.stack([m.reindex(index=union, columns=union).to_numpy() for m in mats])

@@ -44,6 +44,19 @@ def test_ccim_similarity_equals_direct():
     np.testing.assert_allclose(sim, sim_d, rtol=0, atol=1e-12)
 
 
+def test_averaged_similarity_streamed_equals_stacked(monkeypatch):
+    rng = np.random.default_rng(5)
+    lig = rng.gamma(0.5, size=(80, 10)) * (rng.random((80, 10)) < 0.3)
+    rec = rng.gamma(0.5, size=(80, 10)) * (rng.random((80, 10)) < 0.3)
+    names = [f"L{i}=R{i}" for i in range(10)]
+    subs = [rng.choice(80, 12, replace=False) for _ in range(9)]
+    streamed = scriabin.averaged_similarity(lig, rec, names, subs, factored=True)
+    monkeypatch.setattr(scriabin, "STREAM_ABOVE", 100)
+    stacked = scriabin.averaged_similarity(lig, rec, names, subs, factored=True)
+    assert streamed.index.equals(stacked.index)
+    np.testing.assert_allclose(streamed, stacked, rtol=0, atol=1e-14)
+
+
 def test_stratified_subsample_quota_and_cap():
     types = np.array(["a"] * 900 + ["b"] * 90 + ["c"] * 2)
     picks = scriabin.stratified_subsample(types, np.random.default_rng(0))
