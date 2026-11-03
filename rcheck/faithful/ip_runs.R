@@ -14,6 +14,14 @@
 #             frac < 1 first keeps that fraction of each sample's cells (set.seed(seed))
 #   drop:     Rscript ip_runs.R drop <data.rds> <meta.rds> <out> <sample> <idx> [<idx> ...]
 #             full CCIM (no subsampling), all cells and each 0-based cell left out
+#
+# Optional environment (unset: the faithful arm, OmniPath via the stub):
+#   IP_LR_CSV    an LR table (ligand, receptor columns) passed as the custom
+#                database: the R-shared arm, on cccRISE's LR pairs
+#                (rcheck/shared/export_dataset.py)
+#   IP_SETTINGS  JSON of module-discovery settings for rcheck/patched_ip.R:
+#                r2_cutoff, max_soft_power (null = no cap), min_size,
+#                tree_cut_quantile, n_iterate (S7)
 .libPaths(c(normalizePath("rcheck/lib"), .libPaths()))
 suppressPackageStartupMessages({
   library(Seurat); library(Matrix); library(dplyr); library(tidyr); library(tibble)
@@ -23,6 +31,20 @@ suppressPackageStartupMessages({
 pboptions(type = "none")
 `%notin%` <- Negate(`%in%`)
 source("rcheck/upstream/scriabin/R/interaction_programs.R")
+lr_args <- list()
+if (nzchar(Sys.getenv("IP_LR_CSV"))) {
+  lr_tab <- read.csv(Sys.getenv("IP_LR_CSV"))
+  lr_args <- list(database = "custom", ligands = lr_tab$ligand, recepts = lr_tab$receptor)
+}
+cfg <- list(r2_cutoff = 0.6, max_soft_power = 3)
+if (nzchar(Sys.getenv("IP_SETTINGS"))) {
+  source("rcheck/patched_ip.R")
+  cfg <- modifyList(cfg, fromJSON(Sys.getenv("IP_SETTINGS")))
+  if (is.null(cfg$max_soft_power)) cfg$max_soft_power <- Inf
+  lr_args <- c(lr_args, Filter(Negate(is.null), list(
+    r2_cutoff = cfg$r2_cutoff, max.soft.power = cfg$max_soft_power, min.size = cfg$min_size,
+    tree.cut.quantile = cfg$tree_cut_quantile, n.iterate = cfg$n_iterate)))
+}
 args <- commandArgs(TRUE)
 mode <- args[1]; data <- readRDS(args[2]); meta <- readRDS(args[3]); out <- args[4]
 dir.create(out, showWarnings = FALSE, recursive = TRUE)
@@ -41,9 +63,9 @@ drop_small_types <- function(cells) {
 }
 
 run_ip <- function(cells, seed, ...) {
-  suppressWarnings(suppressMessages(InteractionPrograms(
+  suppressWarnings(suppressMessages(do.call(InteractionPrograms, c(list(
     sample_object(cells), assay = "IP", slot = "data", cell_types = "celltype",
-    return.mat = TRUE, seed = seed, ...)))
+    return.mat = TRUE, seed = seed), lr_args, list(...)))))
 }
 
 save_ip <- function(ip, cells, file) {
@@ -52,11 +74,11 @@ save_ip <- function(ip, cells, file) {
                connectivity = ip$connectivity, cells = cells), file)
   # the soft power upstream picked (it is not returned): same call, same rule
   sp <- suppressWarnings(suppressMessages(
-    pickSoftThreshold.fromSimilarity(ip$cor_mat, RsquaredCut = 0.6, verbose = 0)))
+    pickSoftThreshold.fromSimilarity(ip$cor_mat, RsquaredCut = cfg$r2_cutoff, verbose = 0)))
   est <- sp$powerEstimate
   write_json(list(n_cells = length(cells), n_lr = nrow(ip$cor_mat),
                   power_estimate = est,
-                  soft_power = if (is.na(est) || est > 3) 1 else est,
+                  soft_power = if (is.na(est) || est > cfg$max_soft_power) 1 else est,
                   max_r2_power_le3 = max(sp$fitIndices$SFT.R.sq[sp$fitIndices$Power <= 3]),
                   modules = ip$modules),
              sub("\\.rds$", ".json", file), auto_unbox = TRUE, na = "null")
