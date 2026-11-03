@@ -127,6 +127,30 @@ def lr_similarity(m: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return keep, 0.5 + 0.5 * np.atleast_2d(cor)
 
 
+def ccim_similarity(lig: np.ndarray, rec: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """``lr_similarity(ccim(lig, rec))`` without building the CCIM.
+
+    Column l of the CCIM is the outer product of ``a = sqrt(lig[:, l])`` and
+    ``b = sqrt(rec[:, l])`` over all n^2 cell pairs, so its sums are
+    ``sum(a_l) sum(b_l)`` and its cross-products ``(a'a)_lm (b'b)_lm``: the
+    Pearson correlation needs only n x LR matrices (n^2 / n fewer
+    operations). Same quantity, different summation order (float64
+    rounding, ~1e-12); used by the S7 parameter sweep, where n_iterate = 128
+    on IBD makes the direct form days of CPU."""
+    a, b = np.sqrt(lig), np.sqrt(rec)
+    n_pairs = float(lig.shape[0]) ** 2
+    sums = a.sum(axis=0) * b.sum(axis=0)
+    keep = sums > 0
+    a, b, sums = a[:, keep], b[:, keep], sums[keep]
+    cross = (a.T @ a) * (b.T @ b)
+    cov = cross - np.outer(sums, sums) / n_pairs
+    sd = np.sqrt(np.diag(cov))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        cor = cov / np.outer(sd, sd)
+    np.fill_diagonal(cor, np.where(sd > 0, 1.0, np.nan))
+    return keep, 0.5 + 0.5 * cor
+
+
 def stratified_subsample(
     cell_types: np.ndarray,
     rng: np.random.Generator,
@@ -165,16 +189,21 @@ def averaged_similarity(
     rec: np.ndarray,
     lr_names: Sequence[str],
     subsamples: Sequence[np.ndarray],
+    factored: bool = False,
 ) -> pd.DataFrame:
     """The LR-pair similarity ``InteractionPrograms`` clusters: one per
     subsample (all ordered pairs of its cells, self-pairs included), averaged
     elementwise over the union of LR pairs, ignoring pairs absent from a
     subsample. Entries one rounding step outside [0, 1] are clamped, as the
-    R arms do (`rcheck/upstream_fixes.R`; upstream WGCNA stops on them)."""
+    R arms do (`rcheck/upstream_fixes.R`; upstream WGCNA stops on them).
+    `factored` computes each subsample's via `ccim_similarity`."""
     names = np.asarray(lr_names)
     mats = []
     for cells in subsamples:
-        keep, sim = lr_similarity(ccim(lig[cells], rec[cells]))
+        if factored:
+            keep, sim = ccim_similarity(lig[cells], rec[cells])
+        else:
+            keep, sim = lr_similarity(ccim(lig[cells], rec[cells]))
         mats.append(pd.DataFrame(sim, index=names[keep], columns=names[keep]))
     union = pd.Index(pd.unique(np.concatenate([m.index.to_numpy() for m in mats])))
     stack = np.stack([m.reindex(index=union, columns=union).to_numpy() for m in mats])

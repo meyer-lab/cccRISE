@@ -33,6 +33,17 @@ def test_lr_similarity_drops_all_zero_columns():
     np.testing.assert_allclose(sim, 0.5 + 0.5 * np.corrcoef(m[:, [0, 2]], rowvar=False))
 
 
+def test_ccim_similarity_equals_direct():
+    rng = np.random.default_rng(3)
+    lig = rng.gamma(0.5, size=(40, 12)) * (rng.random((40, 12)) < 0.4)
+    rec = rng.gamma(0.5, size=(40, 12)) * (rng.random((40, 12)) < 0.4)
+    lig[:, 3] = 0.0  # an all-zero column is dropped
+    keep, sim = scriabin.ccim_similarity(lig, rec)
+    keep_d, sim_d = scriabin.lr_similarity(scriabin.ccim(lig, rec))
+    assert keep.tolist() == keep_d.tolist()
+    np.testing.assert_allclose(sim, sim_d, rtol=0, atol=1e-12)
+
+
 def test_stratified_subsample_quota_and_cap():
     types = np.array(["a"] * 900 + ["b"] * 90 + ["c"] * 2)
     picks = scriabin.stratified_subsample(types, np.random.default_rng(0))
