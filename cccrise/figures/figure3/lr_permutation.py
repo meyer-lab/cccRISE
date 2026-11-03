@@ -125,7 +125,7 @@ def plot_pair_nulls(component: dict, n_top: int, ax) -> None:
     common.reference_line(ax, 0, horizontal=False, linestyle=":")
     ax.set_yticks(rows, LR_NAMES[top], fontsize=common.FACTOR_LABEL_FONT_SIZE)
     ax.set_ylim(-0.6, n_top - 0.4)
-    ax.set_xlabel(f"Standardized {CASE_DISPLAY} −\n{CONTROL_DISPLAY} mean score")
+    ax.set_xlabel(f"Standardized mean score\n{CASE_DISPLAY} − {CONTROL_DISPLAY}")
     common.legend(
         ax,
         "above",
