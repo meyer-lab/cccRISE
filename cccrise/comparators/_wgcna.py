@@ -138,28 +138,54 @@ class HClust:
     order: np.ndarray
 
 
+def _row_nearest(d: np.ndarray, active: np.ndarray, k: int) -> tuple[float, int]:
+    """Smallest distance from `k` to an active cluster of higher index, and
+    the lowest such index (inf, -1 when none)."""
+    row = np.where(active[k + 1 :], d[k, k + 1 :], np.inf)
+    if row.size == 0:
+        return np.inf, -1
+    j = int(np.argmin(row))
+    return float(row[j]), k + 1 + j
+
+
 def _complete_linkage_steps(
     dist: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """hclust.f's agglomeration for complete linkage: at each step merge the
     closest pair of active clusters (ties: lowest i, then lowest j), keep the
     lower index for the merged cluster, and update by the max rule. Returns
-    1-based (IA, IB, height) as hclust.f passes them to hcass2."""
+    1-based (IA, IB, height) as hclust.f passes them to hcass2.
+
+    Each cluster's nearest higher-index neighbour is cached (hclust.f's NN
+    list) and a row is rescanned only when the merge can change it, so a
+    step costs O(n) rather than O(n^2); the choice, ties included, is the
+    full scan's (`cccrise/tests/test_comparators_wgcna.py`)."""
     n = dist.shape[0]
     d = np.array(dist, dtype=float)
     np.fill_diagonal(d, np.inf)
     active = np.ones(n, dtype=bool)
+    nn_d, nn_j = np.empty(n), np.empty(n, dtype=int)
+    for k in range(n):
+        nn_d[k], nn_j[k] = _row_nearest(d, active, k)
     ia, ib, height = np.empty(n - 1, int), np.empty(n - 1, int), np.empty(n - 1)
     for step in range(n - 1):
-        masked = np.where(np.triu(np.outer(active, active), 1), d, np.inf)
-        flat = int(np.argmin(masked))  # row-major: lowest i, then lowest j
-        i, j = divmod(flat, n)
-        ia[step], ib[step], height[step] = i + 1, j + 1, masked[i, j]
+        i = int(np.argmin(nn_d))  # lowest i among the smallest
+        j = int(nn_j[i])
+        ia[step], ib[step], height[step] = i + 1, j + 1, nn_d[i]
         merged = np.maximum(d[i], d[j])
         d[i, :], d[:, i] = merged, merged
         d[i, i] = np.inf
         active[j] = False
         d[j, :], d[:, j] = np.inf, np.inf
+        nn_d[j], nn_j[j] = np.inf, -1
+        # rows below i whose nearest was i or j, or that now tie/beat it via i
+        lower = np.flatnonzero(
+            active[:i] & ((nn_j[:i] == i) | (nn_j[:i] == j) | (merged[:i] <= nn_d[:i]))
+        )
+        # rows between i and j that pointed at j
+        middle = i + 1 + np.flatnonzero(active[i + 1 : j] & (nn_j[i + 1 : j] == j))
+        for k in (*lower, i, *middle):
+            nn_d[k], nn_j[k] = _row_nearest(d, active, int(k))
     return ia, ib, height
 
 
