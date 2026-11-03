@@ -1,12 +1,12 @@
 ## Discussion
 
+<!-- Legacy discussion text
+
 We have demonstrated that CCC-RISE provides a comprehensive framework for investigating cell-cell communication (CCC) across multiple conditions while maintaining single-cell resolution.
 Current computational tools for CCC largely rely on pseudobulking, a process that aggregates single-cell data into pre-defined clusters and obscures the functional diversity of individual cells.
 This approach depends heavily on the accuracy of initial annotations and often fails to capture the continuous and multifaceted nature of cellular identities.
 To address these limitations, CCC-RISE leverages RISE to project cells into data-driven \"eigen-states\" based on shared expression patterns rather than rigid cell types.
 By applying tensor decomposition to these eigen-states, CCC-RISE identifies integrative patterns of variation, allowing researchers to trace communication programs back to specific sender and receiver subpopulations, even those that cross conventional cell-type boundaries.
-
-<!-- Legacy discussion text
 
 The application of CCC-RISE to a COVID-19 cohort illustrated the critical need for this resolution to deconvolve condition-specific communication events.
 While pseudobulk analysis broadly implicated mDCs and B cells in CCL19-CCR7-mediated interactions, CCC-RISE successfully pinpointed the specific high-activity subpopulations driving this recruitment signal, revealing heterogeneity that aggregate methods miss.
@@ -32,7 +32,6 @@ The single-cell resolution of CCC-RISE isolated this specific subpopulation of C
 By engaging CD27 on neighboring cytotoxic CD4+ receiver cells---which display distinct, high-metabolic markers such as ADA---these CD70+ senders create a continuous, self-amplifying feedback loop.
 This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell proliferation and lowering the activation threshold of the surrounding immune environment\ [@doi:10.1182/bloodadvances.2024012909; @doi:10.4049/jimmunol.179.4.2609; @doi:10.3389/fimmu.2021.715909; @doi:10.1111/j.1600-6143.2005.01215.x].
 Mathematically separating this dysregulated, highly specialized subset from the broader CD4+ population again demonstrated the importance of cellular resolution beyond the cell type annotations.
--->
 
 A central advantage of this framework is its ability to bypass the limitations of cell annotations.
 By analyzing eigen-states, CCC-RISE captures continuous and overlapping cellular identities, which is particularly critical for rare cell populations or for identifying subpopulations that participate in multiple, distinct signaling programs.
@@ -47,6 +46,8 @@ In summary, CCC-RISE provides an unbiased framework for investigating CCC across
 By integrating the cell-alignment capabilities of RISE with the pattern-finding benefits of tensor decomposition, our method reveals context-specific communication programs that are directly interpretable at the level of individual cells.
 As single-cell multi-condition studies become increasingly common, CCC-RISE serves as a powerful tool to unravel the complex cellular dialogues that underpin diseases.
 Understanding CCC will rely on high-level analysis tools like CCC-RISE to map the entire landscape of potential interactions in an unbiased way, followed by targeted experiments to confirm which of these predicted pathways are functionally important.
+
+-->
 
 **Acknowledgements:** This work was supported by NIAID U19-AI172713 to A.S.M. and a Cota Robles Fellowship to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice for the development of this method and its application to cell-cell communication.
 
