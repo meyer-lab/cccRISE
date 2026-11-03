@@ -12,7 +12,7 @@
 #   score:        ScoreInteractionPrograms on the full denoised matrix.
 #                 -> scores_ligands.csv, scores_receptors.csv
 #
-#   Rscript merge_sig.R merge <progdir>
+#   Rscript merge_sig.R merge <progdir> [sim_threshold]   (default 0.15, upstream)
 #   Rscript merge_sig.R significance <progdir> [workers] [n.replicate]
 #   Rscript merge_sig.R score <progdir> <full.rds> <meta.rds>
 .libPaths(c(normalizePath("rcheck/lib"), .libPaths()))
@@ -42,7 +42,8 @@ if (mode == "merge") {
     list(cor_mat = ip$cor_mat, tom = NULL, modules = ip$modules, connectivity = ip$connectivity)
   }
   t0 <- Sys.time()
-  ip_all <- FindAllInteractionPrograms(light, group.by = "sample")
+  thr <- if (length(args) >= 3) as.numeric(args[3]) else 0.15
+  ip_all <- FindAllInteractionPrograms(light, group.by = "sample", sim_threshold = thr)
   log(length(ip_all$modules), "merged programs from",
       sum(sapply(samples, function(s) length(load_ip(s)$modules))), "modules",
       format(round(difftime(Sys.time(), t0, units = "secs"))))

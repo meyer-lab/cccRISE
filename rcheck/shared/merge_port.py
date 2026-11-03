@@ -7,7 +7,8 @@ upstream's merge uses (sorted, as `merge_sig.R` lists them) and writes
 ``merged.json`` as `merge_sig.R merge` does. R-vs-port equality of the merge
 is checked on IBD subsets of 10 / 20 / 40 samples (CONCORDANCE_PLAN.md §10).
 
-Usage: uv run python rcheck/shared/merge_port.py RUN_DIR
+Usage: uv run python rcheck/shared/merge_port.py RUN_DIR [SIM_THRESHOLD]
+(default 0.15, upstream)
 """
 
 import json
@@ -18,7 +19,7 @@ from pathlib import Path
 from cccrise.comparators import scriabin
 
 
-def main(run: Path) -> None:
+def main(run: Path, threshold: float = scriabin.SIM_THRESHOLD) -> None:
     per_sample = {
         f.stem: {
             name: mods if isinstance(mods, list) else [mods]
@@ -28,7 +29,7 @@ def main(run: Path) -> None:
         if f.stem not in ("merged", "kept")
     }
     t0 = time.time()
-    merged = scriabin.merge_programs_incremental(per_sample)
+    merged = scriabin.merge_programs_incremental(per_sample, threshold)
     partial = run / "merged.json.partial"
     partial.write_text(json.dumps(merged))
     partial.replace(run / "merged.json")
@@ -39,4 +40,4 @@ def main(run: Path) -> None:
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]))
+    main(Path(sys.argv[1]), *(float(x) for x in sys.argv[2:3]))

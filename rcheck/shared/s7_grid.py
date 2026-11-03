@@ -151,11 +151,14 @@ def run_unit(args: tuple) -> str:
     subs = scriabin.draw_subsamples(types, rng, settings)
     sim = scriabin.averaged_similarity(lig, rec, _DATA["names"], subs, factored=True)
     powers = _soft_powers(sim.to_numpy())
-    cache: dict = {}
-    mods = {
-        setting_key(r2, cap, m, q): _modules(sim, powers[(r2, cap)], m, q, cache)
-        for r2, cap, m, q in module_settings()
-    }
+    trees: dict = {}
+    cuts: dict = {}
+    mods = {}
+    for r2, cap, m, q in module_settings():
+        power = powers[(r2, cap)]
+        if (power, m, q) not in cuts:
+            cuts[(power, m, q)] = _modules(sim, power, m, q, trees)
+        mods[setting_key(r2, cap, m, q)] = cuts[(power, m, q)]
     rec_out = {
         "n_cells": len(rows),
         "n_lr": sim.shape[0],
