@@ -8,13 +8,14 @@ celltype) and ``lr.csv`` (the fit's LR pairs, one per ``ligand=receptor``);
 with ``--full``, also ``expr.mtx`` / ``features.csv`` over every gene (for
 ``AddModuleScore``'s control genes). `to_rds.R` then converts them.
 
-Usage: uv run python rcheck/shared/export_dataset.py OUT --dataset alad [--full]
+Usage: uv run python rcheck/shared/export_dataset.py OUT --dataset alad [--full] [--adata H5AD]
 """
 
 import argparse
 import sys
 from pathlib import Path
 
+import anndata
 import numpy as np
 import pandas as pd
 import scipy.io
@@ -25,9 +26,10 @@ from _common import dataset_inputs
 from cccrise.comparators.inputs import with_complex_pseudogenes
 
 
-def main(out: Path, dataset: str, full: bool) -> None:
+def main(out: Path, dataset: str, full: bool, adata_path: Path | None = None) -> None:
     out.mkdir(parents=True, exist_ok=True)
-    inp = dataset_inputs(dataset)
+    adata = None if adata_path is None else anndata.read_h5ad(adata_path)
+    inp = dataset_inputs(dataset, adata)
     # LR features from the LR genes' columns only: appending pseudo-genes to
     # the whole matrix copies it (IBD: 2e9 nonzeros, OOM at 64G)
     entities = pd.unique(pd.concat([inp.lr["ligand"], inp.lr["receptor"]]))
@@ -58,5 +60,8 @@ if __name__ == "__main__":
     parser.add_argument("out", type=Path)
     parser.add_argument("--dataset", required=True, choices=["alad", "ibd"])
     parser.add_argument("--full", action="store_true")
+    parser.add_argument(
+        "--adata", type=Path, help="normalized .h5ad replacing the registry's data (S4)"
+    )
     args = parser.parse_args()
-    main(args.out, args.dataset, args.full)
+    main(args.out, args.dataset, args.full, args.adata)

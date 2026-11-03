@@ -12,8 +12,8 @@ set -euo pipefail
 DATASET=$1
 IN=singlecell_cache/shared/$DATASET
 OUT=rcheck/out/shared/$DATASET/s1
-SEEDS="1111 2 3 4 5 6 7 8 9 10"
-SIG_SEEDS="1111 2"
+SEEDS=${SEEDS:-"1111 2 3 4 5 6 7 8 9 10"}
+SIG_SEEDS=${SIG_SEEDS:-"1111 2"}
 MEM=${MEM_CAP:-48G}
 # Merge engine: upstream R (default), or the port's exact incremental merge
 # (MERGE=port; IBD, where the R merge takes days per seed)
