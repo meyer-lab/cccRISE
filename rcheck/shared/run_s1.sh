@@ -15,6 +15,9 @@ OUT=rcheck/out/shared/$DATASET/s1
 SEEDS="1111 2 3 4 5 6 7 8 9 10"
 SIG_SEEDS="1111 2"
 MEM=${MEM_CAP:-48G}
+# Merge engine: upstream R (default), or the port's exact incremental merge
+# (MERGE=port; IBD, where the R merge takes days per seed)
+MERGE=${MERGE:-r}
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 IP_LR_CSV=$IN/lr.csv
 mkdir -p $OUT/logs
 # Each step in its own named scope, stopped with the script (stopping the
@@ -45,7 +48,14 @@ for seed in $SEEDS; do
   fi
   n=$(ls $run/*.rds | wc -l)
   [ "$n" -eq "$n_samples" ] || { step "INCOMPLETE seed $seed: $n of $n_samples"; continue; }
-  [ -f $run/merged.json ] || { step "merge seed $seed"; capped Rscript rcheck/faithful/merge_sig.R merge $run >> $OUT/logs/seed$seed.log 2>&1; }
+  if [ ! -f $run/merged.json ]; then
+    step "merge seed $seed ($MERGE)"
+    if [ "$MERGE" = port ]; then
+      capped .venv/bin/python rcheck/shared/merge_port.py $run >> $OUT/logs/seed$seed.log 2>&1
+    else
+      capped Rscript rcheck/faithful/merge_sig.R merge $run >> $OUT/logs/seed$seed.log 2>&1
+    fi
+  fi
 done
 
 for seed in $SIG_SEEDS; do
