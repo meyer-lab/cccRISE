@@ -23,6 +23,7 @@ from cccrise.validation.nichenet import (
     top_pair_ligands,
     weighted_percentile,
     weighted_percentile_tests,
+    weighted_score_tests,
 )
 
 
@@ -228,6 +229,48 @@ def test_weighted_percentile_tests_against_null():
     pct = score_percentiles(scores)
     assert weighted_percentile(pct).loc[1] == pytest.approx(
         tests.loc[0, "weighted_pct"]
+    )
+
+
+def test_weighted_score_tests_against_cell_null():
+    # Cmp 1's heavy ligands score above its shuffled rankings; cmp 2's don't.
+    # L39 is unscored on one shuffle, so it leaves both sides of the test.
+    rng = np.random.default_rng(0)
+    ligands = [f"L{i}" for i in range(40)]
+    weight = np.r_[np.ones(4), np.full(36, 0.01)]
+    scores = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "component": cmp,
+                    "ligand": ligands,
+                    "auroc": np.r_[np.full(4, 0.5 + lift), np.full(36, 0.5)],
+                    "weight": weight,
+                }
+            )
+            for cmp, lift in ((1, 0.2), (2, 0.0))
+        ],
+        ignore_index=True,
+    )
+    null = pd.concat(
+        [
+            scores[["component", "ligand"]].assign(
+                auroc=rng.normal(0.5, 0.01, len(scores)), replicate=r
+            )
+            for r in range(200)
+        ],
+        ignore_index=True,
+    )
+    null.loc[(null["ligand"] == "L39") & (null["replicate"] == 0), "auroc"] = np.nan
+    tests, null_means = weighted_score_tests(scores, null)
+    assert tests.loc[0, "p"] == pytest.approx(1 / 201)
+    assert tests.loc[1, "p"] > 0.05
+    assert abs(tests.loc[1, "null_mean"] - 0.5) < 0.01
+    assert null_means.index.names == ["component", "replicate"]
+    assert len(null_means) == 400 and null_means.notna().all()
+    kept = weight[:39]
+    assert tests.loc[0, "weighted_auroc"] == pytest.approx(
+        (kept * np.r_[np.full(4, 0.7), np.full(35, 0.5)]).sum() / kept.sum()
     )
 
 

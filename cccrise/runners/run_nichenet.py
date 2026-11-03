@@ -13,11 +13,15 @@ dataset, so the result is cached for ``figures/figure2/nichenet.py`` to plot.
 
 Each scored ligand is also re-scored on `--n-shuffle` copies of the NicheNet
 prior with its links shuffled (``nichenet.shuffled_percentiles``), the null of the
-weight-averaged score percentile test. Writes the long-format tables
-`figures/figure2/nichenet.py` and its supplement read:
+weight-averaged score percentile test, and on `--n-cell-shuffle` receiver
+rankings with the high/low cell labels permuted
+(``nichenet.shuffled_cell_scores``), the null of the weighted-mean score test.
+Writes the long-format tables `figures/figure2/nichenet.py` and its
+supplement read:
 
-    nichenet_scores_<dataset>.parquet   one row per (component, ligand)
-    nichenet_null_<dataset>.parquet     one row per (component, shuffle, ligand)
+    nichenet_scores_<dataset>.parquet      one row per (component, ligand)
+    nichenet_null_<dataset>.parquet        one row per (component, shuffle, ligand)
+    nichenet_cell_null_<dataset>.parquet   one row per (component, shuffle, ligand)
 
     uv run cccrise-nichenet --dataset alad
 """
@@ -35,8 +39,10 @@ from ..validation.nichenet import (
     load_ligand_target_matrix,
     receiver_celltypes,
     receiver_rankings,
+    shuffled_cell_scores,
     shuffled_percentiles,
     weighted_percentile_tests,
+    weighted_score_tests,
 )
 from ._cli import (
     add_dataset_argument,
@@ -70,6 +76,7 @@ def run_nichenet(
     min_expr_frac: float = 0.1,
     rel_cutoff: float = 0.4,
     n_shuffle: int = 1000,
+    n_cell_shuffle: int = 1000,
     n_jobs: int = 16,
     output_path: Path | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
@@ -88,6 +95,9 @@ def run_nichenet(
         Passed to `nichenet.component_ligand_scores`.
     n_shuffle, n_jobs
         Passed to `nichenet.shuffled_percentiles`.
+    n_cell_shuffle
+        Passed, with `n_jobs` and the ranking settings, to
+        `nichenet.shuffled_cell_scores`.
     output_path : Path, optional
         Parquet destination; defaults to the registry's NicheNet scores filename.
 
@@ -141,12 +151,30 @@ def run_nichenet(
     tests = weighted_percentile_tests(scores, null)[0]
     print(tests.round(4).to_string(index=False))
 
+    print(f"4. Re-scoring on {n_cell_shuffle} cell-shuffled receiver rankings...")
+    cell_null = shuffled_cell_scores(
+        adata,
+        scores,
+        lt_df,
+        n_cell_shuffle,
+        n_jobs,
+        top_perc=top_perc,
+        de_method=de_method,
+        min_expr_frac=min_expr_frac,
+        celltype_key=spec.celltype_column,
+    )
+    print("   Weighted-mean scores vs the shuffled cells:")
+    print(weighted_score_tests(scores, cell_null)[0].round(4).to_string(index=False))
+
     null_path = output_path.with_name(spec.nichenet_null_filename())
+    cell_null_path = output_path.with_name(spec.nichenet_cell_null_filename())
     print(
-        f"4. Writing {len(scores)} rows to {output_path} and the null to {null_path}..."
+        f"5. Writing {len(scores)} rows to {output_path} and the nulls to "
+        f"{null_path} and {cell_null_path}..."
     )
     scores.to_parquet(output_path, index=False)
     null.to_parquet(null_path, index=False)
+    cell_null.to_parquet(cell_null_path, index=False)
     metadata = build_metadata(
         dataset_metadata(spec)
         | {
@@ -160,6 +188,7 @@ def run_nichenet(
             "rel_cutoff": rel_cutoff,
             "receiver_celltype_column": spec.celltype_column,
             "n_shuffle": n_shuffle,
+            "n_cell_shuffle": n_cell_shuffle,
             "nichenet_ligand_target_url": (
                 "https://zenodo.org/records/7074291/files/"
                 "ligand_target_matrix_nsga2r_final.rds"
@@ -205,6 +234,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=1000,
         help="Shuffled NicheNet priors in the null of the weighted-percentile test.",
     )
+    parser.add_argument(
+        "--n-cell-shuffle",
+        type=int,
+        default=1000,
+        help="Cell-label permutations in the null of the weighted-mean score test.",
+    )
     parser.add_argument("--n-jobs", type=int, default=16)
     parser.add_argument(
         "--output",
@@ -225,6 +260,7 @@ def main(argv: list[str] | None = None) -> None:
         min_expr_frac=args.min_expr_frac,
         rel_cutoff=args.rel_cutoff,
         n_shuffle=args.n_shuffle,
+        n_cell_shuffle=args.n_cell_shuffle,
         n_jobs=args.n_jobs,
         output_path=resolve_output(
             args.output, VALIDATION_DIR, spec.nichenet_scores_filename()

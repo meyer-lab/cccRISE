@@ -26,6 +26,7 @@ resource, and caches a small long-format parquet (mirroring how
 neither the network nor `pyreadr` is required afterwards.
 """
 
+import multiprocessing
 import urllib.request
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
@@ -428,11 +429,14 @@ def score_percentiles(scores: pd.DataFrame) -> pd.DataFrame:
     return scored
 
 
-def weighted_percentile(percentiles: pd.DataFrame, by=("component",)) -> pd.Series:
-    """Per group, the ligands' score percentiles averaged with the ligand
-    weights as weights: where the ligands the component uses sit in the score
-    ranking, 0.5 if weight is unrelated to score."""
-    g = percentiles.assign(wp=percentiles["weight"] * percentiles["score_pct"])
+def weighted_percentile(
+    percentiles: pd.DataFrame, by=("component",), value: str = "score_pct"
+) -> pd.Series:
+    """Per group, the ligands' `value` (by default score percentiles) averaged
+    with the ligand weights as weights: for percentiles, where the ligands the
+    component uses sit in the score ranking, 0.5 if weight is unrelated to
+    score."""
+    g = percentiles.assign(wp=percentiles["weight"] * percentiles[value])
     sums = g.groupby(list(by))[["wp", "weight"]].sum()
     return sums["wp"] / sums["weight"]
 
@@ -514,24 +518,38 @@ def weighted_percentile_tests(
         "null_mean", "p", "q"]; and the null's weighted percentiles, indexed
         by (component, replicate).
     """
-    from ..anova import adjust_pvalues
-
     percentiles = score_percentiles(scores)
     observed = weighted_percentile(percentiles)
     null = weighted_percentile(
         null_weights(null_percentiles, scores), by=("component", "replicate")
     )
+    out = _permutation_tests(observed, null, correction).rename(
+        columns={"observed": "weighted_pct"}
+    )
+    out.insert(
+        1,
+        "top_ligands",
+        [
+            ", ".join(c[c["is_top"]].sort_values("weight", ascending=False)["ligand"])
+            for _, c in percentiles.groupby("component")
+        ],
+    )
+    return out, null
+
+
+def _permutation_tests(
+    observed: pd.Series, null: pd.Series, correction: str | None
+) -> pd.DataFrame:
+    """Per component, `observed` against its `null` (indexed by (component,
+    replicate)): one-sided permutation p, (1 + #null >= observed) / (1 + n),
+    adjusted across components (`anova.adjust_pvalues`)."""
+    from ..anova import adjust_pvalues
+
     n_null = null.groupby(level=0).size()
     out = pd.DataFrame(
         {
             "component": observed.index,
-            "top_ligands": [
-                ", ".join(
-                    c[c["is_top"]].sort_values("weight", ascending=False)["ligand"]
-                )
-                for _, c in percentiles.groupby("component")
-            ],
-            "weighted_pct": observed.to_numpy(),
+            "observed": observed.to_numpy(),
             "null_mean": null.groupby(level=0).mean().loc[observed.index].to_numpy(),
             "p": [
                 (1 + (null.loc[k] >= v - 1e-12).sum()) / (1 + n_null[k])
@@ -540,7 +558,7 @@ def weighted_percentile_tests(
         }
     )
     out["q"] = adjust_pvalues(out["p"].to_numpy(), method=correction)
-    return out, null
+    return out
 
 
 def null_weights(null_percentiles: pd.DataFrame, scores: pd.DataFrame) -> pd.DataFrame:
@@ -549,3 +567,102 @@ def null_weights(null_percentiles: pd.DataFrame, scores: pd.DataFrame) -> pd.Dat
     return null_percentiles.merge(
         scores[["component", "ligand", "weight"]], on=["component", "ligand"]
     )
+
+
+_CELL_SHUFFLE: dict = {}  # per component (kept, pos_mask), and the run's settings
+
+
+def shuffled_cell_scores(
+    adata: anndata.AnnData,
+    scores: pd.DataFrame,
+    lt_df: pd.DataFrame,
+    n_shuffle: int = 1000,
+    n_jobs: int = 1,
+    top_perc: float = 10,
+    de_method: DeMethod = "wilcoxon",
+    min_expr_frac: float = 0.1,
+    celltype_key: str | None = None,
+) -> pd.DataFrame:
+    """
+    The shuffled-cell null of `component_ligand_scores`: each component's
+    receiver ranking (`receiver_ranking`) recomputed `n_shuffle` times with
+    the "high" label permuted among its high and low cells (seeds
+    0..n_shuffle-1; group sizes kept), every scored ligand of `scores`
+    re-scored on each. Forked workers share the cells, so `n_jobs` > 1 needs
+    a platform with fork.
+
+    Returns
+    -------
+    pd.DataFrame
+        ["component", "ligand", "auroc", "replicate"].
+    """
+    scored = scores.dropna(subset=["auroc"])
+    _CELL_SHUFFLE.clear()
+    _CELL_SHUFFLE.update(
+        {
+            cmp: _receiver_population(adata, cmp, top_perc, celltype_key)
+            for cmp in scored["component"].unique()
+        },
+        settings=(lt_df, de_method, min_expr_frac),
+        ligands={cmp: list(g["ligand"]) for cmp, g in scored.groupby("component")},
+    )
+    jobs = [
+        (cmp, seed) for cmp in _CELL_SHUFFLE["ligands"] for seed in range(n_shuffle)
+    ]
+    context = multiprocessing.get_context("fork")
+    with ProcessPoolExecutor(n_jobs, mp_context=context) as pool:
+        return pd.concat(pool.map(_shuffled_cell_scores, jobs), ignore_index=True)
+
+
+def _shuffled_cell_scores(job: tuple[int, int]) -> pd.DataFrame:
+    cmp, seed = job
+    kept, pos_mask = _CELL_SHUFFLE[cmp]
+    lt_df, de_method, min_expr_frac = _CELL_SHUFFLE["settings"]
+    pos_mask = np.random.default_rng(seed).permutation(pos_mask)
+    kept = kept.copy()  # `_run_de` writes its labels into obs
+    ranking = _run_de(kept, pos_mask, cmp, de_method)
+    ranking = ranking[
+        ranking.index.isin(expressed_genes(kept, pos_mask, min_expr_frac))
+    ]
+    return (
+        ligand_activities(ranking, lt_df)
+        .reindex(_CELL_SHUFFLE["ligands"][cmp])
+        .rename("auroc")
+        .rename_axis("ligand")
+        .reset_index()
+        .assign(component=cmp, replicate=seed)
+    )
+
+
+def weighted_score_tests(
+    scores: pd.DataFrame,
+    null_scores: pd.DataFrame,
+    correction: str | None = "fdr_bh",
+) -> tuple[pd.DataFrame, pd.Series]:
+    """
+    Per component, the ligand-weighted mean target score (`weighted_percentile`
+    of "auroc") of `component_ligand_scores` output against its value on each
+    replicate of `shuffled_cell_scores`, the ligand weights held fixed, over
+    the ligands scored on every ranking. Each
+    ligand counts once however many LR pairs share it, and the replicate (a
+    whole reshuffled ranking) is the permutation unit: one-sided permutation
+    p, adjusted across components.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.Series]
+        One row per component: ["component", "weighted_auroc", "null_mean",
+        "p", "q"]; and the null's weighted means, indexed by (component,
+        replicate).
+    """
+    # Only ligands scored on every ranking, so both sides average the same set
+    null = null_weights(null_scores, scores)
+    scored = null.groupby(["component", "ligand"])["auroc"].transform(
+        lambda v: v.notna().all()
+    )
+    null = null[scored]
+    kept = scores.merge(null[["component", "ligand"]].drop_duplicates())
+    observed = weighted_percentile(kept.dropna(subset=["auroc"]), value="auroc")
+    null = weighted_percentile(null, by=("component", "replicate"), value="auroc")
+    tests = _permutation_tests(observed, null, correction)
+    return tests.rename(columns={"observed": "weighted_auroc"}), null
