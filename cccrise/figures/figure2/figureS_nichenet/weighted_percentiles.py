@@ -80,7 +80,7 @@ def plot(axs):
     ax.set_xticks(range(len(groups)), list(groups))
     ax.set_xlim(-0.6, len(groups) - 0.4)
     ax.set_xlabel("CP component")
-    ax.set_ylabel("Ligand target-score percentile")
+    ax.set_ylabel("Ligand target-score\npercentile")
 
 
 def makeFigure():
