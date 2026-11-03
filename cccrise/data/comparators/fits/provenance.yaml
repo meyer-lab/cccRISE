@@ -17,14 +17,11 @@ shared:
   condition_key: dsco_id
   group_key: ALADstatus
   cp_dtype: float32
-  git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
-  consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
-    first commit). The code was first committed in 425561c; nothing these runs call has changed
-    since.
 files:
   pb_alad_coarse.nc:
-    sha256: 9e192009dbb81e7216acfad83c5b0fb15ee0ec4e6af4642070e00f3a249c8d1a
-    command: uv run cccrise-comparators --dataset alad --methods pb --pb-rank coarse=4
+    sha256: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
+    command: uv run cccrise-comparators --dataset alad --methods pb --pb-rank coarse=4 --pb-rank
+      fine=5
     celltype_key: broad_cell_type
     cp_device: auto
     cp_backend: cupy
@@ -54,10 +51,13 @@ files:
       device: null
       dtype: float32
       rank: 4
-    generated: '2026-10-30T21:58:48+00:00'
+      fit_seed: 51
+    git_sha: ae3b5c15b91e0e34b0f1acace44c491ed2d2614f
+    generated: '2026-11-03T01:33:20+00:00'
   pb_alad_fine.nc:
-    sha256: bde53eaaea989c5d4cf30738c5f92f4f84204a5f1e3a5475298d8c9709935118
-    command: uv run cccrise-comparators --dataset alad --methods pb --pb-rank fine=5
+    sha256: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
+    command: uv run cccrise-comparators --dataset alad --methods pb --pb-rank coarse=4 --pb-rank
+      fine=5
     celltype_key: celltype
     cp_device: auto
     cp_backend: cupy
@@ -106,8 +106,14 @@ files:
       device: null
       dtype: float32
       rank: 5
-    generated: '2026-10-30T21:58:49+00:00'
+      fit_seed: 49
+    git_sha: ae3b5c15b91e0e34b0f1acace44c491ed2d2614f
+    generated: '2026-11-03T01:33:23+00:00'
   stac_alad_coarse.nc:
+    git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
+    consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
+      first commit). The code was first committed in 425561c; nothing these runs call has
+      changed since.
     sha256: a406bdd8df00994928bed80b86d2c81fe74f991b4d3cea10585cb8f876e36027
     command: uv run cccrise-comparators --dataset alad --labellings coarse --methods stac
     celltype_key: broad_cell_type
@@ -137,6 +143,10 @@ files:
       random_state: 42
     generated: '2026-10-31T07:37:47+00:00'
   stac_alad_fine.nc:
+    git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
+    consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
+      first commit). The code was first committed in 425561c; nothing these runs call has
+      changed since.
     sha256: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
     command: uv run cccrise-comparators --dataset alad --labellings fine --methods stac
     celltype_key: celltype
@@ -184,6 +194,10 @@ files:
       random_state: 42
     generated: '2026-10-31T07:38:07+00:00'
   tc2c_alad_coarse.nc:
+    git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
+    consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
+      first commit). The code was first committed in 425561c; nothing these runs call has
+      changed since.
     sha256: 4e08c52b1546e385a529787ec3b317bf0370dbc4d8d1dd3669d19d76ba8edfba
     command: uv run cccrise-comparators --dataset alad --labellings coarse --methods tc2c
       --tc2c-from-sweep --cp-device cpu
@@ -218,6 +232,10 @@ files:
       dtype: float32
     generated: '2026-10-31T03:22:18+00:00'
   tc2c_alad_fine.nc:
+    git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
+    consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
+      first commit). The code was first committed in 425561c; nothing these runs call has
+      changed since.
     sha256: 58baa343e7d39c8352d631832980f5db7a73d1bf3ced832e2f1f21b638d75626
     command: uv run cccrise-comparators --dataset alad --labellings fine --methods tc2c --tc2c-from-sweep
       --cp-device cpu
@@ -270,6 +288,10 @@ files:
       dtype: float32
     generated: '2026-10-31T03:28:57+00:00'
   tc2c_inner_alad_coarse.nc:
+    git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
+    consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
+      first commit). The code was first committed in 425561c; nothing these runs call has
+      changed since.
     sha256: 8499d1682dbd3c8ee10f6e3257603d7c63d79dfe817c43e558f5118420c56c35
     command: uv run cccrise-comparators --dataset alad --labellings coarse --methods tc2c_inner
     celltype_key: broad_cell_type
@@ -298,6 +320,10 @@ files:
       dtype: float32
     generated: '2026-10-31T02:54:34+00:00'
   tc2c_inner_alad_fine.nc:
+    git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
+    consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
+      first commit). The code was first committed in 425561c; nothing these runs call has
+      changed since.
     sha256: 2b0e00a96db1ec42a951a60af30cf09ad9f22cf8af43a3d9c646cc401b6a4341
     command: uv run cccrise-comparators --dataset alad --labellings fine --methods tc2c_inner
     celltype_key: celltype
