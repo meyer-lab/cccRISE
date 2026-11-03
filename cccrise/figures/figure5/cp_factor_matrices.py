@@ -6,9 +6,9 @@ from ..figure2.cp_factor_matrices import AXES, draw  # noqa: F401  (AXES: this p
 from ._common import DATASET
 
 EIGENSTATE_TICKS = (1, 15, 30, 45, 60)
-# IBD's components are carried by few LR pairs, so about as many rows as
-# ALAD's 15% of 513 show them without a mostly blank matrix
-TOP_LR_FRACTION = 0.06
+# IBD's components are each carried by a handful of LR pairs: the top 2% (25
+# rows) shows every one of them legibly, where more rows are mostly blank
+TOP_LR_FRACTION = 0.02
 
 
 def plot(axs):

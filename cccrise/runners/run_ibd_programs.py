@@ -35,7 +35,7 @@ cohort's cells. Like `run_cohort`, it does not refit RISE/CPD. Writes, into
 """
 
 import argparse
-from typing import cast
+from typing import Any, cast
 
 import anndata
 import numpy as np
@@ -169,7 +169,7 @@ PACMAP_SEED = 42
 def expression(adata: anndata.AnnData, genes: list[str]) -> pd.DataFrame:
     sub = adata[:, [g for g in genes if g in adata.var_names]]
     return pd.DataFrame(
-        np.asarray(cast(np.ndarray, sub.X.todense())),
+        np.asarray(cast(Any, sub.X).todense()),
         index=adata.obs_names,
         columns=sub.var_names,
     )
@@ -204,7 +204,7 @@ def enteroendocrine_cells(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataF
     cells = cell_frame(sub, spec)
     genes = expression(sub, EE_GENES)
     cells["Group"] = ee_group(cells, genes)
-    cells["Genes detected"] = np.asarray((sub.X > 0).sum(axis=1)).ravel()
+    cells["Genes detected"] = np.asarray((cast(Any, sub.X) > 0).sum(axis=1)).ravel()
     for role in ("sender", "receiver"):
         for k in (3, 4):
             cells[f"C{k} {role} weight"] = weights(sub, role, k)
@@ -371,7 +371,8 @@ def run_ibd_programs(spec: DatasetSpec, random_state: int, command: str) -> None
     conditions = np.unique(adata.obs[spec.condition_column].astype(str))
     assert np.array_equal(conditions, factors["condition"].values.astype(str))
     status = (
-        adata.obs.groupby(spec.condition_column, observed=True)[spec.group_column]
+        cast(pd.DataFrame, adata.obs)
+        .groupby(spec.condition_column, observed=True)[spec.group_column]
         .first()
         .astype(str)
         .reindex(conditions)

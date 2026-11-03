@@ -2,10 +2,10 @@
 hand, but its biopsy and cell counts per inflammation status come from the
 data and are saved as its source data."""
 
-from ...factors import load_factors_netcdf
-from ...runners.datasets import DATASETS
-from .. import common
-from . import _common as S
+from ....factors import load_factors_netcdf
+from ....runners.datasets import DATASETS
+from ... import common
+from .. import _common as S
 
 SCHEMATIC = True  # an illustration, but its sample sizes are source data
 AXES = ("full",)

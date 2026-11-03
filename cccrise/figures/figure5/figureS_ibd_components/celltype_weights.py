@@ -6,11 +6,13 @@ source data hold every cell type."""
 
 import pandas as pd
 
-from .. import common, style
-from ..figure3.celltype_association import AXES, ROLES, draw_weights  # noqa: F401
-from . import _common as S
+from ... import common, style
+from ...figure3.celltype_association import ROLES, draw_weights
+from .. import _common as S
 
 TOP_TYPES = 3
+#: Wider than Figure 3's squares, so the supplement's two rows fill its width
+AXES = ("rect",) * len(ROLES)
 
 
 def shown_celltypes(weights: pd.DataFrame) -> list[str]:
