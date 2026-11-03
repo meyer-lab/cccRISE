@@ -11,7 +11,13 @@ LAYOUT = [[[factors, genes]]]  # one stack, so the two heatmaps left-align
 
 
 def makeFigure():
-    fig = common.compose_fixed(LAYOUT)
+    return stacked(LAYOUT)
+
+
+def stacked(layout) -> Figure:
+    """`layout`'s condition-factor heatmap (module `factors`) stacked on its
+    gene-factor heatmap (module `genes`), sharing one colorbar."""
+    fig = common.compose_fixed(layout)
     top, bottom = common.panel_axes(fig, "factors"), common.panel_axes(fig, "genes")
     _close_gap(fig, top, bottom)
     _span_colorbar(fig, top, bottom)
