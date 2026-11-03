@@ -12,7 +12,7 @@ Two uses:
 Writes ``s3/port/<sample>.json`` ({"-1": modules, "<idx>": modules, ...,
 "shift_<idx>": max |similarity change|}), one checkpoint per sample.
 
-Usage: uv run python rcheck/shared/s3_port.py --dataset ibd [--big 6]
+Usage: uv run python rcheck/shared/s3_port.py --dataset ibd [--big 6] [--setting LABEL]
 """
 
 import argparse
@@ -38,7 +38,12 @@ def _similarity(lig, rec, names, rows) -> pd.DataFrame:
     return pd.DataFrame(sim, index=names[keep], columns=names[keep])
 
 
-def run_sample(sample: str, idxs: list[int], path: Path) -> None:
+def run_sample(
+    sample: str,
+    idxs: list[int],
+    path: Path,
+    settings: scriabin.ProgramSettings = scriabin.UPSTREAM,
+) -> None:
     if path.exists():
         return
     d = s7_grid._DATA
@@ -46,10 +51,10 @@ def run_sample(sample: str, idxs: list[int], path: Path) -> None:
     Xs = d["X"][rows]
     lig, rec = Xs[:, d["lig"]].toarray(), Xs[:, d["rec"]].toarray()
     base = _similarity(lig, rec, d["names"], np.arange(len(rows)))
-    out = {"-1": scriabin.modules_from_similarity(base).modules}
+    out = {"-1": scriabin.modules_from_similarity(base, settings).modules}
     for idx in idxs:
         sim = _similarity(lig, rec, d["names"], np.delete(np.arange(len(rows)), idx))
-        out[str(idx)] = scriabin.modules_from_similarity(sim).modules
+        out[str(idx)] = scriabin.modules_from_similarity(sim, settings).modules
         shared = sim.index.intersection(base.index)
         delta = sim.loc[shared, shared].to_numpy() - base.loc[shared, shared].to_numpy()
         out[f"shift_{idx}"] = float(np.nanmax(np.abs(delta)))
@@ -83,16 +88,32 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--dataset", required=True, choices=["alad", "ibd"])
     p.add_argument("--big", type=int, default=0)
+    p.add_argument(
+        "--setting",
+        help="label in s7_r/settings.json: module settings (S3 at an S7 "
+        "setting; output in s3/port_<label>/)",
+    )
     a = p.parse_args()
     s7_grid._init(a.dataset)
     root = OUT / a.dataset / "s3"
+    settings, port = scriabin.UPSTREAM, root / "port"
+    if a.setting:
+        cfg = json.loads((OUT / a.dataset / "s7_r" / "settings.json").read_text())
+        c = cfg[a.setting]
+        settings = scriabin.ProgramSettings(
+            r2_cutoff=c["r2_cutoff"],
+            max_soft_power=c["max_soft_power"],
+            min_module_size=c["min_size"],
+            cut_height_quantile=c["tree_cut_quantile"],
+        )
+        port = root / f"port_{a.setting}"
     tables = [pd.read_csv(root / "drops.csv")]
     if a.big:
         big = big_samples(a.dataset, a.big)
         big.to_csv(root / "drops_port.csv", index=False)
         tables.append(big)
     for s, g in pd.concat(tables).groupby("sample", sort=False):
-        run_sample(s, g["idx"].tolist(), root / "port" / f"{s}.json")
+        run_sample(s, g["idx"].tolist(), port / f"{s}.json", settings)
 
 
 if __name__ == "__main__":
