@@ -47,14 +47,14 @@ ASSOCIATIONS: list[dict[str, Any]] = [
     },
     # CLAD among survivors; death against every survivor
     {
-        "name": "6-Month CLAD vs. No CLAD",
+        "name": "6-Month CLAD vs. Stable/Recovered",
         "group_column": "6monthcondition",
         "mapping": {
             "CLAD": "CLAD",
-            "No CLAD/Stable": "No CLAD",
-            "No CLAD/Recovered": "No CLAD",
+            "No CLAD/Stable": "Stable/Recovered",
+            "No CLAD/Recovered": "Stable/Recovered",
         },
-        "control_label": "No CLAD",
+        "control_label": "Stable/Recovered",
     },
     {
         "name": "6-Month Died vs. Alive",

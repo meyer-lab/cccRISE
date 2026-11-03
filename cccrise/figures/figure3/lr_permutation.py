@@ -1,10 +1,10 @@
 """Patient-permutation test of whether the outcome-associated CP component's
-top LR pairs are larger in CLAD/Died than in No CLAD samples.
+top LR pairs are larger in CLAD/Died than in stable/recovered samples.
 
 Each LR pair is scored per condition in each component's own
 sender/receiver context (`coordinated_changes.component_lr_scores`), divided
 by the condition's read depth (as the plotted condition loadings are). The
-CLAD/Died minus No CLAD mean score difference is compared against `N_PERMS`
+CLAD/Died minus stable/recovered mean score difference is compared against `N_PERMS`
 permutations of the outcome labels by patient
 (`patient_permutation_differential`); a pair's p is the one-sided fraction
 of permutations reaching its observed difference.
@@ -33,17 +33,17 @@ from ._common import COMPONENT, DATASET, SPEC, factors_adata
 from .coordinated_changes import N_TOP, component_lr_scores
 
 CASE_LABEL = "CLAD/Died"
-# 6-month outcome collapsed to CLAD/Died vs. No CLAD
+# 6-month outcome collapsed to CLAD/Died vs. Stable/Recovered (no CLAD)
 CONTRAST_COLUMN = "6monthcondition"
 CONTRAST_MAPPING = {
     "CLAD": CASE_LABEL,
     "Died": CASE_LABEL,
-    "No CLAD/Stable": "No CLAD",
-    "No CLAD/Recovered": "No CLAD",
+    "No CLAD/Stable": "Stable/Recovered",
+    "No CLAD/Recovered": "Stable/Recovered",
 }
 # The groups as axis labels name them
 CASE_DISPLAY = "CLAD/died"
-CONTROL_DISPLAY = "no CLAD"
+CONTROL_DISPLAY = "stable/recovered"
 N_PERMS = 10_000
 AXES = ("square",)
 
@@ -85,7 +85,7 @@ def plot(axs):
         .assign(
             Condition=component["conditions"],
             Patient=component["patients"],
-            Group=np.where(component["case"], CASE_LABEL, "No CLAD"),
+            Group=np.where(component["case"], CASE_LABEL, "Stable/Recovered"),
         )
         .melt(
             id_vars=["Condition", "Patient", "Group"],

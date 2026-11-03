@@ -956,6 +956,7 @@ LEVEL_ORDER = [
     "recovered",
     "No CLAD/Stable",
     "No CLAD/Recovered",
+    "Stable/Recovered",
     "No CLAD",
     "CLAD",
     "CLAD/Declined",
@@ -1082,7 +1083,7 @@ def group_loadings(
 
 #: Outcome levels as figures and the app display them; the source data keep
 #: the original labels.
-LEVEL_LABELS = {"No CLAD/Stable": "No CLAD", "No CLAD/Recovered": "Recovered"}
+LEVEL_LABELS = {"No CLAD/Stable": "Stable", "No CLAD/Recovered": "Recovered"}
 
 
 def level_label(level) -> str:
