@@ -81,12 +81,17 @@ save_ip <- function(ip, cells, file) {
     pickSoftThreshold.fromSimilarity(ip$cor_mat, RsquaredCut = cfg$r2_cutoff,
                                     blockSize = ncol(ip$cor_mat), verbose = 0)))
   est <- sp$powerEstimate
+  json_partial <- paste0(sub("\\.rds$", ".json", file), ".partial")
   write_json(list(n_cells = length(cells), n_lr = nrow(ip$cor_mat),
                   power_estimate = est,
                   soft_power = if (is.na(est) || est > cfg$max_soft_power) 1 else est,
                   max_r2_power_le3 = max(sp$fitIndices$SFT.R.sq[sp$fitIndices$Power <= 3]),
                   modules = ip$modules),
-             sub("\\.rds$", ".json", file), auto_unbox = TRUE, na = "null")
+             json_partial, auto_unbox = TRUE, na = "null")
+  # flush both to disk before the .rds (the checkpoint) appears: after a
+  # reboot an unflushed rename left a zero-length .json beside a valid .rds
+  system2("sync", c("-d", json_partial, partial))
+  file.rename(json_partial, sub("\\.rds$", ".json", file))
   file.rename(partial, file)
 }
 
