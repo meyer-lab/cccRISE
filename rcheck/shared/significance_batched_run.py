@@ -5,7 +5,8 @@ impractical (IBD: ~1,400 CPU-h per seed; CONCORDANCE_PLAN.md §10).
 Reads RUN_DIR's ``merged.json`` and each sample's averaged similarity
 (``sims/``, from `export_sims.R`); writes, as `merge_sig.R significance`
 does, one checkpoint per sample (``significance_batched/<sample>.json``:
-program -> value) and then ``kept.json`` (significant, value <= 0.05, in at
+program -> value) and then, in the same folder (never over an R run's
+files), ``kept.json`` (significant, value <= 0.05, in at
 least one sample, with more than one ligand and receptor:
 `scriabin.kept_programs`), ``significance_values.csv`` and
 ``significant_in.csv``. Random sets are seeded per (run seed, sample, program).
@@ -65,10 +66,10 @@ def main(run: Path, seed: int, replicates: int, device: str) -> None:
         {s: json.loads((out / f"{s}.json").read_text()) for s in samples}
     )
     table = table.loc[list(merged)]
-    table.to_csv(run / "significance_values.csv")
-    (table <= 0.05).to_csv(run / "significant_in.csv")
+    table.to_csv(out / "significance_values.csv")
+    (table <= 0.05).to_csv(out / "significant_in.csv")
     kept = scriabin.kept_programs(merged, table)
-    (run / "kept.json").write_text(json.dumps(kept))
+    (out / "kept.json").write_text(json.dumps(kept))
     print(
         f"{len(kept)} of {len(merged)} programs kept ({replicates} replicates, {device})"
     )
