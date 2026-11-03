@@ -198,3 +198,24 @@ def test_cut_height_quantile_changes_the_cut():
         for q in (0.1, 0.9)
     }
     assert (labels[0.1] == 0).sum() >= (labels[0.9] == 0).sum()
+
+
+@pytest.mark.parametrize("threshold", [0.05, 0.15, 0.3])
+def test_incremental_merge_equals_reference(threshold):
+    """Same output, ties and order as `merge_programs` (which the R checks
+    compare with upstream), on random module sets with many ties."""
+    rng = np.random.default_rng(int(threshold * 100))
+    for _ in range(60):
+        universe = [f"l{i}=r{i}" for i in range(rng.integers(8, 40))]
+        per_sample = {
+            f"s{s}": {
+                f"IP-{k + 1}": list(
+                    rng.choice(universe, rng.integers(2, 9), replace=False)
+                )
+                for k in range(rng.integers(1, 6))
+            }
+            for s in range(rng.integers(1, 8))
+        }
+        assert scriabin.merge_programs_incremental(
+            per_sample, threshold
+        ) == scriabin.merge_programs(per_sample, threshold)
