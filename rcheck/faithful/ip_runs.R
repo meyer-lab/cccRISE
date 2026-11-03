@@ -19,6 +19,7 @@
 #   IP_LR_CSV    an LR table (ligand, receptor columns) passed as the custom
 #                database: the R-shared arm, on cccRISE's LR pairs
 #                (rcheck/shared/export_dataset.py)
+#   IP_SAMPLES   comma-separated samples to run (default: all in meta)
 #   IP_SETTINGS  JSON of module-discovery settings for rcheck/patched_ip.R:
 #                r2_cutoff, max_soft_power (null = no cap), min_size,
 #                tree_cut_quantile, n_iterate (S7)
@@ -94,6 +95,10 @@ if (mode == "programs") {
   frac <- if (length(args) >= 6) as.numeric(args[6]) else 1
   workers <- if (length(args) >= 7) as.integer(args[7]) else 6
   samples <- sort(unique(meta$sample))
+  # IP_SAMPLES (comma-separated): only these samples, e.g. one per job of
+  # rcheck/shared/loadq.py
+  if (nzchar(Sys.getenv("IP_SAMPLES")))
+    samples <- intersect(samples, strsplit(Sys.getenv("IP_SAMPLES"), ",")[[1]])
   todo <- samples[!file.exists(file.path(out, paste0(samples, ".rds")))]
   log(length(todo), "of", length(samples), "samples to run; seed", seed, "frac", frac)
   res <- mclapply(todo, function(s) {
