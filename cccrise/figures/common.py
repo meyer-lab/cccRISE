@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from string import ascii_letters, ascii_uppercase
+from string import ascii_uppercase
 from typing import Any
 
 import anndata
@@ -36,7 +36,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import yaml
-from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.lines import Line2D
@@ -52,14 +51,12 @@ from ..anova import (
 )
 from ..factors import (
     ALAD_FACTORS_PATH,
-    COVID19_FACTORS_PATH,
     DATA_DIR,
     LOADED_PATHS,
     clean_memory,
     load_factors_to_anndata,
-    load_or_compute_dataframe,
 )
-from ..import_data import import_alad, import_balf_covid
+from ..import_data import import_alad
 from ..rank_selection import distinct_minima
 from ..runners.datasets import DATASETS, RANK_SELECTION_DIR
 from ..runners.provenance import read_metadata
@@ -70,30 +67,13 @@ from . import style
 
 __all__ = [
     "ALAD_FACTORS_PATH",
-    "COVID19_FACTORS_PATH",
     "DATA_DIR",
     "clean_memory",
     "genFigure",
-    "getSetup",
     "get_alad_data",
-    "get_covid_data",
     "load_factors_to_anndata",
-    "load_or_compute_dataframe",
     "load_runner_output",
-    "subplotLabel",
 ]
-
-
-def get_covid_data(
-    project_cells: bool = False, do_embedding: bool = False
-) -> anndata.AnnData:
-    """Load COVID dataset with factors and optional single-cell projections."""
-    if not project_cells:
-        return load_factors_to_anndata(COVID19_FACTORS_PATH)
-    raw = import_balf_covid(gene_threshold=0.001, normalize=True)
-    return load_factors_to_anndata(
-        COVID19_FACTORS_PATH, adata=raw, do_embedding=do_embedding
-    )
 
 
 def get_alad_data(
@@ -1489,44 +1469,3 @@ def _spread_labels(rows: list[float], gap: float, n_rows: int) -> np.ndarray:
     return np.concatenate(
         [first + gap * np.arange(n) for first, n, _ in clusters] or [np.empty(0)]
     )
-
-
-# =============================================================================
-# Legacy layout helpers, used only by figures/legacy (including
-# legacy/commonFuncs); removed with them.
-# =============================================================================
-
-
-def getSetup(
-    figsize: tuple[float, float] | tuple[int, int], gridd: tuple[int, int]
-) -> tuple[list[plt.Axes], Figure]:
-    """Establish figure set-up with subplots."""
-    sns.set(
-        style="whitegrid",
-        font_scale=0.7,
-        color_codes=True,
-        palette="colorblind",
-        rc={"grid.linestyle": "dotted", "axes.linewidth": 0.6},
-    )
-
-    # Setup plotting space and grid
-    f = plt.figure(figsize=figsize, layout="constrained")
-    gs1 = gridspec.GridSpec(gridd[0], gridd[1], figure=f)
-
-    # Get list of axis objects
-    ax = [f.add_subplot(gs1[x]) for x in range(gridd[0] * gridd[1])]
-
-    return ax, f
-
-
-def subplotLabel(axs: list[plt.Axes]):
-    """Place subplot labels on figure."""
-    for ii, ax in enumerate(axs):
-        ax.text(
-            -0.2,
-            1.2,
-            ascii_letters[ii],
-            transform=ax.transAxes,
-            fontweight="bold",
-            va="top",
-        )

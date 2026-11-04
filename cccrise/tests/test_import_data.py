@@ -93,17 +93,6 @@ def test_import_ligand_receptor_pairs_structure():
     assert not receptors.str.contains(" ").any()
 
 
-def test_import_balf_covid():
-    from cccrise.import_data import import_balf_covid
-
-    adata = import_balf_covid(gene_threshold=0.001, normalize=True)
-    assert isinstance(adata, anndata.AnnData)
-    assert adata.n_obs > 0
-    assert adata.n_vars > 0
-    assert "condition_unique_idxs" in adata.obs.columns
-    assert "means" in adata.var.columns
-
-
 def test_import_alad():
     import os
 

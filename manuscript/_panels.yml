@@ -75,8 +75,6 @@ figS_alad_pacmaps:
   pacmaps: [a, b]
   weight_pacmaps: [c, d, e]
 figS_celltype_eigenstates: {}
-figS_comparators:
-  method_comparison: [a]
 figS_ibd_rank_selection:
   rise_rank_selection: [a]
   bicv_test: [b]

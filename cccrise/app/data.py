@@ -38,8 +38,6 @@ class DatasetSpec:
     other_label: str | None = None
 
 
-# TODO: COVID-19 is left out while its legacy factors file predates the fit
-# fingerprint; the dataset itself is retired in PR #210.
 DATASETS: dict[str, DatasetSpec] = {
     "alad": DatasetSpec(
         key="alad",

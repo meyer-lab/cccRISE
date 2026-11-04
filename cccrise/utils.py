@@ -289,90 +289,6 @@ def expression_product_matrix(
     return df
 
 
-def aggregate_communication_scores_by_group(
-    X_sender: anndata.AnnData,
-    X_receiver: anndata.AnnData,
-    ligand: str,
-    receptor: str,
-    sender_group: np.ndarray | pd.Series | None = None,
-    receiver_group: np.ndarray | pd.Series | None = None,
-    stat: str = "mean",
-) -> pd.DataFrame:
-    """
-    Compute a communication-score statistic for a ligand-receptor pair, aggregated over
-    sender/receiver cell groups.
-
-    Parameters
-    ----------
-    sender_group, receiver_group : array-like, optional
-        Group label for each sender/receiver cell (aligned to X_sender/X_receiver obs
-        order). Cells are left ungrouped (a single "All" group) if omitted.
-    stat : str, default='mean'
-        Aggregation statistic within each sender-group x receiver-group block.
-        Options are:
-
-        - 'mean' : Mean communication score.
-        - 'pct_nonzero' : Percentage of sender-receiver cell pairs with a nonzero score.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Long-format DataFrame with one row per (sender_group, receiver_group)
-        combination present, containing the aggregated score and cell counts.
-    """
-    product_matrix = expression_product_matrix(X_sender, X_receiver, ligand, receptor)
-
-    sender_group = _fill_default_group(sender_group, X_sender.n_obs)
-    receiver_group = _fill_default_group(receiver_group, X_receiver.n_obs)
-    agg = _group_aggregator(stat)
-
-    rows = _score_group_blocks(product_matrix.values, sender_group, receiver_group, agg)
-    return pd.DataFrame(rows)
-
-
-def _fill_default_group(group: np.ndarray | pd.Series | None, n_obs: int) -> np.ndarray:
-    """Return `group` as an array, or a single "All" label per cell if omitted."""
-    return np.full(n_obs, "All") if group is None else np.asarray(group)
-
-
-def _group_aggregator(stat: str):
-    """Return the reduction function for a given `stat` option."""
-    if stat == "mean":
-        return lambda values: values.mean() if values.size else np.nan
-    if stat == "pct_nonzero":
-        return lambda values: 100 * np.mean(values > 0) if values.size else np.nan
-    raise ValueError(f"Unknown stat: {stat}")
-
-
-def _score_group_blocks(
-    values: np.ndarray,
-    sender_group: np.ndarray,
-    receiver_group: np.ndarray,
-    agg,
-) -> list[dict]:
-    """Aggregate `values` over every present sender-group x receiver-group block."""
-    rows = []
-    for s_label in np.unique(sender_group):
-        s_idx = np.where(sender_group == s_label)[0]
-        for r_label in np.unique(receiver_group):
-            r_idx = np.where(receiver_group == r_label)[0]
-            if s_idx.size == 0 or r_idx.size == 0:
-                continue
-
-            block = values[np.ix_(s_idx, r_idx)]
-            rows.append(
-                {
-                    "sender_group": s_label,
-                    "receiver_group": r_label,
-                    "communication_score": agg(block),
-                    "n_sender_cells": s_idx.size,
-                    "n_receiver_cells": r_idx.size,
-                    "n_interactions": s_idx.size * r_idx.size,
-                }
-            )
-    return rows
-
-
 def _binned_means(expr: np.ndarray, n_bins: int) -> np.ndarray:
     """Mean of `expr` within `n_bins` contiguous blocks (last block absorbs the remainder)."""
     n = len(expr)
@@ -443,41 +359,6 @@ def binned_complex_ligand_product_matrix(
     return pd.DataFrame(
         product_matrix, index=np.arange(n_bins), columns=np.arange(n_bins)
     )
-
-
-def add_obs_cmp_both_label(
-    X: anndata.AnnData,
-    cmp1: int,
-    cmp2: int,
-    pos1=True,
-    pos2=True,
-    top_perc=1,
-    type="sender",
-):
-    """Adds if cells in top/bot percentage"""
-    X = add_obs_cmp_label(X, cmp1, pos1, top_perc, type)
-    X = add_obs_cmp_label(X, cmp2, pos2, top_perc, type)
-
-    X.obs["Both"] = X.obs[f"Cmp{cmp1}"] & X.obs[f"Cmp{cmp2}"]
-
-    return X
-
-
-def add_obs_cmp_unique_two(X: anndata.AnnData, cmp1: int, cmp2: int):
-    """Creates AnnData observation column"""
-    obs = cast(pd.DataFrame, X.obs)
-    obs.loc[((obs[f"Cmp{cmp1}"] == True) & (obs[f"Cmp{cmp2}"] == False), "Label")] = (
-        f"Cmp{cmp1}"
-    )
-    obs.loc[(obs[f"Cmp{cmp1}"] == False) & (obs[f"Cmp{cmp2}"] == True), "Label"] = (
-        f"Cmp{cmp2}"
-    )
-    obs.loc[(obs[f"Cmp{cmp1}"] == True) & (obs[f"Cmp{cmp2}"] == True), "Label"] = "Both"
-    obs.loc[(obs[f"Cmp{cmp1}"] == False) & (obs[f"Cmp{cmp2}"] == False), "Label"] = (
-        "NoLabel"
-    )
-
-    return X
 
 
 # `obsm` key holding the per-cell loadings for each `factor_type`.

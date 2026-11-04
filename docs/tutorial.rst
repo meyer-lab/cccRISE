@@ -1,14 +1,14 @@
 Tutorial for cccRISE: Cell-Cell Communication Analysis
 ========================================================
 
-This tutorial demonstrates the complete cccRISE workflow for analyzing cell-cell communication in single-cell RNA-seq data across experimental conditions.
+This tutorial demonstrates the complete cccRISE workflow for analyzing cell-cell communication in single-cell RNA-seq data across experimental conditions. It follows the analysis of the acute lung allograft dysfunction (ALAD) cohort: bronchoalveolar lavage (BAL) samples from 47 lung transplant recipients (about 51,000 cells), annotated with each sample's ALAD status and 6-month and 1-year outcomes. Every figure below is generated from the canonical ALAD fit by ``docs/generate_tutorial_figures.py``.
 
 Installation
 ------------
 
 To add cccRISE to your Python package, add the following line to your ``requirements.txt`` and remake your virtual environment::
 
-    git+https://github.com/meyer-lab/cellcommunication-Pf2.git@main
+    git+https://github.com/meyer-lab/cccRISE.git@main
 
 Preprocessing the Dataset
 --------------------------
@@ -31,13 +31,13 @@ cccRISE requires a DataFrame of ligand-receptor pairs to analyze cell-cell commu
 
 - Must contain columns named ``ligand`` and ``receptor``
 - Gene names should match those in your AnnData object (typically uppercase)
-- For protein complexes, subunits should be separated by ``&`` (e.g., ``CD74&CD44``)
+- For protein complexes, subunits should be separated by ``&`` (e.g., ``ITGA4&ITGB7``)
 - Example structure::
 
-    ligand     receptor
-    CCL19      CCR7
-    PTN        PTPRZ1
-    CD74&CD44  CD44
+    ligand        receptor
+    GZMA          F2R
+    CD70          CD27
+    ITGA4&ITGB7   VCAM1
 
 The package includes a default function ``import_ligand_receptor_pairs()`` that loads a curated database from CellChat, but you can provide your own DataFrame following this format.
 
@@ -49,32 +49,33 @@ The ``prepare_dataset`` function assists with preprocessing your data. Parameter
 - ``X``: AnnData object containing raw count data in sparse matrix format
 - ``condition_name``: Name of the column in ``X.obs`` that specifies experimental conditions for each cell
 - ``geneThreshold``: Minimum mean expression threshold for gene filtering (genes with mean expression below this value are removed)
-- ``deviance``: If True, applies deviance transformation instead of log normalization (default: False)
+- ``normalize``: If True, normalizes and log-transforms the counts (default: False)
 
 The function performs the following steps:
 
-- Filters cells with fewer than 10 total counts
+- Filters cells with 10 or fewer total counts
 - Filters genes based on the ``geneThreshold`` parameter
-- Normalizes total counts per cell to the median
-- Scales gene expression values
-- Applies log₁₀((1000 × normalized_value) + 1) transformation (or deviance transformation if specified)
+- With ``normalize``, normalizes total counts per cell to the median, scales each gene by its total, and applies log₁₀((1000 × normalized_value) + 1)
 - Creates ``condition_unique_idxs`` column in ``X.obs`` with 0-indexed condition assignments
 - Pre-calculates gene means and stores in ``X.var["means"]``
 
 **Example Code**:
 
-Import your dataset as an AnnData object with preprocessed data::
+For your own data, prepare an AnnData object of raw counts::
 
     from cccrise.import_data import prepare_dataset, import_ligand_receptor_pairs
     import anndata
-    
-    # Load your data
+
     X = anndata.read_h5ad("your_data.h5ad")
-    
-    # Prepare the dataset
-    X = prepare_dataset(X, condition_name="condition", geneThreshold=0.001)
-    
-    # Load ligand-receptor pairs
+    X = prepare_dataset(X, condition_name="sample", geneThreshold=0.001, normalize=True)
+    lr_pairs = import_ligand_receptor_pairs()
+
+The ALAD cohort is registered in ``cccrise.runners.datasets.DATASETS``. Its loader (``import_alad``) filters and normalizes the data, annotates cell types (``broad_cell_type``), and indexes the samples (``dsco_id``); the source file lives on the lab server (``/opt/IVCSC/BAL-scRNAseq.raw.h5ad``)::
+
+    from cccrise.runners.datasets import DATASETS
+
+    spec = DATASETS["alad"]
+    X = spec.load()
     lr_pairs = import_ligand_receptor_pairs()
 
 Choosing the Rank
@@ -82,115 +83,84 @@ Choosing the Rank
 
 cccRISE involves two sequential factorization steps, each requiring rank selection:
 
-1. **RISE Rank Selection**: Determines how many components to extract from the raw scRNA-seq data
+1. **RISE Rank Selection**: Determines how many eigenstates to extract from the scRNA-seq data
 2. **CPD Rank Selection**: Determines how many components to use when factorizing the interaction tensor
 
-Both steps require careful evaluation using two complementary metrics:
-
-- **R²X (Variance Explained)**: Measures the proportion of variance in the data explained by the model. Higher values indicate better model fit, but values plateau as rank increases, suggesting diminishing returns.
-- **FMS (Factor Match Score)**: Measures the stability/reproducibility of components across different random initializations or bootstrap samples. Values above ~0.6 indicate stable, reliable components. Low FMS suggests overfitting or noise.
+In-sample R²X (the fraction of variance explained) rises with every added component, so both ranks are judged by how well a fit predicts data it did not see. Each step has a runner that sweeps the ranks and saves the results, with a provenance file, under ``cccrise/data/rank_selection_results/``.
 
 RISE Rank Selection
 ^^^^^^^^^^^^^^^^^^^
 
 **What is RISE?**
 
-RISE (Reduction and Insight in Single-cell Exploration) is an unsupervised, tensor-based computational method designed for the integrative analysis of single-cell RNA sequencing (scRNA-seq) data across multiple experimental conditions, such as drug treatments, patient cohorts, or time points. Built upon the PARAFAC2 tensor decomposition framework, RISE preserves the inherent three-dimensional structure of multi-condition single-cell data—conditions × cells × genes—instead of flattening it into a conventional two-dimensional matrix. The RISE rank determines how many latent patterns are extracted before computing cell-cell communication scores.
+RISE (Reduction and Insight in Single-cell Exploration) is an unsupervised, tensor-based computational method designed for the integrative analysis of single-cell RNA sequencing (scRNA-seq) data across multiple experimental conditions, such as drug treatments, patient cohorts, or time points. Built upon the PARAFAC2 tensor decomposition framework, RISE preserves the inherent three-dimensional structure of multi-condition single-cell data—conditions × cells × genes—instead of flattening it into a conventional two-dimensional matrix. The RISE rank determines how many latent patterns (eigenstates) are extracted before computing cell-cell communication scores.
 
 **Evaluate RISE Ranks**
 
-Test different RISE ranks to find the optimal balance between model complexity and stability::
+RISE ranks are compared by bi-cross-validation (BiCV): each repeat holds out half of the cells and half of the genes, fits RISE on the rest, and scores the prediction of the held-out block. Run the sweep from the command line::
 
-    from cccrise.figures.legacy.commonFuncs.plotGeneral import plot_fms_r2x_diff_ranks
+    uv run cccrise-riserank --dataset alad
+
+or from Python::
+
+    from cccrise.runners.run_rise_rank import run_rise_rank_selection
+
+    sweep, _, _ = run_rise_rank_selection(spec, ranks=list(range(1, 51)))
+
+Then plot the full-data fit and BiCV R²X against rank::
+
     import matplotlib.pyplot as plt
-    
-    # Create figure with two subplots
-    fig, ax = plt.subplots(1, 2, figsize=(12, 4))
-    
-    rise_ranks = list(range(5, 41, 5))
-    
-    # Plot FMS and R2X for different RISE ranks
-    plot_fms_r2x_diff_ranks(
-        X, 
-        condition_name="condition_unique_idxs",
-        ax1=ax[0], 
-        ax2=ax[1], 
-        ranksList=rise_ranks, 
-        runs=e
-    )
-    
-    ax[0].set_title('RISE: Factor Match Score (FMS)')
-    ax[0].set_xlabel('RISE Rank')
-    ax[1].set_title('RISE: Variance Explained (R²X)')
-    ax[1].set_xlabel('RISE Rank')
-    plt.tight_layout()
+    from cccrise.figures import common
+    from cccrise.runners.datasets import RANK_SELECTION_DIR
+
+    sweep = common.load_runner_output(spec.rise_rank_filename(), RANK_SELECTION_DIR)
+    fig, ax = plt.subplots(figsize=(5, 4))
+    common.plot_rise_rank(sweep, ax, rank=17)
     plt.show()
 
-.. image:: _static/tutorial_images/step1_rise_fms_r2x.png
-   :width: 700px
+.. image:: _static/tutorial_images/rise_rank.png
+   :width: 500px
    :align: center
 
 **Interpretation**:
 
-- **R²X**: Look for where the curve begins to plateau. Beyond this point, additional components explain minimal additional variance.
-- **FMS**: Choose a rank where FMS is above 0.6, indicating stable components. Higher FMS means the factors are more reproducible.
-- **Recommendation**: Balance both metrics. Typically, select the rank where FMS exceeds 0.6 and R²X shows diminishing returns (e.g., RISE rank = 20-40 for most datasets).
+- **Fit and BiCV train R²X**: rise with every added eigenstate, so they cannot choose a rank on their own.
+- **BiCV test R²X**: the prediction of unseen cells and genes. It peaks or plateaus near the rank that generalizes, and falls once added eigenstates fit noise.
+- **ALAD**: the canonical fit uses RISE rank 17 (dashed line), near the peak of the held-out R²X.
 
 CPD Rank Selection
 ^^^^^^^^^^^^^^^^^^
 
 **What is CPD?**
 
-After RISE, an interaction tensor is computed from cell-cell communication scores between all cell pairs across L-R pairs and conditions. CPD (Canonical Polyadic Decomposition) factorizes this tensor to identify interpretable communication patterns. The CPD rank determines how many communication components are extracted.
+After RISE, an interaction tensor is computed from cell-cell communication scores between all eigenstate pairs across L-R pairs and conditions. CPD (Canonical Polyadic Decomposition) factorizes this tensor to identify interpretable communication patterns. The CPD rank determines how many communication components are extracted.
 
 **Evaluate CPD Ranks**
 
-First, calculate the interaction tensor using a selected RISE rank, then test different CPD ranks::
+The CPD runner rebuilds the interaction tensor of the dataset's canonical RISE fit (see `Running the Factorization`_), fits CP at each rank from 10 seeded SVD starts, and estimates each rank's imputation R²X by k-fold masking of the tensor::
 
-    from cccrise.ccc_rise import calculate_interaction_tensor, fit_rise
-    from cccrise.tensor import run_fms_r2x_analysis
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    
-    # Process dataset with chosen RISE rank
-    rise_rank = 35  # Based on RISE analysis above
-    X, _ = fit_rise(X, rank=rise_rank, n_iter_max=1000, tolerance=1e-9)
-    
-    # Calculate interaction tensor
-    interaction_tensor, _ = calculate_interaction_tensor(X, lr_pairs)
-    
-    # Test CPD ranks
-    rank_list = list(range(1, 11, 2))
-    df = run_fms_r2x_analysis(
-        interaction_tensor, 
-        rank_list=rank_list, 
-        runs=3,
-        svd_init="random"
-    )
-    
-    # Plot CPD FMS and R2X
-    fig, ax = plt.subplots(1, 2, figsize=(12, 4))
-    
-    sns.lineplot(data=df, x="Component", y="FMS", ax=ax[0], label="FMS")
-    ax[0].set_ylim(0, 1)
-    ax[0].set_xlabel('CPD Rank')
-    
-    sns.lineplot(data=df, x="Component", y="R2X", ax=ax[1], color="orange", label="R2X")
-    ax[1].set_ylim(0, np.max(df["R2X"]) + 0.02)
-    ax[1].set_xlabel('CPD Rank')
-    
+    uv run cccrise-cpdrank --dataset alad
+
+Plot the fit and imputation R²X, and, for each start, the largest cosine similarity between any two components' LR pair factors::
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+    cp_sweep = common.production_fits(common.load_cpd_rank("alad"))
+    common.plot_cpd_fit_r2x(cp_sweep, ax[0], rank=5)
+    common.plot_cpd_imputation_r2x(common.load_cpd_imputation("alad"), ax[0])
+    common.plot_collinearity_boxes(ax[1], "alad", rank=5)
     plt.tight_layout()
     plt.show()
 
-.. image:: _static/tutorial_images/step2_cpd_fms_r2x.png
+.. image:: _static/tutorial_images/cpd_rank.png
    :width: 700px
    :align: center
 
 **Interpretation**:
 
-- **R²X**: Monitor how much of the interaction tensor's variance is explained. Look for an elbow point where additional components provide minimal improvement.
-- **FMS**: Ensure components are stable (FMS > 0.6). Lower FMS indicates components may vary significantly with different initializations.
-- **Recommendation**: Select the CPD rank where both FMS is high (>0.6) and R²X shows an elbow. Typically 5-20 components capture most meaningful communication patterns.
+- **Fit R²X**: rises with every added component.
+- **Imputation R²X**: the prediction of masked tensor entries. Ranks that keep improving it capture structure rather than noise.
+- **LR pair collinearity**: once two components' LR pair factors become near-duplicates (max cosine near 1), added components split existing programs rather than finding new ones, and the starts disagree on which solution they reach.
+- **ALAD**: the canonical fit uses CP rank 5 (dashed line), the largest rank at which every start reaches the same solution without collinear LR pair factors.
 
 
 Running the Factorization
@@ -198,32 +168,31 @@ Running the Factorization
 
 **Perform cccRISE Factorization**
 
-Based on the rank selection analysis above, choose appropriate RISE and CPD ranks and run the complete cccRISE workflow. This performs the two-step factorization: first extracting latent communication modes from expression data (RISE), then factorizing the resulting interaction tensor (CPD)::
+Based on the rank selection analysis above, choose RISE and CPD ranks and run the complete cccRISE workflow. This performs the two-step factorization: first extracting eigenstates from the expression data (RISE), then factorizing the resulting interaction tensor (CPD)::
 
     from cccrise import run_ccc_rise_workflow
-    
-    # Select ranks based on FMS/R2X analysis
-    rise_rank = 35  # Selected from RISE rank analysis
-    cp_rank = 8     # Selected from CPD rank analysis
-    
-    # Run the complete workflow
+
     fit = run_ccc_rise_workflow(
         adata=X,
-        rise_rank=rise_rank,
-        cp_rank=cp_rank,
+        rise_rank=17,
+        cp_rank=5,
         lr_pairs=lr_pairs,
         rise_n_iter_max=300,
         cp_n_iter_max=4000,
         rise_tol=1e-8,
         cp_tol=1e-12,
-        condition_column="condition_column",
+        condition_column="dsco_id",
         random_state=42,
         complex_sep="&",
         doEmbedding=True
     )
     X, r2x = fit["adata"], fit["r2x_cp"]
-    
+
     print(f"Variance Explained (R²X): {r2x:.4f}")
+
+For a registered dataset, the ``cccrise-run`` runner fits the same model and saves it as the dataset's canonical factors file (``cccrise/data/factors/bal_alad_factors.nc``), with a provenance file recording the ranks and fit options::
+
+    uv run cccrise-run --dataset alad --rise-rank 17 --cp-rank 5
 
 **Function Parameters**
 
@@ -276,7 +245,7 @@ Rather than saving entire multi-gigabyte AnnData files containing full single-ce
         cpd_factors=[X.uns["A"], X.uns["B"], X.uns["C"], X.uns["D"]],
         cpd_weights=X.uns["weights"],
         filtered_lr_pairs=X.uns["lr_pairs"],
-        condition_names=X.obs["sample"].unique(),
+        condition_names=X.obs["dsco_id"].unique(),
         gene_names=list(X.var_names),
         r2x_cp=r2x,
     )
@@ -293,10 +262,19 @@ Rather than saving entire multi-gigabyte AnnData files containing full single-ce
 - ``X.uns["lr_pairs"]`` - Array of ligand-receptor pair names used in the analysis
 - ``X.uns["r2x"]`` - Variance explained by the CPD factorization
 
+Loading the ALAD Fit
+^^^^^^^^^^^^^^^^^^^^
+
+The figures below project the cells onto the canonical ALAD fit rather than refitting it::
+
+    from cccrise.factors import load_factors_to_anndata
+
+    X = load_factors_to_anndata(spec.factors_path(), adata=spec.load())
+
 Visualizing the Factors
 ------------------------
 
-cccRISE decomposes cell-cell communication into four factor matrices, each revealing different aspects of the communication patterns. The package provides specialized plotting functions to visualize each factor type.
+cccRISE decomposes cell-cell communication into four factor matrices, each revealing different aspects of the communication patterns. The plotting functions below are those of the cccRISE explorer app (``cccrise.app.plots``).
 
 **Overview of the Four Factors**
 
@@ -309,257 +287,118 @@ The factorization produces four interpretable factor matrices:
 
 **Visualize All Four Factors**
 
-Create visualizations for each of the four factor types::
+Plot each factor matrix, each component divided by its largest magnitude, keeping only the LR pairs whose largest loading exceeds ``lr_weight``::
 
-    from cccrise.figures.legacy.commonFuncs.plotFactors import (
-        plot_condition_factors,
-        plot_eigenstate_factors,
-        plot_lr_factors
-    )
-    import matplotlib.pyplot as plt
-    
-    # Prepare condition grouping (if you have multiple conditions per group)
-    condition_column = "sample"  # or your condition column name
-    group_col = "condition"      # optional: higher-level grouping
-    
-    # Create mapping from samples to their condition groups
-    sample_to_group = X.obs.drop_duplicates(
-        subset=[condition_column, group_col]
-    ).set_index(condition_column)[group_col]
-    
-    # Factor A: Condition factors
-    fig, ax = plt.subplots(figsize=(6, 8))
-    plot_condition_factors(
-        X,
-        ax,
-        cond=condition_column,
-        cond_group_labels=sample_to_group,
-        group_cond=True,   # Sort by condition groups
-        normalize=True     # Normalize each component
-    )
-    ax.set_title("Factor A: Condition")
-    plt.show()
-    
-    # Factor B: Sender cell eigenstates
-    fig, ax = plt.subplots(figsize=(6, 8))
-    plot_eigenstate_factors(X, ax, factor_type="B")
-    ax.set_title("Factor B: Sender Cell Eigenstate")
-    plt.tight_layout()
-    plt.show()
-    
-    # Factor C: Receiver cell eigenstates
-    fig, ax = plt.subplots(figsize=(6, 8))
-    plot_eigenstate_factors(X, ax, factor_type="C")
-    ax.set_title("Factor C: Receiver Cell Eigenstate")
-    plt.tight_layout()
-    plt.show()
-    
-    # Factor D: Ligand-receptor pairs
-    fig, ax = plt.subplots(figsize=(6, 8))
-    plot_lr_factors(
-        X, 
-        ax, 
-        trim=True,      # Show only top L-R pairs
-        weight=0.08     # Threshold for inclusion
-    )
-    ax.set_title("Factor D: LR Pairs")
-    plt.tight_layout()
+    from cccrise.app.plots import plot_cp_factor_heatmaps
+
+    fig, axes = plt.subplots(1, 4, figsize=(16, 8), constrained_layout=True)
+    plot_cp_factor_heatmaps(X, axes, condition_col="dsco_id", lr_weight=0.15)
     plt.show()
 
-.. image:: _static/tutorial_images/step3_factor_a.png
-   :width: 500px
-   :align: center
-
-.. image:: _static/tutorial_images/step3_factor_b.png
-   :width: 500px
-   :align: center
-
-.. image:: _static/tutorial_images/step3_factor_c.png
-   :width: 500px
-   :align: center
-
-.. image:: _static/tutorial_images/step3_factor_d.png
-   :width: 500px
+.. image:: _static/tutorial_images/cp_factors.png
+   :width: 800px
    :align: center
 
 **Understanding Each Factor**
 
-- **Factor A (Condition)**: Heatmap rows represent conditions/samples, columns represent components. High values indicate which conditions are enriched in each communication pattern.
+- **Factor A (Condition)**: Rows are samples, grouped by the component they load most heavily on. High values indicate which samples are enriched in each communication pattern.
 
-- **Factor B (Sender Eigenstate)**: Heatmap shows sender cell patterns in the latent space. Each row is a latent dimension from RISE, each column is a CPD component.
+- **Factor B (Sender Eigenstate)**: Each row is a RISE eigenstate, each column a CPD component, showing which latent sender cell states participate in each component.
 
-- **Factor C (Receiver Eigenstate)**: Similar to Factor B but for receiver cells. Reveals which latent receiver cell states participate in each component.
+- **Factor C (Receiver Eigenstate)**: Similar to Factor B but for receiver cells.
 
 - **Factor D (LR Pairs)**: Shows which ligand-receptor interactions drive each component. Only top-weighted pairs are displayed for clarity.
 
 **Visualize Cell Projections with PaCMAP**
 
-Explore how individual cells are positioned in the latent communication space::
+Explore how individual cells are positioned in the RISE eigenstate space, colored by cell type and by their sample's 6-month outcome::
 
-    from cccrise.figures.legacy.commonFuncs.plotPaCMAP import plot_labels_pacmap
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    
-    # Create figure with 3 subplots
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-    
-    # Plot colored by cell type
-    pal = sns.color_palette(palette="Set3")
-    pal = pal.as_hex()
-    plot_labels_pacmap(X, labelType="celltype", ax=axes[0], color_key=pal)
-    axes[0].set_title("Cells Colored by Cell Type")
-    
-    # Plot colored by condition
-    pal = sns.color_palette("Set2")
-    pal = [pal[0], pal[1], pal[2]]
-    pal = [f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}" for r, g, b in pal]
-    plot_labels_pacmap(X, labelType="condition", ax=axes[1], color_key=pal)
-    axes[1].set_title("Cells Colored by Condition")
-    
-    # Plot colored by sample
-    plot_labels_pacmap(X, labelType="sample", ax=axes[2])
-    axes[2].set_title("Cells Colored by Sample")
-    
-    plt.tight_layout()
+    import numpy as np
+    from cccrise.app.plots import pacmap_axes, plot_categorical_scatter, plot_celltype_points
+    from cccrise.figures import style
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), constrained_layout=True)
+    points = np.asarray(X.obsm["PaCMAP"])
+    plot_celltype_points(axes[0], X, "alad", points)
+    outcome = X.obs["6monthcondition"].astype(str).to_numpy()
+    colors = dict(zip(sorted(set(outcome)), style.CATEGORICAL))
+    plot_categorical_scatter(axes[1], points, outcome, colors)
+    for ax in axes:
+        pacmap_axes(ax)
     plt.show()
 
-.. image:: _static/tutorial_images/step5_pacmap_embedding.png
+.. image:: _static/tutorial_images/pacmap.png
    :width: 800px
    :align: center
 
 Interpreting a Component
 -------------------------
 
-Once you've identified components of interest, dig deeper into the specific cell types and ligand-receptor pairs driving the communication patterns.
+Once you've identified components of interest, dig deeper into the specific cell types and ligand-receptor pairs driving the communication patterns. In ALAD, component 4 is the component whose condition loadings are associated with 6-month outcome (tested by ANOVA; see ``cccrise.anova.run_saved_factors_anova``).
 
 **Visualize Specific Component Loadings**
 
-Use specialized plotting functions to visualize component weightings for a specific component::
+Color each cell by its sender and receiver weight on the component::
 
-    from cccrise.figures.legacy.commonFuncs.plotPaCMAP import plot_wc_pacmap
-    import matplotlib.pyplot as plt
-    
-    # Select component to visualize
-    component = 6
-    
-    # Create figure with 2 subplots
-    fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-    
-    # Plot sender cell weightings
-    plot_wc_pacmap(X, component-1, ax[0], factor_matrix="B", cbarMax=0.3)
-    ax[0].set_title(f"Cmp.{component} Sender Cells")
-    
-    # Plot receiver cell weightings
-    plot_wc_pacmap(X, component-1, ax[1], factor_matrix="C", cbarMax=0.3)
-    ax[1].set_title(f"Cmp.{component} Receiver Cells")
-    
-    plt.tight_layout()
+    from cccrise.app.plots import plot_value_pacmap
+
+    component = 4
+    fig, axes = plt.subplots(1, 2, figsize=(8, 3.6), constrained_layout=True)
+    for ax, key, role in zip(axes, ["sc_B", "rc_C"], ["Sender", "Receiver"]):
+        values = X.obsm[key][:, component - 1]
+        plot_value_pacmap(X, values, ax, f"Cmp. {component} {role} Cells", "Weight", 99)
     plt.show()
 
-.. image:: _static/tutorial_images/step7_all_component_weightings.png
+.. image:: _static/tutorial_images/component_pacmap.png
    :width: 800px
    :align: center
 
+**Component Weights by Cell Type**
 
-**Violin Plots of Component Weights by Cell Type**
+Summarize the per-cell weights within each annotated cell type, here as their mean (``cccrise.utils.celltype_component_association`` also offers effect sizes and enrichment among the most heavily weighted cells)::
 
-Examine the distribution of component weights for specific cell types::
+    from cccrise.app.plots import plot_celltype_association
 
-    import seaborn as sns
-    import pandas as pd
-    
-    # Select a component and cell type of interest
-    component = 6 
-    cell_type = "mDC"
-    
-    # Filter cells by cell type
-    X_celltype = X[X.obs["celltype"] == cell_type]
-    
-    # Extract sender cell weights for this component
-    sender_weights = X_celltype.obsm["sc_B"][:, component-1]
-    
-    # Create violin plot
-    fig, ax = plt.subplots(figsize=(6, 6))
-    sns.violinplot(data=sender_weights, ax=ax)
-    ax.set_ylim(-0.1, max(sender_weights) + 0.1)
-    ax.set_xlabel(f"{cell_type} Weight Distribution")
-    ax.set_ylabel(f"Sender Cell Component {component} Association")
-    ax.set_title(f"Distribution of Component {component} Weights in {cell_type}")
-    plt.tight_layout()
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+    for ax, role in zip(axes, ["sender", "receiver"]):
+        plot_celltype_association(X, ax, role, "broad_cell_type", "mean", 10)
     plt.show()
 
-.. image:: _static/tutorial_images/step9_violin_weights.png
-   :width: 500px
+.. image:: _static/tutorial_images/celltype_association.png
+   :width: 800px
    :align: center
 
-This visualization reveals whether a component is broadly active across all cells of a type or concentrated in a subset.
-
+Component 4's senders and receivers are mainly CD4+ T, CD8+ T, and NK cells.
 
 **Analyze Top LR Pairs per Component**
 
-Visualize the most important ligand-receptor pairs for a specific component::
+Rank every LR pair by its loading on the component, naming the most heavily weighted::
 
-    from cccrise.figures.legacy.commonFuncs.plotFactors import plot_lr_factors_partial
-    import matplotlib.pyplot as plt
-    
-    cmp = 6
-    fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-    
-    # Plot top 10 LR pairs
-    plot_lr_factors_partial(X, cmp, ax[0], geneAmount=10, top=True)
-    ax[0].set_title(f"Component {cmp}: Top 10 LR Pairs")
-    
-    # Plot bottom 10 LR pairs
-    plot_lr_factors_partial(X, cmp, ax[1], geneAmount=10, top=False)
-    ax[1].set_title(f"Component {cmp}: Bottom 10 LR Pairs")
-    
-    plt.tight_layout()
+    from cccrise.app.plots import plot_lr_rank
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    plot_lr_rank(X, component, ax, 10, False, 10, (style.COLORS["emphasis"], "grey"))
     plt.show()
 
-.. image:: _static/tutorial_images/step7_top_lr_pairs.png
-   :width: 800px
+.. image:: _static/tutorial_images/lr_rank.png
+   :width: 700px
    :align: center
 
 
 **Expression Product Heatmaps**
 
-Visualize the ligand-receptor expression products between sender and receiver cell populations to validate predicted interactions::
+Visualize the ligand-receptor expression products between sender and receiver cells, each ordered by their weight on the component, to check a predicted interaction::
 
-    from cccrise.utils import binned_expression_product_matrix
-    import numpy as np
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    
-    # Select component and L-R pair of interest
-    ccc_rise_cmp = 6
-    ligand = "CCL19"
-    receptor = "CCR7"
-    
-    # Filter and sort sender cells by component weight
-    X_mdc_sender = X[X.obs["celltype"] == "mDC"]
-    X_mdc_sender = X_mdc_sender[np.argsort(-X_mdc_sender.obsm["sc_B"][:, ccc_rise_cmp-1])]
-    
-    # Filter and sort receiver cells by component weight
-    X_mdc_receiver = X[X.obs["celltype"] == "mDC"]
-    X_mdc_receiver = X_mdc_receiver[np.argsort(X_mdc_receiver.obsm["rc_C"][:, ccc_rise_cmp-1])]
-    
-    # Calculate expression product matrix for mDC -> mDC
-    df = binned_expression_product_matrix(X_mdc_sender, X_mdc_receiver, ligand, receptor)
-    
-    # Create heatmap
-    fig, ax = plt.subplots(figsize=(6, 6))
-    sns.heatmap(df, ax=ax, cmap="viridis", vmax=0.12)
-    ax.set_xlabel("Receiver mDCs")
-    ax.set_ylabel("Sender mDCs")
-    ax.set_title("CCL19-CCR7 Interaction")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    plt.tight_layout()
+    from cccrise.app.plots import plot_interaction_heatmap
+
+    fig, ax = plt.subplots(figsize=(5, 5))
+    plot_interaction_heatmap(
+        X, component, "CD70", "CD27", ax, "CD4 T cells", "CD4 T cells", "broad_cell_type"
+    )
     plt.show()
 
-.. image:: _static/tutorial_images/step10_expression_product.png
-   :width: 600px
+.. image:: _static/tutorial_images/expression_product.png
+   :width: 500px
    :align: center
 
-This heatmap shows the product of ligand expression (in senders) and receptor expression (in receivers), revealing which cell pairs have the highest potential for this specific interaction.
-
+This heatmap shows the product of ligand expression in senders (rows, most heavily weighted first) and receptor expression in receivers (columns, most heavily weighted last), averaged within bins of cells (``cccrise.utils.binned_expression_product_matrix``), revealing which cell pairs have the highest potential for this specific interaction.
