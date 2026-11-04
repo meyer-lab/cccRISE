@@ -1,11 +1,10 @@
 """Supplementary figure: the six IBD components together. Each fine cell
-type's mean per-cell sender and receiver weight (as Figure 3 shows ALAD's),
-and how many biopsies carry each component."""
+type's mean per-cell sender and receiver weight (as Figure 3 shows ALAD's)."""
 
 from ... import common, style
-from . import celltype_weights, loading_concentration
+from . import celltype_weights
 
-LAYOUT = [[celltype_weights], [loading_concentration]]
+LAYOUT = [[celltype_weights]]
 
 
 def makeFigure():

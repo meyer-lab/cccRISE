@@ -23,9 +23,6 @@ cohort's cells. Like `run_cohort`, it does not refit RISE/CPD. Writes, into
         per eigenstate and cell category (`cell_categories`): the category's
         cells, their mean RISE projection, and their share of the eigenstate's
         squared projection over all cells
-    dissociation_ibd.parquet
-        each biopsy's mean dissociation score over all its cells
-        (`DISSOCIATION_GENES`)
     program_covariation_ibd.parquet
         Figure 3D's test for `PROGRAMS`: the pairwise rank correlations of
         each component's top LR pairs' context scores across biopsies, and of
@@ -118,46 +115,6 @@ MYELOID_GENES = [
     "IL1R2",
     "S100A8",
     "G0S2",
-]
-#: Dissociation-induced immediate-early / heat-shock genes (van den Brink et
-#: al. 2017), leaving out those shared with NF-kB activation
-DISSOCIATION_GENES = [
-    "FOS",
-    "FOSB",
-    "JUN",
-    "JUNB",
-    "JUND",
-    "ATF3",
-    "EGR1",
-    "EGR2",
-    "EGR3",
-    "IER2",
-    "IER5",
-    "DUSP1",
-    "NR4A1",
-    "NR4A2",
-    "ZFP36",
-    "ZFP36L1",
-    "KLF2",
-    "KLF4",
-    "BTG2",
-    "PPP1R15A",
-    "CYR61",
-    "CCN1",
-    "HSPA1A",
-    "HSPA1B",
-    "HSPA8",
-    "HSP90AA1",
-    "HSP90AB1",
-    "HSPB1",
-    "HSPH1",
-    "DNAJB1",
-    "DNAJA1",
-    "MT2A",
-    "MT1X",
-    "RHOB",
-    "GADD45G",
-    "SRF",
 ]
 #: The inflammatory programs given Figure 3's pair-level tests
 PROGRAMS = (1, 5)
@@ -302,17 +259,6 @@ def eigenstate_celltypes(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataFr
     )
 
 
-def dissociation(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataFrame:
-    score = expression(adata, DISSOCIATION_GENES).mean(axis=1)
-    biopsy = adata.obs[spec.condition_column].astype(str).to_numpy()
-    per = score.groupby(biopsy).agg(["size", "mean"])
-    return (
-        per.set_axis(["Cells", "Dissociation score"], axis=1)
-        .rename_axis("Biopsy")
-        .reset_index()
-    )
-
-
 def status_q(scores: np.ndarray, depth: np.ndarray, status: np.ndarray) -> np.ndarray:
     """Benjamini-Hochberg q of each LR pair's one-way ANOVA over status, on
     read-depth-corrected scores (as `figure3.coordinated_changes`)."""
@@ -442,7 +388,6 @@ def run_ibd_programs(spec: DatasetSpec, random_state: int, command: str) -> None
         ("myeloid_program_cells", myeloid_program_cells),
         ("eigenstate_energy", eigenstate_energy),
         ("eigenstate_celltypes", eigenstate_celltypes),
-        ("dissociation", dissociation),
     ):
         write(spec, name, make(adata, spec), metadata, command)
     print("4. All-cell PaCMAP...", flush=True)

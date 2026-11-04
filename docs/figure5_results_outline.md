@@ -56,8 +56,8 @@ factor-matrix panel.
   - C4 senders are EE cells and its receivers tuft cells;
   - C1 and C5 senders and receivers are SOD2+ monocytes and CCL3/4+ CXCL9/10+ macrophages.
 
-**1b. Which programs track inflammation (`figureS_ibd_associations`; `figureS_ibd_components`
-C).** This is Figure 3's association test and its ALAD supplement.
+**1b. Which programs track inflammation (`figureS_ibd_associations`).** This is Figure 3's
+association test and its ALAD supplement.
 - **Method.** One-way ANOVA of each component's read-depth-corrected loading against three
   associations: 3-way status, healthy vs CD, and CD uninflamed vs inflamed. η² is the effect
   size, and p is BH-corrected across all associations × components. The RISE components get
@@ -66,15 +66,16 @@ C).** This is Figure 3's association test and its ALAD supplement.
   - 3-way: C1 0.05, C3 0.04, C4 0.03, C5 0.02 (all FDR < 0.05). C2 and C6 n.s.
   - Healthy vs CD: C1 0.04, C3 0.02, C5 0.02.
   - CD uninflamed vs inflamed: C3 0.09 and C4 0.09, both lower in inflamed biopsies.
-- **Loadings (C–F).** C1 by 3-way status and healthy vs CD; C3 and C4, CD uninflamed vs
-  inflamed.
+- **Loadings (C–F).** Violins on linear axes: C1 by 3-way status and healthy vs CD; C3 and
+  C4, CD uninflamed vs inflamed.
 - **RISE components (B).** 48 of 60 are FDR-significant for 3-way status.
 - **Covariate screen (G)**, uncorrected, as for ALAD.
   - Chip, age and the lineage fractions track status: plasma B cell η² 0.26 and myeloid 0.24
     for 3-way status.
   - For CD uninflamed vs inflamed, read depth and the secretory and stem-cell fractions reach
     0.09, the same as C3/C4.
-- **Loading concentration (`figureS_ibd_components` C).** The top 5 biopsies carry 62% (C1),
+- **Loading concentration (not on the branch; its panel was dropped from
+  `figureS_ibd_components`).** The top 5 biopsies carry 62% (C1),
   80% (C5) and 86% (C6) of the summed loading, against 10–13% for C3/C4. Dropping them, the
   status association holds for C1 (Kruskal p 3e-16) and C5 (4e-17) but not for C6 (p 0.09).
   C6 is a few-biopsy component and is not interpreted further.
@@ -225,8 +226,7 @@ NicheNet test.
     S100A8/9+"), C1/C5 weights do not separate neutrophil-like (FCGR3B+ CSF3R+) cells (AUROC
     about 0.5).
 - **Robustness to tissue dissociation** is not tested on the branch. The status model
-  adjusted for dissociation was dropped with the rank-OLS panel; `cccrise-ibd-programs`
-  still writes the per-biopsy dissociation score.
+  adjusted for dissociation and its per-biopsy dissociation score were dropped.
   - **Exploratory, not on the branch:** the program genes persist in the least-dissociated
     third of myeloid cells, where IL1B, CXCL8 and CCL3/4 are 5–24× higher in high senders
     than in other low-dissociation myeloid cells.
@@ -236,7 +236,7 @@ NicheNet test.
 - **C3 and C4 are each essentially one LR pair** (≈0.99 of their loading), so don't call them
   multi-pair programs. Their status signal is carrier abundance (1b, 2c).
 - **C1 and C5 rest on few biopsies** (top 5 carry 62% and 80%). The association survives
-  removing them (1b).
+  removing them (1b; not on the branch).
 - **C6 is a few-biopsy component** (86% in the top 5) and is not interpreted.
 - **Neutrophils are not recovered** by cccRISE as a population (3d).
 - **No treatment data**, so no link to anti-TNF response.
