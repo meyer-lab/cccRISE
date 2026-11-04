@@ -25,10 +25,7 @@ CATEGORIES = [
     "Myeloid",
 ]
 IMMUNE = ["T cell", "B cell", "Plasma B cell", "Myeloid"]
-CATEGORY_COLORS = {
-    "EE": style.CATEGORICAL[3],
-    "EC": style.CATEGORICAL[0],
-    "Tuft": style.CATEGORICAL[2],
+CATEGORY_COLORS = S.MAP_GROUPS | {
     "Goblet": style.CATEGORICAL[4],
     "Enterocyte": style.CATEGORICAL[5],
     "Stem cell": style.CATEGORICAL[8],

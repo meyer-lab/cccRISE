@@ -1,9 +1,7 @@
 """Enteroendocrine (EE), enterochromaffin (EC) and tuft cells on a PaCMAP of
-their RISE projections (zoomed: only these three annotated types): EE cells
-split by
-whether they detect an L hormone (GCG, PYY or INSL5; a marker call, for
-reference only, `figureS_ibd_hormone_states`), and each cell's unscaled C3
-and C4 sender weight. As Figure 2 paints weights on cells."""
+their RISE projections (zoomed: only these three annotated types), by
+annotated type, and each cell's unscaled C3 and C4 sender weight. As Figure 2
+paints weights on cells."""
 
 from matplotlib.lines import Line2D
 
@@ -15,6 +13,7 @@ AXES = ("square",) * 3
 
 def plot(axs):
     cells = S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])
+    cells = cells.assign(Group=S.map_group(cells["Group"]))
     xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
     common.source_data(
         "ee_ec_map",
@@ -22,8 +21,7 @@ def plot(axs):
             ["Group", "C3 sender weight", "C4 sender weight", "PaCMAP 1", "PaCMAP 2"]
         ],
         "EE, EC and tuft cells: PaCMAP of their RISE projections (random_state 42), "
-        "group (EE cells detecting GCG, PYY or INSL5 are L-hormone+) and unscaled "
-        "per-cell C3 and C4 sender weights.",
+        "annotated type and unscaled per-cell C3 and C4 sender weights.",
     )
     axs[0].scatter(
         *xy.T,

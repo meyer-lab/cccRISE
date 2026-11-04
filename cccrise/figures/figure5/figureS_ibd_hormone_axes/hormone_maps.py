@@ -1,6 +1,6 @@
 """GCG, PYY, NTS and SST expression on Figure 5's zoomed EE/EC/tuft map: the
 C4-high region is GCG-high, the C3-high region PYY- and NTS-high, and the
-L-hormone-negative EE cells SST-high."""
+EE cells high on neither SST-high."""
 
 import numpy as np
 

@@ -33,11 +33,10 @@ fig5:
   cp_factor_matrices: [a, b, c, d]
   ee_state_map: [e, f, g]
   hormone_expression_map: [h]
-  l_hormone_weights: [i]
-  hormone_state_markers: [j]
-  hormone_state_share: [k]
-  program_covariation: [l]
-  nichenet: [m]
+  hormone_state_markers: [i]
+  hormone_state_share: [j]
+  program_covariation: [k]
+  nichenet: [l]
 figS_rise_factor_matrices:
   factors: [a]
   genes: [b]
@@ -134,10 +133,6 @@ figS_comparator_properties:
 figS_comparator_lr_contents: {}
 figS_ibd_components:
   celltype_weights: [a, b]
-figS_ibd_hormone_states:
-  l_hormone_call: [a]
-  cell_map: [b]
-  hormone_maps: [c, d, e, f]
 figS_ibd_hormone_robustness:
   l_call_auroc: [a, b]
   eigenstate_use: [c]
@@ -156,3 +151,5 @@ figS_ibd_hormone_axes:
   eigenstate_association: [b]
   eigenstate_loadings: [c]
   eigenstate_composition: [d]
+  cell_map: [e]
+  hormone_maps: [f, g, h, i]

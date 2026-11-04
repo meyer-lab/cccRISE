@@ -14,11 +14,12 @@ POINT = 0.05
 def plot(axs):
     (ax,) = axs
     cells = S.programs("cell_map")
+    cells = cells.assign(Group=S.map_group(cells["Group"]))
     common.source_data(
         "all_cell_map",
         cells,
         "PaCMAP of every cell's RISE projections (random_state 42): every EE, EC and "
-        "tuft cell (EE split by L-hormone detection) and a seeded draw of the other cells.",
+        "tuft cell and a seeded draw of the other cells.",
     )
     other = (cells["Group"] == "Other").to_numpy()
     xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()

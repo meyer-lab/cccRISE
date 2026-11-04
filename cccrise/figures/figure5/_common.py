@@ -53,15 +53,12 @@ ASSOCIATIONS: list[dict[str, Any]] = [
     },
 ]
 
-#: EE and EC cells as the panels group them: EE cells detecting an L hormone
-#: (GCG, PYY or INSL5), the other EE cells, and EC cells
-EE_GROUPS = {
-    "L-hormone+ EE": common.style.COLORS["up"],
-    "Other EE": common.style.CATEGORICAL[2],
-    "EC": "0.6",
+#: The annotated types on the zoomed and all-cell maps
+MAP_GROUPS = {
+    "EE": common.style.CATEGORICAL[3],
+    "EC": common.style.CATEGORICAL[0],
+    "Tuft": common.style.CATEGORICAL[2],
 }
-#: The groups on the zoomed and all-cell maps: `EE_GROUPS` and tuft cells
-MAP_GROUPS = EE_GROUPS | {"Tuft": common.style.CATEGORICAL[9]}
 #: The inflammatory programs' colors, off the status and baseline colors
 PROGRAM_COLORS = {1: common.style.CATEGORICAL[4], 5: common.style.CATEGORICAL[5]}
 #: The hormone programs' colors in line plots
@@ -89,6 +86,12 @@ def _load(table: str, runner: str = "cohort") -> pd.DataFrame:
 def programs(table: str) -> pd.DataFrame:
     """A `cccrise-ibd-programs` table (`run_ibd_programs`)."""
     return _load(table, "ibd-programs")
+
+
+def map_group(group: pd.Series) -> pd.Series:
+    """`run_ibd_programs.ee_group`'s groups as `MAP_GROUPS`: its split of EE
+    cells by L-hormone detection merged back into "EE"."""
+    return group.replace({"L-hormone+ EE": "EE", "Other EE": "EE"})
 
 
 @cache

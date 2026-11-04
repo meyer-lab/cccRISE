@@ -3,7 +3,7 @@ part of the zoomed map: one panel split into two axes, each a window onto
 `ee_state_map`'s PaCMAP (not refit) at exactly its scale, so the EE/EC
 cluster keeps its shape and size, centered on that cluster. Each EE and EC
 cell is colored by its expression over the gene's `QUANTILE` among them
-(capped at 1), highest drawn on top, as `figureS_ibd_hormone_states` draws
+(capped at 1), highest drawn on top, as `figureS_ibd_hormone_axes` draws
 hormones."""
 
 import matplotlib.pyplot as plt
@@ -31,15 +31,16 @@ def map_limits(xy_all: np.ndarray) -> np.ndarray:
 def plot(axs):
     mapped = S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])
     limits = map_limits(mapped[["PaCMAP 1", "PaCMAP 2"]].to_numpy())
-    cells = mapped[mapped["Group"].isin(list(S.EE_GROUPS))]  # tuft cells left out
+    cells = mapped[mapped["Group"] != "Tuft"]
     relative = {
         g: np.clip(cells[g].to_numpy() / np.quantile(cells[g], QUANTILE), 0, 1)
         for g in GENES
     }
     common.source_data(
         "gcg_pyy_on_ee_ec_map",
-        cells[["Group", "PaCMAP 1", "PaCMAP 2", *GENES]].assign(
-            **{f"{g} / {QUANTILE:.0%} quantile": v for g, v in relative.items()}
+        cells[["PaCMAP 1", "PaCMAP 2", *GENES]].assign(
+            Group=S.map_group(cells["Group"]),
+            **{f"{g} / {QUANTILE:.0%} quantile": v for g, v in relative.items()},
         ),
         "Normalized GCG and PYY expression of every EE and EC cell on the zoomed "
         f"map, and each over its {QUANTILE:.0%} quantile among these cells "
