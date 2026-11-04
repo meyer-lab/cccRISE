@@ -27,7 +27,6 @@ TAG_ROOM = 1.9  # x range widening for the tagged labels
 
 
 def plot(axs):
-    # V.plot_volcano(axs[0], "sender", "receiver", V.top_genes("sender", "receiver"))
     x_limit, y_limit = V.limits(*V.volcano_data("sender", "receiver")[1:])
     V.plot_volcano(
         axs[0],

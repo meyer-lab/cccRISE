@@ -52,7 +52,6 @@ Documentation = "https://meyer-lab.github.io/cellcommunication-Pf2/"
 [project.scripts]
 cccrise-fbuild = "cccrise.figures.common:genFigure"
 cccrise-sourcedata = "cccrise.figures.source_data:main"
-cccrise-factor = "cccrise.imports:factorSave"
 cccrise-run = "cccrise.runners.run_ccc_rise:main"
 cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
@@ -97,14 +96,6 @@ docs = [
 ignore = [
     "N999",   # figure modules are intentionally named figureXX.py
     "BLE001", # figure scripts deliberately catch broad exceptions to keep batch analyses running
-]
-
-[tool.ty.src]
-# Legacy figures still reference the pre-ANOVA logreg API and will be
-# removed along with the rest of the outdated figure/manuscript files.
-exclude = [
-    "cccrise/figures/legacy/figure4.py",
-    "cccrise/figures/legacy/figureA6d.py",
 ]
 
 [tool.ty.rules]

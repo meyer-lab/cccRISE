@@ -45,17 +45,9 @@ def collapse_group(
 
     The names, rather than codes, are what a test that reports per-group
     statistics needs -- an ANOVA has to be able to say which group loaded
-    higher. `binarize_group` is this with the names traded for codes.
+    higher.
     """
     return sample_to_group.map(lambda x: match_name if x == match_value else other_name)
-
-
-def binarize_group(
-    sample_to_group: pd.Series, match_value: str, match_name: str, other_name: str
-) -> pd.Series:
-    """Collapse a group Series into two named categories and return integer codes."""
-    collapsed = collapse_group(sample_to_group, match_value, match_name, other_name)
-    return collapsed.astype("category").cat.codes
 
 
 def adjust_pvalues(
@@ -248,9 +240,7 @@ def anova_component_associations(
         Threshold `Significant` is reported against.
     control_label : str | None, optional
         Level `GroupMeanDiff` is measured *from*. Defaults to the
-        alphabetically first level, which is the level `binarize_group`'s
-        codes made class 0, so the sign keeps the meaning it had under the
-        logistic regression.
+        alphabetically first level.
     correction : str | None, optional
         Multiple hypothesis testing correction across components (e.g., 'fdr_bh',
         'bonferroni', 'holm', or None). When specified, `Significant` is evaluated
