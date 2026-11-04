@@ -21,9 +21,11 @@ LABELS = {
 }
 
 
-def class_shares() -> pd.DataFrame:
+def class_shares(classify=S.hormone_classes) -> pd.DataFrame:
+    """Per biopsy with at least `MIN_EE` classified cells, the share of them
+    in each class `classify` gives (NaN: not classified)."""
     cells = S.programs("enteroendocrine_cells")
-    state = S.hormone_classes(cells)
+    state = classify(cells)
     ee = state.notna()
     shares = pd.crosstab(cells.loc[ee, "Biopsy"], state[ee], normalize="index")
     counts = cells.loc[ee, "Biopsy"].value_counts()
