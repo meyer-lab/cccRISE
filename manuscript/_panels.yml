@@ -35,8 +35,6 @@ fig5:
   hormone_expression_map: [h]
   hormone_state_markers: [i]
   hormone_state_share: [j]
-  program_covariation: [k]
-  nichenet: [l]
 figS_rise_factor_matrices:
   factors: [a]
   genes: [b]
@@ -131,13 +129,6 @@ figS_comparator_properties:
   homophily: [d]
   top_share: [e]
 figS_comparator_lr_contents: {}
-figS_ibd_components:
-  celltype_weights: [a, b]
-figS_ibd_hormone_robustness:
-  l_call_auroc: [a, b]
-  eigenstate_use: [c]
-  hormone_state_genes: [d]
-  carrier_decomposition: [e, f]
 figS_ibd_inflammatory_programs:
   top_pair_permutation: [a, b]
   high_sender_genes: [c]
@@ -153,3 +144,5 @@ figS_ibd_hormone_axes:
   eigenstate_composition: [d]
   cell_map: [e]
   hormone_maps: [f, g, h, i]
+  eigenstate_use: [j]
+  hormone_state_genes: [k]

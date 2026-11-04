@@ -95,6 +95,8 @@ AXIS_SIZE = {
     "mid": (38 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect
     "half": (64 * MM, AXIS_HEIGHT),
+    # A labeled map of every cell type
+    "large_square": (120 * MM, 120 * MM),
 }
 # Between the axes of one panel split side by side (`common._Joined`)
 JOINED_GAP = 1.5 * MM

@@ -1,7 +1,7 @@
 """The two hormone states the programs resolve inside the EE annotation, as
 Figure 2's marker dot plot: EE cells in the top quarter of C3 or C4 sender
-weight (`_common.hormone_states`) by BMP targets (the villus-tip signal) and
-hormones. Genes shown differ between the states (Mann-Whitney, BH q <
+weight (`_common.hormone_states`) by hormones and BMP targets (the
+villus-tip signal). Genes shown differ between the states (Mann-Whitney, BH q <
 `common.SIG_ALPHA`). C3-high cells are BMP-high and PYY/NTS/SCT-high,
 villus-like; C4-high cells GCG-high, crypt-like (Beumer et al. 2018)."""
 
@@ -13,8 +13,8 @@ from . import _common as S
 
 AXES = ("mid",)
 SECTIONS = {
-    "BMP targets": ["ID1", "ID2", "ID3", "SMAD6", "SMAD7", "BAMBI"],
     "Hormones": ["GCG", "PYY", "NTS", "SCT", "CCK"],
+    "BMP targets": ["ID1", "ID2", "ID3", "SMAD6", "SMAD7", "BAMBI"],
 }
 
 
@@ -39,7 +39,7 @@ def plot(axs):
     common.source_data(
         "hormone_state_markers",
         mean.T.add_suffix(" mean").join(detected.T.add_suffix(" detected")).join(tests),
-        f"Mean expression and fraction detected of BMP targets and hormones in "
+        f"Mean expression and fraction detected of hormones and BMP targets in "
         f"EE cells in the top {S.STATE_QUARTILE:.0%} of C3 (not C4) or C4 (not "
         "C3) sender weight, with Mann-Whitney p and BH q between the two; genes "
         f"with q < {common.SIG_ALPHA} are drawn.",

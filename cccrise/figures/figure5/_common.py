@@ -109,13 +109,6 @@ def celltype_counts() -> pd.DataFrame:
 
 
 @cache
-def celltype_weights() -> pd.DataFrame:
-    """Mean per-cell sender and receiver weight of each lineage and fine cell
-    type on every CP component (`run_cohort.celltype_weights`)."""
-    return _load("celltype_component_weights")
-
-
-@cache
 def factors() -> xr.Dataset:
     return load_factors_netcdf(SPEC.factors_path())
 
