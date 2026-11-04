@@ -133,7 +133,6 @@ figS_comparator_properties:
 figS_comparator_lr_contents: {}
 figS_ibd_components:
   celltype_weights: [a, b]
-  loading_concentration: [c]
 figS_ibd_hormone_states:
   l_hormone_call: [a]
   cell_map: [b]

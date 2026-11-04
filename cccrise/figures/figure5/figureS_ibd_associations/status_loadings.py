@@ -1,6 +1,8 @@
 """Read-depth-corrected loadings of the status-associated CP components per
-group, with each test's ANOVA statistics, as Figure 3A shows ALAD's."""
+group, as violins with each biopsy as a point and the median marked, with
+each test's ANOVA statistics, as Figure 3A shows ALAD's."""
 
+import numpy as np
 import pandas as pd
 
 from ... import common, style
@@ -17,37 +19,67 @@ TESTS = [
 AXES = ("square",) * len(TESTS)
 #: y-axis room above the data for the ANOVA statistics
 STATS_HEADROOM = 1.4
-#: Each group's box color: the status colors, and CD (both statuses) apart
+#: Each group's color: the status colors, and CD (both statuses) apart
 GROUP_COLORS = S.GROUP_COLORS | {"CD": style.CATEGORICAL[3]}
 ANOVA_COLUMNS = ["Association", "Component", "F", "P", "PAdj", "EtaSquared"]
+POINT_ALPHA = 0.35
+JITTER = 0.12
 
 
 def plot(axs):
     table = S.association_table("cp_A")
-    adata = S.condition_adata(S.corrected_loadings("cp_A"))
+    points = loading_points()
     for ax, (name, k) in zip(axs, TESTS, strict=True):
-        spec = association(name)
-        common.plot_category_component_weights(
-            adata,
-            k,
-            S.GROUP_COLUMN,
-            ax,
-            xlabel="",
-            anova_df=table[table["Association"] == name],
-            condition_column=S.SPEC.condition_column,
-            palette=[GROUP_COLORS[g] for g in levels(spec)],
-            read_depth_correct=False,
-            show_counts=False,
-            **regrouping(spec),
-        )
+        rows = points[(points["Association"] == name) & (points["Component"] == k)]
+        draw_violins(ax, rows, levels(association(name)))
+        ax.set_ylim(top=STATS_HEADROOM * ax.get_ylim()[1])
         ax.set_ylabel(f"CP component {k} loading")
-        ax.set_xticks(
-            ax.get_xticks(),
-            [t.get_text().replace(" ", "\n") for t in ax.get_xticklabels()],
+        ax.text(
+            0.03,
+            0.97,
+            common._anova_stats(table[table["Association"] == name], k),
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
             fontsize=style.FONT_SIZE_DENSE,
         )
-        ax.set_ylim(top=STATS_HEADROOM * ax.get_ylim()[1])
-    _source_data(adata, table)
+    _source_data(points, table)
+
+
+def draw_violins(ax, rows: pd.DataFrame, groups: list[str]) -> None:
+    """One violin per group of `rows`' loadings, the biopsies jittered over
+    it and its median as a tick."""
+    values = [rows.loc[rows["Group"] == g, "Loading"].to_numpy() for g in groups]
+    x = np.arange(len(groups))
+    bodies = ax.violinplot(values, positions=x, widths=0.7, showextrema=False)
+    for body, group in zip(bodies["bodies"], groups, strict=True):
+        body.set(facecolor=GROUP_COLORS[group], edgecolor="none", alpha=0.8)
+    rng = np.random.default_rng(0)
+    for i, v in enumerate(values):
+        ax.scatter(
+            i + rng.uniform(-JITTER, JITTER, len(v)),
+            v,
+            color=style.COLORS["ink"],
+            s=style.POINT_SIZE_CELL,
+            alpha=POINT_ALPHA,
+            linewidths=0,
+            zorder=3,
+        )
+    ax.scatter(
+        x,
+        [np.median(v) for v in values],
+        marker="_",
+        s=4 * style.POINT_SIZE,
+        color=style.COLORS["ink"],
+        linewidths=style.LINE_WIDTH,
+        zorder=4,
+    )
+    ax.set_xlim(-0.5, len(groups) - 0.5)
+    ax.set_xticks(
+        x,
+        [common.level_label(g).replace(" ", "\n") for g in groups],
+        fontsize=style.FONT_SIZE_DENSE,
+    )
 
 
 def association(name: str) -> dict:
@@ -63,7 +95,9 @@ def levels(spec: dict) -> list[str]:
     return list(S.GROUP_LABELS)
 
 
-def _source_data(adata, table: pd.DataFrame) -> None:
+def loading_points() -> pd.DataFrame:
+    """Each drawn test's biopsies: loading and group."""
+    adata = S.condition_adata(S.corrected_loadings("cp_A"))
     points = pd.concat(
         common.group_loadings(
             adata,
@@ -75,9 +109,13 @@ def _source_data(adata, table: pd.DataFrame) -> None:
         ).assign(Association=name, Component=k)
         for name, k in TESTS
     )
+    return points.rename(columns={"Condition": "Biopsy", "Status": "Group"})
+
+
+def _source_data(points: pd.DataFrame, table: pd.DataFrame) -> None:
     common.source_data(
         "cp_loadings_by_status",
-        points.rename(columns={"Condition": "Biopsy", "Status": "Group"}),
+        points,
         "Each biopsy's read-depth-corrected loading on each drawn CP component "
         "and its group in the association drawn with it.",
     )
