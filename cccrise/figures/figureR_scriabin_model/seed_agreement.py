@@ -25,7 +25,7 @@ CCCRISE_ROWS = {"alad": 1.0, "ibd": 0.0}
 #: the panel follow the limits, so rows are evenly spaced in both
 AXES_ROWS = {"Scriabin": (3.75, (-0.45, 4.05)), "cccRISE": (1.65, (-0.45, 1.95))}
 GAP = 0.04  # between the two axes, a fraction of the panel's height
-LEGEND_X = -0.42  # the legend's left edge: over the row labels
+LEGEND_X = -0.3  # the legend's left edge: over the row labels, clear of the letter
 
 
 def _strip(ax, y: float, values: pd.Series, color: str, rng) -> None:

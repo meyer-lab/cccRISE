@@ -113,3 +113,7 @@ figS_comparator_properties:
   homophily: [d]
   top_share: [e]
 figS_comparator_lr_contents: {}
+figR_scriabin_model:
+  seed_agreement: [a]
+  stage_agreement: [b]
+  remedy: [c]
