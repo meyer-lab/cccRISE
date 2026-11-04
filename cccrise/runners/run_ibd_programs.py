@@ -19,6 +19,10 @@ cohort's cells. Like `run_cohort`, it does not refit RISE/CPD. Writes, into
     eigenstate_energy_ibd.parquet
         mean squared RISE projection per eigenstate of EE cells, EC cells and
         the secretory lineage
+    eigenstate_celltypes_ibd.parquet
+        per eigenstate and cell category (`cell_categories`): the category's
+        cells, their mean RISE projection, and their share of the eigenstate's
+        squared projection over all cells
     dissociation_ibd.parquet
         each biopsy's mean dissociation score over all its cells
         (`DISSOCIATION_GENES`)
@@ -264,6 +268,42 @@ def eigenstate_energy(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataFrame
     )
 
 
+def cell_categories(adata: anndata.AnnData, spec: DatasetSpec) -> np.ndarray:
+    """Each cell's lineage, the secretory lineage split into EE, EC, tuft and
+    goblet cells."""
+    fine = adata.obs[spec.fine_celltype_column].astype(str)
+    named = fine.map({EE: "EE", EC: "EC", TUFT: "Tuft"})
+    goblet = fine.str.startswith("Goblet").map({True: "Goblet"})
+    lineage = adata.obs[spec.celltype_column].astype(str)
+    return named.fillna(goblet).fillna(lineage).to_numpy()
+
+
+def eigenstate_celltypes(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataFrame:
+    projections = np.asarray(adata.obsm["projections"], dtype=float)
+    category = cell_categories(adata, spec)
+    squared = (projections**2).sum(axis=0)
+    return pd.DataFrame(
+        [
+            {
+                "Category": c,
+                "Eigenstate": j + 1,
+                "Cells": int(mask.sum()),
+                "Mean projection": mean,
+                "Squared projection share": share,
+            }
+            for c in np.unique(category)
+            for mask in [category == c]
+            for j, (mean, share) in enumerate(
+                zip(
+                    projections[mask].mean(axis=0),
+                    (projections[mask] ** 2).sum(axis=0) / squared,
+                    strict=True,
+                )
+            )
+        ]
+    )
+
+
 def dissociation(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataFrame:
     score = expression(adata, DISSOCIATION_GENES).mean(axis=1)
     biopsy = adata.obs[spec.condition_column].astype(str).to_numpy()
@@ -403,6 +443,7 @@ def run_ibd_programs(spec: DatasetSpec, random_state: int, command: str) -> None
         ("enteroendocrine_cells", enteroendocrine_cells),
         ("myeloid_program_cells", myeloid_program_cells),
         ("eigenstate_energy", eigenstate_energy),
+        ("eigenstate_celltypes", eigenstate_celltypes),
         ("dissociation", dissociation),
     ):
         write(spec, name, make(adata, spec), metadata, command)

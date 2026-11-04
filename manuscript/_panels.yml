@@ -151,3 +151,8 @@ figS_ibd_associations:
   rise_associations: [b]
   status_loadings: [c, d, e, f]
   covariates: [g]
+figS_ibd_hormone_axes:
+  eigenstate_association: [a]
+  eigenstate_loadings: [b]
+  eigenstate_composition: [c]
+  ee_hormones: [d]
