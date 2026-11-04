@@ -13,7 +13,7 @@ from .. import common, style
 from . import (
     cp_factor_matrices,
     ee_state_map,
-    hormone_expression_map,
+    hormone_contour_map,
     hormone_state_markers,
     hormone_state_share,
     l_hormone_weights,
@@ -23,7 +23,7 @@ from . import (
 
 LAYOUT = [
     [cp_factor_matrices],
-    [ee_state_map, hormone_expression_map],
+    [ee_state_map, hormone_contour_map],
     [l_hormone_weights, hormone_state_markers, hormone_state_share],
     [program_covariation, nichenet],
 ]

@@ -32,7 +32,7 @@ fig4:
 fig5:
   cp_factor_matrices: [a, b, c, d]
   ee_state_map: [e, f, g]
-  hormone_expression_map: [h]
+  hormone_contour_map: [h]
   l_hormone_weights: [i]
   hormone_state_markers: [j]
   hormone_state_share: [k]
