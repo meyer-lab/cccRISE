@@ -1001,6 +1001,9 @@ def plot_minima_table(
 #: Outcome levels in reading order (healthy/control first); unlisted levels
 #: follow alphabetically.
 LEVEL_ORDER = [
+    "Healthy",
+    "CD_uninflamed",
+    "CD_inflamed",
     "control",
     "declined",
     "recovered",
@@ -1142,7 +1145,12 @@ def group_loadings(
 
 #: Outcome levels as figures and the app display them; the source data keep
 #: the original labels.
-LEVEL_LABELS = {"No CLAD/Stable": "No CLAD", "No CLAD/Recovered": "Recovered"}
+LEVEL_LABELS = {
+    "No CLAD/Stable": "No CLAD",
+    "No CLAD/Recovered": "Recovered",
+    "CD_uninflamed": "CD uninflamed",
+    "CD_inflamed": "CD inflamed",
+}
 
 
 def level_label(level) -> str:

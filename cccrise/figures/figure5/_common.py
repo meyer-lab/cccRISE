@@ -2,15 +2,20 @@
 ileum cohort (the registry's `ibd` entry: RISE 60 / CP 6, mesenchymal lineage
 excluded, at most 2,000 cells per biopsy) -- the `cccrise-cohort` tables that
 summarize its biopsies and cell types, the `cccrise-ibd-programs` tables
-behind the program panels, and the drawing helpers those panels share."""
+behind the program panels, the inflammation-status associations tested
+against its components (as Figure 3 tests ALAD's), and the drawing helpers
+those panels share."""
 
 from functools import cache
+from typing import Any
 
+import anndata
 import numpy as np
 import pandas as pd
 import xarray as xr
 from matplotlib.patches import Patch
 
+from ...anova import run_multiple_factors_anova
 from ...factors import load_factors_netcdf
 from ...runners.datasets import DATASETS, IBD_PROGRAMS_DIR, VALIDATION_DIR
 from ...utils import correct_by_read_depth
@@ -29,6 +34,24 @@ GROUP_LABELS = {
 }
 GROUP_COLORS = dict(zip(GROUP_LABELS, common.style.CATEGORICAL, strict=False))
 _UNINFLAMED, _INFLAMED = list(GROUP_LABELS)[1:]
+
+#: Inflammation-status associations tested against every component, as
+#: `figure3._common.ASSOCIATIONS` (see `anova.prepare_group_labels`)
+ASSOCIATIONS: list[dict[str, Any]] = [
+    {"name": "Inflammation status (3-way)", "group_column": GROUP_COLUMN},
+    {
+        "name": "Healthy vs. CD",
+        "group_column": GROUP_COLUMN,
+        "control_label": "Healthy",
+        "other_label": "CD",
+    },
+    {
+        "name": "CD uninflamed vs. inflamed",
+        "group_column": GROUP_COLUMN,
+        "levels": [_UNINFLAMED, _INFLAMED],
+        "control_label": _UNINFLAMED,
+    },
+]
 
 #: EE and EC cells as the panels group them: EE cells detecting an L hormone
 #: (GCG, PYY or INSL5), the other EE cells, and EC cells
@@ -98,6 +121,30 @@ def corrected_loadings(factor: str) -> pd.DataFrame:
     assert np.array_equal(A["condition"].astype(str), samples()[SPEC.condition_column])
     values = correct_by_read_depth(A.values.astype(float), samples()["read_depth"])
     return pd.DataFrame(values, columns=range(1, values.shape[1] + 1))
+
+
+def condition_adata(values: pd.DataFrame | np.ndarray) -> anndata.AnnData:
+    """One observation per biopsy (`samples` order) carrying `values` as its
+    condition factor (`uns["A"]`): what `anova` and
+    `common.plot_category_component_weights` need, without the cells."""
+    obs = samples().drop(columns=samples().filter(like="loading").columns)
+    obs.index = obs[SPEC.condition_column].astype(str).to_numpy()
+    return anndata.AnnData(obs=obs, uns={"A": np.asarray(values, dtype=float)})
+
+
+@cache
+def association_table(factor: str = "cp_A") -> pd.DataFrame:
+    """One-way ANOVA of every component's read-depth-corrected `factor`
+    loading (`cp_A` or `pf2_A`) against every association, FDR-corrected
+    across all associations and components, as `figure3._common` tests ALAD's."""
+    return run_multiple_factors_anova(
+        condition_adata(corrected_loadings(factor)),
+        ASSOCIATIONS,
+        condition_column=SPEC.condition_column,
+        correction="fdr_bh",
+        global_correction=True,
+        read_depth_correct=False,
+    )
 
 
 def hormone_states(cells: pd.DataFrame) -> pd.Series:

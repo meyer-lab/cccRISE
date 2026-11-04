@@ -133,8 +133,7 @@ figS_comparator_properties:
 figS_comparator_lr_contents: {}
 figS_ibd_components:
   celltype_weights: [a, b]
-  status_adjustment: [c]
-  loading_concentration: [d]
+  loading_concentration: [c]
 figS_ibd_hormone_states:
   l_hormone_call: [a]
   cell_map: [b]
@@ -147,3 +146,8 @@ figS_ibd_hormone_robustness:
 figS_ibd_inflammatory_programs:
   top_pair_permutation: [a, b]
   high_sender_genes: [c]
+figS_ibd_associations:
+  cp_associations: [a]
+  rise_associations: [b]
+  status_loadings: [c, d, e, f]
+  covariates: [g]

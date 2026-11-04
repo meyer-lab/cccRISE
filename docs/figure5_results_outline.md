@@ -56,29 +56,31 @@ factor-matrix panel.
   - C4 senders are EE cells and its receivers tuft cells;
   - C1 and C5 senders and receivers are SOD2+ monocytes and CCL3/4+ CXCL9/10+ macrophages.
 
-**1b. Which programs track inflammation, and whether composition explains it
-(`figureS_ibd_components` C–D).**
-- **Method.** OLS of each component's corrected-loading *rank* across biopsies on status,
-  then type II partial η². Ranks are used because C1's and C5's loadings are carried by few
-  biopsies (1c), so raw-scale variance is dominated by those extremes.
-- **Status alone:** C1 0.22, C5 0.24, C3 0.067, C4 0.063, C2 0.038 (all p < 0.01). C6 0.013
-  (n.s.).
-- **Plus composition** (the biopsy's carrier fine-type fractions and immune fraction):
-  - C1 0.073 and C5 0.10 remain (p < 1e-4);
-  - C3 0.009 (p 0.22) and C4 0.008 (p 0.27) are absorbed.
-  - So C3/C4's status signal is a change in carrier-cell abundance (Aim 2c), and C1/C5's is
-    more than abundance.
-- **Plus dissociation** (the biopsy's mean immediate-early / heat-shock score, the van den
-  Brink et al. 2017 set, leaving out NF-κB-shared genes): every component keeps its status
-  effect (C1 0.15, C5 0.17, C3 0.038, C4 0.041).
-- **Loading concentration (D).** The top 5 biopsies carry 62% (C1), 80% (C5) and 86% (C6) of
-  the summed loading, against 10–13% for C3/C4. Dropping them, the status association holds
-  for C1 (Kruskal p 3e-16) and C5 (4e-17) but not for C6 (p 0.09). C6 is a few-biopsy
-  component and is not interpreted further.
-- **Scale caveat for the text.** On raw corrected loadings (Figure 3's one-way ANOVA scale),
-  status η² is smaller (C1 0.05, C5 0.02, still FDR-significant). There, composition absorbs
-  C1/C5 too, because the extreme biopsies are composition-driven. State that the adjusted
-  analysis uses ranks, i.e. the typical biopsy.
+**1b. Which programs track inflammation (`figureS_ibd_associations`; `figureS_ibd_components`
+C).** This is Figure 3's association test and its ALAD supplement.
+- **Method.** One-way ANOVA of each component's read-depth-corrected loading against three
+  associations: 3-way status, healthy vs CD, and CD uninflamed vs inflamed. η² is the effect
+  size, and p is BH-corrected across all associations × components. The RISE components get
+  the same test.
+- **CP components (A).**
+  - 3-way: C1 0.05, C3 0.04, C4 0.03, C5 0.02 (all FDR < 0.05). C2 and C6 n.s.
+  - Healthy vs CD: C1 0.04, C3 0.02, C5 0.02.
+  - CD uninflamed vs inflamed: C3 0.09 and C4 0.09, both lower in inflamed biopsies.
+- **Loadings (C–F).** C1 by 3-way status and healthy vs CD; C3 and C4, CD uninflamed vs
+  inflamed.
+- **RISE components (B).** 48 of 60 are FDR-significant for 3-way status.
+- **Covariate screen (G)**, uncorrected, as for ALAD.
+  - Chip, age and the lineage fractions track status: plasma B cell η² 0.26 and myeloid 0.24
+    for 3-way status.
+  - For CD uninflamed vs inflamed, read depth and the secretory and stem-cell fractions reach
+    0.09, the same as C3/C4.
+- **Loading concentration (`figureS_ibd_components` C).** The top 5 biopsies carry 62% (C1),
+  80% (C5) and 86% (C6) of the summed loading, against 10–13% for C3/C4. Dropping them, the
+  status association holds for C1 (Kruskal p 3e-16) and C5 (4e-17) but not for C6 (p 0.09).
+  C6 is a few-biopsy component and is not interpreted further.
+- **Scale caveat for the text.** C1's and C5's raw-scale η² is small because a few extreme
+  biopsies dominate the variance. On loading ranks (the typical biopsy) status η² is 0.22
+  (C1) and 0.24 (C5).
 
 ## Aim 2. The hormone programs resolve functional enteroendocrine states the annotation cannot encode
 
@@ -151,7 +153,8 @@ E–F).**
   | EC receivers (C3) | 2 / 3 / 1 | 0.001 | 0.35 / 0.30 / 0.37 | 0.1 |
   | Tuft receivers (C4) | 12 / 12 / 5 | 1e-8 | 0.24 / 0.23 / 0.29 | 0.005 (up in inflamed) |
 
-  - This is why composition absorbs C3/C4's status effect (1b).
+  - This matches the covariate screen (1b), where secretory and stem-cell fractions track the
+    uninflamed vs inflamed contrast as strongly as C3/C4 do.
 - **Literature.** In small-bowel Crohn's, GLP-1 cells are increased and PYY cells unchanged
   with a downward trend (Moran et al. 2012, *J Crohns Colitis* 6:887). That is consistent
   with losing the villus-like PYY/NTS state while keeping the crypt-like GLP-1 state. The
@@ -220,7 +223,9 @@ NicheNet test.
   - **Exploratory, not on the branch:** within the label holding them ("Monocytes
     S100A8/9+"), C1/C5 weights do not separate neutrophil-like (FCGR3B+ CSF3R+) cells (AUROC
     about 0.5).
-- **Robustness to tissue dissociation** is covered by 1b's adjustment.
+- **Robustness to tissue dissociation** is not tested on the branch. The status model
+  adjusted for dissociation was dropped with the rank-OLS panel; `cccrise-ibd-programs`
+  still writes the per-biopsy dissociation score.
   - **Exploratory, not on the branch:** the program genes persist in the least-dissociated
     third of myeloid cells, where IL1B, CXCL8 and CCL3/4 are 5–24× higher in high senders
     than in other low-dissociation myeloid cells.
@@ -230,7 +235,7 @@ NicheNet test.
 - **C3 and C4 are each essentially one LR pair** (≈0.99 of their loading), so don't call them
   multi-pair programs. Their status signal is carrier abundance (1b, 2c).
 - **C1 and C5 rest on few biopsies** (top 5 carry 62% and 80%). The association survives
-  removing them (1b), and the adjusted analysis uses ranks.
+  removing them (1b).
 - **C6 is a few-biopsy component** (86% in the top 5) and is not interpreted.
 - **Neutrophils are not recovered** by cccRISE as a population (3d).
 - **No treatment data**, so no link to anti-TNF response.
