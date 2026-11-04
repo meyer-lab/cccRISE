@@ -1,5 +1,5 @@
 """How robustly the C3 and C4 sender weights separate L-hormone+ from other
-EE cells (Figure 5I's AUROC): within tertiles of genes detected per cell,
+EE cells (Figure 5J's AUROC): within tertiles of genes detected per cell,
 beside detection depth alone (dashed), and within each inflammation status."""
 
 import pandas as pd

@@ -1,76 +1,61 @@
-"""GCG and PYY, the ligands of C4's and C3's top LR pairs, on the zoomed
-EE/EC/tuft map (`ee_state_map`): each cell expressing either colored by
-PYY's share of the two (each gene first scaled to its `QUANTILE` over these
-cells), from GCG-only (C4's side of the scale) through both to PYY-only
-(C3's), the colors blended between so co-expressing cells read purple
-rather than as the neutral grey of cells expressing neither. Each cell's
-opacity follows its total (scaled GCG + PYY, from `MIN_ALPHA`), so stray
-reads in EC and tuft cells fade rather than paint a full color."""
+"""GCG and PYY, the ligands of C4's and C3's top LR pairs, on the EE/EC
+part of the zoomed map (`ee_state_map`'s PaCMAP, cropped to those cells, not
+refit): each cell's expression over the gene's `QUANTILE` among EE and EC
+cells (capped at 1), highest drawn on top, as `figureS_ibd_hormone_states`
+draws hormones."""
 
 import numpy as np
-from matplotlib.cm import ScalarMappable
-from matplotlib.colors import LinearSegmentedColormap
 
 from .. import common, style
 from . import _common as S
 
-AXES = ("square",)
+AXES = ("half_square",) * 2
+GENES = ("GCG", "PYY")
 QUANTILE = 0.99
-MIN_ALPHA = 0.15
-SHARE_CMAP = LinearSegmentedColormap.from_list(
-    "gcg_pyy", [S.HORMONE_COLORS[4], S.HORMONE_COLORS[3]]
-)
-
-
-def pyy_share(cells) -> tuple[np.ndarray, np.ndarray]:
-    """(PYY / (GCG + PYY), NaN for neither; GCG + PYY), each gene scaled to
-    its `QUANTILE` and capped at 1."""
-    gcg, pyy = (
-        np.clip(cells[g].to_numpy() / np.quantile(cells[g], QUANTILE), 0, 1)
-        for g in ("GCG", "PYY")
-    )
-    total = gcg + pyy
-    share = np.divide(pyy, total, out=np.full(len(total), np.nan), where=total > 0)
-    return share, total
+CROP = 0.005  # share of cells left outside the view on each side, per axis
+PAD = 0.04
 
 
 def plot(axs):
-    (ax,) = axs
     cells = S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])
-    share, total = pyy_share(cells)
+    cells = cells[cells["Group"].isin(list(S.EE_GROUPS))]  # tuft cells left out
+    relative = {
+        g: np.clip(cells[g].to_numpy() / np.quantile(cells[g], QUANTILE), 0, 1)
+        for g in GENES
+    }
     common.source_data(
-        "gcg_pyy_on_map",
-        cells[["Group", "PaCMAP 1", "PaCMAP 2", "GCG", "PYY"]].assign(
-            **{"PYY share": share}
+        "gcg_pyy_on_ee_ec_map",
+        cells[["Group", "PaCMAP 1", "PaCMAP 2", *GENES]].assign(
+            **{f"{g} / {QUANTILE:.0%} quantile": v for g, v in relative.items()}
         ),
-        "Normalized GCG and PYY expression of every EE, EC and tuft cell on the "
-        f"zoomed map, and PYY's share of the two after scaling each to its "
-        f"{QUANTILE:.0%} quantile (capped at 1; opacity follows their sum); "
-        "empty where neither is detected.",
+        "Normalized GCG and PYY expression of every EE and EC cell on the zoomed "
+        f"map, and each over its {QUANTILE:.0%} quantile among these cells "
+        "(capped at 1, the colors).",
     )
     xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
-    neither = np.isnan(share)
-    ax.scatter(
-        *xy[neither].T,
-        color=style.COLORS["muted"],
-        s=style.POINT_SIZE_CELL,
-        linewidths=0,
-        rasterized=True,
-    )
-    shown = np.flatnonzero(~neither)
-    shown = shown[np.argsort(total[shown])]  # strongest on top
-    colors = SHARE_CMAP(share[shown])
-    colors[:, 3] = MIN_ALPHA + (1 - MIN_ALPHA) * np.clip(total[shown], 0, 1)
-    ax.scatter(
-        *xy[shown].T,
-        c=colors,
-        s=style.POINT_SIZE_CELL,
-        linewidths=0,
-        rasterized=True,
-    )
-    S.map_axes(ax, "GCG vs PYY")
-    bar = common.colorbar(ax, ScalarMappable(cmap=SHARE_CMAP), "PYY share")
-    bar.set_ticks([0, 0.5, 1], labels=["GCG", "Both", "PYY"])
+    # Crop to the cluster, leaving out the few EE/EC cells mapped far from it
+    low, high = np.quantile(xy, [CROP, 1 - CROP], axis=0)
+    pad = PAD * (high - low)
+    for ax, gene in zip(axs, GENES, strict=True):
+        ax.set(xlim=(low[0] - pad[0], high[0] + pad[0]))
+        ax.set(ylim=(low[1] - pad[1], high[1] + pad[1]))
+        order = np.argsort(relative[gene])
+        points = ax.scatter(
+            *xy[order].T,
+            c=relative[gene][order],
+            cmap="Reds",
+            vmin=0,
+            vmax=1,
+            s=style.POINT_SIZE_CELL,
+            linewidths=0,
+            rasterized=True,
+        )
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title(gene, fontsize=style.FONT_SIZE_LABEL)
+    axs[0].set_ylabel("PaCMAP 2")
+    axs[0].set_xlabel("PaCMAP 1 (EE, EC)", fontsize=style.FONT_SIZE_DENSE, loc="left")
+    common.colorbar(axs[-1], points, f"Expr. / {QUANTILE:.0%} quantile")
 
 
 def makeFigure():

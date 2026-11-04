@@ -95,6 +95,8 @@ AXIS_SIZE = {
     "mid": (38 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect
     "half": (64 * MM, AXIS_HEIGHT),
+    # Half a square: two side by side in a square's place (tall, narrow maps)
+    "half_square": (AXIS_HEIGHT / 2, AXIS_HEIGHT),
 }
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
