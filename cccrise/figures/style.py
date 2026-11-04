@@ -93,12 +93,18 @@ AXIS_SIZE = {
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
     # Ranked curves with a column of many labels
     "rect_tall": (AXIS_WIDTH, 1.6 * AXIS_HEIGHT),
+    # Between square and rect, for a row of three wider strips
+    "mid": (38 * MM, AXIS_HEIGHT),
+    # Two to a row, wider than rect
+    "half": (64 * MM, AXIS_HEIGHT),
 }
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
 PANEL_GAP_MAX = 4 * MM
 # Three to a row, spanning "full" at the widest panel gap
 AXIS_SIZE["full_third"] = ((AXIS_SIZE["full"][0] - 2 * PANEL_GAP_MAX) / 3, AXIS_HEIGHT)
+# A short strip the width of "full", aligned above full panels
+AXIS_SIZE["full_strip"] = (AXIS_SIZE["full"][0], 0.45 * AXIS_HEIGHT)
 ROW_GAP = 1 * MM
 PANEL_LABEL_SPACE = 4 * MM  # minimum room above a row's axes for its letters
 COLORBAR_WIDTH = 2 * MM

@@ -31,6 +31,31 @@ RANK_SELECTION_DIR = DATA_DIR / "rank_selection_results"
 VALIDATION_DIR = DATA_DIR / "validation_results"
 #: One subdirectory per communication score (`comparison_output_dir`).
 ALT_SCORE_METHODS_DIR = VALIDATION_DIR / "alt_score_methods"
+#: Annotation-pooled comparators (`run_comparators`): each method's rank
+#: selection and fit, per dataset and labelling (`comparator_filename`).
+COMPARATORS_DIR = DATA_DIR / "comparators"
+COMPARATOR_RANKS_DIR = COMPARATORS_DIR / "rank_selection"
+COMPARATOR_FITS_DIR = COMPARATORS_DIR / "fits"
+COMPARATOR_SCORES_DIR = COMPARATORS_DIR / "scores"
+
+
+def comparator_filename(method: str, what: str, dataset: str, labelling: str) -> str:
+    """A comparator table's name, ``<method>_<what>_<dataset>_<labelling>
+    .parquet`` (e.g. ``tc2c_elbow_alad_coarse.parquet``); `what` ``"fit"``
+    names the fit, ``<method>_<dataset>_<labelling>.nc``, and ``"starts"``
+    every start's factors, ``<method>_starts_<dataset>_<labelling>.nc``."""
+    if what == "fit":
+        return f"{method}_{dataset}_{labelling}.nc"
+    suffix = "nc" if what == "starts" else "parquet"
+    return f"{method}_{what}_{dataset}_{labelling}.{suffix}"
+
+
+def scores_filename(what: str, dataset: str) -> str:
+    """A comparator scores table's name, ``<what>_<dataset>.parquet`` (e.g.
+    ``containment_alad.parquet``): one table per analysis, every method and
+    labelling in it."""
+    return f"{what}_{dataset}.parquet"
+
 
 #: `communication_score` value every runner defaults to; its results are the
 #: ones manuscript figures and interpretation read, so they stay in their
@@ -106,6 +131,9 @@ class DatasetSpec:
     #: Broad lineages the loader removes before anything else (see
     #: `import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`). Empty keeps every lineage.
     excluded_broad_cell_types: tuple[str, ...] = ()
+    #: The finer annotation, beside `celltype_column`'s coarse one; together
+    #: they are the labellings the comparators pool cells by (`labellings`).
+    fine_celltype_column: str | None = None
 
     @property
     def loader_args(self) -> dict[str, Any]:
@@ -121,6 +149,13 @@ class DatasetSpec:
         if self.excluded_broad_cell_types:
             args["excluded_broad_cell_types"] = list(self.excluded_broad_cell_types)
         return args
+
+    @property
+    def labellings(self) -> dict[str, str]:
+        """Cell annotation column of each labelling: ``coarse`` and, when the
+        dataset has one, ``fine``."""
+        fine = {"fine": self.fine_celltype_column} if self.fine_celltype_column else {}
+        return {"coarse": self.celltype_column, **fine}
 
     @property
     def label(self) -> str:
@@ -218,6 +253,7 @@ DATASETS: dict[str, DatasetSpec] = {
         factors_filename="bal_alad_factors.nc",
         source_file=Path("/opt/IVCSC/BAL-scRNAseq.raw.h5ad"),
         celltype_column="broad_cell_type",
+        fine_celltype_column="celltype",
         group_column="ALADstatus",
         patient_column="patient_id",
         outcome_column="6monthcondition",
@@ -231,6 +267,7 @@ DATASETS: dict[str, DatasetSpec] = {
         factors_filename="ibd_ti_factors.nc",
         source_file=IBD_FULL_COHORT_IVCSC,
         celltype_column="broad_cell_type",
+        fine_celltype_column="celltype",
         group_column="inflammation_status",
         # Too large for the GPU: auto-detect would pick CuPy, whose managed-memory
         # products mismatched SciPy's on the full matrix. MKL speeds up the CPU

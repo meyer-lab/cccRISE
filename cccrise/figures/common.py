@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from string import ascii_letters, ascii_uppercase
+from string import ascii_uppercase
 from typing import Any
 
 import anndata
@@ -36,13 +36,13 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import yaml
-from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.colors import to_rgb
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.text import Text
+from matplotlib.typing import LegendLocType
 
 matplotlib.use("AGG")
 
@@ -52,14 +52,12 @@ from ..anova import (
 )
 from ..factors import (
     ALAD_FACTORS_PATH,
-    COVID19_FACTORS_PATH,
     DATA_DIR,
     LOADED_PATHS,
     clean_memory,
     load_factors_to_anndata,
-    load_or_compute_dataframe,
 )
-from ..import_data import import_alad, import_balf_covid
+from ..import_data import import_alad
 from ..rank_selection import distinct_minima
 from ..runners.datasets import DATASETS, RANK_SELECTION_DIR
 from ..runners.provenance import read_metadata
@@ -70,30 +68,13 @@ from . import style
 
 __all__ = [
     "ALAD_FACTORS_PATH",
-    "COVID19_FACTORS_PATH",
     "DATA_DIR",
     "clean_memory",
     "genFigure",
-    "getSetup",
     "get_alad_data",
-    "get_covid_data",
     "load_factors_to_anndata",
-    "load_or_compute_dataframe",
     "load_runner_output",
-    "subplotLabel",
 ]
-
-
-def get_covid_data(
-    project_cells: bool = False, do_embedding: bool = False
-) -> anndata.AnnData:
-    """Load COVID dataset with factors and optional single-cell projections."""
-    if not project_cells:
-        return load_factors_to_anndata(COVID19_FACTORS_PATH)
-    raw = import_balf_covid(gene_threshold=0.001, normalize=True)
-    return load_factors_to_anndata(
-        COVID19_FACTORS_PATH, adata=raw, do_embedding=do_embedding
-    )
 
 
 def get_alad_data(
@@ -515,6 +496,8 @@ def genFigure():
 
     output_dir = OUTPUT_DIR / f"figure{figure}"
     _SOURCE["dir"] = output_dir / SOURCE_DATA_SUBDIR
+    # An unlettered figure is one panel: its own module (panels override)
+    _SOURCE["panel"] = panel or f"figure{figure}"
     if panel is None:  # a panel dropped from the figure leaves no data behind
         shutil.rmtree(_SOURCE["dir"], ignore_errors=True)
     fig = build_figure(figure, panel)
@@ -599,6 +582,8 @@ def source_data(
 # =============================================================================
 
 SIG_ALPHA = 0.05
+#: Seed of every strip plot's jitter (`stripplot`).
+JITTER_SEED = 0
 # Axis-label names of outcome `obs` columns
 OUTCOME_LABELS = {"6monthcondition": "6-mo. outcome"}
 
@@ -608,6 +593,18 @@ RANK_LINE: dict[str, Any] = {
     "linestyle": style.LINE_STYLE_REFERENCE,
     "linewidth": style.LINE_WIDTH_THIN,
 }
+
+
+def stripplot(**kwargs):
+    """`sns.stripplot`, its jitter seeded by `JITTER_SEED` so each build
+    draws the same. Seaborn jitters from NumPy's global random state, which
+    is restored afterwards."""
+    state = np.random.get_state()
+    np.random.seed(JITTER_SEED)
+    try:
+        return sns.stripplot(**kwargs)
+    finally:
+        np.random.set_state(state)
 
 
 def mark_rank(ax: plt.Axes, rank: int | None) -> None:
@@ -753,9 +750,14 @@ def kneedle_elbow(x, y) -> int:
 
 
 def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
-    """Fit R2X against CP rank: the median over starts, banded by their
-    range, with the Kneedle elbow of the median curve circled."""
-    sweep = load_cpd_rank(dataset)
+    """`plot_r2x_sweep` of `dataset`'s CP sweep."""
+    plot_r2x_sweep(ax, load_cpd_rank(dataset), rank)
+
+
+def plot_r2x_sweep(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -> None:
+    """Fit R2X against CP rank of a seeded-start `sweep` ('Rank', 'Start',
+    'Seed', 'FitR2X'): the median over starts, banded by their range, with
+    the Kneedle elbow of the median curve circled."""
     source_data(
         "cp_fit_r2x_by_rank_and_start",
         sweep[["Rank", "Start", "Seed", "FitR2X"]],
@@ -771,9 +773,18 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
     )
     ax.plot(median.index, median, color=color, label="Median start")
     elbow = kneedle_elbow(median.index, 1 - median.to_numpy())
+    mark_kneedle(ax, elbow, median[elbow])
+    mark_rank(ax, rank)
+    rank_axis(ax, median.index)
+    ax.set_ylabel("Fit R²X")
+
+
+def mark_kneedle(ax: plt.Axes, rank: int, value: float, above: bool = False) -> None:
+    """Circle the Kneedle elbow at (`rank`, `value`) and label it, below
+    right of it (clear of a rising curve) or `above` right (a falling one)."""
     ax.plot(
-        elbow,
-        median[elbow],
+        rank,
+        value,
         marker="o",
         markersize=3 * style.MARKER_SIZE,
         fillstyle="none",
@@ -783,14 +794,11 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
     )
     ax.annotate(
         "Kneedle",
-        (elbow, median[elbow]),
-        xytext=(6, -10),
+        (rank, value),
+        xytext=(6, 4) if above else (6, -10),
         textcoords="offset points",
         fontsize=style.FONT_SIZE_DENSE,
     )
-    mark_rank(ax, rank)
-    rank_axis(ax, median.index)
-    ax.set_ylabel("Fit R²X")
 
 
 def plot_collinearity_boxes(
@@ -801,16 +809,31 @@ def plot_collinearity_boxes(
     wrap_key: bool = False,
 ) -> None:
     """Per CP rank, the largest |cosine| between two components' LR pair
-    factors: a box over the seeded starts with each start overlaid, colored
-    by whether it reaches its rank's most common solution (`plot_minima`) and
-    keyed at the lower right, its labels on two lines each if `wrap_key`.
-    `part` is `source_data`'s."""
+    factors (`plot_start_boxes`). `part` is `source_data`'s."""
     sweep = _collinearity_sweep(dataset, ["D"], part)
-    common_seeds = load_minima(dataset).query("Order == 1").set_index("Rank")["Seeds"]
+    plot_start_boxes(ax, sweep, "MaxCosD", load_minima(dataset), rank, wrap_key)
+    ax.set_ylabel("LR pair max |cosine|")
+
+
+def plot_start_boxes(
+    ax: plt.Axes,
+    sweep: pd.DataFrame,
+    column: str,
+    minima: pd.DataFrame,
+    rank: int | None = None,
+    wrap_key: bool = False,
+    key_loc: LegendLocType | None = "lower right",
+) -> None:
+    """Per CP rank, `column` of a seeded-start `sweep` ('Rank', 'Seed'): a
+    box over the starts with each start overlaid, colored by whether it
+    reaches its rank's most common solution (`minima`, as
+    `rank_selection.distinct_minima`) and keyed at `key_loc` (no key if
+    None), its labels on two lines each if `wrap_key`."""
+    common_seeds = minima.query("Order == 1").set_index("Rank")["Seeds"]
     sweep = sweep.assign(
         Common=[s in common_seeds[r] for r, s in zip(sweep["Rank"], sweep["Seed"])]
     )
-    kw = {"data": sweep, "x": "Rank", "y": "MaxCosD", "native_scale": True, "ax": ax}
+    kw = {"data": sweep, "x": "Rank", "y": column, "native_scale": True, "ax": ax}
     sns.boxplot(
         **kw,
         color=COLLINEARITY_BOX_COLOR,
@@ -818,7 +841,7 @@ def plot_collinearity_boxes(
         showfliers=False,
         linewidth=style.LINE_WIDTH_THIN,
     )
-    sns.stripplot(
+    stripplot(
         **kw,
         hue="Common",
         hue_order=[True, False],
@@ -830,7 +853,8 @@ def plot_collinearity_boxes(
         linewidth=0.2,
     )
     _collinearity_axes(ax, sweep, rank)
-    ax.set_ylabel("LR pair max |cosine|")
+    if key_loc is None:
+        return
     handles = [
         Line2D(
             [],
@@ -845,7 +869,7 @@ def plot_collinearity_boxes(
     ]
     ax.legend(
         handles=handles,
-        loc="lower right",
+        loc=key_loc,
         fontsize=style.FONT_SIZE_DENSE,
         handlelength=0.5,
         handletextpad=0.3,
@@ -914,11 +938,17 @@ def _collinearity_axes(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None) -> N
 
 
 def plot_minima(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
-    """The starts reaching each distinct minimum at each CP rank, stacked
-    from the one most starts reach (blue; of two tied, the one with the
-    higher R2X) up, the others grey (keyed by `plot_collinearity_boxes`),
-    with `rank` marked above its bar."""
-    table = load_minima(dataset)
+    """`plot_minima_table` of `dataset`'s starts."""
+    plot_minima_table(ax, load_minima(dataset), rank)
+
+
+def plot_minima_table(
+    ax: plt.Axes, table: pd.DataFrame, rank: int | None = None
+) -> None:
+    """The starts reaching each distinct minimum at each CP rank (`table`, as
+    `rank_selection.distinct_minima`), stacked from the one most starts
+    reach (blue; of two tied, the one with the higher R2X) up, the others
+    grey (keyed by `plot_start_boxes`), with `rank` marked above its bar."""
     source_data(
         "cp_minima_by_rank",
         table,
@@ -1456,44 +1486,3 @@ def _spread_labels(rows: list[float], gap: float, n_rows: int) -> np.ndarray:
         placed -= placed.mean() - np.mean(rows)
         placed -= max(placed[-1] - (n_rows - 1), 0) + min(placed[0], 0)
     return placed
-
-
-# =============================================================================
-# Legacy layout helpers, used only by figures/legacy (including
-# legacy/commonFuncs); removed with them.
-# =============================================================================
-
-
-def getSetup(
-    figsize: tuple[float, float] | tuple[int, int], gridd: tuple[int, int]
-) -> tuple[list[plt.Axes], Figure]:
-    """Establish figure set-up with subplots."""
-    sns.set(
-        style="whitegrid",
-        font_scale=0.7,
-        color_codes=True,
-        palette="colorblind",
-        rc={"grid.linestyle": "dotted", "axes.linewidth": 0.6},
-    )
-
-    # Setup plotting space and grid
-    f = plt.figure(figsize=figsize, layout="constrained")
-    gs1 = gridspec.GridSpec(gridd[0], gridd[1], figure=f)
-
-    # Get list of axis objects
-    ax = [f.add_subplot(gs1[x]) for x in range(gridd[0] * gridd[1])]
-
-    return ax, f
-
-
-def subplotLabel(axs: list[plt.Axes]):
-    """Place subplot labels on figure."""
-    for ii, ax in enumerate(axs):
-        ax.text(
-            -0.2,
-            1.2,
-            ascii_letters[ii],
-            transform=ax.transAxes,
-            fontweight="bold",
-            va="top",
-        )
