@@ -70,6 +70,8 @@ HORMONE_COLORS = {3: common.style.COLORS["up"], 4: common.style.COLORS["emphasis
 #: in the top `STATE_QUARTILE` of EE cells and not in the other's
 STATE_QUARTILE = 0.25
 STATE_NAMES = {3: "C3-high (villus-like)", 4: "C4-high (crypt-like)"}
+#: Every EE cell by which programs it is in the top `STATE_QUARTILE` of
+CLASS_NAMES = ["C3 only", "C3 + C4", "C4 only", "Neither"]
 ZOOM_NOTE = "zoom: EE, EC, tuft"
 DODGE = 0.27  # x offset between the status groups' boxes
 JITTER = 0.08
@@ -149,22 +151,26 @@ def association_table(factor: str = "cp_A") -> pd.DataFrame:
     )
 
 
-def hormone_states(cells: pd.DataFrame) -> pd.Series:
-    """Each EE cell's hormone state (`STATE_NAMES`, else "Other EE") from its
-    C3 and C4 sender weights (`STATE_QUARTILE`); non-EE cells are NaN."""
+def hormone_classes(cells: pd.DataFrame) -> pd.Series:
+    """Each EE cell's `CLASS_NAMES` class: whether its C3 and C4 sender
+    weights are in the top `STATE_QUARTILE` of EE cells'; non-EE cells are
+    NaN."""
     ee = cells["Cell type"] == "Enteroendocrine cells"
     high = {
-        k: ee
-        & (
-            cells[f"C{k} sender weight"]
-            >= cells.loc[ee, f"C{k} sender weight"].quantile(1 - STATE_QUARTILE)
-        )
+        k: cells[f"C{k} sender weight"]
+        >= cells.loc[ee, f"C{k} sender weight"].quantile(1 - STATE_QUARTILE)
         for k in STATE_NAMES
     }
-    state = pd.Series("Other EE", index=cells.index, dtype=object).where(ee)
-    state[high[3] & ~high[4]] = STATE_NAMES[3]
-    state[high[4] & ~high[3]] = STATE_NAMES[4]
-    return state
+    key = high[3].map({True: "3", False: ""}) + high[4].map({True: "4", False: ""})
+    return key.map(dict(zip(["3", "34", "4", ""], CLASS_NAMES, strict=True))).where(ee)
+
+
+def hormone_states(cells: pd.DataFrame) -> pd.Series:
+    """Each EE cell's hormone state (`STATE_NAMES`: high on one program and
+    not the other, else "Other EE"; `hormone_classes`); non-EE cells NaN."""
+    exclusive = {CLASS_NAMES[0]: STATE_NAMES[3], CLASS_NAMES[2]: STATE_NAMES[4]}
+    classes = hormone_classes(cells)
+    return classes.map(exclusive).fillna("Other EE").where(classes.notna())
 
 
 def draw_boxes(ax, x: float, values: list[pd.Series], rng) -> None:

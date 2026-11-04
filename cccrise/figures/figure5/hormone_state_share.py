@@ -1,6 +1,8 @@
 """Per biopsy (at least `MIN_EE` EE cells), the share of its EE cells in the
-villus-like (C3-high) and crypt-like (C4-high) hormone states
-(`_common.hormone_states`), by inflammation status (Kruskal-Wallis p)."""
+top quarter of C3 sender weight only (villus-like), of both C3 and C4, of C4
+only (crypt-like) or of neither (`_common.hormone_classes`), by inflammation
+status (Kruskal-Wallis p): inflammation removes C3-only cells, not C3-high
+ones."""
 
 import numpy as np
 import pandas as pd
@@ -9,13 +11,19 @@ from scipy.stats import kruskal
 from .. import common, style
 from . import _common as S
 
-AXES = ("square",)
+AXES = ("rect",)
 MIN_EE = 3
+LABELS = {
+    "C3 only": "C3 only\n(villus-like)",
+    "C3 + C4": "C3 + C4",
+    "C4 only": "C4 only\n(crypt-like)",
+    "Neither": "Neither",
+}
 
 
-def state_shares() -> pd.DataFrame:
+def class_shares() -> pd.DataFrame:
     cells = S.programs("enteroendocrine_cells")
-    state = S.hormone_states(cells)
+    state = S.hormone_classes(cells)
     ee = state.notna()
     shares = pd.crosstab(cells.loc[ee, "Biopsy"], state[ee], normalize="index")
     counts = cells.loc[ee, "Biopsy"].value_counts()
@@ -26,19 +34,18 @@ def state_shares() -> pd.DataFrame:
 
 def plot(axs):
     (ax,) = axs
-    shares = state_shares()
+    shares = class_shares()
     common.source_data(
-        "hormone_state_share_by_biopsy",
+        "hormone_class_share_by_biopsy",
         shares.rename_axis("Biopsy").reset_index(),
         f"Share of each biopsy's EE cells (biopsies with at least {MIN_EE}) in "
-        "each hormone state, with the biopsy's inflammation status; Kruskal-Wallis "
-        "p across statuses above each state.",
+        f"the top {S.STATE_QUARTILE:.0%} of C3 sender weight only, of both C3 and "
+        "C4, of C4 only, or of neither, with the biopsy's inflammation status; "
+        "Kruskal-Wallis p across statuses above each class.",
     )
     rng = np.random.default_rng(0)
-    for x, k in enumerate((3, 4)):
-        groups = [
-            shares.loc[shares["Status"] == g, S.STATE_NAMES[k]] for g in S.GROUP_LABELS
-        ]
+    for x, name in enumerate(S.CLASS_NAMES):
+        groups = [shares.loc[shares["Status"] == g, name] for g in S.GROUP_LABELS]
         S.draw_boxes(ax, x, groups, rng)
         p = kruskal(*groups).pvalue
         ax.text(
@@ -52,8 +59,8 @@ def plot(axs):
             fontweight="bold" if p < common.SIG_ALPHA else "normal",
         )
     ax.set_xticks(
-        [0, 1],
-        [S.STATE_NAMES[k].replace(" (", "\n(") for k in (3, 4)],
+        range(len(LABELS)),
+        [LABELS[n] for n in S.CLASS_NAMES],
         fontsize=style.FONT_SIZE_DENSE,
     )
     ax.set_ylabel("Share of biopsy's\nEE cells")
