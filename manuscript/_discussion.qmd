@@ -1,5 +1,7 @@
 ## Discussion
 
+<!-- Legacy discussion text
+
 We have demonstrated that CCC-RISE provides a comprehensive framework for investigating cell-cell communication (CCC) across multiple conditions while maintaining single-cell resolution.
 Current computational tools for CCC largely rely on pseudobulking, a process that aggregates single-cell data into pre-defined clusters and obscures the functional diversity of individual cells.
 This approach depends heavily on the accuracy of initial annotations and often fails to capture the continuous and multifaceted nature of cellular identities.
@@ -44,6 +46,8 @@ In summary, CCC-RISE provides an unbiased framework for investigating CCC across
 By integrating the cell-alignment capabilities of RISE with the pattern-finding benefits of tensor decomposition, our method reveals context-specific communication programs that are directly interpretable at the level of individual cells.
 As single-cell multi-condition studies become increasingly common, CCC-RISE serves as a powerful tool to unravel the complex cellular dialogues that underpin diseases.
 Understanding CCC will rely on high-level analysis tools like CCC-RISE to map the entire landscape of potential interactions in an unbiased way, followed by targeted experiments to confirm which of these predicted pathways are functionally important.
+
+-->
 
 **Acknowledgements:** This work was supported by NIAID U19-AI172713 to A.S.M. and a Cota Robles Fellowship to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice for the development of this method and its application to cell-cell communication.
 

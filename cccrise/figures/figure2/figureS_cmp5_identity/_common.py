@@ -1,8 +1,7 @@
 """The differential-detection volcano shared by this figure's sender vs.
 receiver and group vs. rest panels: each gene's difference in the fraction of
 cells detecting it against its Wilcoxon BH q (`S.rank_genes`), colored by
-quadrant (`legend`) and with given genes (e.g. `top_genes`) labeled
-(`_label`)."""
+quadrant (`legend`) and with given genes labeled (`_label`)."""
 
 import numpy as np
 import pandas as pd
@@ -11,7 +10,6 @@ from matplotlib.lines import Line2D
 from ... import common, style
 from .. import _common as S
 
-N_LABELED = 6  # `top_genes` per side
 Q_FLOOR = 1e-30  # q below this drawn at it
 HEADROOM = 1.1  # y limit over the highest point
 LABEL_DX = (
@@ -100,17 +98,6 @@ def enriched(ranking, delta):
     return (ranking["q"] < common.SIG_ALPHA) & (
         np.sign(ranking["score"]) == np.sign(delta)
     )
-
-
-def top_genes(group: str, reference: str, n: int = N_LABELED) -> list[str]:
-    """The `n` `enriched` genes of `group` against `reference` with the
-    highest Wilcoxon scores, then the `n` of `reference` with the lowest."""
-    ranking, delta, _ = volcano_data(group, reference)
-    genes = ranking[enriched(ranking, delta)]  # highest score first
-    return [
-        *genes.index[genes["score"] > 0][:n],
-        *genes.index[genes["score"] < 0][::-1][:n],
-    ]
 
 
 def limits(delta, y) -> tuple[float, float]:

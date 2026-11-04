@@ -156,7 +156,7 @@ def start_sweep(
                     "Seconds": time.perf_counter() - began,
                 }
             )
-        agreement += _start_agreement(rank, factors_by_seed)
+        agreement += start_agreement(rank, factors_by_seed)
         r2x = [f["FitR2X"] for f in fits[-len(seeds) :]]
         print(
             f"   rank {rank}: R2X {min(r2x):.4f}-{max(r2x):.4f} over {len(seeds)} starts"
@@ -164,7 +164,7 @@ def start_sweep(
     return pd.DataFrame(fits), pd.DataFrame(agreement)
 
 
-def _start_agreement(rank: int, factors_by_seed: dict[int, Factors]) -> list[dict]:
+def start_agreement(rank: int, factors_by_seed: dict[int, Factors]) -> list[dict]:
     """FMS between every pair of one rank's starts."""
     return [
         {

@@ -78,7 +78,7 @@ def plot(axs):
         linewidth=style.LINE_WIDTH_THIN,
         boxprops={"alpha": 0.8},
     )
-    sns.stripplot(
+    common.stripplot(
         **shared,
         palette=[style.COLORS["ink"]] * len(STATUS_COLORS),
         size=1.5,
