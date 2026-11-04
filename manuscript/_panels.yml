@@ -35,6 +35,7 @@ fig5:
   hormone_expression_map: [h]
   hormone_state_markers: [i]
   hormone_state_share: [j]
+  hormone_receiver_share: [k]
 figS_rise_factor_matrices:
   factors: [a]
   genes: [b]

@@ -1,13 +1,9 @@
-"""Prototype: `hormone_state_share` for the hormone programs' receivers. C3's
+"""`hormone_state_share` for the hormone programs' receivers. C3's
 receivers are EC cells and C4's tuft cells, so the two sides never share a
 cell and each type is split alone: per biopsy (at least
 `hormone_state_share.MIN_EE` cells of the type), the share of its EC cells in
 their top `_common.STATE_QUARTILE` of C3 receiver weight, and of its tuft
-cells in theirs of C4, by inflammation status (Kruskal-Wallis p). Not in a
-figure layout: build alone with
-
-    uv run cccrise-fbuild 5 hormone_receiver_share --png
-"""
+cells in theirs of C4, by inflammation status (Kruskal-Wallis p)."""
 
 from functools import partial
 
@@ -72,7 +68,6 @@ def plot(axs):
         fontsize=style.FONT_SIZE_DENSE,
     )
     ax.set_ylabel("Share of biopsy's\nreceiver-type cells")
-    S.status_legend(ax, "below", ncols=2, columnspacing=0.8)
 
 
 def makeFigure():
