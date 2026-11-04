@@ -15,7 +15,8 @@ cohort's cells. Like `run_cohort`, it does not refit RISE/CPD. Writes, into
         expression of `MYELOID_GENES`
     cell_map_ibd.parquet
         a PaCMAP of every cell's RISE projections, keeping every EE, EC and
-        tuft cell and `MAP_BACKGROUND` others drawn at `--random-state`
+        tuft cell and `MAP_BACKGROUND` others drawn at `--random-state`, with
+        each kept cell's fine type and lineage
     eigenstate_energy_ibd.parquet
         mean squared RISE projection per eigenstate of EE cells, EC cells and
         the secretory lineage
@@ -200,6 +201,8 @@ def cell_map(
     return pd.DataFrame(
         {
             "Group": group.to_numpy()[keep],
+            "Cell type": cells["Cell type"].to_numpy()[keep],
+            "Lineage": adata.obs[spec.celltype_column].astype(str).to_numpy()[keep],
             "PaCMAP 1": coords[keep, 0],
             "PaCMAP 2": coords[keep, 1],
         }
