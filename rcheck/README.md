@@ -110,3 +110,22 @@ analyses, the paper's LISI noise test (Fig. 2d-e) and its Extended Data Fig.
 `lr_resources.rds`. Pipeline: `bash rcheck/faithful/run_all.sh`; tables:
 `uv run python rcheck/faithful/compare.py`. Write-up:
 `SCRIABIN_FAITHFUL_REPORT.md`.
+
+## Reviewer figure: Scriabin's seed stability (`figureR_scriabin_model`)
+
+The figure reads the tables of `uv run cccrise-scriabin-stability`
+(`cccrise/data/scriabin/`), which summarise these runs (all git-ignored under
+`rcheck/out/` and `singlecell_cache/`). Each fan-out goes through the load-aware
+queue (`rcheck/shared/loadq.py`), one queue at a time.
+
+| Runs | Inputs | Driver |
+|---|---|---|
+| ALAD, IBD on cccRISE's inputs: `rcheck/out/shared/<ds>/s1/seed<k>/` | `rcheck/shared/export_dataset.py` | `rcheck/shared/run_s1.sh` |
+| ALAD, authors' preprocessing (SCTransform + ALRA, SCTransform; OmniPath): `rcheck/out/authors/alad/{alra,sct}/` | `rcheck/faithful/preprocess.R`, copied to `singlecell_cache/authors/alad/` | `rcheck/authors/jobs.py alad_authors` |
+| panc8, the vignette's preprocessing: `rcheck/out/authors/panc8/{donor,bytype}/` | `rcheck/authors/panc8_prep.R` (panc8.SeuratData 3.0.2 in `singlecell_cache/authors/panc8/rlib`) | `rcheck/authors/jobs.py panc8_authors` |
+| panc8 on cccRISE's inputs: `rcheck/out/shared/panc8/{donor,bytype}/` | `rcheck/authors/panc8_export_counts.R`, then `panc8_cccrise_inputs.py` | `rcheck/authors/jobs.py panc8_cccrise` |
+| cccRISE seed refits: `rcheck/out/cccrise/<ds>/s1/seed<k>.npz` | the registry datasets | `rcheck/shared/cccrise_refits.py` |
+| Port inputs for panel C (panc8) | `rcheck/authors/panc8_export_port.R` | (read by the runner) |
+
+Seeds are 1111 (upstream's own) and 2-10. Before the runner reads an R run,
+export its similarities: `Rscript rcheck/shared/export_sims.R <seed dirs>`.

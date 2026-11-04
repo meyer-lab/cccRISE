@@ -101,6 +101,11 @@ PANEL_GAP_MAX = 4 * MM
 AXIS_SIZE["full_third"] = ((AXIS_SIZE["full"][0] - 2 * PANEL_GAP_MAX) / 3, AXIS_HEIGHT)
 # A short strip the width of "full", aligned above full panels
 AXIS_SIZE["full_strip"] = (AXIS_SIZE["full"][0], 0.45 * AXIS_HEIGHT)
+# One row of three tall panels, each holding stacked insets
+# (figureR_scriabin_model)
+AXIS_SIZE["tall_rect"] = (AXIS_WIDTH, 1.75 * AXIS_HEIGHT)
+AXIS_SIZE["tall_mid"] = (AXIS_SIZE["mid"][0], 1.75 * AXIS_HEIGHT)
+AXIS_SIZE["tall_narrow"] = (32 * MM, 1.75 * AXIS_HEIGHT)
 ROW_GAP = 1 * MM
 PANEL_LABEL_SPACE = 4 * MM  # minimum room above a row's axes for its letters
 COLORBAR_WIDTH = 2 * MM

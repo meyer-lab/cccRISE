@@ -37,6 +37,8 @@ COMPARATORS_DIR = DATA_DIR / "comparators"
 COMPARATOR_RANKS_DIR = COMPARATORS_DIR / "rank_selection"
 COMPARATOR_FITS_DIR = COMPARATORS_DIR / "fits"
 COMPARATOR_SCORES_DIR = COMPARATORS_DIR / "scores"
+# Scriabin seed stability (figureR_scriabin_model); kept apart from the comparators
+SCRIABIN_DIR = DATA_DIR / "scriabin"
 
 
 def comparator_filename(method: str, what: str, dataset: str, labelling: str) -> str:
