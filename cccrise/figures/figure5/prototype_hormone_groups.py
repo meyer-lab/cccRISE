@@ -10,6 +10,7 @@ plus the top LR pairs' genes; and each group's annotated composition.
 The per-cell table is cached in `OUTPUT` (delete it to recompute)."""
 
 from types import SimpleNamespace
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -78,9 +79,10 @@ def cell_table() -> tuple[pd.DataFrame, dict[int, list[str]]]:
     genes = [g for genes in CANDIDATE_MARKERS.values() for g in genes]
     genes += [g for k in COMPONENTS for g in pair_genes[k]]
     cells = adata[:, [g for g in dict.fromkeys(genes) if g in adata.var_names]].to_df()
+    obs = cast(pd.DataFrame, adata.obs)
     cells["Composition"] = _composition_labels(
-        adata.obs[spec.fine_celltype_column].astype(str),
-        adata.obs[spec.celltype_column].astype(str),
+        obs[spec.fine_celltype_column].astype(str),
+        obs[spec.celltype_column].astype(str),
     )
     for k in COMPONENTS:
         sender, receiver = adata.obsm["sc_B"][:, k - 1], adata.obsm["rc_C"][:, k - 1]
