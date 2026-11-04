@@ -15,7 +15,7 @@ fig2:
   celltype_composition: [n]
 fig3:
   outcome_association: [a]
-  celltype_association: [b, c]
+  celltype_pacmap: [b, c]
   lr_loadings: [d]
   coordinated_changes: [e, f]
   lr_permutation: [g]
@@ -35,6 +35,7 @@ figS_cmp5_identity:
   celltype_markers: [c]
   group_vs_rest: [d, e]
   sender_vs_receiver: [f]
+  receiver_genes: [g]
 figS_alad_associations:
   cp_associations: [a]
   death_weights: [b, c]
@@ -52,15 +53,17 @@ figS_ccc_scoring:
   anova: [c]
   interpretation: [d, e]
 figS_nichenet:
-  ligand_scores: [a]
-  weighted_percentiles: [b]
+  weighted_percentiles: [a]
+  prior_shuffle: [b]
 figS_imputation_ridge:
   ridge_r2x: [a]
   ridge_fms: [b]
 figS_alad_pacmaps:
   pacmaps: [a, b]
   weight_pacmaps: [c, d, e]
-figS_celltype_eigenstates: {}
+figS_celltype_eigenstates:
+  association: [a]
+  celltype_association: [b, c]
 figS_comparators:
   method_comparison: [a]
 figS_ibd_rank_selection:

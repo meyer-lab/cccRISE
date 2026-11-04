@@ -7,16 +7,17 @@ subtitle: "Resolving cell-cell communication programs beyond cell-type boundarie
 
 - {{< label rise-factor-matrices >}}: RISE factor matrices
 - {{< label cmp-stability >}}: Collinearity and stability of RISE and CP components
-- {{< label nichenet >}}: External validation of CCC-RISE LR weights
+- {{< label nichenet >}}: NicheNet validation against a shuffled prior
 - {{< label alad-associations >}}: Association of CP components, RISE components, and patient covariates with ALAD outcomes
 - {{< label anova-stability >}}: Stability of CP component--outcome associations
 - {{< label imputation-ridge >}}: The masked-imputation ridge leaves the full-data CP fit unchanged at the selected rank
 - {{< label ibd-rank-selection >}}: IBD rank selection
+- {{< label alad-outcome-groups >}}: ALAD samples by outcome group
 
 ![](figures/figureS_rise_factor_matrices/figureS_rise_factor_matrices.svg){width="6.5in"}
 
 **{{< label rise-factor-matrices >}}.
-RISE factor matrices.** ({{< panel rise-factor-matrices factors genes >}}) RISE factor matrices representing component loadings of conditions and genes.
+RISE factor matrices.** ({{< panel rise-factor-matrices factors genes >}}) RISE factor matrices representing component loadings of conditions and genes; conditions are grouped by ALAD status, then six-month outcome (color strips).
 For visualization, genes outside the top 10% by weight in any component are omitted and each component is normalized to its largest absolute loading.
 
 ![](figures/figureS_cmp_stability/figureS_cmp_stability.svg){width="6.5in"}
@@ -30,12 +31,11 @@ Boxes show the median and interquartile range and whiskers show the most extreme
 ![](figures/figureS_nichenet/figureS_nichenet.svg){width="6.5in"}
 
 **{{< label nichenet >}}.
-External validation of CCC-RISE LR weights.** ({{< panel nichenet ligand-scores >}}) NicheNet gene target scores of each ligand (n = 185) per CP component: the AUROC with which genes differentially expressed in the component's top receiver cells recover the ligand's predicted downstream targets.
-Points are colored and sized by the ligand's weight in the component; opaque points mark the ligands of the component's top LR pairs.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-({{< panel nichenet weighted-percentiles >}}) Target-score percentile of each ligand among its component's ligands, each ligand counted in proportion to its ligand weight.
+NicheNet validation against a shuffled prior.** ({{< panel nichenet weighted-percentiles >}}) Target-score percentile of each ligand among its component's ligands, each ligand counted in proportion to its ligand weight.
 Boxes show the weighted quartiles, whiskers show the weighted 5th--95th percentiles, and diamonds show the weighted mean.
 Null: the same percentiles on 1,000 copies of the NicheNet v2 prior with ligand--target links reassigned at random, pooled across components.
+({{< panel nichenet prior-shuffle >}}) Ligand-weighted mean target-score percentile of each component's ligands (diamonds) against the same mean on 1,000 copies of the NicheNet v2 ligand--target prior with shuffled gene--ligand links; boxes show the quartiles and whiskers show the 2.5th--97.5th percentiles.
+\*: q < 0.05; one-sided empirical test, Benjamini--Hochberg corrected across the five components.
 
 ![](figures/figureS_alad_associations/figureS_alad_associations.svg){width="6.5in"}
 
@@ -137,3 +137,10 @@ Boxes show the median and interquartile range and whiskers show the most extreme
 <!-- **Figure S9.
 <!-- A subset of CD70-positive cells is a reproducible feature of ALAD.** (a) The percentage of CD70-positive cells within the airway brush samples dataset, subset by cell type. (b) The percent of T cell CD70 positivity within each sample, subset by clinical context.
 -->
+
+{{< include figures/tables/alad_outcome_groups.md >}}
+
+**{{< label alad-outcome-groups >}}.
+ALAD samples by outcome group.** Number of BAL samples in each ALAD status and six-month outcome group the analyses compare.
+Indented groups are subgroups of the group above them.
+Two of the 45 patients were sampled twice, in different groups.
