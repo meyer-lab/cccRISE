@@ -44,10 +44,11 @@ def plot(axs):
         "C3) sender weight, with Mann-Whitney p and BH q between the two; genes "
         f"with q < {common.SIG_ALPHA} are drawn.",
     )
+    wrapped = [name.replace(" (", "\n(") for name in order]
     S.dotplot(
         ax,
-        mean,
-        detected,
+        mean.set_axis(wrapped),
+        detected.set_axis(wrapped),
         {n: [g for g in genes if g in shown] for n, genes in SECTIONS.items()},
     )
 

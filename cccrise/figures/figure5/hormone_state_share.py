@@ -9,7 +9,7 @@ from scipy.stats import kruskal
 from .. import common, style
 from . import _common as S
 
-AXES = ("rect",)
+AXES = ("square",)
 MIN_EE = 3
 
 
@@ -51,9 +51,13 @@ def plot(axs):
             fontsize=style.FONT_SIZE_DENSE,
             fontweight="bold" if p < common.SIG_ALPHA else "normal",
         )
-    ax.set_xticks([0, 1], [S.STATE_NAMES[k].replace(" (", "\n(") for k in (3, 4)])
+    ax.set_xticks(
+        [0, 1],
+        [S.STATE_NAMES[k].replace(" (", "\n(") for k in (3, 4)],
+        fontsize=style.FONT_SIZE_DENSE,
+    )
     ax.set_ylabel("Share of biopsy's\nEE cells")
-    S.status_legend(ax)
+    S.status_legend(ax, "below", ncols=2, columnspacing=0.8)
 
 
 def makeFigure():

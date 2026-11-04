@@ -1,6 +1,6 @@
-"""Supplementary figure: the EE cells behind Figure 5E-J. How EE cells are
+"""Supplementary figure: the EE cells behind Figure 5E-K. How EE cells are
 called L-hormone+ (markers, as Figure 2 calls epithelium); where the zoomed
-EE/EC map sits among all cells; and hormone expression on the zoomed map."""
+EE/EC/tuft map sits among all cells; and hormone expression on the zoomed map."""
 
 from ... import common, style
 from . import cell_map, hormone_maps, l_hormone_call

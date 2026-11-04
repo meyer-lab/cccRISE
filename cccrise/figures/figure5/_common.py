@@ -60,6 +60,8 @@ EE_GROUPS = {
     "Other EE": common.style.CATEGORICAL[2],
     "EC": "0.6",
 }
+#: The groups on the zoomed and all-cell maps: `EE_GROUPS` and tuft cells
+MAP_GROUPS = EE_GROUPS | {"Tuft": common.style.CATEGORICAL[9]}
 #: The inflammatory programs' colors, off the status and baseline colors
 PROGRAM_COLORS = {1: common.style.CATEGORICAL[4], 5: common.style.CATEGORICAL[5]}
 #: The hormone programs' colors in line plots
@@ -68,7 +70,7 @@ HORMONE_COLORS = {3: common.style.COLORS["up"], 4: common.style.COLORS["emphasis
 #: in the top `STATE_QUARTILE` of EE cells and not in the other's
 STATE_QUARTILE = 0.25
 STATE_NAMES = {3: "C3-high (villus-like)", 4: "C4-high (crypt-like)"}
-ZOOM_NOTE = "zoom: EE, EC"
+ZOOM_NOTE = "zoom: EE, EC, tuft"
 DODGE = 0.27  # x offset between the status groups' boxes
 JITTER = 0.08
 
@@ -197,15 +199,16 @@ def draw_boxes(ax, x: float, values: list[pd.Series], rng) -> None:
         )
 
 
-def status_legend(ax) -> None:
+def status_legend(ax, side: str = "right", **kwargs) -> None:
     common.legend(
         ax,
-        "right",
+        side,
         handles=[
             Patch(color=GROUP_COLORS[g], alpha=0.8, label=label)
             for g, label in GROUP_LABELS.items()
         ],
         fontsize=common.style.FONT_SIZE_DENSE,
+        **kwargs,
     )
 
 

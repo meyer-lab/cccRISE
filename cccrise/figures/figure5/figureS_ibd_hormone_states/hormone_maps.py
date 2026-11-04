@@ -1,4 +1,4 @@
-"""GCG, PYY, NTS and SST expression on Figure 5's zoomed EE/EC map: the
+"""GCG, PYY, NTS and SST expression on Figure 5's zoomed EE/EC/tuft map: the
 C4-high region is GCG-high, the C3-high region PYY- and NTS-high, and the
 L-hormone-negative EE cells SST-high."""
 
@@ -16,7 +16,7 @@ def plot(axs):
     common.source_data(
         "hormone_expression_on_map",
         cells[["PaCMAP 1", "PaCMAP 2", *GENES]],
-        "Normalized expression of each hormone in EE and EC cells, on the zoomed map.",
+        "Normalized expression of each hormone in EE, EC and tuft cells, on the zoomed map.",
     )
     xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
     for ax, gene in zip(axs, GENES, strict=True):

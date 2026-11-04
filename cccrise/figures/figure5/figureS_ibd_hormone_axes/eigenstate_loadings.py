@@ -49,7 +49,6 @@ def plot(axs):
         fontsize=style.FONT_SIZE_DENSE,
     )
     ax.tick_params(length=0)
-    H.label_roles(ax)
 
 
 def top_pair(k: int) -> str:

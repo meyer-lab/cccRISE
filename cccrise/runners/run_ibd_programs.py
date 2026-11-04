@@ -8,14 +8,14 @@ cohort's cells. Like `run_cohort`, it does not refit RISE/CPD. Writes, into
         every enteroendocrine (EE), enterochromaffin (EC) and tuft cell: its
         biopsy, status, group (EE cells detecting an L hormone are
         "L-hormone+ EE"), genes detected, unscaled C3/C4 sender and receiver
-        weights, the EE/EC PaCMAP of its RISE projections, and the expression
+        weights, the EE/EC/tuft PaCMAP of its RISE projections, and the expression
         of `EE_GENES`
     myeloid_program_cells_ibd.parquet
         every myeloid cell's fine type, unscaled C1/C5 sender weights and the
         expression of `MYELOID_GENES`
     cell_map_ibd.parquet
-        a PaCMAP of every cell's RISE projections, keeping every EE and EC
-        cell and `MAP_BACKGROUND` others drawn at `--random-state`
+        a PaCMAP of every cell's RISE projections, keeping every EE, EC and
+        tuft cell and `MAP_BACKGROUND` others drawn at `--random-state`
     eigenstate_energy_ibd.parquet
         mean squared RISE projection per eigenstate of EE cells, EC cells and
         the secretory lineage
@@ -164,7 +164,7 @@ PROGRAMS = (1, 5)
 #: The contrast of the permutation test, as `inflammation_status` levels
 CASE, CONTROL = "CD_inflamed", "Healthy"
 N_PERMS = 10_000
-#: Cells other than EE/EC kept on the all-cell map
+#: Cells other than EE/EC/tuft kept on the all-cell map
 MAP_BACKGROUND = 100_000
 SECRETORY = "Secretory"
 PACMAP_SEED = 42
@@ -212,11 +212,10 @@ def enteroendocrine_cells(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataF
     for role in ("sender", "receiver"):
         for k in (3, 4):
             cells[f"C{k} {role} weight"] = weights(sub, role, k)
-    mapped = (cells["Group"] != "Tuft").to_numpy()
-    projections = np.asarray(sub.obsm["projections"], dtype=np.float32)[mapped]
-    coords = PaCMAP(random_state=PACMAP_SEED).fit_transform(projections)
-    cells[["PaCMAP 1", "PaCMAP 2"]] = np.nan
-    cells.loc[mapped, ["PaCMAP 1", "PaCMAP 2"]] = coords
+    projections = np.asarray(sub.obsm["projections"], dtype=np.float32)
+    cells[["PaCMAP 1", "PaCMAP 2"]] = PaCMAP(random_state=PACMAP_SEED).fit_transform(
+        projections
+    )
     return cells.join(genes).rename_axis("Cell").reset_index()
 
 
@@ -234,7 +233,6 @@ def cell_map(
     cells = cell_frame(adata, spec)
     genes = expression(adata, L_HORMONES)
     group = pd.Series(ee_group(cells, genes), index=cells.index).fillna("Other")
-    group[group == "Tuft"] = "Other"
     projections = np.asarray(adata.obsm["projections"], dtype=np.float32)
     coords = PaCMAP(random_state=PACMAP_SEED).fit_transform(projections)
     other = np.flatnonzero(group.to_numpy() == "Other")

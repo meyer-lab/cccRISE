@@ -10,7 +10,7 @@ from ... import common
 from .. import _common as S
 from . import _common as H
 
-AXES = ("rect",)
+AXES = ("square",)
 
 
 def plot(axs):
@@ -33,7 +33,8 @@ def plot(axs):
         ax.barh(range(len(rows)), values, left=left, color=color, height=0.75)
         left += values
     ax.set_xlim(0, 1)
-    ax.set_xlabel("Share of squared projection")
+    ax.set_xticks([0, 0.5, 1])
+    ax.set_xlabel("Share of squared\nprojection")
     ax.tick_params(axis="y", length=0)
     common.legend(
         ax,

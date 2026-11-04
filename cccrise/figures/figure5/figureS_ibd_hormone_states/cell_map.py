@@ -1,6 +1,6 @@
-"""Where Figure 5's zoomed EE/EC map sits among all cells: a PaCMAP of every
-cell's RISE projections (`run_ibd_programs.cell_map`: every EE and EC cell,
-and a seeded draw of the others, grey)."""
+"""Where Figure 5's zoomed EE/EC/tuft map sits among all cells: a PaCMAP of
+every cell's RISE projections (`run_ibd_programs.cell_map`: every EE, EC and
+tuft cell, and a seeded draw of the others, grey)."""
 
 from matplotlib.lines import Line2D
 
@@ -17,15 +17,15 @@ def plot(axs):
     common.source_data(
         "all_cell_map",
         cells,
-        "PaCMAP of every cell's RISE projections (random_state 42): every EE and EC "
-        "cell (EE split by L-hormone detection) and a seeded draw of the other cells.",
+        "PaCMAP of every cell's RISE projections (random_state 42): every EE, EC and "
+        "tuft cell (EE split by L-hormone detection) and a seeded draw of the other cells.",
     )
     other = (cells["Group"] == "Other").to_numpy()
     xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
     ax.scatter(*xy[other].T, color="0.88", s=POINT, linewidths=0, rasterized=True)
     ax.scatter(
         *xy[~other].T,
-        c=cells.loc[~other, "Group"].map(S.EE_GROUPS).to_numpy(),
+        c=cells.loc[~other, "Group"].map(S.MAP_GROUPS).to_numpy(),
         s=6 * POINT,
         linewidths=0,
         rasterized=True,
@@ -41,7 +41,7 @@ def plot(axs):
                 markersize=style.MARKER_SIZE,
                 label=g,
             )
-            for g, c in S.EE_GROUPS.items()
+            for g, c in S.MAP_GROUPS.items()
         ],
         loc="upper left",
         fontsize=style.FONT_SIZE_DENSE,

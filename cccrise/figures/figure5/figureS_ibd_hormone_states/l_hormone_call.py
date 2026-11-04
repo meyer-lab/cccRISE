@@ -16,7 +16,7 @@ SECTIONS = {
     "EC": ["TPH1", "TAC1"],
     "Tuft": ["POU2F3", "DCLK1", "TRPM5"],
 }
-GROUPS = [*S.EE_GROUPS, "Tuft"]
+GROUPS = list(S.MAP_GROUPS)
 
 
 def plot(axs):

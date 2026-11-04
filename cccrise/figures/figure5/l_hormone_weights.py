@@ -10,7 +10,7 @@ from sklearn.metrics import roc_auc_score
 from .. import common, style
 from . import _common as S
 
-AXES = ("rect",)
+AXES = ("square",)
 EE = ["L-hormone+ EE", "Other EE"]
 
 
@@ -48,14 +48,16 @@ def plot(axs):
         ax.text(
             i,
             1,
-            f"AUROC {auroc(cells, k):.2f}",
+            f"AUROC\n{auroc(cells, k):.2f}",
             transform=ax.get_xaxis_transform(),
             ha="center",
             va="bottom",
             fontsize=style.FONT_SIZE_DENSE,
         )
     common.reference_line(ax, 0)
-    ax.set_xticks([0, 1], ["C3\nPYY–NPY1R", "C4\nGCG–GLP1R"])
+    ax.set_xticks(
+        [0, 1], ["C3\nPYY–\nNPY1R", "C4\nGCG–\nGLP1R"], fontsize=style.FONT_SIZE_DENSE
+    )
     ax.set_ylabel("Sender weight")
 
 
