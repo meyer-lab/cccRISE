@@ -95,9 +95,11 @@ AXIS_SIZE = {
     "mid": (38 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect
     "half": (64 * MM, AXIS_HEIGHT),
-    # Half a square: two side by side in a square's place (tall, narrow maps)
-    "half_square": (AXIS_HEIGHT / 2, AXIS_HEIGHT),
 }
+# Between the axes of one panel split side by side (`common._Joined`)
+JOINED_GAP = 1.5 * MM
+# Half a square: two joined fill exactly a square's place (tall, narrow maps)
+AXIS_SIZE["half_square"] = ((AXIS_HEIGHT - JOINED_GAP) / 2, AXIS_HEIGHT)
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
 PANEL_GAP_MAX = 4 * MM

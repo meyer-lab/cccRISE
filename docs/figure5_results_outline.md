@@ -100,7 +100,7 @@ identity.
 - So C3/C4-high cells are hormone *states* along this switch, not L-cell subtypes. Use
   "L-hormone+ EE" and "functional hormone states" in the text, never "L cells" as a type.
 
-**2a. The hormone programs occupy distinct regions inside one annotated type (Fig 5E–J;
+**2a. The hormone programs occupy distinct regions inside one annotated type (Fig 5E–I;
 `figureS_ibd_hormone_states`).**
 - **Method.** A PaCMAP of the EE, EC and tuft cells' RISE projections, zoomed to these
   three annotated types. `figureS_ibd_hormone_states` B shows where they sit on an all-cell map.
@@ -109,8 +109,8 @@ identity.
   marker dot plot: 2,145 L-hormone+ and 913 other EE cells.
 - F and G paint each cell's C3 and C4 sender weight, as Figure 2 paints weights on cells. The
   two programs peak in different EE regions.
-- H and I show GCG and PYY expression (C4's and C3's top ligands) on the EE/EC part of the map.
-- **J (sender weight, L-hormone+ vs other EE).** AUROC 0.83 (C3) and 0.73 (C4).
+- H shows GCG and PYY expression (C4's and C3's top ligands) on the EE/EC part of the map.
+- **I (sender weight, L-hormone+ vs other EE).** AUROC 0.83 (C3) and 0.73 (C4).
 - **Robust to detection depth** (`figureS_ibd_hormone_robustness` A): 0.75–0.91 (C3) and
   0.69–0.77 (C4) across tertiles of genes detected, against 0.57 for depth alone.
 - **Robust to status** (`figureS_ibd_hormone_robustness` B): 0.81–0.84 (C3) and 0.73–0.76
@@ -122,7 +122,7 @@ identity.
   - So cccRISE uses a finer basis than the cells' overall variation.
 - `figureS_ibd_hormone_states` C–F shows GCG, PYY, NTS and SST on the zoomed map.
 
-**2b. The two states are crypt-like and villus-like (Fig 5K; `figureS_ibd_hormone_robustness`
+**2b. The two states are crypt-like and villus-like (Fig 5J; `figureS_ibd_hormone_robustness`
 D).**
 - **Method.** Hormone states are EE cells in the top quarter of C3 (not C4) or of C4 (not C3)
   sender weight: 426 cells each. Genes are compared with Mann–Whitney tests, BH-corrected, and
@@ -139,9 +139,9 @@ D).**
     zonated there.
   - The robust readouts are ID1–3, NTS and SCT up, and GCG down.
 
-**2c. Inflammation depletes the villus-like state (Fig 5L; `figureS_ibd_hormone_robustness`
+**2c. Inflammation depletes the villus-like state (Fig 5K; `figureS_ibd_hormone_robustness`
 E–F).**
-- **L.** The villus-like (C3-high) share of each biopsy's EE cells falls with inflammation.
+- **K.** The villus-like (C3-high) share of each biopsy's EE cells falls with inflammation.
   Means are 17% healthy, 16% CD uninflamed and 9% CD inflamed; medians are 17%, 16% and 7%
   (Kruskal p 0.001; biopsies with at least 3 EE cells). The crypt-like share does not change
   (p 0.4).
@@ -181,7 +181,7 @@ E–F).**
   - Inflammatory mononuclear phagocytes characterize anti-TNF-resistant ileal CD (Martin et
     al. 2019, *Cell*, the GIMATS module).
 
-**3a. The top pairs move together across biopsies (Fig 5M).** This is Figure 3D's test.
+**3a. The top pairs move together across biopsies (Fig 5L).** This is Figure 3D's test.
 - **Method.** Each LR pair is scored per biopsy in the component's own sender/receiver context
   (`covariation.context_scores`, as Figure 3). Spearman correlations are taken across biopsies
   among the component's top 10 pairs. The baselines are 2,000 draws each of random,
@@ -202,7 +202,7 @@ This is Figure 3F's test.
   10,000 biopsy-label permutations.
 - All 10 pairs of each component are higher in inflamed biopsies (BH q ≤ 7e-4).
 
-**3c. The receivers express the ligands' downstream targets (Fig 5N).** This is Figure 2's
+**3c. The receivers express the ligands' downstream targets (Fig 5M).** This is Figure 2's
 NicheNet test.
 - Weighted target-score percentile against shuffled NicheNet priors, with receivers chosen
   among fine cell types (`cccrise-nichenet --receiver-celltype-column celltype`).

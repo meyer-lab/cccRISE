@@ -1,24 +1,37 @@
 """GCG and PYY, the ligands of C4's and C3's top LR pairs, on the EE/EC
-part of the zoomed map (`ee_state_map`'s PaCMAP, cropped to those cells, not
-refit): each cell's expression over the gene's `QUANTILE` among EE and EC
-cells (capped at 1), highest drawn on top, as `figureS_ibd_hormone_states`
-draws hormones."""
+part of the zoomed map: one panel split into two axes, each a window onto
+`ee_state_map`'s PaCMAP (not refit) at exactly its scale, so the EE/EC
+cluster keeps its shape and size, centered on that cluster. Each EE and EC
+cell is colored by its expression over the gene's `QUANTILE` among them
+(capped at 1), highest drawn on top, as `figureS_ibd_hormone_states` draws
+hormones."""
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from .. import common, style
 from . import _common as S
 
 AXES = ("half_square",) * 2
+JOINED = True  # one panel, lettered once (`common._Joined`)
 GENES = ("GCG", "PYY")
 QUANTILE = 0.99
-CROP = 0.005  # share of cells left outside the view on each side, per axis
-PAD = 0.04
+CROP = 0.005  # share of EE/EC cells outside the cluster's center estimate
+
+
+def map_limits(xy_all: np.ndarray) -> np.ndarray:
+    """The data limits (rows x, y) `ee_state_map`'s autoscaled square axes
+    give the full map."""
+    low, high = xy_all.min(axis=0), xy_all.max(axis=0)
+    margin = np.array([plt.rcParams["axes.xmargin"], plt.rcParams["axes.ymargin"]])
+    pad = margin * (high - low)
+    return np.column_stack([low - pad, high + pad])
 
 
 def plot(axs):
-    cells = S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])
-    cells = cells[cells["Group"].isin(list(S.EE_GROUPS))]  # tuft cells left out
+    mapped = S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])
+    limits = map_limits(mapped[["PaCMAP 1", "PaCMAP 2"]].to_numpy())
+    cells = mapped[mapped["Group"].isin(list(S.EE_GROUPS))]  # tuft cells left out
     relative = {
         g: np.clip(cells[g].to_numpy() / np.quantile(cells[g], QUANTILE), 0, 1)
         for g in GENES
@@ -33,12 +46,10 @@ def plot(axs):
         "(capped at 1, the colors).",
     )
     xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
-    # Crop to the cluster, leaving out the few EE/EC cells mapped far from it
-    low, high = np.quantile(xy, [CROP, 1 - CROP], axis=0)
-    pad = PAD * (high - low)
+    # A window as wide as the axes' share of a square map, on the cluster
+    center = np.quantile(xy[:, 0], [CROP, 1 - CROP]).mean()
+    half = np.ptp(limits[0]) * style.AXIS_SIZE["half_square"][0] / style.AXIS_HEIGHT / 2
     for ax, gene in zip(axs, GENES, strict=True):
-        ax.set(xlim=(low[0] - pad[0], high[0] + pad[0]))
-        ax.set(ylim=(low[1] - pad[1], high[1] + pad[1]))
         order = np.argsort(relative[gene])
         points = ax.scatter(
             *xy[order].T,
@@ -50,11 +61,15 @@ def plot(axs):
             linewidths=0,
             rasterized=True,
         )
+        ax.set(xlim=(center - half, center + half), ylim=limits[1])
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_title(gene, fontsize=style.FONT_SIZE_LABEL)
     axs[0].set_ylabel("PaCMAP 2")
-    axs[0].set_xlabel("PaCMAP 1 (EE, EC)", fontsize=style.FONT_SIZE_DENSE, loc="left")
+    # One x label, centered under both axes
+    width = style.AXIS_SIZE["half_square"][0]
+    axs[0].set_xlabel("PaCMAP 1 (EE, EC)", fontsize=style.FONT_SIZE_DENSE)
+    axs[0].xaxis.label.set_x(1 + style.JOINED_GAP / width / 2)
     common.colorbar(axs[-1], points, f"Expr. / {QUANTILE:.0%} quantile")
 
 

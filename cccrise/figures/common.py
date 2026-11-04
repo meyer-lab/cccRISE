@@ -288,10 +288,12 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
 
 
 def _letter_axes(fig: Figure, placements) -> None:
-    """Letter each axes A, B, C, ... at its left margin and its row's top,
-    tagged with its panel module's name for `record_panel_letters`."""
+    """Letter each axes A, B, C, ... (only the first of a `_Joined`
+    module) at its left margin and its row's top, tagged with its panel
+    module's name for `record_panel_letters`."""
     width, height = fig.get_size_inches()
-    for letter, (box, x, _, label_y) in zip(ascii_uppercase, placements, strict=False):
+    lettered = [p for p in placements if p[0].lettered]
+    for letter, (box, x, _, label_y) in zip(ascii_uppercase, lettered, strict=False):
         fig.text(
             (x - box.left) / width,
             1 - label_y / height,
@@ -316,7 +318,7 @@ def _pack_rows(grid, natural, width):
             print(f"Warning: row {i} has {slack / style.MM:.1f} mm to spare")
         x = (width - row_width - gap * (len(row) - 1)) / 2  # centered
         for box in row:
-            if isinstance(box, _Stack):
+            if isinstance(box, _Stack | _Joined):
                 placements += box.placements(x + box.left, y + top, y)
             else:
                 placements.append((box, x + box.left, y + top, y))
@@ -345,6 +347,7 @@ class _AxesBox:
     right: float = 0
     top: float = 0
     bottom: float = 0
+    lettered: bool = True
 
 
 class _Stack:
@@ -386,12 +389,39 @@ class _Stack:
         ]
 
 
+class _Joined:
+    """A module's axes side by side, `style.JOINED_GAP` apart whatever their
+    inner margins (so the inner ones must have no y labels) and lettered once:
+    one panel split into several axes. Declared by the module's `JOINED`; it
+    packs as a single box."""
+
+    def __init__(self, boxes: list[_AxesBox]):
+        self.boxes = boxes
+        for b in boxes[1:]:
+            b.lettered = False
+        self.offsets = np.cumsum([0] + [b.width + style.JOINED_GAP for b in boxes[:-1]])
+        self.width = self.offsets[-1] + boxes[-1].width
+        self.height = max(b.height for b in boxes)
+        self.left, self.right = boxes[0].left, boxes[-1].right
+        self.top = max(b.top for b in boxes)
+        self.bottom = max(b.bottom for b in boxes)
+
+    def placements(self, x: float, y: float, row_top: float) -> list[tuple]:
+        return [
+            (b, x + dx, y, row_top)
+            for b, dx in zip(self.boxes, self.offsets, strict=True)
+        ]
+
+
 def _draw_row(fig: Figure, row: list) -> list:
-    """The boxes of a row's modules, each list of modules one `_Stack`."""
+    """The boxes of a row's modules, each list of modules one `_Stack` and
+    each `JOINED` module one `_Joined`."""
     boxes = []
     for item in row:
         if isinstance(item, list):
             boxes.append(_Stack([b for m in item for b in _draw_fixed(fig, m)]))
+        elif getattr(item, "JOINED", False):
+            boxes.append(_Joined(_draw_fixed(fig, item)))
         else:
             boxes += _draw_fixed(fig, item)
     return boxes

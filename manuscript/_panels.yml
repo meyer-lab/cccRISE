@@ -32,12 +32,12 @@ fig4:
 fig5:
   cp_factor_matrices: [a, b, c, d]
   ee_state_map: [e, f, g]
-  hormone_expression_map: [h, i]
-  l_hormone_weights: [j]
-  hormone_state_markers: [k]
-  hormone_state_share: [l]
-  program_covariation: [m]
-  nichenet: [n]
+  hormone_expression_map: [h]
+  l_hormone_weights: [i]
+  hormone_state_markers: [j]
+  hormone_state_share: [k]
+  program_covariation: [l]
+  nichenet: [m]
 figS_rise_factor_matrices:
   factors: [a]
   genes: [b]
