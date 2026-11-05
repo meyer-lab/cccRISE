@@ -132,7 +132,7 @@ def key(ax: plt.Axes) -> None:
     ]
     ax.legend(
         handles=handles,
-        loc="lower right",
+        loc="lower left",
         fontsize=style.FONT_SIZE_DENSE,
         handlelength=1.2,
     )
@@ -161,8 +161,6 @@ def pb_fit(axs, labelling: str) -> None:
     finish_ranks(ax, top)
     ax.set_ylabel("Fit $R^2X$")
     title(ax, "PB", labelling)
-    if labelling == "coarse":
-        key(ax)
 
 
 def tc2c_elbow(axs, labelling: str) -> None:
@@ -282,6 +280,8 @@ def _minima(axs, method: str, sweep: str, labelling: str) -> None:
 
 def pb_minima(axs, labelling: str) -> None:
     _minima(axs, "pb", "rank", labelling)
+    if labelling == "coarse":
+        key(axs[0])
 
 
 def tc2c_minima(axs, labelling: str) -> None:
@@ -332,5 +332,5 @@ def stac_shares(axs, labelling: str) -> None:
     ax.set_xlabel("Component")
     ax.set_ylabel("Eigenvalue share")
     title(ax, "STAC", labelling)
-    if labelling == "coarse":
+    if labelling == "fine":
         ax.legend(loc="lower left", fontsize=style.FONT_SIZE_DENSE, handlelength=1.2)

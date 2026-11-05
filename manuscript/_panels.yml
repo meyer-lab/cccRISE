@@ -29,6 +29,8 @@ fig4:
   classes: [f]
   strongest_association: [g]
   program_capture: [h]
+  label_ceiling_sender: [i]
+  label_ceiling_receiver: [j]
 fig5: {}
 figS_rise_factor_matrices:
   factors: [a]
@@ -77,13 +79,17 @@ figS_ibd_rank_selection:
   cp_minima: [e]
   mode_collinearity: [f]
 figS_comparator_rank_selection:
-  pb_rank_selection_coarse: [a, b]
-  pb_minima_coarse: [c]
-  tc2c_rank_selection_coarse: [d, e]
-  tc2c_minima_coarse: [f]
-  pb_rank_selection_fine: [g, h]
-  pb_minima_fine: [i]
-  tc2c_rank_selection_fine: [j, k]
+  pb_fit_coarse: [a]
+  pb_fit_fine: [b]
+  tc2c_elbow_coarse: [c]
+  tc2c_elbow_fine: [d]
+  pb_collinearity_coarse: [e]
+  pb_collinearity_fine: [f]
+  tc2c_congruence_coarse: [g]
+  tc2c_congruence_fine: [h]
+  pb_minima_coarse: [i]
+  pb_minima_fine: [j]
+  tc2c_minima_coarse: [k]
   tc2c_minima_fine: [l]
   stac_shares_coarse: [m]
   stac_shares_fine: [n]
@@ -113,3 +119,6 @@ figS_comparator_properties:
   homophily: [d]
   top_share: [e]
 figS_comparator_lr_contents: {}
+figS_comparator_ibd:
+  reach: [a]
+  columns_in_cccrise: [b]
