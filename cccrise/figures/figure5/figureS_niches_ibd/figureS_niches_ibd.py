@@ -2,7 +2,7 @@
 NICHES: their concordance over what their labels predict, across tau, and how
 weighting any direction by expression reaches NICHES (`figures.niches`)."""
 
-from .. import niches
+from ... import niches
 from . import concordance, orderings, tau_sweep
 
 

@@ -268,10 +268,12 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
 
 
 def _letter_axes(fig: Figure, placements) -> None:
-    """Letter each axes A, B, C, ... at its left margin and its row's top,
-    tagged with its panel module's name for `record_panel_letters`."""
+    """Letter each axes A, B, C, ... in reading order (by its letter's height,
+    then left to right) at its left margin and its row's top, tagged with its
+    panel module's name for `record_panel_letters`."""
     width, height = fig.get_size_inches()
-    for letter, (box, x, _, label_y) in zip(ascii_uppercase, placements, strict=False):
+    reading = sorted(placements, key=lambda p: (round(p[3], 6), p[1]))
+    for letter, (box, x, _, label_y) in zip(ascii_uppercase, reading, strict=False):
         fig.text(
             (x - box.left) / width,
             1 - label_y / height,

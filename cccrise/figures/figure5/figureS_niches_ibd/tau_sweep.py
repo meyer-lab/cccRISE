@@ -1,12 +1,12 @@
 """`figures.niches.tau_sweep` on IBD."""
 
-from .. import common, niches
+from ... import common, niches
 
 AXES = ("mid",)
 
 
 def plot(axs):
-    niches.tau_sweep(axs, "ibd")
+    niches.tau_sweep(axs, "ibd", niches.IBD_SUPPLEMENT)
 
 
 def makeFigure():

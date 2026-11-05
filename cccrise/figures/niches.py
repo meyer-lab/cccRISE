@@ -1,14 +1,12 @@
-"""The panels of the NICHES supplements (`figureS_niches_ibd`,
+"""The NICHES panels (`figure5_niches`, `figureS_niches_ibd`,
 `figureS_niches_alad`): cccRISE's sender and receiver populations against
 upstream NICHES, from the `cccrise-niches` tables. A population's NICHES
-concordance is its share of cells with a non-zero NICHES program score; its
-score fold, its mean program score over what its fine labels predict."""
+concordance is its share of cells with a non-zero NICHES program score."""
 
 from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
-from matplotlib.cm import ScalarMappable
 from matplotlib.colors import LinearSegmentedColormap, LogNorm, Normalize
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
@@ -29,10 +27,10 @@ from ..runners.datasets import NICHES_DIR, scores_filename
 from . import common, style
 from .figure2._common import GROUP_TAU
 
-#: Each dataset's components, in the groups drawn together
-GROUPS = {"ibd": ((3, 4), (1, 5), (2, 6)), "alad": ((1, 5), (2, 3, 4))}
-#: The stacked axes of `concordance` that holds the legend, clear of the data
-LEGEND_STACK = {"ibd": -1, "alad": 0}
+#: Each figure's components, in the groups drawn together
+IBD_MAIN = ((3, 4),)
+IBD_SUPPLEMENT = ((1, 2, 5, 6),)
+ALAD = ((1, 5), (2, 3, 4))
 #: Sides in shades of black: rows are labeled S and R, so color isn't needed
 SIDE_SHADES = {"sender": "0.1", "receiver": "0.45"}
 PROGRAM_COLORS = {
@@ -45,11 +43,8 @@ PROGRAM_COLORS = {
 SIDE_STYLES = {"sender": "-", "receiver": ":"}
 NULL_COLOR = "0.88"
 CONCORDANCE_LABEL = "NICHES concordance"
-#: `concordance`'s boxed column and the gap between its stacked axes
-COLUMN_WIDTH = 3.5 * style.MM
+#: The gap between `concordance`'s stacked axes
 STACK_GAP = 0.08
-FOLD_CMAP = "BrBG"
-FOLD_NORM = LogNorm(0.05, 20)
 #: `orderings`: each block's header, then its (ordering, tick, x)
 BLOCKS = {
     "State": ((RANDOM, "Random", 0.0), (WEIGHT, "cccRISE", 1.0)),
@@ -117,11 +112,11 @@ def program_labels(ax, rows: list[tuple[int, str]], y: Sequence[float]) -> None:
         )
 
 
-def _scorable_groups(table: pd.DataFrame, dataset: str) -> list[list[tuple[int, str]]]:
-    """`GROUPS`' populations that are scorable, a group of none dropped."""
+def _scorable_groups(table: pd.DataFrame, groups) -> list[list[tuple[int, str]]]:
+    """`groups`' populations that are scorable, a group of none dropped."""
     scorable = table[table["Scorable"]].index
-    groups = [[c for c in cases(g) if c in scorable] for g in GROUPS[dataset]]
-    return [g for g in groups if g]
+    rows = [[c for c in cases(g) if c in scorable] for g in groups]
+    return [r for r in rows if r]
 
 
 def _stacked_axes(ax, sizes: list[int]) -> list:
@@ -132,28 +127,6 @@ def _stacked_axes(ax, sizes: list[int]) -> list:
         stacks.append(ax.inset_axes((0, top - size * row, 1, size * row)))
         top -= size * row + STACK_GAP
     return stacks
-
-
-def _fold_column(ax, width: float, folds: np.ndarray, rows) -> None:
-    """`folds` in black-edged cells against `ax`'s left spine, `width` of `ax`
-    wide, carrying the row labels."""
-    column = ax.inset_axes((-width, 0, width, 1))
-    column.set(xlim=(0, 1), ylim=ax.get_ylim(), xticks=[])
-    y = list(range(len(rows)))
-    colors = ScalarMappable(FOLD_NORM, FOLD_CMAP).to_rgba(folds)
-    column.barh(
-        y,
-        1,
-        height=1,
-        left=0,
-        color=colors,
-        edgecolor="black",
-        lw=style.LINE_WIDTH_THIN,
-    )
-    program_labels(column, rows, y)
-    for spine in column.spines.values():
-        spine.set(visible=True, color="black", linewidth=style.LINE_WIDTH_THIN)
-    ax.tick_params(axis="y", left=False, labelleft=False)
 
 
 def _concordance_row(ax, y: int, side: str, r: pd.Series) -> None:
@@ -204,7 +177,7 @@ def _concordance_row(ax, y: int, side: str, r: pd.Series) -> None:
     )
 
 
-def _concordance_legend(ax) -> None:
+def _concordance_legend(ax, outside: bool) -> None:
     ink = style.COLORS["ink"]
     handles = [
         Line2D(
@@ -239,30 +212,35 @@ def _concordance_legend(ax) -> None:
         ),
         Patch(facecolor=NULL_COLOR, label="Random directions"),
     ]
-    ax.legend(
-        handles=handles,
-        loc="lower right",
-        fontsize=style.FONT_SIZE_DENSE,
-        borderaxespad=0.1,
-        labelspacing=0.2,
-        handletextpad=0.3,
-    )
+    spacing = {
+        "handles": handles,
+        "fontsize": style.FONT_SIZE_DENSE,
+        "labelspacing": 0.2,
+        "handletextpad": 0.3,
+    }
+    if outside:
+        common.legend(ax, "right", **spacing)
+    else:
+        ax.legend(loc="lower right", borderaxespad=0.1, **spacing)
 
 
-def concordance(axs, dataset: str) -> None:
-    """Each scorable population's NICHES concordance, against what its label
-    composition predicts and random directions, and its score fold."""
+def concordance(axs, dataset: str, groups, legend_stack: int | None = -1) -> None:
+    """Each scorable population of `groups` and its NICHES concordance, against
+    what its label composition predicts and random directions; the legend in
+    stacked axes `legend_stack`, clear of the data, or right of the last if
+    None."""
     (ax,) = axs
     table = load("populations", dataset).set_index(["Component", "Side"])
+    table = table.loc[[c for g in groups for c in cases(g)]]
     common.source_data(
         "niches_concordance_by_population",
-        table.reset_index().rename(
+        table.reset_index()
+        .drop(columns=["Score observed", "Score labels fine", "Score fold"])
+        .rename(
             columns={
                 "Observed": "NICHES concordance",
                 "Labels fine": "Fine label predicted",
                 "Labels coarse": "Lineage predicted",
-                "Score observed": "Mean NICHES score",
-                "Score labels fine": "Fine label predicted mean score",
             }
         ),
         f"Each component's sender and receiver populations, the cells past "
@@ -272,33 +250,33 @@ def concordance(axs, dataset: str) -> None:
         "with each cell at its type's rate. Direction 5th and 95th: percentiles of "
         f"the concordance of {N_POPULATION_DRAWS:,} random RISE directions, each "
         "taking as many cells from each fine type as the population; P and Q "
-        "direction: one-sided p and BH q over the scorable populations. Score fold: "
-        "mean NICHES score over the fine labels' prediction. Scorable: at least "
-        f"{SCORABLE:.0%} of the population is NICHES+.",
+        "direction: one-sided p and BH q over the dataset's scorable populations. "
+        f"Scorable: at least {SCORABLE:.0%} of the population is NICHES+.",
     )
-    groups = _scorable_groups(table, dataset)
+    rows_by_stack = _scorable_groups(table, groups)
     ax.set_axis_off()
-    width = COLUMN_WIDTH / (ax.bbox.width / ax.figure.dpi)
-    stacks = _stacked_axes(ax, [len(g) for g in groups])
-    for stack, rows in zip(stacks, groups, strict=True):
+    stacks = _stacked_axes(ax, [len(g) for g in rows_by_stack])
+    for stack, rows in zip(stacks, rows_by_stack, strict=True):
         for y, (case, r) in enumerate(table.loc[rows].iterrows()):
             _concordance_row(stack, y, case[1], r)
         stack.set(xlim=(0, 1), ylim=(len(rows) - 0.5, -0.5))
-        _fold_column(stack, width, table.loc[rows, "Score fold"].to_numpy(), rows)
+        program_labels(stack, rows, range(len(rows)))
         stack.tick_params(axis="x", labelbottom=stack is stacks[-1])
     stacks[-1].set_xlabel(CONCORDANCE_LABEL)
-    bar = common.colorbar(ax, ScalarMappable(FOLD_NORM, FOLD_CMAP), "Score fold")
-    bar.set_ticks([0.1, 1, 10], labels=["0.1", "1", "10"])
-    bar.minorticks_off()
-    bar.set_label("Score fold", labelpad=-2)
-    _concordance_legend(stacks[LEGEND_STACK[dataset]])
+    if legend_stack is None:
+        _concordance_legend(stacks[-1], outside=True)
+    else:
+        _concordance_legend(stacks[legend_stack], outside=False)
 
 
-def tau_sweep(axs, dataset: str) -> None:
+def tau_sweep(axs, dataset: str, groups) -> None:
     """Each scorable population's concordance over its labels' across tau."""
     (ax,) = axs
+    components = [k for g in groups for k in g]
     table = load("tau", dataset)
-    table["Gap"] = table["Observed"] - table["Labels fine"]
+    table = table[table["Component"].isin(components)].assign(
+        Gap=lambda t: t["Observed"] - t["Labels fine"]
+    )
     common.source_data(
         "niches_concordance_by_tau",
         table.rename(
@@ -322,9 +300,7 @@ def tau_sweep(axs, dataset: str) -> None:
     ax.axvline(
         GROUP_TAU, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN, zorder=0
     )
-    components = [
-        k for group in GROUPS[dataset] for k in group if k in set(table["Component"])
-    ]
+    components = [k for k in components if k in set(table["Component"])]
     for k, side in cases(components):
         group = table[
             (table["Component"] == k)
@@ -358,11 +334,11 @@ def tau_sweep(axs, dataset: str) -> None:
 
 
 def _family_rows(
-    dataset: str,
+    groups,
 ) -> tuple[list[tuple[int, str]], list[float], list[slice]]:
     """Every component and side, each one's y, and each group's slice of them."""
     rows, y, families, top = [], [], [], 0.0
-    for group in GROUPS[dataset]:
+    for group in groups:
         family = cases(group)
         families.append(slice(len(rows), len(rows) + len(family)))
         rows += family
@@ -432,11 +408,11 @@ def _ordering_headers(ax) -> None:
         )
 
 
-def orderings(axs, dataset: str) -> None:
+def orderings(axs, dataset: str, groups) -> None:
     """The population's number of cells chosen by a state direction, alone and
     times expression, and by expression alone; and how sparse NICHES is."""
     (ax,) = axs
-    rows, y, families = _family_rows(dataset)
+    rows, y, families = _family_rows(groups)
     long = load("orderings", dataset)
     table = long.pivot(
         index=["Component", "Side"], columns="Ordering", values="Share"

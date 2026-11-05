@@ -121,3 +121,7 @@ figS_niches_alad:
   concordance: [a]
   tau_sweep: [b]
   orderings: [c]
+fig5_niches:
+  concordance: [a]
+  tau_sweep: [b]
+  orderings: [c]
