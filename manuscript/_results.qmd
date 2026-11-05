@@ -77,7 +77,7 @@ Individually, the groups expressed unique epithelial subpopulation markers indic
 These eigen-state--derived epithelial labels closely aligned with available annotations while exceeding their granularity in epithelial subtype definitions ({{< fig 2 celltype-composition >}}).
 In sum, label-free interpretation of CCC-RISE factors isolated a well-validated CCC program, wherein ciliated epithelial cells secrete betacellulin (BTC) that binds basal and secretory epithelial cells through epidermal growth factor receptors EGFR and ErbB2, inducing tissue repair and---in unhealthy tissue---fibrosis ({{< fig 2 cp-factor-matrices.4 >}})\ [@doi:10.1165/ajrcmb.20.5.3308; @doi:10.1038/ki.2012.43; @doi:10.3390/cells11060986].
 
-### CCC-RISE identifies a disease-associated immune signaling program
+### CCC-RISE identifies a coordinated immune signaling program associated with CLAD
 
 ::: {#fig-3}
 ![](figures/figure3/figure3.svg){width="6.5in"}
@@ -128,35 +128,53 @@ The alternate scores captured LR pairs similar to those of the product score, es
 For component 4, every score identified T and NK cells as senders, and the Hill score identified the same cells as receivers, whereas the mean and gmean scores instead implicated epithelial receivers ({{< fig ccc-scoring interpretation.2 >}}).
 Overall, CCC-RISE's expression product agreed closely with CellChat's expression Hill function, and even lower-FMS scores closely matched the LR pairs and either the sender or receiver eigen-states of components 4 and 5.
 
-### CCC-RISE uncovers spatially distinct groups of hormone-secreting cells in IBD
+### CCC-RISE uncovers hormonal communication that varies continuously over cells in IBD
 
 ::: {#fig-4}
 ![](figures/figure4/figure4.svg){width="6.5in"}
 
-**.**
+**Complementary CCC-RISE components describe states along a continuous population of hormone-secreting enteroendocrine cells in IBD.**
+A--D) CP factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
+E--G) RISE projection embeddings of EE, EC, and tuft cells colored by E) cell type as annotated in the IBDverse data, F) component 3 sender weight, or G) component 4 sender weight.
+H) RISE projection embeddings of EE and EC cells colored by PYY (left) or GCG (right) expression normalized to the expression in the top 1% of expressing cells.
+I) Each cell's component 3/4 sender weight normalized to the maximum weight, colored by polar angle and magnitude cutoffs.
+Shaded region excludes cells exceeding 180&deg.
+Dashed ray and arc indicate an example polar coordinate: (0.3, 45&deg).
+J) Distribution of EE cells over polar angles, colored by angle-based thresholds at 30 and 60&deg.
+K) Expression of canonical EE subtype markers and BMP target genes in each group.
+Markers were curated from [source].
+L) NICHES
 :::
 
-We next sought to extend CCC-RISE to an inflammatory bowel disease (IBD) dataset, representing a bioligically distinct disease context with enhanced statistical power and biological diversity compared with the ALAD dataset.
-In the IBD data, conditions comprised illium punch samples from individual donors of three groups: healthy (no Chron's Disease; CD), CD uninflamed, and CD inflamed [S_ibd_cohort A].
-Unlike the ALAD data, cell type compositions directly tracked condition state; immune cell invasion and epithelial/stem cell death were correlated with the inflammation state of each donor [S_ibd_cohort B].
-We applied the same rank selection criteria as before to construct a CCC-RISE model using the IBD data while avoiding overfitting.
-A RISE BiCV rank sweep did not show a clear turnover in test set R^2^X, but did present a clear plateua around rank 60, which we used to decompose the normalized expression tensor [S_ibd_rank_selection A--B].
-Like with ALAD, CP LR pair mode collinearity and instability increased sharply beyond rank 6, which we used to decompose the resulting communication tensor [S_ibd_rank_selection D--F].
-CCC-RISE yielded components that described healthy and inflamed gut communication programs, including opposing activating/inhibitory immune signaling (components 1 and 5), myeloid--driven axon maintainence (component 2), and hormone secretion (components 3--4) [Fig5A--D, S_ibd_rank_selection G--H].
+We next sought to extend CCC-RISE to an inflammatory bowel disease (IBD) dataset (IBDverse), representing a bioligically distinct disease context with enhanced statistical power compared with the ALAD dataset\ [@doi:10.1038/s41588-026-02634-7].
+In the IBD data, conditions comprised terminal-illium punch biopsies from individual donors of three groups: healthy (no Chron's Disease; CD), CD uninflamed, and CD inflamed [S_rank_selection A].
+We applied the same rank selection criteria as before to construct a CCC-RISE model on IBDverse while avoiding overfitting.
+The RISE BiCV rank sweep did not show a clear turnover in test R^2^X, but did present a clear plateua around rank 60, which we used to decompose the normalized expression tensor [S_ibd_rank_selection B--C].
+Like with ALAD, CP LR pair mode collinearity and instability increased sharply beyond rank 6, which we used to decompose the communication tensor [S_ibd_rank_selection E--G].
+CCC-RISE yielded components that described healthy and inflamed gut communication programs, including opposing activating/inhibitory immune signaling (components 1 and 5), myeloid--driven axon maintainence (component 2), and hormone secretion (components 3--4) [Fig5A--D, S_ibd_rank_selection H--J].
 
 The data clearly describe a number of diverse communication programs, so we tested the associations of CP condition with biopsy type to narrow our interpretation onto clinically relevant programs.
 While many components tracked three-way inflammation status and distinguished healthy from CD samples, only components 3 and 4 were able to differentiate uninflamed from inflamed CD samples [S_ibd_associations A].
-Interestingly, while ALAD condition weights generally showed a positive correlation with disease severity, IBD condition weights of components 3 and 4 were higher in uninflamed than inflamed CD samples, indicating a loss of communication following inflammation [S_ibd_associations E--F].
-[CP 3/4 provide contributions to association beyond cell type composition?]
+Interestingly, while ALAD condition weights generally showed a positive correlation with disease severity, IBD condition weights of components 3 and 4 were higher in uninflamed than inflamed CD samples, indicating a loss of communication following inflammation [S_ibd_associations B--C].
+Unlike in the ALAD data, cell-type compositions directly tracked condition state: immune cells increased and epithelial cells decreased in abundance with inflammation [S_ibd_associations D--E].
+Thus, CP components were associated with inflammation status and tracked cell-type composition, as expected for a disease characterized by immune-cell invasion and epithelial cell death [@doi:10.1016/j.immuni.2023.01.002].
 
-CP components 3 and 4 represent distinct, but complementary, hormone-signaling axes.
-They are loaded onto similar sender eigen-states---albeit with distinct distributions---that collectively describe enteroendocrine (EE) cells [S_ibd_hormone_axes B--D].
-Conversely their receiver eigen-states are entirely distinct and uniquely load either enterochromafin (EC) cells (eiegen-state 45, component 3) or tuft cells (eigen-states 9 and 41, component 4) [S_ibd_hormone_axes B--D].
-We therefore restricted our analysis to pre-defined EE, EC, and tuft cells and visualized single-cell heterogeneity in this signaling axis using RISE projection embeddings [Fig5E, S_ibd_hormone_axes E].
-Cells with high sender weights in either components 3 or 4 existed in the broader EE cell cluster, as expected, but rarely overlapped with eachother, indicating that components 3 and 4 represent distinct populations of EE sender cells [Fig5F--G].
-Further, cells with the highest expression of PYY largely overlapped with those of high component 3 sender weight, and those with high GCG expression overlapped with those of high component 4 sender weight, indicating that sender groups were largely defined by the gene expression of the two hormones [Fig5H].
-Component 3 and 4 receiver cells are trivially exclusive, and also match the expression levels of their respective receptors (NPY1R and GLP1R, respectively) [S_ibd_hormone_axes F--I].
+CP components 3 and 4 represented distinct, but complementary, hormone-signaling axes.
+They were loaded onto similar sender eigen-states---albeit with distinct distributions---that collectively defined a subpopulation of enteroendocrine (EE) cells [S_ibd_hormone_axes A--C].
+Conversely their receiver eigen-states were entirely distinct and uniquely loaded either enterochromafin (EC) cells (component 3) or tuft cells (component 4) [S_ibd_hormone_axes A--C].
+We therefore restricted our analysis to EE, EC, and tuft cells (as annotated in the IBDverse data) and visualized single-cell heterogeneity in the component3/4 signaling axis using RISE projection embeddings [Fig5E, S_ibd_hormone_axes D].
+Cells with high sender weights in either components 3 or 4 inhabited distinct regions of the broader EE cell cluster, but partially overlapped with eachother, indicating that the components represented a non-exclusive pair of EE subpopulations [Fig5F--G].
+Further, cells with the highest expression of PYY largely overlapped with those of high component 3 sender weight, and those with high GCG expression overlapped with those of high component 4 sender weight, indicating that sender groups were largely defined by the gene expression of those two hormones [Fig5H].
+Component 3 and 4 receiver cells were trivially exclusive, and also matched the expression levels of their respective receptors (NPY1R and GLP1R) [S_ibd_hormone_axes E--H].
 
-[C3-high cells are villus-like, C4 are crypt-like, all are L-cells, only C3's villus-like cell abundances relate to patient status]
+We went on to characterize the overlapping EE subpopulations represented by components 3 and 4.
+There was no clear separation of cells by component 3/4 projection weight, indicating that the components collectively represented the continuous spectrum of identities assumed by hormone-secreting EE cells [Fig5I] [@doi:10.1210/endrev/bnaa018; @doi:10.1016/j.cell.2018.12.029].
+Transforming the projection weight axes to polar coordinates and measuring the distribution of cells over polar angles revealed that two states dominated the continuum of cell identities [Fig5J, S_ibd_hormone_axes M].
+While we recognize the continuous nature of these populations, we attempted to binarize the cells into component 3-high, component 4-high, both, or neither groups using their polar coordinates in order to annotate the cells against canonical markers [Fig5J].
+The four groups of cells were characterized by distinct gene expression: component 3-high cells expressed hormones classically associated with villus cells, component 4-high cells expressed GLP-1 crypt-associated markers, and intermediate cells expressed moderate levels of all of those genes [Fig5K].
+Further, the crypt-to-villus transition is classically driven by BMP activity, and we saw a stepwise increase in expression of BMP targets from crypt-like to mixed to villus-like cells [Fig5K] [@doi:10.1038/s41556-018-0143-y].
+All but one gene remained significantly differentially expressed between crypt- and villus-like cells across magnitude thresholds [S_ibd_hormone_axes N].
+In agreement with the loss of function following inflammation indicated by component 3 associations ([S_ibd_association B]), component 3-high cells gradually contributed less to the overall EE population in a step-wise manner over healthy, CD uninflamed, and CD inflamed biopsies, indicating that more-exposed, villus-like cells are more sensitive to inflammatory pressure compared with other EE subpopulations [S_ibd_hormone_axes O].
+In sum, CCC-RISE components 3 and 4 described sender cells on a continuum between two prevailing states with distinct activity: crypt-like producers of GCG communicating with EC cells and villus-like producers of PYY communicating with tuft cells.
 
-[NICHES shows concordance with CCC-RISE sender/receiver splits]
+To validate the interactions between EE, EC, and tuft subpopulations represented by components 3 and 4, we applied the NICHES pipeline...
