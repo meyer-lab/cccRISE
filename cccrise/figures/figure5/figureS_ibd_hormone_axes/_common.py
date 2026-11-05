@@ -1,6 +1,6 @@
 """The eigenstates the hormone programs (C3, C4) load on, and the cell
 categories (`run_ibd_programs.cell_categories`) this supplement breaks them
-down by, and the all-cell map's value panels."""
+down by, and the zoomed map's value panels."""
 
 import numpy as np
 
@@ -11,9 +11,6 @@ from .. import _common as S
 #: on C3 or C4 reaches this
 LOADING_MIN = 0.2
 ROLES = {"sender": "cp_B", "receiver": "cp_C"}
-#: The all-cell map's point size and x label
-MAP_POINT = 0.2
-ALL_CELLS = "PaCMAP 1 (all cells)"
 #: Cell categories, epithelial first; the immune lineages are pooled in bars
 CATEGORIES = [
     "EE",
@@ -84,13 +81,18 @@ def label_roles(ax) -> None:
         )
 
 
-def all_cell_maps(axs, columns: list[str], value_map, label: str) -> None:
-    """Each of `columns` of the all-cell map's table (`cell_map`) painted on
-    its PaCMAP by `value_map` (`S.weight_map` or `S.expression_map`), titled
-    by the column, the colorbar (`label`) beside the last."""
-    cells = S.programs("cell_map")
+def zoomed_maps(axs, columns: list[str], draw, label: str) -> None:
+    """Each of `columns` of the EE/EC/tuft table painted on Figure 5's zoomed
+    map by `draw` (`S.weight_map` or `expression`), titled by the column, the
+    colorbar (`label`) beside the last."""
+    cells = S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])
     xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
     for ax, column in zip(axs, columns, strict=True):
-        points = value_map(ax, xy, cells[column].to_numpy(), s=MAP_POINT)
-        S.map_axes(ax, column, xlabel=ALL_CELLS)
+        points = draw(ax, xy, cells[column].to_numpy())
+        S.map_axes(ax, column)
     common.colorbar(axs[-1], points, label)
+
+
+def expression(ax, xy, values):
+    """`values` as Figure 5H draws expression (`S.relative_expression`)."""
+    return S.expression_map(ax, xy, S.relative_expression(values))

@@ -1,10 +1,11 @@
 """Figure 5E's annotated types on the zoomed EE/EC/tuft map, then NTS, SCT
-and CCK expression on it: the villus-like state's hormones besides PYY
-(`hormone_state_genes`)."""
+and CCK expression on it as Figure 5H draws PYY and GCG: the villus-like
+state's hormones besides PYY (`hormone_state_genes`)."""
 
 from ... import common
 from .. import _common as S
 from ..ee_state_map import type_map
+from . import _common as H
 
 AXES = ("square",) * 4
 GENES = ["NTS", "SCT", "CCK"]
@@ -20,11 +21,7 @@ def plot(axs):
         "tuft cells, on the zoomed map.",
     )
     type_map(axs[0], cells)
-    xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
-    for ax, gene in zip(axs[1:], GENES, strict=True):
-        points = S.expression_map(ax, xy, cells[gene].to_numpy())
-        S.map_axes(ax, gene)
-    common.colorbar(axs[-1], points, "Expression")
+    H.zoomed_maps(axs[1:], GENES, H.expression, S.EXPRESSION_LABEL)
 
 
 def makeFigure():

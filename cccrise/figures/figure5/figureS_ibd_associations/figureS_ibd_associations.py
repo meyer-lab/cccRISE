@@ -1,13 +1,13 @@
 """Supplementary figure: association of every IBD CP component with
 inflammation status and its contrasts, as Figure 3 and its ALAD supplement
-test ALAD's outcomes; the loadings of the components associated with
-inflammation in CD per group; and each biopsy covariate's association with
-status."""
+test ALAD's outcomes, beside the loadings of the components associated with
+inflammation in CD per group; each biopsy's lineage composition by status;
+and each biopsy covariate's association with status."""
 
 from ... import common, style
-from . import covariates, cp_associations, status_loadings
+from . import covariates, cp_associations, lineage_proportions, status_loadings
 
-LAYOUT = [[cp_associations], [status_loadings], [covariates]]
+LAYOUT = [[cp_associations, status_loadings], [lineage_proportions], [covariates]]
 
 
 def makeFigure():

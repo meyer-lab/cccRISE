@@ -14,8 +14,8 @@ import pandas as pd
 from ... import common
 from ...figure3.figureS_alad_associations.covariates import covariate_anova, draw
 from .. import _common as S
-from ..figureS_ibd_cohort._common import ordered_celltypes, proportions
 from ._common import save_association_data
+from .lineage_proportions import ordered_lineages, proportions
 
 AXES = ("wide",)
 
@@ -41,7 +41,7 @@ def covariates() -> pd.DataFrame:
     each lineage's fraction of its cells."""
     samples = S.samples()
     chip = samples["chip_version"].astype(object)
-    lineages = proportions("lineage").reindex(samples[S.SPEC.condition_column])
+    lineages = proportions().reindex(samples[S.SPEC.condition_column])
     return pd.DataFrame(
         {
             "Age": samples["age_binned_10"],
@@ -49,7 +49,7 @@ def covariates() -> pd.DataFrame:
             "Chip B": np.where(chip.isna(), np.nan, chip == "chip-b"),
             "Read depth": samples["read_depth"],
         }
-        | {name: lineages[name].to_numpy() for name in ordered_celltypes("lineage")}
+        | {name: lineages[name].to_numpy() for name in ordered_lineages()}
     ).astype(float)
 
 

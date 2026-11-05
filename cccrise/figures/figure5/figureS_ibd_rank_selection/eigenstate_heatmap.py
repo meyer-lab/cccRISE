@@ -8,7 +8,7 @@ import numpy as np
 
 from ... import common, style
 from .. import _common as S
-from . import _common as H
+from ..figureS_ibd_hormone_axes import _common as H
 
 AXES = ("full_labeled",)
 

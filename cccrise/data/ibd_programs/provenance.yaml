@@ -51,9 +51,9 @@ files:
     generated: '2026-11-03T12:46:22+00:00'
     sha256: 1dda063b2dcf2bbcb03c167f8701a3a97124cab2bef3ee1c8d1f0f32837ac5bb
   enteroendocrine_cells_ibd.parquet:
-    sha256: cb2afb33f1294821cf21f17b1b79f8f73378fa216888886251b69323828ace8c
-    git_sha: 4396676282b720292486c13bf3441282de658bbd
-    generated: '2026-11-04T03:05:39+00:00'
+    sha256: 2b680f5f585cbd25928633136c7d6074782994b9ed2b412b4d5727d9b0bf2da8
+    git_sha: 86f54bc39a83240fc9022d6098ba7d406bb63fde
+    generated: '2026-11-05T00:48:53+00:00'
   myeloid_program_cells_ibd.parquet:
     git_sha: 77d1c73659a8ccaf3cd8c4779def203ac4712a1e
     generated: '2026-11-03T12:46:22+00:00'

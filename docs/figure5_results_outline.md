@@ -22,10 +22,11 @@ module, `figureS_ibd_*`. Their EV or Appendix numbers are still to be assigned i
   - Every biopsy is from a different individual (343 individuals), so biopsies are the unit
     of every test.
 - **Model.** RISE rank 60, CP rank 6 (`figureS_ibd_rank_selection`, chosen as Figure 2A–D
-  chooses ALAD's). `figureS_ibd_rank_selection` G–H shows the RISE condition and gene
+  chooses ALAD's). `figureS_ibd_rank_selection` H–I shows the RISE condition and gene
   factors as for ALAD.
-- **Cohort.** `figureS_ibd_cohort` gives the schematic placeholder and the lineage and fine
-  cell-type composition by status, as ALAD's cohort supplement does.
+- **Cohort.** `figureS_ibd_rank_selection` A gives the schematic placeholder and
+  `figureS_ibd_associations` D the lineage composition by status, as ALAD's cohort
+  supplement does.
 - **Per-cell weights.** Projections @ cp_B (sender) or cp_C (receiver), unscaled, as in
   Figure 2L/3.
 - **Condition loadings.** Read-depth corrected (`utils.correct_by_read_depth`), as Figure 3
@@ -66,10 +67,10 @@ association test and its ALAD supplement.
   - 3-way: C1 0.05, C3 0.04, C4 0.03, C5 0.02 (all FDR < 0.05). C2 and C6 n.s.
   - Healthy vs CD: C1 0.04, C3 0.02, C5 0.02.
   - CD uninflamed vs inflamed: C3 0.09 and C4 0.09, both lower in inflamed biopsies.
-- **Loadings (C–F).** Violins on linear axes: C1 by 3-way status and healthy vs CD; C3 and
-  C4, CD uninflamed vs inflamed.
-- **RISE components (B).** 48 of 60 are FDR-significant for 3-way status.
-- **Covariate screen (G)**, uncorrected, as for ALAD.
+- **Loadings (B–C).** Violins on linear axes: C3 and C4, CD uninflamed vs inflamed.
+- **RISE components** (not drawn). 48 of 60 are FDR-significant for 3-way status.
+- **Lineage composition (D)** per biopsy by status, as ALAD's cohort supplement.
+- **Covariate screen (E)**, uncorrected, as for ALAD.
   - Chip, age and the lineage fractions track status: plasma B cell η² 0.26 and myeloid 0.24
     for 3-way status.
   - For CD uninflamed vs inflamed, read depth and the secretory and stem-cell fractions reach
@@ -110,7 +111,7 @@ identity.
   marker dot plot: 2,145 L-hormone+ and 913 other EE cells.
 - F and G paint each cell's C3 and C4 sender weight, as Figure 2 paints weights on cells. The
   two programs peak in different EE regions.
-- H shows GCG and PYY expression (C4's and C3's top ligands) on the EE/EC part of the map.
+- H shows PYY and GCG expression (C3's and C4's top ligands) on the EE/EC part of the map.
 - **I (sender weight, L-hormone+ vs other EE).** AUROC 0.83 (C3) and 0.73 (C4).
 - **Robust to detection depth** (`figureS_ibd_hormone_robustness` A): 0.75–0.91 (C3) and
   0.69–0.77 (C4) across tertiles of genes detected, against 0.57 for depth alone.

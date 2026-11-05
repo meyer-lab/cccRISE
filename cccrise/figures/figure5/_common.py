@@ -70,6 +70,9 @@ STATE_NAMES = {3: "C3-high (villus-like)", 4: "C4-high (crypt-like)"}
 #: Every EE cell by which programs it is in the top `STATE_QUARTILE` of
 CLASS_NAMES = ["C3 only", "C3 + C4", "C4 only", "Neither"]
 ZOOM_NOTE = "zoom: EE, EC, tuft"
+#: Expression maps color each cell by its expression over this quantile
+EXPRESSION_QUANTILE = 0.99
+EXPRESSION_LABEL = f"Expr. / {EXPRESSION_QUANTILE:.0%} quantile"
 DODGE = 0.27  # x offset between the status groups' boxes
 JITTER = 0.08
 
@@ -267,38 +270,29 @@ def map_axes(
     ax.set_xlabel(xlabel, fontsize=common.style.FONT_SIZE_DENSE)
     ax.set_ylabel("PaCMAP 2")
     if title:
-        ax.set_title(title, fontsize=common.style.FONT_SIZE_LABEL)
+        # y fixed: a colorbar spanning stacked maps would push an auto title up
+        ax.set_title(title, fontsize=common.style.FONT_SIZE_LABEL, y=1)
 
 
-def weight_map(
-    ax,
-    xy: np.ndarray,
-    values: np.ndarray,
-    quantile: float = 0.99,
-    s: float = common.style.POINT_SIZE_CELL,
-):
+def weight_map(ax, xy: np.ndarray, values: np.ndarray, quantile: float = 0.99):
     """`values` on a PaCMAP, diverging and symmetric at their |`quantile`|,
     highest drawn on top; returns the points for a colorbar."""
     limit = np.quantile(np.abs(values), quantile)
-    return _value_map(ax, xy, values, "RdBu_r", -limit, limit, s)
+    return _value_map(ax, xy, values, "RdBu_r", -limit, limit)
 
 
-def expression_map(
-    ax,
-    xy: np.ndarray,
-    values: np.ndarray,
-    quantile: float = 0.99,
-    s: float = common.style.POINT_SIZE_CELL,
-    detected_only: bool = False,
-):
-    """Expression `values` on a PaCMAP, capped at their `quantile` (among the
-    cells detecting the gene if `detected_only`, for rarely detected genes),
-    highest drawn on top; returns the points for a colorbar."""
-    capped = values[values > 0] if detected_only else values
-    return _value_map(ax, xy, values, "Reds", 0, np.quantile(capped, quantile), s)
+def relative_expression(values: np.ndarray) -> np.ndarray:
+    """Expression `values` over their `EXPRESSION_QUANTILE`, capped at 1."""
+    return np.clip(values / np.quantile(values, EXPRESSION_QUANTILE), 0, 1)
 
 
-def _value_map(ax, xy, values, cmap, vmin, vmax, s):
+def expression_map(ax, xy: np.ndarray, relative: np.ndarray):
+    """`relative_expression` on a PaCMAP, highest drawn on top; returns the
+    points for a colorbar labeled `EXPRESSION_LABEL`."""
+    return _value_map(ax, xy, relative, "Reds", 0, 1)
+
+
+def _value_map(ax, xy, values, cmap, vmin, vmax):
     order = np.argsort(values)
     return ax.scatter(
         *xy[order].T,
@@ -306,7 +300,7 @@ def _value_map(ax, xy, values, cmap, vmin, vmax, s):
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
-        s=s,
+        s=common.style.POINT_SIZE_CELL,
         linewidths=0,
         rasterized=True,
     )

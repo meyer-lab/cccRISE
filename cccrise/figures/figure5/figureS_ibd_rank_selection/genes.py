@@ -1,20 +1,17 @@
 """The IBD RISE gene factor, as the ALAD supplement draws ALAD's
-(`figure2.figureS_rise_factor_matrices.genes`), its 60 components labeled
-every `TICK_STEP`."""
+(`figure2.figureS_rise_factor_matrices.genes`), sized as `factors` beside it."""
 
 from ... import common
-from ...figure2.figureS_rise_factor_matrices.genes import AXES, draw  # noqa: F401
-from .._common import DATASET
+from ...figure2.figureS_rise_factor_matrices.genes import draw
+from .. import _common as S
+from ._common import component_ticks
 
-TICK_STEP = 10
+AXES = ("rect",)
 
 
 def plot(axs):
-    draw(axs, DATASET)
-    (ax,) = axs
-    n = len(ax.get_xticks())
-    ticks = [1, *range(TICK_STEP, n + 1, TICK_STEP)]
-    ax.set_xticks([t - 1 for t in ticks], ticks)
+    draw(axs, S.DATASET)
+    component_ticks(axs[0], S.factors()["pf2_C"].shape[1])
 
 
 def makeFigure():
