@@ -19,7 +19,6 @@ from ..comparators.niches_programs import (
     N_POPULATION_DRAWS,
     RANDOM,
     RANDOM_EXPRESSION,
-    SCORABLE,
     SIDES,
     WEIGHT,
     in_population,
@@ -40,19 +39,25 @@ PROGRAM_COLORS = {
     3: style.COLORS["up"],
     4: style.COLORS["emphasis"],
     5: style.CATEGORICAL[5],
+    6: style.CATEGORICAL[9],
 }
 SIDE_STYLES = {"sender": "-", "receiver": ":"}
 NULL_COLOR = "0.88"
 CONCORDANCE_LABEL = "NICHES concordance"
-#: `orderings`: each block's header, then its (ordering, tick, x)
+#: `orderings`: each block's header, then its (ordering, tick, x); the header
+#: over every block, and the cohort column's
 BLOCKS = {
-    "State": ((RANDOM, "Random", 0.0), (WEIGHT, "cccRISE", 1.0)),
-    "State × Expression": (
+    "State weight": ((RANDOM, "Random", 0.0), (WEIGHT, "cccRISE", 1.0)),
+    "State weight × expression": (
         (RANDOM_EXPRESSION, "Random", 2.1),
         (CONTRIBUTION, "cccRISE", 3.1),
     ),
     "Expression": ((EXPRESSION, "Alone", 4.2),),
 }
+RANKING_HEADER = (
+    "NICHES concordance of the top n cells (n = population size), ranked by"
+)
+COHORT_HEADER, COHORT_TICK = "Cohort", "% NICHES+"
 SPARSITY_X = -1.1
 SPARSITY_CMAP = LinearSegmentedColormap.from_list(
     "sparsity", ["#fbeeec", style.COLORS["up"]]
@@ -62,6 +67,9 @@ SPARSITY_NORM = LogNorm(0.0005, 0.1)
 #: `orderings`' column ticks and block headers
 OUTER_OFFSET = 11
 HEADER_OFFSET = 10
+RANKING_OFFSET = 21
+#: Points between `concordance`'s right spine and its NICHES+ cell counts
+COUNT_OFFSET = 3
 #: `tau_sweep` draws a population only while it has this many cells
 MIN_TAU_CELLS = 10
 #: `weight_scatters`' ticks, on relative weights
@@ -214,9 +222,10 @@ def _concordance_legend(ax, outside: bool) -> None:
 
 
 def concordance(axs, components, legend_outside: bool = False) -> None:
-    """Each scorable population of `components` and its NICHES concordance,
-    against what its label composition predicts and random directions; the
-    legend at the lower right, or right of the axes if `legend_outside`."""
+    """Each population of `components` and its NICHES concordance, against
+    what its label composition predicts and random directions, with its
+    NICHES+ cell count; the legend at the lower right, or right of the axes if
+    `legend_outside`."""
     (ax,) = axs
     table = load("populations").set_index(["Component", "Side"]).loc[cases(components)]
     common.source_data(
@@ -237,19 +246,46 @@ def concordance(axs, components, legend_outside: bool = False) -> None:
         "with each cell at its type's rate. Direction 5th and 95th: percentiles of "
         f"the concordance of {N_POPULATION_DRAWS:,} random RISE directions, each "
         "taking as many cells from each fine type as the population; P and Q "
-        "direction: one-sided p and BH q over the dataset's scorable populations. "
-        f"Scorable: at least {SCORABLE:.0%} of the population is NICHES+.",
+        "direction: one-sided p and BH q over all of the dataset's populations.",
     )
-    rows = table[table["Scorable"]].index.tolist()
-    for y, (case, r) in enumerate(table.loc[rows].iterrows()):
+    rows = table.index.tolist()
+    for y, (case, r) in enumerate(table.iterrows()):
         _concordance_row(ax, y, case[1], r)
     ax.set(xlim=(0, 1), ylim=(len(rows) - 0.5, -0.5), xlabel=CONCORDANCE_LABEL)
     program_labels(ax, rows, range(len(rows)))
+    _niches_counts(ax, table["NICHES+ cells"])
     _concordance_legend(ax, legend_outside)
 
 
+def _niches_counts(ax, counts: pd.Series) -> None:
+    """Each row's NICHES+ cell count right of `ax`, under a header."""
+    for y, n in enumerate(counts):
+        ax.annotate(
+            f"{n:,}",
+            xy=(1, y),
+            xycoords=ax.get_yaxis_transform(),
+            xytext=(COUNT_OFFSET, 0),
+            textcoords="offset points",
+            ha="left",
+            va="center",
+            fontsize=style.FONT_SIZE_DENSE,
+        )
+    ax.annotate(
+        "NICHES+\ncells",
+        xy=(1, 1),
+        xycoords="axes fraction",
+        xytext=(COUNT_OFFSET, 2),
+        textcoords="offset points",
+        ha="left",
+        va="bottom",
+        fontsize=style.FONT_SIZE_DENSE,
+        fontweight="bold",
+        color=style.COLORS["ink"],
+    )
+
+
 def tau_sweep(axs, components) -> None:
-    """Each scorable population's concordance over its labels' across tau."""
+    """Each population's concordance over its labels' across tau."""
     (ax,) = axs
     table = load("tau")
     table = table[table["Component"].isin(components)].assign(
@@ -264,7 +300,7 @@ def tau_sweep(axs, components) -> None:
                 "Gap": "Concordance minus prediction",
             }
         ),
-        "Each scorable population at each tau (its cutoff as a fraction of that "
+        "Each population at each tau (its cutoff as a fraction of that "
         "weight's largest value): its cells, NICHES concordance, what its fine "
         f"labels predict and the difference; {GROUP_TAU} is the figure's tau. "
         f"Points of fewer than {MIN_TAU_CELLS} cells are not drawn.",
@@ -346,7 +382,7 @@ def _block(ax, x0, x1, y, values, cmap, norm, text) -> None:
 
 
 def _ordering_headers(ax) -> None:
-    ticks = [(SPARSITY_X, "% of cells")] + [
+    ticks = [(SPARSITY_X, COHORT_TICK)] + [
         (x, name) for columns in BLOCKS.values() for _, name, x in columns
     ]
     ax.set_xticks(
@@ -354,15 +390,18 @@ def _ordering_headers(ax) -> None:
     )
     ax.xaxis.tick_top()
     ax.tick_params(axis="x", length=0, pad=1.5)
-    heads = {"NICHES+": SPARSITY_X} | {
-        name: (columns[0][2] + columns[-1][2]) / 2 for name, columns in BLOCKS.items()
-    }
-    for name, x in heads.items():
+    xs = [x for columns in BLOCKS.values() for _, _, x in columns]
+    heads = [(COHORT_HEADER, SPARSITY_X, HEADER_OFFSET)] + [
+        (name, (columns[0][2] + columns[-1][2]) / 2, HEADER_OFFSET)
+        for name, columns in BLOCKS.items()
+    ]
+    heads.append((RANKING_HEADER, (xs[0] + xs[-1]) / 2, RANKING_OFFSET))
+    for name, x, offset in heads:
         ax.annotate(
             name,
             xy=(x, 1),
             xycoords=ax.get_xaxis_transform(),
-            xytext=(0, HEADER_OFFSET),
+            xytext=(0, offset),
             textcoords="offset points",
             ha="center",
             va="bottom",
