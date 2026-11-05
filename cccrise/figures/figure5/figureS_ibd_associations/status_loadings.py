@@ -1,5 +1,5 @@
-"""Read-depth-corrected loadings of the status-associated CP components per
-group, as violins with each biopsy as a point and the median marked, with
+"""Read-depth-corrected loadings of the CP components associated with
+inflammation in CD (C3, C4) per group, as violins with each biopsy as a point and the median marked, with
 each test's ANOVA statistics, as Figure 3A shows ALAD's."""
 
 import numpy as np
@@ -11,8 +11,6 @@ from ._common import regrouping
 
 #: (association, CP component) pairs drawn
 TESTS = [
-    ("Inflammation status (3-way)", 1),
-    ("Healthy vs. CD", 1),
     ("CD uninflamed vs. inflamed", 3),
     ("CD uninflamed vs. inflamed", 4),
 ]

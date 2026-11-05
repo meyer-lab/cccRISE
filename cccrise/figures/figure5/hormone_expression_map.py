@@ -1,4 +1,4 @@
-"""GCG and PYY, the ligands of C4's and C3's top LR pairs, on the EE/EC
+"""PYY and GCG, the ligands of C3's and C4's top LR pairs, on the EE/EC
 part of the zoomed map: one panel split into two axes, each a window onto
 `ee_state_map`'s PaCMAP (not refit) at exactly its scale, so the EE/EC
 cluster keeps its shape and size, centered on that cluster. Each EE and EC
@@ -14,7 +14,7 @@ from . import _common as S
 
 AXES = ("half_square",) * 2
 JOINED = True  # one panel, lettered once (`common._Joined`)
-GENES = ("GCG", "PYY")
+GENES = ("PYY", "GCG")
 QUANTILE = 0.99
 CROP = 0.005  # share of EE/EC cells outside the cluster's center estimate
 
@@ -37,12 +37,12 @@ def plot(axs):
         for g in GENES
     }
     common.source_data(
-        "gcg_pyy_on_ee_ec_map",
+        "pyy_gcg_on_ee_ec_map",
         cells[["PaCMAP 1", "PaCMAP 2", *GENES]].assign(
             Group=S.map_group(cells["Group"]),
             **{f"{g} / {QUANTILE:.0%} quantile": v for g, v in relative.items()},
         ),
-        "Normalized GCG and PYY expression of every EE and EC cell on the zoomed "
+        "Normalized PYY and GCG expression of every EE and EC cell on the zoomed "
         f"map, and each over its {QUANTILE:.0%} quantile among these cells "
         "(capped at 1, the colors).",
     )

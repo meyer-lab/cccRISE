@@ -1,16 +1,19 @@
 """The eigenstates the hormone programs (C3, C4) load on, and the cell
 categories (`run_ibd_programs.cell_categories`) this supplement breaks them
-down by."""
+down by, and the all-cell map's value panels."""
 
 import numpy as np
 
-from ... import style
+from ... import common, style
 from .. import _common as S
 
 #: An eigenstate is the programs' when its sender (B) or receiver (C) loading
 #: on C3 or C4 reaches this
 LOADING_MIN = 0.2
 ROLES = {"sender": "cp_B", "receiver": "cp_C"}
+#: The all-cell map's point size and x label
+MAP_POINT = 0.2
+ALL_CELLS = "PaCMAP 1 (all cells)"
 #: Cell categories, epithelial first; the immune lineages are pooled in bars
 CATEGORIES = [
     "EE",
@@ -79,3 +82,15 @@ def label_roles(ax) -> None:
             va="center",
             fontsize=style.FONT_SIZE_DENSE,
         )
+
+
+def all_cell_maps(axs, columns: list[str], value_map, label: str) -> None:
+    """Each of `columns` of the all-cell map's table (`cell_map`) painted on
+    its PaCMAP by `value_map` (`S.weight_map` or `S.expression_map`), titled
+    by the column, the colorbar (`label`) beside the last."""
+    cells = S.programs("cell_map")
+    xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
+    for ax, column in zip(axs, columns, strict=True):
+        points = value_map(ax, xy, cells[column].to_numpy(), s=MAP_POINT)
+        S.map_axes(ax, column, xlabel=ALL_CELLS)
+    common.colorbar(axs[-1], points, label)

@@ -270,18 +270,43 @@ def map_axes(
         ax.set_title(title, fontsize=common.style.FONT_SIZE_LABEL)
 
 
-def weight_map(ax, xy: np.ndarray, values: np.ndarray, quantile: float = 0.99):
+def weight_map(
+    ax,
+    xy: np.ndarray,
+    values: np.ndarray,
+    quantile: float = 0.99,
+    s: float = common.style.POINT_SIZE_CELL,
+):
     """`values` on a PaCMAP, diverging and symmetric at their |`quantile`|,
     highest drawn on top; returns the points for a colorbar."""
-    order = np.argsort(values)
     limit = np.quantile(np.abs(values), quantile)
+    return _value_map(ax, xy, values, "RdBu_r", -limit, limit, s)
+
+
+def expression_map(
+    ax,
+    xy: np.ndarray,
+    values: np.ndarray,
+    quantile: float = 0.99,
+    s: float = common.style.POINT_SIZE_CELL,
+    detected_only: bool = False,
+):
+    """Expression `values` on a PaCMAP, capped at their `quantile` (among the
+    cells detecting the gene if `detected_only`, for rarely detected genes),
+    highest drawn on top; returns the points for a colorbar."""
+    capped = values[values > 0] if detected_only else values
+    return _value_map(ax, xy, values, "Reds", 0, np.quantile(capped, quantile), s)
+
+
+def _value_map(ax, xy, values, cmap, vmin, vmax, s):
+    order = np.argsort(values)
     return ax.scatter(
         *xy[order].T,
         c=values[order],
-        cmap="RdBu_r",
-        vmin=-limit,
-        vmax=limit,
-        s=common.style.POINT_SIZE_CELL,
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        s=s,
         linewidths=0,
         rasterized=True,
     )

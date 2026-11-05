@@ -1,37 +1,28 @@
-"""GCG, PYY, NTS and SST expression on Figure 5's zoomed EE/EC/tuft map: the
-C4-high region is GCG-high, the C3-high region PYY- and NTS-high, and the
-EE cells high on neither SST-high."""
+"""Figure 5E's annotated types on the zoomed EE/EC/tuft map, then NTS, SCT
+and CCK expression on it: the villus-like state's hormones besides PYY
+(`hormone_state_genes`)."""
 
-import numpy as np
-
-from ... import common, style
+from ... import common
 from .. import _common as S
+from ..ee_state_map import type_map
 
 AXES = ("square",) * 4
-GENES = ["GCG", "PYY", "NTS", "SST"]
+GENES = ["NTS", "SCT", "CCK"]
 
 
 def plot(axs):
     cells = S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])
+    cells = cells.assign(Group=S.map_group(cells["Group"]))
     common.source_data(
         "hormone_expression_on_map",
-        cells[["PaCMAP 1", "PaCMAP 2", *GENES]],
-        "Normalized expression of each hormone in EE, EC and tuft cells, on the zoomed map.",
+        cells[["Group", "PaCMAP 1", "PaCMAP 2", *GENES]],
+        "Annotated type and normalized expression of each hormone in EE, EC and "
+        "tuft cells, on the zoomed map.",
     )
+    type_map(axs[0], cells)
     xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
-    for ax, gene in zip(axs, GENES, strict=True):
-        v = cells[gene].to_numpy()
-        order = np.argsort(v)
-        points = ax.scatter(
-            *xy[order].T,
-            c=v[order],
-            cmap="Reds",
-            vmin=0,
-            vmax=np.quantile(v, 0.99),
-            s=style.POINT_SIZE_CELL,
-            linewidths=0,
-            rasterized=True,
-        )
+    for ax, gene in zip(axs[1:], GENES, strict=True):
+        points = S.expression_map(ax, xy, cells[gene].to_numpy())
         S.map_axes(ax, gene)
     common.colorbar(axs[-1], points, "Expression")
 

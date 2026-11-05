@@ -1,22 +1,20 @@
 """Where Figure 5's zoomed EE/EC/tuft map sits among all cells: a PaCMAP of
 every cell's RISE projections (`run_ibd_programs.cell_map`: every EE, EC and
-tuft cell, and a seeded draw of the others), colored by lineage, each fine
-cell type named at its median position (the zoomed types in bold)."""
+tuft cell, and a seeded draw of the others), colored by lineage, each lineage
+named at its median position."""
 
 from adjustText import adjust_text
-from matplotlib.lines import Line2D
 
 from ... import common, style
 from .. import _common as S
+from . import _common as H
 
 AXES = ("large_square",)
-POINT = 0.2
-ZOOMED = {"Enteroendocrine cells", "Enterochromaffin cells", "Tuft cells"}
 
 
 def plot(axs):
     (ax,) = axs
-    cells = S.programs("cell_map").drop(columns="Group")
+    cells = S.programs("cell_map")[["Cell type", "Lineage", "PaCMAP 1", "PaCMAP 2"]]
     common.source_data(
         "all_cell_map",
         cells,
@@ -29,12 +27,12 @@ def plot(axs):
         cells["PaCMAP 1"],
         cells["PaCMAP 2"],
         c=cells["Lineage"].map(colors).to_numpy(),
-        s=POINT,
+        s=H.MAP_POINT,
         linewidths=0,
         alpha=0.5,
         rasterized=True,
     )
-    centers = cells.groupby("Cell type")[["PaCMAP 1", "PaCMAP 2"]].median()
+    centers = cells.groupby("Lineage")[["PaCMAP 1", "PaCMAP 2"]].median()
     texts = [
         ax.text(
             x,
@@ -43,7 +41,7 @@ def plot(axs):
             ha="center",
             va="center",
             fontsize=style.FONT_SIZE_DENSE,
-            fontweight="bold" if name in ZOOMED else "normal",
+            fontweight="bold",
         )
         for name, (x, y) in centers.iterrows()
     ]
@@ -55,27 +53,7 @@ def plot(axs):
         arrowprops={"arrowstyle": "-", "color": style.COLORS["ink"], "lw": 0.3},
         time_lim=10,
     )
-    common.legend(
-        ax,
-        "below",
-        handles=[
-            Line2D(
-                [],
-                [],
-                ls="",
-                marker="o",
-                color=c,
-                markersize=style.MARKER_SIZE,
-                label=g,
-            )
-            for g, c in colors.items()
-        ],
-        ncols=len(colors),
-        fontsize=style.FONT_SIZE_DENSE,
-        handletextpad=0.1,
-        columnspacing=0.8,
-    )
-    S.map_axes(ax, xlabel="PaCMAP 1 (all cells)")
+    S.map_axes(ax, xlabel=H.ALL_CELLS)
 
 
 def makeFigure():

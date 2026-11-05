@@ -87,7 +87,6 @@ figS_ibd_rank_selection:
 figS_ibd_cohort:
   cohort: [a]
   lineage_proportions: [b]
-  fine_proportions: [c]
 figS_ibd_rise_factor_matrices:
   factors: [a]
   genes: [b]
@@ -133,15 +132,16 @@ figS_ibd_inflammatory_programs:
   high_sender_genes: [c]
 figS_ibd_associations:
   cp_associations: [a]
-  rise_associations: [b]
-  status_loadings: [c, d, e, f]
-  covariates: [g]
+  status_loadings: [b, c]
+  covariates: [d]
 figS_ibd_hormone_axes:
   eigenstate_heatmap: [a]
-  eigenstate_association: [b]
-  eigenstate_loadings: [c]
+  eigenstate_loadings: [b]
+  eigenstate_association: [c]
   eigenstate_composition: [d]
   cell_map: [e]
-  hormone_maps: [f, g, h, i]
-  eigenstate_use: [j]
-  hormone_state_genes: [k]
+  receiver_maps: [f, g]
+  receptor_maps: [h, i]
+  hormone_maps: [j, k, l, m]
+  eigenstate_use: [n]
+  hormone_state_genes: [o]

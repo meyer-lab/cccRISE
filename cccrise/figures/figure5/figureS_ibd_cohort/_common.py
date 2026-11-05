@@ -1,6 +1,6 @@
-"""Annotated cell type proportions of each IBD biopsy by inflammation
-status, at either annotation level, drawn as the ALAD cohort supplement
-draws ALAD's (`figure2.figureS_alad_cohort.celltype_proportions`)."""
+"""Annotated lineage proportions of each IBD biopsy by inflammation status,
+drawn as the ALAD cohort supplement draws ALAD's
+(`figure2.figureS_alad_cohort.celltype_proportions`)."""
 
 import pandas as pd
 
@@ -9,7 +9,7 @@ from ...figure2.figureS_alad_cohort.celltype_proportions import composition_q, d
 from .. import _common as S
 
 #: Annotation level -> (`celltype_counts` column, how captions name it)
-LEVELS = {"lineage": ("lineage", "lineage"), "fine": ("celltype", "fine cell type")}
+LEVELS = {"lineage": ("lineage", "lineage")}
 
 
 def proportions(column: str) -> pd.DataFrame:
@@ -62,4 +62,4 @@ def plot_level(ax, level: str) -> None:
     )
     counts = df["Status"].value_counts()
     labels = {g: f"{label} (n={counts[g]})" for g, label in S.GROUP_LABELS.items()}
-    draw(ax, df, celltypes, q, S.GROUP_COLORS, labels, vertical=level == "fine")
+    draw(ax, df, celltypes, q, S.GROUP_COLORS, labels)
