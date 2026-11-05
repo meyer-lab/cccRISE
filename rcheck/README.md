@@ -129,3 +129,28 @@ queue (`rcheck/shared/loadq.py`), one queue at a time.
 
 Seeds are 1111 (upstream's own) and 2-10. Before the runner reads an R run,
 export its similarities: `Rscript rcheck/shared/export_sims.R <seed dirs>`.
+
+## Reviewer figure: the paper's own robustness analyses (`figureR_scriabin_reproduced`)
+
+`rcheck/authors/panc8_paper_*.R` rerun the Scriabin paper's robustness
+analyses on its own panc8 data (Wilk et al. 2024): Fig. 2d-e's UMI
+downsampling of the Fluidigm C1 islets to inDrop depth, scored by LISI after
+integration with the full-depth CCIM (`panc8_paper_noise.R`), and Extended
+Data Fig. 8f's soft-power R^2 sweep on inDrop subsamples of 300 and 1,000
+cells (`panc8_paper_r2_sweep.R`). Both also read out what the paper does not:
+whether the same interaction programs come back. `_ip_steps.R` holds the
+upstream program steps they share. Choices the paper leaves open are stated in
+each script's header.
+
+```sh
+R_LIBS=singlecell_cache/authors/panc8/rlib Rscript rcheck/authors/panc8_paper_prep.R
+uv run python rcheck/authors/jobs.py panc8_paper          # 82 jobs
+uv run python rcheck/shared/loadq.py rcheck/out/authors/panc8_paper/jobs.tsv --name paper
+for a in downsampling soft_power downsampling_programs soft_power_programs; do
+  uv run cccrise-scriabin-reproduction --analysis $a        # -> cccrise/data/scriabin_reproduction/
+done
+uv run cccrise-fbuild R_scriabin_reproduced
+```
+
+`rcheck/authors/panc8_paper_summary.py` prints the same runs as CSV tables
+for reading (`rcheck/out/authors/panc8_paper/*.csv`).

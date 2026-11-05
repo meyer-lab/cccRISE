@@ -39,6 +39,8 @@ COMPARATOR_FITS_DIR = COMPARATORS_DIR / "fits"
 COMPARATOR_SCORES_DIR = COMPARATORS_DIR / "scores"
 # Scriabin seed stability (figureR_scriabin_model); kept apart from the comparators
 SCRIABIN_DIR = DATA_DIR / "scriabin"
+# The Scriabin paper's robustness analyses rerun (figureR_scriabin_reproduced)
+SCRIABIN_REPRODUCTION_DIR = DATA_DIR / "scriabin_reproduction"
 
 
 def comparator_filename(method: str, what: str, dataset: str, labelling: str) -> str:

@@ -117,3 +117,10 @@ figR_scriabin_model:
   seed_agreement: [a]
   stage_agreement: [b]
   remedy: [c]
+figR_scriabin_reproduced:
+  lisi_recapitulation: [a]
+  downsampling_fold: [b]
+  downsampling_programs: [c]
+  soft_power_300: [d, e, f, g]
+  soft_power_1000: [h, i, j, k]
+  soft_power_programs: [l, m]
