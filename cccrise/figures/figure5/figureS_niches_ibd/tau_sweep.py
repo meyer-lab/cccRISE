@@ -6,7 +6,7 @@ AXES = ("mid",)
 
 
 def plot(axs):
-    niches.tau_sweep(axs, "ibd", niches.IBD_SUPPLEMENT)
+    niches.tau_sweep(axs, niches.SUPPLEMENT)
 
 
 def makeFigure():

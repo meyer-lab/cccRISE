@@ -1,7 +1,7 @@
-"""The NICHES panels (`figure5_niches`, `figureS_niches_ibd`,
-`figureS_niches_alad`): cccRISE's sender and receiver populations against
-upstream NICHES, from the `cccrise-niches` tables. A population's NICHES
-concordance is its share of cells with a non-zero NICHES program score."""
+"""The NICHES panels (`figure5_niches`, `figureS_niches_ibd`): cccRISE's IBD
+sender and receiver populations against upstream NICHES, from the
+`cccrise-niches` tables. A population's NICHES concordance is its share of
+cells with a non-zero NICHES program score."""
 
 from collections.abc import Sequence
 
@@ -25,12 +25,18 @@ from ..comparators.niches_programs import (
 )
 from ..runners.datasets import NICHES_DIR, scores_filename
 from . import common, style
-from .figure2._common import GROUP_TAU
+from .figure2._common import (
+    GROUP_COLORS,
+    GROUP_TAU,
+    plot_split_boundary,
+    plot_weight_scatter,
+    split_cells,
+)
 
-#: Each figure's components, in the groups drawn together
-IBD_MAIN = ((3, 4),)
-IBD_SUPPLEMENT = ((1, 2, 5, 6),)
-ALAD = ((1, 5), (2, 3, 4))
+DATASET = "ibd"
+#: Each figure's components, in drawing order
+MAIN = (3, 4)
+SUPPLEMENT = (1, 2, 5, 6)
 #: Sides in shades of black: rows are labeled S and R, so color isn't needed
 SIDE_SHADES = {"sender": "0.1", "receiver": "0.45"}
 PROGRAM_COLORS = {
@@ -43,8 +49,6 @@ PROGRAM_COLORS = {
 SIDE_STYLES = {"sender": "-", "receiver": ":"}
 NULL_COLOR = "0.88"
 CONCORDANCE_LABEL = "NICHES concordance"
-#: The gap between `concordance`'s stacked axes
-STACK_GAP = 0.08
 #: `orderings`: each block's header, then its (ordering, tick, x)
 BLOCKS = {
     "State": ((RANDOM, "Random", 0.0), (WEIGHT, "cccRISE", 1.0)),
@@ -59,23 +63,24 @@ SPARSITY_CMAP = LinearSegmentedColormap.from_list(
     "sparsity", ["#fbeeec", style.COLORS["up"]]
 )
 SPARSITY_NORM = LogNorm(0.0005, 0.1)
-#: Row gap between a family of components in `orderings` and the next
-FAMILY_GAP = 0.5
 #: Points between the S/R ticks and the outer component labels; and between
 #: `orderings`' column ticks and block headers
 OUTER_OFFSET = 11
 HEADER_OFFSET = 10
 #: `tau_sweep` draws a population only while it has this many cells
 MIN_TAU_CELLS = 10
+#: `weight_scatters`' ticks, on relative weights
+SCATTER_TICKS = (0, 0.5, 1)
+SCATTER_PAD = 0.05
 #: Extra room between the figures' two rows
 ROW_GAP = 6 * style.MM
 
 
-def load(name: str, dataset: str) -> pd.DataFrame:
+def load(name: str) -> pd.DataFrame:
     return common.load_runner_output(
-        scores_filename(name, dataset),
+        scores_filename(name, DATASET),
         NICHES_DIR,
-        f"uv run cccrise-niches --dataset {dataset}",
+        f"uv run cccrise-niches --dataset {DATASET}",
     )
 
 
@@ -110,23 +115,6 @@ def program_labels(ax, rows: list[tuple[int, str]], y: Sequence[float]) -> None:
             va="center",
             fontsize=style.FONT_SIZE_LABEL,
         )
-
-
-def _scorable_groups(table: pd.DataFrame, groups) -> list[list[tuple[int, str]]]:
-    """`groups`' populations that are scorable, a group of none dropped."""
-    scorable = table[table["Scorable"]].index
-    rows = [[c for c in cases(g) if c in scorable] for g in groups]
-    return [r for r in rows if r]
-
-
-def _stacked_axes(ax, sizes: list[int]) -> list:
-    """Axes stacked inside `ax`, each as tall as its number of rows."""
-    row = (1 - STACK_GAP * (len(sizes) - 1)) / sum(sizes)
-    stacks, top = [], 1.0
-    for size in sizes:
-        stacks.append(ax.inset_axes((0, top - size * row, 1, size * row)))
-        top -= size * row + STACK_GAP
-    return stacks
 
 
 def _concordance_row(ax, y: int, side: str, r: pd.Series) -> None:
@@ -224,14 +212,12 @@ def _concordance_legend(ax, outside: bool) -> None:
         ax.legend(loc="lower right", borderaxespad=0.1, **spacing)
 
 
-def concordance(axs, dataset: str, groups, legend_stack: int | None = -1) -> None:
-    """Each scorable population of `groups` and its NICHES concordance, against
-    what its label composition predicts and random directions; the legend in
-    stacked axes `legend_stack`, clear of the data, or right of the last if
-    None."""
+def concordance(axs, components, legend_outside: bool = False) -> None:
+    """Each scorable population of `components` and its NICHES concordance,
+    against what its label composition predicts and random directions; the
+    legend at the lower right, or right of the axes if `legend_outside`."""
     (ax,) = axs
-    table = load("populations", dataset).set_index(["Component", "Side"])
-    table = table.loc[[c for g in groups for c in cases(g)]]
+    table = load("populations").set_index(["Component", "Side"]).loc[cases(components)]
     common.source_data(
         "niches_concordance_by_population",
         table.reset_index()
@@ -253,27 +239,18 @@ def concordance(axs, dataset: str, groups, legend_stack: int | None = -1) -> Non
         "direction: one-sided p and BH q over the dataset's scorable populations. "
         f"Scorable: at least {SCORABLE:.0%} of the population is NICHES+.",
     )
-    rows_by_stack = _scorable_groups(table, groups)
-    ax.set_axis_off()
-    stacks = _stacked_axes(ax, [len(g) for g in rows_by_stack])
-    for stack, rows in zip(stacks, rows_by_stack, strict=True):
-        for y, (case, r) in enumerate(table.loc[rows].iterrows()):
-            _concordance_row(stack, y, case[1], r)
-        stack.set(xlim=(0, 1), ylim=(len(rows) - 0.5, -0.5))
-        program_labels(stack, rows, range(len(rows)))
-        stack.tick_params(axis="x", labelbottom=stack is stacks[-1])
-    stacks[-1].set_xlabel(CONCORDANCE_LABEL)
-    if legend_stack is None:
-        _concordance_legend(stacks[-1], outside=True)
-    else:
-        _concordance_legend(stacks[legend_stack], outside=False)
+    rows = table[table["Scorable"]].index.tolist()
+    for y, (case, r) in enumerate(table.loc[rows].iterrows()):
+        _concordance_row(ax, y, case[1], r)
+    ax.set(xlim=(0, 1), ylim=(len(rows) - 0.5, -0.5), xlabel=CONCORDANCE_LABEL)
+    program_labels(ax, rows, range(len(rows)))
+    _concordance_legend(ax, legend_outside)
 
 
-def tau_sweep(axs, dataset: str, groups) -> None:
+def tau_sweep(axs, components) -> None:
     """Each scorable population's concordance over its labels' across tau."""
     (ax,) = axs
-    components = [k for g in groups for k in g]
-    table = load("tau", dataset)
+    table = load("tau")
     table = table[table["Component"].isin(components)].assign(
         Gap=lambda t: t["Observed"] - t["Labels fine"]
     )
@@ -331,20 +308,6 @@ def tau_sweep(axs, dataset: str, groups) -> None:
         for side, ls in SIDE_STYLES.items()
     ]
     common.legend(ax, "right", handles=handles, fontsize=style.FONT_SIZE_DENSE)
-
-
-def _family_rows(
-    groups,
-) -> tuple[list[tuple[int, str]], list[float], list[slice]]:
-    """Every component and side, each one's y, and each group's slice of them."""
-    rows, y, families, top = [], [], [], 0.0
-    for group in groups:
-        family = cases(group)
-        families.append(slice(len(rows), len(rows) + len(family)))
-        rows += family
-        y += [top + i for i in range(len(family))]
-        top = y[-1] + 1 + FAMILY_GAP
-    return rows, y, families
 
 
 def _share_text(share: float) -> str:
@@ -408,12 +371,13 @@ def _ordering_headers(ax) -> None:
         )
 
 
-def orderings(axs, dataset: str, groups) -> None:
+def orderings(axs, components) -> None:
     """The population's number of cells chosen by a state direction, alone and
     times expression, and by expression alone; and how sparse NICHES is."""
     (ax,) = axs
-    rows, y, families = _family_rows(groups)
-    long = load("orderings", dataset)
+    rows = cases(components)
+    y = list(range(len(rows)))
+    long = load("orderings")
     table = long.pivot(
         index=["Component", "Side"], columns="Ordering", values="Share"
     ).loc[rows]
@@ -429,33 +393,86 @@ def orderings(axs, dataset: str, groups) -> None:
         "share of all cells.",
     )
     linear = Normalize(0, 1)
-    sparsity = shares.to_numpy()[:, None]
-    for family in families:
+    _block(
+        ax,
+        SPARSITY_X,
+        SPARSITY_X,
+        y,
+        shares.to_numpy()[:, None],
+        SPARSITY_CMAP,
+        SPARSITY_NORM,
+        _share_text,
+    )
+    for columns in BLOCKS.values():
+        names = [name for name, _, _ in columns]
         _block(
             ax,
-            SPARSITY_X,
-            SPARSITY_X,
-            y[family],
-            sparsity[family],
-            SPARSITY_CMAP,
-            SPARSITY_NORM,
-            _share_text,
+            columns[0][2],
+            columns[-1][2],
+            y,
+            table[names].to_numpy(),
+            style.CMAPS["weight"],
+            linear,
+            lambda v: f"{v:.2f}",
         )
-        for columns in BLOCKS.values():
-            names = [name for name, _, _ in columns]
-            _block(
-                ax,
-                columns[0][2],
-                columns[-1][2],
-                y[family],
-                table[names].to_numpy()[family],
-                style.CMAPS["weight"],
-                linear,
-                lambda v: f"{v:.2f}",
-            )
     _ordering_headers(ax)
     ax.set_xlim(SPARSITY_X - 0.5, 4.7)
     ax.set_ylim(y[-1] + 0.5, y[0] - 0.5)
     for spine in ax.spines.values():
         spine.set_visible(False)
     program_labels(ax, rows, y)
+
+
+def weight_scatters(axs) -> None:
+    """Each component's per-cell sender vs. receiver weight, relative to each
+    weight's largest value, its populations (`split_cells`) colored and the
+    `GROUP_TAU` cutoffs drawn, on limits shared by every component."""
+    adata = common.get_cell_projections(DATASET)
+    senders, receivers = (
+        np.asarray(adata.obsm[key]) / np.asarray(adata.obsm[key]).max(axis=0)
+        for key in ("sc_B", "rc_C")
+    )
+    lower = min(senders.min(), receivers.min()) - SCATTER_PAD
+    cells = {}
+    for k, ax in enumerate(axs, start=1):
+        sender, receiver = senders[:, k - 1], receivers[:, k - 1]
+        groups = split_cells(sender, receiver)
+        plot_weight_scatter(
+            ax,
+            sender,
+            receiver,
+            {g.title(): m for g, m in groups.items()},
+            {g.title(): c for g, c in GROUP_COLORS.items()},
+        )
+        ax.set(xlim=(lower, 1 + SCATTER_PAD), ylim=(lower, 1 + SCATTER_PAD))
+        plot_split_boundary(ax, 1, 1)
+        ax.set_title(f"C{k}", fontsize=style.FONT_SIZE_LABEL, pad=2)
+        ax.set_xticks(SCATTER_TICKS)
+        ax.set_yticks(SCATTER_TICKS, labels=None if k == 1 else [])
+        ax.set_xlabel("Sender", fontsize=style.FONT_SIZE_DENSE)
+        group = np.select([groups["sender"], groups["receiver"]], SIDES, "rest")
+        cells |= {
+            f"Sender C{k}": sender,
+            f"Receiver C{k}": receiver,
+            f"Group C{k}": group,
+        }
+    axs[0].set_ylabel("Receiver", fontsize=style.FONT_SIZE_DENSE)
+    axs[0].legend(
+        handles=[
+            Line2D([], [], ls="", marker="o", ms=2.5, mfc=c, mec=c, label=g.title())
+            for g, c in GROUP_COLORS.items()
+        ],
+        loc="upper left",
+        fontsize=style.FONT_SIZE_DENSE,
+        borderaxespad=0.2,
+        handletextpad=0.1,
+        labelspacing=0.2,
+    )
+    common.source_data(
+        "cell_weights_groups",
+        pd.DataFrame({"Cell": adata.obs_names, **cells}),
+        "One row per cell: its sender and receiver weight on each CP component, "
+        "each relative to that weight's largest value, and its group (sender or "
+        f"receiver if either relative weight is at least {GROUP_TAU}, assigned to "
+        "the role of the larger one; rest otherwise).",
+    )

@@ -6,7 +6,7 @@ AXES = ("niches_orderings_ibd",)
 
 
 def plot(axs):
-    niches.orderings(axs, "ibd", niches.IBD_SUPPLEMENT)
+    niches.orderings(axs, niches.SUPPLEMENT)
 
 
 def makeFigure():

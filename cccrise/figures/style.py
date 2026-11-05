@@ -93,10 +93,10 @@ AXIS_SIZE = {
     "mid": (38 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect
     "half": (64 * MM, AXIS_HEIGHT),
-    # The NICHES panels (`figures.niches`): their supplements, the IBD one's
-    # orderings of two components, and Figure 5's of components 3 and 4
+    # The NICHES panels (`figures.niches`): the IBD supplement's, and Figure
+    # 5's of components 3 and 4
+    "niches_scatter": (24 * MM, 24 * MM),
     "niches_concordance": (88 * MM, AXIS_HEIGHT),
-    "niches_orderings": (112 * MM, 46 * MM),
     "niches_orderings_ibd": (112 * MM, 30 * MM),
     "niches_concordance_main": (70 * MM, 18 * MM),
     "niches_orderings_main": (100 * MM, 15 * MM),

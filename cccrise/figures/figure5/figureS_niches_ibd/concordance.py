@@ -6,7 +6,7 @@ AXES = ("niches_concordance",)
 
 
 def plot(axs):
-    niches.concordance(axs, "ibd", niches.IBD_SUPPLEMENT)
+    niches.concordance(axs, niches.SUPPLEMENT)
 
 
 def makeFigure():
