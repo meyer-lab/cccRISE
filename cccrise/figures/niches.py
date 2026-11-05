@@ -70,6 +70,8 @@ FAMILY_GAP = 0.5
 #: `orderings`' column ticks and block headers
 OUTER_OFFSET = 11
 HEADER_OFFSET = 10
+#: `tau_sweep` draws a population only while it has this many cells
+MIN_TAU_CELLS = 10
 #: Extra room between the figures' two rows
 ROW_GAP = 6 * style.MM
 
@@ -308,7 +310,8 @@ def tau_sweep(axs, dataset: str) -> None:
         ),
         "Each scorable population at each tau (its cutoff as a fraction of that "
         "weight's largest value): its cells, NICHES concordance, what its fine "
-        f"labels predict and the difference; {GROUP_TAU} is the figure's tau.",
+        f"labels predict and the difference; {GROUP_TAU} is the figure's tau. "
+        f"Points of fewer than {MIN_TAU_CELLS} cells are not drawn.",
     )
     ax.axhline(
         0,
@@ -323,7 +326,11 @@ def tau_sweep(axs, dataset: str) -> None:
         k for group in GROUPS[dataset] for k in group if k in set(table["Component"])
     ]
     for k, side in cases(components):
-        group = table[(table["Component"] == k) & (table["Side"] == side)]
+        group = table[
+            (table["Component"] == k)
+            & (table["Side"] == side)
+            & (table["Cells"] >= MIN_TAU_CELLS)
+        ]
         ax.plot(
             group["Tau"],
             group["Gap"],
