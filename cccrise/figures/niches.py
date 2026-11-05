@@ -319,7 +319,10 @@ def tau_sweep(axs, dataset: str) -> None:
     ax.axvline(
         GROUP_TAU, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN, zorder=0
     )
-    for k, side in table[["Component", "Side"]].drop_duplicates().to_numpy():
+    components = [
+        k for group in GROUPS[dataset] for k in group if k in set(table["Component"])
+    ]
+    for k, side in cases(components):
         group = table[(table["Component"] == k) & (table["Side"] == side)]
         ax.plot(
             group["Tau"],
@@ -330,9 +333,6 @@ def tau_sweep(axs, dataset: str) -> None:
         )
     ax.set_xlabel("Tau (τ)")
     ax.set_ylabel("Δ(cccRISE, cell type prediction)", fontsize=style.FONT_SIZE_DENSE)
-    components = [
-        k for group in GROUPS[dataset] for k in group if k in set(table["Component"])
-    ]
     handles = [
         Line2D([], [], color=PROGRAM_COLORS[k], lw=style.LINE_WIDTH, label=f"C{k}")
         for k in components
