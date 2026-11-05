@@ -91,6 +91,8 @@ AXIS_SIZE = {
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
+    # Half a rect: box groups as wide as a rect's of twice as many groups
+    "rect_half": (AXIS_WIDTH / 2, AXIS_HEIGHT),
     # Between square and rect, for a row of three wider strips
     "mid": (38 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect

@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from matplotlib.patches import Patch
+from scipy.stats import kruskal
 
 from ...anova import run_multiple_factors_anova
 from ...factors import load_factors_netcdf
@@ -75,6 +76,7 @@ EXPRESSION_QUANTILE = 0.99
 EXPRESSION_LABEL = f"Expr. / {EXPRESSION_QUANTILE:.0%} quantile"
 DODGE = 0.27  # x offset between the status groups' boxes
 JITTER = 0.08
+SHARE_PAD = 0.04  # y room past the 0-1 shares' range in `status_boxes`
 
 
 def _load(table: str, runner: str = "cohort") -> pd.DataFrame:
@@ -172,6 +174,29 @@ def hormone_states(cells: pd.DataFrame) -> pd.Series:
     return classes.map(exclusive).fillna("Other EE").where(classes.notna())
 
 
+def status_boxes(ax, slots: dict[str, list[pd.Series]]) -> None:
+    """One `draw_boxes` slot per x label (`slots`' keys; values per status),
+    its Kruskal-Wallis p across statuses above it, bold if significant. Each
+    slot is one x unit, so axes as wide per slot draw identical boxes."""
+    rng = np.random.default_rng(0)
+    for x, values in enumerate(slots.values()):
+        draw_boxes(ax, x, values, rng)
+        p = kruskal(*values).pvalue
+        ax.text(
+            x,
+            1,
+            f"p = {p:.1g}",
+            transform=ax.get_xaxis_transform(),
+            ha="center",
+            va="bottom",
+            fontsize=common.style.FONT_SIZE_DENSE,
+            fontweight="bold" if p < common.SIG_ALPHA else "normal",
+        )
+    ax.set_xticks(range(len(slots)), list(slots), fontsize=common.style.FONT_SIZE_DENSE)
+    ax.set_xlim(-0.5, len(slots) - 0.5)
+    ax.set_ylim(-SHARE_PAD, 1 + SHARE_PAD)
+
+
 def draw_boxes(ax, x: float, values: list[pd.Series], rng) -> None:
     """Boxes and jittered biopsies centered on `x`, one per inflammation
     status (`values`, in `GROUP_LABELS` order)."""
@@ -204,10 +229,9 @@ def draw_boxes(ax, x: float, values: list[pd.Series], rng) -> None:
         )
 
 
-def status_legend(ax, side: str = "right", **kwargs) -> None:
-    common.legend(
-        ax,
-        side,
+def status_legend(ax, **kwargs) -> None:
+    """The inflammation statuses' key inside `ax`, placed by `kwargs`."""
+    ax.legend(
         handles=[
             Patch(color=GROUP_COLORS[g], alpha=0.8, label=label)
             for g, label in GROUP_LABELS.items()

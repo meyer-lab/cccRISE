@@ -4,11 +4,9 @@ only (crypt-like) or of neither (`_common.hormone_classes`), by inflammation
 status (Kruskal-Wallis p): inflammation removes C3-only cells, not C3-high
 ones."""
 
-import numpy as np
 import pandas as pd
-from scipy.stats import kruskal
 
-from .. import common, style
+from .. import common
 from . import _common as S
 
 AXES = ("rect",)
@@ -45,28 +43,26 @@ def plot(axs):
         "C4, of C4 only, or of neither, with the biopsy's inflammation status; "
         "Kruskal-Wallis p across statuses above each class.",
     )
-    rng = np.random.default_rng(0)
-    for x, name in enumerate(S.CLASS_NAMES):
-        groups = [shares.loc[shares["Status"] == g, name] for g in S.GROUP_LABELS]
-        S.draw_boxes(ax, x, groups, rng)
-        p = kruskal(*groups).pvalue
-        ax.text(
-            x,
-            1,
-            f"p = {p:.1g}",
-            transform=ax.get_xaxis_transform(),
-            ha="center",
-            va="bottom",
-            fontsize=style.FONT_SIZE_DENSE,
-            fontweight="bold" if p < common.SIG_ALPHA else "normal",
-        )
-    ax.set_xticks(
-        range(len(LABELS)),
-        [LABELS[n] for n in S.CLASS_NAMES],
-        fontsize=style.FONT_SIZE_DENSE,
+    S.status_boxes(
+        ax,
+        {
+            LABELS[name]: [
+                shares.loc[shares["Status"] == g, name] for g in S.GROUP_LABELS
+            ]
+            for name in S.CLASS_NAMES
+        },
     )
     ax.set_ylabel("Share of biopsy's\nEE cells")
-    S.status_legend(ax, "below", ncols=2, columnspacing=0.8)
+    # Top right, clear of the Neither boxes' whiskers
+    S.status_legend(
+        ax,
+        loc="upper right",
+        bbox_to_anchor=(0.74, 1),
+        labelspacing=0.2,
+        borderaxespad=0,
+        borderpad=0.2,
+        handlelength=1,
+    )
 
 
 def makeFigure():

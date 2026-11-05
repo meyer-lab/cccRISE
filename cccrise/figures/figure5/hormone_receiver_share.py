@@ -7,15 +7,13 @@ cells in theirs of C4, by inflammation status (Kruskal-Wallis p)."""
 
 from functools import partial
 
-import numpy as np
 import pandas as pd
-from scipy.stats import kruskal
 
-from .. import common, style
+from .. import common
 from . import _common as S
 from .hormone_state_share import MIN_EE, class_shares
 
-AXES = ("square",)
+AXES = ("rect_half",)  # as wide per slot as `hormone_state_share`
 HIGH = "High"
 #: component -> (receiver type, label)
 RECEIVERS = {
@@ -47,25 +45,12 @@ def plot(axs):
         "receiver weight, with the biopsy's inflammation status; Kruskal-Wallis p "
         "across statuses above each.",
     )
-    rng = np.random.default_rng(0)
-    for x, (k, s) in enumerate(shares.items()):
-        groups = [s.loc[s["Status"] == g, HIGH] for g in S.GROUP_LABELS]
-        S.draw_boxes(ax, x, groups, rng)
-        p = kruskal(*groups).pvalue
-        ax.text(
-            x,
-            1,
-            f"p = {p:.1g}",
-            transform=ax.get_xaxis_transform(),
-            ha="center",
-            va="bottom",
-            fontsize=style.FONT_SIZE_DENSE,
-            fontweight="bold" if p < common.SIG_ALPHA else "normal",
-        )
-    ax.set_xticks(
-        range(len(RECEIVERS)),
-        [label for _, label in RECEIVERS.values()],
-        fontsize=style.FONT_SIZE_DENSE,
+    S.status_boxes(
+        ax,
+        {
+            RECEIVERS[k][1]: [s.loc[s["Status"] == g, HIGH] for g in S.GROUP_LABELS]
+            for k, s in shares.items()
+        },
     )
     ax.set_ylabel("Share of biopsy's\nreceiver-type cells")
 
