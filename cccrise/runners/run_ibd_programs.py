@@ -16,7 +16,8 @@ cohort's cells. Like `run_cohort`, it does not refit RISE/CPD. Writes, into
     cell_map_ibd.parquet
         a PaCMAP of every cell's RISE projections, keeping every EE, EC and
         tuft cell and `MAP_BACKGROUND` others drawn at `--random-state`, with
-        each kept cell's fine type and lineage
+        each kept cell's fine type, lineage, unscaled C3/C4 receiver weights
+        and the expression of `RECEPTORS`
     eigenstate_energy_ibd.parquet
         mean squared RISE projection per eigenstate of EE cells, EC cells and
         the secretory lineage
@@ -95,6 +96,8 @@ EE_GENES = [
     ],
     *["ARX", "ISL1", "PAX6", "GPBAR1", "ID1", "ID2", "ID3", "SMAD6", "SMAD7", "BAMBI"],
 ]
+#: The receptors of C3's and C4's top LR pairs (PYY-NPY1R, GCG-GLP1R)
+RECEPTORS = ["NPY1R", "GLP1R"]
 #: Genes the C1/C5 high-sender dot plot shows
 MYELOID_GENES = [
     "IL1B",
@@ -198,14 +201,17 @@ def cell_map(
         other, MAP_BACKGROUND, replace=False
     )
     keep = np.sort(np.concatenate([np.flatnonzero(group.to_numpy() != "Other"), drawn]))
+    sub = adata[keep]
     return pd.DataFrame(
         {
             "Group": group.to_numpy()[keep],
             "Cell type": cells["Cell type"].to_numpy()[keep],
-            "Lineage": adata.obs[spec.celltype_column].astype(str).to_numpy()[keep],
+            "Lineage": sub.obs[spec.celltype_column].astype(str).to_numpy(),
             "PaCMAP 1": coords[keep, 0],
             "PaCMAP 2": coords[keep, 1],
         }
+        | {f"C{k} receiver weight": weights(sub, "receiver", k) for k in (3, 4)}
+        | {g: v.to_numpy() for g, v in expression(sub, RECEPTORS).items()}
     )
 
 
