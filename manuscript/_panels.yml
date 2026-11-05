@@ -113,3 +113,12 @@ figS_comparator_properties:
   homophily: [d]
   top_share: [e]
 figS_comparator_lr_contents: {}
+figS_niches_ibd:
+  weight_scatters: [a]
+  concordance: [b]
+  tau_sweep: [c]
+  orderings: [d]
+fig5_niches:
+  concordance: [a]
+  tau_sweep: [b]
+  orderings: [c]

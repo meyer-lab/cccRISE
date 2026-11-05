@@ -93,6 +93,14 @@ AXIS_SIZE = {
     "mid": (38 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect
     "half": (64 * MM, AXIS_HEIGHT),
+    # The NICHES panels (`figures.niches`): the IBD supplement's, and Figure
+    # 5's of components 3 and 4
+    "niches_scatter": (24 * MM, 24 * MM),
+    "niches_concordance": (88 * MM, AXIS_HEIGHT),
+    "niches_orderings_ibd": (112 * MM, 30 * MM),
+    "niches_concordance_main": (70 * MM, 18 * MM),
+    "niches_orderings_main": (100 * MM, 15 * MM),
+    "niches_tau_main": (38 * MM, 48 * MM),
 }
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
