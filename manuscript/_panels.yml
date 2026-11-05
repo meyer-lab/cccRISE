@@ -145,3 +145,12 @@ figS_ibd_hormone_axes:
   magnitude_hist: [m]
   marker_floor_sweep: [n]
   extreme_share: [o]
+figS_niches_ibd:
+  weight_scatters: [a]
+  concordance: [b]
+  tau_sweep: [c]
+  orderings: [d]
+fig5_niches:
+  concordance: [a]
+  tau_sweep: [b]
+  orderings: [c]

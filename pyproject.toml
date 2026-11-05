@@ -30,6 +30,7 @@ dependencies = [
     "pyyaml>=6.0",
     "adjusttext>=1.4.0",
     "kneed>=0.8.5",
+    "threadpoolctl>=3.5",
 ]
 
 readme = "README.md"
@@ -63,6 +64,7 @@ cccrise-nichenet = "cccrise.runners.run_nichenet:main"
 cccrise-altcommscore = "cccrise.runners.run_alt_comm_score:main"
 cccrise-cohort = "cccrise.runners.run_cohort:main"
 cccrise-ibd-programs = "cccrise.runners.run_ibd_programs:main"
+cccrise-niches = "cccrise.runners.run_niches:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
