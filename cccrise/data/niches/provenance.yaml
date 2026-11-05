@@ -25,9 +25,9 @@ shared:
   scorable_share: 0.1
   n_population_draws: 1000
   n_ordering_draws: 200
-  git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
 files:
   orderings_alad.parquet:
+    git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
       --r-library /home/ehurt/Workspaces/cccRISE-concordance/rcheck/lib
     dataset: alad
@@ -75,9 +75,9 @@ files:
     generated: '2026-11-05T00:26:47+00:00'
     sha256: eec3f579adb933dda37decca97524242901f798ae7b132cbf679bc2a0261b784
   orderings_ibd.parquet:
-    sha256: 1945e3047414a72f3ed049a5dc48dd19964f79f19e4e88760d14bfe45fcf35ef
-    command: uv run cccrise-niches --dataset ibd --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE-concordance/rcheck/lib
+    sha256: 62103b490549d318267e4758deba5bb58edf6f582b7e3eba215737a0113ffb72
+    command: uv run cccrise-niches --dataset ibd --niches-source /home/sama/R/niches-src --r-library
+      /home/sama/R/niches-lib --r-workers 16
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -119,8 +119,10 @@ files:
       genes: 23355
       cells: 634534
       lr_pairs: 1255
-    generated: '2026-11-05T00:34:52+00:00'
+    git_sha: acd31588f7a3399a15213fa0724f88a76694ce01
+    generated: '2026-11-05T03:16:22+00:00'
   populations_alad.parquet:
+    git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
       --r-library /home/ehurt/Workspaces/cccRISE-concordance/rcheck/lib
     dataset: alad
@@ -168,9 +170,9 @@ files:
     generated: '2026-11-05T00:26:47+00:00'
     sha256: 8e833fa72af0111d5003ad742a71593a8947df3d9e0fc8b898342295689d4416
   populations_ibd.parquet:
-    sha256: 8c1483271a8f7b9cae8240cd42fddd78a8a4b12325121cf1ad0ee9ab69dc9e32
-    command: uv run cccrise-niches --dataset ibd --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE-concordance/rcheck/lib
+    sha256: b3a7e54d3d4a10fe10defd62191e04bd810c147fb9e17369a0c9753b2648acd6
+    command: uv run cccrise-niches --dataset ibd --niches-source /home/sama/R/niches-src --r-library
+      /home/sama/R/niches-lib --r-workers 16
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -212,8 +214,10 @@ files:
       genes: 23355
       cells: 634534
       lr_pairs: 1255
-    generated: '2026-11-05T00:34:52+00:00'
+    git_sha: acd31588f7a3399a15213fa0724f88a76694ce01
+    generated: '2026-11-05T03:16:22+00:00'
   tau_alad.parquet:
+    git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
       --r-library /home/ehurt/Workspaces/cccRISE-concordance/rcheck/lib
     dataset: alad
@@ -261,9 +265,9 @@ files:
     generated: '2026-11-05T00:26:47+00:00'
     sha256: af77d280d35f8f1346c330e5ae5e9c22821d28f6e266c835672538798d469b07
   tau_ibd.parquet:
-    sha256: ee0213de87d82df993dc77e11a1bfd93d4d51fd1711104ccd151495930ff5ee8
-    command: uv run cccrise-niches --dataset ibd --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE-concordance/rcheck/lib
+    sha256: 0475adff95e56d3ebc2610f1f3759cd15cbb868d009a336a5d66aa8a0fb907cb
+    command: uv run cccrise-niches --dataset ibd --niches-source /home/sama/R/niches-src --r-library
+      /home/sama/R/niches-lib --r-workers 16
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -305,4 +309,5 @@ files:
       genes: 23355
       cells: 634534
       lr_pairs: 1255
-    generated: '2026-11-05T00:34:52+00:00'
+    git_sha: acd31588f7a3399a15213fa0724f88a76694ce01
+    generated: '2026-11-05T03:16:22+00:00'
