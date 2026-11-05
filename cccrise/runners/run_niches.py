@@ -7,13 +7,13 @@ for the folder):
 
     populations_<dataset>.parquet
         per component and side, the population's NICHES concordance and score
-        against what its labels predict, and for scorable populations random
+        against what its labels predict, its NICHES+ cells, and random
         directions' 5th and 95th percentiles, p and BH q
     orderings_<dataset>.parquet
         per component, side and ordering, the concordance of the population's
         number of cells, and NICHES's share of all cells
     tau_<dataset>.parquet
-        per scorable population and tau, its concordance and its labels'
+        per population and tau, its concordance and its labels'
 
 NICHES needs R with Seurat, and the package's source at `NICHES_COMMIT`:
 
@@ -42,7 +42,6 @@ from ..comparators.niches_programs import (
     MODES,
     N_ORDERING_DRAWS,
     N_POPULATION_DRAWS,
-    SCORABLE,
     SIDES,
     TAUS,
     Cohort,
@@ -276,7 +275,6 @@ def run_niches(spec: DatasetSpec, args: argparse.Namespace, command: str) -> Non
             "cells_without_niches_score": int((~scored).sum()),
             "group_tau": GROUP_TAU,
             "taus": list(TAUS),
-            "scorable_share": SCORABLE,
             "n_population_draws": N_POPULATION_DRAWS,
             "n_ordering_draws": N_ORDERING_DRAWS,
             "resulting_dims": dims,
@@ -284,7 +282,7 @@ def run_niches(spec: DatasetSpec, args: argparse.Namespace, command: str) -> Non
     )
     write(spec, "populations", populations, metadata, command)
     write(spec, "orderings", orderings, metadata, command)
-    write(spec, "tau", tau_table(cohort, populations), metadata, command)
+    write(spec, "tau", tau_table(cohort), metadata, command)
 
 
 def build_parser() -> argparse.ArgumentParser:

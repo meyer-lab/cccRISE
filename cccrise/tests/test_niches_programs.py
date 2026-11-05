@@ -111,7 +111,7 @@ def test_populations_cut_each_weight_on_its_own():
 def test_population_table_recovers_a_planted_population(cohort):
     directions = random_directions(4, 50, 0)
     table = population_table(cohort, directions)
-    assert table["Scorable"].all()
+    assert table["NICHES+ cells"].gt(0).all()
     assert (table["Observed"] > table["Labels fine"]).all()
     assert table["Score fold"].gt(1).all()
     assert table["Q direction"].notna().all()
@@ -132,9 +132,7 @@ def test_ordering_table_has_every_ordering_and_is_seeded(cohort):
     )
 
 
-def test_tau_table_covers_every_tau_of_scorable_populations(cohort):
-    populations = population_table(cohort, random_directions(4, 20, 0))
-    populations.loc[populations["Side"] == "receiver", "Scorable"] = False
-    table = tau_table(cohort, populations)
-    assert table["Tau"].tolist() == list(TAUS)
-    assert set(table["Side"]) == {"sender"}
+def test_tau_table_covers_every_tau_of_every_population(cohort):
+    table = tau_table(cohort)
+    assert table["Tau"].tolist() == list(TAUS) * len(SIDES)
+    assert table["Side"].tolist() == [s for s in SIDES for _ in TAUS]

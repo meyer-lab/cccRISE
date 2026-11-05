@@ -35,8 +35,6 @@ from scipy.stats import false_discovery_control
 from ..covariation import carrying_pairs
 from ..figures.figure2._common import GROUP_TAU
 
-#: A population is scorable when this share of its cells is NICHES+
-SCORABLE = 0.10
 #: Draws of random directions: against a population, and in `ordering_table`
 N_POPULATION_DRAWS = 1000
 N_ORDERING_DRAWS = 200
@@ -183,7 +181,7 @@ def direction_draws(
 def population_row(
     cohort: Cohort, k: int, side: str, directions: np.ndarray
 ) -> dict[str, Any]:
-    """One population against its labels and, when scorable, random directions."""
+    """One population against its labels and random directions."""
     population = cohort.population(k, side)
     score = cohort.column("NICHES", k, side)
     positive = score > 0
@@ -194,26 +192,24 @@ def population_row(
         "Component": k,
         "Side": side,
         "Cells": int(population.sum()),
+        "NICHES+ cells": int(positive[population].sum()),
         "Observed": observed,
         "Labels fine": label_mean(cohort.fine, positive, population),
         "Labels coarse": label_mean(cohort.coarse, positive, population),
         "Score observed": score_observed,
         "Score labels fine": score_labels,
         "Score fold": score_observed / score_labels,
-        "Scorable": observed >= SCORABLE,
     }
-    if row["Scorable"]:
-        null = direction_draws(cohort, positive, population, directions)
-        row |= {
-            "Direction 5th": float(np.quantile(null, 0.05)),
-            "Direction 95th": float(np.quantile(null, 0.95)),
-            "P direction": float((1 + (null >= observed).sum()) / (1 + len(null))),
-        }
-    return row
+    null = direction_draws(cohort, positive, population, directions)
+    return row | {
+        "Direction 5th": float(np.quantile(null, 0.05)),
+        "Direction 95th": float(np.quantile(null, 0.95)),
+        "P direction": float((1 + (null >= observed).sum()) / (1 + len(null))),
+    }
 
 
 def population_table(cohort: Cohort, directions: np.ndarray) -> pd.DataFrame:
-    """Every population (`population_row`), BH q over the scorable ones."""
+    """Every population (`population_row`), BH q over them all."""
     table = pd.DataFrame(
         [
             population_row(cohort, k, side, directions)
@@ -221,10 +217,7 @@ def population_table(cohort: Cohort, directions: np.ndarray) -> pd.DataFrame:
             for side in SIDES
         ]
     )
-    scorable = table["Scorable"]
-    table.loc[scorable, "Q direction"] = false_discovery_control(
-        table.loc[scorable, "P direction"]
-    )
+    table["Q direction"] = false_discovery_control(table["P direction"])
     return table
 
 
@@ -277,22 +270,22 @@ def ordering_table(cohort: Cohort, directions: np.ndarray) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def tau_table(cohort: Cohort, populations: pd.DataFrame) -> pd.DataFrame:
-    """Each scorable population's concordance and its labels' across `TAUS`."""
+def tau_table(cohort: Cohort) -> pd.DataFrame:
+    """Each population's concordance and its labels' across `TAUS`."""
     rows = []
-    scorable = populations[populations["Scorable"]]
-    for k, side in zip(scorable["Component"], scorable["Side"], strict=True):
-        positive = cohort.column("NICHES", k, side) > 0
-        for tau in TAUS:
-            population = cohort.population(k, side, tau)
-            rows.append(
-                {
-                    "Component": k,
-                    "Side": side,
-                    "Tau": tau,
-                    "Cells": int(population.sum()),
-                    "Observed": float(positive[population].mean()),
-                    "Labels fine": label_mean(cohort.fine, positive, population),
-                }
-            )
+    for k in range(1, cohort.n_components + 1):
+        for side in SIDES:
+            positive = cohort.column("NICHES", k, side) > 0
+            for tau in TAUS:
+                population = cohort.population(k, side, tau)
+                rows.append(
+                    {
+                        "Component": k,
+                        "Side": side,
+                        "Tau": tau,
+                        "Cells": int(population.sum()),
+                        "Observed": float(positive[population].mean()),
+                        "Labels fine": label_mean(cohort.fine, positive, population),
+                    }
+                )
     return pd.DataFrame(rows)
