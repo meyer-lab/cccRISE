@@ -1,4 +1,4 @@
-"""The NICHES panels (`figure5_niches`, `figureS_niches_ibd`): cccRISE's IBD
+"""The NICHES panels (Figure 5, `figureS_niches_ibd`): cccRISE's IBD
 sender and receiver populations against upstream NICHES, from the
 `cccrise-niches` tables. A population's NICHES concordance is its share of
 cells with a non-zero NICHES program score."""

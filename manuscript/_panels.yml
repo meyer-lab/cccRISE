@@ -36,6 +36,9 @@ fig5:
   hormone_angle_scatter: [i]
   hormone_angle_hist: [j]
   hormone_extreme_markers: [k]
+  niches_concordance: [l]
+  niches_tau_sweep: [m]
+  niches_orderings: [n]
 figS_rise_factor_matrices:
   factors: [a]
   genes: [b]
@@ -139,8 +142,8 @@ figS_ibd_hormone_axes:
   eigenstate_association: [b]
   eigenstate_composition: [c]
   cell_map: [d]
-  receiver_maps: [e, f]
-  receptor_maps: [g, h]
+  receiver_maps: [e, g]
+  receptor_maps: [f, h]
   hormone_maps: [i, j, k, l]
   magnitude_hist: [m]
   marker_floor_sweep: [n]
@@ -150,7 +153,3 @@ figS_niches_ibd:
   concordance: [b]
   tau_sweep: [c]
   orderings: [d]
-fig5_niches:
-  concordance: [a]
-  tau_sweep: [b]
-  orderings: [c]
