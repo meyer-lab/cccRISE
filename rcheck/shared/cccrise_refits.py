@@ -73,8 +73,14 @@ def rise_stage(data, ckpt: Path, rank: int, seed: int, spec):
         compress=REPLICATE_COMPRESS,
     )
     partial = ckpt.with_suffix(".partial.npz")
-    np.savez(partial, **{f"{w}.{k}": np.asarray(getattr(data, w)[k])
-                         for w, keys in RISE_FIELDS.items() for k in keys})
+    np.savez(
+        partial,
+        **{
+            f"{w}.{k}": np.asarray(getattr(data, w)[k])
+            for w, keys in RISE_FIELDS.items()
+            for k in keys
+        },
+    )
     partial.replace(ckpt)
     return data, r2x
 
@@ -122,15 +128,21 @@ def refit(data, spec, core, lr_pairs, seed: int, path: Path, rise_ckpt: Path) ->
         cp_chunked=chunked,
     )
     partial.replace(path)
-    print(f"{spec.key} {path.stem} seed {seed}: {wall:.0f} s on GPU {device}, "
-          f"R2X CP {fit['r2x_cp']:.4f}", flush=True)
+    print(
+        f"{spec.key} {path.stem} seed {seed}: {wall:.0f} s on GPU {device}, "
+        f"R2X CP {fit['r2x_cp']:.4f}",
+        flush=True,
+    )
 
 
 def setup(dataset: str):
     spec = DATASETS[dataset]
     rise_rank, cp_rank = RANKS[dataset]
-    return spec, spec.load(), import_ligand_receptor_pairs(), core_numbering_reference(
-        spec, rise_rank, cp_rank
+    return (
+        spec,
+        spec.load(),
+        import_ligand_receptor_pairs(),
+        core_numbering_reference(spec, rise_rank, cp_rank),
     )
 
 
@@ -145,8 +157,15 @@ def main(dataset: str, out: Path, seeds: list[int]) -> None:
         data = add_cond_idxs(
             adata.copy() if len(todo) > 1 else adata, spec.condition_column
         )
-        refit(data, spec, core, lr_pairs, seed, out / f"seed{seed}.npz",
-              out / f"seed{seed}.rise.npz")
+        refit(
+            data,
+            spec,
+            core,
+            lr_pairs,
+            seed,
+            out / f"seed{seed}.npz",
+            out / f"seed{seed}.rise.npz",
+        )
 
 
 if __name__ == "__main__":

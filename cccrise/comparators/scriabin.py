@@ -59,7 +59,7 @@ Differences from upstream, all deliberate:
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -665,7 +665,7 @@ def score_programs(
     """``ScoreInteractionPrograms``: (cells x programs) sender scores on each
     program's ligands and receiver scores on its receptors. As upstream, the
     ligand and receptor calls each reseed (``AddModuleScore(seed = 1)``)."""
-    means = pd.Series(np.asarray(cast(Any, X).mean(axis=0)).ravel(), index=gene_names)
+    means = pd.Series(np.asarray(X.mean(axis=0)).ravel(), index=gene_names)
     scores = []
     for side in (0, 1):
         rng = np.random.default_rng(seed)

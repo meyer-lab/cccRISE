@@ -22,7 +22,7 @@ random permutation (argsort of uniform keys), uniform without replacement
 like upstream's ``sample``, from a per-(sample, program) seed.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import numpy as np
@@ -37,7 +37,7 @@ BATCH_ELEMENTS = 40_000_000
 def array_module(device: str) -> Any:
     """NumPy (``cpu``) or CuPy (``gpu``)."""
     if device == "gpu":
-        import cupy
+        import cupy  # ty: ignore[unresolved-import]
 
         return cupy
     return np
@@ -46,7 +46,7 @@ def array_module(device: str) -> Any:
 def _ndtr(xp: Any):
     if xp is np:
         return ndtr
-    from cupyx.scipy.special import ndtr as cupy_ndtr
+    from cupyx.scipy.special import ndtr as cupy_ndtr  # ty: ignore[unresolved-import]
 
     return cupy_ndtr
 
@@ -121,7 +121,7 @@ def module_value(
 
 def sample_values(
     sim: pd.DataFrame,
-    programs: dict[str, Sequence[str]],
+    programs: Mapping[str, Sequence[str]],
     replicates: int,
     seeds: Sequence[int],
     device: str = "gpu",

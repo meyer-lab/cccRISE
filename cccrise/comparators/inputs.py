@@ -107,7 +107,7 @@ def entity_expression(
     local = np.zeros(len(gene_index), dtype=np.int64)
     local[used] = np.arange(len(used))
     sub = X[:, used]
-    expr = np.asarray(cast(Any, sub).toarray() if issparse(sub) else sub, np.float64)
+    expr = np.asarray(sub.toarray() if issparse(sub) else sub, np.float64)
     vals = expr[:, local[idx[valid]]]  # (cells, valid entities, subunits)
     out[:, valid] = _aggregate(vals, mask[valid], agg)
     return out

@@ -49,7 +49,10 @@ def chunked_mttkrp(tensor, cp_tensor, mode: int):
     out = cupy.zeros((tensor.shape[mode], rank), dtype=tensor.dtype)
     others = [m for m in range(ndim) if m != mode]
     spec = (
-        letters + "," + ",".join(f"{letters[m]}r" for m in others) + f"->{letters[mode]}r"
+        letters
+        + ","
+        + ",".join(f"{letters[m]}r" for m in others)
+        + f"->{letters[mode]}r"
     )
     for s in _slices(tensor.shape[axis], per_index):
         index = [slice(None)] * ndim
@@ -93,8 +96,10 @@ def chunked_cupy_cp():
             kt = orig_init(host, rank, init=init, svd=svd, **kw)
             weights, factors = kt
         return tl_cp.CPTensor(
-            (None if weights is None else tl.tensor(weights, **tl.context(tensor)),
-             [tl.tensor(np.asarray(f), **tl.context(tensor)) for f in factors])
+            (
+                None if weights is None else tl.tensor(weights, **tl.context(tensor)),
+                [tl.tensor(np.asarray(f), **tl.context(tensor)) for f in factors],
+            )
         )
 
     tl_cp.unfolding_dot_khatri_rao = chunked_mttkrp
