@@ -14,7 +14,7 @@ from scipy.stats import spearmanr
 
 from ...comparators import scores
 from .. import common, style
-from ._common import COMPARATORS, METHOD_COLORS, METHOD_LABELS
+from ._common import COMPARATORS, DATASET, METHOD_COLORS, METHOD_LABELS
 from ._data import (
     LABELLINGS,
     NO_MATCH,
@@ -74,13 +74,15 @@ CONTAINMENT_TEXT = (
 )
 
 
-def lr_containment(of: str | None, in_: str | None) -> pd.DataFrame:
+def lr_containment(
+    of: str | None, in_: str | None, dataset: str = DATASET
+) -> pd.DataFrame:
     """Each comparator fit's (`GROUPS`) containment rows of LR columns of
     `of` in the span of `in_`, the comparator's place given as None; with
     the comparator fit as Method and Labelling."""
     frames = []
     for method, lab in GROUPS:
-        t = load("containment", lab)
+        t = load("containment", lab, dataset)
         t = t[
             (t["Of"] == (of or method))
             & (t["In"] == (in_ or method))
@@ -90,11 +92,11 @@ def lr_containment(of: str | None, in_: str | None) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
-def reach(axs) -> None:
+def reach(axs, dataset: str = DATASET) -> None:
     """cccRISE's programs' LR containment in each comparator fit; contained
     cells framed."""
     ax = axs[0]
-    t = lr_containment("cccRISE", None)
+    t = lr_containment("cccRISE", None, dataset)
     common.source_data(
         "lr_containment_of_cccrise_programs",
         t.assign(Program="C" + t["Component"].astype(str))[
@@ -150,7 +152,7 @@ def _containment_strip(ax, x, t) -> None:
         )
 
 
-def columns_in_cccrise(axs) -> None:
+def columns_in_cccrise(axs, dataset: str = DATASET) -> None:
     """One strip per comparator fit: its LR columns coloured by their LR
     containment in cccRISE's span, contained ones framed."""
     ax = axs[0]
@@ -160,7 +162,7 @@ def columns_in_cccrise(axs) -> None:
         0.6,
         0,
     )  # in cell widths; x clears the panel letter
-    columns = lr_containment(None, "cccRISE")
+    columns = lr_containment(None, "cccRISE", dataset)
     source_data(
         "lr_containment_in_cccrise_by_column",
         columns,
