@@ -24,7 +24,7 @@ def extreme_genes(cells: pd.DataFrame, state: pd.Series) -> pd.DataFrame:
     """Each `SECTIONS` gene's Mann-Whitney p and BH q, villus-like vs
     crypt-like cells."""
     genes = [g for section in SECTIONS.values() for g in section]
-    a, b = (cells.loc[state == group, genes] for group in EXTREMES)
+    a, b = (cells.loc[state == group, genes].astype(float) for group in EXTREMES)
     p = [mannwhitneyu(a[g], b[g]).pvalue for g in genes]
     return pd.DataFrame({"Gene": genes, "p": p, "q": false_discovery_control(p)})
 

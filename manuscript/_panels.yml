@@ -143,5 +143,5 @@ figS_ibd_hormone_axes:
   receptor_maps: [g, h]
   hormone_maps: [i, j, k, l]
   magnitude_hist: [m]
-  extreme_share: [n]
-  hormone_receiver_share: [o]
+  marker_floor_sweep: [n]
+  extreme_share: [o]

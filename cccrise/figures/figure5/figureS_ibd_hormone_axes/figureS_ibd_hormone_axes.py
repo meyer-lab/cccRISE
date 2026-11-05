@@ -5,7 +5,7 @@ Where Figure 5's zoomed EE/EC/tuft map sits among all cells, beside the
 programs' receiver weights and their top pairs' receptors on that map, and
 the villus-like hormones on it. The magnitude floor behind Figure 5I-K's
 hormone classes; inflammation removes villus-like EE cells but not crypt-like
-ones, and the receivers' high-weight shares by status. Figure 5E-H show the
+ones; Figure 5K's marker tests across magnitude floors. Figure 5E-H show the
 two programs splitting the EE cells expressing their ligands."""
 
 from matplotlib.transforms import Bbox
@@ -18,8 +18,8 @@ from . import (
     eigenstate_loadings,
     extreme_share,
     hormone_maps,
-    hormone_receiver_share,
     magnitude_hist,
+    marker_floor_sweep,
     receiver_maps,
     receptor_maps,
 )
@@ -28,7 +28,7 @@ LAYOUT = [
     [eigenstate_loadings, eigenstate_association, eigenstate_composition],
     [cell_map, [receiver_maps], [receptor_maps]],
     [hormone_maps],
-    [magnitude_hist, extreme_share, hormone_receiver_share],
+    [magnitude_hist, marker_floor_sweep, extreme_share],
 ]
 #: Stacked map pairs whose one colorbar spans both maps
 SPANNED = (receiver_maps, receptor_maps)

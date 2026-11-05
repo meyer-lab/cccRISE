@@ -64,9 +64,6 @@ MAP_GROUPS = {
 PROGRAM_COLORS = {1: common.style.CATEGORICAL[4], 5: common.style.CATEGORICAL[5]}
 #: The hormone programs' colors in line plots
 HORMONE_COLORS = {3: common.style.COLORS["up"], 4: common.style.COLORS["emphasis"]}
-#: A receiver cell is high on its program in the top `STATE_QUARTILE` of its
-#: type's receiver weight (`hormone_receiver_share`)
-STATE_QUARTILE = 0.25
 #: Per-biopsy shares are over biopsies with at least this many classified cells
 MIN_EE = 3
 #: Each EE cell's C3 and C4 sender weights over their largest EE value give a
@@ -193,11 +190,11 @@ def hormone_angles(cells: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def hormone_extremes(cells: pd.DataFrame) -> pd.Series:
-    """Each EE cell's `EXTREME_NAMES` class from its `hormone_angles`; non-EE
-    cells are NaN."""
+def hormone_extremes(cells: pd.DataFrame, floor: float = EXTREME_FLOOR) -> pd.Series:
+    """Each EE cell's `EXTREME_NAMES` class from its `hormone_angles`, past
+    magnitude `floor`; non-EE cells are NaN."""
     polar = hormone_angles(cells)
-    strong = (polar["Magnitude"] >= EXTREME_FLOOR) & polar["Angle"].notna()
+    strong = (polar["Magnitude"] >= floor) & polar["Angle"].notna()
     villus, mixed, crypt, low = EXTREME_NAMES
     name = np.select(
         [
