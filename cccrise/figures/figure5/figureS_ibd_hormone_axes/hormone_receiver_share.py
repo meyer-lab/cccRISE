@@ -1,7 +1,7 @@
-"""`hormone_state_share` for the hormone programs' receivers. C3's
-receivers are EC cells and C4's tuft cells, so the two sides never share a
-cell and each type is split alone: per biopsy (at least
-`hormone_state_share.MIN_EE` cells of the type), the share of its EC cells in
+"""`extreme_share` for the hormone programs' receivers. C3's receivers are
+EC cells and C4's tuft cells, so the two sides never share a cell and each
+type is split alone: per biopsy (at least `_common.MIN_EE` cells of the
+type), the share of its EC cells in
 their top `_common.STATE_QUARTILE` of C3 receiver weight, and of its tuft
 cells in theirs of C4, by inflammation status (Kruskal-Wallis p)."""
 
@@ -9,11 +9,10 @@ from functools import partial
 
 import pandas as pd
 
-from .. import common
-from . import _common as S
-from .hormone_state_share import MIN_EE, class_shares
+from ... import common
+from .. import _common as S
 
-AXES = ("rect_half",)  # as wide per slot as `hormone_state_share`
+AXES = ("rect_half",)  # as wide per slot as `extreme_share`
 HIGH = "High"
 #: component -> (receiver type, label)
 RECEIVERS = {
@@ -33,7 +32,7 @@ def receiver_classes(cells: pd.DataFrame, k: int) -> pd.Series:
 
 def plot(axs):
     (ax,) = axs
-    shares = {k: class_shares(partial(receiver_classes, k=k)) for k in RECEIVERS}
+    shares = {k: S.class_shares(partial(receiver_classes, k=k)) for k in RECEIVERS}
     common.source_data(
         "hormone_receiver_share_by_biopsy",
         pd.concat(
@@ -41,7 +40,7 @@ def plot(axs):
             names=["Component", "Biopsy"],
         ).reset_index(),
         f"Share of each biopsy's EC (C3) or tuft (C4) cells (biopsies with at least "
-        f"{MIN_EE}) in that type's top {S.STATE_QUARTILE:.0%} of the component's "
+        f"{S.MIN_EE}) in that type's top {S.STATE_QUARTILE:.0%} of the component's "
         "receiver weight, with the biopsy's inflammation status; Kruskal-Wallis p "
         "across statuses above each.",
     )

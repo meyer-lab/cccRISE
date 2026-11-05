@@ -3,9 +3,10 @@ eigenstates C3 and C4 load on belong to EE, EC and tuft cells: both programs
 send from EE eigenstates, C3 to an EC eigenstate and C4 to tuft eigenstates.
 Where Figure 5's zoomed EE/EC/tuft map sits among all cells, beside the
 programs' receiver weights and their top pairs' receptors on that map, and
-the villus-like hormones on it. The programs use far fewer sender eigenstates
-than the cells they come from, and the two hormone states' markers. Figure
-5E-H show the two programs splitting the EE cells expressing their ligands."""
+the villus-like hormones on it. The magnitude floor behind Figure 5I-K's
+hormone classes; inflammation removes villus-like EE cells but not crypt-like
+ones, and the receivers' high-weight shares by status. Figure 5E-H show the
+two programs splitting the EE cells expressing their ligands."""
 
 from matplotlib.transforms import Bbox
 
@@ -15,9 +16,10 @@ from . import (
     eigenstate_association,
     eigenstate_composition,
     eigenstate_loadings,
-    eigenstate_use,
+    extreme_share,
     hormone_maps,
-    hormone_state_genes,
+    hormone_receiver_share,
+    magnitude_hist,
     receiver_maps,
     receptor_maps,
 )
@@ -26,8 +28,7 @@ LAYOUT = [
     [eigenstate_loadings, eigenstate_association, eigenstate_composition],
     [cell_map, [receiver_maps], [receptor_maps]],
     [hormone_maps],
-    [eigenstate_use],
-    [hormone_state_genes],
+    [magnitude_hist, extreme_share, hormone_receiver_share],
 ]
 #: Stacked map pairs whose one colorbar spans both maps
 SPANNED = (receiver_maps, receptor_maps)

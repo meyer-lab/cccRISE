@@ -21,7 +21,7 @@ from ...factors import load_factors_netcdf
 from ...runners.datasets import DATASETS, IBD_PROGRAMS_DIR, VALIDATION_DIR
 from ...utils import correct_by_read_depth
 from .. import common
-from ..figure2._common import DOT_FRACTIONS, DOT_SIZE_MAX, label_sections
+from ..figure2._common import DOT_FRACTIONS, DOT_SIZE_MAX, GROUP_TAU, label_sections
 
 DATASET = "ibd"
 SPEC = DATASETS[DATASET]
@@ -64,12 +64,33 @@ MAP_GROUPS = {
 PROGRAM_COLORS = {1: common.style.CATEGORICAL[4], 5: common.style.CATEGORICAL[5]}
 #: The hormone programs' colors in line plots
 HORMONE_COLORS = {3: common.style.COLORS["up"], 4: common.style.COLORS["emphasis"]}
-#: An EE cell is in a hormone state when its sender weight on that program is
-#: in the top `STATE_QUARTILE` of EE cells and not in the other's
+#: A receiver cell is high on its program in the top `STATE_QUARTILE` of its
+#: type's receiver weight (`hormone_receiver_share`)
 STATE_QUARTILE = 0.25
-STATE_NAMES = {3: "C3-high (villus-like)", 4: "C4-high (crypt-like)"}
-#: Every EE cell by which programs it is in the top `STATE_QUARTILE` of
-CLASS_NAMES = ["C3 only", "C3 + C4", "C4 only", "Neither"]
+#: Per-biopsy shares are over biopsies with at least this many classified cells
+MIN_EE = 3
+#: Each EE cell's C3 and C4 sender weights over their largest EE value give a
+#: magnitude and, where they sum above 0, an angle (0 degrees C3 only, 90 C4
+#: only, -45 to 135; `hormone_angles`). Cells past `EXTREME_FLOOR` (Figure 2's
+#: cutoff) at angles up to `EXTREME_SECTOR` are fully in C3's state, from
+#: 90 - `EXTREME_SECTOR` in C4's, others past it mixed; the rest (below it,
+#: or summing to at most 0) other
+EXTREME_FLOOR = GROUP_TAU
+EXTREME_SECTOR = 30
+EXTREME_NAMES = ["Villus-like", "Mixed", "Crypt-like", "Other"]
+EXTREME_LABELS = {
+    "Villus-like": "Villus-like (Cmp. 3)",
+    "Mixed": "Mixed",
+    "Crypt-like": "Crypt-like (Cmp. 4)",
+    "Other": "Other",
+}
+#: The angle ranges the extreme classes take, as the angle histogram colors
+#: and keys them
+SECTOR_COLORS = {
+    "Cmp. 3 high": HORMONE_COLORS[3],
+    "Both": common.style.COLORS["muted"],
+    "Cmp. 4 high": HORMONE_COLORS[4],
+}
 ZOOM_NOTE = "zoom: EE, EC, tuft"
 #: Expression maps color each cell by its expression over this quantile
 EXPRESSION_QUANTILE = 0.99
@@ -152,26 +173,69 @@ def association_table(factor: str = "cp_A") -> pd.DataFrame:
     )
 
 
-def hormone_classes(cells: pd.DataFrame) -> pd.Series:
-    """Each EE cell's `CLASS_NAMES` class: whether its C3 and C4 sender
-    weights are in the top `STATE_QUARTILE` of EE cells'; non-EE cells are
-    NaN."""
-    ee = cells["Cell type"] == "Enteroendocrine cells"
-    high = {
-        k: cells[f"C{k} sender weight"]
-        >= cells.loc[ee, f"C{k} sender weight"].quantile(1 - STATE_QUARTILE)
-        for k in STATE_NAMES
+def hormone_angles(cells: pd.DataFrame) -> pd.DataFrame:
+    """EE cells' C3 and C4 sender weights over their largest EE value, their
+    magnitude, and their angle (degrees; NaN where the two sum to at most 0,
+    whose angles wrap)."""
+    ee = cells.loc[cells["Cell type"] == "Enteroendocrine cells"]
+    relative = {
+        k: ee[f"C{k} sender weight"] / ee[f"C{k} sender weight"].max()
+        for k in HORMONE_COLORS
     }
-    key = high[3].map({True: "3", False: ""}) + high[4].map({True: "4", False: ""})
-    return key.map(dict(zip(["3", "34", "4", ""], CLASS_NAMES, strict=True))).where(ee)
+    angle = np.degrees(np.arctan2(relative[4], relative[3]))
+    return pd.DataFrame(
+        {
+            "C3 relative": relative[3],
+            "C4 relative": relative[4],
+            "Magnitude": np.hypot(relative[3], relative[4]),
+            "Angle": angle.where(relative[3] + relative[4] > 0),
+        }
+    )
 
 
-def hormone_states(cells: pd.DataFrame) -> pd.Series:
-    """Each EE cell's hormone state (`STATE_NAMES`: high on one program and
-    not the other, else "Other EE"; `hormone_classes`); non-EE cells NaN."""
-    exclusive = {CLASS_NAMES[0]: STATE_NAMES[3], CLASS_NAMES[2]: STATE_NAMES[4]}
-    classes = hormone_classes(cells)
-    return classes.map(exclusive).fillna("Other EE").where(classes.notna())
+def hormone_extremes(cells: pd.DataFrame) -> pd.Series:
+    """Each EE cell's `EXTREME_NAMES` class from its `hormone_angles`; non-EE
+    cells are NaN."""
+    polar = hormone_angles(cells)
+    strong = (polar["Magnitude"] >= EXTREME_FLOOR) & polar["Angle"].notna()
+    villus, mixed, crypt, low = EXTREME_NAMES
+    name = np.select(
+        [
+            strong & (polar["Angle"] <= EXTREME_SECTOR),
+            strong & (polar["Angle"] >= 90 - EXTREME_SECTOR),
+            strong,
+        ],
+        [villus, crypt, mixed],
+        low,
+    )
+    return pd.Series(name, index=polar.index).reindex(cells.index)
+
+
+def class_shares(classify) -> pd.DataFrame:
+    """Per biopsy with at least `MIN_EE` classified cells, the share of them
+    in each class `classify(cells)` gives (NaN: not classified), with the
+    biopsy's status."""
+    cells = programs("enteroendocrine_cells")
+    state = classify(cells)
+    known = state.notna()
+    shares = pd.crosstab(cells.loc[known, "Biopsy"], state[known], normalize="index")
+    counts = cells.loc[known, "Biopsy"].value_counts()
+    shares = shares[counts.reindex(shares.index) >= MIN_EE]
+    status = samples().set_index(SPEC.condition_column)[GROUP_COLUMN]
+    return shares.assign(Status=status.reindex(shares.index).to_numpy())
+
+
+def cell_histogram(ax, values: pd.Series, bins, color=None) -> list:
+    """Cells' `values` as one histogram; returns the bars, to recolor."""
+    _, _, bars = ax.hist(
+        values,
+        bins=bins,
+        color=color or common.style.COLORS["muted"],
+        edgecolor=common.style.COLORS["ink"],
+        linewidth=common.style.LINE_WIDTH_THIN,
+    )
+    ax.set_ylabel("EE cells")
+    return list(bars)
 
 
 def status_boxes(ax, slots: dict[str, list[pd.Series]]) -> None:
