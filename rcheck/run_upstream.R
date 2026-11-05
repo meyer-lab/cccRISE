@@ -1,8 +1,8 @@
-# Run the pinned upstream Scriabin / NICHES R code on the inputs written by
+# Run the pinned upstream Scriabin R code on the inputs written by
 # rcheck/export_inputs.py, with Python's random draws fed in through shims.
 #
 # Usage:
-#   Rscript rcheck/run_upstream.R <dir> programs      # Scriabin IPs + merge, NICHES modes
+#   Rscript rcheck/run_upstream.R <dir> programs      # Scriabin IPs + merge
 #   Rscript rcheck/run_upstream.R <dir> significance  # needs <dir>/random_sets.json
 #   Rscript rcheck/run_upstream.R <dir> scores        # module scores + exported controls
 #
@@ -79,25 +79,6 @@ if (stage == "programs") {
     names(mod_list) <- paste0("IP-", seq_along(mod_list)); mod_list
   })
   write_json(m_merge, file.path(dir, "r_merged.json"))
-
-  # NICHES, per sample, all three non-spatial modes and blends
-  for (f in list.files(file.path(up, "niches/R"), full.names = TRUE)) source(f)
-  db <- data.frame(lig = lr$ligand_niches, rec = lr$receptor_niches)
-  for (s in names(draws)) {
-    obj <- subset(seu, subset = sample == s)
-    for (blend in c("mean", "sum", "mean.adj")) {
-      res <- RunNICHES(obj, assay = "RNA", LR.database = "custom", custom_LR_database = db,
-                       species = "human", cell_types = "celltype", meta.data.to.map = NULL, min.cells.per.ident = 1,
-                       CellToCell = blend == "mean", SystemToCell = TRUE, CellToSystem = TRUE,
-                       blend = blend, output_format = "raw")
-      write_mat(res$SystemToCell$SystemToCellMatrix, file.path(dir, sprintf("r_s2c_%s_%s.csv", s, blend)))
-      write_mat(res$CellToSystem$CellToSystemMatrix, file.path(dir, sprintf("r_c2s_%s_%s.csv", s, blend)))
-      if (blend == "mean") {
-        write_mat(res$CellToCell$CellToCellMatrix, file.path(dir, sprintf("r_c2c_%s.csv", s)))
-        write.csv(res$CellToCell$metadata[, c("SendingType", "ReceivingType")], file.path(dir, sprintf("r_c2c_meta_%s.csv", s)))
-      }
-    }
-  }
 }
 
 if (stage == "significance") {

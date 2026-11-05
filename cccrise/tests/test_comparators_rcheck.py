@@ -1,4 +1,4 @@
-"""R-vs-Python equivalence of the vendored Scriabin / NICHES comparators.
+"""R-vs-Python equivalence of the vendored Scriabin comparator.
 
 Runs `rcheck/compare.py`'s stages against the upstream R outputs in
 `rcheck/out/check_<dataset>` (written by `rcheck/run_upstream.R`), and

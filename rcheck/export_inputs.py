@@ -1,10 +1,9 @@
-"""Write the shared inputs for the Scriabin / NICHES R-vs-Python checks.
+"""Write the shared inputs for the Scriabin R-vs-Python checks.
 
 Two samples of a registry dataset (by default the first two, in name order,
 with 700-1,000 cells, so Scriabin averages two 300-cell subsamples each), on
 cccRISE's normalized expression, the fit's genes and its LR pairs. Complexes
-are written as min-aggregated pseudo-genes (Scriabin side) and as
-``_``-joined subunits (NICHES side, which multiplies them itself).
+are written as min-aggregated pseudo-genes.
 
 Usage: uv run python rcheck/export_inputs.py OUT [--dataset ibd] [SAMPLE ...]
 (named samples instead of the default two, e.g. for `cell_drop.R`)
@@ -45,10 +44,7 @@ def main(out: Path, dataset: str, samples: list[str]) -> None:
     pd.Series(names).to_csv(out / "features.csv", index=False, header=False)
     meta = inp.obs.iloc[rows].rename_axis("cell").reset_index()
     meta.to_csv(out / "meta.csv", index=False)
-    inp.lr.assign(
-        ligand_niches=inp.lr["ligand"].str.replace("&", "_"),
-        receptor_niches=inp.lr["receptor"].str.replace("&", "_"),
-    ).to_csv(out / "lr.csv", index=False)
+    inp.lr.to_csv(out / "lr.csv", index=False)
 
     # Scriabin subsamples: Python's stratified draws, fed to R through a
     # `sample_n` shim (per type, in call order).

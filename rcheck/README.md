@@ -1,11 +1,11 @@
 # R-vs-Python checks for the vendored comparators
 
-`cccrise/comparators/{scriabin,niches,_wgcna}.py` re-implement Scriabin's
-interaction-program workflow and NICHES' cell-to-cell / system modes. These
+`cccrise/comparators/{scriabin,_wgcna}.py` re-implement Scriabin's
+interaction-program workflow. These
 scripts run the pinned upstream R code on the same inputs, with Python's random
 draws fed into R through shims, and compare every stage.
 
-Upstream pins: scriabin `bce695b`, NICHES `5d932b8`, WGCNA 1.74,
+Upstream pins: scriabin `bce695b`, WGCNA 1.74,
 dynamicTreeCut 1.63-1, Seurat 5.6.0 (R 4.5.2).
 
 ```sh
@@ -13,7 +13,6 @@ dynamicTreeCut 1.63-1, Seurat 5.6.0 (R 4.5.2).
 Rscript rcheck/install.R                     # Seurat, WGCNA, qlcMatrix, ... into rcheck/lib
 Rscript rcheck/install_faithful.R            # ALRA, SeuratWrappers, LISI, rsvd 1.0.5
 git clone https://github.com/BlishLab/scriabin rcheck/upstream/scriabin && git -C rcheck/upstream/scriabin checkout bce695b
-git clone https://github.com/msraredon/NICHES rcheck/upstream/niches && git -C rcheck/upstream/niches checkout 5d932b8
 R CMD INSTALL -l rcheck/lib rcheck/scriabin_stub   # exposes scriabin::mapvalues / LoadLR only
 
 # stage checks, per dataset (two samples each; cccRISE's expression / genes / LR pairs)
@@ -34,7 +33,7 @@ uv run python rcheck/wgcna_compare.py rcheck/out/wgcna compare
 uv run pytest -n 0 cccrise/tests/test_comparators_rcheck.py   # reruns all comparisons
 ```
 
-Result (2026-11-02, `sc-comparator-concordance`): ALAD 95/95, IBD 137/137,
+Result (2026-11-05, `sc-comparator-concordance`): ALAD 63/63, IBD 105/105,
 WGCNA 184/184 (4 similarities x 9 settings).
 
 `rcheck/patched_ip.R` exposes the two module-discovery settings upstream

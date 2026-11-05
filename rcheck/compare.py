@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import scipy.io
 
-from cccrise.comparators import niches, scriabin
+from cccrise.comparators import scriabin
 from cccrise.comparators.inputs import entity_expression
 
 N_REPLICATE_CHECK = 200
@@ -135,86 +135,6 @@ def programs(d: Path) -> None:
             for m, v in r_merged.items()
         ]
     (d / "random_sets.json").write_text(json.dumps(sets))
-
-    niches_checks(d, X, features, meta, lr)
-
-
-def niches_checks(d: Path, X, features, meta, lr) -> None:
-    lig_all = entity_expression(X, features, lr["ligand"], "product")
-    rec_all = entity_expression(X, features, lr["receptor"], "product")
-    for s in meta["sample"].unique():
-        in_sample = meta["sample"].to_numpy() == s
-        keep = np.zeros(len(meta), bool)
-        keep[in_sample] = niches.filter_cells_per_type(
-            meta["celltype"].to_numpy()[in_sample], 1
-        )
-        cells = meta["cell"].to_numpy()[keep]
-        lig, rec = lig_all[keep], rec_all[keep]
-        for blend in niches.BLENDS:
-            for mode, fn in (
-                ("s2c", niches.system_to_cell),
-                ("c2s", niches.cell_to_system),
-            ):
-                r = pd.read_csv(d / f"r_{mode}_{s}_{blend}.csv", index_col=0)
-                r_cells = [c.split("—")[1 if mode == "s2c" else 0] for c in r.columns]
-                order = pd.Index(cells).get_indexer(r_cells)
-                check(
-                    f"niches[{s}] {mode} {blend} cells",
-                    (order >= 0).all() and len(order) == len(cells),
-                    f"{len(order)} cells",
-                )
-                close(
-                    f"niches[{s}] {mode} {blend}",
-                    fn(lig, rec, blend)[order].T,
-                    r.to_numpy(),
-                    1e-10,
-                )
-        r = pd.read_csv(d / f"r_c2c_{s}.csv", index_col=0)
-        rmeta = pd.read_csv(d / f"r_c2c_meta_{s}.csv", index_col=0)
-        pairs = pd.DataFrame([c.split("—") for c in r.columns], columns=["s", "r"])
-        idx = pd.Index(cells)
-        edges = pd.DataFrame(
-            {
-                "sender": idx.get_indexer(pairs["s"]),
-                "receiver": idx.get_indexer(pairs["r"]),
-            }
-        )
-        close(
-            f"niches[{s}] c2c values on R's pairs",
-            niches.cell_to_cell(lig, rec, edges).T,
-            r.to_numpy(),
-            1e-10,
-        )
-        types = pd.Series(meta["celltype"].to_numpy()[keep])
-        n_type = types.value_counts()
-        block = rmeta.groupby(["SendingType", "ReceivingType"]).size()
-        expected = {
-            (a, b): min(n_type[a], n_type[b])
-            for a in n_type.index
-            for b in n_type.index
-        }
-        check(
-            f"niches[{s}] c2c block sizes",
-            block.to_dict() == expected,
-            f"{len(block)} type pairs",
-        )
-        py = niches.cell_to_cell_pairs(types.to_numpy(), np.random.default_rng(0))
-        py_block = py.groupby(["sending_type", "receiving_type"]).size().to_dict()
-        check(
-            f"niches[{s}] c2c Python block sizes",
-            py_block == expected,
-            f"{len(py)} edges",
-        )
-        no_repeat = (
-            rmeta.assign(s=pairs["s"].to_numpy(), r=pairs["r"].to_numpy())
-            .groupby(["SendingType", "ReceivingType"])
-            .agg(lambda x: x.is_unique)
-        )
-        check(
-            f"niches[{s}] c2c no repeats within a block (R)",
-            bool(no_repeat.to_numpy().all()),
-            "",
-        )
 
 
 def significance(d: Path) -> None:

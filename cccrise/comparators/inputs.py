@@ -1,4 +1,4 @@
-"""Shared inputs for the single-cell comparators (Scriabin, NICHES).
+"""Shared inputs for the single-cell comparator (Scriabin).
 
 The comparators run on exactly what cccRISE sees, not on each method's own
 preprocessing (`CONCORDANCE_PLAN.md` decision 3, the "R-shared" arm):
@@ -9,10 +9,9 @@ preprocessing (`CONCORDANCE_PLAN.md` decision 3, the "R-shared" arm):
   the fit's order;
 - multi-subunit complexes are aggregated as cccRISE aggregates them
   (``min`` across subunits, as `ccc_rise.add_complexes_to_expression`: a
-  complex with any subunit missing is 0). Upstream NICHES multiplies
-  subunits (``agg="product"``, kept for the R checks); upstream Scriabin
-  drops complexes, whose names are not genes, so they enter it as
-  pseudo-genes (`with_complex_pseudogenes`).
+  complex with any subunit missing is 0; ``agg="product"`` multiplies
+  subunits instead). Upstream Scriabin drops complexes, whose names are not
+  genes, so they enter it as pseudo-genes (`with_complex_pseudogenes`).
 """
 
 from collections.abc import Sequence
