@@ -10,6 +10,7 @@ from cccrise.comparators.niches_programs import (
     EXPRESSION,
     RANDOM,
     RANDOM_EXPRESSION,
+    SIDES,
     TAUS,
     WEIGHT,
     Cohort,
@@ -94,6 +95,17 @@ def test_direction_draws_take_the_populations_cells_per_type(cohort):
     assert direction_draws(cohort, positive, population, axis)[0] == pytest.approx(
         positive[population].mean()
     )
+
+
+def test_populations_cut_each_weight_on_its_own():
+    cells = pd.DataFrame(
+        {"Coarse": ["a"] * 3, "Fine": ["a"] * 3}
+        | {f"{side} C1": [1.0, 0.5, 0.1] for side in ("Sender", "Receiver")}
+    )
+    cohort = Cohort(cells, np.zeros((3, 2), np.float32))
+    # Collinear weights: the same cells pass both cutoffs, in both populations
+    for side in SIDES:
+        assert cohort.population(1, side, tau=0.3).tolist() == [True, True, False]
 
 
 def test_population_table_recovers_a_planted_population(cohort):

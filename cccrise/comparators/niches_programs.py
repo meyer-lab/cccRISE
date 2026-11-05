@@ -7,8 +7,11 @@ sample: CellToSystem as a sender, SystemToCell as a receiver. A component's
 NICHES+ when that score is non-zero, and a set of cells' *NICHES concordance*
 is its share of NICHES+ cells.
 
-A component's populations are Figure 2's (`figure2._common.split_cells`,
-label-free). Three tables follow them:
+A component's populations are label-free: its sender population is the cells
+whose sender weight is at least `GROUP_TAU` x its largest value, and its
+receiver population likewise on the receiver weight (`Cohort.population`). A
+cell past both cutoffs is in both, so a component whose sender and receiver
+weights are collinear is not split arbitrarily. Three tables follow them:
 
 - `population_table`: each population's concordance against what its own label
   composition predicts (each cell at its type's rate), and against random RISE
@@ -30,7 +33,7 @@ from scipy.sparse import csc_matrix, csr_matrix
 from scipy.stats import false_discovery_control
 
 from ..covariation import carrying_pairs
-from ..figures.figure2._common import GROUP_TAU, split_cells
+from ..figures.figure2._common import GROUP_TAU
 
 #: A population is scorable when this share of its cells is NICHES+
 SCORABLE = 0.10
@@ -133,13 +136,16 @@ class Cohort:
 
     def population(self, k: int, side: str, tau: float = GROUP_TAU) -> np.ndarray:
         """Mask of component `k`'s `side` population at `tau`."""
-        sender = self.cells[f"Sender C{k}"].to_numpy()
-        receiver = self.cells[f"Receiver C{k}"].to_numpy()
-        return split_cells(sender, receiver, tau)[side]
+        return in_population(self.column("", k, side), tau)
 
     def column(self, kind: str, k: int, side: str) -> np.ndarray:
         """A per-cell column: `kind` is "" (the weight), "Signal" or "NICHES"."""
         return self.cells[f"{kind} {side.title()} C{k}".strip()].to_numpy()
+
+
+def in_population(weight: np.ndarray, tau: float = GROUP_TAU) -> np.ndarray:
+    """Cells whose `weight` is at least `tau` x its largest value."""
+    return weight >= tau * weight.max()
 
 
 def random_directions(n_eigenstates: int, n: int, random_state: int) -> np.ndarray:

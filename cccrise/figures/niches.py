@@ -22,16 +22,11 @@ from ..comparators.niches_programs import (
     SCORABLE,
     SIDES,
     WEIGHT,
+    in_population,
 )
 from ..runners.datasets import NICHES_DIR, scores_filename
 from . import common, style
-from .figure2._common import (
-    GROUP_COLORS,
-    GROUP_TAU,
-    plot_split_boundary,
-    plot_weight_scatter,
-    split_cells,
-)
+from .figure2._common import GROUP_TAU, plot_weight_scatter
 
 DATASET = "ibd"
 #: Each figure's components, in drawing order
@@ -72,6 +67,12 @@ MIN_TAU_CELLS = 10
 #: `weight_scatters`' ticks, on relative weights
 SCATTER_TICKS = (0, 0.5, 1)
 SCATTER_PAD = 0.05
+#: `weight_scatters`' populations: a cell past both cutoffs is in both
+POPULATION_COLORS = {
+    "Sender": style.COLORS["sender"],
+    "Receiver": style.COLORS["receiver"],
+    "Both": style.COLORS["highlight"],
+}
 #: Extra room between the figures' two rows
 ROW_GAP = 6 * style.MM
 
@@ -230,8 +231,8 @@ def concordance(axs, components, legend_outside: bool = False) -> None:
             }
         ),
         f"Each component's sender and receiver populations, the cells past "
-        f"{GROUP_TAU} x that weight's largest value, split by relative weight "
-        "(Figure 2). NICHES concordance: share of the population's cells with a "
+        f"{GROUP_TAU} x that weight's largest value (a cell past both cutoffs is "
+        "in both). NICHES concordance: share of the population's cells with a "
         "non-zero NICHES program score. Fine label and lineage predicted: the same "
         "with each cell at its type's rate. Direction 5th and 95th: percentiles of "
         f"the concordance of {N_POPULATION_DRAWS:,} random RISE directions, each "
@@ -425,7 +426,7 @@ def orderings(axs, components) -> None:
 
 def weight_scatters(axs) -> None:
     """Each component's per-cell sender vs. receiver weight, relative to each
-    weight's largest value, its populations (`split_cells`) colored and the
+    weight's largest value, its populations (`in_population`) colored and the
     `GROUP_TAU` cutoffs drawn, on limits shared by every component."""
     adata = common.get_cell_projections(DATASET)
     senders, receivers = (
@@ -436,21 +437,26 @@ def weight_scatters(axs) -> None:
     cells = {}
     for k, ax in enumerate(axs, start=1):
         sender, receiver = senders[:, k - 1], receivers[:, k - 1]
-        groups = split_cells(sender, receiver)
-        plot_weight_scatter(
-            ax,
-            sender,
-            receiver,
-            {g.title(): m for g, m in groups.items()},
-            {g.title(): c for g, c in GROUP_COLORS.items()},
-        )
+        sends, receives = in_population(sender), in_population(receiver)
+        groups = {
+            "Sender": sends & ~receives,
+            "Receiver": receives & ~sends,
+            "Both": sends & receives,
+        }
+        plot_weight_scatter(ax, sender, receiver, groups, POPULATION_COLORS)
+        for line in (ax.axvline, ax.axhline):
+            line(
+                GROUP_TAU,
+                color=style.COLORS["reference"],
+                ls=style.LINE_STYLE_REFERENCE,
+                lw=style.LINE_WIDTH_THIN,
+            )
         ax.set(xlim=(lower, 1 + SCATTER_PAD), ylim=(lower, 1 + SCATTER_PAD))
-        plot_split_boundary(ax, 1, 1)
         ax.set_title(f"C{k}", fontsize=style.FONT_SIZE_LABEL, pad=2)
         ax.set_xticks(SCATTER_TICKS)
         ax.set_yticks(SCATTER_TICKS, labels=None if k == 1 else [])
         ax.set_xlabel("Sender", fontsize=style.FONT_SIZE_DENSE)
-        group = np.select([groups["sender"], groups["receiver"]], SIDES, "rest")
+        group = np.select(list(groups.values()), [g.lower() for g in groups], "rest")
         cells |= {
             f"Sender C{k}": sender,
             f"Receiver C{k}": receiver,
@@ -460,7 +466,7 @@ def weight_scatters(axs) -> None:
     axs[0].legend(
         handles=[
             Line2D([], [], ls="", marker="o", ms=2.5, mfc=c, mec=c, label=g.title())
-            for g, c in GROUP_COLORS.items()
+            for g, c in POPULATION_COLORS.items()
         ],
         loc="upper left",
         fontsize=style.FONT_SIZE_DENSE,
@@ -472,7 +478,7 @@ def weight_scatters(axs) -> None:
         "cell_weights_groups",
         pd.DataFrame({"Cell": adata.obs_names, **cells}),
         "One row per cell: its sender and receiver weight on each CP component, "
-        "each relative to that weight's largest value, and its group (sender or "
-        f"receiver if either relative weight is at least {GROUP_TAU}, assigned to "
-        "the role of the larger one; rest otherwise).",
+        "each relative to that weight's largest value, and its group: sender or "
+        f"receiver if only that relative weight is at least {GROUP_TAU}, both if "
+        "both are, rest otherwise.",
     )
