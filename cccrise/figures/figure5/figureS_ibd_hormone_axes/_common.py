@@ -47,8 +47,8 @@ def eigenstates() -> dict[str, list[int]]:
 
 def eigenstate_rows(ax) -> list[int]:
     """Label `ax`'s rows with the programs' eigenstates, sender then receiver,
-    bold in the role's color (as `eigenstate_heatmap`'s ticks) and split by a
-    line; returns the eigenstates in row order."""
+    bold in the role's color and split by a line; returns the eigenstates in
+    row order."""
     groups = eigenstates()
     rows = groups["sender"] + groups["receiver"]
     ax.set_yticks(range(len(rows)), [f"E{j}" for j in rows])

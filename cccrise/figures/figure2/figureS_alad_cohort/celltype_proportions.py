@@ -86,10 +86,13 @@ def draw(
         "dodge": True,
         "ax": ax,
     }
+    # stripplot dodges its points over 0.8 of each category; boxes dodged over
+    # the same width line up with them, `gap` keeping each box 0.7 / n wide
     sns.boxplot(
         **shared,
         palette=colors,
-        width=0.7,
+        width=0.8,
+        gap=0.125,
         fliersize=0,
         linewidth=style.LINE_WIDTH_THIN,
         boxprops={"alpha": 0.8},

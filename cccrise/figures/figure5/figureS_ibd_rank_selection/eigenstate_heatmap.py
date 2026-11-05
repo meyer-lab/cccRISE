@@ -1,8 +1,7 @@
 """Cell category x every RISE eigenstate: each category's mean projection
 (as `figureS_celltype_eigenstates` for ALAD), from
-`run_ibd_programs.eigenstate_celltypes`; the hormone programs' sender and
-receiver eigenstates (`_common.eigenstates`) labeled bold in the sender and
-receiver colors."""
+`run_ibd_programs.eigenstate_celltypes`, categories as
+`figureS_ibd_hormone_axes` breaks the hormone programs' eigenstates down."""
 
 import numpy as np
 
@@ -37,11 +36,7 @@ def plot(axs):
         range(mean.shape[1]), mean.columns, rotation=90, fontsize=style.FONT_SIZE_DENSE
     )
     ax.set_yticks(range(len(mean)), mean.index, fontsize=style.FONT_SIZE_DENSE)
-    roles = {j: role for role, js in H.eigenstates().items() for j in js}
-    for label in ax.get_xticklabels():
-        if (role := roles.get(int(label.get_text()))) is not None:
-            label.set(fontweight="bold", color=style.COLORS[role])
-    ax.set_xlabel("RISE eigenstate (bold: C3/C4 sender, receiver)")
+    ax.set_xlabel("RISE eigenstate")
     ax.tick_params(length=0)
     common.colorbar(ax, image, "Mean projection")
 

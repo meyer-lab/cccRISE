@@ -3,8 +3,7 @@ selection, Figure 2A-D's for ALAD with BiCV test on its own axis, the fit
 R2X across seeded starts in place of fit and imputation R2X, and the
 collinearity of the other CP modes; the RISE condition and gene factors at
 the selected rank, as ALAD's are drawn (`figure2.figureS_rise_factor_matrices`);
-and every eigenstate's cell type association, the hormone programs'
-eigenstates marked."""
+and every eigenstate's cell type association."""
 
 from ... import common, style
 from . import (
