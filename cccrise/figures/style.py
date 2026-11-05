@@ -99,19 +99,14 @@ AXIS_SIZE = {
     "half": (64 * MM, AXIS_HEIGHT),
     # A labeled map of every lineage, beside a 2 x 2 of squares
     "large_square": (60 * MM, 60 * MM),
-    # The NICHES panels (`figures.niches`): the IBD supplement's, and Figure
-    # 5's of components 3 and 4
-    "niches_scatter": (24 * MM, 24 * MM),
-    "niches_concordance": (88 * MM, AXIS_HEIGHT),
-    "niches_orderings_ibd": (112 * MM, 30 * MM),
-    "niches_concordance_main": (70 * MM, 18 * MM),
-    "niches_orderings_main": (100 * MM, 15 * MM),
-    "niches_tau_main": (38 * MM, 48 * MM),
 }
 # Between the axes of one panel split side by side (`common._Joined`)
 JOINED_GAP = 1.5 * MM
 # Half a square: two joined fill exactly a square's place (tall, narrow maps)
 AXIS_SIZE["half_square"] = ((AXIS_HEIGHT - JOINED_GAP) / 2, AXIS_HEIGHT)
+# Six joined squares spanning "full" (small multiples)
+_SIXTH = (AXIS_SIZE["full"][0] - 5 * JOINED_GAP) / 6
+AXIS_SIZE["full_sixth"] = (_SIXTH, _SIXTH)
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
 PANEL_GAP_MAX = 4 * MM

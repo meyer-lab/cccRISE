@@ -2,7 +2,7 @@
 
 from .. import common, niches
 
-AXES = ("niches_tau_main",)
+AXES = ("mid",)
 
 
 def plot(axs):

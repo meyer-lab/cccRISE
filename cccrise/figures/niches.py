@@ -8,7 +8,6 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap, LogNorm, Normalize
-from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 
@@ -81,8 +80,6 @@ POPULATION_COLORS = {
     "Receiver": style.COLORS["receiver"],
     "Both": style.COLORS["highlight"],
 }
-#: Extra room between the figures' two rows
-ROW_GAP = 6 * style.MM
 
 
 def load(name: str) -> pd.DataFrame:
@@ -91,15 +88,6 @@ def load(name: str) -> pd.DataFrame:
         NICHES_DIR,
         f"uv run cccrise-niches --dataset {DATASET}",
     )
-
-
-def compose(layout: list[list]) -> Figure:
-    """`layout` at full width, its rows `ROW_GAP` apart."""
-    gap, style.ROW_GAP = style.ROW_GAP, ROW_GAP
-    try:
-        return common.compose_fixed(layout, width=style.FIGURE_WIDTH_DOUBLE)
-    finally:
-        style.ROW_GAP = gap
 
 
 def cases(components) -> list[tuple[int, str]]:

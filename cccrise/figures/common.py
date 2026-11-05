@@ -268,9 +268,8 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
 
 
 def _letter_axes(fig: Figure, placements) -> None:
-    """Letter each axes A, B, C, ... (only the first of a `_Joined` or
-    `ONE_LETTER` module) in reading order (by its letter's height, then left
-    to right) at its left margin and its row's top, tagged with its panel
+    """Letter each axes A, B, C, ... (only the first of a `_Joined`
+    module) in reading order (by its letter's height, then left to right) at its left margin and its row's top, tagged with its panel
     module's name for `record_panel_letters`."""
     width, height = fig.get_size_inches()
     lettered = [p for p in placements if p[0].lettered]
@@ -422,9 +421,7 @@ def _draw_fixed(fig: Figure, module) -> list[_AxesBox]:
         w, h = style.AXIS_SIZE[kind]
         ax = fig.add_axes((0.4, 0.4, w / FIXED_MEASURE_SIZE, h / FIXED_MEASURE_SIZE))
         ax.set_label(module.__name__.rsplit(".", 1)[-1])  # found by `panel_axes`
-        # A module with `ONE_LETTER` set is lettered once, at its first axes
-        lettered = not (boxes and getattr(module, "ONE_LETTER", False))
-        boxes.append(_AxesBox(ax, w, h, lettered=lettered))
+        boxes.append(_AxesBox(ax, w, h))
     _SOURCE["panel"] = module.__name__.rsplit(".", 1)[-1]
     module.plot([b.ax for b in boxes])
     for b in boxes:

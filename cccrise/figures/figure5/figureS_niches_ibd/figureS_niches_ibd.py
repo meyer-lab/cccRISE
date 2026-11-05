@@ -2,9 +2,12 @@
 NICHES: their concordance over what their labels predict, across tau, and how
 weighting any direction by expression reaches NICHES (`figures.niches`)."""
 
-from ... import niches
+from ... import common, style
 from . import concordance, orderings, tau_sweep, weight_scatters
 
 
 def makeFigure():
-    return niches.compose([[weight_scatters], [concordance, tau_sweep], [orderings]])
+    return common.compose_fixed(
+        [[weight_scatters], [concordance, tau_sweep], [orderings]],
+        width=style.FIGURE_WIDTH_DOUBLE,
+    )

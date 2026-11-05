@@ -2,7 +2,7 @@
 
 from .. import common, niches
 
-AXES = ("niches_orderings_main",)
+AXES = ("full_strip",)
 
 
 def plot(axs):
