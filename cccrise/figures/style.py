@@ -93,6 +93,9 @@ AXIS_SIZE = {
     "mid": (38 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect
     "half": (64 * MM, AXIS_HEIGHT),
+    # The NICHES supplements (`figures.niches`)
+    "niches_concordance": (88 * MM, AXIS_HEIGHT),
+    "niches_orderings": (112 * MM, 46 * MM),
 }
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
