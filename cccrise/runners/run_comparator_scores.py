@@ -11,6 +11,15 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
 - ``containment``: the sample and LR columns of every fit ('Of') in the
   span of every other ('In'), cccRISE and each comparator alike, with the
   row-permutation null.
+- ``label_ceiling``: per cccRISE program, side and labelling, the share of
+  its per-cell weight's variance that (sample x cell type) means hold, the
+  most any method pooling cells by sample and annotation could represent,
+  beside each of `CEILING_METHODS`' LR column closest to the program
+  (greatest |cosine|), painted on cells as the cell's sample loading x its
+  type loading (`label_ceiling_rows`).
+- ``fit_ranks``: each comparator fit's rank.
+- ``start_congruence``: each Tensor-cell2cell start's largest congruence
+  product (`methods.start_congruence`).
 - ``breadth``: every component's effective number and top share per mode
   (LR pairs, senders, receivers, samples), with its top label.
 - ``lr_loadings``: every fit's LR columns, one row per LR pair and
@@ -51,9 +60,14 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
 Each labelling's permutation nulls draw from their own generator, seeded
 by ``--random-state``, so no table's draws depend on another's.
 
+``--fits-only`` writes only `fit_tables`' tables, which need the fits and
+per-cell weights but no tensors: all IBD's figures read, as its supplements
+show reach and not the tensor-based analyses.
+
 Usage:
 
     uv run cccrise-comparator-scores --dataset alad
+    uv run cccrise-comparator-scores --dataset ibd --fits-only
 """
 
 import argparse
@@ -67,7 +81,7 @@ from scipy.stats import spearmanr
 
 from .. import covariation
 from ..anova import _resolve_factors_and_metadata, run_multiple_factors_anova
-from ..comparators import scores
+from ..comparators import methods, scores
 from ..comparators.scores import Components
 from ..comparators.tensors import (
     PooledTensor,
@@ -83,6 +97,7 @@ from ..import_data import import_ligand_receptor_pairs
 from ._cli import add_dataset_argument, dataset_metadata, parse_command, resolve_dataset
 from .datasets import (
     COMPARATOR_FITS_DIR,
+    COMPARATOR_RANKS_DIR,
     COMPARATOR_SCORES_DIR,
     DatasetSpec,
     comparator_filename,
@@ -91,6 +106,10 @@ from .datasets import (
 from .provenance import build_metadata, git_sha, record_output, sha256_file
 
 METHODS = {"pb": "PB", "tc2c": "TC2C", "tc2c_inner": "TC2C inner", "stac": "STAC"}
+#: The comparators `label_ceiling_rows` paints on cells.
+CEILING_METHODS = ("PB", "STAC")
+#: Each side's per-cell weights in `load_factors_to_anndata`'s ``obsm``.
+WEIGHTS = {"sender": "sc_B", "receiver": "rc_C"}
 N_NULL = 1000
 #: An association counts below this FDR (`pair_covariation_rows`).
 SIG_ALPHA = 0.05
@@ -162,6 +181,76 @@ def column_profiles(
             m: components.modes[m][[column]] for m in ("sample", "sender", "receiver")
         }
     return {m: scores.oriented(f)[column] for m, f in frames.items()}
+
+
+def label_ceiling_rows(
+    spec: DatasetSpec, cells, column: str, fits, comparators, cccrise: Components
+) -> pd.DataFrame:
+    """Each program's label ceiling per side (`scores.group_r2` of its
+    per-cell weight on sample x type), with what each of `CEILING_METHODS`'
+    closest LR column holds of that weight: the column's sample loading x
+    type loading on every cell (`scores.paint_r2`). A type or sample a
+    column's fit lacks has no loading, so paints zero."""
+    labels = cells.obs[column].astype(str).to_numpy()
+    samples = cells.obs[spec.condition_column].astype(str).to_numpy()
+    groups = pd.Series(samples).str.cat(labels, sep="|").to_numpy()
+    programs = cccrise.modes["lr"]
+    weights = {side: np.asarray(cells.obsm[key]) for side, key in WEIGHTS.items()}
+    ceilings = {
+        (side, i): scores.group_r2(w[:, i], groups)
+        for side, w in weights.items()
+        for i in range(programs.shape[1])
+    }
+    rows = []
+    for other in comparators:
+        if other.method not in CEILING_METHODS:
+            continue
+        columns = other.modes["lr"]
+        reference = programs.loc[columns.index].to_numpy()
+        cosine = np.abs(
+            scores.unit_columns(reference).T @ scores.unit_columns(columns.to_numpy())
+        )
+        for i, program in enumerate(programs.columns):
+            closest = columns.columns[int(cosine[i].argmax())]
+            profile = column_profiles(fits[other.method], other, closest)
+            sample = profile["sample"].reindex(samples, fill_value=0).to_numpy()
+            for side, w in weights.items():
+                paint = profile[side].reindex(labels, fill_value=0).to_numpy()
+                rows.append(
+                    {
+                        "Side": side,
+                        "Component": program,
+                        "Ceiling": ceilings[side, i],
+                        "Method": other.method,
+                        "Column": closest,
+                        "Cosine": float(cosine[i].max()),
+                        "Painted": scores.paint_r2(w[:, i], sample * paint),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def fit_rank_rows(fits: dict[str, xr.Dataset]) -> pd.DataFrame:
+    """The rank each CP fit was written at (a Tucker fit has a core instead)."""
+    return pd.DataFrame(
+        [
+            {"Method": method, "Rank": int(fit.attrs["rank"])}
+            for method, fit in fits.items()
+            if "core" not in fit
+        ]
+    )
+
+
+def start_congruence_rows(spec: DatasetSpec, labelling: str) -> pd.DataFrame:
+    """Each Tensor-cell2cell variant's `methods.start_congruence`."""
+    frames = []
+    for key in ("tc2c", "tc2c_inner"):
+        path = COMPARATOR_RANKS_DIR / comparator_filename(
+            key, "starts", spec.output_key, labelling
+        )
+        with xr.open_dataset(path, engine="h5netcdf") as starts:
+            frames.append(methods.start_congruence(starts).assign(Method=METHODS[key]))
+    return pd.concat(frames, ignore_index=True)
 
 
 def inner_loss_tables(cells, column: str, tensors: dict[str, PooledTensor]) -> dict:
@@ -509,27 +598,54 @@ def _associations(adata, spec: DatasetSpec) -> pd.DataFrame:
     )
 
 
-def score_labelling(
-    spec: DatasetSpec, adata, cells, labelling: str, random_state: int, cccrise_context
-) -> tuple[dict, list[dict]]:
-    """The tables of one labelling (module docstring), and its components'
-    scoring contexts."""
-    rng = np.random.default_rng(random_state)
-    column = spec.labellings[labelling]
+def labelling_components(spec: DatasetSpec, cells, labelling: str) -> tuple:
+    """One labelling's fits, their `Components` and cccRISE's."""
     fits = load_fits(spec, labelling)
     comparators = [
         scores.comparator_components(method, fit) for method, fit in fits.items()
     ]
     celltypes = fits["PB"]["sender"].to_numpy().astype(str)
     cccrise = scores.cccrise_components(
-        load_factors_netcdf(spec.factors_path()), cells, column, celltypes
+        load_factors_netcdf(spec.factors_path()),
+        cells,
+        spec.labellings[labelling],
+        celltypes,
     )
+    return fits, comparators, cccrise
+
+
+def fit_tables(
+    spec: DatasetSpec, cells, labelling: str, random_state: int, components: tuple
+) -> dict:
+    """The tables of one labelling that need no tensors, from
+    `labelling_components`' `components`."""
+    fits, comparators, cccrise = components
+    rng = np.random.default_rng(random_state)
+    column = spec.labellings[labelling]
+    return {
+        "containment": containment_rows([cccrise, *comparators], rng),
+        "label_ceiling": label_ceiling_rows(
+            spec, cells, column, fits, comparators, cccrise
+        ),
+        "fit_ranks": fit_rank_rows(fits),
+        "start_congruence": start_congruence_rows(spec, labelling),
+    }
+
+
+def score_labelling(
+    spec: DatasetSpec, adata, cells, labelling: str, random_state: int, cccrise_context
+) -> tuple[dict, list[dict]]:
+    """The tables of one labelling (module docstring), and its components'
+    scoring contexts."""
+    column = spec.labellings[labelling]
+    components = labelling_components(spec, cells, labelling)
+    fits, comparators, cccrise = components
     tensors = context_tensors(spec, adata, column)
     contexts = component_contexts(fits, comparators, cccrise_context, tensors)
     profiles = sample_profiles(fits, comparators, cccrise)
     obs = sample_obs(spec, adata)
     tables = {
-        "containment": containment_rows([cccrise, *comparators], rng),
+        **fit_tables(spec, cells, labelling, random_state, components),
         "breadth": breadth_rows([cccrise, *comparators]),
         "lr_loadings": lr_loading_rows([cccrise, *comparators]),
         **inner_loss_tables(cells, column, tensors),
@@ -543,18 +659,47 @@ def score_labelling(
     return tables, contexts
 
 
+def merged_labellings(tables: dict) -> dict:
+    """Each table of `tables` (keyed by labelling), every labelling's rows
+    in it under a ``Labelling`` column."""
+    first = next(iter(tables.values()))
+    return {
+        what: pd.concat(
+            {lab: t[what] for lab, t in tables.items()}, names=["Labelling"]
+        )
+        .reset_index(level="Labelling")
+        .reset_index(drop=True)
+        for what in first
+    }
+
+
 def run_comparator_scores(
     spec: DatasetSpec,
     random_state: int,
     command: str = "uv run cccrise-comparator-scores",
+    fits_only: bool = False,
 ) -> None:
-    """Every table (module docstring) of `spec`, its provenance recorded as
-    written by `command`."""
+    """Every table (module docstring) of `spec`, or with `fits_only` only
+    `fit_tables`', their provenance recorded as written by `command`."""
     git_sha()
     labellings = list(spec.labellings)
     print(f"=== Comparator scores: {spec.label}; {', '.join(labellings)} ===")
     adata = spec.load()
     cells = load_factors_to_anndata(spec.factors_path(), adata=adata)
+    metadata = _metadata(spec, labellings, random_state)
+    if fits_only:
+        tables = {
+            lab: fit_tables(
+                spec,
+                cells,
+                lab,
+                random_state,
+                labelling_components(spec, cells, lab),
+            )
+            for lab in labellings
+        }
+        write_tables(spec, merged_labellings(tables), metadata, command)
+        return
     factors = load_factors_netcdf(spec.factors_path())
     cccrise_context = (
         covariation.cccrise_tensor(spec.factors_path(), adata, spec.condition_column),
@@ -566,16 +711,9 @@ def run_comparator_scores(
             spec, adata, cells, labelling, random_state, cccrise_context
         )
     associations = {lab: t["associations"] for lab, t in tables.items()}
-    merged = {
-        what: pd.concat(
-            {lab: t[what] for lab, t in tables.items()}, names=["Labelling"]
-        )
-        .reset_index(level="Labelling")
-        .reset_index(drop=True)
-        for what in tables[labellings[0]]
-    }
+    merged = merged_labellings(tables)
     merged["pair_covariation"] = pair_covariation_rows(contexts, associations)
-    write_tables(spec, merged, _metadata(spec, labellings, random_state), command)
+    write_tables(spec, merged, metadata, command)
 
 
 def _metadata(spec: DatasetSpec, labellings, random_state: int) -> dict:
@@ -615,6 +753,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_dataset_argument(parser)
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument(
+        "--fits-only",
+        action="store_true",
+        help="Write only the tables that need no tensors (module docstring).",
+    )
     return parser
 
 
@@ -625,6 +768,7 @@ def main(argv: list[str] | None = None) -> None:
         spec,
         args.random_state,
         command,
+        args.fits_only,
     )
 
 

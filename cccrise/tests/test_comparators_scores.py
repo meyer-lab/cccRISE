@@ -80,3 +80,15 @@ def test_weight_share_of_a_group_of_cells():
     weights = pd.DataFrame({1: [1.0, -1.0, 2.0], 2: [0.0, 0.0, 3.0]})
     shares = scores.weight_share(weights, np.array([True, False, False]))
     np.testing.assert_allclose(shares, [0.25, 0.0])
+
+
+def test_group_r2_is_the_share_group_means_hold():
+    values = np.array([1.0, 1.0, 3.0, 3.0])
+    assert scores.group_r2(values, np.array([0, 0, 1, 1])) == pytest.approx(1)
+    assert scores.group_r2(values, np.array([0, 1, 0, 1])) == pytest.approx(0)
+
+
+def test_paint_r2_ignores_sign_and_scale_and_constants():
+    values = np.array([1.0, 2.0, 4.0, 8.0])
+    assert scores.paint_r2(values, -3 * values) == pytest.approx(1)
+    assert scores.paint_r2(values, np.ones(4)) == 0
