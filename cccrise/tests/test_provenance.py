@@ -45,3 +45,18 @@ def test_provenance_text_reads_a_folder_record(tmp_path):
     text = provenance.provenance_text(tmp_path / "a.parquet")
     assert text is not None and "rank: 4" in text
     assert provenance.provenance_text(tmp_path / "missing.parquet") is None
+
+
+def test_write_table_writes_parquet_and_records_it(tmp_path):
+    import pandas as pd
+
+    path = tmp_path / "nested" / "scores_alad.parquet"
+    table = pd.DataFrame({"Component": [1, 2], "Score": [0.5, 0.25]})
+    provenance.write_table(path, table, {"dataset": "alad"}, "run it", "Header")
+    pd.testing.assert_frame_equal(pd.read_parquet(path), table)
+    record = provenance.folder_records(path.parent)["scores_alad.parquet"]
+    assert record["command"] == "run it"
+    assert record["sha256"] == provenance.sha256_file(path)
+    assert (
+        (path.parent / provenance.FOLDER_PROVENANCE).read_text().startswith("# Header")
+    )

@@ -57,14 +57,14 @@ from ..factors import load_factors_netcdf, load_factors_to_anndata
 from ..utils import condition_read_depths, correct_by_read_depth
 from ..validation.significance import patient_permutation_differential
 from ._cli import (
-    add_dataset_argument,
     dataset_metadata,
     parse_command,
     resolve_dataset,
     resulting_dims,
+    seeded_dataset_parser,
 )
 from .datasets import IBD_PROGRAMS_DIR, DatasetSpec, scores_filename
-from .provenance import build_metadata, git_sha, record_output, relpath, sha256_file
+from .provenance import build_metadata, git_sha, relpath, sha256_file, write_table
 
 HEADER = """\
 The IBD tables behind Figure 4's program panels, from the finalized factor
@@ -346,10 +346,7 @@ def write(
     spec: DatasetSpec, name: str, table: pd.DataFrame, metadata: dict, command: str
 ) -> None:
     path = IBD_PROGRAMS_DIR / scores_filename(name, spec.output_key)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    table.to_parquet(path, index=False)
-    record_output(path, metadata, command, header=HEADER)
-    print(f"   wrote {path.name} ({len(table)} rows)", flush=True)
+    write_table(path, table, metadata, command, HEADER)
 
 
 def run_ibd_programs(spec: DatasetSpec, random_state: int, command: str) -> None:
@@ -402,12 +399,7 @@ def run_ibd_programs(spec: DatasetSpec, random_state: int, command: str) -> None
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    add_dataset_argument(parser)
-    parser.add_argument("--random-state", type=int, default=0)
-    return parser
+    return seeded_dataset_parser(__doc__)
 
 
 def main(argv: list[str] | None = None) -> None:

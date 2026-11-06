@@ -75,7 +75,7 @@ from ._cli import (
     resulting_dims,
 )
 from .datasets import NICHES_DIR, DatasetSpec, scores_filename
-from .provenance import build_metadata, git_sha, record_output, relpath, sha256_file
+from .provenance import build_metadata, git_sha, relpath, sha256_file, write_table
 
 HEADER = """\
 Upstream NICHES on the production cccRISE fits, and cccRISE's sender and
@@ -240,10 +240,7 @@ def write(
     spec: DatasetSpec, name: str, table: pd.DataFrame, metadata: dict, command: str
 ) -> None:
     path = NICHES_DIR / scores_filename(name, spec.output_key)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    table.to_parquet(path, index=False)
-    record_output(path, metadata, command, header=HEADER)
-    print(f"   wrote {path.name} ({len(table)} rows)", flush=True)
+    write_table(path, table, metadata, command, HEADER)
 
 
 def fit_metadata(spec: DatasetSpec, dims: dict) -> dict:
