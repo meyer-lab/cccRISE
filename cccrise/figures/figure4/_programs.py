@@ -26,8 +26,8 @@ TESTED_SHARE = 0.1
 #: What a comparator column is, in stacking order, and its color; the first
 #: rule that fits (`_column_class`).
 COLUMN_CLASSES = {
-    "Same as a cccRISE program": METHOD_COLORS["cccRISE"],
-    "Part of a cccRISE program": "#9fbbd6",
+    "Same as a CCC-RISE program": METHOD_COLORS["cccRISE"],
+    "Part of a CCC-RISE program": "#9fbbd6",
     "Homophilic adhesion": "0.45",
     "Broad": "0.8",
     "Single pair": "#f0c9a0",
@@ -78,9 +78,9 @@ def best_columns(dataset: str) -> pd.DataFrame:
 
 def _column_class(row) -> str:
     if row["Contained"]:
-        return "Same as a cccRISE program"
+        return "Same as a CCC-RISE program"
     if row["OnProgram"] >= PART_SHARE:
-        return "Part of a cccRISE program"
+        return "Part of a CCC-RISE program"
     if row["EffectiveLR"] >= BROAD_PAIRS:
         return "Broad"
     if row["HomophilicShare"] >= HOMOPHILIC:

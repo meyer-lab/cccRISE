@@ -32,7 +32,7 @@ def _strip(ax, x: float, values, method: str, labelling: str, rng) -> None:
 
 
 def _fit_name(method: str, labelling: str) -> str:
-    return "cccRISE" if method == "cccRISE" else f"{method} {labelling[0].upper()}"
+    return "CCC-RISE" if method == "cccRISE" else f"{method} {labelling[0].upper()}"
 
 
 def depth_tracking(ax) -> None:

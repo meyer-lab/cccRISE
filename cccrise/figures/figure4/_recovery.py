@@ -73,7 +73,7 @@ def program_map(
     ax,
     labelling: str = "fine",
     spots: dict | None = None,
-    title: str = "Label-based recovery of cccRISE programs",
+    title: str = "Label-based recovery of CCC-RISE programs",
 ) -> None:
     """Each program's best single column of `labelling`'s fits against the
     per-cell weight its labels can hold."""
@@ -139,7 +139,7 @@ def _census_bar(ax, y: float, counts: pd.Series) -> None:
         n = int(counts.get(name, 0))
         if n:
             ax.barh(y, n, left=left, height=0.78, color=color, ec="white", lw=0.4)
-            light = name in ("Part of a cccRISE program", "Broad", "Single pair")
+            light = name in ("Part of a CCC-RISE program", "Broad", "Single pair")
             ax.text(
                 left + n / 2,
                 y,
@@ -172,7 +172,7 @@ def census(ax) -> None:
                 "Class",
             ]
         ],
-        "Every comparator LR column: its containment in cccRISE's LR span, its largest "
+        "Every comparator LR column: its containment in CCC-RISE's LR span, its largest "
         "share of squared loading on one program's carrying pairs (OnProgram, Program), "
         "its effective LR pairs, its homophilic share, and its class.",
     )
@@ -358,7 +358,7 @@ def pair_columns(
     rows, spans = _pair_rows(dataset, programs)
     tested = tested_columns(dataset, programs) if outline else []
     values = _cccrise_block(ax, dataset, rows)
-    ticks, labels, heads, bold = [0.5], [""], {"cccRISE": 0.5}, []
+    ticks, labels, heads, bold = [0.5], [""], {"CCC-RISE": 0.5}, []
     x = 1 + BLOCK_GAP
     for lab in LABELLINGS:
         columns = lr_matrix(dataset, "STAC", lab)

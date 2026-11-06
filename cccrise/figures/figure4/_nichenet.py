@@ -8,7 +8,7 @@ from .. import common, style
 from ._common import COMPARATORS, DATASET, METHOD_COLORS, load
 from ._data import LABELLINGS
 
-SLOTS = [("cccRISE", "coarse", "cccRISE")] + [
+SLOTS = [("cccRISE", "coarse", "CCC-RISE")] + [
     (m, lab, f"{m} {lab[0].upper()}") for m in COMPARATORS for lab in LABELLINGS
 ]
 #: Each program, then its closest columns (method, labelling, column).

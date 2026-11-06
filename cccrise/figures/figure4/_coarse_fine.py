@@ -100,7 +100,7 @@ def coarse_to_fine(ax, dataset: str, title: str) -> None:
             for m, t in tables.items()
         ),
         f"cos^2 between each comparator's coarse and fine LR columns on {title}, on "
-        f"cccRISE's LR pairs; a line is drawn at {FLOW_FROM} or more.",
+        f"CCC-RISE's LR pairs; a line is drawn at {FLOW_FROM} or more.",
     )
     for i, (method, cos2) in enumerate(tables.items()):
         _block(ax, method, cos2, BLOCK_STEP * i)

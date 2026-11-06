@@ -135,14 +135,14 @@ def containment(ax) -> None:
     _source(
         "comparator_column_containment",
         "Containment",
-        "Each comparator LR column's containment in cccRISE's LR span, and its class.",
+        "Each comparator LR column's containment in CCC-RISE's LR span, and its class.",
     )
     positions, spans = _strip(
         ax, "Containment", COLUMN_CLASSES, lambda g, x: _jitter(len(g), x)
     )
     _threshold(ax, CONTAINED)
     ax.set_ylim(-0.04, 1.04)
-    _fit_axis(ax, positions, spans, "LR containment", "cccRISE span containment")
+    _fit_axis(ax, positions, spans, "LR containment", "CCC-RISE span containment")
     key_room(ax)
 
 
@@ -170,7 +170,8 @@ def homophily(ax) -> None:
     left = [
         k
         for k in COLUMN_CLASSES
-        if k not in ("Same as a cccRISE program", "Part of a cccRISE program", "Broad")
+        if k
+        not in ("Same as a CCC-RISE program", "Part of a CCC-RISE program", "Broad")
     ]
     positions, spans = _strip(
         ax, "HomophilicShare", left, lambda g, x: _jitter(len(g), x)
@@ -219,10 +220,10 @@ def overlap(ax) -> None:
     _source(
         "comparator_column_program_overlap",
         "OnProgram",
-        "Each comparator LR column not contained in cccRISE's span: its largest share "
+        "Each comparator LR column not contained in CCC-RISE's span: its largest share "
         "of squared loading on one program's carrying pairs.",
     )
-    left = [k for k in COLUMN_CLASSES if k != "Same as a cccRISE program"]
+    left = [k for k in COLUMN_CLASSES if k != "Same as a CCC-RISE program"]
 
     def place(g: pd.DataFrame, x: float) -> np.ndarray:
         xs = _spread(g, x)
@@ -234,6 +235,6 @@ def overlap(ax) -> None:
     _threshold(ax, PART_SHARE)
     ax.set(ylim=(-0.04, 1.46), yticks=[0, 0.5, 1])
     _fit_axis(
-        ax, positions, spans, "Carrying-pair share", "Overlap with one cccRISE program"
+        ax, positions, spans, "Carrying-pair share", "Overlap with one CCC-RISE program"
     )
     key_room(ax)

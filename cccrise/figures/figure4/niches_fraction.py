@@ -99,9 +99,9 @@ def plot(axs):
         xticks=[0, 0.5, 1],
         yticks=[0, 0.5, 1],
         xlabel="Fine labels",
-        ylabel="cccRISE",
+        ylabel="CCC-RISE",
     )
-    panel_title(ax, "NICHES+ fraction")
+    panel_title(ax, "NICHES concordance")
     ax.legend(handles=_key(), loc="lower right", fontsize=TEXT_SIZE, labelspacing=0.08)
 
 

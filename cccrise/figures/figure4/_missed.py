@@ -95,7 +95,7 @@ def _cohort_rows(ax, dataset: str, x0: float, y0: float) -> tuple[dict, list, li
         lw=0,
         zorder=3,
     )
-    return xs, [*ticks, y], [*names, "cccRISE"]
+    return xs, [*ticks, y], [*names, "CCC-RISE"]
 
 
 def _contents_source() -> None:
@@ -120,8 +120,8 @@ def _contents_source() -> None:
         pd.concat(frames, ignore_index=True)[
             ["Cohort", "Column", "LR pair", LOADING_LABEL]
         ],
-        "Each column in no cccRISE program's class, and its pairs holding at least "
-        f"{SHOWN_SHARE} of its squared loading; the cccRISE rows give each pair's "
+        "Each column in no CCC-RISE program's class, and its pairs holding at least "
+        f"{SHOWN_SHARE} of its squared loading; the CCC-RISE rows give each pair's "
         "largest value in any component.",
     )
 
@@ -282,7 +282,7 @@ def associations(ax, dataset: str) -> None:
         pd.concat([drawn, programs])[
             [*keys, "Association", "EtaSquared", "PAdj"]
         ].rename(columns={"EtaSquared": "Eta squared", "PAdj": "q"}),
-        "Each left-over column's and cccRISE component's associations; the panel draws "
+        "Each left-over column's and CCC-RISE component's associations; the panel draws "
         "each column's lowest q, and its box lists those below "
         f"{common.SIG_ALPHA}.",
     )

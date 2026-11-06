@@ -161,7 +161,7 @@ def flow_alad(ax) -> None:
     _node(ax, BAR_X, 31, 46, EPITHELIAL)
     _note(ax, BAR_X - 2.8, 38.5, "Lung epithelium", rotation=90)
     _horseshoe(ax, 43.5, 33.5, 5)
-    _title(ax, 20, 27, "cccRISE C5")
+    _title(ax, 20, 27, "CCC-RISE C5")
     top = 21.0
     bottom = top - LENGTH
     _node(ax, BAR_X, top - sender, top, style.COLORS["sender"])
@@ -291,7 +291,7 @@ def flow_ibd(ax) -> None:
     side = (SPAN - RECEIVER_GAP) / 2
     tuft = TOP - side - RECEIVER_GAP
     _stac_hormones(ax, pyy, gcg, side, tuft)
-    _title(ax, 56, 50.5, "cccRISE C3, C4")
+    _title(ax, 56, 50.5, "CCC-RISE C3, C4")
     ends = _receiver_bars(ax, receivers, side, tuft)
     y = _state_bands(ax, t, ends, scale, pyy, gcg)
     other = t.loc["Other", "Cells"] * scale
