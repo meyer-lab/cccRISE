@@ -7,8 +7,8 @@ is below `common.SIG_ALPHA`)."""
 import numpy as np
 from scipy.stats import false_discovery_control
 
-from ... import common, style
-from .. import _common as S
+from .. import common, style
+from ..figure5 import _common as S
 
 AXES = ("rect", "rect")
 

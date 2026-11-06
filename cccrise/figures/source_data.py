@@ -36,7 +36,6 @@ from ..runners.provenance import REPO_ROOT, git_sha, provenance_text, relpath
 from . import common
 
 QUARTO_PATH = REPO_ROOT / "manuscript" / "_quarto.yml"
-SKIPPED_SUPPLEMENTS = {"imputation_ridge"}  # no source data provided
 # MSB's classes of supplementary figure, as `_quarto.yml` lists them: the
 # list, the label before each figure's number, and its panel folder prefix
 SUPPLEMENT_CLASSES = (
@@ -57,7 +56,6 @@ def figures() -> list[tuple[str, str, str]]:
         (f"S_{name}", f"{label}{i}", f"{prefix}{i}")
         for key, label, prefix in SUPPLEMENT_CLASSES
         for i, name in enumerate(quarto[key], start=1)
-        if name not in SKIPPED_SUPPLEMENTS
     ]
 
 
