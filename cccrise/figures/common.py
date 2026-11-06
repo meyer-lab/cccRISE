@@ -1434,24 +1434,28 @@ STRIP_WIDTH = 1.2 * style.MM
 STRIP_GAP = 0.4 * style.MM
 
 
-def group_conditions(groups: pd.DataFrame, order: np.ndarray) -> np.ndarray:
+def group_conditions(
+    groups: pd.DataFrame, order: np.ndarray, strips: dict = CONDITION_STRIPS
+) -> np.ndarray:
     """Conditions (rows of `groups`, their obs) in `order` (e.g.
-    `dominant_order`) regrouped by each `CONDITION_STRIPS` column in turn,
-    levels in its order."""
+    `dominant_order`) regrouped by each `strips` column in turn, levels in
+    its order."""
     ranks = [
         groups[column].map({level: i for i, level in enumerate(colors)}).to_numpy()
-        for column, (_, colors) in CONDITION_STRIPS.items()
+        for column, (_, colors) in strips.items()
     ]
     return np.lexsort((np.argsort(order), *ranks[::-1]))
 
 
-def condition_strips(ax: plt.Axes, groups: pd.DataFrame) -> None:
-    """A color strip per `CONDITION_STRIPS` column left of a condition factor
-    matrix (rows in `groups`' order), the y label moved left of them, and
-    their legend, titled per strip, right of the matrix."""
+def condition_strips(
+    ax: plt.Axes, groups: pd.DataFrame, strips: dict = CONDITION_STRIPS
+) -> None:
+    """A color strip per `strips` column left of a condition factor matrix
+    (rows in `groups`' order), the y label moved left of them, and their
+    legend, titled per strip, right of the matrix."""
     inches = ax.bbox.width / ax.figure.dpi
     step = (STRIP_WIDTH + STRIP_GAP) / inches
-    for i, (column, (_, colors)) in enumerate(reversed(CONDITION_STRIPS.items())):
+    for i, (column, (_, colors)) in enumerate(reversed(strips.items())):
         strip = ax.inset_axes((-(i + 1) * step, 0, STRIP_WIDTH / inches, 1))
         rgb = [to_rgb(colors[level]) for level in groups[column]]
         strip.imshow(np.array(rgb)[:, None], aspect="auto", interpolation="nearest")
@@ -1459,10 +1463,10 @@ def condition_strips(ax: plt.Axes, groups: pd.DataFrame) -> None:
         strip.spines[:].set_visible(False)
     strip.set_ylabel(ax.get_ylabel())  # the leftmost strip
     ax.set_ylabel("")
-    titles = [title for title, _ in CONDITION_STRIPS.values()]
+    titles = [title for title, _ in strips.values()]
     entries = [
         entry
-        for title, colors in CONDITION_STRIPS.values()
+        for title, colors in strips.values()
         for entry in [
             Patch(color="none", label=title),
             *(
