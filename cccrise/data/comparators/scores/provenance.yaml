@@ -5,14 +5,14 @@
 # record has in common, `files` the rest of each, with the file's sha256 and
 # the command that writes it with this repository's code.
 
-shared:
-  celltype_key: broad_cell_type and celltype
-  labelling: coarse and fine
-  n_null: 1000
-  random_state: 42
-  contained: 0.85
+shared: {}
 files:
   associations_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -37,6 +37,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: d6ffd93e4b0e052aaed4f93ebcad4c1b9bc804244dd60d91959ed577ffe85f25
   breadth_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -61,6 +66,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 7869218d7939d7f76e7db66b7fd68210fac84fa1ca77b11b8aa2addae6dc5d64
   containment_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -85,6 +95,11 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff
     generated: '2026-11-05T20:17:28+00:00'
   containment_ibd.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     sha256: 395512c7e3301a793db70c8640b0719217fb88f8fac16a288e64545ee83ce49d
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
@@ -119,6 +134,11 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff-dirty
     generated: '2026-11-05T20:20:48+00:00'
   covariation_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -143,6 +163,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 28897dba716ca36e627dcd33bd27feb3dad7af11c20a77c97dbb8e675c24ebc6
   covariation_ibd.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     sha256: 1874562b613bc30df9ccdefbb60b9218da9dc4dabf7e220e524d61024fec448a
     command: uv run cccrise-comparator-scores --dataset ibd --tables covariation homophily
       lr_loadings
@@ -178,6 +203,11 @@ files:
     git_sha: 411a593bb3557e954bcf233160ac284dbed06c12
     generated: '2026-11-06T07:54:48+00:00'
   depth_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -202,6 +232,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 85d21f7a8f2ba7b4d90e64947733b4ef27ffbbfe365ec48b15533cda1b029d74
   fit_ranks_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -226,6 +261,11 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff
     generated: '2026-11-05T20:17:28+00:00'
   fit_ranks_ibd.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     sha256: 41c7da3bf89f30fc955f416f747eae8cc77bcf6d3e950a63ccfd18cd610e64fa
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
@@ -260,6 +300,11 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff-dirty
     generated: '2026-11-05T20:20:48+00:00'
   homophily_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -284,6 +329,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 82b0edd104ee6f6e0a86604b9e371492b0a7e14f4f8079369818ca3bd6ee9129
   homophily_ibd.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     sha256: b24285edb95cfb3192755cba8038d6c56f913dacbee952ee6749bfa63e214520
     command: uv run cccrise-comparator-scores --dataset ibd --tables covariation homophily
       lr_loadings
@@ -319,6 +369,11 @@ files:
     git_sha: 411a593bb3557e954bcf233160ac284dbed06c12
     generated: '2026-11-06T07:54:48+00:00'
   inner_loss_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -343,6 +398,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 41d8093c4851fc75d91d32722ef4b6260a26199f2e303e82223c535786065df5
   inner_program_loss_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -367,6 +427,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 0e7457712ef3fc7c677bb5bf70c9ac43876384e672e198e7210ee9e3a39bef4e
   inputs_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -391,6 +456,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 5f3b896da1702c36490160d4fa5d6db5407aa83be2d577a1bc21914e1e870658
   label_ceiling_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -415,6 +485,11 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff
     generated: '2026-11-05T20:17:28+00:00'
   label_ceiling_ibd.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     sha256: 4df2be7a02db6f09f57032314f74789f3d6999fc94c38401f458d0882ab3d20a
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
@@ -449,6 +524,11 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff-dirty
     generated: '2026-11-05T20:20:48+00:00'
   lr_loadings_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -473,6 +553,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 6012a7943a2890df26a1cb41df38002150d02b7c9f6b2b48181c149debd184c5
   lr_loadings_ibd.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     sha256: dee27fa8fc7d341f27739b7cbc1f7ee7db93f7f6a98c84b81cdb0aeb44e363d2
     command: uv run cccrise-comparator-scores --dataset ibd --tables covariation homophily
       lr_loadings
@@ -507,7 +592,31 @@ files:
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
     git_sha: 411a593bb3557e954bcf233160ac284dbed06c12
     generated: '2026-11-06T07:54:48+00:00'
+  nichenet_alad.parquet:
+    sha256: d15d7c4baea9e65ae223ca2acfeabb3510986c5d7cb55c195eb07298764240d6
+    command: uv run cccrise-comparator-nichenet --dataset alad --n-jobs 12
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    celltype_key: broad_cell_type
+    group_key: ALADstatus
+    top_perc: 10.0
+    rel_cutoff: 0.4
+    n_shuffle: 1000
+    git_sha: e7a4b74e472007d97be29ed21774bdae2698be65
+    generated: '2026-11-06T08:32:57+00:00'
   pair_covariation_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -532,6 +641,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 96fdb064b5f9a3c2c2b89b8a85aec88c8983ba9de02026ba1351ca426f2e1cc8
   profiles_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -556,6 +670,11 @@ files:
     generated: '2026-11-03T01:37:19+00:00'
     sha256: 05af6a1831a88f7afad59c966a3273b838ad29c1fdc2c7dca041acbf32c19d07
   start_congruence_alad.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -580,6 +699,11 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff
     generated: '2026-11-05T20:17:28+00:00'
   start_congruence_ibd.parquet:
+    celltype_key: broad_cell_type and celltype
+    labelling: coarse and fine
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
     sha256: 08ce960c7b5077daa2302fbd77c4738cd98e3c2e5f4ccc9eb52ca033d7b79208
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
