@@ -672,7 +672,7 @@ def reference_line(
     )
 
 
-# --- Rank selection (ALAD Fig 2, IBD Fig 5) ------------------------------------
+# --- Rank selection (ALAD Fig 2, IBD Fig 4) ------------------------------------
 
 
 def plot_rise_rank(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
@@ -736,7 +736,7 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     ax.legend(loc="upper right")
 
 
-# --- CP rank selection across seeded starts (ALAD Fig 2, IBD Fig 5) -----------
+# --- CP rank selection across seeded starts (ALAD Fig 2, IBD Fig 4) -----------
 # Drawn from `cccrise-cpdrank`'s seeded starts: fit R2X across starts, each
 # mode's collinearity, and the distinct minima the starts reach.
 
@@ -1019,7 +1019,7 @@ def plot_minima_table(
     rank_axis(ax, table["Rank"].unique())
 
 
-# --- Outcome associations (ALAD Fig 3, IBD Fig 5) ------------------------------
+# --- Outcome associations (ALAD Fig 3, IBD Fig 4) ------------------------------
 
 #: Outcome levels in reading order (healthy/control first); unlisted levels
 #: follow alphabetically.

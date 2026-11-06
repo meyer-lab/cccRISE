@@ -1,10 +1,10 @@
 """Whether a component's LR pairs move together across conditions (Figure
-3F, generalized to every method in Figure 4E).
+3F, generalized to every method in Figure 5E).
 
 Each LR pair is scored per condition in the component's own sender/receiver
 context (`context_scores`: the communication tensor's slice for that pair,
 weighted by the component's sender and receiver loadings and summed). Its
-most heavily weighted pairs (`N_TOP` in Figure 3; in Figure 4 the fewest
+most heavily weighted pairs (`N_TOP` in Figure 3; in Figure 5 the fewest
 carrying `CARRIED_SHARE` of its squared loading, `carrying_pairs`) are compared by their Spearman
 correlation across conditions (`pairwise_rank_correlations`), against the
 same correlations of LR pairs drawn from outside them (`covariation_baselines`).
@@ -22,9 +22,9 @@ from .import_data import import_ligand_receptor_pairs
 from .utils import load_rise_reference
 
 #: The component's most heavily weighted LR pairs tested for co-variation
-#: (Figure 3); at most this many in Figure 4 (`carrying_pairs`).
+#: (Figure 3); at most this many in Figure 5 (`carrying_pairs`).
 N_TOP = 10
-#: Figure 4 tests the fewest top pairs carrying this share of a component's
+#: Figure 5 tests the fewest top pairs carrying this share of a component's
 #: squared LR loading (`carrying_pairs`).
 CARRIED_SHARE = 0.9
 COVARIATION_DRAWS = 2000

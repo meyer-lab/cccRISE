@@ -8,7 +8,7 @@ import numpy as np
 from scipy.stats import false_discovery_control
 
 from .. import common, style
-from ..figure5 import _common as S
+from ..figure4 import _common as S
 
 AXES = ("rect", "rect")
 

@@ -82,7 +82,7 @@ def label_roles(ax) -> None:
 
 
 def zoomed_maps(axs, columns: list[str], draw, label: str) -> None:
-    """Each of `columns` of the EE/EC/tuft table painted on Figure 5's zoomed
+    """Each of `columns` of the EE/EC/tuft table painted on Figure 4's zoomed
     map by `draw` (`S.weight_map` or `expression`), titled by the column, the
     colorbar (`label`) beside the last."""
     cells = S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])
@@ -94,5 +94,5 @@ def zoomed_maps(axs, columns: list[str], draw, label: str) -> None:
 
 
 def expression(ax, xy, values):
-    """`values` as Figure 5H draws expression (`S.relative_expression`)."""
+    """`values` as Figure 4H draws expression (`S.relative_expression`)."""
     return S.expression_map(ax, xy, S.relative_expression(values))

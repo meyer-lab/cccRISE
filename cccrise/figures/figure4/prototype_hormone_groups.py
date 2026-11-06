@@ -5,7 +5,7 @@ the groups; a dot plot of the candidate gut markers that stratify sender from
 receiver (Wilcoxon, BH over the candidates, as `figure2.epithelial_markers`)
 plus the top LR pairs' genes; and each group's annotated composition.
 
-    uv run python -m cccrise.figures.figure5.prototype_hormone_groups
+    uv run python -m cccrise.figures.figure4.prototype_hormone_groups
 
 The per-cell table is cached in `OUTPUT` (delete it to recompute)."""
 

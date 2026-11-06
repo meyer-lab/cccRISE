@@ -1,4 +1,4 @@
-"""Figure 4D: how STAC arranges the mixed programs' pairs."""
+"""Figure 5D: how STAC arranges the mixed programs' pairs."""
 
 from .. import common
 from ._recovery import pair_columns

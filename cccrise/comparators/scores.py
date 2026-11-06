@@ -1,4 +1,4 @@
-"""How cccRISE's components and the comparators' compare (Figure 4).
+"""How cccRISE's components and the comparators' compare (Figure 5).
 
 A fit's components are read as `Components`: per mode, a matrix with one
 column per component, rows labelled. cccRISE and the comparators share the

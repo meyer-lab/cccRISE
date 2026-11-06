@@ -1,4 +1,4 @@
-"""How Figure 4 lays out components of every fit on one axis: cccRISE once
+"""How Figure 5 lays out components of every fit on one axis: cccRISE once
 (it does not depend on the labels), then each comparator's coarse fit left
 of its fine one, with C/F ticks and the method's name below; and how it
 labels points without overlap."""

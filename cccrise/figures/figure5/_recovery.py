@@ -1,4 +1,4 @@
-"""Figure 4's view of the cccRISE programs against the comparators: where each
+"""Figure 5's view of the cccRISE programs against the comparators: where each
 sits between its best column and its label ceiling, what each comparator column
 is, and how STAC arranges the mixed programs' pairs."""
 

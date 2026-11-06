@@ -1,4 +1,4 @@
-"""Figure 5E's annotated types on the zoomed EE/EC/tuft map, below the
+"""Figure 4E's annotated types on the zoomed EE/EC/tuft map, below the
 all-cell map (`cell_map`) it zooms into."""
 
 from ... import common

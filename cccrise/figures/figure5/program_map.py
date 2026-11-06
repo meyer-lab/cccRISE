@@ -1,4 +1,4 @@
-"""Figure 4A: each program's best comparator column against its label ceiling."""
+"""Figure 5A: each program's best comparator column against its label ceiling."""
 
 from .. import common
 from ._recovery import program_map

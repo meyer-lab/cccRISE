@@ -1,5 +1,5 @@
 """Per biopsy (at least `_common.MIN_EE` EE cells), the share of its EE cells
-in each class of Figure 5's marker dot plot (`_common.hormone_extremes`), by
+in each class of Figure 4's marker dot plot (`_common.hormone_extremes`), by
 inflammation status (Kruskal-Wallis q, BH corrected across classes;
 pairwise Mann-Whitney q in the source data): inflammation removes villus-like cells, not crypt-like ones."""
 

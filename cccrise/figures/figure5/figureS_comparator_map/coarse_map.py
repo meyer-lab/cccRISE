@@ -1,4 +1,4 @@
-"""Figure 4A on coarse labels."""
+"""Figure 5A on coarse labels."""
 
 from ... import common
 from .._recovery import program_map

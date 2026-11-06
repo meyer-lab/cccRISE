@@ -1,5 +1,5 @@
 """NPY1R and GLP1R, the receptors of C3's (PYY-NPY1R) and C4's (GCG-GLP1R)
-top LR pairs, on Figure 5's zoomed map as Figure 5H draws its ligands,
+top LR pairs, on Figure 4's zoomed map as Figure 4H draws its ligands,
 stacked beside the receiver weights (`receiver_maps`)."""
 
 from ... import common

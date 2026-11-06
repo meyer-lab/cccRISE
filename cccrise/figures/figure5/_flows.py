@@ -1,6 +1,6 @@
-"""Figure 4's flows: what STAC reports for a program beside what cccRISE resolves.
+"""Figure 5's flows: what STAC reports for a program beside what cccRISE resolves.
 Each bar is one cell type and each of its parts that fraction of the type's cells
-(sender and receiver populations by Figure 2's and Figure 5's cutoffs); STAC's
+(sender and receiver populations by Figure 2's and Figure 4's cutoffs); STAC's
 bands are drawn at full width, since it has one value per label."""
 
 import matplotlib.colors as mcolors
@@ -17,7 +17,7 @@ from ..figure2._common import (
     component_weights,
     split_cells,
 )
-from ..figure5 import _common as F5
+from ..figure4 import _common as F4
 
 #: Figure 2's epithelial cells.
 EPITHELIAL = style.CELL_TYPE_COLORS[GRANULARITY_DATASET]["Epithelial cells"]
@@ -182,16 +182,16 @@ def flow_alad(ax) -> None:
 
 
 def _ee_states() -> pd.DataFrame:
-    """Per Figure 5 state: its EE cells, and those past the C3 and C4 sender
+    """Per Figure 4 state: its EE cells, and those past the C3 and C4 sender
     cutoffs alone, both, or neither."""
-    cells = F5.programs("enteroendocrine_cells")
+    cells = F4.programs("enteroendocrine_cells")
     ee = cells[cells["Cell type"] == "Enteroendocrine cells"]
-    relative = F5.hormone_angles(ee)
+    relative = F4.hormone_angles(ee)
     pyy = relative["C3 relative"] >= GROUP_TAU
     gcg = relative["C4 relative"] >= GROUP_TAU
     t = pd.DataFrame(
         {
-            "State": F5.hormone_extremes(ee).to_numpy(),
+            "State": F4.hormone_extremes(ee).to_numpy(),
             "PYY only": (pyy & ~gcg).to_numpy(),
             "Both": (pyy & gcg).to_numpy(),
             "GCG only": (gcg & ~pyy).to_numpy(),
@@ -203,7 +203,7 @@ def _ee_states() -> pd.DataFrame:
 
 def _receivers() -> pd.DataFrame:
     """EC and tuft cells, and those past the C3 and C4 receiver cutoffs."""
-    cells = F5.programs("enteroendocrine_cells")
+    cells = F4.programs("enteroendocrine_cells")
     rows = {}
     for name, label, component in (
         ("EC", "Enterochromaffin cells", 3),
@@ -282,10 +282,10 @@ def flow_ibd(ax) -> None:
                 receivers.rename_axis("Population").reset_index(),
             ]
         ),
-        "EE cells by Figure 5's state, with those past the C3 (PYY) and C4 (GCG) sender "
+        "EE cells by Figure 4's state, with those past the C3 (PYY) and C4 (GCG) sender "
         "cutoffs; EC and tuft cells, with those past the C3 and C4 receiver cutoffs.",
     )
-    pyy, gcg = F5.HORMONE_COLORS[3], F5.HORMONE_COLORS[4]
+    pyy, gcg = F4.HORMONE_COLORS[3], F4.HORMONE_COLORS[4]
     _flow_axes(ax, 81)
     scale = (SPAN - len(STATES) * STATE_GAP) / t["Cells"].sum()
     side = (SPAN - RECEIVER_GAP) / 2

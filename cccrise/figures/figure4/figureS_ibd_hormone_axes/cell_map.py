@@ -1,4 +1,4 @@
-"""Where Figure 5's zoomed EE/EC/tuft map sits among all cells: a PaCMAP of
+"""Where Figure 4's zoomed EE/EC/tuft map sits among all cells: a PaCMAP of
 every cell's RISE projections (`run_ibd_programs.cell_map`: every EE, EC and
 tuft cell, and a seeded draw of the others), colored by lineage, each lineage
 (bold) named on its cluster and each zoomed type beside its median, with a

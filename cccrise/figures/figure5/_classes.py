@@ -1,4 +1,4 @@
-"""How each comparator column of Figure 4B gets its class: its value on each
+"""How each comparator column of Figure 5B gets its class: its value on each
 rule, one point per column, coloured by the class the rules give it."""
 
 import numpy as np

@@ -1,4 +1,4 @@
-"""Figure 5K's marker tests (`hormone_extreme_markers`: villus-like vs
+"""Figure 4K's marker tests (`hormone_extreme_markers`: villus-like vs
 crypt-like Mann-Whitney, BH q across its genes) redone at every magnitude
 floor in `FLOORS` (`_common.hormone_extremes`), and the `N_WORST` genes whose
 largest q over the sweep is highest drawn against the floor."""
@@ -40,9 +40,9 @@ def plot(axs):
     common.source_data(
         "hormone_extreme_markers_by_floor",
         sweep,
-        "Each Figure 5K gene's Mann-Whitney p between villus-like and crypt-like "
+        "Each Figure 4K gene's Mann-Whitney p between villus-like and crypt-like "
         "EE cells, and its BH q across the genes, with the classes' magnitude "
-        f"floor (Figure 5K: {S.EXTREME_FLOOR}) at each value from {FLOORS[0]} to "
+        f"floor (Figure 4K: {S.EXTREME_FLOOR}) at each value from {FLOORS[0]} to "
         f"{FLOORS[-1]}, and the cells in each class at that floor.",
     )
     worst = sweep.groupby("Gene")["q"].max().nlargest(N_WORST).index
@@ -64,7 +64,7 @@ def plot(axs):
         label=f"q = {common.SIG_ALPHA}",
         **line,
     )
-    ax.axvline(S.EXTREME_FLOOR, linestyle=":", label="Fig. 5K floor", **line)
+    ax.axvline(S.EXTREME_FLOOR, linestyle=":", label="Fig. 4K floor", **line)
     ax.set_yscale("log")
     ax.set_xlabel("Magnitude floor", fontsize=style.FONT_SIZE_DENSE)
     ax.set_ylabel("q, villus- vs crypt-like")

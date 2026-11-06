@@ -1,4 +1,4 @@
-"""Figure 4I and J: the label ceiling, the share of each cccRISE program's
+"""Figure 5I and J: the label ceiling, the share of each cccRISE program's
 per-cell weight that (sample x cell type) means hold, on ALAD and IBD at both
 labellings, beside what the closest comparator column holds of it, painted
 on cells as sample loading x type loading (`run_comparator_scores`'s

@@ -1,4 +1,4 @@
-"""Figure 4's shared names, and the scores tables of both labellings."""
+"""Figure 5's shared names, and the scores tables of both labellings."""
 
 import pandas as pd
 

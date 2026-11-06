@@ -1,4 +1,4 @@
-"""Figure 4H: NICHES-positive cells in cccRISE's populations against what their
+"""Figure 5H: NICHES-positive cells in cccRISE's populations against what their
 fine labels predict, ALAD and IBD (``uv run cccrise-niches``)."""
 
 import pandas as pd
@@ -10,7 +10,7 @@ from ._common import DATASET_COLORS, DATASET_LABELS
 from ._recovery import panel_title
 
 AXES = ("fig4_niches",)
-#: The populations of Figure 4F and G, and where their labels sit.
+#: The populations of Figure 5F and G, and where their labels sit.
 LEADERS = [
     ("ibd", 3, "sender", "C3 S", (0.3, 0.93)),
     ("ibd", 4, "sender", "C4 S", (0.06, 0.84)),

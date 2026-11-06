@@ -1,11 +1,11 @@
 """Supplementary figure: the hormone programs' communication axes. The
 eigenstates C3 and C4 load on belong to EE, EC and tuft cells: both programs
 send from EE eigenstates, C3 to an EC eigenstate and C4 to tuft eigenstates.
-Where Figure 5's zoomed EE/EC/tuft map sits among all cells, above its
+Where Figure 4's zoomed EE/EC/tuft map sits among all cells, above its
 annotated types, beside the programs' receiver weights and their top pairs'
-receptors on that map. The magnitude floor behind Figure 5I-K's
+receptors on that map. The magnitude floor behind Figure 4I-K's
 hormone classes; inflammation removes villus-like EE cells but not crypt-like
-ones; Figure 5K's marker tests across magnitude floors. Figure 5E-H show the
+ones; Figure 4K's marker tests across magnitude floors. Figure 4E-H show the
 two programs splitting the EE cells expressing their ligands."""
 
 from matplotlib.transforms import Bbox

@@ -1,4 +1,4 @@
-"""Supplementary figure: how each comparator column of Figure 4B gets its class.
+"""Supplementary figure: how each comparator column of Figure 5B gets its class.
 The rules apply in order: contained in cccRISE's span (A), most of its loading on
 one program's carrying pairs (B), broad or a single pair by its effective LR pairs
 (C), homophilic (D); what is left is mixed pairs."""

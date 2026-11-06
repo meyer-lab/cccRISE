@@ -1,4 +1,4 @@
-"""The NICHES panels (Figure 5, `figureS_niches_ibd`): cccRISE's IBD
+"""The NICHES panels (Figure 4, `figureS_niches_ibd`): cccRISE's IBD
 sender and receiver populations against upstream NICHES, from the
 `cccrise-niches` tables. A population's NICHES concordance is its share of
 cells with a non-zero NICHES program score."""
@@ -97,7 +97,7 @@ def cases(components) -> list[tuple[int, str]]:
 
 
 def program_labels(ax, rows: list[tuple[int, str]], y: Sequence[float]) -> None:
-    """Row labels as Figure 4 labels its fits: S and R at their own ticks, one
+    """Row labels as Figure 5 labels its fits: S and R at their own ticks, one
     outer component label per pair."""
     ax.set_yticks(
         y, [side[0].upper() for _, side in rows], fontsize=style.FONT_SIZE_DENSE

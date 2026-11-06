@@ -1,4 +1,4 @@
-"""Figure 4E: the mixed programs' co-variation against their STAC columns."""
+"""Figure 5E: the mixed programs' co-variation against their STAC columns."""
 
 from .. import common
 from ._recovery import program_covariation

@@ -1,4 +1,4 @@
-"""The magnitudes of all EE cells' C3/C4 sender weights (Figure 5's angle
+"""The magnitudes of all EE cells' C3/C4 sender weights (Figure 4's angle
 scatter, `hormone_angle_scatter`), with the floor past which their angle
 bins them (`_common.EXTREME_FLOOR`, Figure 2's cutoff)."""
 

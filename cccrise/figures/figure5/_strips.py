@@ -1,4 +1,4 @@
-"""Figure 4's panels that place every component of every fit on one axis
+"""Figure 5's panels that place every component of every fit on one axis
 (`_layout`): co-variation, depth tracking, what each LR column is,
 outcome associations, and LR-loading shares."""
 
