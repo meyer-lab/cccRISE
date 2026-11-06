@@ -11,16 +11,22 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
 - ``containment``: the sample and LR columns of every fit ('Of') in the
   span of every other ('In'), cccRISE and each comparator alike, with the
   row-permutation null.
-- ``breadth``: every component's effective number and top share per mode
-  (LR pairs, senders, receivers, samples), with its top label.
+- ``label_ceiling``: per cccRISE program, side and labelling, the share of
+  its per-cell weight's variance that (sample x cell type) means hold, the
+  most any method pooling cells by sample and annotation could represent,
+  beside each of `CEILING_METHODS`' LR column closest to the program
+  (greatest |cosine|), painted on cells as the cell's sample loading x its
+  type loading (`label_ceiling_rows`).
+- ``fit_ranks``: each comparator fit's rank.
+- ``start_congruence``: each Tensor-cell2cell start's largest congruence
+  product (`methods.start_congruence`).
 - ``lr_loadings``: every fit's LR columns, one row per LR pair and
   component.
-- ``inner_loss`` and ``inner_program_loss``: what Tensor-cell2cell's
-  published construction (only the cell types in every sample) drops from
-  the masked tensor (`scores.inner_losses`), and the share of each cccRISE
-  program's per-cell sender and receiver weight in the dropped types.
+- ``inner_loss``: what Tensor-cell2cell's published construction (only the
+  cell types in every sample) drops from the masked tensor
+  (`scores.inner_losses`). No figure reads it: the Methods quote it.
 - ``covariation``: whether each component's top LR pairs move together
-  across samples (`covariation`, Figure 3E's test for every component of
+  across samples (`covariation`, Figure 3F's test for every component of
   every method): each pair scored in the component's own sender/receiver
   context on its own method's tensor, the mean Spearman correlation of its
   top pairs (`covariation.carrying_pairs`; ``PairsUsed``) against random
@@ -28,32 +34,29 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
   over those sharing no gene; with its top pair's share of squared loading
   (``TopShare``).
 - ``associations``: each component's sample loadings, cccRISE's and each
-  comparator's, against every ALAD outcome association, as Figure 3 tests
+  comparator's, against every association of the cohort's figure, as Figure 3 tests
   cccRISE's
   (`anova.run_multiple_factors_anova`: read-depth corrected, FDR across the
   fit's associations and components); a STACCato LR column's sample profile
   is its leading core vector mapped through the sample factor.
-- ``profiles``: every component's sample profile (cccRISE's sample
-  loadings; a comparator LR column's as ``associations_*`` uses it), with each
-  sample's 6-month outcome.
 - ``homophily``: every component's share of squared LR loading on
   homophilic pairs (a ligand whose genes are its receptor's).
 - ``depth``: |Spearman ρ| between every component's |sample profile| and
   per-sample depth (median genes detected per cell).
-- ``inputs``: each method's input tensor, its per-sample mean (observed
-  entries only, for Tensor-cell2cell's masked tensor), against depth.
-- ``pair_covariation``: for every component with an outcome association
-  (FDR < `SIG_ALPHA`), whether its top LR pairs co-vary in the context of
-  each of the `CLOSEST` LR columns of greatest |cosine| with it from any
-  other fit, either labelling (`covariation_summary`); its own
-  ``RefLabelling`` and ``Labelling`` columns name both fits' labellings.
 
 Each labelling's permutation nulls draw from their own generator, seeded
 by ``--random-state``, so no table's draws depend on another's.
 
+``--fits-only`` writes only `fit_tables`' tables, which need the fits and
+per-cell weights but no tensors. ``--tables`` scores everything but writes only
+the tables named, so IBD keeps only what its figures read.
+
 Usage:
 
     uv run cccrise-comparator-scores --dataset alad
+    uv run cccrise-comparator-scores --dataset ibd --fits-only
+    uv run cccrise-comparator-scores --dataset ibd --tables \\
+        associations covariation depth homophily inner_loss lr_loadings
 """
 
 import argparse
@@ -67,7 +70,7 @@ from scipy.stats import spearmanr
 
 from .. import covariation
 from ..anova import _resolve_factors_and_metadata, run_multiple_factors_anova
-from ..comparators import scores
+from ..comparators import methods, scores
 from ..comparators.scores import Components
 from ..comparators.tensors import (
     PooledTensor,
@@ -78,11 +81,13 @@ from ..comparators.tensors import (
     tensor_cell2cell_tensor,
 )
 from ..factors import load_factors_netcdf, load_factors_to_anndata
-from ..figures.figure3._common import ASSOCIATIONS
+from ..figures.figure3._common import ASSOCIATIONS as ALAD_ASSOCIATIONS
+from ..figures.figure5._common import ASSOCIATIONS as IBD_ASSOCIATIONS
 from ..import_data import import_ligand_receptor_pairs
 from ._cli import add_dataset_argument, dataset_metadata, parse_command, resolve_dataset
 from .datasets import (
     COMPARATOR_FITS_DIR,
+    COMPARATOR_RANKS_DIR,
     COMPARATOR_SCORES_DIR,
     DatasetSpec,
     comparator_filename,
@@ -91,14 +96,11 @@ from .datasets import (
 from .provenance import build_metadata, git_sha, record_output, sha256_file
 
 METHODS = {"pb": "PB", "tc2c": "TC2C", "tc2c_inner": "TC2C inner", "stac": "STAC"}
+#: The comparators `label_ceiling_rows` paints on cells.
+CEILING_METHODS = ("PB", "STAC")
+#: Each side's per-cell weights in `load_factors_to_anndata`'s ``obsm``.
+WEIGHTS = {"sender": "sc_B", "receiver": "rc_C"}
 N_NULL = 1000
-#: An association counts below this FDR (`pair_covariation_rows`).
-SIG_ALPHA = 0.05
-#: How many closest columns of other fits each associated component's top
-#: pairs are scored in.
-CLOSEST = 5
-#: The sample annotation `profiles_*` carries.
-OUTCOME_COLUMN = "6monthcondition"
 HEADER = """\
 cccRISE against the annotation-pooled comparators (Figure 4).
 Generated by cccrise.runners.run_comparator_scores -- do not hand-edit.
@@ -128,26 +130,6 @@ def containment_rows(fits: list[Components], rng) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
-def breadth_rows(components: list[Components]) -> pd.DataFrame:
-    """Every component's effective number, top share and top label per mode."""
-    frames = []
-    for fit in components:
-        for mode, columns in fit.modes.items():
-            frames.append(
-                pd.DataFrame(
-                    {
-                        "Method": fit.method,
-                        "Mode": mode,
-                        "Component": columns.columns,
-                        "Effective": scores.effective_number(columns).to_numpy(),
-                        "TopShare": scores.top_share(columns).to_numpy(),
-                        "Top": scores.oriented(columns).idxmax().to_numpy(),
-                    }
-                )
-            )
-    return pd.concat(frames, ignore_index=True)
-
-
 def column_profiles(
     fit: xr.Dataset, components: Components, column: int
 ) -> dict[str, pd.Series]:
@@ -164,33 +146,95 @@ def column_profiles(
     return {m: scores.oriented(f)[column] for m, f in frames.items()}
 
 
-def inner_loss_tables(cells, column: str, tensors: dict[str, PooledTensor]) -> dict:
+def label_ceiling_rows(
+    spec: DatasetSpec, cells, column: str, fits, comparators, cccrise: Components
+) -> pd.DataFrame:
+    """Each program's label ceiling per side (`scores.group_r2` of its
+    per-cell weight on sample x type), with what each of `CEILING_METHODS`'
+    closest LR column holds of that weight: the column's sample loading x
+    type loading on every cell (`scores.paint_r2`). A type or sample a
+    column's fit lacks has no loading, so paints zero."""
+    labels = cells.obs[column].astype(str).to_numpy()
+    samples = cells.obs[spec.condition_column].astype(str).to_numpy()
+    groups = pd.Series(samples).str.cat(labels, sep="|").to_numpy()
+    programs = cccrise.modes["lr"]
+    weights = {side: np.asarray(cells.obsm[key]) for side, key in WEIGHTS.items()}
+    ceilings = {
+        (side, i): scores.group_r2(w[:, i], groups)
+        for side, w in weights.items()
+        for i in range(programs.shape[1])
+    }
+    rows = []
+    for other in comparators:
+        if other.method not in CEILING_METHODS:
+            continue
+        columns = other.modes["lr"]
+        reference = programs.loc[columns.index].to_numpy()
+        cosine = np.abs(
+            scores.unit_columns(reference).T @ scores.unit_columns(columns.to_numpy())
+        )
+        for i, program in enumerate(programs.columns):
+            closest = columns.columns[int(cosine[i].argmax())]
+            profile = column_profiles(fits[other.method], other, closest)
+            sample = profile["sample"].reindex(samples, fill_value=0).to_numpy()
+            for side, w in weights.items():
+                paint = profile[side].reindex(labels, fill_value=0).to_numpy()
+                rows.append(
+                    {
+                        "Side": side,
+                        "Component": program,
+                        "Ceiling": ceilings[side, i],
+                        "Method": other.method,
+                        "Column": closest,
+                        "Cosine": float(cosine[i].max()),
+                        "Painted": scores.paint_r2(w[:, i], sample * paint),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def fit_rank_rows(fits: dict[str, xr.Dataset]) -> pd.DataFrame:
+    """The rank each CP fit was written at (a Tucker fit has a core instead)."""
+    return pd.DataFrame(
+        [
+            {"Method": method, "Rank": int(fit.attrs["rank"])}
+            for method, fit in fits.items()
+            if "core" not in fit
+        ]
+    )
+
+
+def start_congruence_rows(spec: DatasetSpec, labelling: str) -> pd.DataFrame:
+    """Each Tensor-cell2cell variant's `methods.start_congruence`."""
+    frames = []
+    for key in ("tc2c", "tc2c_inner"):
+        path = COMPARATOR_RANKS_DIR / comparator_filename(
+            key, "starts", spec.output_key, labelling
+        )
+        with xr.open_dataset(path, engine="h5netcdf") as starts:
+            frames.append(methods.start_congruence(starts).assign(Method=METHODS[key]))
+    return pd.concat(frames, ignore_index=True)
+
+
+def inner_loss_rows(
+    cells, column: str, tensors: dict[str, PooledTensor]
+) -> pd.DataFrame:
     """What the published Tensor-cell2cell construction drops (module
     docstring), from `context_tensors`' masked and published tensors."""
-    masked = tensors["TC2C"]
     kept = tensors["TC2C inner"].celltypes
     dropped = ~cells.obs[column].astype(str).isin(list(kept)).to_numpy()
-    names = np.arange(1, cells.obsm["sc_B"].shape[1] + 1)
-    programs = pd.concat(
-        [
-            scores.weight_share(pd.DataFrame(cells.obsm[key], columns=names), dropped)
-            .rename_axis("Component")
-            .rename("Share")
-            .reset_index()
-            .assign(Side=side)
-            for side, key in (("sender", "sc_B"), ("receiver", "rc_C"))
-        ],
-        ignore_index=True,
-    )
     cell_share = {"Measure": "cells", "Dropped": dropped.sum(), "Total": dropped.size}
-    losses = pd.concat(
+    return pd.concat(
         [
-            scores.inner_losses(masked, kept),
+            scores.inner_losses(tensors["TC2C"], kept),
             pd.DataFrame([cell_share | {"Share": dropped.mean()}]),
         ],
         ignore_index=True,
     )
-    return {"inner_loss": losses, "inner_program_loss": programs}
+
+
+#: Each cohort's associations, as its own figure tests them.
+ASSOCIATIONS = {"alad": ALAD_ASSOCIATIONS, "ibd": IBD_ASSOCIATIONS}
 
 
 def context_tensors(spec: DatasetSpec, adata, column: str) -> dict[str, PooledTensor]:
@@ -296,10 +340,6 @@ def covariation_rows(contexts: list[dict], genes: list[set[str]]) -> pd.DataFram
     return pd.DataFrame(rows)
 
 
-def _cosine(a: np.ndarray, b: np.ndarray) -> float:
-    return abs(a @ b) / (np.linalg.norm(a) * np.linalg.norm(b))
-
-
 def sample_profiles(fits, comparators, cccrise: Components) -> dict:
     """Every component's sample profile, keyed (method, component): cccRISE's
     sample loadings, each comparator LR column's `column_profiles`."""
@@ -316,34 +356,10 @@ def sample_profiles(fits, comparators, cccrise: Components) -> dict:
 
 
 def sample_obs(spec: DatasetSpec, adata) -> pd.DataFrame:
-    """Per sample: its depth (median genes detected per cell) and, where the
-    dataset has it, its 6-month outcome."""
+    """Per sample: its depth (median genes detected per cell)."""
     sample = adata.obs[spec.condition_column].astype(str).to_numpy()
     detected = pd.Series(np.asarray((adata.X > 0).sum(axis=1)).ravel(), index=sample)
-    obs = adata.obs.drop_duplicates(spec.condition_column)
-    obs = obs.set_index(obs[spec.condition_column].astype(str))
-    out = pd.DataFrame({"Depth": detected.groupby(level=0).median()})
-    if OUTCOME_COLUMN in obs:
-        out["Outcome"] = obs[OUTCOME_COLUMN].astype(str)
-    return out
-
-
-def profile_rows(profiles: dict, obs: pd.DataFrame) -> pd.DataFrame:
-    """`sample_profiles` long, one row per component and sample."""
-    return pd.concat(
-        [
-            v.rename("Loading")
-            .rename_axis("Sample")
-            .reset_index()
-            .assign(Method=m, Component=c)
-            for (m, c), v in profiles.items()
-        ],
-        ignore_index=True,
-    ).merge(
-        obs.drop(columns="Depth").rename_axis("Sample").reset_index(),
-        on="Sample",
-        how="left",
-    )
+    return pd.DataFrame({"Depth": detected.groupby(level=0).median()})
 
 
 def depth_rows(profiles: dict, obs: pd.DataFrame) -> pd.DataFrame:
@@ -398,80 +414,6 @@ def homophily_rows(components: list[Components], adata) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def input_rows(
-    tensors: dict[str, PooledTensor], cccrise_tensor, obs: pd.DataFrame
-) -> pd.DataFrame:
-    """Each method's input tensor, its per-sample mean over observed
-    entries, with each sample's depth."""
-    samples = tensors["PB"].samples.astype(str)
-    means = {"cccRISE": cccrise_tensor.mean(axis=(1, 2, 3))}
-    for method in ("PB", "TC2C", "STAC"):
-        t = tensors[method]
-        mask = np.ones_like(t.values) if t.mask is None else t.mask
-        means[method] = (t.values * mask).sum(axis=(1, 2, 3)) / mask.sum(axis=(1, 2, 3))
-    return (
-        pd.DataFrame(means)
-        .assign(Sample=samples, Depth=obs["Depth"].loc[samples].to_numpy())
-        .melt(id_vars=["Sample", "Depth"], var_name="Method", value_name="Mean")
-    )
-
-
-def _context_pool(contexts: dict) -> dict:
-    """Every context of `contexts` (keyed by labelling) keyed (method,
-    labelling, component), cccRISE's once and the published Tensor-cell2cell
-    left out."""
-    first = next(iter(contexts))
-    return {
-        (c["Method"], lab, int(c["Component"])): c
-        for lab, cs in contexts.items()
-        for c in cs
-        if c["Method"] != "TC2C inner" and (c["Method"] != "cccRISE" or lab == first)
-    }
-
-
-def _is_associated(associations: dict, key) -> bool:
-    method, lab, comp = key
-    a = associations[lab]
-    return (
-        a[(a["Method"] == method) & (a["Component"] == comp)]["PAdj"].min() < SIG_ALPHA
-    )
-
-
-def _reference_rows(pool: dict, key) -> list[dict]:
-    """`key`'s top pairs scored in its own context and in its `CLOSEST`
-    columns of other fits."""
-    ref = pool[key]
-    top = covariation.top_pairs(ref["lr"])
-    others = sorted(
-        (k for k in pool if k[:2] != key[:2]),
-        key=lambda k: -_cosine(pool[k]["lr"], ref["lr"]),
-    )
-    names = ("Method", "Labelling", "Column")
-    return [
-        dict(zip(("RefMethod", "RefLabelling", "RefColumn"), key, strict=True))
-        | dict(zip(names, other, strict=True))
-        | {"Cosine": _cosine(pool[other]["lr"], ref["lr"])}
-        | covariation_summary(pool[other], top)
-        for other in [key, *others[:CLOSEST]]
-    ]
-
-
-def pair_covariation_rows(contexts: dict, associations: dict) -> pd.DataFrame:
-    """Every component with an association below `SIG_ALPHA`: its top pairs'
-    `covariation_summary` in its own context and in those of the `CLOSEST`
-    LR columns of other fits (another method, or its own at the other
-    labelling) of greatest |cosine| with it. `contexts` and `associations`
-    are keyed by labelling."""
-    pool = _context_pool(contexts)
-    rows = [
-        row
-        for key in pool
-        if _is_associated(associations, key)
-        for row in _reference_rows(pool, key)
-    ]
-    return pd.DataFrame(rows)
-
-
 def association_rows(spec: DatasetSpec, fits, comparators) -> pd.DataFrame:
     """Every component's outcome associations, cccRISE's (its own fit, as
     Figure 3) and each comparator's (module docstring)."""
@@ -499,83 +441,133 @@ def association_rows(spec: DatasetSpec, fits, comparators) -> pd.DataFrame:
 
 def _associations(adata, spec: DatasetSpec) -> pd.DataFrame:
     """Figure 3's test of `adata`'s condition loadings (``uns["A"]``) against
-    every ALAD association."""
+    every association of the cohort's figure."""
     return run_multiple_factors_anova(
         adata,
-        ASSOCIATIONS,
+        ASSOCIATIONS[spec.key],
         condition_column=spec.condition_column,
         correction="fdr_bh",
         global_correction=True,
     )
 
 
-def score_labelling(
-    spec: DatasetSpec, adata, cells, labelling: str, random_state: int, cccrise_context
-) -> tuple[dict, list[dict]]:
-    """The tables of one labelling (module docstring), and its components'
-    scoring contexts."""
-    rng = np.random.default_rng(random_state)
-    column = spec.labellings[labelling]
+def labelling_components(spec: DatasetSpec, cells, labelling: str) -> tuple:
+    """One labelling's fits, their `Components` and cccRISE's."""
     fits = load_fits(spec, labelling)
     comparators = [
         scores.comparator_components(method, fit) for method, fit in fits.items()
     ]
     celltypes = fits["PB"]["sender"].to_numpy().astype(str)
     cccrise = scores.cccrise_components(
-        load_factors_netcdf(spec.factors_path()), cells, column, celltypes
+        load_factors_netcdf(spec.factors_path()),
+        cells,
+        spec.labellings[labelling],
+        celltypes,
     )
+    return fits, comparators, cccrise
+
+
+def fit_tables(
+    spec: DatasetSpec, cells, labelling: str, random_state: int, components: tuple
+) -> dict:
+    """The tables of one labelling that need no tensors, from
+    `labelling_components`' `components`."""
+    fits, comparators, cccrise = components
+    rng = np.random.default_rng(random_state)
+    column = spec.labellings[labelling]
+    return {
+        "containment": containment_rows([cccrise, *comparators], rng),
+        "label_ceiling": label_ceiling_rows(
+            spec, cells, column, fits, comparators, cccrise
+        ),
+        "fit_ranks": fit_rank_rows(fits),
+        "start_congruence": start_congruence_rows(spec, labelling),
+    }
+
+
+def score_labelling(
+    spec: DatasetSpec, adata, cells, labelling: str, random_state: int, cccrise_context
+) -> dict:
+    """The tables of one labelling (module docstring)."""
+    column = spec.labellings[labelling]
+    components = labelling_components(spec, cells, labelling)
+    fits, comparators, cccrise = components
     tensors = context_tensors(spec, adata, column)
     contexts = component_contexts(fits, comparators, cccrise_context, tensors)
     profiles = sample_profiles(fits, comparators, cccrise)
     obs = sample_obs(spec, adata)
-    tables = {
-        "containment": containment_rows([cccrise, *comparators], rng),
-        "breadth": breadth_rows([cccrise, *comparators]),
+    return {
+        **fit_tables(spec, cells, labelling, random_state, components),
         "lr_loadings": lr_loading_rows([cccrise, *comparators]),
-        **inner_loss_tables(cells, column, tensors),
+        "inner_loss": inner_loss_rows(cells, column, tensors),
         "associations": association_rows(spec, fits, comparators),
         "covariation": covariation_rows(contexts, lr_genes(adata)),
-        "profiles": profile_rows(profiles, obs),
         "homophily": homophily_rows([cccrise, *comparators], adata),
         "depth": depth_rows(profiles, obs),
-        "inputs": input_rows(tensors, cccrise_context[0], obs),
     }
-    return tables, contexts
+
+
+def merged_labellings(tables: dict) -> dict:
+    """Each table of `tables` (keyed by labelling), every labelling's rows
+    in it under a ``Labelling`` column."""
+    first = next(iter(tables.values()))
+    return {
+        what: pd.concat(
+            {lab: t[what] for lab, t in tables.items()}, names=["Labelling"]
+        )
+        .reset_index(level="Labelling")
+        .reset_index(drop=True)
+        for what in first
+    }
 
 
 def run_comparator_scores(
     spec: DatasetSpec,
     random_state: int,
     command: str = "uv run cccrise-comparator-scores",
+    fits_only: bool = False,
+    only: list[str] | None = None,
 ) -> None:
-    """Every table (module docstring) of `spec`, its provenance recorded as
+    """Every table (module docstring) of `spec`, or with `fits_only` only
+    `fit_tables`', or those named in `only`, their provenance recorded as
     written by `command`."""
     git_sha()
     labellings = list(spec.labellings)
     print(f"=== Comparator scores: {spec.label}; {', '.join(labellings)} ===")
     adata = spec.load()
     cells = load_factors_to_anndata(spec.factors_path(), adata=adata)
+    metadata = _metadata(spec, labellings, random_state)
+    if fits_only:
+        tables = {
+            lab: fit_tables(
+                spec,
+                cells,
+                lab,
+                random_state,
+                labelling_components(spec, cells, lab),
+            )
+            for lab in labellings
+        }
+        write_tables(spec, merged_labellings(tables), metadata, command)
+        return
     factors = load_factors_netcdf(spec.factors_path())
     cccrise_context = (
         covariation.cccrise_tensor(spec.factors_path(), adata, spec.condition_column),
         *(factors[k].to_numpy().astype(float) for k in ("cp_B", "cp_C", "cp_D")),
     )
-    tables, contexts = {}, {}
-    for labelling in labellings:
-        tables[labelling], contexts[labelling] = score_labelling(
+    tables = {
+        labelling: score_labelling(
             spec, adata, cells, labelling, random_state, cccrise_context
         )
-    associations = {lab: t["associations"] for lab, t in tables.items()}
-    merged = {
-        what: pd.concat(
-            {lab: t[what] for lab, t in tables.items()}, names=["Labelling"]
-        )
-        .reset_index(level="Labelling")
-        .reset_index(drop=True)
-        for what in tables[labellings[0]]
+        for labelling in labellings
     }
-    merged["pair_covariation"] = pair_covariation_rows(contexts, associations)
-    write_tables(spec, merged, _metadata(spec, labellings, random_state), command)
+    merged = merged_labellings(tables)
+    write_tables(
+        spec,
+        {what: t for what, t in merged.items() if not only or what in only},
+        metadata,
+        command,
+    )
 
 
 def _metadata(spec: DatasetSpec, labellings, random_state: int) -> dict:
@@ -615,6 +607,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_dataset_argument(parser)
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument(
+        "--fits-only",
+        action="store_true",
+        help="Write only the tables that need no tensors (module docstring).",
+    )
+    parser.add_argument(
+        "--tables",
+        nargs="+",
+        help="Score everything but write only these tables, so a cohort keeps "
+        "only the tables a figure reads.",
+    )
     return parser
 
 
@@ -625,6 +628,8 @@ def main(argv: list[str] | None = None) -> None:
         spec,
         args.random_state,
         command,
+        args.fits_only,
+        args.tables,
     )
 
 

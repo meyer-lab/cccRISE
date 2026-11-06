@@ -10,7 +10,8 @@ recorded in its folder's ``provenance.yaml`` (`provenance.record_output`):
 
 - **pb** (pseudobulk CPD): ``rank_selection/pb_rank_*`` and ``pb_start_fms_*``,
   cccRISE's own sweep (`run_cpd_rank.start_sweep`: seeded SVD starts per rank,
-  up to the tensor's smallest mode). The rank is chosen from these by hand;
+  up to the tensor's smallest mode or the dataset and labelling's
+  `methods.PB_UPPER_RANKS`). The rank is chosen from these by hand;
   ``--pb-rank <labelling>=<rank>`` writes the best start (highest fit R2X)
   of the minimum most of that rank's saved starts reach (f_max;
   `rank_selection.distinct_minima`) as ``fits/pb_*``.
@@ -20,7 +21,7 @@ recorded in its folder's ``provenance.yaml`` (`provenance.record_output`):
   factors) and ``fits/tc2c_*``, the lowest-error start at the elbow rank,
   on the masked tensor. Its fits run with pseudobulk CPD's tolerance, device
   and precision, for at most `methods.TC2C_N_ITER_MAX` iterations, up to the
-  labelling's `methods.TC2C_UPPER_RANKS`.
+  dataset and labelling's `methods.TC2C_UPPER_RANKS`.
 - **tc2c_inner** (Tensor-cell2cell as published, a sensitivity check): the
   same tables on the paper's tensor, only the cell types present in every
   sample and no mask, its fit one SVD start at the elbow rank.
@@ -70,7 +71,7 @@ from .datasets import (
     comparator_filename,
 )
 from .provenance import build_metadata, git_sha, record_output, sha256_file
-from .run_cpd_rank import MAX_DEFAULT_RANK, N_STARTS, start_agreement, start_sweep
+from .run_cpd_rank import N_STARTS, start_agreement, start_sweep
 
 METHODS = ("pb", "tc2c", "tc2c_inner", "stac")
 HEADER = """\
@@ -117,10 +118,13 @@ def fmax_best_seed(sweep: dict[str, Path], rank: int) -> int:
     return int(r2x.loc[rank].loc[seeds].idxmax())
 
 
-def run_pb(pooled: PooledTensor, rank, random_state, fit_kwargs, sweep) -> dict:
-    """Pseudobulk CPD's start sweep (tables) and, at `rank`, its fit: the
-    best f_max start of the saved `sweep` (`fmax_best_seed`)."""
-    ranks = list(range(1, min(MAX_DEFAULT_RANK, *pooled.values.shape) + 1))
+def run_pb(
+    pooled: PooledTensor, upper_rank, rank, random_state, fit_kwargs, sweep
+) -> dict:
+    """Pseudobulk CPD's start sweep up to `upper_rank` (tables) and, at
+    `rank`, its fit: the best f_max start of the saved `sweep`
+    (`fmax_best_seed`)."""
+    ranks = list(range(1, min(upper_rank, *pooled.values.shape) + 1))
     seeds = list(range(random_state, random_state + N_STARTS))
     out = {
         "settings": {
@@ -288,7 +292,7 @@ def run_tensor_cell2cell(
     `workers` processes), or with `workers` None only its fit from the saved
     sweep (`run_tc2c_from_sweep`)."""
     if workers is not None:
-        upper_rank = methods.TC2C_UPPER_RANKS[labelling]
+        upper_rank = methods.TC2C_UPPER_RANKS[spec.key][labelling]
         return run_tc2c(pooled, upper_rank, random_state, fit_kwargs, workers)
     sweep = saved_sweep(method, spec, labelling, ("elbow", "starts"))
     return run_tc2c_from_sweep(pooled, sweep, random_state, fit_kwargs)
@@ -331,6 +335,7 @@ def run_comparators(
             if method == "pb":
                 result = run_pb(
                     pooled["pb"],
+                    methods.PB_UPPER_RANKS[spec.key][labelling],
                     pb_ranks.get(labelling),
                     random_state,
                     fit_kwargs,
