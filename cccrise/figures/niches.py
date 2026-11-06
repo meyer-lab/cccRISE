@@ -60,7 +60,8 @@ RANKING_HEADER = (
 COHORT_HEADER, COHORT_TICK = "Cohort", "% NICHES+"
 SPARSITY_X = -1.1
 #: `orderings`' column of each population's NICHES+ cells, left of the cohort's
-COUNT_X, COUNT_HEADER, COUNT_TICK = -2.1, "NICHES+", "cells"
+COUNT_X, COUNT_HEADER, COUNT_TICK = -2.2, "NICHES+", "cells"
+COUNT_NORM = LogNorm(10, 1000)
 SPARSITY_CMAP = LinearSegmentedColormap.from_list(
     "sparsity", ["#fbeeec", style.COLORS["up"]]
 )
@@ -204,9 +205,7 @@ def _concordance_legend(ax, side: str | None) -> None:
         "labelspacing": 0.2,
         "handletextpad": 0.3,
     }
-    if side == "below":
-        common.legend(ax, side, ncols=2, columnspacing=1, **spacing)
-    elif side:
+    if side:
         common.legend(ax, side, **spacing)
     else:
         ax.legend(loc="lower right", borderaxespad=0.1, **spacing)
@@ -242,6 +241,7 @@ def concordance(axs, components, legend: str | None = None) -> None:
     for y, (case, r) in enumerate(table.iterrows()):
         _concordance_row(ax, y, case[1], r)
     ax.set(xlim=(0, 1), ylim=(len(rows) - 0.5, -0.5), xlabel=CONCORDANCE_LABEL)
+    ax.set_xticks(SCATTER_TICKS)
     program_labels(ax, rows, range(len(rows)))
     _concordance_legend(ax, legend)
 
@@ -376,11 +376,10 @@ def _ordering_headers(ax) -> None:
         )
 
 
-def orderings(axs, components, labels: bool = True) -> None:
+def orderings(axs, components) -> None:
     """The population's number of cells chosen by a state direction, alone and
     times expression, and by expression alone; its NICHES+ cells, and how
-    sparse NICHES is. Rows unlabeled without `labels` (beside `concordance`'s
-    rows)."""
+    sparse NICHES is."""
     (ax,) = axs
     rows = cases(components)
     y = list(range(len(rows)))
@@ -404,15 +403,16 @@ def orderings(axs, components, labels: bool = True) -> None:
         "non-zero NICHES program score.",
     )
     linear = Normalize(0, 1)
-    for row, n in zip(y, counts, strict=True):
-        ax.text(
-            COUNT_X,
-            row,
-            f"{n:,}",
-            ha="center",
-            va="center",
-            fontsize=style.FONT_SIZE_DENSE,
-        )
+    _block(
+        ax,
+        COUNT_X,
+        COUNT_X,
+        y,
+        counts.to_numpy()[:, None],
+        SPARSITY_CMAP,
+        COUNT_NORM,
+        lambda v: f"{v:,}",
+    )
     _block(
         ax,
         SPARSITY_X,
@@ -440,10 +440,7 @@ def orderings(axs, components, labels: bool = True) -> None:
     ax.set_ylim(y[-1] + 0.5, y[0] - 0.5)
     for spine in ax.spines.values():
         spine.set_visible(False)
-    if labels:
-        program_labels(ax, rows, y)
-    else:
-        ax.set_yticks([])
+    program_labels(ax, rows, y)
 
 
 def weight_scatters(axs) -> None:

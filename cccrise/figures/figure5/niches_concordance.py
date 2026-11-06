@@ -2,11 +2,11 @@
 
 from .. import common, niches
 
-AXES = ("rect",)
+AXES = ("square",)
 
 
 def plot(axs):
-    niches.concordance(axs, niches.MAIN, legend="below")
+    niches.concordance(axs, niches.MAIN, legend="above")
 
 
 def makeFigure():

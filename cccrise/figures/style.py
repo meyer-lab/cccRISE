@@ -86,6 +86,8 @@ AXIS_SIZE = {
     "full_labeled": (FIGURE_WIDTH_DOUBLE - 34 * MM, AXIS_HEIGHT),
     # Supplementary heatmaps with too many columns for "rect"
     "wide": (2.5 * AXIS_WIDTH, AXIS_HEIGHT),
+    # A main-figure heatmap beside a square
+    "double_rect": (2 * AXIS_WIDTH, AXIS_HEIGHT),
     "tall": (2.5 * AXIS_WIDTH, 3 * AXIS_HEIGHT),
     # A few groups x many genes along x (dot plots)
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
