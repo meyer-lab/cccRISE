@@ -6,12 +6,12 @@ subtitle: "Resolving cell-cell communication programs beyond cell-type boundarie
 ## Table of Contents
 
 - {{< label rise-factor-matrices >}}: ALAD RISE factor matrices
-- {{< label cmp-stability >}}: Collinearity and stability of RISE and CP components
+- {{< label cmp-stability >}}: Collinearity and stability of RISE and CPD components
 - {{< label nichenet >}}: NicheNet validation against a shuffled prior
-- {{< label alad-associations >}}: Association of CP components, RISE components, and patient covariates with ALAD outcome
-- {{< label anova-stability >}}: Stability of CP component--outcome associations
+- {{< label alad-associations >}}: Association of CPD components, RISE components, and patient covariates with ALAD outcome
+- {{< label anova-stability >}}: Stability of CPD component--outcome associations
 - {{< label ibd-rank-selection >}}: IBD CCC-RISE rank selection and RISE factor matrices
-- {{< label ibd-associations >}}: Association of CP components and covariates with IBD biopsy type
+- {{< label ibd-associations >}}: Association of CPD components and covariates with IBD biopsy type
 - {{< label niches-ibd >}}: Validation of CCC-RISE sender and receiver cell populations by NICHES
 - {{< label alad-outcome-groups >}}: ALAD samples by outcome group
 
@@ -24,8 +24,8 @@ For visualization, genes outside the top 10% by weight in any component are omit
 ![](figures/figureS_cmp_stability/figureS_cmp_stability.svg){width="6.5in"}
 
 **{{< label cmp-stability >}}.
-Collinearity and stability of RISE and CP components.** ({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CP components across ranks, as the median (line and points) and interquartile range (band) over 10 seeded SVD starts per rank.
-({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CP LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
+Collinearity and stability of RISE and CPD components.** ({{< panel cmp-stability cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and interquartile range (band) over 10 seeded SVD starts per rank.
+({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
 Each replicate's components were matched to the reference's by Hungarian matching.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 
@@ -41,23 +41,23 @@ Null: the same percentiles on 1,000 copies of the NicheNet v2 prior with ligand-
 ![](figures/figureS_alad_associations/figureS_alad_associations.svg){width="6.5in"}
 
 **{{< label alad-associations >}}.
-Association of CP components, RISE components, and patient covariates with ALAD outcomes.** ({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CP component's condition loadings against each ALAD outcome.
+Association of CPD components, RISE components, and patient covariates with ALAD outcomes.** ({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each ALAD outcome.
 \*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
-({{< panel alad-associations death-weights >}}) CP component 4 condition loadings by ({{< panel alad-associations death-weights.1 >}}) six-month and ({{< panel alad-associations death-weights.2 >}}) one-year death.
+({{< panel alad-associations death-weights >}}) CPD component 4 condition loadings by ({{< panel alad-associations death-weights.1 >}}) six-month and ({{< panel alad-associations death-weights.2 >}}) one-year death.
 Lines connect samples from the same patient.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outcomes and components.
 ({{< panel alad-associations rise-associations >}}) As in ({{< panel alad-associations cp-associations >}}), for each RISE component's condition loadings.
-({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CP component 4 sender against receiver weight, with R^2^ across all cells.
+({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CPD component 4 sender against receiver weight, with R^2^ across all cells.
 ({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 
 ![](figures/figureS_anova_stability/figureS_anova_stability.svg){width="6.5in"}
 
 **{{< label anova-stability >}}.
-Stability of CP component--outcome associations.** ({{< panel anova-stability effect-size-distributions >}}) ANOVA η^2^ of each CP component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by Hungarian matching.
+Stability of CPD component--outcome associations.** ({{< panel anova-stability effect-size-distributions >}}) ANOVA η^2^ of each CPD component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by Hungarian matching.
 Diamonds mark the full-cohort η^2^, filled where q < 0.05.
-({{< panel anova-stability significant-fraction >}}) Fraction of jackknife replicates in which each CP component's association with six-month outcome has q < 0.05.
+({{< panel anova-stability significant-fraction >}}) Fraction of jackknife replicates in which each CPD component's association with six-month outcome has q < 0.05.
 q: Benjamini--Hochberg corrected p across the five components of each fit.
 
 ![](figures/figureS_ibd_rank_selection/figureS_ibd_rank_selection.svg){width="6.5in"}
@@ -66,21 +66,21 @@ q: Benjamini--Hochberg corrected p across the five components of each fit.
 IBD rank selection.** ({{< panel ibd-rank-selection cohort >}}) Schematic of the IBD cohort data\ [@doi:10.1038/s41588-026-02634-7].
 ({{< panel ibd-rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
 ({{< panel ibd-rank-selection bicv-test >}}) BiCV test R^2^X from ({{< panel ibd-rank-selection rise-rank-selection >}}) on its own magnified axis.
-({{< panel ibd-rank-selection cp-r2x-starts >}}) CP fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
+({{< panel ibd-rank-selection cp-r2x-starts >}}) CPD fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
 Circle: the elbow of the median curve located by Kneedle\ [@doi:10.1109/ICDCSW.2011.20].
-({{< panel ibd-rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CP components across ranks, for each start (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey).
+({{< panel ibd-rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each start (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey).
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 ({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
-({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, as the median (line and points) and interquartile range (band) over the starts.
+({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CPD components across ranks, as the median (line and points) and interquartile range (band) over the starts.
 ({{< panel ibd-rank-selection factors genes >}}) RISE factor matrices at the selected rank representing component loadings of conditions and genes.
 ({{< panel ibd-rank-selection eigenstate-heatmap >}}) RISE cell-type--eigen-state associations derived from RISE rank-60 projection matrices: mean RISE projection of each cell type's cells onto each eigen-state.
 
 ![](figures/figureS_ibd_associations/figureS_ibd_associations.svg){width="6.5in"}
 
 **{{< label ibd-associations >}}.
-Association of CP components and covariates with IBD biopsy type.** ({{< panel ibd-associations cp-associations >}}) One-way ANOVA η^2^ of each CP component's condition loadings against each IBD biopsy categorization.
+Association of CPD components and covariates with IBD biopsy type.** ({{< panel ibd-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each IBD biopsy categorization.
 \*: q < 0.05, Benjamini--Hochberg corrected across all categorizations and components.
-({{< panel ibd-associations status-loadings >}}) CP component ({{< panel ibd-associations status-loadings.1 >}}) 3 and ({{< panel ibd-associations status-loadings.2 >}}) 4 condition loadings by CD inflammation status.
+({{< panel ibd-associations status-loadings >}}) CPD component ({{< panel ibd-associations status-loadings.1 >}}) 3 and ({{< panel ibd-associations status-loadings.2 >}}) 4 condition loadings by CD inflammation status.
 Violins show the distribution of loadings, points show individual biopsies, and ticks mark the median.
 One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all categorizations and components.
 ({{< panel ibd-associations lineage-proportions >}}) Fraction of each biopsy's cells in each coarsely annotated cell type for healthy, CD uninflamed, and CD inflamed samples, on a square-root scale.

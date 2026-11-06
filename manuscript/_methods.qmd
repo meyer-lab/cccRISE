@@ -133,7 +133,7 @@ The uncompressed data were fit with a 17-component RISE model and a 5-component 
 **RISE compression.** [Claude's sample text:] Analyses requiring many RISE fits (bi-cross-validation, and the jackknife and re-initialization replicates) used compressed RISE fits.
 The gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations; each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
 CPD was never compressed: its fits ran in single precision on a GPU, except the masked imputation fits, which ran in double precision.
-The RISE and CP fits from which all reported results are derived are uncompressed.
+The RISE and CPD fits from which all reported results are derived are uncompressed.
 
 ### Fit Evaluation
 
@@ -164,7 +164,7 @@ $$
 which ranges from −1 to 1 and is independent of the columns' scale, which CPD and RISE leave undetermined.
 Because a column's sign is also undetermined, comparisons used the absolute cosine, $\left| \cos\left( u,v \right) \right|$, unless stated otherwise.
 
-**Factor match score.** FMS was used to evaluate the stability of the RISE and CP factorizations\ [@doi:10.1137/21m1450033].
+**Factor match score.** FMS was used to evaluate the stability of the RISE and CPD factorizations\ [@doi:10.1137/21m1450033].
 For a pair of factorizations, the FMS of component $q$ is the product, over the compared modes $m$, of the absolute cosine similarity between the two fits' factor columns,
 
 $$
@@ -183,23 +183,23 @@ The held-out genes' loadings were estimated by least squares from the training c
 The held-out R^2^X was then computed on the block of held-out cells and held-out genes.
 This was repeated 10 times for each rank from 1 to 50, using compressed RISE fits, and we selected the rank maximizing the mean held-out R^2^X.
 
-**CPD.** CP ranks from 1 to the selected RISE rank were evaluated on the communication tensor from the uncompressed RISE fit.
-At each rank, CP was fit from 10 seeded starts of the same SVD initialization used for the reported fit (randomized SVD, seeds 42--51), in single precision on a GPU.
+**CPD.** CPD ranks from 1 to the selected RISE rank were evaluated on the communication tensor from the uncompressed RISE fit.
+At each rank, CPD was fit from 10 seeded starts of the same SVD initialization used for the reported fit (randomized SVD, seeds 42--51), in single precision on a GPU.
 First, the fit R^2^X of each start was computed, and the elbow of the median R^2^X across starts was located by Kneedle\ [@doi:10.1109/ICDCSW.2011.20].
 Second, the masked imputation R^2^X was computed.
 Tensor entries were split into 10 random folds, so that every entry was held out once.
-For each fold, the held-out entries were set to zero and the CP model was fit by masked ALS, which iteratively fills the held-out entries with the current reconstruction.
+For each fold, the held-out entries were set to zero and the CPD model was fit by masked ALS, which iteratively fills the held-out entries with the current reconstruction.
 The predictions of all held-out entries were pooled into a single R^2^X against the full tensor, and this was averaged over 10 repeated fold splits.
 Imputation fits ran in double precision, because single-precision masked fits diverged at higher ranks.
 A ridge penalty ($\lambda$ = 0.1) was applied to the masked fits only, because the communication tensor is heavy-tailed so an unpenalized masked fit could be dominated by the few largest held-out entries.
 Third, the collinearity of each fit was measured in each mode as the largest absolute cosine between the factor columns of two of its components.
 Fourth, the agreement between starts was measured by the FMS between every pair of a rank's starts.
 Starts with FMS ≥ 0.95 were joined, and each connected group of starts was taken as a distinct minimum; the minimum reached by the most starts is denoted $f_{\max}$.
-[placeholder: how the CP rank was chosen from these criteria]
+[placeholder: how the CPD rank was chosen from these criteria]
 
 ### Component--outcome Association
 
-**Association testing.** Associations between components and outcomes were tested with the sample as the unit of analysis, using the corrected CP condition loadings ($D$).
+**Association testing.** Associations between components and outcomes were tested with the sample as the unit of analysis, using the corrected CPD condition loadings ($D$).
 For ALAD, we tested nine groupings of samples: ALAD status (control vs. ALAD; control, declined, and recovered); six-month outcome (stable, recovered, CLAD, and died; CLAD vs. stable/recovered, excluding deaths; and died vs. alive); one-year outcome (stable, recovered, CLAD, and died; CLAD vs. no CLAD; and died vs. alive); and acute rejection (yes vs. no).
 For IBD, we tested [placeholder IBD association tests].
 For each component and grouping, we reported the one-way analysis of variance (ANOVA) F statistic and effect size, $\eta^{2} = SS_{between}/SS_{total}$, with p-values corrected across all component by outcome tests.
@@ -207,20 +207,20 @@ RISE condition loadings ($A$) were corrected and tested in the same way, with co
 
 **Covariate confounder testing.** Patient covariates were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
 
-**LR pair association testing.** For each CP component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($E$) and receiver ($F$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}e_{s}f_{t}$, where $X_{istl}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in condition $i$.
+**LR pair association testing.** For each CPD component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($E$) and receiver ($F$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}e_{s}f_{t}$, where $X_{istl}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in condition $i$.
 These scores were corrected for total sample expression as above and tested against outcome by one-way ANOVA, with correction across the 513 LR pairs.
 For the component's top 10 LR pairs by absolute LR-pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
 These correlations were compared with those of LR pairs drawn 2,000 times from three baselines: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with outcome (q < 0.05).
 
 ### Robustness Tests
 
-**Patient jackknife.** Each patient was left out in turn, with both samples of a two-sample patient left out together, and each replicate was refit end to end at the selected ranks using compressed RISE fits and uncompressed, single-precision CP fits.
+**Patient jackknife.** Each patient was left out in turn, with both samples of a two-sample patient left out together, and each replicate was refit end to end at the selected ranks using compressed RISE fits and uncompressed, single-precision CPD fits.
 Replicates were compared with a reference fit on the full data with the same settings by Hungarian matching and FMS.
-Because the condition roster changed between replicates, RISE was compared on the gene mode only and CP on the LR-pair mode only; eigen-state modes were never compared.
-To assess the stability of component--outcome associations, the ANOVA for an outcome grouping was repeated on each replicate's corrected CP condition loadings, corrected for multiple testing across the components of that fit, and assigned to the matched reference component.
+Because the condition roster changed between replicates, RISE was compared on the gene mode only and CPD on the LR-pair mode only; eigen-state modes were never compared.
+To assess the stability of component--outcome associations, the ANOVA for an outcome grouping was repeated on each replicate's corrected CPD condition loadings, corrected for multiple testing across the components of that fit, and assigned to the matched reference component.
 
 **Model re-initialization.** The full data were refit end to end with different random seeds, using the same fits and reference as above.
-Because the conditions were unchanged, RISE was compared on the condition and gene modes and CP on the condition and LR-pair modes.
+Because the conditions were unchanged, RISE was compared on the condition and gene modes and CPD on the condition and LR-pair modes.
 
 **Alternative CCC scoring** To assess robustness to the communication score, the communication tensor was recomputed from a single shared, uncompressed RISE fit under each alternative scoring function, and each tensor was fit with an uncompressed CPD at the selected rank.
 Components of each alternative fit were matched to the expression-product fit by Hungarian matching and their mean absolute cosine over the condition and LR-pair modes was computed.
@@ -241,7 +241,7 @@ For volcano plots, the effect size of each component's top 20 LR pairs was the l
 ### External Biological Validation
 
 **NicheNet downstream-target validation.** We tested whether each component's receiver cells upregulated the downstream targets of the component's ligands, using the NicheNet v2 ligand--target prior\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
-For each CP component:
+For each CPD component:
 
 1. Receiver cell types were those whose mean per-cell receiver loading was at least 0.4 times that of the top cell type.
 2. Cells above the 90th percentile of receiver loading within those cell types were compared with the remaining cells below the 10th percentile of receiver loading across all cells by differential gene expression, restricted to genes detected in at least 10% of cells of either group.
@@ -254,7 +254,7 @@ For each CP component:
 
 ### Mapping CCC-RISE Components to Cells
 
-**Per-cell sender and receiver loadings.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CP eigen-state factors can be mapped back to individual cells.
+**Per-cell sender and receiver loadings.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CPD eigen-state factors can be mapped back to individual cells.
 The per-cell sender and receiver loadings of all cells are $PE$ and $PF$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row.
 The agreement of a component's sender and receiver cells was summarized by the R^2^ between per-cell sender and receiver loadings across all cells.
 
@@ -263,6 +263,8 @@ The agreement of a component's sender and receiver cells was summarized by the R
 **Label-free sender and receiver groups.** To interpret a component without cell-type labels, each cell's per-cell sender and receiver loadings were divided by their respective maxima across cells.
 Cells for which either ratio was at least $\tau = 0.3$ formed the sender or receiver group, assigned to the role with the larger ratio.
 Groups were compared by differential gene expression.
+For ALAD analyses, marker genes were curated from Travaglini et al.\ and Sikkema et al.\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2].
+For IBD analyses, marker genes were curated from Beumer et al.\ (2018, 2020), Gehart et al., and Krzak et al.\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7].
 Sender and receiver groups were compared for curated genes, p-values were corrected across candidate markers present in the data, and markers were reported if q < 0.05 and the difference in the fraction of cells detecting the gene was at least 0.2.
 Each group was also compared with all other cells, with correction across all genes.
 
