@@ -51,7 +51,8 @@ figS_cmp5_identity:
   celltype_markers: [c]
   group_vs_rest: [d, e]
   sender_vs_receiver: [f]
-  receiver_genes: [g]
+  tau_sweep: [g]
+  receiver_genes: [h]
 figS_alad_associations:
   cp_associations: [a]
   death_weights: [b, c]

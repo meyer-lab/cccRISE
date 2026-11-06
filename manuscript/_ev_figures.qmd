@@ -16,7 +16,8 @@ ALAD CPD component 5 sender and receiver cell identity.** ({{< panel cmp5-identi
 ({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell type markers in component 5's sender/receiver groups and all other cells\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2].
 ({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Wilcoxon rank-sum q (Benjamini--Hochberg corrected across all genes) between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and all other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and all other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells.
 Labeled are ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial markers and ({{< panel cmp5-identity sender-vs-receiver >}}) epithelium-specific genes selected from those differentially expressed between the groups.
-({{< panel cmp5-identity receiver-genes >}}) Gene loadings of eigen-state 15, the eigen-state most heavily weighted by component 5's receiver factor, by rank; the 10 highest-loading genes are labeled.
+({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} (Benjamini--Hochberg corrected across these markers) across group cutoffs τ, signed positive when higher in sender cells; dotted line: τ = 0.3 used throughout, dashed lines: q = 0.05.
+({{< panel cmp5-identity receiver-genes >}}) Gene loadings of eigen-state 15, the eigen-state most heavily weighted by component 5's receiver factor, by rank; the 30 highest-loading genes are labeled.
 
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 
