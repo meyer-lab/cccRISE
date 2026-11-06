@@ -10,7 +10,6 @@ from .. import common, style
 from ._common import (
     COMPARATORS,
     DATASET,
-    DATASET_COLORS,
     DATASET_LABELS,
     METHOD_COLORS,
 )
@@ -36,6 +35,7 @@ from ._layout import (
     spread_slots,
     strips,
 )
+from ._recovery import panel_title
 
 #: Short names of the ALAD associations.
 ASSOCIATION_NAMES = {
@@ -190,35 +190,10 @@ def _dividers(ax, t) -> None:
         )
 
 
-def cohort_bar(ax, dataset: str, label: bool) -> None:
-    """A bar in the cohort's color right of `ax`, `label` naming it."""
-    x = 1 + 3 * style.MM / (ax.bbox.width / ax.figure.dpi)
-    ax.plot(
-        [x, x],
-        [-0.04, 1.04],
-        color=DATASET_COLORS[dataset],
-        lw=2.5,
-        transform=ax.transAxes,
-        clip_on=False,
-        solid_capstyle="butt",
-    )
-    if label:
-        ax.text(
-            x + 0.012,
-            0.5,
-            DATASET_LABELS[dataset],
-            rotation=-90,
-            ha="left",
-            va="center",
-            fontsize=style.FONT_SIZE_DENSE,
-            transform=ax.transAxes,
-        )
-
-
-def pairs_used(axs, dataset: str = DATASET, key: bool = True) -> None:
+def pairs_used(axs, dataset: str = DATASET, key: bool = False) -> None:
     """How many top pairs each component of every fit tests, at its
-    `covariation_spread` x (bare ticks: the panels below name them); with
-    `key`, the figure's key above, left."""
+    `covariation_spread` x (bare ticks: the panels below name them), under
+    the cohort's name; with `key`, the figure's key above it."""
     ax = axs[0]
     t, centres = spread_slots(covariation_tables(False, dataset))
     source_data(
@@ -242,9 +217,9 @@ def pairs_used(axs, dataset: str = DATASET, key: bool = True) -> None:
         yticks=[2, 5, 10],
         ylabel="Pairs used",
     )
-    cohort_bar(ax, dataset, label=False)
     ax.yaxis.label.set_size(style.FONT_SIZE_DENSE)
     ax.tick_params(labelsize=style.FONT_SIZE_DENSE)
+    panel_title(ax, DATASET_LABELS[dataset])
     if not key:
         return
     ax.legend(
@@ -253,8 +228,8 @@ def pairs_used(axs, dataset: str = DATASET, key: bool = True) -> None:
             NULL_HANDLE,
             UNTESTABLE_HANDLE,
         ],
-        loc="lower left",
-        bbox_to_anchor=(0, 1),
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.42),
         ncol=6,
         fontsize=style.FONT_SIZE_DENSE - 1,
         frameon=False,
@@ -279,7 +254,6 @@ def covariation_spread(axs, disjoint: bool = False, dataset: str = DATASET) -> N
     ax.set(ylim=(low - 0.06 if low < 0 else 0, 1.17), yticks=[0, 0.5, 1])
     if low < 0:
         common.reference_line(ax, 0)
-    cohort_bar(ax, dataset, label=not disjoint)
     ax.yaxis.label.set_size(style.FONT_SIZE_DENSE)
     ax.tick_params(labelsize=style.FONT_SIZE_DENSE)
 

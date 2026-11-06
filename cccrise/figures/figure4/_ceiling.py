@@ -129,14 +129,16 @@ def ceiling(ax, side: str) -> dict:
         fontsize=style.FONT_SIZE_DENSE,
     )
     ax.tick_params(axis="y", length=0)
-    ax.set_xlabel("Per-cell weight variance held ($R^2$)")
-    ax.set_title(side.title(), fontsize=style.FONT_SIZE_LABEL)
+    ax.set_xticks([0, 0.5, 1])
+    ax.set_xlabel("Per-cell weight $R^2$")
+    ax.set_title(side.title(), fontsize=style.FONT_SIZE_LABEL, fontweight="bold")
     _cohort_labels(ax, centers)
     return centers
 
 
-def key(ax) -> None:
-    """The panels' key, right of `ax`'s cohort labels."""
+def key(ax, inside: bool = False) -> None:
+    """The panels' key, right of `ax`'s cohort labels, or `inside` its lower
+    right corner."""
     ink = style.COLORS["ink"]
     handles = [
         *[
@@ -172,7 +174,19 @@ def key(ax) -> None:
             mfc="white",
             mec=ink,
             ms=3,
-            label="Closest PB or\nSTAC column",
+            label="Closest column" if inside else "Closest PB or\nSTAC column",
         ),
     ]
-    common.legend(ax, "right", handles=handles, fontsize=style.FONT_SIZE_DENSE)
+    if inside:
+        ax.legend(
+            handles=handles,
+            loc="lower right",
+            bbox_to_anchor=(1.03, -0.02),
+            fontsize=style.FONT_SIZE_DENSE - 1.4,
+            labelspacing=0.2,
+            handlelength=1.2,
+            handletextpad=0.3,
+            borderaxespad=0,
+        )
+    else:
+        common.legend(ax, "right", handles=handles, fontsize=style.FONT_SIZE_DENSE)

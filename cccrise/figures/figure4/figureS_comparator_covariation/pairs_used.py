@@ -1,4 +1,4 @@
-"""How many top pairs each ALAD component tests, with the key."""
+"""How many top pairs each ALAD component tests, under ALAD."""
 
 from ... import common
 from .._strips import pairs_used

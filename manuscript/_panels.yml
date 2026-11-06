@@ -129,11 +129,10 @@ figS_comparator_covariation:
   ibd_all_pairs: [e]
   ibd_disjoint: [f]
 figS_comparator_properties:
-  coarse_to_fine: [a]
-  breadth: [b]
-  inputs: [c]
-  homophily: [d]
-  top_share: [e]
+  breadth: [a]
+  inputs: [b]
+  homophily: [c]
+  top_share: [d]
 figS_comparator_lr_contents: {}
 figS_comparator_ibd:
   reach: [a]
@@ -162,3 +161,18 @@ figS_niches_ibd:
   concordance: [b]
   tau_sweep: [c]
   orderings: [d]
+figS_comparator_classes:
+  span_containment: [a]
+  program_overlap: [b]
+  column_breadth: [c]
+  homophilic_share: [d]
+figS_comparator_map:
+  sender_ceiling: [a]
+  receiver_ceiling: [b]
+  alad_columns: [c]
+  coarse_map: [d]
+  ibd_columns: [e]
+figS_comparator_nichenet:
+  cell_shuffle: [a]
+  prior_shuffle: [b]
+  closest_columns: [c]

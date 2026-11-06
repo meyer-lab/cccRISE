@@ -39,8 +39,6 @@ PROFILED = [
     (("STAC", "coarse", 2), "S2 coarse"),
 ]
 OUTCOME_ORDER = ["No CLAD/Stable", "No CLAD/Recovered", "CLAD", "Died"]
-#: Coarse-to-fine matches drawn from this LR |cos|.
-FLOW_FROM = 0.3
 
 
 def _method_names_below(ax, xs, offset=-12) -> None:
@@ -381,115 +379,6 @@ def sample_profiles(axs) -> None:
         side.set(visible=True, edgecolor=line["color"], linewidth=line["lw"])
     ax.set(
         xlim=(-0.5, len(t) - 0.5), ylim=(0, n), xticks=[], yticks=[], xlabel="Samples"
-    )
-
-
-def flow_width(cos: float) -> float:
-    """A coarse-to-fine line's width: one fixed step per 0.1 of LR |cos|,
-    from 0.25 at `FLOW_FROM` to 1.65 at 1."""
-    return 0.25 + 0.2 * round((min(cos, 1.0) - FLOW_FROM) / 0.1)
-
-
-def _shift(method) -> tuple[np.ndarray, list, list]:
-    """A comparator's coarse x fine LR |cos|, and its coarse and fine
-    columns."""
-    columns = lr_columns()
-    keys = {lab: [k for k in columns if k[:2] == (method, lab)] for lab in LABELLINGS}
-    unit = {
-        lab: np.column_stack([columns[k] / np.linalg.norm(columns[k]) for k in ks])
-        for lab, ks in keys.items()
-    }
-    return np.abs(unit["coarse"].T @ unit["fine"]), keys["coarse"], keys["fine"]
-
-
-def _flow_block(ax, method, x) -> None:
-    cos, coarse, fine = _shift(method)
-    color = METHOD_COLORS[method]
-    yc = np.linspace(1, 0, len(coarse)) if len(coarse) > 1 else np.array([0.5])
-    yf = np.empty(len(fine))
-    yf[np.lexsort((-cos.max(axis=0), cos.argmax(axis=0)))] = np.linspace(
-        1, 0, len(fine)
-    )
-    for (i, j), v in np.ndenumerate(cos):
-        if v >= FLOW_FROM:
-            ax.plot(
-                [x, x + 1],
-                [yc[i], yf[j]],
-                color=color,
-                lw=flow_width(v),
-                alpha=0.75,
-                solid_capstyle="butt",
-                zorder=2,
-            )
-    for xs, ys, keys, ha, dx in (
-        (x, yc, coarse, "right", -0.06),
-        (x + 1, yf, fine, "left", 0.06),
-    ):
-        ax.scatter([xs] * len(ys), ys, s=6, color=color, zorder=3)
-        for y, k in zip(ys, keys, strict=True):
-            ax.text(
-                xs + dx,
-                y,
-                short(method, k[2]),
-                ha=ha,
-                va="center",
-                fontsize=style.FONT_SIZE_DENSE - 3,
-            )
-    ax.text(
-        x + 0.5,
-        1.08,
-        METHOD_LABELS[method],
-        ha="center",
-        fontsize=style.FONT_SIZE_DENSE,
-    )
-    for xs, letter in ((x, "C"), (x + 1, "F")):
-        ax.text(xs, -0.1, letter, ha="center", fontsize=style.FONT_SIZE_DENSE - 1)
-
-
-def _flow_source() -> None:
-    frames = []
-    for m in COMPARATORS:
-        cos, coarse, fine = _shift(m)
-        frames.append(
-            pd.DataFrame(
-                cos,
-                index=[short(m, k[2]) for k in coarse],
-                columns=[short(m, k[2]) for k in fine],
-            )
-            .rename_axis(index="Coarse column", columns="Fine column")
-            .stack()
-            .rename("LR |cos|")
-            .reset_index()
-            .assign(Method=m)
-        )
-    t = pd.concat(frames, ignore_index=True)
-    common.source_data(
-        "coarse_to_fine_lr_cosine",
-        t.assign(Drawn=t["LR |cos|"] >= FLOW_FROM)[
-            ["Method", "Coarse column", "Fine column", "LR |cos|", "Drawn"]
-        ],
-        "|Cosine| between each comparator's coarse and fine LR columns, on "
-        f"cccRISE's LR pairs; Drawn (a line) at {FLOW_FROM} or more.",
-    )
-
-
-def coarse_to_fine(axs) -> None:
-    """Each comparator's coarse LR columns (left) joined to its fine ones
-    (right) where LR |cos| >= `FLOW_FROM`, line width stepping with |cos|."""
-    ax = axs[0]
-    _flow_source()
-    for i, m in enumerate(COMPARATORS):
-        _flow_block(ax, m, 1.75 * i)
-    ax.set(xlim=(-0.35, 1.75 * len(COMPARATORS) - 0.4), ylim=(-0.15, 1.15))
-    ax.set_axis_off()
-    ax.text(
-        0.5,
-        -0.04,
-        "LR |cos| match",
-        transform=ax.transAxes,
-        ha="center",
-        va="top",
-        fontsize=style.FONT_SIZE_LABEL,
     )
 
 

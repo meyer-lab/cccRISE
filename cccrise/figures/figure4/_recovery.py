@@ -69,7 +69,12 @@ def _map_rows(labelling: str) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
-def program_map(ax, labelling: str = "fine") -> None:
+def program_map(
+    ax,
+    labelling: str = "fine",
+    spots: dict | None = None,
+    title: str = "Label-based recovery of cccRISE programs",
+) -> None:
     """Each program's best single column of `labelling`'s fits against the
     per-cell weight its labels can hold."""
     t = _map_rows(labelling)
@@ -94,14 +99,15 @@ def program_map(ax, labelling: str = "fine") -> None:
             zorder=3,
         )
         left = (r.Dataset, r.Program) in LEFT_LABELS
-        ax.text(
-            r.Cos2 + (-0.02 if left else 0.02),
-            (r.sender + r.receiver) / 2,
-            f"C{r.Program}",
-            ha="right" if left else "left",
-            va="center",
-            fontsize=LABEL_SIZE,
+        x, y, ha = (spots or {}).get(
+            (r.Dataset, r.Program),
+            (
+                r.Cos2 + (-0.02 if left else 0.02),
+                (r.sender + r.receiver) / 2,
+                "right" if left else "left",
+            ),
         )
+        ax.text(x, y, f"C{r.Program}", ha=ha, va="center", fontsize=LABEL_SIZE)
     ax.set(
         xlim=(0, 1.1),
         ylim=(0, 1),
@@ -110,7 +116,7 @@ def program_map(ax, labelling: str = "fine") -> None:
         xlabel=COS2_LABEL,
         ylabel="Per-cell weight $R^2$",
     )
-    panel_title(ax, "Label-based recovery of cccRISE programs")
+    panel_title(ax, title)
     ax.legend(
         handles=[
             *[

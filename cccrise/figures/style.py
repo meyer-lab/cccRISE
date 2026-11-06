@@ -101,8 +101,12 @@ AXIS_SIZE = {
     "fig4_flow_ibd": (72 * MM, 49 * MM),
     "fig4_niches": (42 * MM, 42 * MM),
     # A full-width axes low enough to stack both cohorts' co-variation
-    "full_low": (FIGURE_WIDTH_DOUBLE - 26 * MM, 18 * MM),
-    "full_strip_low": (FIGURE_WIDTH_DOUBLE - 26 * MM, 8 * MM),
+    "full_low": (FIGURE_WIDTH_DOUBLE - 14 * MM, 18 * MM),
+    "full_strip_low": (FIGURE_WIDTH_DOUBLE - 14 * MM, 8 * MM),
+    # `figureS_comparator_map`: two rows of equal width
+    "map_ceiling": (30 * MM, 36 * MM),
+    "map_coarse": (76 * MM, 30 * MM),
+    "map_columns": (72 * MM, 41 * MM),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
     # Half a rect: box groups as wide as a rect's of twice as many groups
