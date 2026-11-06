@@ -177,3 +177,21 @@ In agreement with the loss of function following inflammation indicated by compo
 In sum, CCC-RISE components 3 and 4 described sender cells on a continuum between two prevailing states with distinct activity: crypt-like producers of GCG communicating with tuft cells and villus-like producers of PYY communicating with EC cells.
 
 To validate the interactions between EE, EC, and tuft subpopulations represented by components 3 and 4, we applied the NICHES pipeline...
+
+### [Placeholder: comparison section title]
+
+::: {#fig-5}
+![](figures/figure5/figure5.svg){width="6.5in"}
+
+**[Placeholder title: what a cell-type-blind model finds that label-based models do not.]** <!-- Draft legend skeleton from the panel modules' docstrings; to be written. -->
+({{< panel 5 program-map >}}) Each CCC-RISE program's best comparator column against its label ceiling.
+({{< panel 5 column-census >}}) What each comparator column is.
+({{< panel 5 best-column >}}) Each program's best column in every fit.
+({{< panel 5 pair-columns >}}) How STACCato arranges the pairs of the mixed programs.
+({{< panel 5 program-covariation >}}) The mixed programs' co-variation against their STACCato columns.
+({{< panel 5 flow-alad >}}) BTC--EGFR in STACCato and in CCC-RISE.
+({{< panel 5 flow-ibd >}}) PYY and GCG in STACCato and in CCC-RISE.
+({{< panel 5 niches-fraction >}}) NICHES-positive cells in CCC-RISE's populations against what their labels predict.
+:::
+
+[Placeholder: comparison results text.]
