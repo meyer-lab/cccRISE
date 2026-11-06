@@ -1,13 +1,13 @@
-"""STACCato's eigenvalue shares per mode (fine labels)."""
+"""STACCato's eigenvalue shares per mode, on ALAD and IBD (fine labels)."""
 
 from ... import common
-from ._panels import DATASET, stac_shares
+from ._panels import stac_shares
 
-AXES = ("square",)
+AXES = ("rect",)
 
 
 def plot(axs):
-    stac_shares(axs, DATASET, "fine")
+    stac_shares(axs, "fine")
 
 
 def makeFigure():

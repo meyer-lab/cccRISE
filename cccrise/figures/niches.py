@@ -47,10 +47,10 @@ CONCORDANCE_LABEL = "NICHES concordance"
 #: `orderings`: each block's header, then its (ordering, tick, x); the header
 #: over every block, and the cohort column's
 BLOCKS = {
-    "State weight": ((RANDOM, "Random", 0.0), (WEIGHT, "cccRISE", 1.0)),
+    "State weight": ((RANDOM, "Random", 0.0), (WEIGHT, "CCC-RISE", 1.0)),
     "State weight × expression": (
         (RANDOM_EXPRESSION, "Random", 2.1),
-        (CONTRIBUTION, "cccRISE", 3.1),
+        (CONTRIBUTION, "CCC-RISE", 3.1),
     ),
     "Expression": ((EXPRESSION, "Alone", 4.2),),
 }
@@ -175,7 +175,7 @@ def _concordance_legend(ax, side: str | None) -> None:
             ms=3.5,
             mfc=ink,
             mec=ink,
-            label="cccRISE population",
+            label="CCC-RISE population",
         ),
         Line2D(
             [],
@@ -291,7 +291,7 @@ def tau_sweep(axs, components) -> None:
             ls=SIDE_STYLES[side],
         )
     ax.set_xlabel("Tau (τ)")
-    ax.set_ylabel("Δ(cccRISE, cell type prediction)", fontsize=style.FONT_SIZE_DENSE)
+    ax.set_ylabel("Δ(CCC-RISE, fine labels)", fontsize=style.FONT_SIZE_DENSE)
     handles = [
         Line2D([], [], color=PROGRAM_COLORS[k], lw=style.LINE_WIDTH, label=f"C{k}")
         for k in components
@@ -395,7 +395,7 @@ def orderings(axs, components) -> None:
         "niches_concordance_by_ordering",
         table.join(shares).join(counts).reset_index(),
         "NICHES concordance of the population's number of cells, chosen by: a "
-        f"random RISE direction (median of {N_ORDERING_DRAWS}); cccRISE's per-cell "
+        f"random RISE direction (median of {N_ORDERING_DRAWS}); CCC-RISE's per-cell "
         "weight; the positive part of a random direction or the weight times the "
         "cell's centred expression of the component's ligands or receptors "
         "(Contribution); and that expression alone. Cohort share: NICHES+ cells' "

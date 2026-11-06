@@ -4,8 +4,10 @@ import anndata
 import numpy as np
 import pandas as pd
 import pytest
+from scipy import sparse
 
 from cccrise.anova import adjust_pvalues
+from cccrise.validation import nichenet
 from cccrise.validation.nichenet import (
     _receiver_population,
     component_ligand_scores,
@@ -23,6 +25,7 @@ from cccrise.validation.nichenet import (
     top_pair_ligands,
     weighted_percentile,
     weighted_percentile_tests,
+    weighted_score_tests,
 )
 
 
@@ -231,6 +234,48 @@ def test_weighted_percentile_tests_against_null():
     )
 
 
+def test_weighted_score_tests_against_cell_null():
+    # Cmp 1's heavy ligands score above its shuffled rankings; cmp 2's don't.
+    # L39 is unscored on one shuffle, so it leaves both sides of the test.
+    rng = np.random.default_rng(0)
+    ligands = [f"L{i}" for i in range(40)]
+    weight = np.r_[np.ones(4), np.full(36, 0.01)]
+    scores = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "component": cmp,
+                    "ligand": ligands,
+                    "auroc": np.r_[np.full(4, 0.5 + lift), np.full(36, 0.5)],
+                    "weight": weight,
+                }
+            )
+            for cmp, lift in ((1, 0.2), (2, 0.0))
+        ],
+        ignore_index=True,
+    )
+    null = pd.concat(
+        [
+            scores[["component", "ligand"]].assign(
+                auroc=rng.normal(0.5, 0.01, len(scores)), replicate=r
+            )
+            for r in range(200)
+        ],
+        ignore_index=True,
+    )
+    null.loc[(null["ligand"] == "L39") & (null["replicate"] == 0), "auroc"] = np.nan
+    tests, null_means = weighted_score_tests(scores, null)
+    assert tests.loc[0, "p"] == pytest.approx(1 / 201)
+    assert tests.loc[1, "p"] > 0.05
+    assert abs(tests.loc[1, "null_mean"] - 0.5) < 0.01
+    assert null_means.index.names == ["component", "replicate"]
+    assert len(null_means) == 400 and null_means.notna().all()
+    kept = weight[:39]
+    assert tests.loc[0, "weighted_auroc"] == pytest.approx(
+        (kept * np.r_[np.full(4, 0.7), np.full(35, 0.5)]).sum() / kept.sum()
+    )
+
+
 def test_component_ligand_scores_end_to_end():
     target_genes = ["g0", "g1", "g2"]
     adata = _make_synthetic_adata(target_genes=target_genes, n_high=40)
@@ -264,3 +309,19 @@ def test_component_ligand_scores_end_to_end():
     assert set(null["replicate"]) == {0, 1, 2}
     assert set(null["ligand"]) <= {"LIGA", "LIGB", "LIGC", "LIGD"}
     assert null["score_pct"].between(0, 1).all()
+
+
+def test_rank_sum_statistics_match_scanpy_wilcoxon():
+    """The matrix form gives `_run_de`'s statistics on the same groups."""
+    rng = np.random.default_rng(0)
+    counts = rng.poisson(1.0, (60, 25)).astype(np.float32)
+    adata = anndata.AnnData(sparse.csr_matrix(counts))
+    pos = rng.random(60) < 0.4
+    expected = nichenet._run_de(adata.copy(), pos, 1, "wilcoxon")
+    z, frac_in, frac_out = nichenet.rank_sum_statistics(adata.X, pos[None, :])
+    ranking = pd.Series(z[0], index=adata.var_names)
+    pd.testing.assert_series_equal(
+        ranking.loc[expected.index], expected, check_names=False, rtol=1e-5
+    )
+    assert np.allclose(frac_in[0], (counts[pos] > 0).mean(axis=0))
+    assert np.allclose(frac_out[0], (counts[~pos] > 0).mean(axis=0))

@@ -1,9 +1,9 @@
-"""Top-pair co-variation over gene-disjoint pairs, every component of every fit."""
+"""Top-pair co-variation over gene-disjoint pairs, ALAD."""
 
 from ... import common
 from .._strips import covariation_spread
 
-AXES = ("full",)
+AXES = ("full_low",)
 
 
 def plot(axs):
