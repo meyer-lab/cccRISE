@@ -607,7 +607,12 @@ def source_data(
     # Index labels kept as columns, but not an unnamed integer index: row
     # positions left over from filtering or sorting
     positional = frame.index.names == [None] and frame.index.dtype.kind in "iu"
-    frame = frame.reset_index(drop=positional).replace("cccRISE", "CCC-RISE")
+    frame = frame.reset_index(drop=positional)
+    # Value by value: `replace` fails on array cells (GroupSizes) and categoricals
+    for c in frame.select_dtypes(["object", "string", "category"]):
+        frame[c] = frame[c].map(
+            lambda v: "CCC-RISE" if isinstance(v, str) and v == "cccRISE" else v
+        )
     frame.to_csv(folder / f"{name}.csv", index=False)
     (folder / f"{name}.yaml").write_text(
         yaml.safe_dump({"description": description, "part": part})
