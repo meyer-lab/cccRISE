@@ -268,9 +268,9 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
 
 
 def _letter_axes(fig: Figure, placements) -> None:
-    """Letter each axes A, B, C, ... in reading order (by its letter's height,
-    then left to right) at its left margin and its row's top, tagged with its
-    panel module's name for `record_panel_letters`."""
+    """Letter each axes A, B, C, ... (only the first of a `_Joined`
+    module) in reading order (by its letter's height, then left to right) at its left margin and its row's top, tagged with its panel
+    module's name for `record_panel_letters`."""
     width, height = fig.get_size_inches()
     lettered = [p for p in placements if p[0].lettered]
     reading = sorted(lettered, key=lambda p: (round(p[3], 6), p[1]))
@@ -299,7 +299,7 @@ def _pack_rows(grid, natural, width):
             print(f"Warning: row {i} has {slack / style.MM:.1f} mm to spare")
         x = (width - row_width - gap * (len(row) - 1)) / 2  # centered
         for box in row:
-            if isinstance(box, _Stack):
+            if isinstance(box, _Stack | _Joined):
                 placements += box.placements(x + box.left, y + top, y)
             else:
                 placements.append((box, x + box.left, y + top, y))
@@ -370,12 +370,39 @@ class _Stack:
         ]
 
 
+class _Joined:
+    """A module's axes side by side, `style.JOINED_GAP` apart whatever their
+    inner margins (so the inner ones must have no y labels) and lettered once:
+    one panel split into several axes. Declared by the module's `JOINED`; it
+    packs as a single box."""
+
+    def __init__(self, boxes: list[_AxesBox]):
+        self.boxes = boxes
+        for b in boxes[1:]:
+            b.lettered = False
+        self.offsets = np.cumsum([0] + [b.width + style.JOINED_GAP for b in boxes[:-1]])
+        self.width = self.offsets[-1] + boxes[-1].width
+        self.height = max(b.height for b in boxes)
+        self.left, self.right = boxes[0].left, boxes[-1].right
+        self.top = max(b.top for b in boxes)
+        self.bottom = max(b.bottom for b in boxes)
+
+    def placements(self, x: float, y: float, row_top: float) -> list[tuple]:
+        return [
+            (b, x + dx, y, row_top)
+            for b, dx in zip(self.boxes, self.offsets, strict=True)
+        ]
+
+
 def _draw_row(fig: Figure, row: list) -> list:
-    """The boxes of a row's modules, each list of modules one `_Stack`."""
+    """The boxes of a row's modules, each list of modules one `_Stack` and
+    each `JOINED` module one `_Joined`."""
     boxes = []
     for item in row:
         if isinstance(item, list):
             boxes.append(_Stack([b for m in item for b in _draw_fixed(fig, m)]))
+        elif getattr(item, "JOINED", False):
+            boxes.append(_Joined(_draw_fixed(fig, item)))
         else:
             boxes += _draw_fixed(fig, item)
     return boxes
@@ -394,9 +421,7 @@ def _draw_fixed(fig: Figure, module) -> list[_AxesBox]:
         w, h = style.AXIS_SIZE[kind]
         ax = fig.add_axes((0.4, 0.4, w / FIXED_MEASURE_SIZE, h / FIXED_MEASURE_SIZE))
         ax.set_label(module.__name__.rsplit(".", 1)[-1])  # found by `panel_axes`
-        # A module with `ONE_LETTER` set is lettered once, at its first axes
-        lettered = not (boxes and getattr(module, "ONE_LETTER", False))
-        boxes.append(_AxesBox(ax, w, h, lettered=lettered))
+        boxes.append(_AxesBox(ax, w, h))
     _SOURCE["panel"] = module.__name__.rsplit(".", 1)[-1]
     module.plot([b.ax for b in boxes])
     for b in boxes:
@@ -987,6 +1012,9 @@ def plot_minima_table(
 #: Outcome levels in reading order (healthy/control first); unlisted levels
 #: follow alphabetically.
 LEVEL_ORDER = [
+    "Healthy",
+    "CD_uninflamed",
+    "CD_inflamed",
     "control",
     "declined",
     "recovered",
@@ -1018,11 +1046,13 @@ def plot_association_heatmap(
     xlabel: str = "CP component",
     p_column: str = "PAdj",
     p_label: str = "FDR",
+    annotate: bool = True,
 ) -> None:
     """Eta-squared of each component (columns) against each outcome
     association (rows), both in `table` order, from
     `anova.run_multiple_factors_anova`; bold with a star where `p_column` is
-    below `SIG_ALPHA`."""
+    below `SIG_ALPHA`. Without `annotate` (too many columns for the values)
+    only the stars are written."""
     rows, columns = (
         list(dict.fromkeys(table[c])) for c in ("Association", "Component")
     )
@@ -1037,26 +1067,34 @@ def plot_association_heatmap(
     image = ax.imshow(
         values, cmap=style.CMAPS["weight"], vmin=0, vmax=vmax, aspect="auto"
     )
-    for (i, j), value in np.ndenumerate(values):
-        if not np.isfinite(value):
-            continue
-        significant = padj.iloc[i, j] < SIG_ALPHA
-        ax.text(
-            j,
-            i,
-            f"{value:.2f}" + ("*" if significant else ""),
-            ha="center",
-            va="center",
-            fontsize=style.FONT_SIZE_DENSE,
-            fontweight="bold" if significant else "normal",
-            color="white" if value > 0.6 * vmax else style.COLORS["ink"],
-        )
+    _label_association_cells(ax, values, padj.to_numpy() < SIG_ALPHA, annotate)
     ax.set_xticks(range(effect.shape[1]), effect.columns)
     ax.set_yticks(range(len(rows)), rows, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
     colorbar(ax, image, rf"$\eta^2$ (* {p_label} < {SIG_ALPHA})")
+
+
+def _label_association_cells(
+    ax: plt.Axes, values: np.ndarray, significant: np.ndarray, annotate: bool
+) -> None:
+    """Each finite cell's value (if `annotate`), starred and bold where
+    `significant`."""
+    vmax = np.nanmax(values)
+    for (i, j), value in np.ndenumerate(values):
+        if not np.isfinite(value) or not (annotate or significant[i, j]):
+            continue
+        ax.text(
+            j,
+            i,
+            (f"{value:.2f}" if annotate else "") + ("*" if significant[i, j] else ""),
+            ha="center",
+            va="center",
+            fontsize=style.FONT_SIZE_DENSE,
+            fontweight="bold" if significant[i, j] else "normal",
+            color="white" if value > 0.6 * vmax else style.COLORS["ink"],
+        )
 
 
 def plot_association_effect_sizes(
@@ -1118,7 +1156,12 @@ def group_loadings(
 
 #: Outcome levels as figures and the app display them; the source data keep
 #: the original labels.
-LEVEL_LABELS = {"No CLAD/Stable": "No CLAD", "No CLAD/Recovered": "Recovered"}
+LEVEL_LABELS = {
+    "No CLAD/Stable": "No CLAD",
+    "No CLAD/Recovered": "Recovered",
+    "CD_uninflamed": "CD uninflamed",
+    "CD_inflamed": "CD inflamed",
+}
 
 
 def level_label(level) -> str:
@@ -1372,15 +1415,15 @@ def label_heatmap_cells(
 ) -> None:
     """Outline each (drawn row, component column, name) cell of a heatmap of
     `shape` and label it beside its column, toward the wider blank side:
-    rightward up to the middle component, leftward after it, each side's
-    labels stacked `FACTOR_LABEL_GAP` apart."""
+    rightward up to the middle component, leftward after it. Labels are
+    stacked `FACTOR_LABEL_GAP` apart across both sides, so two labels of one
+    row never share a height."""
     n_rows, n_cols = shape
     gap = FACTOR_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows  # in rows
-    for rightward in (True, False):
-        side = sorted(e for e in entries if (e[1] <= n_cols // 2) == rightward)
-        heights = _spread_labels([row for row, _, _ in side], gap, n_rows)
-        for (row, col, name), y in zip(side, heights, strict=True):
-            _label_cell(ax, row, col, name, y, rightward)
+    entries = sorted(entries)
+    heights = _spread_labels([row for row, _, _ in entries], gap, n_rows)
+    for (row, col, name), y in zip(entries, heights, strict=True):
+        _label_cell(ax, row, col, name, y, rightward=col < n_cols / 2)
 
 
 def _label_cell(
@@ -1411,12 +1454,19 @@ def _label_cell(
 
 
 def _spread_labels(rows: list[float], gap: float, n_rows: int) -> np.ndarray:
-    """Heights for sorted `rows` at least `gap` apart, centered on them and
-    kept within the heatmap."""
-    placed = np.array(rows, dtype=float)
-    for i in range(1, len(placed)):
-        placed[i] = max(placed[i], placed[i - 1] + gap)
-    if len(placed):
-        placed -= placed.mean() - np.mean(rows)
-        placed -= max(placed[-1] - (n_rows - 1), 0) + min(placed[0], 0)
-    return placed
+    """Heights for sorted `rows` at least `gap` apart: each run of labels too
+    close to fit is centered on its own rows, and kept within the heatmap."""
+    clusters: list[list[float]] = []  # [first height, n labels, sum of rows]
+    for row in rows:
+        clusters.append([row, 1, row])
+        while True:
+            _, n, total = clusters[-1]
+            top = min(max(total / n - (n - 1) * gap / 2, 0), n_rows - 1 - (n - 1) * gap)
+            clusters[-1][0] = top
+            if len(clusters) < 2 or clusters[-2][0] + clusters[-2][1] * gap <= top:
+                break
+            _, n_prev, total_prev = clusters.pop(-2)
+            clusters[-1][1:] = [n + n_prev, total + total_prev]
+    return np.concatenate(
+        [first + gap * np.arange(n) for first, n, _ in clusters] or [np.empty(0)]
+    )

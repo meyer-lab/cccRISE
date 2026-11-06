@@ -65,3 +65,14 @@ Sikkema
 [Uu]pregulate(d|s)?
 [Ee]igensolver
 scanpy
+refactorizations
+[Ee]nteroendocrine
+[Ee]nterochromaffin
+IBDverse
+Beumer
+Gehart
+Krzak
+Crohn's
+[Uu]ninflamed
+binarize
+[Pp]seudobulk(ed|ing|s)?

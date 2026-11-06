@@ -36,6 +36,13 @@ def plot(axs):
         "Every cell's sender and receiver weight on each CP component, with its "
         "sample and annotated cell type: the values averaged per cell type.",
     )
+    draw_weights(axs, tables, COMPONENT)
+
+
+def draw_weights(axs, tables, outlined: int | None = None) -> None:
+    """Sender (`tables[0]`) and receiver (`tables[1]`) mean cell weight,
+    cell types x CP components, on one diverging color scale, with CP
+    component `outlined` boxed and the cell types labeled once."""
     vmax = max(np.nanmax(np.abs(t.to_numpy())) for t in tables)
     for ax, role, table in zip(axs, ROLES, tables, strict=True):
         image = ax.imshow(
@@ -45,16 +52,17 @@ def plot(axs):
             vmax=vmax,
             aspect="auto",
         )
-        ax.add_patch(
-            Rectangle(
-                (COMPONENT - 1.5, -0.5),
-                1,
-                len(table),
-                fill=False,
-                edgecolor="black",
-                linewidth=style.LINE_WIDTH,
+        if outlined is not None:
+            ax.add_patch(
+                Rectangle(
+                    (outlined - 1.5, -0.5),
+                    1,
+                    len(table),
+                    fill=False,
+                    edgecolor="black",
+                    linewidth=style.LINE_WIDTH,
+                )
             )
-        )
         ax.set_xticks(range(table.shape[1]), table.columns)
         ax.set_yticks(range(len(table)), table.index, fontsize=style.FONT_SIZE_DENSE)
         ax.set_xlabel(f"CP component\n({role} weight)")
