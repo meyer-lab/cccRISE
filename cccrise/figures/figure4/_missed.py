@@ -56,7 +56,7 @@ def contents(dataset: str) -> tuple[list, list, pd.Series]:
     |loading| / max |loading|; the pairs in order; and each pair's largest such
     value in a cccRISE component."""
     rows, pairs = [], []
-    for r in left_over(dataset).itertuples():
+    for _, r in left_over(dataset).iterrows():
         column = lr_matrix(dataset, r.Method, r.Labelling)[r.Component]
         squared = column**2 / (column**2).sum()
         kept = squared[squared >= SHOWN_SHARE].sort_values(ascending=False).index

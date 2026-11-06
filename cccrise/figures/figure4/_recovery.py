@@ -23,8 +23,6 @@ from ._programs import (
     tested_columns,
 )
 
-#: Heatmap cell edges.
-GRID = {"ec": "black", "lw": 0.3}
 HEAT = style.CMAPS["weight"]
 #: Outline of a column tested in the next panel.
 LINK = "#d00000"
@@ -84,7 +82,7 @@ def program_map(
         "Per program: its largest cos^2 with one LR column of the comparator fits, "
         f"and the R2 of its per-cell sender and receiver weights on {labelling} labels.",
     )
-    for r in t.itertuples():
+    for _, r in t.iterrows():
         color = DATASET_COLORS[r.Dataset]
         ax.plot([r.Cos2] * 2, [r.sender, r.receiver], color=color, lw=0.8, zorder=1)
         ax.scatter(r.Cos2, r.sender, s=13, color=color, ec="white", lw=0.3, zorder=3)
@@ -204,7 +202,7 @@ def census(ax) -> None:
 
 
 def _cell(ax, x: float, y: float, value: float, text: bool = False) -> None:
-    ax.add_patch(Rectangle((x, y), 1, 1, fc=HEAT(value), **GRID))
+    ax.add_patch(Rectangle((x, y), 1, 1, fc=HEAT(value), ec="black", lw=0.3))
     if text:
         ax.text(
             x + 0.5,
@@ -449,8 +447,8 @@ def covariation_lollipops(
     """Each row's ρ̄ against its stricter null's 95th percentile, solid above it."""
     nulls = t[[f"random_q95{suffix}", f"expression_matched_q95{suffix}"]].max(axis=1)
     above = beyond(t, suffix)
-    for r, null, solid in zip(t.itertuples(), nulls, above, strict=True):
-        observed = getattr(r, f"Observed{suffix}")
+    for (_, r), null, solid in zip(t.iterrows(), nulls, above, strict=True):
+        observed = r[f"Observed{suffix}"]
         color = METHOD_COLORS[r.Method]
         ax.plot([r.X, r.X], [observed, null], color="0.55", lw=0.7, zorder=1)
         ax.plot([r.X - 0.3, r.X + 0.3], [null, null], color="0.4", lw=0.9, zorder=2)

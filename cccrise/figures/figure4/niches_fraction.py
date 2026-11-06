@@ -74,7 +74,7 @@ def plot(axs):
     )
     for dataset, g in t.groupby("Dataset"):
         hit = g["Q direction"] < common.SIG_ALPHA
-        color = DATASET_COLORS[dataset]
+        color = DATASET_COLORS[str(dataset)]
         ax.scatter(
             g["Labels fine"],
             g["Observed"],
