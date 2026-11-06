@@ -12,11 +12,11 @@ from scipy.stats import false_discovery_control, mannwhitneyu
 from .. import common
 from . import _common as S
 
-AXES = ("mid",)
+AXES = ("mid_wide",)
 SECTIONS = {
-    "Crypt": ["GCG", "TAC1", "GPBAR1", "OLFM4", "GPX2"],
-    "Intermediate": ["CCK"],
-    "Villus": ["SCT", "PYY", "NTS", "ALPI", "APOA4", "APOC3"],
+    "Crypt": ["GCG", "GPBAR1", "OLFM4", "GPX2"],
+    "Int.": ["CCK"],
+    "Villus": ["SCT", "PYY", "NTS", "ALPI", "APOC3"],
     "BMP targets": ["ID1", "ID2", "ID3", "TBX3"],
 }
 EXTREMES = ("Villus-like", "Crypt-like")

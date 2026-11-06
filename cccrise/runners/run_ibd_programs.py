@@ -96,7 +96,7 @@ EE_GENES = [
         "TRPM5",
     ],
     *["ARX", "ISL1", "PAX6", "GPBAR1", "ID1", "ID2", "ID3", "SMAD6", "SMAD7", "BAMBI"],
-    *["OLFM4", "GPX2", "ALPI", "APOA4", "APOC3", "TBX3"],
+    *["OLFM4", "GPX2", "ALPI", "APOC3", "TBX3"],
     *["NPY1R", "GLP1R"],
 ]
 #: Genes the C1/C5 high-sender dot plot shows

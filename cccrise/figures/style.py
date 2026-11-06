@@ -95,6 +95,8 @@ AXIS_SIZE = {
     "rect_half": (AXIS_WIDTH / 2, AXIS_HEIGHT),
     # Between square and rect, for a row of three wider strips
     "mid": (38 * MM, AXIS_HEIGHT),
+    # A "mid" widened into the spare width of its row (a dot plot of many genes)
+    "mid_wide": (43 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect
     "half": (64 * MM, AXIS_HEIGHT),
     # A labeled map of every lineage, beside a 2 x 2 of squares
