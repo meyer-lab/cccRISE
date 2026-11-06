@@ -14,9 +14,9 @@ from . import _common as S
 
 AXES = ("mid_wide",)
 SECTIONS = {
-    "Crypt": ["GCG", "GPBAR1", "OLFM4", "GPX2"],
+    "Crypt": ["GCG", "GPBAR1", "GPX2"],
     "Int.": ["CCK"],
-    "Villus": ["PYY", "SCT", "NTS", "ALPI", "APOC3"],
+    "Villus": ["PYY", "SCT", "NTS"],
     "BMP targets": ["ID1", "ID2", "ID3", "TBX3"],
 }
 EXTREMES = ("Villus-like", "Crypt-like")
