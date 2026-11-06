@@ -8,24 +8,56 @@
 
 shared:
   celltype_key: broad_cell_type
-  random_state: 0
-  niches_commit: 5d932b8
-  r_versions:
-    r: 4.5.2
-    seurat: 5.6.0
-    matrix: 1.7.4
-  group_tau: 0.3
-  taus:
-  - 0.1
-  - 0.2
-  - 0.3
-  - 0.4
-  - 0.5
-  - 0.6
-  n_population_draws: 1000
-  n_ordering_draws: 200
 files:
+  cells_ibd.parquet:
+    sha256: 511969ef01cebe2a8c907d6c935a0814b8f2381e78de0ad2a1c3b9e5147ab7ea
+    command: uv run cccrise-niches --dataset ibd --cells-only
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    factors_path: cccrise/data/factors/ibd_ti_factors.nc
+    factors_sha256: 27180af4a6fbceaacdce5ff6fc172280484e00ff3cc3abfe084c518e065aef71
+    resulting_dims:
+      conditions: 343
+      genes: 23355
+      cells: 634534
+      lr_pairs: 1255
+    git_sha: e2f407400e454d5ec11cb977e3836af851f2c8b4
+    generated: '2026-11-06T21:35:07+00:00'
   orderings_alad.parquet:
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
     scorable_share: 0.1
     git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
@@ -75,6 +107,22 @@ files:
     generated: '2026-11-05T00:26:47+00:00'
     sha256: eec3f579adb933dda37decca97524242901f798ae7b132cbf679bc2a0261b784
   orderings_ibd.parquet:
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
     sha256: 62103b490549d318267e4758deba5bb58edf6f582b7e3eba215737a0113ffb72
     command: uv run cccrise-niches --dataset ibd --niches-source /home/sama/R/niches-src --r-library
       /home/sama/R/niches-lib --r-workers 16
@@ -122,6 +170,22 @@ files:
     git_sha: 0d50a13eb4b815120f3bcf451e6f354d50a247c8
     generated: '2026-11-05T03:49:48+00:00'
   populations_alad.parquet:
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
     scorable_share: 0.1
     git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
@@ -171,6 +235,22 @@ files:
     generated: '2026-11-05T00:26:47+00:00'
     sha256: 8e833fa72af0111d5003ad742a71593a8947df3d9e0fc8b898342295689d4416
   populations_ibd.parquet:
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
     sha256: 1bf44837ab44d8dc90eb45be3d984a0c119c4545bc96e6053ba3f6ad98e604d1
     command: uv run cccrise-niches --dataset ibd --niches-source /home/sama/R/niches-src --r-library
       /home/sama/R/niches-lib --r-workers 16
@@ -218,6 +298,22 @@ files:
     git_sha: 0d50a13eb4b815120f3bcf451e6f354d50a247c8
     generated: '2026-11-05T03:49:48+00:00'
   tau_alad.parquet:
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
     scorable_share: 0.1
     git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
@@ -267,6 +363,22 @@ files:
     generated: '2026-11-05T00:26:47+00:00'
     sha256: af77d280d35f8f1346c330e5ae5e9c22821d28f6e266c835672538798d469b07
   tau_ibd.parquet:
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
     sha256: 1b32d2633a9185c1efc6d65d1ed11683783b01e8278f1a73161c08d615abc876
     command: uv run cccrise-niches --dataset ibd --niches-source /home/sama/R/niches-src --r-library
       /home/sama/R/niches-lib --r-workers 16
