@@ -1,9 +1,10 @@
 """The EE cells fully in one hormone state (`_common.hormone_extremes`: C3's
 villus-like and C4's crypt-like extremes, mixed between them, other below
-the magnitude floor) as Figure 2's marker dot plot, by the L-cell's GLP-1
-lineage, the villus hormones and BMP targets (the villus-tip signal). Genes
-shown differ between the villus-like and crypt-like cells (Mann-Whitney, BH
-q < `common.SIG_ALPHA`; Beumer et al. 2018)."""
+the magnitude floor) as Figure 2's marker dot plot, by crypt and villus
+markers, CCK (the I-cell step between them; Gehart et al. 2019) and BMP
+targets (the villus-tip signal; Beumer et al. 2018). Genes shown differ
+between the villus-like and crypt-like cells (Mann-Whitney, BH
+q < `common.SIG_ALPHA`)."""
 
 import pandas as pd
 from scipy.stats import false_discovery_control, mannwhitneyu
@@ -13,9 +14,10 @@ from . import _common as S
 
 AXES = ("mid",)
 SECTIONS = {
-    "GLP-1 lineage": ["GCG", "ARX", "ISL1", "PAX6", "GPBAR1"],
-    "Villus": ["PYY", "NTS", "SCT", "CCK"],
-    "BMP targets": ["ID1", "ID2", "ID3", "SMAD6", "SMAD7", "BAMBI"],
+    "Crypt": ["GCG", "TAC1", "GPBAR1", "OLFM4", "GPX2"],
+    "Intermediate": ["CCK"],
+    "Villus": ["SCT", "PYY", "NTS", "ALPI", "APOA4", "APOC3"],
+    "BMP targets": ["ID1", "ID2", "ID3", "TBX3"],
 }
 EXTREMES = ("Villus-like", "Crypt-like")
 

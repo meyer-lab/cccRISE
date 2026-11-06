@@ -74,8 +74,9 @@ do not hand-edit.
 EE, EC, TUFT = "Enteroendocrine cells", "Enterochromaffin cells", "Tuft cells"
 L_HORMONES = ["GCG", "PYY", "INSL5"]
 #: Genes the EE panels show: hormones and the L-cell call, EC and tuft
-#: markers, L-lineage transcription factors, BMP targets (villus tip) and the
-#: receptors of C3's and C4's top LR pairs (PYY-NPY1R, GCG-GLP1R)
+#: markers, L-lineage transcription factors, crypt and villus markers, BMP
+#: targets (villus tip) and the receptors of C3's and C4's top LR pairs
+#: (PYY-NPY1R, GCG-GLP1R)
 EE_GENES = [
     *L_HORMONES,
     *[
@@ -95,6 +96,7 @@ EE_GENES = [
         "TRPM5",
     ],
     *["ARX", "ISL1", "PAX6", "GPBAR1", "ID1", "ID2", "ID3", "SMAD6", "SMAD7", "BAMBI"],
+    *["OLFM4", "GPX2", "ALPI", "APOA4", "APOC3", "TBX3"],
     *["NPY1R", "GLP1R"],
 ]
 #: Genes the C1/C5 high-sender dot plot shows
