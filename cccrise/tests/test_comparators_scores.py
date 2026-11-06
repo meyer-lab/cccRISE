@@ -76,12 +76,6 @@ def test_inner_losses_count_what_dropping_a_type_removes():
     assert table.loc["signal", "Share"] == pytest.approx(3 / 5)
 
 
-def test_weight_share_of_a_group_of_cells():
-    weights = pd.DataFrame({1: [1.0, -1.0, 2.0], 2: [0.0, 0.0, 3.0]})
-    shares = scores.weight_share(weights, np.array([True, False, False]))
-    np.testing.assert_allclose(shares, [0.25, 0.0])
-
-
 def test_group_r2_is_the_share_group_means_hold():
     values = np.array([1.0, 1.0, 3.0, 3.0])
     assert scores.group_r2(values, np.array([0, 0, 1, 1])) == pytest.approx(1)

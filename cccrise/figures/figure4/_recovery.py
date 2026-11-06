@@ -294,12 +294,13 @@ def pair_columns(
     dataset: str = MIXED_DATASET,
     programs=MIXED_PROGRAMS,
     title: str | None = "ALAD",
+    outline: bool = True,
 ) -> None:
     """Each program's carrying pairs in the program and in the STAC columns
     holding them most, every column scaled to its own heaviest pair; the
     columns the next panel tests bold, outlined over their program's pairs."""
     rows, spans = _pair_rows(dataset, programs)
-    tested = tested_columns(dataset, programs)
+    tested = tested_columns(dataset, programs) if outline else []
     cccrise = lr_matrix(dataset, "cccRISE")
     x, ticks, labels, heads, bold, values = 0.0, [], [], {}, [], []
     for program, pair, y in rows:

@@ -106,21 +106,6 @@ figS_comparator_rank_selection:
   tc2c_minima_fine: [l]
   stac_shares_coarse: [m]
   stac_shares_fine: [n]
-figS_comparator_inner:
-  losses: [a]
-  program_losses_coarse: [b]
-  program_losses_fine: [c]
-  reach_coarse: [d]
-  reach_fine: [e]
-figS_comparator_clinical:
-  outcome: [a]
-  death_6mo: [b]
-  death_1yr: [c]
-  rejection: [d]
-  capture_p1: [e]
-  capture_p5: [f]
-  capture_s11: [g]
-  sample_profiles: [h]
 figS_comparator_covariation:
   pairs_used: [a]
   all_pairs: [b]
@@ -128,15 +113,6 @@ figS_comparator_covariation:
   ibd_pairs_used: [d]
   ibd_all_pairs: [e]
   ibd_disjoint: [f]
-figS_comparator_properties:
-  breadth: [a]
-  inputs: [b]
-  homophily: [c]
-  top_share: [d]
-figS_comparator_lr_contents: {}
-figS_comparator_ibd:
-  reach: [a]
-  columns_in_cccrise: [b]
 figS_ibd_inflammatory_programs:
   top_pair_permutation: [a, b]
   high_sender_genes: [c]
@@ -176,3 +152,11 @@ figS_comparator_nichenet:
   cell_shuffle: [a]
   prior_shuffle: [b]
   closest_columns: [c]
+figS_comparator_missed:
+  column_contents: [a]
+  alad_associations: [b]
+  ibd_associations: [c]
+figS_comparator_split:
+  depth_tracking: [a]
+  mixed_pairs: [b]
+  mixed_covariation: [c]

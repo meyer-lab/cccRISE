@@ -61,13 +61,6 @@ def inner_losses(masked, kept) -> pd.DataFrame:
     )
 
 
-def weight_share(weights: pd.DataFrame, in_group: np.ndarray) -> pd.Series:
-    """Per column of `weights` (one row per cell), the share of its total
-    |weight| carried by the cells `in_group` marks."""
-    magnitude = weights.abs()
-    return magnitude[in_group].sum() / magnitude.sum()
-
-
 def unit_columns(matrix: np.ndarray) -> np.ndarray:
     """Columns scaled to unit L2 norm (zero columns left at zero)."""
     norms = np.linalg.norm(matrix, axis=0, keepdims=True)

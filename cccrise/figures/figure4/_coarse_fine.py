@@ -72,6 +72,19 @@ def _block(ax, method: str, cos2: pd.DataFrame, x: float) -> None:
         )
 
 
+def match_label(ax) -> None:
+    """Name what the panels' lines mean, under `ax`."""
+    ax.text(
+        0.5,
+        -0.04,
+        "LR cos$^2$ match",
+        transform=ax.transAxes,
+        ha="center",
+        va="top",
+        fontsize=style.FONT_SIZE_LABEL,
+    )
+
+
 def coarse_to_fine(ax, dataset: str, title: str) -> None:
     """Each comparator's coarse LR columns (left) joined to its fine ones
     (right) where cos^2 >= `FLOW_FROM`, line width growing with cos^2."""

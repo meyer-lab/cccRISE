@@ -31,9 +31,11 @@ def _jitter(n: int, x: float) -> np.ndarray:
     return x + np.random.default_rng(1).uniform(-0.22, 0.22, n)
 
 
-def _cohort_bars(ax, spans: dict) -> None:
+def cohort_bars(ax, spans: dict, bar_drop: float = BAR_DROP) -> None:
+    """Each cohort's bar and name `bar_drop` mm under `ax`, `spans` its first and
+    last x."""
     height = ax.bbox.height / ax.figure.dpi
-    drop = BAR_DROP * style.MM / height
+    drop = bar_drop * style.MM / height
     transform = ax.get_xaxis_transform()
     for dataset, (first, last) in spans.items():
         ax.plot(
@@ -81,7 +83,7 @@ def _fit_axis(ax, positions: list, spans: dict, ylabel: str, title: str) -> None
     )
     ax.set_ylabel(ylabel)
     panel_title(ax, title)
-    _cohort_bars(ax, spans)
+    cohort_bars(ax, spans)
 
 
 def _source(name: str, value: str, description: str) -> None:

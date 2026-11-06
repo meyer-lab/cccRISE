@@ -14,42 +14,23 @@ from ._common import (
     METHOD_COLORS,
 )
 from ._data import (
-    HOMOPHILIC,
     SINGLE_PAIR,
     beyond,
     both,
-    classified,
     short,
     source_data,
 )
 from ._layout import (
     LABELLING_MARKERS,
     NULL_HANDLE,
-    SLOTS,
     UNTESTABLE_HANDLE,
     UNTESTABLE_Y,
     fit_axis,
     label_above,
-    label_sides,
     method_handles,
     spread_slots,
-    strips,
 )
 from ._recovery import panel_title
-
-#: Short names of the ALAD associations.
-ASSOCIATION_NAMES = {
-    "Control vs. ALAD (All)": "control vs. ALAD",
-    "ALAD Status (3-Way)": "ALAD status",
-    "6-Month Outcome (4-Way)": "6-mo outcome",
-    "6-Month CLAD vs. No CLAD": "6-mo CLAD",
-    "6-Month Died vs. Alive": "6-mo death",
-    "1-Year Outcome (4-Way)": "1-yr outcome",
-    "1-Year CLAD vs. No CLAD": "1-yr CLAD",
-    "1-Year Died vs. Alive": "1-yr death",
-    "Acute Rejection (Yes vs. No)": "acute rejection",
-}
-OUTCOME = "6-Month Outcome (4-Way)"
 
 
 def covariation_tables(
@@ -256,147 +237,3 @@ def covariation_spread(axs, disjoint: bool = False, dataset: str = DATASET) -> N
         common.reference_line(ax, 0)
     ax.yaxis.label.set_size(style.FONT_SIZE_DENSE)
     ax.tick_params(labelsize=style.FONT_SIZE_DENSE)
-
-
-def association_strip(
-    axs, association: str = OUTCOME, above: float | None = None
-) -> None:
-    """Each component's η² for `association` (Figure 3's test), filled, and
-    labelled "Xx (FDR)" in bold, where FDR < `common.SIG_ALPHA`; with
-    `above`, every component of greater η² labelled too."""
-    ax = axs[0]
-    tables = {
-        lab: t[t["Association"] == association].assign(
-            Significant=t["PAdj"] < common.SIG_ALPHA
-        )
-        for lab, t in both("associations").items()
-    }
-    drawn = strips(ax, tables, "EtaSquared", "Significant")
-    source_data(
-        "association_eta_squared_by_component",
-        drawn,
-        {
-            "Association": "Association",
-            "EtaSquared": "Eta squared",
-            "P": "p",
-            "PAdj": "FDR",
-            "Significant": "Significant",
-        },
-        f"Each component's association with '{association}': one-way ANOVA of "
-        "its read-depth-corrected sample profile over the association's "
-        "groups (eta squared), Benjamini-Hochberg adjusted across the fit's "
-        f"associations and components (FDR); Significant (filled) below FDR "
-        f"{common.SIG_ALPHA}.",
-    )
-    ax.set(
-        ylabel=ASSOCIATION_NAMES[association].capitalize() + r" $\eta^2$",
-        ylim=(0, drawn["EtaSquared"].max() * 1.3),
-    )
-    shown = drawn[
-        drawn["Significant"]
-        | (drawn["EtaSquared"] > (np.inf if above is None else above))
-    ]
-    text = [
-        f"{short(m, c)} ({q:.2g})"
-        for m, c, q in zip(shown["Method"], shown["Component"], shown["PAdj"])
-    ]
-    label_sides(
-        ax,
-        shown.assign(Y=shown["EtaSquared"], Bold=shown["Significant"], Text=text),
-        obstacles=drawn[["X", "EtaSquared"]],
-    )
-
-
-def _share(
-    axs, column: str, flag: str, ylabel: str, threshold: float, source: dict
-) -> None:
-    """Each component's `column` of `classified`, the columns where `flag`
-    is true labelled, `threshold` dashed; saved as source data by `source`'s
-    name and description."""
-    ax = axs[0]
-    t = classified()
-    rng = np.random.default_rng(0)
-    drawn = []
-    for method, lab, x in SLOTS:
-        g = t[(t["Method"] == method) & (t["Labelling"] == lab)]
-        xs = x + rng.uniform(-0.12, 0.12, len(g))
-        ax.scatter(
-            xs,
-            g[column],
-            s=style.POINT_SIZE,
-            marker=LABELLING_MARKERS[lab],
-            color=METHOD_COLORS[method],
-            edgecolor="white",
-            lw=0.3,
-            zorder=3,
-        )
-        drawn.append(
-            g.assign(
-                X=xs,
-                Y=g[column],
-                Bold=False,
-                Text=[short(method, c) for c in g["Component"]],
-            )
-        )
-    drawn = pd.concat(drawn, ignore_index=True)
-    source_data(
-        source["name"],
-        drawn,
-        {column: ylabel.replace("\n", " "), flag: flag},
-        source["description"],
-    )
-    ax.axhline(
-        threshold,
-        color=style.COLORS["reference"],
-        ls=style.LINE_STYLE_REFERENCE,
-        lw=0.6,
-    )
-    fit_axis(ax, SLOTS)
-    ax.set(ylabel=ylabel, ylim=(-0.02, 1.02))
-    label_sides(
-        ax,
-        drawn[drawn[flag] & (drawn["Method"] != "cccRISE")],
-        size=style.FONT_SIZE_DENSE - 1,
-        overflow=10,
-        obstacles=drawn[["X", "Y"]],
-    )
-
-
-def homophilic_share(axs) -> None:
-    """Each component's share of squared LR loading on homophilic pairs;
-    the columns `classes` calls homophilic labelled."""
-    _share(
-        axs,
-        "HomophilicShare",
-        "IsHomophilic",
-        "Homophilic share of\nsquared LR loading",
-        HOMOPHILIC,
-        {
-            "name": "homophilic_share_by_component",
-            "description": (
-                "Each component's share of squared LR loading on homophilic pairs "
-                "(a ligand whose genes are its receptor's); IsHomophilic (labelled) "
-                f"at {HOMOPHILIC} or more, unless the column is associated with an "
-                "outcome or contained in cccRISE's LR span (`lr_column_classes`)."
-            ),
-        },
-    )
-
-
-def top_share(axs) -> None:
-    """Each component's top pair's share of squared LR loading; the
-    single-pair columns `classes` hatches labelled."""
-    _share(
-        axs,
-        "TopShare",
-        "SinglePair",
-        "Top pair's share of\nsquared LR loading",
-        SINGLE_PAIR,
-        {
-            "name": "top_pair_share_by_component",
-            "description": (
-                "Each component's top LR pair's share of its squared LR loading; "
-                f"SinglePair (labelled) at {SINGLE_PAIR} or more."
-            ),
-        },
-    )

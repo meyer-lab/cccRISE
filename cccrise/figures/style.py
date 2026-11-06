@@ -103,6 +103,13 @@ AXIS_SIZE = {
     # A full-width axes low enough to stack both cohorts' co-variation
     "full_low": (FIGURE_WIDTH_DOUBLE - 14 * MM, 18 * MM),
     "full_strip_low": (FIGURE_WIDTH_DOUBLE - 14 * MM, 8 * MM),
+    # `figureS_comparator_missed`
+    "missed_matrix": (156 * MM, 68 * MM),
+    "missed_associations": (62 * MM, 32 * MM),
+    # `figureS_comparator_split`
+    "split_depth": (158 * MM, 30 * MM),
+    "split_pairs": (58 * MM, 36 * MM),
+    "split_covariation": (44 * MM, 20 * MM),
     # `figureS_comparator_map`: two rows of equal width
     "map_ceiling": (30 * MM, 36 * MM),
     "map_coarse": (76 * MM, 30 * MM),
