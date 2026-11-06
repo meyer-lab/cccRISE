@@ -14,9 +14,10 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from matplotlib.patches import Patch
+from matplotlib.patheffects import withStroke
 from scipy.stats import kruskal
 
-from ...anova import run_multiple_factors_anova
+from ...anova import adjust_pvalues, run_multiple_factors_anova
 from ...factors import load_factors_netcdf
 from ...runners.datasets import DATASETS, IBD_PROGRAMS_DIR, VALIDATION_DIR
 from ...utils import correct_by_read_depth
@@ -54,6 +55,8 @@ ASSOCIATIONS: list[dict[str, Any]] = [
     },
 ]
 
+#: White outline keeping map labels legible over their clusters
+LABEL_HALO = [withStroke(linewidth=1.5, foreground="white")]
 #: The annotated types on the zoomed and all-cell maps
 MAP_GROUPS = {
     "EE": common.style.CATEGORICAL[3],
@@ -237,21 +240,22 @@ def cell_histogram(ax, values: pd.Series, bins, color=None) -> list:
 
 def status_boxes(ax, slots: dict[str, list[pd.Series]]) -> None:
     """One `draw_boxes` slot per x label (`slots`' keys; values per status),
-    its Kruskal-Wallis p across statuses above it, bold if significant. Each
-    slot is one x unit, so axes as wide per slot draw identical boxes."""
+    its Kruskal-Wallis q across statuses (Benjamini-Hochberg corrected across
+    slots) above it, bold if significant. Each slot is one x unit, so axes as
+    wide per slot draw identical boxes."""
     rng = np.random.default_rng(0)
+    q = adjust_pvalues([kruskal(*values).pvalue for values in slots.values()])
     for x, values in enumerate(slots.values()):
         draw_boxes(ax, x, values, rng)
-        p = kruskal(*values).pvalue
         ax.text(
             x,
             1,
-            f"p = {p:.1g}",
+            f"q = {q[x]:.1g}",
             transform=ax.get_xaxis_transform(),
             ha="center",
             va="bottom",
             fontsize=common.style.FONT_SIZE_DENSE,
-            fontweight="bold" if p < common.SIG_ALPHA else "normal",
+            fontweight="bold" if q[x] < common.SIG_ALPHA else "normal",
         )
     ax.set_xticks(range(len(slots)), list(slots), fontsize=common.style.FONT_SIZE_DENSE)
     ax.set_xlim(-0.5, len(slots) - 0.5)

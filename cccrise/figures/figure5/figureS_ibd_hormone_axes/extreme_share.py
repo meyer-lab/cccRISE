@@ -1,11 +1,12 @@
 """Per biopsy (at least `_common.MIN_EE` EE cells), the share of its EE cells
 in each class of Figure 5's marker dot plot (`_common.hormone_extremes`), by
-inflammation status (Kruskal-Wallis p; pairwise Mann-Whitney p in the source
-data): inflammation removes villus-like cells, not crypt-like ones."""
+inflammation status (Kruskal-Wallis q, BH corrected across classes;
+pairwise Mann-Whitney q in the source data): inflammation removes villus-like cells, not crypt-like ones."""
 
 import pandas as pd
 from scipy.stats import mannwhitneyu
 
+from ....anova import adjust_pvalues
 from ... import common
 from .. import _common as S
 
@@ -25,24 +26,27 @@ def plot(axs):
         "hormone_extreme_share_by_biopsy",
         shares.rename_axis("Biopsy").reset_index(),
         f"Share of each biopsy's EE cells (biopsies with at least {S.MIN_EE}) in "
-        "each class, with the biopsy's inflammation status; Kruskal-Wallis p "
-        "across statuses above each class.",
+        "each class, with the biopsy's inflammation status; Kruskal-Wallis q "
+        "across statuses (Benjamini-Hochberg corrected across classes) above "
+        "each class.",
+    )
+    pairwise = pd.DataFrame(
+        [
+            {
+                "Class": name,
+                "Test": label,
+                "p": mannwhitneyu(values[a], values[b]).pvalue,
+            }
+            for name, values in groups.items()
+            for label, a, b in PAIRS
+        ]
     )
     common.source_data(
         "hormone_extreme_share_pairwise",
-        pd.DataFrame(
-            [
-                {
-                    "Class": name,
-                    "Test": label,
-                    "p": mannwhitneyu(values[a], values[b]).pvalue,
-                }
-                for name, values in groups.items()
-                for label, a, b in PAIRS
-            ]
-        ),
+        pairwise.assign(q=adjust_pvalues(pairwise["p"])),
         "Mann-Whitney p of each class's per-biopsy share between CD uninflamed (U) "
-        "or healthy (H) and CD inflamed (I) biopsies.",
+        "or healthy (H) and CD inflamed (I) biopsies, and its Benjamini-Hochberg "
+        "q across all classes and pairs.",
     )
     S.status_boxes(
         ax,

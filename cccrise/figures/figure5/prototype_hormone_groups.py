@@ -19,9 +19,8 @@ from scipy.stats import false_discovery_control, mannwhitneyu
 from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
 from .. import common, style
-from ..figure2._common import GROUP_COLORS, GROUPS, split_cells
+from ..figure2._common import GROUP_COLORS, GROUPS, plot_split_boundary, split_cells
 from ..figure2.epithelial_markers import MIN_DETECTED_DIFFERENCE
-from ..figure2.sender_receiver_strata import _plot_boundary
 from . import _common as S
 
 COMPONENTS = (3, 4)
@@ -205,7 +204,7 @@ def _scatter(ax, sender, receiver, labels, k: int) -> None:
             rasterized=True,
             label=f"{g.capitalize()} (n={mask.sum():,})",
         )
-    _plot_boundary(ax, sender.max(), receiver.max())
+    plot_split_boundary(ax, sender.max(), receiver.max())
     ax.set(xlabel=f"C{k} sender weight", ylabel=f"C{k} receiver weight")
     legend = common.legend(
         ax,

@@ -63,7 +63,7 @@ q: Benjamini--Hochberg corrected p across the five components of each fit.
 ![](figures/figureS_ibd_rank_selection/figureS_ibd_rank_selection.svg){width="6.5in"}
 
 **{{< label ibd-rank-selection >}}.
-IBD rank selection.** A) Schematic of the IBD cohort data\ [@doi:10.1038/s41588-026-02634-7].
+IBD rank selection.** ({{< panel ibd-rank-selection cohort >}}) Schematic of the IBD cohort data\ [@doi:10.1038/s41588-026-02634-7].
 ({{< panel ibd-rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
 ({{< panel ibd-rank-selection bicv-test >}}) BiCV test R^2^X from ({{< panel ibd-rank-selection rise-rank-selection >}}) on its own magnified axis.
 ({{< panel ibd-rank-selection cp-r2x-starts >}}) CP fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
@@ -73,25 +73,23 @@ Boxes show the median and interquartile range and whiskers show the most extreme
 ({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
 ({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, as the median (line and points) and interquartile range (band) over the starts.
 ({{< panel ibd-rank-selection factors genes >}}) RISE factor matrices at the selected rank representing component loadings of conditions and genes.
-J) RISE cell-type--eigen-state associations derived from RISE rank-60 projection matrices.
+({{< panel ibd-rank-selection eigenstate-heatmap >}}) RISE cell-type--eigen-state associations derived from RISE rank-60 projection matrices: mean RISE projection of each cell type's cells onto each eigen-state.
 
 ![](figures/figureS_ibd_associations/figureS_ibd_associations.svg){width="6.5in"}
 
 **{{< label ibd-associations >}}.
-Association of CP components and covariates with IBD biopsy type.** A) One-way ANOVA η^2^ of each CP component's condition loadings against each IBD biopsy categorization.
-\*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
-B--C) CP component B) 3 and C) 4 condition loadings by CD inflammation status.
-Violins show [placeholder].
-One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outcomes and components.
-D) Fraction of each biopsy's cells in each coursely annotated cell type for healthy, CD uninflamed, and CD inflamed samples, on a square-root scale.
+Association of CP components and covariates with IBD biopsy type.** ({{< panel ibd-associations cp-associations >}}) One-way ANOVA η^2^ of each CP component's condition loadings against each IBD biopsy categorization.
+\*: q < 0.05, Benjamini--Hochberg corrected across all categorizations and components.
+({{< panel ibd-associations status-loadings >}}) CP component ({{< panel ibd-associations status-loadings.1 >}}) 3 and ({{< panel ibd-associations status-loadings.2 >}}) 4 condition loadings by CD inflammation status.
+Violins show the distribution of loadings, points show individual biopsies, and ticks mark the median.
+One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all categorizations and components.
+({{< panel ibd-associations lineage-proportions >}}) Fraction of each biopsy's cells in each coarsely annotated cell type for healthy, CD uninflamed, and CD inflamed samples, on a square-root scale.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
-E) One-way ANOVA η^2^ of each patient covariate against each biopsy categorization, with binary covariates coded 0/1.
+({{< panel ibd-associations covariates >}}) One-way ANOVA η^2^ of each biopsy covariate and coarse cell-type fraction against each biopsy categorization, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 
 ![](figures/figureS_niches_ibd/figureS_niches_ibd.svg){width="6.5in"}
 
 **{{< label niches-ibd >}}.
-Concordance of CCC-RISE sender and receiver cell projections with NICHES.** A) [placeholder]
-B) [placeholder]
-C) [placeholder]
+Concordance of CCC-RISE sender and receiver cell projections with NICHES.** A) [placeholder]. B) [placeholder]. C) [placeholder]

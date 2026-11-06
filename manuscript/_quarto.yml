@@ -19,8 +19,8 @@ metadata-files:
     - _panels.yml
 shortcodes:
     - _panels.lua
-ev_figures: [alad_cohort, cmp5_identity, ccc_scoring]
-appendix_figures: [rise_factor_matrices, cmp_stability, nichenet, alad_associations, anova_stability, imputation_ridge, ibd_rank_selection]
+ev_figures: [alad_cohort, cmp5_identity, ccc_scoring, ibd_hormone_axes]
+appendix_figures: [rise_factor_matrices, cmp_stability, nichenet, alad_associations, anova_stability, ibd_rank_selection, ibd_associations, niches_ibd]
 
 crossref:
     fig-prefix: Fig.

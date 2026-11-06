@@ -3,8 +3,6 @@ their RISE projections (zoomed: only these three annotated types), by
 annotated type, and each cell's unscaled C3 and C4 sender weight. As Figure 2
 paints weights on cells."""
 
-from matplotlib.lines import Line2D
-
 from .. import common, style
 from . import _common as S
 
@@ -32,7 +30,7 @@ def plot(axs):
 
 def type_map(ax, cells) -> None:
     """The zoomed map's cells colored by annotated type (`S.MAP_GROUPS`, from
-    `cells`' mapped "Group"), with its legend below."""
+    `cells`' mapped "Group"), each type named at its median in its color."""
     ax.scatter(
         cells["PaCMAP 1"],
         cells["PaCMAP 2"],
@@ -41,27 +39,20 @@ def type_map(ax, cells) -> None:
         linewidths=0,
         rasterized=True,
     )
+    centers = cells.groupby("Group")[["PaCMAP 1", "PaCMAP 2"]].median()
+    for group, (x, y) in centers.loc[list(S.MAP_GROUPS)].iterrows():
+        ax.text(
+            x,
+            y,
+            group,
+            ha="center",
+            va="center",
+            color=S.MAP_GROUPS[group],
+            fontsize=style.FONT_SIZE_LABEL,
+            fontweight="bold",
+            path_effects=S.LABEL_HALO,
+        )
     S.map_axes(ax)
-    common.legend(
-        ax,
-        "below",
-        handles=[
-            Line2D(
-                [],
-                [],
-                ls="",
-                marker="o",
-                color=c,
-                markersize=style.MARKER_SIZE,
-                label=g,
-            )
-            for g, c in S.MAP_GROUPS.items()
-        ],
-        ncols=2,
-        fontsize=style.FONT_SIZE_DENSE,
-        handletextpad=0.1,
-        columnspacing=0.8,
-    )
 
 
 def makeFigure():
