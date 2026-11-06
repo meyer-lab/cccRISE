@@ -606,7 +606,13 @@ def source_data(
     # Index labels kept as columns, but not an unnamed integer index: row
     # positions left over from filtering or sorting
     positional = frame.index.names == [None] and frame.index.dtype.kind in "iu"
-    frame = frame.reset_index(drop=positional).replace("cccRISE", "CCC-RISE")
+    frame = frame.reset_index(drop=positional)
+    # Rename the method in string cells only: `DataFrame.replace` compares
+    # every cell, which raises on cells holding arrays (e.g. group sizes)
+    for column in frame.select_dtypes(["object", "string", "category"]):
+        frame[column] = frame[column].map(
+            lambda v: "CCC-RISE" if isinstance(v, str) and v == "cccRISE" else v
+        )
     frame.to_csv(folder / f"{name}.csv", index=False)
     (folder / f"{name}.yaml").write_text(
         yaml.safe_dump({"description": description, "part": part})
