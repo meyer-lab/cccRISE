@@ -7,8 +7,8 @@ resolve two functional hormone states inside the annotated enteroendocrine
 type, villus-like (C3) and crypt-like (C4) (K); inflammation depletes the
 villus-like cells (S_ibd_hormone_axes). The C3 and C4 sender and receiver
 populations against NICHES: their concordance over what their labels predict
-(L) and across tau (M), and how weighting any direction by expression reaches
-NICHES (N) (`figures.niches`)."""
+(L), and beside it how weighting any direction by expression reaches NICHES
+(M); their concordance across tau is in S_niches_ibd."""
 
 from .. import common, style
 from . import (
@@ -20,15 +20,13 @@ from . import (
     hormone_extreme_markers,
     niches_concordance,
     niches_orderings,
-    niches_tau_sweep,
 )
 
 LAYOUT = [
     [cp_factor_matrices],
     [ee_state_map, hormone_expression_map],
     [hormone_angle_scatter, hormone_angle_hist, hormone_extreme_markers],
-    [niches_concordance, niches_tau_sweep],
-    [niches_orderings],
+    [niches_concordance, niches_orderings],
 ]
 
 

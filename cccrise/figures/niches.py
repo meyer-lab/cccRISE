@@ -30,6 +30,7 @@ DATASET = "ibd"
 #: Each figure's components, in drawing order
 MAIN = (3, 4)
 SUPPLEMENT = (1, 2, 5, 6)
+ALL = tuple(sorted(MAIN + SUPPLEMENT))
 #: Sides in shades of black: rows are labeled S and R, so color isn't needed
 SIDE_SHADES = {"sender": "0.1", "receiver": "0.45"}
 PROGRAM_COLORS = {
@@ -58,6 +59,8 @@ RANKING_HEADER = (
 )
 COHORT_HEADER, COHORT_TICK = "Cohort", "% NICHES+"
 SPARSITY_X = -1.1
+#: `orderings`' column of each population's NICHES+ cells, left of the cohort's
+COUNT_X, COUNT_HEADER, COUNT_TICK = -2.1, "NICHES+", "cells"
 SPARSITY_CMAP = LinearSegmentedColormap.from_list(
     "sparsity", ["#fbeeec", style.COLORS["up"]]
 )
@@ -67,8 +70,6 @@ SPARSITY_NORM = LogNorm(0.0005, 0.1)
 OUTER_OFFSET = 11
 HEADER_OFFSET = 10
 RANKING_OFFSET = 21
-#: Points between `concordance`'s right spine and its NICHES+ cell counts
-COUNT_OFFSET = 3
 #: `tau_sweep` draws a population only while it has this many cells
 MIN_TAU_CELLS = 10
 #: `weight_scatters`' ticks, on relative weights
@@ -162,7 +163,7 @@ def _concordance_row(ax, y: int, side: str, r: pd.Series) -> None:
     )
 
 
-def _concordance_legend(ax, outside: bool) -> None:
+def _concordance_legend(ax, side: str | None) -> None:
     ink = style.COLORS["ink"]
     handles = [
         Line2D(
@@ -203,17 +204,18 @@ def _concordance_legend(ax, outside: bool) -> None:
         "labelspacing": 0.2,
         "handletextpad": 0.3,
     }
-    if outside:
-        common.legend(ax, "right", **spacing)
+    if side == "below":
+        common.legend(ax, side, ncols=2, columnspacing=1, **spacing)
+    elif side:
+        common.legend(ax, side, **spacing)
     else:
         ax.legend(loc="lower right", borderaxespad=0.1, **spacing)
 
 
-def concordance(axs, components, legend_outside: bool = False) -> None:
+def concordance(axs, components, legend: str | None = None) -> None:
     """Each population of `components` and its NICHES concordance, against
-    what its label composition predicts and random directions, with its
-    NICHES+ cell count; the legend at the lower right, or right of the axes if
-    `legend_outside`."""
+    what its label composition predicts and random directions; the legend at
+    the lower right, or outside the axes on side `legend`."""
     (ax,) = axs
     table = load("populations").set_index(["Component", "Side"]).loc[cases(components)]
     common.source_data(
@@ -241,35 +243,7 @@ def concordance(axs, components, legend_outside: bool = False) -> None:
         _concordance_row(ax, y, case[1], r)
     ax.set(xlim=(0, 1), ylim=(len(rows) - 0.5, -0.5), xlabel=CONCORDANCE_LABEL)
     program_labels(ax, rows, range(len(rows)))
-    _niches_counts(ax, table["NICHES+ cells"])
-    _concordance_legend(ax, legend_outside)
-
-
-def _niches_counts(ax, counts: pd.Series) -> None:
-    """Each row's NICHES+ cell count right of `ax`, under a header."""
-    for y, n in enumerate(counts):
-        ax.annotate(
-            f"{n:,}",
-            xy=(1, y),
-            xycoords=ax.get_yaxis_transform(),
-            xytext=(COUNT_OFFSET, 0),
-            textcoords="offset points",
-            ha="left",
-            va="center",
-            fontsize=style.FONT_SIZE_DENSE,
-        )
-    ax.annotate(
-        "NICHES+\ncells",
-        xy=(1, 1),
-        xycoords="axes fraction",
-        xytext=(COUNT_OFFSET, 2),
-        textcoords="offset points",
-        ha="left",
-        va="bottom",
-        fontsize=style.FONT_SIZE_DENSE,
-        fontweight="bold",
-        color=style.COLORS["ink"],
-    )
+    _concordance_legend(ax, legend)
 
 
 def tau_sweep(axs, components) -> None:
@@ -370,7 +344,7 @@ def _block(ax, x0, x1, y, values, cmap, norm, text) -> None:
 
 
 def _ordering_headers(ax) -> None:
-    ticks = [(SPARSITY_X, COHORT_TICK)] + [
+    ticks = [(COUNT_X, COUNT_TICK), (SPARSITY_X, COHORT_TICK)] + [
         (x, name) for columns in BLOCKS.values() for _, name, x in columns
     ]
     ax.set_xticks(
@@ -379,7 +353,10 @@ def _ordering_headers(ax) -> None:
     ax.xaxis.tick_top()
     ax.tick_params(axis="x", length=0, pad=1.5)
     xs = [x for columns in BLOCKS.values() for _, _, x in columns]
-    heads = [(COHORT_HEADER, SPARSITY_X, HEADER_OFFSET)] + [
+    heads = [
+        (COUNT_HEADER, COUNT_X, HEADER_OFFSET),
+        (COHORT_HEADER, SPARSITY_X, HEADER_OFFSET),
+    ] + [
         (name, (columns[0][2] + columns[-1][2]) / 2, HEADER_OFFSET)
         for name, columns in BLOCKS.items()
     ]
@@ -399,9 +376,11 @@ def _ordering_headers(ax) -> None:
         )
 
 
-def orderings(axs, components) -> None:
+def orderings(axs, components, labels: bool = True) -> None:
     """The population's number of cells chosen by a state direction, alone and
-    times expression, and by expression alone; and how sparse NICHES is."""
+    times expression, and by expression alone; its NICHES+ cells, and how
+    sparse NICHES is. Rows unlabeled without `labels` (beside `concordance`'s
+    rows)."""
     (ax,) = axs
     rows = cases(components)
     y = list(range(len(rows)))
@@ -410,17 +389,30 @@ def orderings(axs, components) -> None:
         index=["Component", "Side"], columns="Ordering", values="Share"
     ).loc[rows]
     shares = long.groupby(["Component", "Side"])["Cohort share"].first().loc[rows]
+    counts = (
+        load("populations").set_index(["Component", "Side"]).loc[rows, "NICHES+ cells"]
+    )
     common.source_data(
         "niches_concordance_by_ordering",
-        table.join(shares).reset_index(),
+        table.join(shares).join(counts).reset_index(),
         "NICHES concordance of the population's number of cells, chosen by: a "
         f"random RISE direction (median of {N_ORDERING_DRAWS}); cccRISE's per-cell "
         "weight; the positive part of a random direction or the weight times the "
         "cell's centred expression of the component's ligands or receptors "
         "(Contribution); and that expression alone. Cohort share: NICHES+ cells' "
-        "share of all cells.",
+        "share of all cells. NICHES+ cells: the population's cells with a "
+        "non-zero NICHES program score.",
     )
     linear = Normalize(0, 1)
+    for row, n in zip(y, counts, strict=True):
+        ax.text(
+            COUNT_X,
+            row,
+            f"{n:,}",
+            ha="center",
+            va="center",
+            fontsize=style.FONT_SIZE_DENSE,
+        )
     _block(
         ax,
         SPARSITY_X,
@@ -444,11 +436,14 @@ def orderings(axs, components) -> None:
             lambda v: f"{v:.2f}",
         )
     _ordering_headers(ax)
-    ax.set_xlim(SPARSITY_X - 0.5, 4.7)
+    ax.set_xlim(COUNT_X - 0.5, 4.7)
     ax.set_ylim(y[-1] + 0.5, y[0] - 0.5)
     for spine in ax.spines.values():
         spine.set_visible(False)
-    program_labels(ax, rows, y)
+    if labels:
+        program_labels(ax, rows, y)
+    else:
+        ax.set_yticks([])
 
 
 def weight_scatters(axs) -> None:

@@ -37,8 +37,7 @@ fig5:
   hormone_angle_hist: [j]
   hormone_extreme_markers: [k]
   niches_concordance: [l]
-  niches_tau_sweep: [m]
-  niches_orderings: [n]
+  niches_orderings: [m]
 figS_rise_factor_matrices:
   factors: [a]
   genes: [b]

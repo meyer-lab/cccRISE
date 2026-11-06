@@ -2,11 +2,11 @@
 
 from .. import common, niches
 
-AXES = ("full_strip",)
+AXES = ("wide",)
 
 
 def plot(axs):
-    niches.orderings(axs, niches.MAIN)
+    niches.orderings(axs, niches.MAIN, labels=False)
 
 
 def makeFigure():
