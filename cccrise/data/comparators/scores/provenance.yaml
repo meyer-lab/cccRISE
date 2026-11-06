@@ -106,13 +106,9 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff
     generated: '2026-11-05T20:17:28+00:00'
   containment_ibd.parquet:
-    celltype_key: broad_cell_type and celltype
-    labelling: coarse and fine
-    n_null: 1000
-    random_state: 42
-    contained: 0.85
     sha256: 395512c7e3301a793db70c8640b0719217fb88f8fac16a288e64545ee83ce49d
-    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
+    command: uv run cccrise-comparator-scores --dataset ibd --tables containment fit_ranks
+      label_ceiling start_congruence
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -127,12 +123,14 @@ files:
       excluded_broad_cell_types:
       - Mesenchymal
     condition_key: sanger_sample_id
+    celltype_key: broad_cell_type and celltype
     group_key: inflammation_status
     dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
       and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    labelling: coarse and fine
     fit_sha256:
       PB coarse: 93b93b38c121d8b909594aec526f242346f4b49d7c76b3116a00655985cce567
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
@@ -142,8 +140,11 @@ files:
       TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
-    git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff-dirty
-    generated: '2026-11-05T20:20:48+00:00'
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
+    git_sha: 1c557aeebc719213bdf5afc7ea3443bad2a64ea2
+    generated: '2026-11-06T09:56:50+00:00'
   covariation_alad.parquet:
     celltype_key: broad_cell_type and celltype
     labelling: coarse and fine
@@ -312,13 +313,9 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff
     generated: '2026-11-05T20:17:28+00:00'
   fit_ranks_ibd.parquet:
-    celltype_key: broad_cell_type and celltype
-    labelling: coarse and fine
-    n_null: 1000
-    random_state: 42
-    contained: 0.85
     sha256: 41c7da3bf89f30fc955f416f747eae8cc77bcf6d3e950a63ccfd18cd610e64fa
-    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
+    command: uv run cccrise-comparator-scores --dataset ibd --tables containment fit_ranks
+      label_ceiling start_congruence
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -333,12 +330,14 @@ files:
       excluded_broad_cell_types:
       - Mesenchymal
     condition_key: sanger_sample_id
+    celltype_key: broad_cell_type and celltype
     group_key: inflammation_status
     dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
       and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    labelling: coarse and fine
     fit_sha256:
       PB coarse: 93b93b38c121d8b909594aec526f242346f4b49d7c76b3116a00655985cce567
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
@@ -348,8 +347,11 @@ files:
       TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
-    git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff-dirty
-    generated: '2026-11-05T20:20:48+00:00'
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
+    git_sha: 1c557aeebc719213bdf5afc7ea3443bad2a64ea2
+    generated: '2026-11-06T09:56:50+00:00'
   homophily_alad.parquet:
     celltype_key: broad_cell_type and celltype
     labelling: coarse and fine
@@ -518,13 +520,9 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff
     generated: '2026-11-05T20:17:28+00:00'
   label_ceiling_ibd.parquet:
-    celltype_key: broad_cell_type and celltype
-    labelling: coarse and fine
-    n_null: 1000
-    random_state: 42
-    contained: 0.85
-    sha256: 4df2be7a02db6f09f57032314f74789f3d6999fc94c38401f458d0882ab3d20a
-    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
+    sha256: 656d4783635d25217b76c2a24f596dd1e9adf5f0db5f624ab4086a47c2ed3e31
+    command: uv run cccrise-comparator-scores --dataset ibd --tables containment fit_ranks
+      label_ceiling start_congruence
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -539,12 +537,14 @@ files:
       excluded_broad_cell_types:
       - Mesenchymal
     condition_key: sanger_sample_id
+    celltype_key: broad_cell_type and celltype
     group_key: inflammation_status
     dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
       and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    labelling: coarse and fine
     fit_sha256:
       PB coarse: 93b93b38c121d8b909594aec526f242346f4b49d7c76b3116a00655985cce567
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
@@ -554,8 +554,11 @@ files:
       TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
-    git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff-dirty
-    generated: '2026-11-05T20:20:48+00:00'
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
+    git_sha: 1c557aeebc719213bdf5afc7ea3443bad2a64ea2
+    generated: '2026-11-06T09:56:50+00:00'
   lr_loadings_alad.parquet:
     celltype_key: broad_cell_type and celltype
     labelling: coarse and fine
@@ -674,13 +677,9 @@ files:
     git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff
     generated: '2026-11-05T20:17:28+00:00'
   start_congruence_ibd.parquet:
-    celltype_key: broad_cell_type and celltype
-    labelling: coarse and fine
-    n_null: 1000
-    random_state: 42
-    contained: 0.85
     sha256: 08ce960c7b5077daa2302fbd77c4738cd98e3c2e5f4ccc9eb52ca033d7b79208
-    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
+    command: uv run cccrise-comparator-scores --dataset ibd --tables containment fit_ranks
+      label_ceiling start_congruence
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -695,12 +694,14 @@ files:
       excluded_broad_cell_types:
       - Mesenchymal
     condition_key: sanger_sample_id
+    celltype_key: broad_cell_type and celltype
     group_key: inflammation_status
     dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
       and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    labelling: coarse and fine
     fit_sha256:
       PB coarse: 93b93b38c121d8b909594aec526f242346f4b49d7c76b3116a00655985cce567
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
@@ -710,5 +711,8 @@ files:
       TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
-    git_sha: e0bc23d0743f4a75ed2a4d0beb53e00a0f2e78ff-dirty
-    generated: '2026-11-05T20:20:48+00:00'
+    n_null: 1000
+    random_state: 42
+    contained: 0.85
+    git_sha: 1c557aeebc719213bdf5afc7ea3443bad2a64ea2
+    generated: '2026-11-06T09:56:50+00:00'
