@@ -57,7 +57,7 @@ All authors wrote and revised the paper.
 
 **Declaration of Interests:** The authors declare that they have no competing interests.
 
-**Expanded View and Appendix:** Figures EV1--EV3 accompany this article, and the Appendix includes Appendix Figures S1--S6.
+**Expanded View and Appendix:** Figures EV1--EV4 accompany this article, and the Appendix includes Appendix Figures S1--S8.
 
 **Resource Availability**
 
@@ -71,9 +71,11 @@ This study did not generate new unique reagents.
 
 **Data and Code Availability**
 
-- The single-cell gene expression and clinical annotations analyzed here were obtained from Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
+- The ALAD single-cell gene expression and clinical annotations analyzed here were obtained from Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
 
-- Source data for Figs 2--3 and Figs EV1--EV3 are provided with this article.
+- The IBD single-cell gene expression, cell-type annotations, and biopsy metadata were obtained from the IBDverse atlas of Krzak et al.\ [@doi:10.1038/s41588-026-02634-7].
+
+- Source data for Figs 2--5, Figs EV1--EV4, and Appendix Figs S1--S8 are provided with this article.
 
 - CCC-RISE and all analyses were implemented in Python 3.13 and are available at https://github.com/meyer-lab/cccRISE.
 

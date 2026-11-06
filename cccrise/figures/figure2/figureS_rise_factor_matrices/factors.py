@@ -9,8 +9,14 @@ AXES = ("wide",)  # as wide as `genes`' "tall", which it sits above
 
 
 def plot(axs):
+    draw(axs, S.DATASET, "BAL sample")
+
+
+def draw(axs, dataset: str, sample_noun: str) -> None:
+    """`dataset`'s RISE condition factor, its conditions called `sample_noun`
+    in the source data."""
     (ax,) = axs
-    factor = S.rise_factors()["pf2_A"]
+    factor = S.rise_factors(dataset)["pf2_A"]
     conditions = factor.values.astype(float)
     order = common.dominant_order(conditions)
     common.plot_factor_heatmap(ax, conditions[order], S.XLABEL)
@@ -19,7 +25,7 @@ def plot(axs):
         S.normalized_table(
             factor["condition"].values[order], conditions[order], "Sample"
         ),
-        "RISE condition factor (A): each BAL sample's (row, top to bottom as "
+        f"RISE condition factor (A): each {sample_noun}'s (row, top to bottom as "
         "plotted) loading on each RISE component, divided by the component's "
         "largest |loading| (sign kept).",
     )

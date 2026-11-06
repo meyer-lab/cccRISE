@@ -82,18 +82,35 @@ AXIS_SIZE = {
     "rect": (AXIS_WIDTH, AXIS_HEIGHT),
     "square": (AXIS_HEIGHT, AXIS_HEIGHT),
     "full": (FIGURE_WIDTH_DOUBLE - 14 * MM, AXIS_HEIGHT),
+    # "full" leaving room for row labels and a colorbar (labeled heatmaps)
+    "full_labeled": (FIGURE_WIDTH_DOUBLE - 34 * MM, AXIS_HEIGHT),
     # Supplementary heatmaps with too many columns for "rect"
     "wide": (2.5 * AXIS_WIDTH, AXIS_HEIGHT),
+    # A main-figure heatmap beside a square
+    "double_rect": (2 * AXIS_WIDTH, AXIS_HEIGHT),
     "tall": (2.5 * AXIS_WIDTH, 3 * AXIS_HEIGHT),
     # A few groups x many genes along x (dot plots)
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
+    # Half a rect: box groups as wide as a rect's of twice as many groups
+    "rect_half": (AXIS_WIDTH / 2, AXIS_HEIGHT),
     # Between square and rect, for a row of three wider strips
     "mid": (38 * MM, AXIS_HEIGHT),
+    # A "mid" widened into the spare width of its row (a dot plot of many genes)
+    "mid_wide": (43 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect
     "half": (64 * MM, AXIS_HEIGHT),
+    # A labeled map of every lineage, beside a 2 x 2 of squares
+    "large_square": (60 * MM, 60 * MM),
 }
+# Between the axes of one panel split side by side (`common._Joined`)
+JOINED_GAP = 1.5 * MM
+# Half a square: two joined fill exactly a square's place (tall, narrow maps)
+AXIS_SIZE["half_square"] = ((AXIS_HEIGHT - JOINED_GAP) / 2, AXIS_HEIGHT)
+# Six joined squares spanning "full" (small multiples)
+_SIXTH = (AXIS_SIZE["full"][0] - 5 * JOINED_GAP) / 6
+AXIS_SIZE["full_sixth"] = (_SIXTH, _SIXTH)
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
 PANEL_GAP_MAX = 4 * MM

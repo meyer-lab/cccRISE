@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32'",
@@ -171,6 +171,7 @@ dependencies = [
     { name = "shiny" },
     { name = "tensorly" },
     { name = "tensorly-viz" },
+    { name = "threadpoolctl" },
     { name = "vsparse" },
     { name = "xarray" },
 ]
@@ -227,6 +228,7 @@ requires-dist = [
     { name = "shiny", specifier = ">=1.7.0" },
     { name = "tensorly", specifier = ">=0.10.0" },
     { name = "tensorly-viz", specifier = ">=0.1.7" },
+    { name = "threadpoolctl", specifier = ">=3.5" },
     { name = "vsparse", specifier = ">=0.2.0" },
     { name = "xarray", specifier = ">=2024.1.0" },
 ]

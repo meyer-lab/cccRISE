@@ -426,14 +426,15 @@ def label_sections(ax, sections: dict[str, list[str]], fontsize: float) -> list[
 
 def plot_weight_scatter(
     ax,
+    sender: np.ndarray,
+    receiver: np.ndarray,
     groups: dict[str, np.ndarray],
     colors: dict[str, str],
     rest_label: str | None = None,
 ):
-    """Per-cell component sender vs. receiver weight, the cells of each of
+    """Per-cell component `sender` vs. `receiver` weight, the cells of each of
     `groups` ({legend label: mask}) colored `colors[label]`, the rest grey
     (in the legend as `rest_label`, if given)."""
-    sender, receiver = component_weights()
     rest = ~np.logical_or.reduce(list(groups.values()))
     ax.scatter(
         sender[rest],
@@ -454,7 +455,26 @@ def plot_weight_scatter(
             rasterized=True,
             label=f"{label} (n={mask.sum()})",
         )
-    ax.set(
-        xlabel=f"Cmp. {GRANULARITY_COMPONENT} sender weight",
-        ylabel=f"Cmp. {GRANULARITY_COMPONENT} receiver weight",
-    )
+
+
+def plot_split_boundary(
+    ax, sender_max: float, receiver_max: float, tau: float = GROUP_TAU
+) -> None:
+    """The edges of the region passing neither `split_cells` cutoff, and the
+    equal relative weight line beyond it."""
+    (x0, x1), (y0, y1) = ax.get_xlim(), ax.get_ylim()
+    corner_x, corner_y = tau * sender_max, tau * receiver_max
+    reach = max(x1 / sender_max, y1 / receiver_max)
+    for xs, ys in (
+        ((x0, corner_x), (corner_y, corner_y)),
+        ((corner_x, corner_x), (y0, corner_y)),
+        ((corner_x, reach * sender_max), (corner_y, reach * receiver_max)),
+    ):
+        ax.plot(
+            xs,
+            ys,
+            color=style.COLORS["reference"],
+            linestyle=style.LINE_STYLE_REFERENCE,
+            linewidth=style.LINE_WIDTH_THIN,
+        )
+    ax.set(xlim=(x0, x1), ylim=(y0, y1))
