@@ -65,6 +65,7 @@ cccrise-nichenet = "cccrise.runners.run_nichenet:main"
 cccrise-altcommscore = "cccrise.runners.run_alt_comm_score:main"
 cccrise-cohort = "cccrise.runners.run_cohort:main"
 cccrise-ibd-programs = "cccrise.runners.run_ibd_programs:main"
+cccrise-alad-programs = "cccrise.runners.run_alad_programs:main"
 cccrise-niches = "cccrise.runners.run_niches:main"
 
 [build-system]

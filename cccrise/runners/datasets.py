@@ -41,6 +41,8 @@ COMPARATOR_SCORES_DIR = COMPARATORS_DIR / "scores"
 IBD_PROGRAMS_DIR = DATA_DIR / "ibd_programs"
 #: Upstream NICHES against cccRISE's populations (`run_niches`)
 NICHES_DIR = DATA_DIR / "niches"
+#: Figure 2's and Figure 3's ALAD program tables (`run_alad_programs`)
+ALAD_PROGRAMS_DIR = DATA_DIR / "alad_programs"
 
 
 def comparator_filename(method: str, what: str, dataset: str, labelling: str) -> str:

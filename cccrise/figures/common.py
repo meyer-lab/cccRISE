@@ -58,7 +58,12 @@ from ..factors import (
 )
 from ..import_data import import_alad
 from ..rank_selection import distinct_minima
-from ..runners.datasets import DATASETS, RANK_SELECTION_DIR
+from ..runners.datasets import (
+    ALAD_PROGRAMS_DIR,
+    DATASETS,
+    RANK_SELECTION_DIR,
+    scores_filename,
+)
 from ..runners.provenance import read_metadata
 from ..utils import (
     correct_conditions,
@@ -121,6 +126,18 @@ def load_runner_output(
         )
     _SOURCE["inputs"].add(path.resolve())
     return pd.read_parquet(path)
+
+
+@functools.cache
+def alad_programs(table: str) -> pd.DataFrame:
+    """A `cccrise-alad-programs` table (`run_alad_programs`): Figure 2's
+    component 5 group tests and Figure 3's program tests. Shared; don't
+    modify it."""
+    return load_runner_output(
+        scores_filename(table, "alad"),
+        ALAD_PROGRAMS_DIR,
+        "    uv run cccrise-alad-programs --dataset alad",
+    )
 
 
 def load_cpd_rank(dataset: str) -> pd.DataFrame:

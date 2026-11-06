@@ -35,8 +35,7 @@ def volcano_data(group: str, reference: str):
         ranking = S.rank_genes(S.DE_GROUPS, "rest")[group]
     else:
         ranking = S.rank_genes((group,), reference)[group]
-    detected, _ = S.group_expression(ranking.index.tolist())
-    delta = detected[group] - detected[reference]
+    delta = ranking["detected"] - ranking["reference detected"]
     return ranking, delta, -np.log10(np.clip(ranking["q"], Q_FLOOR, 1))
 
 
@@ -44,15 +43,14 @@ def volcano_table(group: str, reference: str) -> pd.DataFrame:
     """Every gene's point on the volcano of `group` against `reference`, with
     its Wilcoxon statistics and detected fractions, as source data."""
     ranking, delta, y = volcano_data(group, reference)
-    detected, _ = S.group_expression(ranking.index.tolist())
     return pd.DataFrame(
         {
             "Gene": ranking.index,
             "Wilcoxon score": ranking["score"].to_numpy(),
             "p": ranking["p"].to_numpy(),
             "q (BH)": ranking["q"].to_numpy(),
-            f"Detected fraction, {group}": detected[group].to_numpy(),
-            f"Detected fraction, {reference}": detected[reference].to_numpy(),
+            f"Detected fraction, {group}": ranking["detected"].to_numpy(),
+            f"Detected fraction, {reference}": ranking["reference detected"].to_numpy(),
             "Detected fraction difference": delta.to_numpy(),
             f"-log10 q (plotted, floored at q = {Q_FLOOR:g})": y.to_numpy(),
             "Enriched": enriched(ranking, delta).to_numpy(),

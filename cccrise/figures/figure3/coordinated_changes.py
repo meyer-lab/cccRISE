@@ -1,54 +1,45 @@
 """Coordinated changes: the outcome-associated CP component against its LR
-pairs scored on their own, from the raw communication tensor.
+pairs scored on their own, from the raw communication tensor. Every number
+is `cccrise-alad-programs`' (`run_alad_programs`); this module only reads and
+draws them.
 
 Every LR pair is scored per condition in the component's own sender/receiver
-context (`component_lr_scores`: the raw tensor slice for that pair, weighted
-by the component's sender and receiver eigenstate loadings and summed over
-eigenstates).
+context (`program_context_scores`: the raw tensor slice for that pair,
+weighted by the component's sender and receiver eigenstate loadings and
+summed over eigenstates).
 
 - Association: each pair's scores, and the component's condition loadings,
   get the component ANOVA against the 6-month outcome
-  (`column_associations`: one-way ANOVA over the outcome groups, eta^2 as the
-  effect size, Benjamini-Hochberg FDR across the 513 LR pairs). The histogram
+  (`program_lr_association`: one-way ANOVA over the outcome groups, eta^2 as
+  the effect size, Benjamini-Hochberg FDR across the 513 LR pairs). The histogram
   is every LR pair's eta^2, with the whole component's eta^2 and its `N_TOP`
   most heavily weighted LR pairs' marked.
 - Co-variation of the `N_TOP` pairs: the Spearman correlation across
   conditions of every pair of them (`pairwise_rank_correlations`), ranks so a
   few conditions in which many LR pairs spike together do not dominate it.
   Each baseline box pools those correlations over `COVARIATION_DRAWS` draws of
-  as many LR pairs from outside that set (`covariation_baselines`): random,
+  as many LR pairs from outside that set (`program_covariation`, from
+  `covariation_baselines`): random,
   expression-matched (one pair per top pair from its `N_EXPRESSION_NEIGHBORS`
   nearest pairs in log mean score), and other associated (FDR < 0.05 on their
   own), so every box is a distribution of single pairwise correlations.
 """
 
-import copy
 from functools import cache
 
-import anndata
 import numpy as np
 import pandas as pd
 
-from ...anova import run_multiple_factors_anova
 from ...covariation import (
     COVARIATION_DRAWS,
     N_EXPRESSION_NEIGHBORS,
     N_TOP,
-    cccrise_tensor,
-    context_scores,
-    covariation_baselines,
-    pairwise_rank_correlations,
     top_pairs,
 )
-from ...factors import load_factors_netcdf
-from ...runners.datasets import DATASETS
 from .. import common, style
 from ._common import (
     COMPONENT,
-    DATASET,
     OUTCOME,
-    SPEC,
-    association,
     association_table,
     condition_obs,
     factors_adata,
@@ -150,9 +141,17 @@ def coordinated_analysis() -> dict:
     component's top LR pairs, and those pairs' co-variation against
     `covariation_baselines`."""
     adata = factors_adata()
-    scores = component_lr_scores(DATASET, COMPONENT)
+    names = np.asarray(adata.uns["lr_pairs"]).astype(str)
+    scores = context_score_matrix()
     top = top_pairs(np.asarray(adata.uns["D"])[:, COMPONENT - 1])
-    per_lr = column_associations(scores, adata)
+    per_lr = (
+        common.alad_programs("program_lr_association")
+        .query("Component == @COMPONENT")
+        .set_index("LR pair")
+        .loc[names]
+        .reset_index(drop=True)
+    )
+    observed, baselines = covariation_draws()
     table = association_table()
     component = table[
         (table["Association"] == OUTCOME) & (table["Component"] == COMPONENT)
@@ -163,11 +162,34 @@ def coordinated_analysis() -> dict:
         "lr_eta": per_lr.EtaSquared.to_numpy(),
         "component_eta": float(component["EtaSquared"].iloc[0]),
         "top": top,
-        "observed": pairwise_rank_correlations(scores, top),
-        "baselines": covariation_baselines(
-            scores, top, per_lr.PAdj.to_numpy() < common.SIG_ALPHA
-        ),
+        "observed": observed,
+        "baselines": baselines,
     }
+
+
+def context_score_matrix() -> np.ndarray:
+    """`COMPONENT`'s context scores, conditions (`condition_obs` order) x LR
+    pairs (the factors file's order)."""
+    names = np.asarray(factors_adata().uns["lr_pairs"]).astype(str)
+    rows = common.alad_programs("program_context_scores").query(
+        "Component == @COMPONENT"
+    )
+    wide = rows.pivot(index="Condition", columns="LR pair", values="Score")
+    return wide.loc[condition_obs().index, names].to_numpy()
+
+
+def covariation_draws() -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    """The top pairs' pairwise rank correlations, and each baseline's draws
+    (draws x pairs of pairs), in `covariation_baselines`' order."""
+    rows = common.alad_programs("program_covariation").query("Component == @COMPONENT")
+    draws = {
+        str(name): group.pivot(
+            index="Draw", columns="Pair of pairs", values="Rank correlation"
+        ).to_numpy()
+        for name, group in rows.groupby("Set", sort=False)
+    }
+    observed = draws.pop("Top pairs")[0]
+    return observed, draws
 
 
 def _source_data(result: dict) -> None:
@@ -230,45 +252,6 @@ def _source_data(result: dict) -> None:
         "nearest pairs in log mean score), and other outcome-associated pairs "
         "(adjusted p < 0.05).",
         part=1,
-    )
-
-
-def component_lr_scores(dataset: str, component: int) -> np.ndarray:
-    """Each LR pair's per-condition raw communication score in a CP
-    component's own sender/receiver context (conditions x LR pairs, in the
-    factors file's LR order): each LR pair's slice of `communication_tensor`
-    weighted by the component's sender (B) and receiver (C) eigenstate
-    loadings and summed over eigenstates, so a pair is scored between the
-    same cells the component describes."""
-    factors = load_factors_netcdf(DATASETS[dataset].factors_path())
-    sender, receiver = (
-        factors[k].values[:, component - 1].astype(float) for k in ("cp_B", "cp_C")
-    )
-    return context_scores(communication_tensor(dataset), sender, receiver)
-
-
-@cache
-def communication_tensor(dataset: str) -> np.ndarray:
-    """The raw tensor (condition x sender eigenstate x receiver eigenstate x
-    LR pair, in the factors file's LR order), rebuilt from the saved RISE fit
-    with the scoring the CP was fit on, which reproduces the fit's R2X."""
-    spec = DATASETS[dataset]
-    return cccrise_tensor(spec.factors_path(), spec.load(), spec.condition_column)
-
-
-def column_associations(matrix: np.ndarray, adata: anndata.AnnData) -> pd.DataFrame:
-    """The component ANOVA against OUTCOME, applied to each column of a
-    conditions x features `matrix` in place of the component condition
-    loadings: a one-way ANOVA per column over the association's groups, each
-    condition's row read-depth corrected as the loadings are, reporting
-    eta^2, FDR-corrected (Benjamini-Hochberg) across columns."""
-    adata = copy.copy(adata)
-    adata.uns = {**adata.uns, "A": matrix}
-    return run_multiple_factors_anova(
-        adata,
-        [association(OUTCOME)],
-        condition_column=SPEC.condition_column,
-        correction="fdr_bh",
     )
 
 
