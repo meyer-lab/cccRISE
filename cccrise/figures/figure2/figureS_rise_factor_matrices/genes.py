@@ -13,8 +13,12 @@ AXES = ("rect",)
 
 
 def plot(axs):
+    draw(axs, S.DATASET)
+
+
+def draw(axs, dataset: str) -> None:
     (ax,) = axs
-    factor = S.rise_factors()["pf2_C"]
+    factor = S.rise_factors(dataset)["pf2_C"]
     loadings = factor.values.astype(float)
     loadings = loadings / np.abs(loadings).max(axis=0)
     n_top = round(TOP_GENE_FRACTION * len(loadings))

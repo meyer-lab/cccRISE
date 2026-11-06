@@ -1,12 +1,21 @@
-"""Supplementary figure: Figure 4B and C for every component of every fit,
-PB included, each component at its own x, aligned down the panels: how many
-top pairs each tests (A), and their co-variation over all pairs of pairs (B)
-and over only those sharing no gene (C)."""
+"""Supplementary figure: the components above the stricter null in either
+version, every fit, ALAD over IBD, aligned down each cohort's panels: how many
+top pairs each tests (A, D), and their co-variation over all pairs of pairs (B,
+E) and over only those sharing no gene (C, F)."""
 
 from ... import common, style
-from . import all_pairs, disjoint, pairs_used
+from . import (
+    all_pairs,
+    disjoint,
+    ibd_all_pairs,
+    ibd_disjoint,
+    ibd_pairs_used,
+    pairs_used,
+)
 
-LAYOUT = [[pairs_used], [all_pairs], [disjoint]]
+LAYOUT = [
+    [[pairs_used, all_pairs, disjoint, ibd_pairs_used, ibd_all_pairs, ibd_disjoint]]
+]
 
 
 def makeFigure():

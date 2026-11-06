@@ -6,19 +6,19 @@
 # the command that writes it with this repository's code.
 
 shared:
-  dataset: alad
-  dataset_label: ALAD Lung Transplant BAL
-  source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
-  source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
-  loader_args:
-    filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
-    gene_threshold: 0.001
-    normalize: true
-  condition_key: dsco_id
-  group_key: ALADstatus
   cp_dtype: float32
 files:
   pb_alad_coarse.nc:
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    group_key: ALADstatus
     sha256: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
     command: uv run cccrise-comparators --dataset alad --methods pb --pb-rank coarse=4 --pb-rank
       fine=5
@@ -55,6 +55,16 @@ files:
     git_sha: ae3b5c15b91e0e34b0f1acace44c491ed2d2614f
     generated: '2026-11-03T01:33:20+00:00'
   pb_alad_fine.nc:
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    group_key: ALADstatus
     sha256: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
     command: uv run cccrise-comparators --dataset alad --methods pb --pb-rank coarse=4 --pb-rank
       fine=5
@@ -109,7 +119,182 @@ files:
       fit_seed: 49
     git_sha: ae3b5c15b91e0e34b0f1acace44c491ed2d2614f
     generated: '2026-11-03T01:33:23+00:00'
+  pb_ibd_coarse.nc:
+    sha256: 93b93b38c121d8b909594aec526f242346f4b49d7c76b3116a00655985cce567
+    command: uv run cccrise-comparators --dataset ibd --methods pb --pb-rank coarse=6
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    celltype_key: broad_cell_type
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    cp_device: auto
+    cp_backend: cupy
+    tensor:
+      tensor_shape: [343, 7, 7, 1255]
+      observed_share: 1.0
+      celltypes:
+      - B cell
+      - Enterocyte
+      - Myeloid
+      - Plasma B cell
+      - Secretory
+      - Stem cell
+      - T cell
+    method: pb
+    labelling: coarse
+    pb:
+      ranks: [1, 2, 3, 4, 5, 6, 7]
+      start_seeds: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]
+      cp_fit_options:
+        init: svd
+        svd: randomized_svd
+        normalize_factors: true
+      n_iter_max: 4000
+      tol: 1.0e-12
+      device: null
+      dtype: float32
+      fit_seed: 45
+      rank: 6
+    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
+    generated: '2026-11-03T00:45:52+00:00'
+    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
+      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
+      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
+      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
+      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+  pb_ibd_fine.nc:
+    sha256: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
+    command: uv run cccrise-comparators --dataset ibd --methods pb --pb-rank fine=5
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    celltype_key: celltype
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    cp_device: auto
+    cp_backend: cupy
+    tensor:
+      tensor_shape: [343, 54, 54, 1255]
+      observed_share: 1.0
+      celltypes:
+      - B cells
+      - B cells activated
+      - B cells germinal centre/plasmablasts
+      - B cells memory FCRL2+
+      - B cells naive
+      - Enterochromaffin cells
+      - Enterocytes BEST4+
+      - Enterocytes bottom villus IFI27-hi
+      - Enterocytes bottom villus IFI27-lo
+      - Enterocytes mid villus ALDOB+
+      - Enterocytes mid villus IFI27-hi
+      - Enterocytes mid villus IFI27-lo
+      - Enterocytes precursor crypt KRT20+
+      - Enterocytes precursor crypt KRT20++
+      - Enterocytes progenitor crypt GPX2+
+      - Enterocytes progenitor crypt OLFM4-hi
+      - Enterocytes progenitor crypt OLFM4-lo
+      - Enterocytes top villus
+      - Enteroendocrine cells
+      - Goblet cells BCAS1+
+      - Goblet cells bottom villus
+      - Goblet cells crypt MKI67+
+      - Goblet cells mid villus
+      - Goblet cells top villus
+      - ILCs
+      - Macrophages CCL3/4+ CXCL9/10+
+      - Macrophages CD163-hi
+      - Macrophages CD163-lo
+      - Macrophages ITGA4+
+      - Mast cells
+      - Monocytes S100A8/9+
+      - Monocytes SOD2+
+      - Plasma B cell XBP1/CD38+
+      - Plasma B cell XBP1/CD38++
+      - Plasma B cell XBP1/CD38+++
+      - Plasma B cell XBP1/CD38++++
+      - Stem cells MKI67+
+      - Stem cells OLFM4+
+      - Stem cells OLFM4+ LGR5+
+      - T cells CD4+ LEF1+
+      - T cells CD4+ PASK+
+      - T cells CD4+ Treg
+      - T cells CD4+ memory
+      - T cells CD4+ memory CXCR6+
+      - T cells CD4+ naive
+      - T cells CD4- CD8-
+      - T cells CD4- CD8-lo
+      - T cells CD8+ GZMK+
+      - T cells CD8+ TRGC2+
+      - T cells CD8+ tissue-resident
+      - T cells gd
+      - Tuft cells
+      - cDC1
+      - pDCs/cDC2
+    method: pb
+    labelling: fine
+    pb:
+      ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+      start_seeds: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]
+      cp_fit_options:
+        init: svd
+        svd: randomized_svd
+        normalize_factors: true
+      n_iter_max: 4000
+      tol: 1.0e-12
+      device: null
+      dtype: float32
+      fit_seed: 45
+      rank: 5
+    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
+    generated: '2026-11-03T00:47:55+00:00'
+    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
+      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
+      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
+      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
+      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
   stac_alad_coarse.nc:
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    group_key: ALADstatus
     git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
     consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
       first commit). The code was first committed in 425561c; nothing these runs call has
@@ -143,6 +328,16 @@ files:
       random_state: 42
     generated: '2026-10-31T07:37:47+00:00'
   stac_alad_fine.nc:
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    group_key: ALADstatus
     git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
     consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
       first commit). The code was first committed in 425561c; nothing these runs call has
@@ -193,7 +388,172 @@ files:
         lr: 14
       random_state: 42
     generated: '2026-10-31T07:38:07+00:00'
+  stac_ibd_coarse.nc:
+    sha256: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
+    command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods stac
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    celltype_key: broad_cell_type
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    cp_device: auto
+    cp_backend: numpy
+    tensor:
+      tensor_shape: [343, 7, 7, 1255]
+      observed_share: 1.0
+      celltypes:
+      - B cell
+      - Enterocyte
+      - Myeloid
+      - Plasma B cell
+      - Secretory
+      - Stem cell
+      - T cell
+    method: stac
+    labelling: coarse
+    stac:
+      varexp_percent: 1.0
+      core_shape:
+        sample: 6
+        sender: 4
+        receiver: 3
+        lr: 5
+      random_state: 42
+    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
+    generated: '2026-10-31T07:50:09+00:00'
+    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
+      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
+      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
+      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
+      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+  stac_ibd_fine.nc:
+    sha256: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
+    command: uv run cccrise-comparators --dataset ibd --labellings fine --methods stac
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    celltype_key: celltype
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    cp_device: auto
+    cp_backend: numpy
+    tensor:
+      tensor_shape: [343, 54, 54, 1255]
+      observed_share: 1.0
+      celltypes:
+      - B cells
+      - B cells activated
+      - B cells germinal centre/plasmablasts
+      - B cells memory FCRL2+
+      - B cells naive
+      - Enterochromaffin cells
+      - Enterocytes BEST4+
+      - Enterocytes bottom villus IFI27-hi
+      - Enterocytes bottom villus IFI27-lo
+      - Enterocytes mid villus ALDOB+
+      - Enterocytes mid villus IFI27-hi
+      - Enterocytes mid villus IFI27-lo
+      - Enterocytes precursor crypt KRT20+
+      - Enterocytes precursor crypt KRT20++
+      - Enterocytes progenitor crypt GPX2+
+      - Enterocytes progenitor crypt OLFM4-hi
+      - Enterocytes progenitor crypt OLFM4-lo
+      - Enterocytes top villus
+      - Enteroendocrine cells
+      - Goblet cells BCAS1+
+      - Goblet cells bottom villus
+      - Goblet cells crypt MKI67+
+      - Goblet cells mid villus
+      - Goblet cells top villus
+      - ILCs
+      - Macrophages CCL3/4+ CXCL9/10+
+      - Macrophages CD163-hi
+      - Macrophages CD163-lo
+      - Macrophages ITGA4+
+      - Mast cells
+      - Monocytes S100A8/9+
+      - Monocytes SOD2+
+      - Plasma B cell XBP1/CD38+
+      - Plasma B cell XBP1/CD38++
+      - Plasma B cell XBP1/CD38+++
+      - Plasma B cell XBP1/CD38++++
+      - Stem cells MKI67+
+      - Stem cells OLFM4+
+      - Stem cells OLFM4+ LGR5+
+      - T cells CD4+ LEF1+
+      - T cells CD4+ PASK+
+      - T cells CD4+ Treg
+      - T cells CD4+ memory
+      - T cells CD4+ memory CXCR6+
+      - T cells CD4+ naive
+      - T cells CD4- CD8-
+      - T cells CD4- CD8-lo
+      - T cells CD8+ GZMK+
+      - T cells CD8+ TRGC2+
+      - T cells CD8+ tissue-resident
+      - T cells gd
+      - Tuft cells
+      - cDC1
+      - pDCs/cDC2
+    method: stac
+    labelling: fine
+    stac:
+      varexp_percent: 1.0
+      core_shape:
+        sample: 13
+        sender: 12
+        receiver: 11
+        lr: 12
+      random_state: 42
+    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
+    generated: '2026-10-31T08:20:57+00:00'
+    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
+      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
+      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
+      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
+      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
   tc2c_alad_coarse.nc:
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    group_key: ALADstatus
     git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
     consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
       first commit). The code was first committed in 425561c; nothing these runs call has
@@ -232,6 +592,16 @@ files:
       dtype: float32
     generated: '2026-10-31T03:22:18+00:00'
   tc2c_alad_fine.nc:
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    group_key: ALADstatus
     git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
     consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
       first commit). The code was first committed in 425561c; nothing these runs call has
@@ -287,7 +657,189 @@ files:
       device: cpu
       dtype: float32
     generated: '2026-10-31T03:28:57+00:00'
+  tc2c_ibd_coarse.nc:
+    sha256: 1eeaf65e598dc6dbf53d58eef9eb75b5cae516ab980e553569e19a726241fafd
+    command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    celltype_key: broad_cell_type
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    cp_device: auto
+    cp_backend: cupy
+    tensor:
+      tensor_shape: [343, 7, 7, 1255]
+      observed_share: 0.9853037424882489
+      celltypes:
+      - B cell
+      - Enterocyte
+      - Myeloid
+      - Plasma B cell
+      - Secretory
+      - Stem cell
+      - T cell
+    method: tc2c
+    labelling: coarse
+    tc2c:
+      upper_rank: 15
+      runs: 10
+      init: random
+      first_seed: 42
+      elbow_rank: 3
+      fit:
+        init: random
+        best_of_runs_seed: 50
+      n_iter_max: 1000
+      tol: 1.0e-12
+      device: null
+      dtype: float32
+      low_memory: false
+    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
+    generated: '2026-10-31T06:05:10+00:00'
+    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
+      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
+      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
+      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
+      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+  tc2c_ibd_fine.nc:
+    sha256: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
+    command: uv run cccrise-comparators --dataset ibd --labellings fine --methods tc2c
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    celltype_key: celltype
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    cp_device: auto
+    cp_backend: cupy
+    tensor:
+      tensor_shape: [343, 54, 54, 1255]
+      observed_share: 0.6747131539270617
+      celltypes:
+      - B cells
+      - B cells activated
+      - B cells germinal centre/plasmablasts
+      - B cells memory FCRL2+
+      - B cells naive
+      - Enterochromaffin cells
+      - Enterocytes BEST4+
+      - Enterocytes bottom villus IFI27-hi
+      - Enterocytes bottom villus IFI27-lo
+      - Enterocytes mid villus ALDOB+
+      - Enterocytes mid villus IFI27-hi
+      - Enterocytes mid villus IFI27-lo
+      - Enterocytes precursor crypt KRT20+
+      - Enterocytes precursor crypt KRT20++
+      - Enterocytes progenitor crypt GPX2+
+      - Enterocytes progenitor crypt OLFM4-hi
+      - Enterocytes progenitor crypt OLFM4-lo
+      - Enterocytes top villus
+      - Enteroendocrine cells
+      - Goblet cells BCAS1+
+      - Goblet cells bottom villus
+      - Goblet cells crypt MKI67+
+      - Goblet cells mid villus
+      - Goblet cells top villus
+      - ILCs
+      - Macrophages CCL3/4+ CXCL9/10+
+      - Macrophages CD163-hi
+      - Macrophages CD163-lo
+      - Macrophages ITGA4+
+      - Mast cells
+      - Monocytes S100A8/9+
+      - Monocytes SOD2+
+      - Plasma B cell XBP1/CD38+
+      - Plasma B cell XBP1/CD38++
+      - Plasma B cell XBP1/CD38+++
+      - Plasma B cell XBP1/CD38++++
+      - Stem cells MKI67+
+      - Stem cells OLFM4+
+      - Stem cells OLFM4+ LGR5+
+      - T cells CD4+ LEF1+
+      - T cells CD4+ PASK+
+      - T cells CD4+ Treg
+      - T cells CD4+ memory
+      - T cells CD4+ memory CXCR6+
+      - T cells CD4+ naive
+      - T cells CD4- CD8-
+      - T cells CD4- CD8-lo
+      - T cells CD8+ GZMK+
+      - T cells CD8+ TRGC2+
+      - T cells CD8+ tissue-resident
+      - T cells gd
+      - Tuft cells
+      - cDC1
+      - pDCs/cDC2
+    method: tc2c
+    labelling: fine
+    tc2c:
+      upper_rank: 15
+      runs: 10
+      init: random
+      first_seed: 42
+      elbow_rank: 3
+      fit:
+        init: random
+        best_of_runs_seed: 44
+      n_iter_max: 1000
+      tol: 1.0e-12
+      device: null
+      dtype: float32
+      scratch_workaround: 'masked fits by scratchpad/comparators_ibd/lean_masked_tc2c.py:
+        tensorly''s non_negative_parafac with its fill-in, MTTKRP and error built in sample-row
+        blocks (same values; different summation order), because tensorly''s own does not
+        fit in 24 GB on this tensor'
+    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
+    generated: '2026-10-31T16:59:57+00:00'
+    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
+      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
+      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
+      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
+      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with. Its masked fits
+      ran through the scratch loop its `scratch_workaround` names, not this command: the command''s
+      tensorly fits do not fit in 24 GB of GPU memory on this tensor.'
   tc2c_inner_alad_coarse.nc:
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    group_key: ALADstatus
     git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
     consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
       first commit). The code was first committed in 425561c; nothing these runs call has
@@ -320,6 +872,16 @@ files:
       dtype: float32
     generated: '2026-10-31T02:54:34+00:00'
   tc2c_inner_alad_fine.nc:
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    group_key: ALADstatus
     git_sha: 2927f58073e23402137fbc85a369a603484b4b8c-dirty
     consolidated_post_hoc: 2026-11-02; ran uncommitted at the recorded git_sha (the branch's
       first commit). The code was first committed in 425561c; nothing these runs call has
@@ -356,6 +918,120 @@ files:
       device: null
       dtype: float32
     generated: '2026-10-31T03:28:37+00:00'
+  tc2c_inner_ibd_coarse.nc:
+    sha256: ee7a9157fb3febc1281c2c3823cbbc1e6fc4fda590c5ab9f423f455fb3607ec1
+    command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c_inner
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    celltype_key: broad_cell_type
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    cp_device: auto
+    cp_backend: cupy
+    tensor:
+      tensor_shape: [343, 6, 6, 1255]
+      observed_share: 1.0
+      celltypes:
+      - Enterocyte
+      - Myeloid
+      - Plasma B cell
+      - Secretory
+      - Stem cell
+      - T cell
+    method: tc2c_inner
+    labelling: coarse
+    tc2c_inner:
+      upper_rank: 15
+      runs: 10
+      init: random
+      first_seed: 42
+      elbow_rank: 3
+      fit:
+        init: svd
+      n_iter_max: 1000
+      tol: 1.0e-12
+      device: null
+      dtype: float32
+      low_memory: false
+    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
+    generated: '2026-10-31T05:19:59+00:00'
+    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
+      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
+      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
+      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
+      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+  tc2c_inner_ibd_fine.nc:
+    sha256: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
+    command: uv run cccrise-comparators --dataset ibd --labellings fine --methods tc2c_inner
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    celltype_key: celltype
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    cp_device: auto
+    cp_backend: cupy
+    tensor:
+      tensor_shape: [343, 4, 4, 1255]
+      observed_share: 1.0
+      celltypes:
+      - Enterocytes progenitor crypt OLFM4-hi
+      - Goblet cells bottom villus
+      - Plasma B cell XBP1/CD38++
+      - Stem cells MKI67+
+    method: tc2c_inner
+    labelling: fine
+    tc2c_inner:
+      upper_rank: 15
+      runs: 10
+      init: random
+      first_seed: 42
+      elbow_rank: 5
+      fit:
+        init: svd
+      n_iter_max: 1000
+      tol: 1.0e-12
+      device: null
+      dtype: float32
+      low_memory: false
+    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
+    generated: '2026-10-31T06:09:38+00:00'
+    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
+      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
+      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
+      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
+      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
 
 # Records with `consolidated_post_hoc` were written by their runs as per-file
 # `<stem>.provenance.yaml` sidecars and merged here, on the date it gives,

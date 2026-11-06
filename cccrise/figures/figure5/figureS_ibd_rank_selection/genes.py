@@ -1,0 +1,18 @@
+"""The IBD RISE gene factor, as the ALAD supplement draws ALAD's
+(`figure2.figureS_rise_factor_matrices.genes`), sized as `factors` beside it."""
+
+from ... import common
+from ...figure2.figureS_rise_factor_matrices.genes import draw
+from .. import _common as S
+from ._common import component_ticks
+
+AXES = ("rect",)
+
+
+def plot(axs):
+    draw(axs, S.DATASET)
+    component_ticks(axs[0], S.factors()["pf2_C"].shape[1])
+
+
+def makeFigure():
+    return common.standalone_fixed(__name__)

@@ -50,37 +50,43 @@ AXES = ("rect",)
 
 
 @functools.cache
-def load_scores() -> pd.DataFrame:
+def load_scores(dataset: str = DATASET) -> pd.DataFrame:
     """The runner's `component_ligand_scores` table."""
-    return _load(DATASETS[DATASET].nichenet_scores_filename())
+    return _load(DATASETS[dataset].nichenet_scores_filename(), dataset)
 
 
 @functools.cache
-def load_null() -> pd.DataFrame:
+def load_null(dataset: str = DATASET) -> pd.DataFrame:
     """The runner's `shuffled_percentiles` table."""
-    return _load(DATASETS[DATASET].nichenet_null_filename())
+    return _load(DATASETS[dataset].nichenet_null_filename(), dataset)
 
 
 @functools.cache
-def load_cell_null() -> pd.DataFrame:
+def load_cell_null(dataset: str = DATASET) -> pd.DataFrame:
     """The runner's `shuffled_cell_scores` table."""
-    return _load(DATASETS[DATASET].nichenet_cell_null_filename())
+    return _load(DATASETS[dataset].nichenet_cell_null_filename(), dataset)
 
 
-def _load(filename: str) -> pd.DataFrame:
+def _load(filename: str, dataset: str) -> pd.DataFrame:
     return common.load_runner_output(
         filename,
         VALIDATION_DIR,
-        hint=f"    uv run cccrise-nichenet --dataset {DATASET}",
+        hint=f"    uv run cccrise-nichenet --dataset {dataset}",
     )
 
 
 def plot(axs):
+    draw(axs, DATASET)
+
+
+def draw(axs, dataset: str) -> None:
+    """`dataset`'s per-ligand target scores per CP component against their
+    cell-shuffle null."""
     (ax,) = axs
-    scores = load_scores().dropna(subset=["auroc"])
-    cell_null = load_cell_null().dropna(subset=["auroc"])
-    tests, null = weighted_score_tests(load_scores(), load_cell_null())
-    _source_data(tests, null)
+    scores = load_scores(dataset).dropna(subset=["auroc"])
+    cell_null = load_cell_null(dataset).dropna(subset=["auroc"])
+    tests, null = weighted_score_tests(load_scores(dataset), load_cell_null(dataset))
+    _source_data(tests, null, scores)
     components = sorted(scores["component"].unique())
     x = np.arange(len(components))
     rng = np.random.default_rng(0)
@@ -120,14 +126,12 @@ def plot(axs):
     )
 
 
-def _source_data(tests: pd.DataFrame, null: pd.Series) -> None:
+def _source_data(tests: pd.DataFrame, null: pd.Series, scores: pd.DataFrame) -> None:
     common.source_data(
         "nichenet_target_score_per_ligand",
-        load_scores()
-        .dropna(subset=["auroc"])[
+        scores[
             ["component", "ligand", "auroc", "weight", "rel_weight", "is_top"]
-        ]
-        .rename(
+        ].rename(
             columns={
                 "component": "CP component",
                 "ligand": "Ligand",

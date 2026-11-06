@@ -11,7 +11,7 @@ import numpy as np
 
 from ....validation.nichenet import null_weights, score_percentiles
 from ... import common, style
-from ..nichenet import BOX_STYLE, load_null, load_scores
+from ..nichenet import BOX_STYLE, DATASET, load_null, load_scores
 
 QUANTILES = (0.05, 0.25, 0.5, 0.75, 0.95)
 NULL_LABEL = "Null"
@@ -31,10 +31,14 @@ def weighted_box(pct: np.ndarray, w: np.ndarray) -> dict:
 
 
 def plot(axs):
+    draw(axs, DATASET)
+
+
+def draw(axs, dataset: str) -> None:
     (ax,) = axs
-    scores = load_scores()
+    scores = load_scores(dataset)
     groups = {str(c): g for c, g in score_percentiles(scores).groupby("component")}
-    groups[NULL_LABEL] = null_weights(load_null(), scores)
+    groups[NULL_LABEL] = null_weights(load_null(dataset), scores)
     columns = {
         "component": "CP component",
         "ligand": "Ligand",

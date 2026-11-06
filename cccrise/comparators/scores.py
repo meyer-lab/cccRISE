@@ -61,13 +61,6 @@ def inner_losses(masked, kept) -> pd.DataFrame:
     )
 
 
-def weight_share(weights: pd.DataFrame, in_group: np.ndarray) -> pd.Series:
-    """Per column of `weights` (one row per cell), the share of its total
-    |weight| carried by the cells `in_group` marks."""
-    magnitude = weights.abs()
-    return magnitude[in_group].sum() / magnitude.sum()
-
-
 def unit_columns(matrix: np.ndarray) -> np.ndarray:
     """Columns scaled to unit L2 norm (zero columns left at zero)."""
     norms = np.linalg.norm(matrix, axis=0, keepdims=True)
@@ -100,6 +93,20 @@ def containment(
             "Contained": (observed >= CONTAINED) & (observed > q95),
         }
     )
+
+
+def group_r2(values: np.ndarray, groups: np.ndarray) -> float:
+    """The share of `values`' variance its `groups`' means hold."""
+    means = pd.Series(values).groupby(groups).transform("mean").to_numpy()
+    return float(
+        1 - np.sum((values - means) ** 2) / np.sum((values - values.mean()) ** 2)
+    )
+
+
+def paint_r2(values: np.ndarray, painted: np.ndarray) -> float:
+    """The squared correlation of `values` with `painted`: 0 for a constant
+    `painted`, which holds none of their variance."""
+    return float(np.corrcoef(values, painted)[0, 1] ** 2) if painted.std() > 0 else 0.0
 
 
 def effective_number(columns: pd.DataFrame) -> pd.Series:

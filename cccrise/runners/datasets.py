@@ -37,6 +37,10 @@ COMPARATORS_DIR = DATA_DIR / "comparators"
 COMPARATOR_RANKS_DIR = COMPARATORS_DIR / "rank_selection"
 COMPARATOR_FITS_DIR = COMPARATORS_DIR / "fits"
 COMPARATOR_SCORES_DIR = COMPARATORS_DIR / "scores"
+#: Figure 5's IBD program tables (`run_ibd_programs`)
+IBD_PROGRAMS_DIR = DATA_DIR / "ibd_programs"
+#: Upstream NICHES against cccRISE's populations (`run_niches`)
+NICHES_DIR = DATA_DIR / "niches"
 
 
 def comparator_filename(method: str, what: str, dataset: str, labelling: str) -> str:

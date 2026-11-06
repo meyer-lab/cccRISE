@@ -1,14 +1,16 @@
-"""The canonical ALAD CP factor matrices: condition (A), sender eigenstate
-(B), receiver eigenstate (C), and LR pair (D) loadings per component, each
-divided by its largest magnitude within the component (keeping sign).
+"""CP factor matrices: condition (A), sender eigenstate (B), receiver
+eigenstate (C), and LR pair (D) loadings per component, each divided by its
+largest magnitude within the component (keeping sign); Figure 2 draws the
+canonical ALAD fit (`draw` draws any registered dataset's).
 Only the `TOP_LR_FRACTION` of LR pairs with the largest such loading on any
 component are shown, plus each component's top pairs, which are outlined and
 labeled: those with |loading| at least 0.4 x the component's largest, the
 rule `nichenet` picks its tested ligands by (`validation.nichenet.top_pairs`),
 here over every LR pair rather than only those NicheNet can score.
-Conditions are grouped by ALAD status, then six-month outcome
-(`common.condition_strips`), and within a group, like LR pairs, ordered by
-their most heavily loaded component, then by that loading."""
+Conditions and LR pairs are ordered by their most heavily loaded component,
+then by that loading."""
+
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
@@ -16,7 +18,6 @@ import pandas as pd
 from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
 from .. import common
-from ..figure3._common import condition_obs
 
 DATASET = "alad"
 
@@ -28,36 +29,43 @@ MODES = {  # factor matrix: row label, whether to order rows
 }
 EIGENSTATE_TICKS = (1, 5, 10, 15)
 TOP_LR_FRACTION = 0.15
-AXES = ("slim", "slim", "slim", "square")
+AXES = ("square",) * len(MODES)
 REL_CUTOFF = 0.4  # percent of a components top-weighted ligand above which LR pairs should be labeled
 
 
 def plot(axs):
-    adata = common.load_factors_to_anndata(DATASETS[DATASET].factors_path())
+    draw(axs, DATASET)
+
+
+def draw(
+    axs,
+    dataset: str,
+    eigenstate_ticks: Sequence[int] = EIGENSTATE_TICKS,
+    top_lr_fraction: float = TOP_LR_FRACTION,
+):
+    """`dataset`'s CP factor matrices on `axs` (one per mode), the eigenstate
+    axes ticked at `eigenstate_ticks` and the `top_lr_fraction` of LR pairs
+    shown."""
+    adata = common.load_factors_to_anndata(DATASETS[dataset].factors_path())
     for ax, (key, (ylabel, ordered)) in zip(axs, MODES.items(), strict=True):
         loadings = np.asarray(adata.uns[key], dtype=float)
         loadings = loadings / np.abs(loadings).max(axis=0)
         labeled = {}
         if key == "D":
-            rows, labeled = _shown_lr_pairs(adata, loadings)
+            rows, labeled = _shown_lr_pairs(adata, loadings, top_lr_fraction)
             _source_data(key, adata, loadings, rows)
             loadings = loadings[rows]
-            ylabel = f"Top {TOP_LR_FRACTION:.0%} LR pair"
+            ylabel = f"Top {top_lr_fraction:.0%} LR pair"
         else:
             _source_data(key, adata, loadings)
         order = common.dominant_order(loadings) if ordered else np.arange(len(loadings))
-        if key == "A":
-            groups = condition_obs().loc[adata.obs_names]
-            order = common.group_conditions(groups, order)
         image = common.plot_factor_heatmap(ax, loadings[order], "CP component")
         if ordered:
             ax.set_yticks([])
             ylabel += f"s (n={len(loadings)})"
         else:
-            ax.set_yticks([t - 1 for t in EIGENSTATE_TICKS], EIGENSTATE_TICKS)
+            ax.set_yticks([t - 1 for t in eigenstate_ticks], eigenstate_ticks)
         ax.set_ylabel(ylabel)
-        if key == "A":
-            common.condition_strips(ax, groups.iloc[order])
         position = np.argsort(order)  # row index -> drawn row
         common.label_heatmap_cells(
             ax,
@@ -90,14 +98,16 @@ def _source_data(key: str, adata, loadings, shown=None) -> None:
     )
 
 
-def _shown_lr_pairs(adata, loadings) -> tuple[np.ndarray, dict[int, tuple]]:
-    """Rows of D shown (the top `TOP_LR_FRACTION` by largest normalized
+def _shown_lr_pairs(
+    adata, loadings, top_lr_fraction: float
+) -> tuple[np.ndarray, dict[int, tuple]]:
+    """Rows of D shown (the top `top_lr_fraction` by largest normalized
     loading, plus the top pairs), and {shown row: (0-based component, pair
     name)} for the top pairs."""
     names = pd.Series(np.asarray(adata.uns["lr_pairs"]).astype(str))
     top = _top_pairs(adata.uns["D"], names)
     strongest = np.abs(loadings).max(axis=1)
-    n_top = round(TOP_LR_FRACTION * len(loadings))
+    n_top = round(top_lr_fraction * len(loadings))
     rows = np.union1d(np.argsort(-strongest)[:n_top], list(top))
     shown = {r: i for i, r in enumerate(rows)}
     return rows, {shown[r]: (c - 1, names[r].replace("^", "–")) for r, c in top.items()}

@@ -70,6 +70,8 @@ Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/comparators/scores/covariation_alad.parquet`
 - `cccrise/data/comparators/scores/depth_alad.parquet`
 - `cccrise/data/comparators/scores/homophily_alad.parquet`
+- `cccrise/data/comparators/scores/label_ceiling_alad.parquet`
+- `cccrise/data/comparators/scores/label_ceiling_ibd.parquet`
 - `cccrise/data/comparators/scores/lr_loadings_alad.parquet`
 - `cccrise/data/comparators/scores/pair_covariation_alad.parquet`
 
@@ -83,6 +85,8 @@ Analyses plotted (with provenance in the zip's README):
 | 4F | cccrise/figures/figure4/classes.py | data | lr_column_classes.csv | 5.5 | Figure 4F: what each LR column is. |
 | 4G | cccrise/figures/figure4/strongest_association.py | data | significant_associations_by_component.csv; strongest_association_by_component.csv | 6.5 | Figure 4G: each component's strongest outcome association. |
 | 4H | cccrise/figures/figure4/program_capture.py | data | column_match_to_reference.csv; relative_lr_loadings_of_top_pairs.csv | 2.4 | Figure 4H: cccRISE C4's top pairs in C4 and its closest comparator columns. |
+| 4I | cccrise/figures/figure4/label_ceiling_sender.py | data | label_ceiling_sender.csv | 1.8 | Figure 4I: the label ceiling of each program's sender weight. |
+| 4J | cccrise/figures/figure4/label_ceiling_receiver.py | data | label_ceiling_receiver.csv | 1.8 | Figure 4J: the label ceiling of each program's receiver weight. |
 
 ## Figure EV1
 

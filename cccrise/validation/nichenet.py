@@ -157,23 +157,16 @@ def receiver_celltypes(
     return list(means.index[means >= rel_cutoff * means.max()])
 
 
-def _receiver_population(
+def receiver_masks(
     adata: anndata.AnnData, cmp: int, top_perc: float, celltype_key: str | None = None
-) -> tuple[anndata.AnnData, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Split `adata` into the cells above the `100 - top_perc` percentile
-    ("high") and below the `top_perc` percentile ("low") of component `cmp`'s
-    receiver-eigenstate loading (`adata.obsm["rc_C"][:, cmp - 1]`), discarding
-    every other cell. With `celltype_key`, the "high" group is taken among the
-    cells of the component's `receiver_celltypes` only, so that a rare
-    receiver cell type is not diluted by abundant low-loading cells; the
-    "low" group is still taken among all cells.
-
-    Returns
-    -------
-    tuple[anndata.AnnData, np.ndarray]
-        (kept, pos_mask): the cells in either group, and a boolean array
-        aligned to `kept` marking the "high" group.
+    The cells above the `100 - top_perc` percentile ("high") and below the
+    `top_perc` percentile ("low") of component `cmp`'s receiver-eigenstate
+    loading (`adata.obsm["rc_C"][:, cmp - 1]`). With `celltype_key`, the "high"
+    group is taken among the cells of the component's `receiver_celltypes`
+    only, so that a rare receiver cell type is not diluted by abundant
+    low-loading cells; the "low" group is still taken among all cells.
     """
     loadings = np.asarray(adata.obsm["rc_C"])[:, cmp - 1]
     pool = np.ones(len(loadings), dtype=bool)
@@ -182,6 +175,17 @@ def _receiver_population(
         pool = adata.obs[celltype_key].astype(str).isin(types).to_numpy()
     pos_idx = pool & (loadings > np.percentile(loadings[pool], 100 - top_perc))
     neg_idx = ~pos_idx & (loadings < np.percentile(loadings, top_perc))
+    return pos_idx, neg_idx
+
+
+def _receiver_population(
+    adata: anndata.AnnData, cmp: int, top_perc: float, celltype_key: str | None = None
+) -> tuple[anndata.AnnData, np.ndarray]:
+    """
+    `adata`'s cells in either of `receiver_masks`' groups, and a boolean array
+    aligned to them marking the "high" group.
+    """
+    pos_idx, neg_idx = receiver_masks(adata, cmp, top_perc, celltype_key)
     kept_idx = pos_idx | neg_idx
     return adata[kept_idx].copy(), pos_idx[kept_idx]
 
@@ -200,6 +204,55 @@ def _run_de(
     names = results["names"][f"Cmp{cmp}"]
     scores = results["scores"][f"Cmp{cmp}"]
     return pd.Series(scores, index=names).sort_values(ascending=False)
+
+
+def rank_sum_statistics(
+    X, masks: np.ndarray, chunk: int = 1500
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Every row of `masks` (groups x cells) as `_run_de`'s Wilcoxon test would
+    score it, at once: for fixed cells the ranks are fixed, so a group's rank
+    sum is a product with the rank matrix.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+        Each group's per-gene z, and the share of cells each gene is detected
+        in within the group and out of it.
+    """
+    n, n_genes = X.shape
+    groups = masks.astype(np.float64)
+    inside = masks.sum(axis=1, keepdims=True).astype(float)
+    outside = n - inside
+    z, frac_in, frac_out = (
+        np.empty((len(masks), n_genes), np.float32) for _ in range(3)
+    )
+    by_gene = X.tocsc()
+    for start in range(0, n_genes, chunk):
+        block = slice(start, start + chunk)
+        values = by_gene[:, block].toarray()
+        sums = groups @ rankdata(values, axis=0)
+        z[:, block] = (sums - inside * (n + 1) / 2) / np.sqrt(
+            inside * outside * (n + 1) / 12
+        )
+        detected = (values > 0).astype(np.float64)
+        hits = groups @ detected
+        frac_in[:, block] = hits / inside
+        frac_out[:, block] = (detected.sum(axis=0) - hits) / outside
+    return z, frac_in, frac_out
+
+
+def statistic_ranking(
+    z: np.ndarray,
+    frac_in: np.ndarray,
+    frac_out: np.ndarray,
+    genes: np.ndarray,
+    min_frac: float = 0.1,
+) -> pd.Series:
+    """One group of `rank_sum_statistics` as a DE ranking of the genes detected
+    in at least `min_frac` of either side (`expressed_genes`)."""
+    kept = (frac_in >= min_frac) | (frac_out >= min_frac)
+    return pd.Series(z[kept], index=genes[kept]).sort_values(ascending=False)
 
 
 def target_idf(lt_df: pd.DataFrame) -> np.ndarray:

@@ -13,8 +13,10 @@ Changes from the current RISE text (this block, the slice normalization block, a
 - B = I: $B$ is removed from the objective, the factor update, and the Procrustes step, matching `fix_B_identity=True` (#203), under which $B$ is fixed and never updated.
 - Slice weights: $w_{i}^{2}$ enters the objective and the aligned slices become $w_{i}P_{i}^{T}X_{sc,i}$, matching `normalize_slices=True` (#203); $A$ is rescaled by $1/w_{i}$ after fitting, so reported factors reconstruct the unweighted data.
 - Factor update: "running PARAFAC on the aligned tensor" becomes "one ALS update of $A$ and $C$", because parafac2 performs a single ALS sweep per outer iteration (`n_inner=1`) rather than fitting PARAFAC to convergence.
-- Procrustes: the old text took the SVD of $Bdiag(a_{i})C^{T}X_{sc,i}^{T}$ (r × J), whose $UV^{T}$ is $P_{i}^{T}$, not $P_{i}$. The SVD of $X_{sc,i}C\,diag(a_{i})$ gives $P_{i}$ directly.
-- Optimizations: Nesterov acceleration and its citation are removed (dropped in parafac2 v1.5.0; all results use v1.10.0). Initialization is stated as $A$ = ones and $C$ from LOBPCG-computed singular vectors, and the post-fit alignment as variance-to-mean ordering, normalization, and sign flipping.
+- Procrustes: the old text took the SVD of $Bdiag(a_{i})C^{T}X_{sc,i}^{T}$ (r × J), whose $UV^{T}$ is $P_{i}^{T}$, not $P_{i}$.
+  The SVD of $X_{sc,i}C\,diag(a_{i})$ gives $P_{i}$ directly.
+- Optimizations: Nesterov acceleration and its citation are removed (dropped in parafac2 v1.5.0; all results use v1.10.0).
+  Initialization is stated as $A$ = ones and $C$ from LOBPCG-computed singular vectors, and the post-fit alignment as variance-to-mean ordering, normalization, and sign flipping.
 - Updated convergence criteria
 -->
 
@@ -126,8 +128,7 @@ The final dataset consisted of 51,273 cells and 16,675 genes.
 After filtering the CellChatDB list of interacting LR pairs to the genes in the dataset, 513 LR pairs were retained.
 The uncompressed data were fit with a 17-component RISE model and a 5-component CPD model, selected as described in Rank Selection.
 
-**IBD cohort.**
-<!-- IBD placeholder text -->
+**IBD cohort.** <!-- IBD placeholder text -->
 
 **RISE compression.** [Claude's sample text:] Analyses requiring many RISE fits (bi-cross-validation, and the jackknife and re-initialization replicates) used compressed RISE fits.
 The gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations; each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
@@ -246,7 +247,8 @@ For each CP component:
 2. Cells above the 90th percentile of receiver loading within those cell types were compared with the remaining cells below the 10th percentile of receiver loading across all cells by differential gene expression, restricted to genes detected in at least 10% of cells of either group.
 3. To correct for hub genes linked to many ligands, each ligand's top 250 targets in the prior were weighted by $\log(N_{L}/n_{t})$, where $N_{L}$ is the number of ligands in the prior and $n_{t}$ the number of ligands listing target $t$.
 4. Each ligand's target score was the weighted AUROC with which the Wilcoxon statistics ranked its targets above non-targets.
-5. Target scores were converted to percentiles among the component's ligands and summarized by their mean weighted by each ligand's loading, the norm of the LR-pair loadings ($G$) of its LR pairs. The result was a summary score per component.
+5. Target scores were converted to percentiles among the component's ligands and summarized by their mean weighted by each ligand's loading, the norm of the LR-pair loadings ($G$) of its LR pairs.
+   The result was a summary score per component.
 6. The null was formed by recomputing this weighted mean on 1,000 copies of the prior with the same number of ligand--target links placed at random.
 7. An empirical one-sided p-value was computed for each component and corrected across components.
 

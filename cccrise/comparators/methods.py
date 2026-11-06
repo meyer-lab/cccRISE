@@ -6,7 +6,7 @@
   decompose.
 - **Tensor-cell2cell**: non-negative CP, its rank the Kneedle elbow of the
   normalized error averaged over `TC2C_RUNS` random starts per rank
-  1..`TC2C_UPPER_RANKS` (by labelling), as its package's
+  1..`TC2C_UPPER_RANKS` (by dataset and labelling), as its package's
   ``run_tensor_cell2cell_pipeline``. On the masked tensor the package forces
   random starts, and the fit is the lowest-error start at the elbow rank (its
   "robust" preset keeps the best of many runs; `best_start`). On the paper's
@@ -46,9 +46,19 @@ from ..rank_selection import (
 from .staccato import staccato
 from .tensors import PooledTensor
 
-#: Top of the elbow sweep per labelling: fine labels' larger tensor is capped
-#: lower to bound its runtime.
-TC2C_UPPER_RANKS = {"coarse": 25, "fine": 20}
+#: Top of pseudobulk CPD's rank sweep per dataset and labelling (each also
+#: stops at the tensor's smallest mode): fine labels' larger tensor is capped
+#: lower to bound its runtime on IBD.
+PB_UPPER_RANKS = {
+    "alad": {"coarse": 25, "fine": 25},
+    "ibd": {"coarse": 25, "fine": 20},
+}
+#: Top of the elbow sweep per dataset and labelling: fine labels' larger tensor
+#: is capped lower to bound its runtime, and IBD's masked fits are memory hungry.
+TC2C_UPPER_RANKS = {
+    "alad": {"coarse": 25, "fine": 20},
+    "ibd": {"coarse": 15, "fine": 15},
+}
 TC2C_N_ITER_MAX = 1000
 TC2C_RUNS = 10
 STACCATO_VAREXP = 1.0

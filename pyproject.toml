@@ -30,6 +30,7 @@ dependencies = [
     "pyyaml>=6.0",
     "adjusttext>=1.4.0",
     "kneed>=0.8.5",
+    "threadpoolctl>=3.5",
 ]
 
 readme = "README.md"
@@ -57,10 +58,14 @@ cccrise-riserank = "cccrise.runners.run_rise_rank:main"
 cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
 cccrise-comparators = "cccrise.runners.run_comparators:main"
 cccrise-comparator-scores = "cccrise.runners.run_comparator_scores:main"
+cccrise-comparator-nichenet = "cccrise.runners.run_comparator_nichenet:main"
 cccrise-stability = "cccrise.runners.run_stability:main"
 cccrise-significance = "cccrise.runners.run_significance:main"
 cccrise-nichenet = "cccrise.runners.run_nichenet:main"
 cccrise-altcommscore = "cccrise.runners.run_alt_comm_score:main"
+cccrise-cohort = "cccrise.runners.run_cohort:main"
+cccrise-ibd-programs = "cccrise.runners.run_ibd_programs:main"
+cccrise-niches = "cccrise.runners.run_niches:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]

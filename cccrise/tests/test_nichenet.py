@@ -4,8 +4,10 @@ import anndata
 import numpy as np
 import pandas as pd
 import pytest
+from scipy import sparse
 
 from cccrise.anova import adjust_pvalues
+from cccrise.validation import nichenet
 from cccrise.validation.nichenet import (
     _receiver_population,
     component_ligand_scores,
@@ -307,3 +309,19 @@ def test_component_ligand_scores_end_to_end():
     assert set(null["replicate"]) == {0, 1, 2}
     assert set(null["ligand"]) <= {"LIGA", "LIGB", "LIGC", "LIGD"}
     assert null["score_pct"].between(0, 1).all()
+
+
+def test_rank_sum_statistics_match_scanpy_wilcoxon():
+    """The matrix form gives `_run_de`'s statistics on the same groups."""
+    rng = np.random.default_rng(0)
+    counts = rng.poisson(1.0, (60, 25)).astype(np.float32)
+    adata = anndata.AnnData(sparse.csr_matrix(counts))
+    pos = rng.random(60) < 0.4
+    expected = nichenet._run_de(adata.copy(), pos, 1, "wilcoxon")
+    z, frac_in, frac_out = nichenet.rank_sum_statistics(adata.X, pos[None, :])
+    ranking = pd.Series(z[0], index=adata.var_names)
+    pd.testing.assert_series_equal(
+        ranking.loc[expected.index], expected, check_names=False, rtol=1e-5
+    )
+    assert np.allclose(frac_in[0], (counts[pos] > 0).mean(axis=0))
+    assert np.allclose(frac_out[0], (counts[~pos] > 0).mean(axis=0))
