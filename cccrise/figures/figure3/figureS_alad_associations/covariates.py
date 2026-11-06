@@ -19,15 +19,21 @@ AXES = ("rect",)
 def plot(axs):
     (ax,) = axs
     table = covariate_table()
-    common.plot_association_heatmap(
-        table, ax, xlabel="Covariate", p_column="P", p_label="p"
-    )
+    draw(ax, table)
     save_association_data(
         table,
         covariates(),
         "covariate",
         "each patient covariate (binary covariates coded 0/1; age in years, "
         "baseline FEV1 as recorded)",
+    )
+
+
+def draw(ax, table: pd.DataFrame) -> None:
+    """The covariate x association eta-squared heatmap, starred at
+    uncorrected p < 0.05."""
+    common.plot_association_heatmap(
+        table, ax, xlabel="Covariate", p_column="P", p_label="p"
     )
     ax.tick_params(axis="x", rotation=45)
     for label in ax.get_xticklabels():
@@ -57,10 +63,22 @@ def covariate_table() -> pd.DataFrame:
     screen should err toward flagging."""
     values = covariates()
     adata = anndata.AnnData(obs=S.condition_obs(), uns={"A": values.to_numpy()})
+    return covariate_anova(adata, values, S.ASSOCIATIONS, S.SPEC.condition_column)
+
+
+def covariate_anova(
+    adata: anndata.AnnData,
+    values: pd.DataFrame,
+    associations: list,
+    condition_column: str,
+) -> pd.DataFrame:
+    """`run_multiple_factors_anova` of each column of `values` (carried as
+    `adata`'s `uns["A"]`), named in its 'Component' column, against each of
+    `associations`, uncorrected."""
     table = run_multiple_factors_anova(
         adata,
-        S.ASSOCIATIONS,
-        condition_column=S.SPEC.condition_column,
+        associations,
+        condition_column=condition_column,
         correction=None,
         read_depth_correct=False,
     )

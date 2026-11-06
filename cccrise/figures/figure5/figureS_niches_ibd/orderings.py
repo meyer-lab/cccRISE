@@ -2,7 +2,7 @@
 
 from ... import common, niches
 
-AXES = ("niches_orderings_ibd",)
+AXES = ("wide",)
 
 
 def plot(axs):

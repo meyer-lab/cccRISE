@@ -44,28 +44,34 @@ AXES = ("rect",)
 
 
 @functools.cache
-def load_scores() -> pd.DataFrame:
+def load_scores(dataset: str = DATASET) -> pd.DataFrame:
     """The runner's `component_ligand_scores` table."""
-    return _load(DATASETS[DATASET].nichenet_scores_filename())
+    return _load(DATASETS[dataset].nichenet_scores_filename(), dataset)
 
 
 @functools.cache
-def load_null() -> pd.DataFrame:
+def load_null(dataset: str = DATASET) -> pd.DataFrame:
     """The runner's `shuffled_percentiles` table."""
-    return _load(DATASETS[DATASET].nichenet_null_filename())
+    return _load(DATASETS[dataset].nichenet_null_filename(), dataset)
 
 
-def _load(filename: str) -> pd.DataFrame:
+def _load(filename: str, dataset: str) -> pd.DataFrame:
     return common.load_runner_output(
         filename,
         VALIDATION_DIR,
-        hint=f"    uv run cccrise-nichenet --dataset {DATASET}",
+        hint=f"    uv run cccrise-nichenet --dataset {dataset}",
     )
 
 
 def plot(axs):
+    draw(axs, DATASET)
+
+
+def draw(axs, dataset: str) -> None:
+    """`dataset`'s weight-averaged target-score percentile per CP component
+    against its shuffled-prior null."""
     (ax,) = axs
-    tests, null = weighted_percentile_tests(load_scores(), load_null())
+    tests, null = weighted_percentile_tests(load_scores(dataset), load_null(dataset))
     common.source_data(
         "nichenet_weighted_percentile_tests",
         tests,

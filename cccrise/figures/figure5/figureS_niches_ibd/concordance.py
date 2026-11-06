@@ -2,7 +2,7 @@
 
 from ... import common, niches
 
-AXES = ("niches_concordance",)
+AXES = ("half",)
 
 
 def plot(axs):

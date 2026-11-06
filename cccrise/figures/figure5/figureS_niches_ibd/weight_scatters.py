@@ -3,8 +3,8 @@
 from ... import common, niches
 
 N_COMPONENTS = 6
-AXES = ("niches_scatter",) * N_COMPONENTS
-ONE_LETTER = True
+AXES = ("full_sixth",) * N_COMPONENTS
+JOINED = True  # one panel, lettered once (`common._Joined`)
 
 
 def plot(axs):

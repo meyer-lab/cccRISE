@@ -72,6 +72,7 @@ def run_nichenet(
     n_shuffle: int = 1000,
     n_jobs: int = 16,
     output_path: Path | None = None,
+    receiver_celltype_column: str | None = None,
 ) -> tuple[pd.DataFrame, Path, Path]:
     """Score every ligand on each CPD component's receiver ranking.
 
@@ -81,8 +82,8 @@ def run_nichenet(
         Dataset registry entry. Its `factors_path()` must already exist
         (produced by `uv run cccrise-run`); this runner does not fit RISE/CPD.
     top_perc, de_method, min_expr_frac
-        Passed to `nichenet.receiver_rankings`, along with the registry's
-        cell-type column (receiver groups taken among each component's
+        Passed to `nichenet.receiver_rankings`, along with the cell-type
+        column (receiver groups taken among each component's
         `nichenet.receiver_celltypes`).
     rel_cutoff
         Passed to `nichenet.component_ligand_scores`.
@@ -90,6 +91,9 @@ def run_nichenet(
         Passed to `nichenet.shuffled_percentiles`.
     output_path : Path, optional
         Parquet destination; defaults to the registry's NicheNet scores filename.
+    receiver_celltype_column : str, optional
+        `obs` column of the cell types receivers are chosen among; defaults
+        to the registry's cell-type column.
 
     Returns
     -------
@@ -105,6 +109,7 @@ def run_nichenet(
         )
     output_path = output_path or (VALIDATION_DIR / spec.nichenet_scores_filename())
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    celltype_key = receiver_celltype_column or spec.celltype_column
 
     # Pin the code version before writing anything: see `provenance.git_sha`.
     git_sha()
@@ -127,13 +132,13 @@ def run_nichenet(
         top_perc=top_perc,
         de_method=de_method,
         min_expr_frac=min_expr_frac,
-        celltype_key=spec.celltype_column,
+        celltype_key=celltype_key,
     )
     scores = component_ligand_scores(
         adata.uns["D"], lr_pairs, lt_df, rankings, rel_cutoff
     )
     for cmp in components:
-        types = receiver_celltypes(adata, cmp, spec.celltype_column)
+        types = receiver_celltypes(adata, cmp, celltype_key)
         print(f"   Cmp {cmp} receiver cell types: {', '.join(types)}")
     print(f"3. Re-scoring on {n_shuffle} shuffled NicheNet priors...")
     null = shuffled_percentiles(scores, rankings, lt_df, n_shuffle, n_jobs)
@@ -158,7 +163,7 @@ def run_nichenet(
             "de_method": de_method,
             "min_expr_frac": min_expr_frac,
             "rel_cutoff": rel_cutoff,
-            "receiver_celltype_column": spec.celltype_column,
+            "receiver_celltype_column": celltype_key,
             "n_shuffle": n_shuffle,
             "nichenet_ligand_target_url": (
                 "https://zenodo.org/records/7074291/files/"
@@ -207,6 +212,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--n-jobs", type=int, default=16)
     parser.add_argument(
+        "--receiver-celltype-column",
+        default=None,
+        help="`obs` column of the cell types receivers are chosen among; "
+        "defaults to the registry's cell-type column.",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         default=None,
@@ -229,6 +240,7 @@ def main(argv: list[str] | None = None) -> None:
         output_path=resolve_output(
             args.output, VALIDATION_DIR, spec.nichenet_scores_filename()
         ),
+        receiver_celltype_column=args.receiver_celltype_column,
     )
 
 

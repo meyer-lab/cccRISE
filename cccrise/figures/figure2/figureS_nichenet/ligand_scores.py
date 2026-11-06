@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib.colors import LogNorm
 
 from ... import common, style
-from ..nichenet import BOX_STYLE, load_scores
+from ..nichenet import BOX_STYLE, DATASET, load_scores
 
 WEIGHT_FLOOR = 1e-3
 JITTER = 0.22
@@ -19,8 +19,12 @@ AXES = ("rect",)
 
 
 def plot(axs):
+    draw(axs, DATASET)
+
+
+def draw(axs, dataset: str) -> None:
     (ax,) = axs
-    scores = load_scores().dropna(subset=["auroc"])
+    scores = load_scores(dataset).dropna(subset=["auroc"])
     common.source_data(
         "nichenet_target_score_per_ligand",
         scores[

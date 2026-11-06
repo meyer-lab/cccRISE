@@ -41,7 +41,6 @@ def plot(axs):
     df = proportions()
     celltypes = style.CELL_TYPES[DATASET]
     q = composition_q(df, celltypes)
-    long = df.melt(id_vars="Status", var_name="Cell type", value_name="Fraction")
     counts = df["Status"].value_counts()
     common.source_data(
         "celltype_fraction_per_sample",
@@ -60,38 +59,79 @@ def plot(axs):
         "three ALAD statuses; p-values Benjamini-Hochberg corrected across cell "
         "types (q).",
     )
+    labels = {s: f"{s.capitalize()} (n={counts[s]})" for s in STATUS_COLORS}
+    draw(ax, df, celltypes, q, STATUS_COLORS, labels)
+
+
+def draw(
+    ax,
+    df: pd.DataFrame,
+    celltypes: list[str],
+    q: np.ndarray,
+    colors: dict[str, str],
+    labels: dict[str, str],
+    vertical: bool = False,
+) -> None:
+    """Per-sample fraction of each of `celltypes` (`df` columns) by "Status"
+    (`colors`' keys, in order; legend `labels`), square-root scaled, each
+    cell type's `q` above it. `vertical` turns the cell type names and the q
+    values on their side, for many cell types."""
     shared: dict[str, Any] = {
-        "data": long,
+        "data": df.melt(id_vars="Status", var_name="Cell type", value_name="Fraction"),
         "x": "Cell type",
         "y": "Fraction",
         "order": celltypes,
         "hue": "Status",
-        "hue_order": list(STATUS_COLORS),
+        "hue_order": list(colors),
         "dodge": True,
         "ax": ax,
     }
+    # stripplot dodges its points over 0.8 of each category; boxes dodged over
+    # the same width line up with them, `gap` keeping each box 0.7 / n wide
     sns.boxplot(
         **shared,
-        palette=STATUS_COLORS,
-        width=0.7,
+        palette=colors,
+        width=0.8,
+        gap=0.125,
         fliersize=0,
         linewidth=style.LINE_WIDTH_THIN,
         boxprops={"alpha": 0.8},
     )
     common.stripplot(
         **shared,
-        palette=[style.COLORS["ink"]] * len(STATUS_COLORS),
-        size=1.5,
+        palette=[style.COLORS["ink"]] * len(colors),
+        size=0.8 if vertical else 1.5,
         jitter=0.08,
         legend=False,
     )
-    # Square-root scale, so the minor cell types are not flattened by macrophages
+    # Square-root scale, so the minor cell types are not flattened by the major
     ax.set_yscale("function", functions=(np.sqrt, np.square))
     ax.set_yticks(Y_TICKS, [f"{t:g}" for t in Y_TICKS])
     ax.set_ylim(0, 1)
-    ax.set_xticks(
-        range(len(celltypes)), ["\n".join(c.rsplit(" ", 1)) for c in celltypes]
+    _label_celltypes(ax, celltypes, q, vertical)
+    handles, _ = ax.get_legend_handles_labels()
+    common.legend(
+        ax,
+        "above",
+        handles=handles,
+        labels=[labels[s] for s in colors],
+        ncols=len(colors),
     )
+
+
+def _label_celltypes(ax, celltypes: list[str], q: np.ndarray, vertical: bool) -> None:
+    """Name each cell type below its boxes and write its q above them."""
+    if vertical:
+        ax.set_xticks(
+            range(len(celltypes)),
+            celltypes,
+            rotation=90,
+            fontsize=style.FONT_SIZE_DENSE,
+        )
+    else:
+        ax.set_xticks(
+            range(len(celltypes)), ["\n".join(c.rsplit(" ", 1)) for c in celltypes]
+        )
     ax.set_xlabel("")
     ax.set_ylabel("Fraction of cells")
     top = blended_transform_factory(ax.transData, ax.transAxes)
@@ -99,28 +139,24 @@ def plot(axs):
         ax.text(
             x,
             1,
-            f"q = {value:.2f}",
+            f"{value:.2g}" if vertical else f"q = {value:.2g}",
             transform=top,
             ha="center",
             va="bottom",
+            rotation=90 if vertical else 0,
             fontsize=style.FONT_SIZE_DENSE,
+            fontweight="bold" if vertical and value < common.SIG_ALPHA else "normal",
         )
-    handles, _ = ax.get_legend_handles_labels()
-    common.legend(
-        ax,
-        "above",
-        handles=handles,
-        labels=[f"{s.capitalize()} (n={counts[s]})" for s in STATUS_COLORS],
-        ncols=len(STATUS_COLORS),
-    )
 
 
-def composition_q(df: pd.DataFrame, celltypes: list[str]) -> np.ndarray:
-    """Each cell type's Kruskal-Wallis p across `STATUS_COLORS`' statuses,
-    Benjamini-Hochberg corrected across `celltypes`."""
+def composition_q(
+    df: pd.DataFrame, celltypes: list[str], statuses=tuple(STATUS_COLORS)
+) -> np.ndarray:
+    """Each cell type's Kruskal-Wallis p across `statuses`, Benjamini-Hochberg
+    corrected across `celltypes`."""
     return adjust_pvalues(
         [
-            kruskal(*(df.loc[df["Status"] == s, c] for s in STATUS_COLORS)).pvalue
+            kruskal(*(df.loc[df["Status"] == s, c] for s in statuses)).pvalue
             for c in celltypes
         ]
     )

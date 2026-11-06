@@ -3,15 +3,15 @@
 ![](figures/figureS_alad_cohort/figureS_alad_cohort.svg){width="6.5in"}
 
 **{{< label alad-cohort >}}.
-ALAD cohort and cell type composition.** ({{< panel alad-cohort cohort >}}) ALAD cohort of 47 BAL samples from 45 lung transplant recipients: 17 stable controls and 30 with ALAD, of whom 17 declined and 13 recovered\ [@doi:10.1016/j.healun.2024.02.007].
-({{< panel alad-cohort celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control (n = 17), declined ALAD (n = 17), and recovered ALAD (n = 13) samples, on a square-root scale.
+ALAD cohort and cell type composition.** ({{< panel alad-cohort cohort >}}) Schematic of the ALAD cohort data\ [@doi:10.1016/j.healun.2024.02.007].
+({{< panel alad-cohort celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control, declined ALAD, and recovered ALAD samples, on a square-root scale.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
 
 ![](figures/figureS_cmp5_identity/figureS_cmp5_identity.svg){width="6.5in"}
 
 **{{< label cmp5-identity >}}.
-CP component 5 sender and receiver cell identity.** ({{< panel cmp5-identity eigenstate-scatter >}}) Per-cell projection onto the eigen-states most heavily weighted by component 5's sender (eigen-state 17) and receiver (eigen-state 15) factors.
+ALAD CP component 5 sender and receiver cell identity.** ({{< panel cmp5-identity eigenstate-scatter >}}) Per-cell projection onto the eigen-states most heavily weighted by component 5's sender (eigen-state 17) and receiver (eigen-state 15) factors.
 ({{< panel cmp5-identity cmp-eigenstate-loadings >}}) Component 5 sender and receiver eigen-state loadings.
 ({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell type markers in component 5's sender/receiver groups and all other cells\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2].
 ({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Wilcoxon rank-sum q (Benjamini--Hochberg corrected across all genes) between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and all other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and all other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells.
@@ -26,3 +26,24 @@ CCC-RISE components across communication scoring methods.** ({{< panel ccc-scori
 \*: p < 0.05.
 ({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
 LR pairs shown are the union of each score's top 3.
+
+![](figures/figureS_ibd_hormone_axes/figureS_ibd_hormone_axes.svg){width="6.5in"}
+
+**{{< label ibd-hormone-axes >}}.
+IBD CP component 3 and 4 hormone-signaling cell identities.** ({{< panel ibd-hormone-axes eigenstate-loadings >}}) Sender and receiver eigen-state weights of top-weighted eigen-states (absolute loading ≥ 0.2) in components 3 and 4.
+({{< panel ibd-hormone-axes eigenstate-association >}}) Eigen-state--cell-type associations of top-weighted eigen-states in components 3 and 4: mean RISE projection of each cell type's cells.
+({{< panel ibd-hormone-axes eigenstate-composition >}}) Annotated cell-type compositions of top-weighted eigen-states in components 3 and 4, using IBDverse annotations: each cell type's share of the eigen-state's squared projection over all cells.
+({{< panel ibd-hormone-axes cell-map >}}) RISE projection embedding of all cells in IBDverse, showing every EE, EC, and tuft cell and 100,000 randomly drawn other cells.
+Labels are colored by coarse cell type: coarse cell types in bold on their clusters, and fine EE, EC, and tuft cell types in normal font with lines to their cluster centers.
+({{< panel ibd-hormone-axes receiver-maps.1 >}}, {{< panel ibd-hormone-axes receiver-maps.2 >}}) RISE projection embeddings of all EE, EC, and tuft cells colored by CP component ({{< panel ibd-hormone-axes receiver-maps.1 >}}) 3 and ({{< panel ibd-hormone-axes receiver-maps.2 >}}) 4 receiver eigen-state weight.
+({{< panel ibd-hormone-axes receptor-maps.1 >}}, {{< panel ibd-hormone-axes receptor-maps.2 >}}) Same as ({{< panel ibd-hormone-axes receiver-maps.1 >}}, {{< panel ibd-hormone-axes receiver-maps.2 >}}), colored by ({{< panel ibd-hormone-axes receptor-maps.1 >}}) NPY1R and ({{< panel ibd-hormone-axes receptor-maps.2 >}}) GLP1R gene expression normalized to the top 1% of expressing cells.
+({{< panel ibd-hormone-axes type-map >}}) RISE projection embeddings of EE, EC, and tuft cells colored by cell type as annotated in IBDverse.
+({{< panel ibd-hormone-axes magnitude-hist >}}) Distribution of EE cells over polar magnitudes, as in {{< fig 5 hormone-angle-scatter >}}.
+Dashed line: the magnitude threshold (0.3) used to group cells in {{< fig 5 hormone-angle-hist hormone-extreme-markers >}}.
+({{< panel ibd-hormone-axes marker-floor-sweep >}}) q-values signifying the significance of gene expression differences in villus- and crypt-like cells, swept over polar magnitude threshold.
+Genes shown are the six with the highest q-value at any magnitude of those listed in {{< fig 5 hormone-extreme-markers >}}.
+Dotted line: the magnitude threshold used in {{< fig 5 hormone-extreme-markers >}}; dashed line: q = 0.05.
+q: Mann--Whitney U test, Benjamini--Hochberg corrected across all markers tested at each threshold.
+({{< panel ibd-hormone-axes extreme-share >}}) Contribution of EE cell groups to total EE cell population stratified by biopsy type, for biopsies with at least 3 EE cells (healthy, n = 200; CD uninflamed, n = 44; CD inflamed, n = 45).
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
+q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across EE cell groups.
