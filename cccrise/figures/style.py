@@ -91,6 +91,18 @@ AXIS_SIZE = {
     "tall": (2.5 * AXIS_WIDTH, 3 * AXIS_HEIGHT),
     # A few groups x many genes along x (dot plots)
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
+    # Figure 4's panels, sized to share their rows
+    "fig4_map": (62 * MM, 28 * MM),
+    "fig4_census": (72 * MM, 27 * MM),
+    "fig4_best": (36 * MM, 42 * MM),
+    "fig4_columns": (54 * MM, 36 * MM),
+    "fig4_covariation": (23 * MM, 15 * MM),
+    "fig4_flow_alad": (34 * MM, 49 * MM),
+    "fig4_flow_ibd": (72 * MM, 49 * MM),
+    "fig4_niches": (42 * MM, 42 * MM),
+    # A full-width axes low enough to stack both cohorts' co-variation
+    "full_low": (FIGURE_WIDTH_DOUBLE - 26 * MM, 18 * MM),
+    "full_strip_low": (FIGURE_WIDTH_DOUBLE - 26 * MM, 8 * MM),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
     # Half a rect: box groups as wide as a rect's of twice as many groups

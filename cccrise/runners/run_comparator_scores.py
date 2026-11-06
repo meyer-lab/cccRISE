@@ -61,13 +61,14 @@ Each labelling's permutation nulls draw from their own generator, seeded
 by ``--random-state``, so no table's draws depend on another's.
 
 ``--fits-only`` writes only `fit_tables`' tables, which need the fits and
-per-cell weights but no tensors: all IBD's figures read, as its supplements
-show reach and not the tensor-based analyses.
+per-cell weights but no tensors. ``--tables`` scores everything but writes only
+the tables named, so IBD keeps only what its figures read.
 
 Usage:
 
     uv run cccrise-comparator-scores --dataset alad
     uv run cccrise-comparator-scores --dataset ibd --fits-only
+    uv run cccrise-comparator-scores --dataset ibd --tables covariation homophily lr_loadings
 """
 
 import argparse
@@ -92,7 +93,8 @@ from ..comparators.tensors import (
     tensor_cell2cell_tensor,
 )
 from ..factors import load_factors_netcdf, load_factors_to_anndata
-from ..figures.figure3._common import ASSOCIATIONS
+from ..figures.figure3._common import ASSOCIATIONS as ALAD_ASSOCIATIONS
+from ..figures.figure5._common import ASSOCIATIONS as IBD_ASSOCIATIONS
 from ..import_data import import_ligand_receptor_pairs
 from ._cli import add_dataset_argument, dataset_metadata, parse_command, resolve_dataset
 from .datasets import (
@@ -280,6 +282,10 @@ def inner_loss_tables(cells, column: str, tensors: dict[str, PooledTensor]) -> d
         ignore_index=True,
     )
     return {"inner_loss": losses, "inner_program_loss": programs}
+
+
+#: Each cohort's associations, as its own figure tests them.
+ASSOCIATIONS = {"alad": ALAD_ASSOCIATIONS, "ibd": IBD_ASSOCIATIONS}
 
 
 def context_tensors(spec: DatasetSpec, adata, column: str) -> dict[str, PooledTensor]:
@@ -588,10 +594,10 @@ def association_rows(spec: DatasetSpec, fits, comparators) -> pd.DataFrame:
 
 def _associations(adata, spec: DatasetSpec) -> pd.DataFrame:
     """Figure 3's test of `adata`'s condition loadings (``uns["A"]``) against
-    every ALAD association."""
+    every association of the cohort's figure."""
     return run_multiple_factors_anova(
         adata,
-        ASSOCIATIONS,
+        ASSOCIATIONS[spec.key],
         condition_column=spec.condition_column,
         correction="fdr_bh",
         global_correction=True,
@@ -678,9 +684,11 @@ def run_comparator_scores(
     random_state: int,
     command: str = "uv run cccrise-comparator-scores",
     fits_only: bool = False,
+    only: list[str] | None = None,
 ) -> None:
     """Every table (module docstring) of `spec`, or with `fits_only` only
-    `fit_tables`', their provenance recorded as written by `command`."""
+    `fit_tables`', or those named in `only`, their provenance recorded as
+    written by `command`."""
     git_sha()
     labellings = list(spec.labellings)
     print(f"=== Comparator scores: {spec.label}; {', '.join(labellings)} ===")
@@ -712,8 +720,14 @@ def run_comparator_scores(
         )
     associations = {lab: t["associations"] for lab, t in tables.items()}
     merged = merged_labellings(tables)
-    merged["pair_covariation"] = pair_covariation_rows(contexts, associations)
-    write_tables(spec, merged, metadata, command)
+    if not only or "pair_covariation" in only:
+        merged["pair_covariation"] = pair_covariation_rows(contexts, associations)
+    write_tables(
+        spec,
+        {what: t for what, t in merged.items() if not only or what in only},
+        metadata,
+        command,
+    )
 
 
 def _metadata(spec: DatasetSpec, labellings, random_state: int) -> dict:
@@ -758,6 +772,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Write only the tables that need no tensors (module docstring).",
     )
+    parser.add_argument(
+        "--tables",
+        nargs="+",
+        help="Score everything but write only these tables, so a cohort keeps "
+        "only the tables a figure reads.",
+    )
     return parser
 
 
@@ -769,6 +789,7 @@ def main(argv: list[str] | None = None) -> None:
         args.random_state,
         command,
         args.fits_only,
+        args.tables,
     )
 
 

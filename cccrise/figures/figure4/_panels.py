@@ -2,8 +2,6 @@
 into panels with the panel modules: reach (cccRISE's programs in each
 comparator) and what Tensor-cell2cell's published construction drops."""
 
-import itertools
-
 import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
@@ -66,45 +64,6 @@ def reach(axs, labelling: str, methods=COMPARATORS, mode: str = "lr") -> None:
     ax.tick_params(length=0)
     common.colorbar(ax, image, f"{MODE_LABELS[mode]} containment")
     ax.set_title(f"{labelling.capitalize()} labels", loc="left")
-
-
-#: Least vertical distance between two `label_points` labels (points).
-LABEL_GAP = 6.5
-
-
-def label_points(ax, xs, ys, labels, leaders: bool = False, **text) -> None:
-    """Label each point (`xs`, `ys`) with its entry of `labels` to its right, labels
-    nudged up just enough to sit `LABEL_GAP` apart, with a leader line to
-    any label moved off its point (to every label with `leaders`); `text`
-    goes to `annotate`. Call once the axes' limits are final."""
-    ax.autoscale_view()
-    to_points = 72 / ax.figure.dpi
-    xy = np.column_stack([np.asarray(xs, float), np.asarray(ys, float)])
-    heights = ax.transData.transform(xy)[:, 1] * to_points
-    placed = heights.copy()
-    order = np.argsort(heights)
-    for below, above in itertools.pairwise(order):
-        placed[above] = max(placed[above], placed[below] + LABEL_GAP)
-    gap = 10 if leaders else 4
-    for (x, y), label, shift in zip(xy, labels, placed - heights, strict=True):
-        ax.annotate(
-            label,
-            (x, y),
-            xytext=(gap, shift),
-            textcoords="offset points",
-            fontsize=style.FONT_SIZE_DENSE,
-            va="center",
-            arrowprops={
-                "arrowstyle": "-",
-                "lw": 0.4,
-                "color": style.COLORS["reference"],
-                "shrinkA": 0,
-                "shrinkB": 2,
-            }
-            if leaders or shift > 1
-            else None,
-            **text,
-        )
 
 
 def _ink(value) -> str:

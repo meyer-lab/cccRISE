@@ -1,28 +1,19 @@
 """Figure 4's derived inputs: the scores tables of both labellings, each fit's
-LR columns, and what each LR column is (`CLASSES`)."""
+LR columns, and what each LR column is (`classified`)."""
 
 from functools import cache
 
 import numpy as np
 import pandas as pd
 
-from .. import common, style
-from ._common import COMPARATORS, load
+from .. import common
+from ._common import COMPARATORS, DATASET, load
 
 LABELLINGS = ("coarse", "fine")
 #: Shorthand for a method's components: C (cccRISE), P, T, S.
 SHORT = {"cccRISE": "C", "PB": "P", "TC2C": "T", "STAC": "S"}
-#: What an LR column is, in stacking order, and its color. A column is
-#: associated with an outcome (FDR < `common.SIG_ALPHA`) first of all, then
-#: contained in cccRISE's LR span (comparators only), then homophilic
-#: (homophilic pairs carry at least `HOMOPHILIC` of its squared loading),
-#: else other (`_column_class`).
-CLASSES = {
-    "cccRISE contained": style.COLORS["emphasis"],
-    "homophilic": "0.55",
-    "associated": style.COLORS["up"],
-    "other": "0.78",
-}
+#: A column is homophilic when homophilic pairs carry at least this share of
+#: its squared loading.
 HOMOPHILIC = 0.8
 #: A column is single-pair, whatever its class, when its top pair carries at
 #: least this share of its squared loading.
@@ -49,9 +40,9 @@ def source_data(name: str, t: pd.DataFrame, columns: dict, description: str) -> 
     )
 
 
-def both(what: str) -> dict[str, pd.DataFrame]:
+def both(what: str, dataset: str = DATASET) -> dict[str, pd.DataFrame]:
     """One scores table, keyed by labelling."""
-    return {lab: load(what, lab) for lab in LABELLINGS}
+    return {lab: load(what, lab, dataset) for lab in LABELLINGS}
 
 
 def beyond(t: pd.DataFrame, suffix: str = "") -> pd.Series:

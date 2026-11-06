@@ -119,7 +119,6 @@ def key(ax: plt.Axes) -> None:
             Line2D([], [], color=DATASET_COLORS[d], label=name)
             for d, name in DATASET_LABELS.items()
         ],
-        Line2D([], [], color=style.COLORS["reference"], ls="--", label="Chosen rank"),
         Line2D(
             [],
             [],

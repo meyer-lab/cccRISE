@@ -7,9 +7,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
-from matplotlib.offsetbox import AnchoredOffsetbox, HPacker, TextArea, VPacker
 from matplotlib.patches import Rectangle
-from matplotlib.ticker import MultipleLocator
 from scipy.stats import spearmanr
 
 from ...comparators import scores
@@ -26,9 +24,8 @@ from ._data import (
     short,
     source_data,
 )
-from ._layout import LABELLING_HANDLES, LABELLING_MARKERS, SLOTS, method_handles
-from ._panels import _frame, label_points
-from ._strips import ASSOCIATION_NAMES
+from ._layout import LABELLING_HANDLES, LABELLING_MARKERS, method_handles
+from ._panels import _frame
 
 #: Each comparator fit, coarse then fine per method.
 GROUPS = [(m, lab) for m in COMPARATORS for lab in LABELLINGS]
@@ -302,127 +299,6 @@ def capture(
     ax.tick_params(length=0)
     if colorbar:
         common.colorbar(ax, image, "|Loading| / heaviest")
-
-
-def _strongest(t) -> pd.DataFrame:
-    """Each component's lowest-FDR association (ties to the larger η²)."""
-    return (
-        t.sort_values(["PAdj", "EtaSquared"], ascending=[True, False])
-        .drop_duplicates(["Labelling", "Method", "Component"])
-        .assign(NegLog=lambda d: -np.log10(d["PAdj"]))
-    )
-
-
-def _significance_box(ax, t, sig) -> None:
-    """A boxed list of every association each of `sig` is significant for."""
-    text = {"size": style.FONT_SIZE_DENSE - 2}
-    names, lists = [], []
-    for r in sig.itertuples():
-        hits = t[
-            (t["Labelling"] == r.Labelling)
-            & (t["Method"] == r.Method)
-            & (t["Component"] == r.Component)
-            & (t["PAdj"] < common.SIG_ALPHA)
-        ].sort_values("PAdj")
-        hits = [ASSOCIATION_NAMES[a] for a in hits["Association"]]
-        listed = ",\n".join(", ".join(hits[i : i + 2]) for i in range(0, len(hits), 2))
-        names.append(
-            TextArea(
-                short(r.Method, r.Component) + "\n" * listed.count("\n"),
-                textprops={**text, "weight": "bold"},
-            )
-        )
-        lists.append(TextArea(listed, textprops=text))
-    table = HPacker(
-        children=[VPacker(children=names, sep=2), VPacker(children=lists, sep=2)], sep=6
-    )
-    box = AnchoredOffsetbox(
-        loc="upper left",
-        child=table,
-        pad=0.3,
-        borderpad=0.3,
-        frameon=True,
-        bbox_to_anchor=(0.12, 0.93),
-        bbox_transform=ax.transAxes,
-    )
-    box.patch.set(edgecolor=style.COLORS["ink"], lw=0.6)
-    ax.add_artist(box)
-
-
-ASSOCIATION_COLUMNS = {
-    "Association": "Association",
-    "EtaSquared": "Eta squared",
-    "P": "p",
-    "PAdj": "FDR",
-}
-
-
-def _association_source(t, best, sig) -> None:
-    source_data(
-        "strongest_association_by_component",
-        best,
-        ASSOCIATION_COLUMNS,
-        "Each component's lowest-FDR outcome association (ties to the larger "
-        "eta squared): one-way ANOVA of its read-depth-corrected sample "
-        "profile over the association's groups, Benjamini-Hochberg adjusted "
-        "across the fit's associations and components (FDR).",
-    )
-    keys = sig[["Method", "Labelling", "Component"]]
-    source_data(
-        "significant_associations_by_component",
-        t[t["PAdj"] < common.SIG_ALPHA].merge(keys),
-        ASSOCIATION_COLUMNS,
-        f"Every association below FDR {common.SIG_ALPHA} of each component "
-        "whose strongest one is (the boxed list), tested as above.",
-    )
-
-
-def strongest_association(axs) -> None:
-    """Each component's strongest association: η² against −log10 FDR,
-    cccRISE and every comparator fit; the significant ones labelled and
-    their significant associations listed in the box."""
-    ax = axs[0]
-    t = pd.concat([a.assign(Labelling=lab) for lab, a in both("associations").items()])
-    t = t[
-        t["Method"].isin(("cccRISE", *COMPARATORS))
-        & ((t["Method"] != "cccRISE") | (t["Labelling"] == "coarse"))
-    ]
-    best = _strongest(t)
-    sig = best[best["PAdj"] < common.SIG_ALPHA].sort_values("PAdj")
-    _association_source(t, best, sig)
-    for method, lab, _ in SLOTS:
-        g = best[(best["Method"] == method) & (best["Labelling"] == lab)]
-        ax.scatter(
-            g["EtaSquared"],
-            g["NegLog"],
-            marker=LABELLING_MARKERS[lab],
-            s=style.POINT_SIZE,
-            color=METHOD_COLORS[method],
-            edgecolor="white",
-            lw=0.3,
-            zorder=3,
-        )
-    ax.axhline(
-        -np.log10(common.SIG_ALPHA),
-        color=style.COLORS["reference"],
-        ls=style.LINE_STYLE_REFERENCE,
-        lw=0.6,
-    )
-    ax.set(
-        xlabel=r"$\eta^2$ (strongest association)",
-        ylabel=r"$-\log_{10}$ FDR",
-        xlim=(0, None),
-        ylim=(0, best["NegLog"].max() * 1.3),
-    )
-    ax.xaxis.set_minor_locator(MultipleLocator(0.025))
-    label_points(
-        ax,
-        sig["EtaSquared"].to_numpy(),
-        sig["NegLog"].to_numpy(),
-        [short(m, c) for m, c in zip(sig["Method"], sig["Component"], strict=True)],
-        leaders=True,
-    )
-    _significance_box(ax, t, sig)
 
 
 def _profiles() -> pd.DataFrame:

@@ -1,9 +1,9 @@
-"""How many top pairs each component of every fit tests for co-variation."""
+"""How many top pairs each ALAD component tests, with the key."""
 
 from ... import common
 from .._strips import pairs_used
 
-AXES = ("full_strip",)
+AXES = ("full_strip_low",)
 
 
 def plot(axs):

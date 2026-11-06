@@ -45,8 +45,6 @@ UNTESTABLE_HANDLE = Line2D(
 )
 #: Where `UNTESTABLE_HANDLE`'s x sits on a co-variation axis.
 UNTESTABLE_Y = 0.04
-#: Pads a two-column key's shorter column.
-BLANK_HANDLE = Line2D([], [], ls="", label="")
 
 
 def method_handles(methods, markersize=4) -> list[Line2D]:

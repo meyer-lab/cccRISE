@@ -395,14 +395,20 @@ class _Joined:
 
 
 def _draw_row(fig: Figure, row: list) -> list:
-    """The boxes of a row's modules, each list of modules one `_Stack` and
-    each `JOINED` module one `_Joined`."""
+    """The boxes of a row's modules, each list of modules one `_Stack`, each
+    `JOINED` module one `_Joined`, and each `STACKED` module's axes one `_Stack`
+    lettered once."""
     boxes = []
     for item in row:
         if isinstance(item, list):
             boxes.append(_Stack([b for m in item for b in _draw_fixed(fig, m)]))
         elif getattr(item, "JOINED", False):
             boxes.append(_Joined(_draw_fixed(fig, item)))
+        elif getattr(item, "STACKED", False):
+            stacked = _draw_fixed(fig, item)
+            for box in stacked[1:]:
+                box.lettered = False
+            boxes.append(_Stack(stacked))
         else:
             boxes += _draw_fixed(fig, item)
     return boxes
