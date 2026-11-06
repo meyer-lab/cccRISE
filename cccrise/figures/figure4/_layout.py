@@ -137,14 +137,3 @@ def label_above(ax, points, stagger=False, size=style.FONT_SIZE_DENSE - 1.5) -> 
             va="bottom",
             fontsize=size,
         )
-
-
-def _fits(ax, box, placed, overflow) -> bool:
-    edge = ax.bbox
-    inside = (
-        edge.x0 - 2 <= box.x0
-        and box.x1 <= edge.x1 + overflow
-        and edge.y0 <= box.y0
-        and box.y1 <= edge.y1 + 20
-    )
-    return inside and not any(box.overlaps(b) for b in placed)

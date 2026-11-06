@@ -11,9 +11,33 @@ from ._programs import FITS
 BAR_DROP = 10.5
 
 
+def _strip(ax, x: float, values, method: str, labelling: str, rng) -> None:
+    """One fit's components at `x`, with their median."""
+    ax.scatter(
+        x + rng.uniform(-0.17, 0.17, len(values)),
+        values,
+        s=7,
+        color=METHOD_COLORS[method],
+        lw=0,
+        zorder=3,
+        marker="^" if labelling == "fine" and method != "cccRISE" else "o",
+    )
+    ax.plot(
+        [x - 0.27, x + 0.27],
+        [np.median(values)] * 2,
+        color=style.COLORS["ink"],
+        lw=0.8,
+        zorder=4,
+    )
+
+
+def _fit_name(method: str, labelling: str) -> str:
+    return "cccRISE" if method == "cccRISE" else f"{method} {labelling[0].upper()}"
+
+
 def depth_tracking(ax) -> None:
-    """|rho| of each component's |sample profile| with median genes detected per
-    cell, cccRISE then each comparator fit, ALAD beside IBD."""
+    """|rho| of each component's condition loadings with median genes detected
+    per cell, cccRISE then each comparator fit, ALAD beside IBD."""
     rng = np.random.default_rng(0)
     x, positions, names, spans, frames = 0.0, [], [], {}, []
     for dataset, label in DATASET_LABELS.items():
@@ -31,34 +55,18 @@ def depth_tracking(ax) -> None:
                     }
                 )
             )
-            ax.scatter(
-                x + rng.uniform(-0.17, 0.17, len(values)),
-                values,
-                s=7,
-                color=METHOD_COLORS[method],
-                lw=0,
-                zorder=3,
-                marker="^" if lab == "fine" and method != "cccRISE" else "o",
-            )
-            ax.plot(
-                [x - 0.27, x + 0.27],
-                [np.median(values)] * 2,
-                color=style.COLORS["ink"],
-                lw=0.8,
-                zorder=4,
-            )
+            _strip(ax, x, values, method, lab, rng)
             positions.append(x)
-            names.append(
-                "cccRISE" if method == "cccRISE" else f"{method} {lab[0].upper()}"
-            )
+            names.append(_fit_name(method, lab))
             x += 1
         spans[dataset] = (start, x - 1)
         x += 0.7
     common.source_data(
         "depth_tracking_by_component",
         pd.concat(frames, ignore_index=True),
-        "|Spearman correlation| between each component's |sample profile| and "
-        "per-sample depth (median genes detected per cell); lines are each fit's median.",
+        "|Spearman correlation| between each component's absolute condition loadings "
+        "and per-sample depth (median genes detected per cell); lines are each fit's "
+        "median.",
     )
     ax.set_xticks(
         positions,

@@ -26,7 +26,7 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
   cell types in every sample) drops from the masked tensor
   (`scores.inner_losses`). No figure reads it: the Methods quote it.
 - ``covariation``: whether each component's top LR pairs move together
-  across samples (`covariation`, Figure 3E's test for every component of
+  across samples (`covariation`, Figure 3F's test for every component of
   every method): each pair scored in the component's own sender/receiver
   context on its own method's tensor, the mean Spearman correlation of its
   top pairs (`covariation.carrying_pairs`; ``PairsUsed``) against random

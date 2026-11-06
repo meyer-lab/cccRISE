@@ -289,6 +289,62 @@ def _column_block(ax, x: float, rows, columns: pd.DataFrame, names) -> float:
     return x
 
 
+def _cccrise_block(ax, dataset: str, rows) -> list:
+    """`rows`' pairs in their programs, at x = 0; the values drawn."""
+    cccrise = lr_matrix(dataset, "cccRISE")
+    values = []
+    for program, pair, y in rows:
+        value = abs(cccrise.loc[pair, program]) / cccrise[program].abs().max()
+        _cell(ax, 0.0, y, value)
+        values.append(("cccRISE", "", f"C{program}", pair, value))
+    return values
+
+
+def _held_columns(dataset: str, programs, labelling: str) -> list[int]:
+    """The STAC columns holding most of any carrying pair of `programs`."""
+    return sorted(
+        {
+            int(c)
+            for p in programs
+            for c in program_homes(dataset, p, labelling)["Column"].dropna()
+        }
+    )
+
+
+def _column_values(columns: pd.DataFrame, labelling: str, name: int, rows) -> list:
+    return [
+        (
+            "STAC",
+            labelling,
+            f"S{name}",
+            pair,
+            abs(columns[name].get(pair, 0)) / columns[name].abs().max(),
+        )
+        for _, pair, _ in rows
+    ]
+
+
+def _outline_tested(ax, x: float, column: tuple, tested, spans) -> bool:
+    """Outline `column` (labelling, name) over each program it is tested
+    against; whether it is tested at all."""
+    programs = [p for p, lab, name in tested if (lab, name) == column]
+    for program in programs:
+        y0, y1 = spans[program]
+        ax.add_patch(
+            Rectangle(
+                (x, y0),
+                1,
+                y1 - y0,
+                fc="none",
+                ec=LINK,
+                lw=1.0,
+                zorder=6,
+                clip_on=False,
+            )
+        )
+    return bool(programs)
+
+
 def pair_columns(
     ax,
     dataset: str = MIXED_DATASET,
@@ -301,57 +357,21 @@ def pair_columns(
     columns the next panel tests bold, outlined over their program's pairs."""
     rows, spans = _pair_rows(dataset, programs)
     tested = tested_columns(dataset, programs) if outline else []
-    cccrise = lr_matrix(dataset, "cccRISE")
-    x, ticks, labels, heads, bold, values = 0.0, [], [], {}, [], []
-    for program, pair, y in rows:
-        value = abs(cccrise.loc[pair, program]) / cccrise[program].abs().max()
-        _cell(ax, x, y, value)
-        values.append(("cccRISE", "", f"C{program}", pair, value))
-    heads["cccRISE"] = 0.5
-    ticks.append(0.5)
-    labels.append("")
-    x += 1 + BLOCK_GAP
+    values = _cccrise_block(ax, dataset, rows)
+    ticks, labels, heads, bold = [0.5], [""], {"cccRISE": 0.5}, []
+    x = 1 + BLOCK_GAP
     for lab in LABELLINGS:
         columns = lr_matrix(dataset, "STAC", lab)
-        names = sorted(
-            {
-                int(c)
-                for p in programs
-                for c in program_homes(dataset, p, lab)["Column"].dropna()
-            }
-        )
+        names = _held_columns(dataset, programs, lab)
         start = x
         x = _column_block(ax, x, rows, columns, names)
         heads[f"STAC {lab}"] = (start + x) / 2
         for i, name in enumerate(names):
             ticks.append(start + i + 0.5)
             labels.append(f"S{name}")
-            values += [
-                (
-                    "STAC",
-                    lab,
-                    f"S{name}",
-                    pair,
-                    abs(columns[name].get(pair, 0)) / columns[name].abs().max(),
-                )
-                for _, pair, _ in rows
-            ]
-            for program, tested_lab, column in tested:
-                if (tested_lab, column) == (lab, name):
-                    bold.append(len(ticks) - 1)
-                    y0, y1 = spans[program]
-                    ax.add_patch(
-                        Rectangle(
-                            (start + i, y0),
-                            1,
-                            y1 - y0,
-                            fc="none",
-                            ec=LINK,
-                            lw=1.0,
-                            zorder=6,
-                            clip_on=False,
-                        )
-                    )
+            values += _column_values(columns, lab, name, rows)
+            if _outline_tested(ax, start + i, (lab, name), tested, spans):
+                bold.append(len(ticks) - 1)
         x += BLOCK_GAP
     common.source_data(
         "program_pairs_in_stac_columns",

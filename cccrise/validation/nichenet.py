@@ -625,6 +625,8 @@ def null_weights(null_percentiles: pd.DataFrame, scores: pd.DataFrame) -> pd.Dat
 _CELL_SHUFFLE: dict = {}  # per component (kept, pos_mask), and the run's settings
 
 
+# No caller yet: `run_nichenet --n-cell-shuffle` takes it if Figure 2 moves to this
+# test (#277). `run_comparator_nichenet` shuffles through `rank_sum_statistics`.
 def shuffled_cell_scores(
     adata: anndata.AnnData,
     scores: pd.DataFrame,
