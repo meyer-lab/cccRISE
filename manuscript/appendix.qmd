@@ -5,13 +5,14 @@ subtitle: "Resolving cell-cell communication programs beyond cell-type boundarie
 
 ## Table of Contents
 
-- {{< label rise-factor-matrices >}}: RISE factor matrices
+- {{< label rise-factor-matrices >}}: ALAD RISE factor matrices
 - {{< label cmp-stability >}}: Collinearity and stability of RISE and CP components
-- {{< label nichenet >}}: External validation of CCC-RISE LR weights
-- {{< label alad-associations >}}: Association of CP components, RISE components, and patient covariates with ALAD outcomes
+- {{< label nichenet >}}: External validation of CCC-RISE LR weights by NicheNet
+- {{< label alad-associations >}}: Association of CP components, RISE components, and patient covariates with ALAD outcome
 - {{< label anova-stability >}}: Stability of CP component--outcome associations
-- {{< label imputation-ridge >}}: The masked-imputation ridge leaves the full-data CP fit unchanged at the selected rank
-- {{< label ibd-rank-selection >}}: IBD rank selection
+- {{< label ibd-rank-selection >}}: IBD CCC-RISE rank selection and RISE factor matrices
+- {{< label ibd-associations >}}: Association of CP components and covariates with IBD biopsy type
+- {{< label niches-ibd >}}: Validation of CCC-RISE sender and receiver cell populations by NICHES
 
 ![](figures/figureS_rise_factor_matrices/figureS_rise_factor_matrices.svg){width="6.5in"}
 
@@ -59,18 +60,11 @@ Diamonds mark the full-cohort η^2^, filled where q < 0.05.
 ({{< panel anova-stability significant-fraction >}}) Fraction of jackknife replicates in which each CP component's association with six-month outcome has q < 0.05.
 q: Benjamini--Hochberg corrected p across the five components of each fit.
 
-![](figures/figureS_imputation_ridge/figureS_imputation_ridge.svg){width="6.5in"}
-
-**{{< label imputation-ridge >}}.
-The masked-imputation ridge leaves the full-data CP fit unchanged at the selected rank.** ({{< panel imputation-ridge ridge-r2x >}}) Fit R^2^X of full-data CP fits of the communication tensor across ranks without and with the ridge penalty (λ = 0.1) used for masked imputation fits.
-×: the uncompressed core CP fit at the selected rank (dashed line).
-({{< panel imputation-ridge ridge-fms >}}) FMS over all four modes between the fits with and without the ridge for each component matched by Hungarian assignment (points) and their mean (line).
-At the selected rank, + and × mark the core fit's aggregate FMS to the fits without and with the ridge.
-
 ![](figures/figureS_ibd_rank_selection/figureS_ibd_rank_selection.svg){width="6.5in"}
 
 **{{< label ibd-rank-selection >}}.
-IBD rank selection.** ({{< panel ibd-rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
+IBD rank selection.** A) Schematic of the IBD cohort data\ [@doi:10.1038/s41588-026-02634-7].
+({{< panel ibd-rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
 ({{< panel ibd-rank-selection bicv-test >}}) BiCV test R^2^X from ({{< panel ibd-rank-selection rise-rank-selection >}}) on its own magnified axis.
 ({{< panel ibd-rank-selection cp-r2x-starts >}}) CP fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
 Circle: the elbow of the median curve located by Kneedle\ [@doi:10.1109/ICDCSW.2011.20].
@@ -78,4 +72,26 @@ Circle: the elbow of the median curve located by Kneedle\ [@doi:10.1109/ICDCSW.2
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 ({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
 ({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CP components across ranks, as the median (line and points) and interquartile range (band) over the starts.
-({{< panel ibd-rank-selection factors genes >}}) RISE factor matrices at the selected rank representing component loadings of conditions and genes, drawn as in {{< fig rise-factor-matrices >}}.
+({{< panel ibd-rank-selection factors genes >}}) RISE factor matrices at the selected rank representing component loadings of conditions and genes.
+J) RISE cell-type--eigen-state associations derived from RISE rank-60 projection matrices.
+
+![](figures/figureS_ibd_associations/figureS_ibd_associations.svg){width="6.5in"}
+
+**{{< label ibd-associations >}}.
+Association of CP components and covariates with IBD biopsy type.** A) One-way ANOVA η^2^ of each CP component's condition loadings against each IBD biopsy categorization.
+\*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
+B--C) CP component B) 3 and C) 4 condition loadings by CD inflammation status.
+Violins show [placeholder].
+One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outcomes and components.
+D) Fraction of each biopsy's cells in each coursely annotated cell type for healthy, CD uninflamed, and CD inflamed samples, on a square-root scale.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
+q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
+E) One-way ANOVA η^2^ of each patient covariate against each biopsy categorization, with binary covariates coded 0/1.
+\*: p < 0.05, uncorrected.
+
+![](figures/figureS_niches_ibd/figureS_niches_ibd.svg){width="6.5in"}
+
+**{{< label niches-ibd >}}.
+Concordance of CCC-RISE sender and receiver cell projections with NICHES.** A) [placeholder]
+B) [placeholder]
+C) [placeholder]
