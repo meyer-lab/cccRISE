@@ -81,6 +81,8 @@ AXIS_WIDTH = 46 * MM
 AXIS_SIZE = {
     "rect": (AXIS_WIDTH, AXIS_HEIGHT),
     "square": (AXIS_HEIGHT, AXIS_HEIGHT),
+    # Narrow factor matrices of few components
+    "slim": (0.7 * AXIS_HEIGHT, AXIS_HEIGHT),
     "full": (FIGURE_WIDTH_DOUBLE - 14 * MM, AXIS_HEIGHT),
     # "full" leaving room for row labels and a colorbar (labeled heatmaps)
     "full_labeled": (FIGURE_WIDTH_DOUBLE - 34 * MM, AXIS_HEIGHT),
@@ -116,6 +118,8 @@ AXIS_SIZE = {
     "map_columns": (72 * MM, 41 * MM),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
+    # Ranked curves with a column of many labels
+    "rect_tall": (AXIS_WIDTH, 1.6 * AXIS_HEIGHT),
     # Half a rect: box groups as wide as a rect's of twice as many groups
     "rect_half": (AXIS_WIDTH / 2, AXIS_HEIGHT),
     # Between square and rect, for a row of three wider strips

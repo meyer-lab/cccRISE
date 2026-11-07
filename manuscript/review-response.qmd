@@ -43,7 +43,7 @@ Also, as detailed below, we now compare our results to a broad panel of existing
 We agree that a self-constructed pseudobulk baseline cannot carry this claim, and we now benchmark against the published methods the reviewer names.
 To run them on equal footing, we re-implemented Scriabin, NICHES, and STACCato in Python from the upstream algorithms, and we drive all of themfrom the same ligand-receptor resource and normalized expression, so each comparison isolates the contribution of the algorithm (l. XXX).
 
-For the single-cell-resolution claim, we reconstruct a per-cell-pair communication score from CCC-RISE (per-cell RISE projections combined with the sender, receiver, and LR-pair CP factors) and compare it against Scriabin's and NICHES' per-cell-pair edge weights on the same sampled sender/receiver cells and the same LR pairs, reporting rank concordance per condition (Fig. XXX).
+For the single-cell-resolution claim, we reconstruct a per-cell-pair communication score from CCC-RISE (per-cell RISE projections combined with the sender, receiver, and LR-pair CPD factors) and compare it against Scriabin's and NICHES' per-cell-pair edge weights on the same sampled sender/receiver cells and the same LR pairs, reporting rank concordance per condition (Fig. XXX).
 We repeat this on a single-condition subset to test directly whether CCC-RISE degrades relative to Scriabin when there is no cross-condition structure to exploit, and report where the multi-condition model does and does not add value (l. XXX).
 We anticipate that CCC-RISE is strongly concordant with Scriabin within a condition --- the two agree on which cell pairs signal --- while the multi-condition model is what makes the resulting programs comparable *across* conditions, which is the claim the manuscript actually rests on.
 
@@ -146,7 +146,7 @@ This breaks the real cell/eigen-state association while holding cell counts, the
 This null works across any of the four scoring functions described in our response to Reviewer #2's comment #3.
 
 A second test answers whether an entry differs between two groups of samples, akin to scDiffCom's own permutation scheme.
-We adapted this to CCC-RISE's structure directly: since the communication tensor already has one slice per sample along its condition axis (the same axis as the CP condition factor), we permute *which existing sample-slice counts as which group*, rather than resampling cells and rebuilding the tensor, allowing us to calculate this test exactly and efficiently.
+We adapted this to CCC-RISE's structure directly: since the communication tensor already has one slice per sample along its condition axis (the same axis as the CPD condition factor), we permute *which existing sample-slice counts as which group*, rather than resampling cells and rebuilding the tensor, allowing us to calculate this test exactly and efficiently.
 We report [NEW OBSERVED-VS-NULL PANEL --- TBD]{.placeholder} showing both tests applied to the reported components.
 
 > 7. Missing multi-condition/differential CCC baselines from the literature.
@@ -256,7 +256,7 @@ This assigns every communication-tensor entry an empirical p-value and effect si
 We agree, and rank selection has been reworked so that a single criterion applies to both datasets and neither criterion consults sample labels.
 
 The RISE rank is selected by bi-cross-validation: the model is fit with blocks of the expression data held out, and the rank is chosen by reconstruction of those held-out entries (l. XXX, Fig. XXX).
-The CP rank is selected by core consistency (CORCONDIA) together with a component-collinearity screen, which identify the rank beyond which the model becomes degenerate --- components begin to duplicate one another in one or two modes and to cancel (l. XXX, Fig. XXX).
+The CPD rank is selected by core consistency (CORCONDIA) together with a component-collinearity screen, which identify the rank beyond which the model becomes degenerate --- components begin to duplicate one another in one or two modes and to cancel (l. XXX, Fig. XXX).
 Both criteria are computed by the same runner, with the same parameters, for both datasets, and both depend only on the molecular data; this is also what removes the nested-cross-validation concern raised by Reviewer #1 (major comment #4), because no outcome label enters model selection.
 In the course of this work we found and fixed an error in the held-out design used by the earlier cross-validation, which had systematically depressed held-out scores; the reported sweeps are regenerated with the corrected implementation, and the parameters and code version behind each committed sweep are recorded alongside it (l. XXX).
 We acknowledge that these criteria identify a defensible range rather than a single sharp optimum, and we therefore report the sensitivity analysis below rather than claiming a uniquely correct rank.

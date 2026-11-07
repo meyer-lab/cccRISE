@@ -11,10 +11,12 @@ groups -- recovers the ligand's literature-curated downstream targets
 share count less; `component_ligand_scores`). The question is whether the
 ligands a component weights most are better supported by downstream evidence
 than the ligands it barely uses: each component is summarized by the ligands'
-score percentiles averaged with the ligand weights as weights, and tested
-against the same average on copies of the NicheNet prior with its
-ligand-target links shuffled at random (`shuffled_percentiles`,
-`weighted_percentile_tests`).
+scores averaged with the ligand weights as weights, and tested against the
+same average on rankings with the high/low cell labels permuted
+(`shuffled_cell_scores`, `weighted_score_tests`). The comparator runner also
+tests the weight-averaged score percentiles against copies of the NicheNet
+prior with its ligand-target links shuffled at random
+(`shuffled_percentiles`, `weighted_percentile_tests`).
 
 The ligand-target prior is the NicheNet v2 ligand-target matrix (Zenodo
 record 7074291), which is only published as an R `.rds` object; it is read
@@ -625,8 +627,6 @@ def null_weights(null_percentiles: pd.DataFrame, scores: pd.DataFrame) -> pd.Dat
 _CELL_SHUFFLE: dict = {}  # per component (kept, pos_mask), and the run's settings
 
 
-# No caller yet: `run_nichenet --n-cell-shuffle` takes it if Figure 2 moves to this
-# test (#277). `run_comparator_nichenet` shuffles through `rank_sum_statistics`.
 def shuffled_cell_scores(
     adata: anndata.AnnData,
     scores: pd.DataFrame,

@@ -1,0 +1,120 @@
+"""Every cell's PaCMAP embedding colored by annotated cell type (left), and a
+blow-up of the lymphocyte cluster colored by each cell's projection onto
+`EIGENSTATE`, the RISE eigenstate behind the outcome-associated component's
+sender and receiver weights (right).
+
+Macrophages, most of the cells, are drawn first; the other types overlap in
+the embedding (the lymphocytes entirely), so they are drawn over them in a
+random order rather than by type: each shows in proportion to its density
+wherever they overlap, none hidden beneath another. The blow-up's box keeps
+the full embedding's x:y range ratio, so both square panels share one scale
+per axis ratio and the cluster keeps its shape."""
+
+import numpy as np
+import pandas as pd
+from matplotlib.patches import Rectangle
+
+from ...runners.datasets import DATASETS
+from .. import common, style
+from ..figureS_alad_pacmaps.weight_pacmaps import plot_value_scatter
+from ._common import DATASET
+
+EIGENSTATE = 16  # cp_B and cp_C of `COMPONENT` both load on it alone
+BACKGROUND_TYPE = "Macrophages"  # most of the cells: drawn beneath the rest
+LYMPHOCYTES = ("CD4 T cells", "CD8 T cells", "NK cells")
+CLUSTER_RADIUS = 3  # PaCMAP units around the lymphocytes' median: their island
+BOX_QUANTILES = (0, 1)  # of the island's lymphocytes, per axis: its full extent
+BOX_PAD = 0.05  # of the box's size, on each side
+AXES = ("square",) * 2
+
+
+def plot(axs):
+    adata = common.get_cell_projections(DATASET)
+    x, y = np.asarray(adata.obsm["PaCMAP"]).T
+    celltypes = adata.obs[DATASETS[DATASET].celltype_column].astype(str).to_numpy()
+    projection = adata.obsm["projections"][:, EIGENSTATE - 1]
+    for ax in axs:  # PaCMAP coordinates have no units
+        ax.set(xticks=[], yticks=[])
+        ax.spines[:].set_visible(False)
+    _celltype_scatter(axs[0], x, y, celltypes)
+    box = _lymphocyte_box(axs[0], x, y, np.isin(celltypes, LYMPHOCYTES))
+    inside = (
+        (x >= box[0]) & (x <= box[0] + box[2]) & (y >= box[1]) & (y <= box[1] + box[3])
+    )
+    points = plot_value_scatter(axs[1], x[inside], y[inside], projection[inside])
+    points.set_sizes([style.POINT_SIZE_BACKGROUND])
+    axs[1].set(xlim=(box[0], box[0] + box[2]), ylim=(box[1], box[1] + box[3]))
+    axs[1].set_xlabel("Lymphocytes")
+    for spine in axs[1].spines.values():
+        spine.set(visible=True, linestyle=style.LINE_STYLE_REFERENCE)
+        spine.set_edgecolor(style.COLORS["reference"])
+    common.colorbar(axs[1], points, f"Eigenstate {EIGENSTATE} projection")
+    common.source_data(
+        "pacmap_celltype_eigenstate",
+        pd.DataFrame(
+            {
+                "PaCMAP 1": x,
+                "PaCMAP 2": y,
+                "Cell type": celltypes,
+                f"Eigenstate {EIGENSTATE} projection": projection,
+                "In blow-up": inside,
+            },
+            index=adata.obs_names.rename("Cell barcode"),
+        ),
+        "One row per cell: its PaCMAP coordinates, annotated cell type, and "
+        f"projection onto RISE eigenstate {EIGENSTATE}; 'In blow-up' marks the "
+        "lymphocyte-cluster cells drawn in the right panel.",
+    )
+
+
+def _celltype_scatter(ax, x, y, celltypes) -> None:
+    """Cells colored by cell type, `BACKGROUND_TYPE` first and the rest in a
+    random order, so overlapping types stay visible in proportion to their
+    density, with the type key beside."""
+    colors = style.CELL_TYPE_COLORS[DATASET]
+    shuffled = np.random.default_rng(0).permutation(len(x))
+    order = shuffled[np.argsort(celltypes[shuffled] != BACKGROUND_TYPE, kind="stable")]
+    ax.scatter(
+        x[order],
+        y[order],
+        c=[colors[c] for c in celltypes[order]],
+        s=style.POINT_SIZE_CELL,
+        linewidths=0,
+        rasterized=True,
+    )
+    ax.set_xlabel("Cell type")
+    common.legend(
+        ax,
+        "right",
+        handles=common.celltype_handles(DATASET),
+        fontsize=style.FONT_SIZE_DENSE,
+    )
+
+
+def _lymphocyte_box(ax, x, y, is_lymphocyte) -> tuple[float, float, float, float]:
+    """(x0, y0, width, height) around the central `BOX_QUANTILES` of the
+    lymphocytes within `CLUSTER_RADIUS` of their median (~90% of them; the
+    rest are scattered through other clusters), padded and widened in x or y to the full panel's x:y
+    range ratio, outlined on `ax`."""
+    center = [np.median(v[is_lymphocyte]) for v in (x, y)]
+    island = is_lymphocyte & (np.hypot(x - center[0], y - center[1]) < CLUSTER_RADIUS)
+    (x0, x1), (y0, y1) = (np.quantile(v[island], BOX_QUANTILES) for v in (x, y))
+    width, height = (x1 - x0) * (1 + 2 * BOX_PAD), (y1 - y0) * (1 + 2 * BOX_PAD)
+    ratio = np.ptp(y) / np.ptp(x)
+    width, height = max(width, height / ratio), max(height, width * ratio)
+    box = ((x0 + x1 - width) / 2, (y0 + y1 - height) / 2, width, height)
+    ax.add_patch(
+        Rectangle(
+            box[:2],
+            *box[2:],
+            fill=False,
+            linestyle=style.LINE_STYLE_REFERENCE,
+            edgecolor=style.COLORS["reference"],
+            linewidth=style.LINE_WIDTH_THIN,
+        )
+    )
+    return box
+
+
+def makeFigure():
+    return common.standalone_fixed(__name__)

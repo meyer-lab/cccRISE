@@ -26,7 +26,7 @@ ASSOCIATION_NAMES = {
     "Control vs. ALAD (All)": "ALAD",
     "ALAD Status (3-Way)": "ALAD status",
     "6-Month Outcome (4-Way)": "6-mo outcome",
-    "6-Month CLAD vs. No CLAD": "6-mo CLAD",
+    "6-Month CLAD vs. Stable/Recovered": "6-mo CLAD",
     "6-Month Died vs. Alive": "6-mo death",
     "1-Year Outcome (4-Way)": "1-yr outcome",
     "1-Year CLAD vs. No CLAD": "1-yr CLAD",

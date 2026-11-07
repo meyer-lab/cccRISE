@@ -1,67 +1,11 @@
-"""Supplementary figure: the canonical ALAD RISE factor matrices."""
-
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.transforms import Bbox
+"""Supplementary figure: the canonical ALAD RISE factor matrices, sized as
+Figure 2's CP factor matrices."""
 
 from ... import common, style
 from . import factors, genes
 
-LAYOUT = [[[factors, genes]]]  # one stack, so the two heatmaps left-align
+LAYOUT = [[factors, genes]]
 
 
 def makeFigure():
-    return stacked(LAYOUT)
-
-
-def stacked(layout, width: float | None = None) -> Figure:
-    """`layout`'s condition-factor heatmap (module `factors`) stacked on its
-    gene-factor heatmap (module `genes`) in its last row, sharing one
-    colorbar."""
-    fig = common.compose_fixed(layout, width)
-    top, bottom = common.panel_axes(fig, "factors"), common.panel_axes(fig, "genes")
-    _close_gap(fig, top, bottom)
-    _span_colorbar(fig, top, bottom)
-    return fig
-
-
-def _close_gap(fig: Figure, top: plt.Axes, bottom: plt.Axes) -> None:
-    """Shrink the gap the stack leaves above `bottom` (for its letter) to
-    `style.ROW_GAP`, cutting it from the figure's height (moving everything
-    above it down), and letter `bottom` in its left margin beside its top
-    edge instead."""
-    _, height = fig.get_size_inches()
-    upper, lower = top.get_position(), bottom.get_position()
-    cut = (upper.y0 - lower.y1) * height - style.ROW_GAP
-    new_height = height - cut
-
-    def inches_up(y: float, shift: float = 0) -> float:  # fraction -> new fraction
-        return (y * height - shift) / new_height
-
-    for ax in fig.axes:
-        box = ax.get_position()
-        shift = cut if box.y0 >= upper.y0 else 0
-        ax.set_position(
-            (box.x0, inches_up(box.y0, shift), box.width, inches_up(box.height))
-        )
-    for text in fig.texts:
-        y = text.get_position()[1]
-        text.set_y(inches_up(y, cut if y > lower.y1 else 0))
-    letters = {text.get_gid(): text for text in fig.texts}
-    letters["genes"].set_y(inches_up(lower.y1))
-    fig.set_size_inches(fig.get_size_inches()[0], new_height)
-
-
-def _span_colorbar(fig: Figure, top: plt.Axes, bottom: plt.Axes) -> None:
-    """Stretch `bottom`'s inset colorbar (`common.colorbar`) from its bottom
-    edge to `top`'s top."""
-    (cax,) = bottom.child_axes
-    lower, upper = bottom.get_position(), top.get_position()
-    width = fig.get_figwidth()
-    span = Bbox.from_bounds(
-        lower.x1 + style.COLORBAR_PAD / width,
-        lower.y0,
-        style.COLORBAR_WIDTH / width,
-        upper.y1 - lower.y0,
-    )
-    cax.set_axes_locator(lambda *_: span)  # figure coords
+    return common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)

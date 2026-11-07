@@ -34,7 +34,7 @@ def plot(axs):
     )
     common.mark_rank(ax, common.selected_ranks(DATASET)[0])
     ax.set_xlabel("RISE rank")
-    ax.set_ylabel("BiCV test $R^2X$")
+    ax.set_ylabel("BiCV test R²X")
 
 
 def makeFigure():

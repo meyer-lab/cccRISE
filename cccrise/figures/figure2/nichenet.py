@@ -1,32 +1,32 @@
 """NicheNet downstream-target validation of CP components, from
-``uv run cccrise-nichenet``: do the ligands a component weights most have the
-best-supported downstream targets in its receiver cells?
+``uv run cccrise-nichenet``: do a component's top receiver cells upregulate
+the downstream targets of the ligands it weights?
 
-Per component, the weight-averaged target-score percentile of its ligands
-(``nichenet.weighted_percentile``; diamond) against the same average with
-every ligand re-scored on copies of the NicheNet prior with its ligand-target
-links shuffled at random (``nichenet.shuffled_percentiles``; box: quartiles,
-whiskers at the 2.5th and 97.5th percentiles of the shuffles). Above each
-component: a star
-where the one-sided permutation p, Benjamini-Hochberg adjusted across
-components, is below `SIG_ALPHA` (``nichenet.weighted_percentile_tests``),
-else n.s. The per-ligand scores and percentiles behind it are in the
-NicheNet supplement (``figureS_nichenet``)."""
+Per component, every ligand's NicheNet target score on the DE of the
+component's top receivers against the bottom receivers
+(``nichenet.component_ligand_scores``; box, with the ligands as points colored
+and sized by their weight in the component, opaque for the top ligands), beside
+the same scores with the top/bottom labels shuffled among those cells
+(``nichenet.shuffled_cell_scores``; grey box, pooled over the shuffles). Above
+each component: a star where the ligand-weighted mean score exceeds its
+cell-shuffle null (one-sided permutation p, Benjamini-Hochberg adjusted across
+components, below `SIG_ALPHA`; ``nichenet.weighted_score_tests``), else n.s."""
 
 import functools
 
+import numpy as np
 import pandas as pd
-from matplotlib.lines import Line2D
+from matplotlib.colors import LogNorm
 from matplotlib.patches import Patch
 
 from ...runners.datasets import DATASETS, VALIDATION_DIR
-from ...validation.nichenet import weighted_percentile_tests
+from ...validation.nichenet import weighted_score_tests
 from .. import common, style
 
 DATASET = "alad"
-NULL_WHISKERS = (2.5, 97.5)
 TEST_PAD = 0.04  # significance mark height above a component's data
 BOX_FACE = "0.95"
+NULL_FACE = style.COLORS["muted"]
 BOX_STYLE = {
     "widths": 0.6,
     "showfliers": False,
@@ -40,6 +40,11 @@ BOX_STYLE = {
     "whiskerprops": {"color": style.COLORS["reference"], "lw": style.LINE_WIDTH_THIN},
     "capprops": {"color": style.COLORS["reference"], "lw": style.LINE_WIDTH_THIN},
 }
+BOX_WIDTH = 0.38  # observed and shuffled boxes side by side
+WEIGHT_FLOOR = 1e-3
+JITTER = 0.22  # of a box's width-0.6 slot; scaled to the box drawn
+POINT_SIZE_MAX = 8.4
+BACKGROUND_ALPHA = 0.5  # non-top ligands, so the boxes show through
 AXES = ("rect",)
 
 
@@ -50,9 +55,9 @@ def load_scores(dataset: str = DATASET) -> pd.DataFrame:
 
 
 @functools.cache
-def load_null(dataset: str = DATASET) -> pd.DataFrame:
-    """The runner's `shuffled_percentiles` table."""
-    return _load(DATASETS[dataset].nichenet_null_filename(), dataset)
+def load_cell_null(dataset: str = DATASET) -> pd.DataFrame:
+    """The runner's `shuffled_cell_scores` table."""
+    return _load(DATASETS[dataset].nichenet_cell_null_filename(), dataset)
 
 
 def _load(filename: str, dataset: str) -> pd.DataFrame:
@@ -68,46 +73,120 @@ def plot(axs):
 
 
 def draw(axs, dataset: str) -> None:
-    """`dataset`'s weight-averaged target-score percentile per CP component
-    against its shuffled-prior null."""
+    """`dataset`'s per-ligand target scores per CP component against their
+    cell-shuffle null."""
     (ax,) = axs
-    tests, null = weighted_percentile_tests(load_scores(dataset), load_null(dataset))
+    scores = load_scores(dataset).dropna(subset=["auroc"])
+    cell_null = load_cell_null(dataset).dropna(subset=["auroc"])
+    tests, null = weighted_score_tests(load_scores(dataset), load_cell_null(dataset))
+    _source_data(tests, null, scores)
+    components = sorted(scores["component"].unique())
+    x = np.arange(len(components))
+    rng = np.random.default_rng(0)
+    for i, c in enumerate(components):
+        points = ligand_points(
+            ax, scores[scores["component"] == c], x[i] - BOX_WIDTH / 2, rng, BOX_WIDTH
+        )
+    for offset, table, face in (
+        (-BOX_WIDTH / 2, scores, BOX_FACE),
+        (BOX_WIDTH / 2, cell_null, NULL_FACE),
+    ):
+        boxes = ax.boxplot(
+            [table.loc[table["component"] == c, "auroc"] for c in components],
+            positions=x + offset,
+            zorder=1,
+            **{**BOX_STYLE, "widths": BOX_WIDTH},
+        )
+        for box in boxes["boxes"]:
+            box.set_facecolor(face)
+    # One row of marks over every component's points
+    top = [scores["auroc"].max()] * len(components)
+    significance_marks(ax, x, top, tests.set_index("component")["q"].loc[components])
+    common.reference_line(ax, 0.5)
+    ax.set_xticks(x, components)
+    ax.set_xlim(-0.6, len(components) - 0.4)
+    ax.set_xlabel("CP component")
+    ax.set_ylabel("NicheNet target score")
+    common.colorbar(ax, points, "Relative ligand weight")
+    common.legend(
+        ax,
+        "above",
+        ncols=2,
+        handles=[
+            Patch(facecolor=f, edgecolor=style.COLORS["reference"], label=label)
+            for label, f in (("Observed", BOX_FACE), ("Shuffled cells", NULL_FACE))
+        ],
+    )
+
+
+def _source_data(tests: pd.DataFrame, null: pd.Series, scores: pd.DataFrame) -> None:
     common.source_data(
-        "nichenet_weighted_percentile_tests",
+        "nichenet_target_score_per_ligand",
+        scores[
+            ["component", "ligand", "auroc", "weight", "rel_weight", "is_top"]
+        ].rename(
+            columns={
+                "component": "CP component",
+                "ligand": "Ligand",
+                "auroc": "NicheNet target score (AUROC)",
+                "weight": "Ligand weight",
+                "rel_weight": "Relative ligand weight",
+                "is_top": "Top ligand",
+            }
+        ),
+        "One row per ligand NicheNet scores and CP component: the AUROC of the "
+        "component's top vs. bottom receiver ranking for the ligand's "
+        "downstream targets; the ligand's weight in the component (and relative "
+        "to the component's largest, plotted floored at 1e-3); whether it is one "
+        "of the component's top ligands.",
+    )
+    common.source_data(
+        "nichenet_weighted_score_tests",
         tests,
-        "Per CP component: its top ligands, the weight-averaged NicheNet "
-        "target-score percentile of its ligands (weighted_pct), the mean of "
-        "that average over shuffled NicheNet priors (null_mean), and the "
-        "one-sided permutation p, Benjamini-Hochberg adjusted across "
+        "Per CP component: the ligand-weighted mean NicheNet target score "
+        "(weighted_auroc), its mean over the cell-shuffled rankings (null_mean), "
+        "and the one-sided permutation p, Benjamini-Hochberg adjusted across "
         "components (q).",
     )
     common.source_data(
-        "nichenet_shuffled_prior_percentiles",
-        null.rename("weighted_pct"),
-        "The weight-averaged target-score percentile per CP component on each "
-        "shuffled NicheNet prior (replicate): the null distribution boxed.",
+        "nichenet_cell_shuffle_weighted_scores",
+        null.rename("weighted_auroc"),
+        "The ligand-weighted mean target score per CP component on each ranking "
+        "with the top/bottom receiver labels shuffled (replicate): the test's "
+        "null. The grey boxes pool the per-ligand scores of these rankings.",
     )
-    tests = tests.set_index("component")
-    components = list(tests.index)
-    positions = range(len(components))
-    ax.boxplot(
-        [null.loc[c] for c in components],
-        positions=positions,
-        whis=NULL_WHISKERS,
-        zorder=1,
-        **BOX_STYLE,
-    )
-    ax.scatter(
-        positions,
-        tests["weighted_pct"],
-        marker="D",
-        s=style.POINT_SIZE_FOREGROUND,
-        color=style.COLORS["emphasis"],
-        zorder=3,
-    )
-    for x, c in zip(positions, components):
-        top = max(tests.loc[c, "weighted_pct"], null.loc[c].quantile(0.975))
-        significant = tests.loc[c, "q"] < common.SIG_ALPHA
+
+
+def ligand_points(ax, component_scores, x, rng, width: float = 0.6):
+    """Weight-colored and -sized points for one component's ligands at `x`,
+    jittered within a box `width` wide, the non-top ones translucent; returns
+    the (opaque) top ligands' points."""
+    c = component_scores.assign(
+        w=np.clip(component_scores["rel_weight"], WEIGHT_FLOOR, 1)
+    ).sort_values("w")
+    jitter = JITTER * width / 0.6
+    c["x"] = x + rng.uniform(-jitter, jitter, len(c))
+    for top, alpha in ((False, BACKGROUND_ALPHA), (True, 1.0)):
+        subset = c[c["is_top"] == top]
+        points = ax.scatter(
+            subset["x"],
+            subset["auroc"],
+            c=subset["w"],
+            cmap=style.CMAPS["weight"],
+            norm=LogNorm(vmin=WEIGHT_FLOOR, vmax=1),
+            s=style.POINT_SIZE_BACKGROUND / 2 + POINT_SIZE_MAX * subset["w"],
+            linewidths=0,
+            alpha=alpha,
+            zorder=3 + top,
+        )
+    return points
+
+
+def significance_marks(ax, positions, tops, q) -> None:
+    """A star above each of `positions` (at its data's top, `tops`) where `q`
+    is below `SIG_ALPHA`, else n.s."""
+    for x, top, value in zip(positions, tops, q, strict=True):
+        significant = value < common.SIG_ALPHA
         ax.text(
             x,
             top + TEST_PAD,
@@ -118,33 +197,6 @@ def draw(axs, dataset: str) -> None:
             fontweight="bold" if significant else "normal",
             color=style.COLORS["ink"] if significant else style.COLORS["reference"],
         )
-    common.reference_line(ax, 0.5)
-    ax.set_ylim(0, 1)
-    ax.set_xticks(positions, components)
-    ax.set_xlim(-0.6, len(components) - 0.4)
-    ax.set_xlabel("CP component")
-    ax.set_ylabel("Weighted NicheNet\ntarget-score percentile")
-    ax.legend(
-        loc="lower center",
-        ncols=2,
-        handles=[
-            Line2D(
-                [],
-                [],
-                marker="D",
-                ls="",
-                color=style.COLORS["emphasis"],
-                markersize=style.MARKER_SIZE,
-                label="Observed",
-            ),
-            Patch(
-                facecolor=BOX_FACE,
-                edgecolor=style.COLORS["reference"],
-                lw=style.LINE_WIDTH_THIN,
-                label="Shuffled NicheNet",
-            ),
-        ],
-    )
 
 
 def makeFigure():
