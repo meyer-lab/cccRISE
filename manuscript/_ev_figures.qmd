@@ -32,12 +32,12 @@ LR pairs shown are the union of each score's top 3.
 ![](figures/figureS_ibd_hormone_axes/figureS_ibd_hormone_axes.svg){width="6.5in"}
 
 **{{< label ibd-hormone-axes >}}.
-IBD CPD component 3 and 4 hormone-signaling cell identities.** ({{< panel ibd-hormone-axes eigenstate-loadings >}}) Sender and receiver eigen-state weights of top-weighted eigen-states (absolute loading ≥ 0.2) in components 3 and 4.
-({{< panel ibd-hormone-axes eigenstate-association >}}) Eigen-state--cell-type associations of top-weighted eigen-states in components 3 and 4: mean RISE projection of each cell type's cells.
-({{< panel ibd-hormone-axes eigenstate-composition >}}) Annotated cell-type compositions of top-weighted eigen-states in components 3 and 4, using IBDverse annotations: each cell type's share of the eigen-state's squared projection over all cells.
+IBD CPD component 3 and 4 hormone-signaling cell identities.** ({{< panel ibd-hormone-axes eigenstate-loadings >}}) Sender and receiver eigen-state loadings of top-loaded eigen-states (absolute loading ≥ 0.2) in components 3 and 4.
+({{< panel ibd-hormone-axes eigenstate-association >}}) Eigen-state--cell-type associations of top-loaded eigen-states in components 3 and 4: mean RISE projection of each cell type's cells.
+({{< panel ibd-hormone-axes eigenstate-composition >}}) Annotated cell-type compositions of top-loaded eigen-states in components 3 and 4, using IBDverse annotations: each cell type's share of the eigen-state's squared projection over all cells.
 ({{< panel ibd-hormone-axes cell-map >}}) RISE projection embedding of all cells in IBDverse, showing every EE, EC, and tuft cell and 100,000 randomly drawn other cells.
 Labels are colored by coarse cell type: coarse cell types in bold on their clusters, and fine EE, EC, and tuft cell types in normal font with lines to their cluster centers.
-({{< panel ibd-hormone-axes receiver-maps.1 >}}, {{< panel ibd-hormone-axes receiver-maps.2 >}}) RISE projection embeddings of all EE, EC, and tuft cells colored by CPD component ({{< panel ibd-hormone-axes receiver-maps.1 >}}) 3 and ({{< panel ibd-hormone-axes receiver-maps.2 >}}) 4 receiver eigen-state weight.
+({{< panel ibd-hormone-axes receiver-maps.1 >}}, {{< panel ibd-hormone-axes receiver-maps.2 >}}) RISE projection embeddings of all EE, EC, and tuft cells colored by CPD component ({{< panel ibd-hormone-axes receiver-maps.1 >}}) 3 and ({{< panel ibd-hormone-axes receiver-maps.2 >}}) 4 per-cell receiver weight.
 ({{< panel ibd-hormone-axes receptor-maps.1 >}}, {{< panel ibd-hormone-axes receptor-maps.2 >}}) Same as ({{< panel ibd-hormone-axes receiver-maps.1 >}}, {{< panel ibd-hormone-axes receiver-maps.2 >}}), colored by ({{< panel ibd-hormone-axes receptor-maps.1 >}}) NPY1R and ({{< panel ibd-hormone-axes receptor-maps.2 >}}) GLP1R gene expression normalized to the top 1% of expressing cells.
 ({{< panel ibd-hormone-axes type-map >}}) RISE projection embeddings of EE, EC, and tuft cells colored by cell type as annotated in IBDverse.
 ({{< panel ibd-hormone-axes magnitude-hist >}}) Distribution of EE cells over polar magnitudes, as in {{< fig 4 hormone-angle-scatter >}}.
@@ -49,3 +49,12 @@ q: Mann--Whitney U test, Benjamini--Hochberg corrected across all markers tested
 ({{< panel ibd-hormone-axes extreme-share >}}) Contribution of EE cell groups to total EE cell population stratified by biopsy type, for biopsies with at least 3 EE cells (healthy, n = 200; CD uninflamed, n = 44; CD inflamed, n = 45).
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across EE cell groups.
+
+![](figures/figureS_comparator_classes/figureS_comparator_classes.svg){width="6.5in"}
+
+**{{< label comparator-classes >}}.
+Classes of comparator LR columns.** Every comparator LR column of {{< fig 5 column-census >}}, colored by its class; the rules apply in order, and dashed lines mark their cutoffs.
+({{< panel comparator-classes span-containment >}}) Containment in CCC-RISE's LR pair span; columns contained at 0.85 or more and above their permutation null are the same as a CCC-RISE program.
+({{< panel comparator-classes program-overlap >}}) Share of each remaining column's squared loading on one component's carrying pairs; labels name the component of columns at 0.5 or more.
+({{< panel comparator-classes column-breadth >}}) Effective LR pairs; columns with 20 or more are broad, and those left with fewer than 1.5 are single pairs.
+({{< panel comparator-classes homophilic-share >}}) Homophilic share of the columns left; columns at 0.8 or more are homophilic adhesion, and the rest mixed pairs.

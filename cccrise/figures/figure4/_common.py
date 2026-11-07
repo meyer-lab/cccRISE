@@ -238,11 +238,11 @@ def cell_histogram(ax, values: pd.Series, bins, color=None) -> list:
     return list(bars)
 
 
-def status_boxes(ax, slots: dict[str, list[pd.Series]]) -> None:
+def status_boxes(ax, slots: dict[str, list[pd.Series]]) -> np.ndarray:
     """One `draw_boxes` slot per x label (`slots`' keys; values per status),
     its Kruskal-Wallis q across statuses (Benjamini-Hochberg corrected across
     slots) above it, bold if significant. Each slot is one x unit, so axes as
-    wide per slot draw identical boxes."""
+    wide per slot draw identical boxes. Returns the q of each slot, in order."""
     rng = np.random.default_rng(0)
     q = adjust_pvalues([kruskal(*values).pvalue for values in slots.values()])
     for x, values in enumerate(slots.values()):
@@ -260,6 +260,7 @@ def status_boxes(ax, slots: dict[str, list[pd.Series]]) -> None:
     ax.set_xticks(range(len(slots)), list(slots), fontsize=common.style.FONT_SIZE_DENSE)
     ax.set_xlim(-0.5, len(slots) - 0.5)
     ax.set_ylim(-SHARE_PAD, 1 + SHARE_PAD)
+    return np.asarray(q)
 
 
 def draw_boxes(ax, x: float, values: list[pd.Series], rng) -> None:

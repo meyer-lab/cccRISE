@@ -79,3 +79,7 @@ binarize
 Kneedle
 [Hh]omophilic
 prefiltered
+[Mm]esenchymal
+[Pp]ericytes
+[Uu]nderrepresentation
+[Ss]ubsampled

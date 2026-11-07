@@ -129,15 +129,20 @@ def _legend(ax, handles, ncol: int) -> None:
     )
 
 
+#: ALAD's one fine epithelial label as annotated, and the name the figure shows.
+EPITHELIAL_LABEL = "Lung epithelium"
+EPITHELIAL_NAME = "Epithelial cells"
+
+
 def _epithelial_populations() -> pd.Series:
-    """Lung epithelium's cells, and its C5 sender and receiver cells."""
+    """The epithelial label's cells, and its C5 sender and receiver cells."""
     cells = common.get_cell_projections(GRANULARITY_DATASET)
     label = DATASETS[GRANULARITY_DATASET].labellings["fine"]
-    epithelium = cells.obs[label].astype(str).to_numpy() == "Lung epithelium"
+    epithelium = cells.obs[label].astype(str).to_numpy() == EPITHELIAL_LABEL
     groups = split_cells(*component_weights())
     return pd.Series(
         {
-            "Lung epithelium": int(epithelium.sum()),
+            EPITHELIAL_NAME: int(epithelium.sum()),
             "Ciliated-like sender": int((groups["sender"] & epithelium).sum()),
             "Basal/secretory-like receiver": int(
                 (groups["receiver"] & epithelium).sum()
@@ -147,19 +152,20 @@ def _epithelial_populations() -> pd.Series:
 
 
 def flow_alad(ax) -> None:
-    """BTC-EGFR on Lung epithelium: all of the label, then its two end populations."""
+    """BTC-EGFR on epithelial cells: all of the label, then its two end populations."""
     t = _epithelial_populations()
     common.source_data(
-        "c5_lung_epithelium_populations",
+        "c5_epithelial_cell_populations",
         t.rename("Cells").rename_axis("Population").reset_index(),
-        "Lung epithelium cells, and those past Figure 2's sender and receiver cutoffs.",
+        "Epithelial cells (the one fine epithelial label), and those past Figure 2's "
+        "sender and receiver cutoffs.",
     )
-    sender = t["Ciliated-like sender"] / t["Lung epithelium"] * LENGTH
-    receiver = t["Basal/secretory-like receiver"] / t["Lung epithelium"] * LENGTH
+    sender = t["Ciliated-like sender"] / t[EPITHELIAL_NAME] * LENGTH
+    receiver = t["Basal/secretory-like receiver"] / t[EPITHELIAL_NAME] * LENGTH
     _flow_axes(ax, 40)
     _title(ax, 20, 50.5, "STAC S10")
     _node(ax, BAR_X, 31, 46, EPITHELIAL)
-    _note(ax, BAR_X - 2.8, 38.5, "Lung epithelium", rotation=90)
+    _note(ax, BAR_X - 2.8, 38.5, EPITHELIAL_NAME, rotation=90)
     _horseshoe(ax, 43.5, 33.5, 5)
     _title(ax, 20, 27, "CCC-RISE C5")
     top = 21.0
@@ -167,7 +173,7 @@ def flow_alad(ax) -> None:
     _node(ax, BAR_X, top - sender, top, style.COLORS["sender"])
     _node(ax, BAR_X, bottom + receiver, top - sender, BELOW)
     _node(ax, BAR_X, bottom, bottom + receiver, style.COLORS["receiver"])
-    _note(ax, BAR_X - 2.8, top - LENGTH / 2, "Lung epithelium", rotation=90)
+    _note(ax, BAR_X - 2.8, top - LENGTH / 2, EPITHELIAL_NAME, rotation=90)
     _horseshoe(ax, top - sender / 2, bottom + receiver / 2, 7)
     _note(ax, BAR_X - 0.8, top + 1.6, "Ciliated-like", ha="left")
     _note(ax, BAR_X - 0.8, bottom - 1.6, "Basal/secretory-like", ha="left")

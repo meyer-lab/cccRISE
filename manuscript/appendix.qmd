@@ -1,6 +1,6 @@
 ---
 title: "Appendix"
-subtitle: "Resolving cell-cell communication programs beyond cell-type boundaries across conditions"
+subtitle: "Resolving cell--cell communication programs beyond cell-type boundaries across conditions"
 ---
 
 ## Table of Contents
@@ -12,6 +12,12 @@ subtitle: "Resolving cell-cell communication programs beyond cell-type boundarie
 - {{< label ibd-rank-selection >}}: IBD CCC-RISE rank selection and RISE factor matrices
 - {{< label ibd-associations >}}: Association of CPD components and covariates with IBD biopsy type
 - {{< label niches-ibd >}}: Validation of CCC-RISE sender and receiver cell populations by NICHES
+- {{< label comparator-rank-selection >}}: Rank selection of the label-based comparators
+- {{< label comparator-map >}}: What labels can hold of CCC-RISE components
+- {{< label comparator-split >}}: Detection depth, and the mixed IBD components in STACCato
+- {{< label comparator-covariation >}}: Co-variation of every method's components
+- {{< label comparator-nichenet >}}: NicheNet on CCC-RISE components and comparator LR columns of ALAD
+- {{< label comparator-missed >}}: Comparator LR columns that no CCC-RISE component carries
 - {{< label alad-outcome-groups >}}: ALAD samples by outcome group
 
 ![](figures/figureS_rise_factor_matrices/figureS_rise_factor_matrices.svg){width="6.5in"}
@@ -87,7 +93,55 @@ CCC-RISE populations against NICHES on IBD.** ({{< panel niches-ibd weight-scatt
 Filled diamonds: q < 0.05; one-sided empirical test against the random directions, Benjamini--Hochberg corrected across the 12 populations of the six components.
 ({{< panel niches-ibd tau-sweep >}}) NICHES concordance of each population minus that predicted by its fine cell-type labels, across population cutoffs (τ); dashed line, no difference; grey line, the 0.3 cutoff used throughout.
 Populations of fewer than 10 cells are not drawn.
-({{< panel niches-ibd orderings >}}) NICHES concordance of each component 1, 2, 5 and 6 population's number of cells chosen by a random RISE direction (median of 200, not matched for cell type), the CCC-RISE weight, either multiplied by the cell's ligand or receptor expression, or that expression alone; left, each population's NICHES-positive cells and their share of all cells.
+({{< panel niches-ibd orderings >}}) NICHES concordance of each component 1, 2, 5 and 6 population's number of top-ranked cells under five orderings: a random RISE direction (median of 200, not matched for cell type), the CCC-RISE weight, the positive part of either multiplied by the cell's ligand or receptor expression, and that expression alone; left, each population's NICHES-positive cells and the share of all cells in the cohort that are NICHES-positive.
+
+![](figures/figureS_comparator_rank_selection/figureS_comparator_rank_selection.svg){width="6.5in"}
+
+**{{< label comparator-rank-selection >}}.
+Rank selection of the label-based comparators.** Each method's own rank selection on coarse and fine labels, ALAD and IBD together; dashed lines mark each cohort's chosen rank, and red circles the Kneedle elbow.
+PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato.
+({{< panel comparator-rank-selection pb-fit-coarse pb-fit-fine >}}) Pseudobulk CPD fit R^2^X, ({{< panel comparator-rank-selection pb-collinearity-coarse pb-collinearity-fine >}}) largest absolute cosine between the LR pair factors of any two components, and ({{< panel comparator-rank-selection pb-minima-coarse pb-minima-fine >}}) share of starts at the most common minimum, over 10 seeded starts per rank; lines show the median and bands the range over starts.
+({{< panel comparator-rank-selection tc2c-elbow-coarse tc2c-elbow-fine >}}) Tensor-cell2cell normalized error (mean and range over 10 random starts), ({{< panel comparator-rank-selection tc2c-congruence-coarse tc2c-congruence-fine >}}) largest congruence product between two components of a start, and ({{< panel comparator-rank-selection tc2c-minima-coarse tc2c-minima-fine >}}) share of starts at the most common minimum.
+({{< panel comparator-rank-selection stac-shares-coarse stac-shares-fine >}}) STACCato eigenvalue share of each component of each mode's unfolding; the dashed line marks the 1% cutoff, and cores are given as sample × LR pair × sender × receiver.
+
+![](figures/figureS_comparator_map/figureS_comparator_map.svg){width="6.5in"}
+
+**{{< label comparator-map >}}.
+What labels can hold of CCC-RISE components.** ({{< panel comparator-map sender-ceiling >}}) Sender and ({{< panel comparator-map receiver-ceiling >}}) receiver label ceiling of each CCC-RISE component (filled), the share of variance in its per-cell weights held by means over sample and coarse (squares) or fine (circles) label, and the share reproduced by the closest pseudobulk CPD or STACCato column (open).
+({{< panel comparator-map alad-columns >}}) ALAD LR columns of each comparator on coarse (C) and fine (F) labels, joined where their cos^2^ is at least 0.09; line width shows cos^2^.
+({{< panel comparator-map coarse-map >}}) As {{< fig 5 program-map >}}, on coarse labels.
+({{< panel comparator-map ibd-columns >}}) As ({{< panel comparator-map alad-columns >}}), for IBD.
+
+![](figures/figureS_comparator_split/figureS_comparator_split.svg){width="6.5in"}
+
+**{{< label comparator-split >}}.
+Detection depth, and the mixed IBD components in STACCato.** ({{< panel comparator-split depth-tracking >}}) Depth tracking of every component and LR column: the absolute Spearman correlation across samples between its absolute condition loadings and the samples' detection depth; lines mark medians.
+({{< panel comparator-split mixed-pairs >}}) Carrying pairs of IBD components 1 and 5 in the component and in the STACCato columns holding them, as in {{< fig 5 pair-columns >}}.
+({{< panel comparator-split mixed-covariation >}}) Co-variation of IBD components 1 and 5 and those columns, as in {{< fig 5 program-covariation >}}.
+
+![](figures/figureS_comparator_covariation/figureS_comparator_covariation.svg){width="6.5in"}
+
+**{{< label comparator-covariation >}}.
+Co-variation of every method's components.** Components and LR columns above the stricter null in either version of the test, ALAD ({{< panel comparator-covariation pairs-used disjoint >}}) and IBD ({{< panel comparator-covariation ibd-pairs-used ibd-disjoint >}}).
+Components and columns with fewer than two carrying pairs, or whose top LR pair carries at least 0.8 of the squared loading, are not shown.
+({{< panel comparator-covariation pairs-used >}}, {{< panel comparator-covariation ibd-pairs-used >}}) Number of carrying pairs tested.
+({{< panel comparator-covariation all-pairs >}}, {{< panel comparator-covariation ibd-all-pairs >}}) Mean pairwise Spearman correlation across samples ($\bar{\rho}$) of the carrying pairs, over all pairs of LR pairs, and ({{< panel comparator-covariation disjoint >}}, {{< panel comparator-covariation ibd-disjoint >}}) over those sharing no gene.
+Ticks show the stricter null, the larger 95th percentile of 2,000 random and 2,000 expression-matched draws; filled points are above it, and crosses mark columns with no gene-disjoint pairs.
+
+![](figures/figureS_comparator_nichenet/figureS_comparator_nichenet.svg){width="6.5in"}
+
+**{{< label comparator-nichenet >}}.
+NicheNet on CCC-RISE components and comparator LR columns of ALAD.** ({{< panel comparator-nichenet cell-shuffle >}}) Ligand-weighted NicheNet target score of each component and column above its mean over 1,000 rankings with the high and low cells' labels shuffled.
+({{< panel comparator-nichenet prior-shuffle >}}) Ligand-weighted percentile of the target scores among the fit's scored ligands, tested against 1,000 copies of the prior with its ligand--target links reassigned.
+Filled: q < 0.05, one-sided empirical test, Benjamini--Hochberg corrected across the columns of each fit; dashed lines mark no effect.
+({{< panel comparator-nichenet closest-columns >}}) Each CCC-RISE component (diamonds) against the comparator LR columns carrying its LR pairs, as in ({{< panel comparator-nichenet cell-shuffle >}}).
+
+![](figures/figureS_comparator_missed/figureS_comparator_missed.svg){width="6.5in"}
+
+**{{< label comparator-missed >}}.
+Comparator LR columns that no CCC-RISE component carries.** ({{< panel comparator-missed column-contents >}}) The 18 single-pair and mixed-pair comparator LR columns of ALAD (top) and IBD (bottom) and their LR pairs holding at least 5% of the column's squared loading, sized by absolute loading relative to the column's largest; the CCC-RISE row shows each pair's largest such value in any CCC-RISE component.
+({{< panel comparator-missed alad-associations >}}) ALAD and ({{< panel comparator-missed ibd-associations >}}) IBD columns' strongest association with an outcome grouping, as effect size (η^2^) against q (one-way ANOVA, Benjamini--Hochberg corrected across the groupings and components of each fit); the dashed line marks q = 0.05.
+Boxes list the columns and CCC-RISE components with q < 0.05 in each grouping; H, healthy; CD, Crohn's disease; U and I, CD uninflamed and inflamed.
 
 {{< include figures/tables/alad_outcome_groups.md >}}
 
