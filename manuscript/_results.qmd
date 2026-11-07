@@ -134,17 +134,17 @@ Overall, CCC-RISE's expression product agreed closely with CellChat's expression
 
 ### CCC-RISE uncovers hormonal communication that varies continuously over cells in IBD
 
-::: {#fig-5}
-![](figures/figure5/figure5.svg){width="6.5in"}
+::: {#fig-4}
+![](figures/figure4/figure4.svg){width="6.5in"}
 
-**Complementary CCC-RISE components describe states along a continuous population of hormone-secreting enteroendocrine cells in IBD.** ({{< panel 5 cp-factor-matrices >}}) CPD factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
-({{< panel 5 ee-state-map >}}) RISE projection embeddings of EE, EC, and tuft cells colored by ({{< panel 5 ee-state-map.1 >}}) cell type as annotated in the IBDverse data, ({{< panel 5 ee-state-map.2 >}}) component 3 sender weight, or ({{< panel 5 ee-state-map.3 >}}) component 4 sender weight.
-({{< panel 5 hormone-expression-map >}}) RISE projection embeddings of EE and EC cells colored by PYY (left) or GCG (right) expression normalized to the expression in the top 1% of expressing cells.
-({{< panel 5 hormone-angle-scatter >}}) Each EE cell's component 3/4 sender weight normalized to the maximum weight, colored by polar angle where the polar magnitude is at least 0.3 (dotted arc).
+**Complementary CCC-RISE components describe states along a continuous population of hormone-secreting enteroendocrine cells in IBD.** ({{< panel 4 cp-factor-matrices >}}) CPD factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
+({{< panel 4 ee-state-map >}}) RISE projection embeddings of EE, EC, and tuft cells colored by ({{< panel 4 ee-state-map.1 >}}) cell type as annotated in the IBDverse data, ({{< panel 4 ee-state-map.2 >}}) component 3 sender weight, or ({{< panel 4 ee-state-map.3 >}}) component 4 sender weight.
+({{< panel 4 hormone-expression-map >}}) RISE projection embeddings of EE and EC cells colored by PYY (left) or GCG (right) expression normalized to the expression in the top 1% of expressing cells.
+({{< panel 4 hormone-angle-scatter >}}) Each EE cell's component 3/4 sender weight normalized to the maximum weight, colored by polar angle where the polar magnitude is at least 0.3 (dotted arc).
 Shaded region excludes cells exceeding 180°.
 Dotted ray and arc indicate an example polar coordinate: (0.3, 45°).
-({{< panel 5 hormone-angle-hist >}}) Distribution of EE cells with polar magnitude of at least 0.3 over polar angles, colored by angle-based thresholds at 30 and 60°.
-({{< panel 5 hormone-extreme-markers >}}) Expression of crypt, intermediate (int.), and villus EE markers and BMP target genes in each group.
+({{< panel 4 hormone-angle-hist >}}) Distribution of EE cells with polar magnitude of at least 0.3 over polar angles, colored by angle-based thresholds at 30 and 60°.
+({{< panel 4 hormone-extreme-markers >}}) Expression of crypt, intermediate (int.), and villus EE markers and BMP target genes in each group.
 Genes shown differ between villus-like and crypt-like cells at q < 0.05 (Mann--Whitney U test, Benjamini--Hochberg corrected across all markers tested). L) [NICHES placeholder] M) [NICHES placeholder]
 :::
 
@@ -153,7 +153,7 @@ In the IBD data, conditions comprised terminal-ileum punch biopsies from individ
 We applied the same rank selection criteria as before to construct a CCC-RISE model on IBDverse while avoiding overfitting.
 The RISE BiCV rank sweep did not show a clear turnover in test R^2^X, but did present a clear plateau around rank 60, which we used to decompose the normalized expression tensor ({{< fig ibd-rank-selection rise-rank-selection bicv-test >}}).
 Like with ALAD, CPD LR pair mode collinearity and instability increased sharply beyond rank 6, which we used to decompose the communication tensor ({{< fig ibd-rank-selection cp-collinearity mode-collinearity >}}).
-CCC-RISE yielded components that described healthy and inflamed gut communication programs, including opposing activating/inhibitory immune signaling (components 1 and 5), myeloid--driven axon maintenance (component 2), and hormone secretion (components 3--4) ({{< fig 5 cp-factor-matrices >}}, {{< fig ibd-rank-selection factors eigenstate-heatmap >}}).
+CCC-RISE yielded components that described healthy and inflamed gut communication programs, including opposing activating/inhibitory immune signaling (components 1 and 5), myeloid--driven axon maintenance (component 2), and hormone secretion (components 3--4) ({{< fig 4 cp-factor-matrices >}}, {{< fig ibd-rank-selection factors eigenstate-heatmap >}}).
 
 The data describe a number of diverse communication programs, so we tested the associations of CPD condition with biopsy type to narrow our interpretation onto clinically relevant programs.
 While many components tracked three-way inflammation status and distinguished healthy from CD samples, only components 3 and 4 were able to differentiate uninflamed from inflamed CD samples ({{< fig ibd-associations cp-associations >}}).
@@ -164,19 +164,37 @@ Thus, CPD components were associated with inflammation status and tracked cell-t
 CPD components 3 and 4 represented distinct, but complementary, hormone-signaling axes.
 They were loaded onto similar sender eigen-states---albeit with distinct distributions---that collectively defined a subpopulation of enteroendocrine (EE) cells ({{< fig ibd-hormone-axes eigenstate-loadings eigenstate-composition >}}).
 Conversely their receiver eigen-states were entirely distinct and uniquely loaded either enterochromaffin (EC) cells (component 3) or tuft cells (component 4) ({{< fig ibd-hormone-axes eigenstate-loadings eigenstate-composition >}}).
-We therefore restricted our analysis to EE, EC, and tuft cells (as annotated in the IBDverse data) and visualized single-cell heterogeneity in the component 3/4 signaling axis using RISE projection embeddings ({{< fig 5 ee-state-map.1 >}}, {{< fig ibd-hormone-axes cell-map >}}, {{< panel ibd-hormone-axes type-map >}}).
-Cells with high sender weights in either components 3 or 4 inhabited distinct regions of the broader EE cell cluster, but partially overlapped with each other, indicating that the components represented a non-exclusive pair of EE subpopulations ({{< fig 5 ee-state-map.2 ee-state-map.3 >}}).
-Further, cells with the highest expression of PYY predominantly overlapped with those of high component 3 sender weight, and those with high GCG (GLP-1) expression overlapped with those of high component 4 sender weight, indicating that sender groups were primarily defined by the gene expression of those two hormones ({{< fig 5 hormone-expression-map >}}).
+We therefore restricted our analysis to EE, EC, and tuft cells (as annotated in the IBDverse data) and visualized single-cell heterogeneity in the component 3/4 signaling axis using RISE projection embeddings ({{< fig 4 ee-state-map.1 >}}, {{< fig ibd-hormone-axes cell-map >}}, {{< panel ibd-hormone-axes type-map >}}).
+Cells with high sender weights in either components 3 or 4 inhabited distinct regions of the broader EE cell cluster, but partially overlapped with each other, indicating that the components represented a non-exclusive pair of EE subpopulations ({{< fig 4 ee-state-map.2 ee-state-map.3 >}}).
+Further, cells with the highest expression of PYY predominantly overlapped with those of high component 3 sender weight, and those with high GCG (GLP-1) expression overlapped with those of high component 4 sender weight, indicating that sender groups were primarily defined by the gene expression of those two hormones ({{< fig 4 hormone-expression-map >}}).
 Component 3 and 4 receiver cells were trivially exclusive, and also matched the expression levels of their respective receptors (NPY1R and GLP1R) ({{< fig ibd-hormone-axes receiver-maps.1 receptor-maps.1 >}}, {{< panel ibd-hormone-axes receiver-maps.2 receptor-maps.2 >}}).
 
 We went on to characterize the overlapping EE subpopulations represented by components 3 and 4.
-There was no clear separation of cells by component 3/4 projection weight, indicating that the components were consistent with the hormonal plasticity of EE cells within the GLP-1-producing lineage ({{< fig 5 hormone-angle-scatter >}})\ [@doi:10.1210/endrev/bnaa018; @doi:10.1016/j.cell.2018.12.029].
-Transforming the projection weight axes to polar coordinates and measuring the distribution of cells over polar angles revealed that two states dominated the continuum of cell identities ({{< fig 5 hormone-angle-hist >}}, {{< fig ibd-hormone-axes magnitude-hist >}}).
-While we recognize the continuous nature of these populations, we attempted to binarize the cells into component 3-high, component 4-high, both, or neither groups using their polar coordinates in order to annotate the cells against canonical markers ({{< fig 5 hormone-angle-hist >}}).
-The four groups of cells were characterized by distinct gene expression: component 3-high cells expressed hormones associated with villus EE cells, component 4-high cells expressed crypt-associated genes, and mixed cells expressed CCK, which marks the intermediate stage between GLP-1-producing and villus cells ({{< fig 5 hormone-extreme-markers >}})\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7].
-Further, the crypt-to-villus transition is driven by BMP activity, and we saw a stepwise increase in expression of BMP targets from crypt-like to mixed to villus-like cells ({{< fig 5 hormone-extreme-markers >}})\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036].
+There was no clear separation of cells by component 3/4 projection weight, indicating that the components were consistent with the hormonal plasticity of EE cells within the GLP-1-producing lineage ({{< fig 4 hormone-angle-scatter >}})\ [@doi:10.1210/endrev/bnaa018; @doi:10.1016/j.cell.2018.12.029].
+Transforming the projection weight axes to polar coordinates and measuring the distribution of cells over polar angles revealed that two states dominated the continuum of cell identities ({{< fig 4 hormone-angle-hist >}}, {{< fig ibd-hormone-axes magnitude-hist >}}).
+While we recognize the continuous nature of these populations, we attempted to binarize the cells into component 3-high, component 4-high, both, or neither groups using their polar coordinates in order to annotate the cells against canonical markers ({{< fig 4 hormone-angle-hist >}}).
+The four groups of cells were characterized by distinct gene expression: component 3-high cells expressed hormones associated with villus EE cells, component 4-high cells expressed crypt-associated genes, and mixed cells expressed CCK, which marks the intermediate stage between GLP-1-producing and villus cells ({{< fig 4 hormone-extreme-markers >}})\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7].
+Further, the crypt-to-villus transition is driven by BMP activity, and we saw a stepwise increase in expression of BMP targets from crypt-like to mixed to villus-like cells ({{< fig 4 hormone-extreme-markers >}})\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036].
 All genes except the intermediate marker CCK remained differentially expressed (q < 0.05) between crypt- and villus-like cells across magnitude thresholds up to 0.9, after which low cell counts reduce statistical power ({{< fig ibd-hormone-axes marker-floor-sweep >}}).
 In agreement with the loss of function following inflammation indicated by component 3 associations ({{< fig ibd-associations status-loadings.1 >}}), component 3-high cells gradually contributed less to the overall EE population in a step-wise manner over healthy, CD uninflamed, and CD inflamed biopsies, indicating that more-exposed, villus-like cells are more sensitive to inflammatory pressure compared with other EE subpopulations ({{< fig ibd-hormone-axes extreme-share >}}).
 In sum, CCC-RISE components 3 and 4 described sender cells on a continuum between two prevailing states with distinct activity: crypt-like producers of GCG communicating with tuft cells and villus-like producers of PYY communicating with EC cells.
 
 To validate the interactions between EE, EC, and tuft subpopulations represented by components 3 and 4, we applied the NICHES pipeline...
+
+### [Placeholder: comparison section title]
+
+::: {#fig-5}
+![](figures/figure5/figure5.svg){width="6.5in"}
+
+**[Placeholder title: what a cell-type-blind model finds that label-based models do not.]** <!-- Draft legend skeleton from the panel modules' docstrings; to be written. -->
+({{< panel 5 program-map >}}) Each CCC-RISE program's best comparator column against its label ceiling.
+({{< panel 5 column-census >}}) What each comparator column is.
+({{< panel 5 best-column >}}) Each program's best column in every fit.
+({{< panel 5 pair-columns >}}) How STACCato arranges the pairs of the mixed programs.
+({{< panel 5 program-covariation >}}) The mixed programs' co-variation against their STACCato columns.
+({{< panel 5 flow-alad >}}) BTC--EGFR in STACCato and in CCC-RISE.
+({{< panel 5 flow-ibd >}}) PYY and GCG in STACCato and in CCC-RISE.
+({{< panel 5 niches-fraction >}}) NICHES-positive cells in CCC-RISE's populations against what their labels predict.
+:::
+
+[Placeholder: comparison results text.]

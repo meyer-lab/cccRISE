@@ -222,6 +222,22 @@ def record_output(
     return write_folder_records(path.parent, records, header)
 
 
+def write_table(
+    path: str | Path,
+    table: Any,
+    metadata: Mapping[str, Any],
+    command: str,
+    header: str | None = None,
+) -> None:
+    """Write a runner's `table` (a DataFrame) as Parquet at `path` and
+    `record_output` it."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    table.to_parquet(path, index=False)
+    record_output(path, metadata, command, header=header)
+    print(f"   wrote {path.name} ({len(table)} rows)", flush=True)
+
+
 def write_folder_records(
     folder: str | Path, records: Mapping[str, Mapping[str, Any]], header: str | None
 ) -> Path:

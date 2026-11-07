@@ -6,10 +6,8 @@ per-cell weights define, and their gene expression."""
 import functools
 from collections import Counter
 
-import anndata
 import numpy as np
 import pandas as pd
-import scanpy as sc
 
 from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
@@ -207,34 +205,29 @@ def cell_groups(tau: float = GROUP_TAU) -> pd.Series:
 def rank_genes(
     groups: tuple[str, ...], reference: str, tau: float = GROUP_TAU
 ) -> dict[str, pd.DataFrame]:
-    """{group: Wilcoxon score, p, and BH q per gene, highest score first} of each
-    of `groups` against `reference`, split at `tau`. scanpy's fold changes are
+    """{group: Wilcoxon score, p, BH q, and the fraction of the group's and of
+    the reference's cells detecting it, per gene, highest score first} of each
+    of `groups` against `reference` ('rest': every other cell), split at `tau`,
+    from `cccrise-alad-programs`' `group_de` table (scanpy's test,
+    `run_alad_programs.GROUP_TESTS` and `DE_TAUS`). scanpy's fold changes are
     left out: they assume natural-log data."""
-    adata = common.get_cell_projections(GRANULARITY_DATASET)
-    test = anndata.AnnData(
-        X=adata.X,
-        obs=pd.DataFrame({"group": cell_groups(tau).to_numpy()}, index=adata.obs_names),
-        var=pd.DataFrame(index=adata.var_names),
-    )
-    sc.tl.rank_genes_groups(
-        test,
-        "group",
-        groups=list(groups),
-        reference=reference,
-        method="wilcoxon",
-    )
-    result = test.uns["rank_genes_groups"]
-    return {
-        g: pd.DataFrame(
+    table = common.alad_programs("group_de")
+    at_tau = np.isclose(table["Tau"].to_numpy(), tau)
+    result = {}
+    for g in groups:
+        rows = table[at_tau & (table["Group"] == g) & (table["Reference"] == reference)]
+        if rows.empty:
+            raise KeyError(f"group_de has no {g} vs. {reference} test at tau {tau}")
+        result[g] = pd.DataFrame(
             {
-                "score": result["scores"][g],
-                "p": result["pvals"][g],
-                "q": result["pvals_adj"][g],
-            },
-            index=result["names"][g],
-        )
-        for g in groups
-    }
+                "score": rows["Score"],
+                "p": rows["P"],
+                "q": rows["Q"],
+                "detected": rows["Group detected"],
+                "reference detected": rows["Reference detected"],
+            }
+        ).set_axis(rows["Gene"].to_numpy())
+    return result
 
 
 def cell_table() -> pd.DataFrame:

@@ -87,6 +87,17 @@ def add_dataset_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def seeded_dataset_parser(description: str | None) -> argparse.ArgumentParser:
+    """A runner's parser taking `--dataset` (`add_dataset_argument`) and a
+    `--random-state`, with `description` (its docstring) kept as written."""
+    parser = argparse.ArgumentParser(
+        description=description, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    add_dataset_argument(parser)
+    parser.add_argument("--random-state", type=int, default=0)
+    return parser
+
+
 def resolve_dataset(args: argparse.Namespace) -> DatasetSpec:
     """The registry entry `add_dataset_argument`'s arguments select."""
     spec = DATASETS[args.dataset]

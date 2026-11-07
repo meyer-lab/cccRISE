@@ -21,15 +21,6 @@ fig3:
   lr_permutation: [g]
   lr_volcano: [h]
 fig4:
-  program_map: [a]
-  column_census: [b]
-  best_column: [c]
-  pair_columns: [d]
-  program_covariation: [e]
-  flow_alad: [f]
-  flow_ibd: [g]
-  niches_fraction: [h]
-fig5:
   cp_factor_matrices: [a, b, c, d]
   ee_state_map: [e, f, g]
   hormone_expression_map: [h]
@@ -38,6 +29,15 @@ fig5:
   hormone_extreme_markers: [k]
   niches_concordance: [l]
   niches_orderings: [m]
+fig5:
+  program_map: [a]
+  column_census: [b]
+  best_column: [c]
+  pair_columns: [d]
+  program_covariation: [e]
+  flow_alad: [f]
+  flow_ibd: [g]
+  niches_fraction: [h]
 figS_rise_factor_matrices:
   factors: [a]
   genes: [b]

@@ -2,12 +2,14 @@
 top LR pairs are larger in CLAD/Died than in stable/recovered samples.
 
 Each LR pair is scored per condition in each component's own
-sender/receiver context (`coordinated_changes.component_lr_scores`), divided
-by the condition's read depth (as the plotted condition loadings are). The
-CLAD/Died minus stable/recovered mean score difference is compared against `N_PERMS`
-permutations of the outcome labels by patient
-(`patient_permutation_differential`); a pair's p is the one-sided fraction
-of permutations reaching its observed difference.
+sender/receiver context, divided by the condition's read depth (as the
+plotted condition loadings are). The CLAD/Died minus stable/recovered mean
+score difference is compared against `N_PERMS` permutations of the outcome
+labels by patient (`patient_permutation_differential`); a pair's p is the
+one-sided fraction of permutations reaching its observed difference. The tests
+are `cccrise-alad-programs`' (`run_alad_programs`: `program_pair_tests`,
+`program_permutation` and `program_context_scores`); this module only reads
+and draws them.
 
 The panel is each of the component's `N_TOP` most heavily weighted pairs'
 permutation null beside its observed difference, both in units of the
@@ -17,7 +19,6 @@ the top pairs of every component.
 """
 
 from functools import cache
-from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -25,26 +26,15 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from scipy.stats import false_discovery_control
 
-from ...anova import get_sample_to_group, prepare_group_labels
 from ...factors import load_factors_netcdf
-from ...validation.significance import patient_permutation_differential
+from ...runners.run_alad_programs import CASE_LABEL, CONTROL_LABEL, N_PERMS
 from .. import common, style
-from ._common import COMPONENT, DATASET, SPEC, factors_adata
-from .coordinated_changes import N_TOP, component_lr_scores
+from ._common import COMPONENT, SPEC
+from .coordinated_changes import N_TOP
 
-CASE_LABEL = "CLAD/Died"
-# 6-month outcome collapsed to CLAD/Died vs. Stable/Recovered (no CLAD)
-CONTRAST_COLUMN = "6monthcondition"
-CONTRAST_MAPPING = {
-    "CLAD": CASE_LABEL,
-    "Died": CASE_LABEL,
-    "No CLAD/Stable": "Stable/Recovered",
-    "No CLAD/Recovered": "Stable/Recovered",
-}
 # The groups as axis labels name them
 CASE_DISPLAY = "CLAD/died"
 CONTROL_DISPLAY = "stable/recovered"
-N_PERMS = 10_000
 AXES = ("square",)
 
 
@@ -85,7 +75,7 @@ def plot(axs):
         .assign(
             Condition=component["conditions"],
             Patient=component["patients"],
-            Group=np.where(component["case"], CASE_LABEL, "Stable/Recovered"),
+            Group=np.where(component["case"], CASE_LABEL, CONTROL_LABEL),
         )
         .melt(
             id_vars=["Condition", "Patient", "Group"],
@@ -153,44 +143,46 @@ def plot_pair_nulls(component: dict, n_top: int, ax) -> None:
 def permutation_analysis() -> dict[int, dict]:
     """Per component, from its own context scores: every LR pair's observed
     difference (`observed`) and one-sided permutation p (`p`), the pairs
-    ordered by |loading| (`order`), each group's mean score (`means`), and
-    the null differences of its `N_TOP` heaviest pairs (`null`,
-    permutations x pairs, in `order`)."""
-    adata = factors_adata()
-    obs = cast(pd.DataFrame, adata.obs)
-    cond = SPEC.condition_column
-    # Condition order is np.unique's, as for the CP condition factor
-    labels = prepare_group_labels(
-        get_sample_to_group(adata, cond, CONTRAST_COLUMN), mapping=CONTRAST_MAPPING
-    )
-    case = (labels == CASE_LABEL).to_numpy()
-    patients = (
-        obs.drop_duplicates(cond).set_index(cond).loc[labels.index][SPEC.patient_column]
-    )
-    depth = np.bincount(
-        obs["condition_unique_idxs"].astype(int),
-        weights=np.asarray(cast(Any, adata.X).sum(axis=1)).ravel(),
-    )
-
-    D = load_factors_netcdf(SPEC.factors_path())["cp_D"]
+    ordered by |loading| (`order`), and each group's mean score (`means`);
+    for `COMPONENT`, also its per-condition depth-normalized scores
+    (`scores`, with `conditions`, `patients` and `case`) and the null
+    differences of its `N_TOP` heaviest pairs (`null`, permutations x pairs,
+    in `order`)."""
+    tests = common.alad_programs("program_pair_tests")
     result = {}
-    for k in range(1, D.shape[1] + 1):
-        scores = component_lr_scores(DATASET, k) / depth[:, None]
-        observed, null = patient_permutation_differential(
-            scores, case, patients.astype(str).to_numpy(), N_PERMS
-        )
-        order = np.argsort(-np.abs(D.values[:, k - 1]))
-        result[k] = {
-            "scores": scores,
-            "conditions": labels.index.to_numpy(),
-            "patients": patients.astype(str).to_numpy(),
-            "case": case,
-            "observed": observed,
-            "p": ((null >= observed).sum(0) + 1) / (N_PERMS + 1),
-            "order": order,
-            "means": (scores[case].mean(0), scores[~case].mean(0)),
-            "null": null[:, order[:N_TOP]],
+    for k in sorted(tests["Component"].unique()):
+        rows = tests[tests["Component"] == k]
+        rows = rows.set_index("LR pair").loc[LR_NAMES]
+        result[int(k)] = {
+            "observed": rows["Observed"].to_numpy(),
+            "p": rows["P"].to_numpy(),
+            "order": np.argsort(rows["Rank"].to_numpy()),
+            "means": (
+                rows[f"{CASE_LABEL} mean"].to_numpy(),
+                rows[f"{CONTROL_LABEL} mean"].to_numpy(),
+            ),
         }
+    context = common.alad_programs("program_context_scores").query(
+        "Component == @COMPONENT"
+    )
+    conditions = context.drop_duplicates("Condition").sort_values("Condition")
+    depth_normalized = context.assign(Score=context["Score"] / context["Read depth"])
+    null = (
+        common.alad_programs("program_permutation")
+        .query("Component == @COMPONENT")
+        .pivot(index="Permutation", columns="Rank", values="Null difference")
+    )
+    result[COMPONENT] |= {
+        "scores": depth_normalized.pivot(
+            index="Condition", columns="LR pair", values="Score"
+        )
+        .loc[conditions["Condition"], LR_NAMES]
+        .to_numpy(),
+        "conditions": conditions["Condition"].to_numpy(),
+        "patients": conditions["Patient"].to_numpy(),
+        "case": (conditions["Group"] == CASE_LABEL).to_numpy(),
+        "null": null.loc[:, range(1, N_TOP + 1)].to_numpy(),
+    }
     return result
 
 

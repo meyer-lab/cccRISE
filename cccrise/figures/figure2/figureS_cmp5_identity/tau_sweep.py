@@ -7,12 +7,13 @@ import numpy as np
 import pandas as pd
 from scipy.stats import false_discovery_control
 
+from ....runners.run_alad_programs import DE_TAUS
 from ... import common, style
 from .. import _common as S
 from ..epithelial_markers import stratifying_markers
 
 AXES = ("square",)
-TAUS = np.round(np.arange(0.1, 0.61, 0.05), 2)
+TAUS = DE_TAUS  # the cutoffs `cccrise-alad-programs` tests at
 SECTION_COLORS = dict(
     zip(
         ("Ciliated", "Secretory", "Basal"),
