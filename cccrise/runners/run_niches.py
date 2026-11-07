@@ -14,6 +14,10 @@ for the folder):
         number of cells, and NICHES's share of all cells
     tau_<dataset>.parquet
         per population and tau, its concordance and its labels'
+    cells_<dataset>.parquet
+        per cell, its coarse and fine label and its unscaled sender and
+        receiver weight on each component (`cell_frame`), so figures plotting
+        per-cell weights read them instead of loading and projecting the cohort
 
 NICHES needs R with Seurat, and the package's source at `NICHES_COMMIT`:
 
@@ -21,6 +25,11 @@ NICHES needs R with Seurat, and the package's source at `NICHES_COMMIT`:
     git -C <source> checkout 5d932b8
 
     uv run cccrise-niches --dataset ibd --niches-source <source> --r-library <lib>
+
+`--cells-only` writes only the per-cell table (no R, no NICHES; the other
+tables and their records are left as they are):
+
+    uv run cccrise-niches --dataset ibd --cells-only
 """
 
 import argparse
@@ -66,7 +75,7 @@ from ._cli import (
     resulting_dims,
 )
 from .datasets import NICHES_DIR, DatasetSpec, scores_filename
-from .provenance import build_metadata, git_sha, record_output, relpath, sha256_file
+from .provenance import build_metadata, git_sha, relpath, sha256_file, write_table
 
 HEADER = """\
 Upstream NICHES on the production cccRISE fits, and cccRISE's sender and
@@ -231,15 +240,33 @@ def write(
     spec: DatasetSpec, name: str, table: pd.DataFrame, metadata: dict, command: str
 ) -> None:
     path = NICHES_DIR / scores_filename(name, spec.output_key)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    table.to_parquet(path, index=False)
-    record_output(path, metadata, command, header=HEADER)
-    print(f"   wrote {path.name} ({len(table)} rows)", flush=True)
+    write_table(path, table, metadata, command, HEADER)
+
+
+def fit_metadata(spec: DatasetSpec, dims: dict) -> dict:
+    """The settings every table's record shares: the dataset and its fit."""
+    return dataset_metadata(spec) | {
+        "factors_path": relpath(spec.factors_path()),
+        "factors_sha256": sha256_file(spec.factors_path()),
+        "resulting_dims": dims,
+    }
+
+
+def write_cells(
+    spec: DatasetSpec, frame: pd.DataFrame, metadata: dict, command: str
+) -> None:
+    """`cell_frame`'s columns of `frame` (not the signal or NICHES columns
+    added later), labels as categories."""
+    columns = ["Cell", "Coarse", "Fine"] + [
+        c for c in frame.columns if c.startswith(("Sender C", "Receiver C"))
+    ]
+    cells = frame[columns].astype({"Coarse": "category", "Fine": "category"})
+    write(spec, "cells", cells, metadata, command)
 
 
 def run_niches(spec: DatasetSpec, args: argparse.Namespace, command: str) -> None:
     git_sha()  # pin the code version before anything runs (`provenance.git_sha`)
-    commit = source_commit(args.niches_source)
+    commit = None if args.cells_only else source_commit(args.niches_source)
     factors: xr.Dataset = load_factors_netcdf(spec.factors_path())
     lr_pairs = factors["lr_pair"].to_numpy().astype(str)
     loadings = factors["cp_D"].to_numpy()
@@ -247,6 +274,9 @@ def run_niches(spec: DatasetSpec, args: argparse.Namespace, command: str) -> Non
     adata = load_factors_to_anndata(spec.factors_path(), adata=spec.load())
     frame = cell_frame(adata, spec)
     dims = resulting_dims(spec, adata, n_lr_pairs=len(lr_pairs))
+    if args.cells_only:
+        write_cells(spec, frame, build_metadata(fit_metadata(spec, dims)), command)
+        return
     print("2. Per-cell signal...", flush=True)
     frame = add_signal(frame, adata, loadings, lr_pairs)
     print("3. NICHES...", flush=True)
@@ -264,10 +294,8 @@ def run_niches(spec: DatasetSpec, args: argparse.Namespace, command: str) -> Non
         populations = population_table(cohort, directions)
         orderings = ordering_table(cohort, directions[:, :N_ORDERING_DRAWS])
     metadata = build_metadata(
-        dataset_metadata(spec)
+        fit_metadata(spec, dims)
         | {
-            "factors_path": relpath(spec.factors_path()),
-            "factors_sha256": sha256_file(spec.factors_path()),
             "random_state": args.random_state,
             "niches_commit": commit,
             "r_versions": versions,
@@ -277,12 +305,12 @@ def run_niches(spec: DatasetSpec, args: argparse.Namespace, command: str) -> Non
             "taus": list(TAUS),
             "n_population_draws": N_POPULATION_DRAWS,
             "n_ordering_draws": N_ORDERING_DRAWS,
-            "resulting_dims": dims,
         }
     )
     write(spec, "populations", populations, metadata, command)
     write(spec, "orderings", orderings, metadata, command)
     write(spec, "tau", tau_table(cohort), metadata, command)
+    write_cells(spec, frame, metadata, command)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -293,11 +321,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--niches-source",
         type=Path,
-        required=True,
-        help=f"Clone of msraredon/NICHES at {NICHES_COMMIT}.",
+        help=f"Clone of msraredon/NICHES at {NICHES_COMMIT} (not with --cells-only).",
     )
     parser.add_argument(
-        "--r-library", type=Path, required=True, help="R library holding Seurat."
+        "--r-library",
+        type=Path,
+        help="R library holding Seurat (not with --cells-only).",
+    )
+    parser.add_argument(
+        "--cells-only",
+        action="store_true",
+        help="Write only the per-cell table (cells_<dataset>); skips R and NICHES.",
     )
     parser.add_argument("--r-workers", type=int, default=8)
     parser.add_argument("--random-state", type=int, default=0)
@@ -305,7 +339,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    args, command = parse_command(build_parser(), "cccrise-niches", argv)
+    parser = build_parser()
+    args, command = parse_command(parser, "cccrise-niches", argv)
+    if not args.cells_only and None in (args.niches_source, args.r_library):
+        parser.error("--niches-source and --r-library are needed without --cells-only")
     run_niches(resolve_dataset(args), args, command)
 
 

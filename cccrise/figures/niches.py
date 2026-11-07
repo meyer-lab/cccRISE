@@ -1,4 +1,4 @@
-"""The NICHES panels (Figure 5, `figureS_niches_ibd`): cccRISE's IBD
+"""The NICHES panels (Figure 4, `figureS_niches_ibd`): cccRISE's IBD
 sender and receiver populations against upstream NICHES, from the
 `cccrise-niches` tables. A population's NICHES concordance is its share of
 cells with a non-zero NICHES program score."""
@@ -97,7 +97,7 @@ def cases(components) -> list[tuple[int, str]]:
 
 
 def program_labels(ax, rows: list[tuple[int, str]], y: Sequence[float]) -> None:
-    """Row labels as Figure 4 labels its fits: S and R at their own ticks, one
+    """Row labels as Figure 5 labels its fits: S and R at their own ticks, one
     outer component label per pair."""
     ax.set_yticks(
         y, [side[0].upper() for _, side in rows], fontsize=style.FONT_SIZE_DENSE
@@ -446,11 +446,16 @@ def orderings(axs, components) -> None:
 def weight_scatters(axs) -> None:
     """Each component's per-cell sender vs. receiver weight, relative to each
     weight's largest value, its populations (`in_population`) colored and the
-    `GROUP_TAU` cutoffs drawn, on limits shared by every component."""
-    adata = common.get_cell_projections(DATASET)
+    `GROUP_TAU` cutoffs drawn, on limits shared by every component. Reads the
+    runner's per-cell weights (`cells_<dataset>`), so the build never loads
+    the cohort."""
+    table = load("cells")
     senders, receivers = (
-        np.asarray(adata.obsm[key]) / np.asarray(adata.obsm[key]).max(axis=0)
-        for key in ("sc_B", "rc_C")
+        weights / weights.max(axis=0)
+        for weights in (
+            table.filter(regex=rf"^{side} C\d+$").to_numpy()
+            for side in ("Sender", "Receiver")
+        )
     )
     lower = min(senders.min(), receivers.min()) - SCATTER_PAD
     cells = {}
@@ -495,7 +500,7 @@ def weight_scatters(axs) -> None:
     )
     common.source_data(
         "cell_weights_groups",
-        pd.DataFrame({"Cell": adata.obs_names, **cells}),
+        pd.DataFrame({"Cell": table["Cell"], **cells}),
         "One row per cell: its sender and receiver weight on each CP component, "
         "each relative to that weight's largest value, and its group: sender or "
         f"receiver if only that relative weight is at least {GROUP_TAU}, both if "

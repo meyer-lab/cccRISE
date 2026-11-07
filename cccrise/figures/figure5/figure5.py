@@ -1,32 +1,27 @@
-"""Figure 5: cccRISE on the IBDverse terminal-ileum cohort.
-
-The CP factor matrices (A-D); the EE/EC/tuft map, the hormone programs'
-sender weights, and their ligands PYY and GCG on its EE/EC part (E-H); each
-EE cell's C3/C4 sender-weight balance as an angle (I-J), whose extremes
-resolve two functional hormone states inside the annotated enteroendocrine
-type, villus-like (C3) and crypt-like (C4) (K); inflammation depletes the
-villus-like cells (S_ibd_hormone_axes). The C3 and C4 sender and receiver
-populations against NICHES: their concordance over what their labels predict
-(L), and beside it how weighting any direction by expression reaches NICHES
-(M); their concordance across tau is in S_niches_ibd."""
+"""Figure 5: what a cell-type-blind model finds that label-based models do not.
+Each cccRISE program between its best comparator column and its label ceiling
+(A); what each comparator column is (B); each program's best column in every
+fit (C); how STAC arranges the pairs of two mixed programs (D) and whether its
+columns keep their co-variation (E); what STAC reports for BTC-EGFR (F) and for
+PYY and GCG (G) beside what cccRISE resolves; and the NICHES-positive cells of
+cccRISE's populations against what their labels predict (H)."""
 
 from .. import common, style
 from . import (
-    cp_factor_matrices,
-    ee_state_map,
-    hormone_angle_hist,
-    hormone_angle_scatter,
-    hormone_expression_map,
-    hormone_extreme_markers,
-    niches_concordance,
-    niches_orderings,
+    best_column,
+    column_census,
+    flow_alad,
+    flow_ibd,
+    niches_fraction,
+    pair_columns,
+    program_covariation,
+    program_map,
 )
 
 LAYOUT = [
-    [cp_factor_matrices],
-    [ee_state_map, hormone_expression_map],
-    [hormone_angle_scatter, hormone_angle_hist, hormone_extreme_markers],
-    [niches_concordance, niches_orderings],
+    [program_map, column_census],
+    [best_column, pair_columns, program_covariation],
+    [flow_alad, flow_ibd, niches_fraction],
 ]
 
 

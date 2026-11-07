@@ -30,41 +30,30 @@ ARROWPROPS = {
 
 def volcano_data(group: str, reference: str):
     """(Wilcoxon ranking, detected fraction difference, -log10 q) of `group`
-    against `reference` ('receiver', or 'rest': every cell outside `group`)."""
+    against `reference` ('receiver', or 'rest': every cell outside `group`),
+    with detected fractions from `group_de` ('rest' pooled over every other cell)."""
     if reference == "rest":  # scanpy's "rest": every other cell; one cached test
         ranking = S.rank_genes(S.DE_GROUPS, "rest")[group]
     else:
         ranking = S.rank_genes((group,), reference)[group]
-    in_group, in_reference = detected_fractions(group, reference, ranking.index)
-    delta = in_group - in_reference
+    delta = ranking["detected"] - ranking["reference detected"]
     return ranking, delta, -np.log10(np.clip(ranking["q"], Q_FLOOR, 1))
-
-
-def detected_fractions(group: str, reference: str, genes):
-    """Fraction of `group`'s and of `reference`'s cells detecting each of
-    `genes`, 'rest' pooling every cell outside `group`."""
-    detected, _ = S.group_expression(list(genes))
-    if reference != "rest":
-        return detected[group], detected[reference]
-    sizes = S.cell_groups().value_counts()
-    others = [g for g in S.GROUPS if g != group]
-    pooled = detected[others] @ sizes[others] / sizes[others].sum()
-    return detected[group], pooled
 
 
 def volcano_table(group: str, reference: str) -> pd.DataFrame:
     """Every gene's point on the volcano of `group` against `reference`, with
     its Wilcoxon statistics and detected fractions, as source data."""
     ranking, delta, y = volcano_data(group, reference)
-    in_group, in_reference = detected_fractions(group, reference, ranking.index)
     return pd.DataFrame(
         {
             "Gene": ranking.index,
             "Wilcoxon score": ranking["score"].to_numpy(),
             "p": ranking["p"].to_numpy(),
             "q (BH)": ranking["q"].to_numpy(),
-            f"Detected fraction, {group}": in_group.to_numpy(),
-            f"Detected fraction, {name(reference)}": in_reference.to_numpy(),
+            f"Detected fraction, {group}": ranking["detected"].to_numpy(),
+            f"Detected fraction, {name(reference)}": ranking[
+                "reference detected"
+            ].to_numpy(),
             "Detected fraction difference": delta.to_numpy(),
             f"-log10 q (plotted, floored at q = {Q_FLOOR:g})": y.to_numpy(),
             "Enriched": enriched(ranking, delta).to_numpy(),

@@ -8,7 +8,7 @@ C5-only cells (neutrophil-like genes)."""
 import pandas as pd
 
 from .. import common
-from ..figure5 import _common as S
+from ..figure4 import _common as S
 
 AXES = ("wide",)
 TOP_FRACTION = 0.02
