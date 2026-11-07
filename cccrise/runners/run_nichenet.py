@@ -11,16 +11,12 @@ highest-loading cells against the lowest-loading cells of the whole dataset
 is the per-component differential expression over the full single-cell
 dataset, so the result is cached for ``figures/figure2/nichenet.py`` to plot.
 
-Each scored ligand is also re-scored on `--n-shuffle` copies of the NicheNet
-prior with its links shuffled (``nichenet.shuffled_percentiles``), the null of the
-weight-averaged score percentile test, and on `--n-cell-shuffle` receiver
-rankings with the high/low cell labels permuted
-(``nichenet.shuffled_cell_scores``), the null of the weighted-mean score test.
-Writes the long-format tables `figures/figure2/nichenet.py` and its
-supplement read:
+Each scored ligand is also re-scored on `--n-cell-shuffle` receiver rankings
+with the high/low cell labels permuted (``nichenet.shuffled_cell_scores``),
+the null of the weighted-mean score test. Writes the long-format tables
+`figures/figure2/nichenet.py` reads:
 
     nichenet_scores_<dataset>.parquet      one row per (component, ligand)
-    nichenet_null_<dataset>.parquet        one row per (component, shuffle, ligand)
     nichenet_cell_null_<dataset>.parquet   one row per (component, shuffle, ligand)
 
     uv run cccrise-nichenet --dataset alad
@@ -40,8 +36,6 @@ from ..validation.nichenet import (
     receiver_celltypes,
     receiver_rankings,
     shuffled_cell_scores,
-    shuffled_percentiles,
-    weighted_percentile_tests,
     weighted_score_tests,
 )
 from ._cli import (
@@ -75,7 +69,6 @@ def run_nichenet(
     de_method: DeMethod = "wilcoxon",
     min_expr_frac: float = 0.1,
     rel_cutoff: float = 0.4,
-    n_shuffle: int = 1000,
     n_cell_shuffle: int = 1000,
     n_jobs: int = 16,
     output_path: Path | None = None,
@@ -94,10 +87,8 @@ def run_nichenet(
         `nichenet.receiver_celltypes`).
     rel_cutoff
         Passed to `nichenet.component_ligand_scores`.
-    n_shuffle, n_jobs
-        Passed to `nichenet.shuffled_percentiles`.
-    n_cell_shuffle
-        Passed, with `n_jobs` and the ranking settings, to
+    n_cell_shuffle, n_jobs
+        Passed, with the ranking settings, to
         `nichenet.shuffled_cell_scores`.
     output_path : Path, optional
         Parquet destination; defaults to the registry's NicheNet scores filename.
@@ -150,13 +141,7 @@ def run_nichenet(
     for cmp in components:
         types = receiver_celltypes(adata, cmp, celltype_key)
         print(f"   Cmp {cmp} receiver cell types: {', '.join(types)}")
-    print(f"3. Re-scoring on {n_shuffle} shuffled NicheNet priors...")
-    null = shuffled_percentiles(scores, rankings, lt_df, n_shuffle, n_jobs)
-    print("   Weight-averaged score percentiles vs the shuffled priors:")
-    tests = weighted_percentile_tests(scores, null)[0]
-    print(tests.round(4).to_string(index=False))
-
-    print(f"4. Re-scoring on {n_cell_shuffle} cell-shuffled receiver rankings...")
+    print(f"3. Re-scoring on {n_cell_shuffle} cell-shuffled receiver rankings...")
     cell_null = shuffled_cell_scores(
         adata,
         scores,
@@ -171,14 +156,12 @@ def run_nichenet(
     print("   Weighted-mean scores vs the shuffled cells:")
     print(weighted_score_tests(scores, cell_null)[0].round(4).to_string(index=False))
 
-    null_path = output_path.with_name(spec.nichenet_null_filename())
     cell_null_path = output_path.with_name(spec.nichenet_cell_null_filename())
     print(
-        f"5. Writing {len(scores)} rows to {output_path} and the nulls to "
-        f"{null_path} and {cell_null_path}..."
+        f"4. Writing {len(scores)} rows to {output_path} and the null to "
+        f"{cell_null_path}..."
     )
     scores.to_parquet(output_path, index=False)
-    null.to_parquet(null_path, index=False)
     cell_null.to_parquet(cell_null_path, index=False)
     metadata = build_metadata(
         dataset_metadata(spec)
@@ -192,7 +175,6 @@ def run_nichenet(
             "min_expr_frac": min_expr_frac,
             "rel_cutoff": rel_cutoff,
             "receiver_celltype_column": celltype_key,
-            "n_shuffle": n_shuffle,
             "n_cell_shuffle": n_cell_shuffle,
             "nichenet_ligand_target_url": (
                 "https://zenodo.org/records/7074291/files/"
@@ -234,12 +216,6 @@ def build_parser() -> argparse.ArgumentParser:
         "the component's largest scorable pair.",
     )
     parser.add_argument(
-        "--n-shuffle",
-        type=int,
-        default=1000,
-        help="Shuffled NicheNet priors in the null of the weighted-percentile test.",
-    )
-    parser.add_argument(
         "--n-cell-shuffle",
         type=int,
         default=1000,
@@ -270,7 +246,6 @@ def main(argv: list[str] | None = None) -> None:
         de_method=cast(DeMethod, args.de_method),
         min_expr_frac=args.min_expr_frac,
         rel_cutoff=args.rel_cutoff,
-        n_shuffle=args.n_shuffle,
         n_cell_shuffle=args.n_cell_shuffle,
         n_jobs=args.n_jobs,
         output_path=resolve_output(

@@ -10,8 +10,7 @@ the same scores with the top/bottom labels shuffled among those cells
 (``nichenet.shuffled_cell_scores``; grey box, pooled over the shuffles). Above
 each component: a star where the ligand-weighted mean score exceeds its
 cell-shuffle null (one-sided permutation p, Benjamini-Hochberg adjusted across
-components, below `SIG_ALPHA`; ``nichenet.weighted_score_tests``), else n.s.
-The shuffled-prior test is in the NicheNet supplement (``figureS_nichenet``)."""
+components, below `SIG_ALPHA`; ``nichenet.weighted_score_tests``), else n.s."""
 
 import functools
 
@@ -53,12 +52,6 @@ AXES = ("rect",)
 def load_scores(dataset: str = DATASET) -> pd.DataFrame:
     """The runner's `component_ligand_scores` table."""
     return _load(DATASETS[dataset].nichenet_scores_filename(), dataset)
-
-
-@functools.cache
-def load_null(dataset: str = DATASET) -> pd.DataFrame:
-    """The runner's `shuffled_percentiles` table."""
-    return _load(DATASETS[dataset].nichenet_null_filename(), dataset)
 
 
 @functools.cache

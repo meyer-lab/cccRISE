@@ -7,7 +7,6 @@ subtitle: "Resolving cell-cell communication programs beyond cell-type boundarie
 
 - {{< label rise-factor-matrices >}}: ALAD RISE factor matrices
 - {{< label cmp-stability >}}: Collinearity and stability of RISE and CPD components
-- {{< label nichenet >}}: NicheNet validation against a shuffled prior
 - {{< label alad-associations >}}: Association of CPD components, RISE components, and patient covariates with ALAD outcome
 - {{< label anova-stability >}}: Stability of CPD component--outcome associations
 - {{< label ibd-rank-selection >}}: IBD CCC-RISE rank selection and RISE factor matrices
@@ -28,15 +27,6 @@ Collinearity and stability of RISE and CPD components.** ({{< panel cmp-stabilit
 ({{< panel cmp-stability rise-fms >}}) RISE gene factor and ({{< panel cmp-stability cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
 Each replicate's components were matched to the reference's by Hungarian matching.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-
-![](figures/figureS_nichenet/figureS_nichenet.svg){width="6.5in"}
-
-**{{< label nichenet >}}.
-NicheNet validation against a shuffled prior.** ({{< panel nichenet weighted-percentiles >}}) Target-score percentile of each ligand among its component's ligands, each ligand counted in proportion to its ligand weight.
-Boxes show the weighted quartiles, whiskers show the weighted 5th--95th percentiles, and diamonds show the weighted mean.
-Null: the same percentiles on 1,000 copies of the NicheNet v2 prior with ligand--target links reassigned at random, pooled across components.
-({{< panel nichenet prior-shuffle >}}) Ligand-weighted mean target-score percentile of each component's ligands (diamonds) against the same mean on 1,000 copies of the NicheNet v2 ligand--target prior with shuffled gene--ligand links; boxes show the quartiles and whiskers show the 2.5th--97.5th percentiles.
-\*: q < 0.05; one-sided empirical test, Benjamini--Hochberg corrected across the five components.
 
 ![](figures/figureS_alad_associations/figureS_alad_associations.svg){width="6.5in"}
 
