@@ -142,7 +142,10 @@ Dotted ray and arc indicate an example polar coordinate: (0.3, 45°).
 ({{< panel 4 hormone-angle-hist >}}) Distribution of EE cells with polar magnitude of at least 0.3 over polar angles, colored by angle-based thresholds at 30 and 60°.
 ({{< panel 4 hormone-extreme-markers >}}) Expression of crypt, intermediate (int.), and villus EE markers and BMP target genes in each group.
 Markers were curated from Beumer et al.\ (2018, 2020), Gehart et al., and Krzak et al.\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7].
-Genes shown differ between villus-like and crypt-like cells at q < 0.05 (Mann--Whitney U test, Benjamini--Hochberg corrected across all markers tested). L) [NICHES placeholder] M) [NICHES placeholder]
+Genes shown differ between villus-like and crypt-like cells at q < 0.05 (Mann--Whitney U test, Benjamini--Hochberg corrected across all markers tested).
+({{< panel 4 niches-concordance >}}) NICHES concordance of the component 3 and 4 sender (S) and receiver (R) populations (diamonds), as predicted by their fine cell-type labels (circles) and lineages (ticks), and under 1,000 random RISE directions matched for cell type (grey bars, 5th--95th percentiles).
+Filled diamonds: q < 0.05; one-sided empirical test against the random directions, Benjamini--Hochberg corrected across the 12 populations of the six components.
+({{< panel 4 niches-orderings >}}) NICHES concordance of each population's number of cells chosen by a random RISE direction (median of 200, not matched for cell type), the CCC-RISE weight, either multiplied by the cell's ligand or receptor expression, or that expression alone; left, each population's NICHES-positive cells and their share of all cells.
 :::
 
 We next sought to extend CCC-RISE to an inflammatory bowel disease (IBD) dataset (IBDverse), representing a biologically distinct disease context with enhanced statistical power compared with the ALAD dataset\ [@doi:10.1038/s41588-026-02634-7].
@@ -174,24 +177,36 @@ The four groups of cells were characterized by distinct gene expression: compone
 Further, the crypt-to-villus transition is driven by BMP activity, and we saw a stepwise increase in expression of BMP targets from crypt-like to mixed to villus-like cells ({{< fig 4 hormone-extreme-markers >}})\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036].
 All genes except the intermediate marker CCK remained differentially expressed (q < 0.05) between crypt- and villus-like cells across magnitude thresholds up to 0.9, after which low cell counts reduce statistical power ({{< fig ibd-hormone-axes marker-floor-sweep >}}).
 In agreement with the loss of function following inflammation indicated by component 3 associations ({{< fig ibd-associations status-loadings.1 >}}), component 3-high cells gradually contributed less to the overall EE population in a step-wise manner over healthy, CD uninflamed, and CD inflamed biopsies, indicating that more-exposed, villus-like cells are more sensitive to inflammatory pressure compared with other EE subpopulations ({{< fig ibd-hormone-axes extreme-share >}}).
-In sum, CCC-RISE components 3 and 4 described sender cells on a continuum between two prevailing states with distinct activity: crypt-like producers of GCG communicating with tuft cells and villus-like producers of PYY communicating with EC cells.
 
-To validate the interactions between EE, EC, and tuft subpopulations represented by components 3 and 4, we applied the NICHES pipeline...
+Although CCC-RISE assigns cells by their overall transcriptional state rather than their own ligand or receptor expression, we inferred that the cells it weighted most heavily as senders and receivers express the components' ligands and receptors themselves ({{< fig 4 hormone-expression-map >}}, {{< fig ibd-hormone-axes receptor-maps.1 >}}, {{< panel ibd-hormone-axes receptor-maps.2 >}}).
+As a partial, independent check of this, we thresholded each component's per-cell sender and receiver weights into populations at 0.3 of each weight's largest value ({{< fig niches-ibd weight-scatters >}}) and compared them with NICHES.
+NICHES is blind to state and instead scores each cell as a sender and as a receiver from its own expression of a set of LR pairs\ [@doi:10.1093/bioinformatics/btac775].
+We ran it on each component's carrying pairs and measured each population's NICHES concordance as the share of its cells that NICHES scored above zero.
+The component 3 and 4 populations held more NICHES-positive cells than their fine cell-type labels predict (C3 senders 0.80 against 0.52 and C4 0.73 against 0.46; C3 receivers 0.57 against 0.38 and C4 0.25 against 0.16), and more than when random directions in RISE space replaced the component's loadings, matched for cell type (q ≤ 0.025) ({{< fig 4 niches-concordance >}}).
+Within the same cell types, the component's own direction therefore picked out cells with NICHES signal significantly more often than arbitrary directions did.
+Across all six components, populations exceeded their labels' prediction (eight of twelve with q < 0.05) ({{< fig 4 niches-concordance >}}, {{< fig niches-ibd concordance >}}), and this measured gap held at every population threshold from 0.1 to 0.6 ({{< fig niches-ibd tau-sweep >}}).
+NICHES concordance could be easily accomplished by weighting any RISE direction, even a random one, by a cell's ligand or receptor expression ({{< fig 4 niches-orderings >}}).
+Nevertheless, CCC-RISE populations still reached high concordance from cell state alone without weighting by expression at all.
+In sum, CCC-RISE components 3 and 4 described sender cells on a continuum between two prevailing states---crypt-like producers of GCG communicating with tuft cells and villus-like producers of PYY communicating with EC cells---and picked out the cells carrying each signal more reliably than the finest available annotation.
 
-### [Placeholder: comparison section title]
+### CCC-RISE finds communication programs that label-based methods can not entirely resolve
 
 ::: {#fig-5}
 ![](figures/figure5/figure5.svg){width="6.5in"}
 
-**[Placeholder title: what a cell-type-blind model finds that label-based models do not.]** <!-- Draft legend skeleton from the panel modules' docstrings; to be written. -->
-({{< panel 5 program-map >}}) Each CCC-RISE program's best comparator column against its label ceiling.
+**[Placeholder title: what a cell-type-blind model finds that label-based models do not.]** <!-- Draft legend skeleton from the panel modules' docstrings; to be written. --> ({{< panel 5 program-map >}}) Each CCC-RISE program's best comparator column against its label ceiling.
 ({{< panel 5 column-census >}}) What each comparator column is.
 ({{< panel 5 best-column >}}) Each program's best column in every fit.
 ({{< panel 5 pair-columns >}}) How STACCato arranges the pairs of the mixed programs.
 ({{< panel 5 program-covariation >}}) The mixed programs' co-variation against their STACCato columns.
 ({{< panel 5 flow-alad >}}) BTC--EGFR in STACCato and in CCC-RISE.
 ({{< panel 5 flow-ibd >}}) PYY and GCG in STACCato and in CCC-RISE.
-({{< panel 5 niches-fraction >}}) NICHES-positive cells in CCC-RISE's populations against what their labels predict.
+({{< panel 5 niches-fraction >}}) NICHES concordance of every CCC-RISE sender and receiver population in ALAD and IBD (as in {{< fig 4 niches-concordance >}}) against the concordance its fine cell-type labels predict; the dashed line marks equality.
+Filled: q < 0.05 against random RISE directions, Benjamini--Hochberg corrected across each cohort's populations.
+Labeled: the populations of ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}).
 :::
 
 [Placeholder: comparison results text.]
+
+The populations of {{< fig 5 flow-alad flow-ibd >}} also held more NICHES-positive cells than their fine labels predict ({{< fig 5 niches-fraction >}}): ALAD component 5 senders 0.18 against 0.06 and receivers 0.28 against 0.07, and the IBD component 3 and 4 populations as above ({{< fig 4 niches-concordance >}}), supporting that the cells CCC-RISE resolves below the annotation carry the signal individually.
+This held for every IBD population but for 6 of 10 on ALAD, where the populations of components 2--4 sat close to or below their labels' prediction.

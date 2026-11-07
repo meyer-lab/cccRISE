@@ -279,7 +279,9 @@ For volcano plots, the effect size of each component's top 20 LR pairs was the l
 
 ### External Biological Validation
 
-**NicheNet downstream-target validation.** We tested whether each component's receiver cells upregulated the downstream targets of the component's ligands, using the NicheNet v2 ligand--target prior\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
+#### Downstream targets of ligands (NicheNet)
+
+We tested whether each component's receiver cells upregulated the downstream targets of the component's ligands, using the NicheNet v2 ligand--target prior\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 For each CP component:
 
 1. Receiver cell types were those whose mean per-cell receiver loading was at least 0.4 times that of the top cell type.
@@ -290,6 +292,32 @@ For each CP component:
    The result was a summary score per component.
 6. The null was formed by recomputing this weighted mean on 1,000 copies of the prior with the same number of ligand--target links placed at random.
 7. An empirical one-sided p-value was computed for each component and corrected across components.
+
+#### Per-cell signaling (NICHES)
+
+**NICHES program scores.** We ran NICHES on each sample's cells, using CCC-RISE's normalized expression\ [@doi:10.1093/bioinformatics/btac775].
+For each CP component, with sender, receiver, and LR-pair loadings $e$, $f$, and $g$ (its columns of $E$, $F$, and $G$), NICHES scored the component's carrying pairs $\mathcal{C}$ defined as the fewest LR pairs carrying 90% of $\sum_{l} g_{l}^{2}$.
+More specifically, we used CellToSystem to score each cell as a sender, and SystemToCell to score it as a receiver, each against the mean of the other cells in its sample.
+Cell $j$'s program score on each side was $n_{j} = \sum_{l \in \mathcal{C}} g_{l}^{2}s_{jl}$, where $s_{jl}$ is its NICHES score for LR pair $l$.
+Cells with $n_{j} > 0$ were deemed NICHES-positive.
+
+**Populations and concordance.** A component's sender population was the cells whose per-cell sender loading (Mapping CCC-RISE Components to Cells) was at least $\tau = 0.3$ times its largest value, $(Pe)_{j} \geq \tau \max_{j'}(Pe)_{j'}$, and its receiver population was defined likewise from $Pf$.
+Unlike the label-free sender and receiver groups defined there, a cell past both cutoffs belonged to both populations.
+A population's NICHES concordance was the fraction of its cells that were NICHES-positive.
+
+**Reference concordances.** Each population's concordance was compared with two references.
+The first was the concordance its cell-type labels predict.
+This was taken as the mean, over the population's cells, of the fraction of NICHES-positive cells in each cell's fine cell type (or lineage).
+The second replaced the component's loadings with random directions in eigen-state space:
+
+1. Each of 1,000 directions $u$ was drawn uniformly from the unit sphere in $\mathbb{R}^{r}$, and each cell's score became $(Pu)_{j}$ in place of $(Pe)_{j}$ or $(Pf)_{j}$.
+2. From each fine cell type, the cells with the largest scores were taken, as many as the population held from that type.
+3. The concordance of these cells formed the null distribution.
+
+Empirical one-sided p-values against the 1,000 directions were corrected across each cohort's populations.
+
+**Orderings.** To show what concordance depends on, all cells were ranked by five orderings and the population's number of top-ranked cells taken from each: a random direction ($Pu$ as the median over 200 directions, not matched for cell type), the per-cell loading, the positive part of each of these multiplied by the cell's ligand (senders) or receptor (receivers) expression, and that expression alone.
+This expression was the cell's centered expression of the component's ligands or receptors, each gene weighted by the squared LR-pair loadings $g_{l}^{2}$ of its pairs.
 
 ### Mapping CCC-RISE Components to Cells
 
@@ -313,8 +341,6 @@ Fractions were compared across sample groups by Kruskal--Wallis tests, with corr
 ### Comparator Methods
 
 <!-- Placeholder pseudobulk text -->
-
-<!-- Placeholder matrix-based approach text -->
 
 <!-- Placeholder tensor-based approach text -->
 
