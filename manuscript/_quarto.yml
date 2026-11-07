@@ -38,10 +38,6 @@ format:
         theme: cosmo
     typst:
         papersize: us-letter
-        # Sub-sections (####) set apart from sections (###), which Typst styles alike
-        include-in-header:
-            - text: |
-                #show heading.where(level: 4): set text(style: "italic", weight: "regular")
         margin:
             x: 1in
             y: 1in
