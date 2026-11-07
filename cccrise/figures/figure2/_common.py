@@ -194,9 +194,9 @@ def top_pair_genes() -> list[str]:
 
 
 @functools.cache
-def cell_groups() -> pd.Series:
-    """Each cell's group at `GROUP_TAU`, "rest" if in none."""
-    groups = split_cells(*component_weights())
+def cell_groups(tau: float = GROUP_TAU) -> pd.Series:
+    """Each cell's group at `tau`, "rest" if in none."""
+    groups = split_cells(*component_weights(), tau)
     labels = np.full(len(groups["sender"]), "rest", dtype=object)
     for group, mask in groups.items():
         labels[mask] = group
@@ -204,14 +204,16 @@ def cell_groups() -> pd.Series:
 
 
 @functools.cache
-def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFrame]:
+def rank_genes(
+    groups: tuple[str, ...], reference: str, tau: float = GROUP_TAU
+) -> dict[str, pd.DataFrame]:
     """{group: Wilcoxon score, p, and BH q per gene, highest score first} of each
-    of `groups` against `reference`. scanpy's fold changes are left out: they
-    assume natural-log data."""
+    of `groups` against `reference`, split at `tau`. scanpy's fold changes are
+    left out: they assume natural-log data."""
     adata = common.get_cell_projections(GRANULARITY_DATASET)
     test = anndata.AnnData(
         X=adata.X,
-        obs=pd.DataFrame({"group": cell_groups().to_numpy()}, index=adata.obs_names),
+        obs=pd.DataFrame({"group": cell_groups(tau).to_numpy()}, index=adata.obs_names),
         var=pd.DataFrame(index=adata.var_names),
     )
     sc.tl.rank_genes_groups(

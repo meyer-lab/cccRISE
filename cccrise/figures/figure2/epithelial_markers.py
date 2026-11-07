@@ -4,6 +4,8 @@ epithelial subtype markers of two lung atlases (`S.EPITHELIAL_SUBTYPE_MARKERS`)
 that stratify sender from receiver (`stratifying_markers`), and the genes of
 the component's top LR pairs, per group."""
 
+import functools
+
 import numpy as np
 import pandas as pd
 from scipy.stats import false_discovery_control
@@ -18,6 +20,7 @@ MIN_DETECTED_DIFFERENCE = 0.2
 
 
 def plot(axs):
+    _save_tests(*marker_tests())
     S.plot_markers(
         axs[0],
         # {"Pan-epithelial": S.CELLTYPE_MARKERS["Epithelial cells"]} |
@@ -32,6 +35,18 @@ def stratifying_markers() -> dict[str, list[str]]:
     hypotheses, not the genome), is below `SIG_ALPHA` and whose detected
     fractions differ by `MIN_DETECTED_DIFFERENCE`}, subtypes without one left
     out."""
+    candidates, *_, kept = marker_tests()
+    selected = {
+        name: [g for g in genes if kept[g]] for name, genes in candidates.items()
+    }
+    return {name: genes for name, genes in selected.items() if genes}
+
+
+@functools.cache
+def marker_tests():
+    """(candidate markers per subtype, and over every tested marker: Wilcoxon
+    p, BH q, detected fractions per group, and whether shown) behind
+    `stratifying_markers`."""
     candidates = {
         name: S.present(genes) for name, genes in S.EPITHELIAL_SUBTYPE_MARKERS.items()
     }
@@ -42,11 +57,7 @@ def stratifying_markers() -> dict[str, list[str]]:
     kept = (q < common.SIG_ALPHA) & (
         np.abs(detected["sender"] - detected["receiver"]) >= MIN_DETECTED_DIFFERENCE
     )
-    selected = {
-        name: [g for g in genes if kept[g]] for name, genes in candidates.items()
-    }
-    _save_tests(candidates, p, q, detected, kept)
-    return {name: genes for name, genes in selected.items() if genes}
+    return candidates, p, q, detected, kept
 
 
 def _save_tests(candidates, p, q, detected, kept) -> None:

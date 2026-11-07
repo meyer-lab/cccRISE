@@ -9,7 +9,7 @@ from ... import common
 from . import _common as S
 
 TOP_GENE_FRACTION = 0.1
-AXES = ("tall",)
+AXES = ("rect",)
 
 
 def plot(axs):
@@ -25,6 +25,7 @@ def draw(axs, dataset: str) -> None:
     top = np.argsort(-np.abs(loadings).max(axis=1))[:n_top]
     rows = top[common.dominant_order(loadings[top])]
     image = common.plot_factor_heatmap(ax, loadings[rows], S.XLABEL)
+    S.odd_component_ticks(ax, loadings.shape[1])
     common.source_data(
         "rise_gene_factor_top_genes",
         S.normalized_table(factor["gene"].values[rows], loadings[rows], "Gene"),

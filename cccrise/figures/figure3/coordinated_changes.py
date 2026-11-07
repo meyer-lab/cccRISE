@@ -56,7 +56,7 @@ from ._common import (
 
 BASELINES = {  # label, color
     "random": ("Random", style.COLORS["muted"]),
-    "expression_matched": ("Expression-matched", style.COLORS["receiver"]),
+    "expression_matched": ("Expr.-matched", style.COLORS["receiver"]),
     "associated": ("Other associated", style.COLORS["up"]),
 }
 AXES = ("square", "square")

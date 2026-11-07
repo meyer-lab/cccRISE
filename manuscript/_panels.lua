@@ -3,7 +3,7 @@
 -- axes with `.i`), and optionally a second module ending a range. Hyphens
 -- stand in for module names' underscores. Letters come from _panels.yml
 -- (written by cccrise-fbuild), supplement labels from their position in
--- `ev_figures` or `appendix_figures`.
+-- `ev_figures` or `appendix_figures`, and tables' from `appendix_tables`.
 local str = pandoc.utils.stringify
 
 local function letters(panels, spec)
@@ -22,6 +22,7 @@ end
 local CLASSES = {
   { list = "ev_figures", ref = "Fig. EV", title = "Figure EV" },
   { list = "appendix_figures", ref = "Appendix Fig. S", title = "Appendix Figure S" },
+  { list = "appendix_tables", ref = "Appendix Table S", title = "Appendix Table S" },
 }
 
 -- A supplement's reference label and legend title, e.g. "Fig. EV1", "Figure EV1"
@@ -31,7 +32,7 @@ local function supplement(name, meta)
       if str(listed) == name then return class.ref .. i, class.title .. i end
     end
   end
-  quarto.log.warning("No supplementary figure class for " .. name)
+  quarto.log.warning("No supplementary figure or table class for " .. name)
   return "[" .. name .. "]", "[" .. name .. "]"
 end
 
@@ -55,6 +56,10 @@ return {
   fig = function(args, _, meta)
     local label, panels = resolve(args, meta)
     return pandoc.Str(label .. panels)
+  end,
+  -- "Appendix Table S1": a table reference in the text
+  tbl = function(args, _, meta)
+    return pandoc.Str((supplement(str(args[1]):gsub("-", "_"), meta)))
   end,
   -- "f": panel letters alone, for captions
   panel = function(args, _, meta)

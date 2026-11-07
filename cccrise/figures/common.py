@@ -37,6 +37,7 @@ import pandas as pd
 import seaborn as sns
 import yaml
 from matplotlib import pyplot as plt
+from matplotlib.colors import to_rgb
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
@@ -606,7 +607,12 @@ def source_data(
     # Index labels kept as columns, but not an unnamed integer index: row
     # positions left over from filtering or sorting
     positional = frame.index.names == [None] and frame.index.dtype.kind in "iu"
-    frame = frame.reset_index(drop=positional).replace("cccRISE", "CCC-RISE")
+    frame = frame.reset_index(drop=positional)
+    # Value by value: `replace` fails on array cells (GroupSizes) and categoricals
+    for c in frame.select_dtypes(["object", "string", "category"]):
+        frame[c] = frame[c].map(
+            lambda v: "CCC-RISE" if isinstance(v, str) and v == "cccRISE" else v
+        )
     frame.to_csv(folder / f"{name}.csv", index=False)
     (folder / f"{name}.yaml").write_text(
         yaml.safe_dump({"description": description, "part": part})
@@ -685,7 +691,7 @@ def plot_rise_rank(sweep: pd.DataFrame, ax: plt.Axes, rank: int | None = None):
         lines.append(plot_mean_sd(ax, mean.index, mean, sd, color, label))
     mark_rank(ax, rank)
     ax.set_xlabel("RISE rank")
-    ax.set_ylabel("$R^2X$")
+    ax.set_ylabel("R²X")
     ax.legend(handles=lines)
     return lines
 
@@ -716,7 +722,7 @@ def plot_cpd_fit_r2x(
     ax.plot(sweep["Rank"], sweep["FitR2X"], marker=marker, color=color, label="Fit")
     mark_rank(ax, rank)
     ax.set_xlabel("CP rank")
-    ax.set_ylabel("Fit $R^2X$")
+    ax.set_ylabel("Fit R²X")
 
 
 def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
@@ -725,7 +731,7 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     by_rank = repeats.groupby("Rank")["ImputationR2X"]
     mean, sd = by_rank.mean(), by_rank.std().fillna(0)
     plot_mean_sd(ax, mean.index, mean, sd, style.COLORS["heldout"], "Imputation")
-    ax.set_ylabel("$R^2X$")
+    ax.set_ylabel("R²X")
     ax.set_ylim(top=1.25 * ax.dataLim.y1)  # headroom for the legend
     ax.legend(loc="upper right")
 
@@ -812,7 +818,7 @@ def plot_r2x_sweep(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -
     mark_kneedle(ax, elbow, median[elbow])
     mark_rank(ax, rank)
     rank_axis(ax, median.index)
-    ax.set_ylabel("Fit $R^2X$")
+    ax.set_ylabel("Fit R²X")
 
 
 def mark_kneedle(ax: plt.Axes, rank: int, value: float, above: bool = False) -> None:
@@ -1026,6 +1032,7 @@ LEVEL_ORDER = [
     "recovered",
     "No CLAD/Stable",
     "No CLAD/Recovered",
+    "Stable/Recovered",
     "No CLAD",
     "CLAD",
     "CLAD/Declined",
@@ -1163,7 +1170,7 @@ def group_loadings(
 #: Outcome levels as figures and the app display them; the source data keep
 #: the original labels.
 LEVEL_LABELS = {
-    "No CLAD/Stable": "No CLAD",
+    "No CLAD/Stable": "Stable",
     "No CLAD/Recovered": "Recovered",
     "CD_uninflamed": "CD uninflamed",
     "CD_inflamed": "CD inflamed",
@@ -1407,6 +1414,80 @@ def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
     return image
+
+
+#: ALAD condition groupings drawn as color strips beside condition factor
+#: matrices: obs column -> (legend title, {level: color}). Status in greys so
+#: its colors don't collide with the outcomes' (Fig. 3A's)
+CONDITION_STRIPS = {
+    "ALADstatus": (
+        "ALAD status",
+        {"control": "0.85", "declined": "0.25", "recovered": "0.55"},
+    ),
+    "6monthcondition": (
+        "6-mo outcome",
+        dict(
+            zip(
+                ("No CLAD/Stable", "No CLAD/Recovered", "CLAD", "Died"),
+                style.CATEGORICAL,
+                strict=False,
+            )
+        ),
+    ),
+}
+STRIP_WIDTH = 1.2 * style.MM
+STRIP_GAP = 0.4 * style.MM
+
+
+def group_conditions(
+    groups: pd.DataFrame, order: np.ndarray, strips: dict = CONDITION_STRIPS
+) -> np.ndarray:
+    """Conditions (rows of `groups`, their obs) in `order` (e.g.
+    `dominant_order`) regrouped by each `strips` column in turn, levels in
+    its order."""
+    ranks = [
+        groups[column].map({level: i for i, level in enumerate(colors)}).to_numpy()
+        for column, (_, colors) in strips.items()
+    ]
+    return np.lexsort((np.argsort(order), *ranks[::-1]))
+
+
+def condition_strips(
+    ax: plt.Axes, groups: pd.DataFrame, strips: dict = CONDITION_STRIPS
+) -> None:
+    """A color strip per `strips` column left of a condition factor matrix
+    (rows in `groups`' order), the y label moved left of them, and their
+    legend, titled per strip, right of the matrix."""
+    inches = ax.bbox.width / ax.figure.dpi
+    step = (STRIP_WIDTH + STRIP_GAP) / inches
+    for i, (column, (_, colors)) in enumerate(reversed(strips.items())):
+        strip = ax.inset_axes((-(i + 1) * step, 0, STRIP_WIDTH / inches, 1))
+        rgb = [to_rgb(colors[level]) for level in groups[column]]
+        strip.imshow(np.array(rgb)[:, None], aspect="auto", interpolation="nearest")
+        strip.set(xticks=[], yticks=[])
+        strip.spines[:].set_visible(False)
+    strip.set_ylabel(ax.get_ylabel())  # the leftmost strip
+    ax.set_ylabel("")
+    titles = [title for title, _ in strips.values()]
+    entries = [
+        entry
+        for title, colors in strips.values()
+        for entry in [
+            Patch(color="none", label=title),
+            *(
+                Patch(color=c, label=_sentence_case(level_label(level)))
+                for level, c in colors.items()
+            ),
+        ]
+    ]
+    key = legend(ax, "right", handles=entries, handlelength=0.8)
+    for text in key.get_texts():
+        if text.get_text() in titles:
+            text.set_fontweight("bold")
+
+
+def _sentence_case(label: str) -> str:
+    return label[0].upper() + label[1:]
 
 
 def dominant_order(loadings: np.ndarray) -> np.ndarray:
