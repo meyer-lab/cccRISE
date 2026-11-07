@@ -25,7 +25,8 @@ SECTION_COLORS = dict(
 def plot(axs):
     (ax,) = axs
     sweep = tau_sweep()
-    for (section, _), rows in sweep.groupby(["Section", "Gene"], sort=False):
+    for _, rows in sweep.groupby(["Section", "Gene"], sort=False):
+        section = rows["Section"].iat[0]
         ax.plot(
             rows["tau"],
             rows["Signed -log10 q"],

@@ -15,7 +15,7 @@ Originally designed to merely detect the presence of signaling pathways, these f
 A critical objective of CCC analysis is to understand how cellular interactions evolve across distinct biological contexts, such as disease states, developmental stages, or treatment groups\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41467-017-02391-6; @doi:10.1073/pnas.1918937117; @doi:10.1186/1471-2105-12-19].
 By mapping alterations in LR activity and signaling pathways, researchers can pinpoint the communication programs that drive phenotypic outcomes and identify potential therapeutic targets.
 The most direct strategies contrast two conditions at a time.
-For example, scDiffCom, CrossTalkeR, and NATMI model differences in communication between conditions to identify interactions associated with disease or phenotypic changes\ [@doi:10.1038/s43587-023-00514-x; @doi:10.1093/bioinformatics/btab370; @doi:10.1038/s41467-020-18873-z]].
+For example, scDiffCom, CrossTalkeR, and NATMI model differences in communication between conditions to identify interactions associated with disease or phenotypic changes\ [@doi:10.1038/s43587-023-00514-x; @doi:10.1093/bioinformatics/btab370; @doi:10.1038/s41467-020-18873-z].
 However, pairwise comparison tools ignore variation between individual samples and do not extend to cohorts with many conditions.
 
 Computational approaches for multi-condition CCC analysis generally fall into two primary categories: matrix-based and tensor-based methods.

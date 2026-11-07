@@ -279,7 +279,7 @@ A recipient's samples were kept together in the jackknife and in outcome-label p
 Figure captions detail pertinent statistical analyses or metrics, the number of conditions, and confidence interval values.
 Shared metrics are defined below.
 
-**Hungarian matching of components.** Because component order and sign are not fixed, the components of two fits of the same rank were matched one-to-one by the assignment maximizing the summed similarity of matched pairs (Hungarian algorithm) [@doi:10.1002/nav.3800020109].
+**Hungarian matching of components.** Because component order and sign are not fixed, the components of two fits of the same rank were matched one-to-one by the assignment maximizing the summed similarity of matched pairs (Hungarian algorithm)\ [@doi:10.1002/nav.3800020109].
 Unless stated otherwise, the similarity of a pair was its FMS over the compared modes.
 
 **Benjamini--Hochberg multiple-test correction.** p-values were corrected for multiple testing by the Benjamini--Hochberg procedure across the family of tests stated with each analysis and corrected values were reported as q, with q < 0.05 considered significant\ [@doi:10.1111/j.2517-6161.1995.tb02031.x].
