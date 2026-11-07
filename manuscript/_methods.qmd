@@ -70,8 +70,7 @@ Then, the projection matrices, $\mathbf{P,}$ were updated by solving the Orthogo
 Given matrices $M,N \in \mathbb{R}^{n \times m}$, the Orthogonal Procrustes problem seeks an orthogonal matrix $Q \in \mathbb{R}^{n \times n}$ that minimizes $\left\| MQ - N \right\|_{F}^{2}$.
 The solution is given by $Q = UV^{T}$, where $U\Sigma V^{T}$is the singular value decomposition of $N^{T}M$.
 For a low-rank decomposition, we updated each $\mathbf{P}_{\mathbf{i}}\mathbf{\in}\mathbf{P}$ as the product of the first $r$ left and right singular vectors from the SVD of $Bdiag\left( a_{i} \right)C^{T}X_{sc,i}^{T}$.
-This process of updating the factor matrices using PARAFAC and the projections via Orthogonal Procrustes was repeated until a specific number of iterations elapsed or the difference in R2X between iterations reached a threshold.
-This cycle of aligning the tensor and then factoring it was repeated until either 100 iterations elapsed or the difference in R²X between iterations fell below 1×10⁻⁶.
+This cycle of aligning the tensor and then factoring it was repeated until either 100 iterations elapsed or the difference in R^2^X between iterations fell below 1×10^-6^.
 RISE enhances the core PARAFAC2 algorithm with key optimizations including a parameter initialization scheme via SVD, the implementation of Nesterov acceleration to improve convergence, and post-factorization alignment procedures to ensure consistent, interpretable results.\ [@doi:10/cxfskg; @doi:10.1016/j.chemolab.2021.104312]
 
 <!-- Claude's draft of fitting with B=I, slice normalization, and mean-centering:
@@ -106,20 +105,16 @@ From the eigen-state factors that RISE produces, CCC scores were calculated for 
 Pairs were retained only if every ligand and receptor subunit gene was present in the expression data.
 The expression of a multimeric complex was taken as the minimum expression of its subunits.
 
-**Eigen-state expression.** The expression of eigen-state $q$ in condition $i$ is the corresponding row of $P_{i}^{T}X_{sc,i} + \mathbf{1}\mu^{T}$, clipped at 0, where $\mu$ is the per-gene mean that RISE centers on (above).
+**Eigen-state expression and sign convention.** RISE's gene loadings are deviations, $\Delta$, from the per-gene mean $\mu$ (Data Processing), so they can be negative although expression cannot.
+Scoring two deviations directly, $\Delta_L \Delta_R$, keeps only the interaction term of the expansion of actual expression, $(\mu_L + \Delta_L)(\mu_R + \Delta_R) = \mu_L\mu_R + \mu_L\Delta_R + \mu_R\Delta_L + \Delta_L\Delta_R$, so two negative deviations would produce a spuriously large positive score indistinguishable from two positive ones.
+The expression of eigen-state $q$ in condition $i$ was therefore the corresponding row of $P_{i}^{T}X_{sc,i} + \mathbf{1}\mu^{T}$, with the rare, small negative values left by the linear reconstruction clipped to zero, so that communication scores approximate actual non-negative expression.
 
 **CCC scoring.** To model CCC, we represented the expression of a ligand and its receptor as the outer product of the gene expression for a LR pair.
 This operation captures the combinatorial potential for signaling, where each element in the resulting matrix represents the product of a sender eigen-state's ligand expression and a receiver eigen-state's receptor expression.
 In doing so, we assumed the LR interactions were proportional to the mRNA abundance of the ligand and receptor.
 When extended across all LR pairs and conditions, these formed an aligned 4D communication tensor with dimensions of condition, sender eigen-state, receiver eigen-state, and LR pair.
 The tensor was assembled with the code developed for Tensor-cell2cell\ [@doi:10.1038/s41467-022-31369-2].
-
-**Sign convention for the communication score.** RISE eigen-state gene loadings are estimated relative to a fixed per-gene mean computed once over the full dataset ($\mu$), the same reference RISE's own ALS fit subtracts internally; a loading is therefore a deviation from $\mu$, $\Delta$, and can be negative even though real expression cannot.
-Taking the outer product directly on two such deviations, $\Delta_L \Delta_R$, is only the interaction term of the full expansion of actual expression, $(\mu_L + \Delta_L)(\mu_R + \Delta_R) = \mu_L\mu_R + \mu_L\Delta_R + \mu_R\Delta_L + \Delta_L\Delta_R$; discarding the baseline and both main-effect terms lets two negative deviations produce a spuriously large positive score indistinguishable from two positive ones.
-We therefore added $\mu$ back to each eigen-state's ligand/receptor loading before scoring, so the communication score approximates actual non-negative expression rather than a product of centered loadings, and clipped the rare, small negative residual left by the linear reconstruction to zero.
-
-**Alternative scoring functions.** Beyond the expression product used for the reported results (and by Tensor-cell2cell), we implemented three alternative ways to combine a sender eigen-state's non-negative ligand expression, $L$, with a receiver eigen-state's non-negative receptor expression, $R$, into a communication score to assess robustness to this choice: an arithmetic mean, $(L + R)/2$, used by CellPhoneDB; a geometric mean, $\sqrt{LR}$, used by scDiffCom; and a CellChat-style saturating Hill function, $LR / (K_h + LR)$, where $K_h = 0.5$ is a half-saturation constant\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41596-020-0292-x; @doi:10.1038/s43587-023-00514-x; @doi:10.1038/s41467-021-21246-9].
-All three require non-negative $L, R$, which our sign-convention correction above provides.
+Alternative scoring functions are described under Robustness Tests.
 
 ### Canonical Polyadic Decomposition
 
@@ -176,21 +171,13 @@ The RISE and CP fits from which all reported results are derived are uncompresse
 
 ### Fit Evaluation
 
-**Reconstruction error.** R^2^X, or the fraction of variance explained by the model, was used to evaluate the effectiveness of the data reduction.
-For RISE, the Frobenius norm of the difference between the scRNA-seq data ($X_{sc}$) and the reconstruction from the RISE factors and projections ($X_{RISE}$) was calculated.
-This difference was normalized by the Frobenius norm of the data and subtracted from 1.
+**Reconstruction error.** Fits were evaluated by R^2^X, the fraction of variance explained,
 
 $$
-  R^{2}X = 1 - \ \frac{\left\| X_{sc} - X_{RISE} \right\|^{2}}{\left\| X_{sc} \right\|^{2}}
+  R^{2}X = 1 - \frac{\left\| X - \hat{X} \right\|^{2}}{\left\| X \right\|^{2}}
 $$
 
-For CPD, the Frobenius norm of the difference between the 4D communication tensor after CCC scoring ($X_{CCC\ 4D\ Tensor}$) and the reconstruction from the CPD factors ($X_{CPD}$) was calculated.
-This difference was normalized by the Frobenius norm of the data and subtracted from 1:
-
-$$
-  R^{2}X = 1 - \ \frac{\left\| X_{CCC\ 4D\ Tensor} - X_{CPD} \right\|^{2}}{\left\| X_{CCC\ 4D\ Tensor} \right\|^{2}}
-$$
-
+where $X$ is the data and $\hat{X}$ its reconstruction.This was used to measure the error between the scRNA-seq data and its reconstruction from the RISE factors and projections for RISE, and the 4D communication tensor and its reconstruction from the CP factors for CPD.
 R^2^X ranges from 0 to 1, with a score of 1 indicating a perfect reconstruction.
 The reported R^2^X was the unweighted reconstruction error, although the RISE fit used patient slice normalization.
 
@@ -246,10 +233,13 @@ RISE condition loadings ($A$) were corrected and tested in the same way, with co
 
 **Covariate confounder testing.** Patient covariates were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
 
-**LR pair association testing.** For each CP component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($E$) and receiver ($F$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}e_{s}f_{t}$, where $X_{istl}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in condition $i$.
-These scores were corrected for total sample expression as above and tested against outcome by one-way ANOVA, with correction across the 513 LR pairs.
-For the component's top 10 LR pairs by absolute LR-pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
-These correlations were compared with those of LR pairs drawn 2,000 times from three baselines: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with outcome (q < 0.05).
+**Component context scores.** For each CP component, with sender, receiver, and LR-pair loadings $e$, $f$, and $g$ (its columns of $E$, $F$, and $G$), each LR pair's communication score in each sample was the sample's tensor slice for that pair weighted by $e$ and $f$ and summed, $S_{il} = \sum_{s,t} X_{istl}e_{s}f_{t}$, where $X_{istl}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in condition $i$.
+The component's top 10 LR pairs were those with the largest $\left| g_{l} \right|$, and its carrying pairs, $\mathcal{C}$, the fewest LR pairs, taken in that order, carrying 90% of $\sum_{l} g_{l}^{2}$.
+
+**LR pair outcome association.** Context scores were corrected by the total-expression correction and tested against outcome by one-way ANOVA, with correction across all of the LR pairs measured.
+
+**LR pair co-variation.** For the component's top 10 LR pairs, we computed the Spearman correlation of the uncorrected context scores across samples between each pair of LR pairs.
+These correlations were compared with those of LR pairs drawn 2,000 times from random LR pairs, expression-matched LR pairs drawn from the 20 LR pairs nearest a top pair in log mean score, and the other LR pairs associated with outcome (q < 0.05).
 
 ### Robustness Tests
 
@@ -261,8 +251,11 @@ To assess the stability of component--outcome associations, the ANOVA for an out
 **Model re-initialization.** The full data were refit end to end with different random seeds, using the same fits and reference as above.
 Because the conditions were unchanged, RISE was compared on the condition and gene modes and CP on the condition and LR-pair modes.
 
-**Alternative CCC scoring** To assess robustness to the communication score, the communication tensor was recomputed from a single shared, uncompressed RISE fit under each alternative scoring function, and each tensor was fit with an uncompressed CPD at the selected rank.
-Components of each alternative fit were matched to the expression-product fit by Hungarian matching and their mean absolute cosine over the condition and LR-pair modes was computed.
+**Alternative CCC scoring.** To assess robustness to the communication score, we replaced the expression product (also used by Tensor-cell2cell) with other, commonly used ways to combine a sender eigen-state's ligand expression, $L$, with a receiver eigen-state's receptor expression, $R$.
+We used an arithmetic mean, $(L + R)/2$, a geometric mean, $\sqrt{LR}$, and a CellChat-style saturating Hill function, $LR / (K_h + LR)$, with half-saturation constant $K_h = 0.5$\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41596-020-0292-x; @doi:10.1038/s43587-023-00514-x; @doi:10.1038/s41467-021-21246-9].
+All three require non-negative $L$ and $R$, which the eigen-state expression provides.
+The communication tensor was recomputed from a single shared, uncompressed RISE fit under each scoring function, and each tensor was fit with an uncompressed CPD at the selected rank.
+Components of each alternative fit were matched to the expression-product fit by Hungarian matching, and their mean absolute cosine over the condition and LR-pair modes was computed.
 
 ### Significance Against Nulls
 
@@ -271,11 +264,26 @@ Within each condition, the rows of the projection matrix $P_{i}$ were shuffled, 
 This was repeated for 1,000 permutations.
 For each tensor entry, an empirical one-sided p-value was computed against the permuted scores.
 
-**Patient-label permutation null.** Following scDiffCom, we tested whether each LR pair's per-sample score (as in LR pair association testing, divided by the sample's total normalized expression) differed between patient groups\ [@doi:10.1038/s43587-023-00514-x].
+**Patient-label permutation null.** Following scDiffCom, we tested whether each LR pair's context score, divided by the sample's total normalized expression (rather than corrected by the total-expression correction), differed between patient groups\ [@doi:10.1038/s43587-023-00514-x].
 The test statistic was the difference in mean score between two groups.
 The null was formed by 10,000 permutations of outcome labels between patients, moving samples from the same patient together.
 Empirical one-sided p-values were computed and corrected across the component's top 10 LR pairs.
 For volcano plots, the effect size of each component's top 20 LR pairs was the log~2~ ratio of the two groups' mean scores.
+
+### Mapping CCC-RISE Components to Cells
+
+**Per-cell sender and receiver loadings.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CP eigen-state factors can be mapped back to individual cells.
+The per-cell sender and receiver loadings of all cells are $PE$ and $PF$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row.
+The agreement of a component's sender and receiver cells was summarized by the R^2^ between per-cell sender and receiver loadings across all cells.
+
+**Cell-type mapping of components.** Components were mapped to annotated cell types by the mean per-cell sender and receiver loading of each broad cell type.
+
+**Sender and receiver populations.** A component's sender population was the cells whose per-cell sender loading was at least $\tau = 0.3$ times its largest value, $(Pe)_{j} \geq \tau \max_{j'}(Pe)_{j'}$, and its receiver population was defined likewise from $Pf$.
+A cell past both cutoffs belonged to both populations.
+
+**Label-free sender and receiver groups.** To interpret a component without cell-type labels, its sender and receiver populations were compared by differential gene expression, with a cell in both populations assigned to the role with the larger loading relative to its maximum.
+Sender and receiver groups were compared for curated genes, p-values were corrected across candidate markers present in the data, and markers were reported if q < 0.05 and the difference in the fraction of cells detecting the gene was at least 0.2.
+Each group was also compared with all other cells, with correction across all genes.
 
 ### External Biological Validation
 
@@ -292,14 +300,12 @@ For each CP component:
 7. An empirical one-sided p-value was computed for each component and corrected across components.
 
 **NICHES program scores.** We ran NICHES on each sample's cells, using CCC-RISE's normalized expression\ [@doi:10.1093/bioinformatics/btac775].
-For each CP component, with sender, receiver, and LR-pair loadings $e$, $f$, and $g$ (its columns of $E$, $F$, and $G$), NICHES scored the component's carrying pairs $\mathcal{C}$ defined as the fewest LR pairs carrying 90% of $\sum_{l} g_{l}^{2}$.
+For each CP component, NICHES scored the component's carrying pairs, $\mathcal{C}$ (Component context scores).
 More specifically, we used CellToSystem to score each cell as a sender, and SystemToCell to score it as a receiver, each against the mean of the other cells in its sample.
 Cell $j$'s program score on each side was $n_{j} = \sum_{l \in \mathcal{C}} g_{l}^{2}s_{jl}$, where $s_{jl}$ is its NICHES score for LR pair $l$.
 Cells with $n_{j} > 0$ were deemed NICHES-positive.
 
-**NICHES populations and concordance.** A component's sender population was the cells whose per-cell sender loading (Mapping CCC-RISE Components to Cells) was at least $\tau = 0.3$ times its largest value, $(Pe)_{j} \geq \tau \max_{j'}(Pe)_{j'}$, and its receiver population was defined likewise from $Pf$.
-Unlike the label-free sender and receiver groups defined there, a cell past both cutoffs belonged to both populations.
-A population's NICHES concordance was the fraction of its cells that were NICHES-positive.
+**NICHES concordance.** A sender or receiver population's NICHES concordance was the fraction of its cells that were NICHES-positive.
 
 **NICHES reference concordances.** Each population's concordance was compared with two references.
 The first was the concordance its cell-type labels predict.
@@ -315,20 +321,6 @@ Empirical one-sided p-values against the 1,000 directions were corrected across 
 **NICHES orderings.** To show what concordance depends on, all cells were ranked by five orderings and the population's number of top-ranked cells taken from each: a random direction ($Pu$ as the median over 200 directions, not matched for cell type), the per-cell loading, the positive part of each of these multiplied by the cell's ligand (senders) or receptor (receivers) expression, and that expression alone.
 This expression was the cell's centered expression of the component's ligands or receptors, each gene weighted by the squared LR-pair loadings $g_{l}^{2}$ of its pairs.
 
-### Mapping CCC-RISE Components to Cells
-
-**Per-cell sender and receiver loadings.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CP eigen-state factors can be mapped back to individual cells.
-The per-cell sender and receiver loadings of all cells are $PE$ and $PF$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row.
-The agreement of a component's sender and receiver cells was summarized by the R^2^ between per-cell sender and receiver loadings across all cells.
-
-**Cell-type mapping of components.** Components were mapped to annotated cell types by the mean per-cell sender and receiver loading of each broad cell type.
-
-**Label-free sender and receiver groups.** To interpret a component without cell-type labels, each cell's per-cell sender and receiver loadings were divided by their respective maxima across cells.
-Cells for which either ratio was at least $\tau = 0.3$ formed the sender or receiver group, assigned to the role with the larger ratio.
-Groups were compared by differential gene expression.
-Sender and receiver groups were compared for curated genes, p-values were corrected across candidate markers present in the data, and markers were reported if q < 0.05 and the difference in the fraction of cells detecting the gene was at least 0.2.
-Each group was also compared with all other cells, with correction across all genes.
-
 ### Cell Type Composition
 
 Cell type composition was analyzed by calculating the fraction of each sample's cells belonging to each broad cell type.
@@ -338,7 +330,7 @@ Fractions were compared across sample groups by Kruskal--Wallis tests, with corr
 
 **Pseudobulk CPD.** [Placeholder: mean expression per sample and cell type, expression product, absent types set to zero; fit and rank selected as CCC-RISE's CP.]
 
-**Tensor-cell2cell.** [Placeholder: detection-fraction tensor with the mean score, every cell type kept and absent entries masked, non-negative CP, Kneedle elbow, best of 10 runs; deviations from the published method and the published `inner` construction.]
+**Tensor-cell2cell.** [Placeholder: detection-fraction tensor with the mean score, every cell type kept and absent entries masked, non-negative CP, Kneedle elbow (Rank Selection), best of 10 runs; deviations from the published method and the published `inner` construction.]
 
 **STACCato.** [Placeholder: LIANA default filters, unsupervised Tucker, the rank rule, and each LR column's condition, sender and receiver profiles from its core slice; deviations from the published method.]
 
