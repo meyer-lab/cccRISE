@@ -30,29 +30,41 @@ ARROWPROPS = {
 
 def volcano_data(group: str, reference: str):
     """(Wilcoxon ranking, detected fraction difference, -log10 q) of `group`
-    against `reference` ('receiver' or 'rest')."""
-    if reference == "rest":  # one cached test of both groups
+    against `reference` ('receiver', or 'rest': every cell outside `group`)."""
+    if reference == "rest":  # scanpy's "rest": every other cell; one cached test
         ranking = S.rank_genes(S.DE_GROUPS, "rest")[group]
     else:
         ranking = S.rank_genes((group,), reference)[group]
-    detected, _ = S.group_expression(ranking.index.tolist())
-    delta = detected[group] - detected[reference]
+    in_group, in_reference = detected_fractions(group, reference, ranking.index)
+    delta = in_group - in_reference
     return ranking, delta, -np.log10(np.clip(ranking["q"], Q_FLOOR, 1))
+
+
+def detected_fractions(group: str, reference: str, genes):
+    """Fraction of `group`'s and of `reference`'s cells detecting each of
+    `genes`, 'rest' pooling every cell outside `group`."""
+    detected, _ = S.group_expression(list(genes))
+    if reference != "rest":
+        return detected[group], detected[reference]
+    sizes = S.cell_groups().value_counts()
+    others = [g for g in S.GROUPS if g != group]
+    pooled = detected[others] @ sizes[others] / sizes[others].sum()
+    return detected[group], pooled
 
 
 def volcano_table(group: str, reference: str) -> pd.DataFrame:
     """Every gene's point on the volcano of `group` against `reference`, with
     its Wilcoxon statistics and detected fractions, as source data."""
     ranking, delta, y = volcano_data(group, reference)
-    detected, _ = S.group_expression(ranking.index.tolist())
+    in_group, in_reference = detected_fractions(group, reference, ranking.index)
     return pd.DataFrame(
         {
             "Gene": ranking.index,
             "Wilcoxon score": ranking["score"].to_numpy(),
             "p": ranking["p"].to_numpy(),
             "q (BH)": ranking["q"].to_numpy(),
-            f"Detected fraction, {group}": detected[group].to_numpy(),
-            f"Detected fraction, {reference}": detected[reference].to_numpy(),
+            f"Detected fraction, {group}": in_group.to_numpy(),
+            f"Detected fraction, {name(reference)}": in_reference.to_numpy(),
             "Detected fraction difference": delta.to_numpy(),
             f"-log10 q (plotted, floored at q = {Q_FLOOR:g})": y.to_numpy(),
             "Enriched": enriched(ranking, delta).to_numpy(),
@@ -66,13 +78,18 @@ def save_volcano(group: str, reference: str, part: int | None = None) -> None:
         f"de_{group}_vs_{reference}",
         volcano_table(group, reference),
         f"One row per gene: two-sided Wilcoxon rank-sum test (scanpy) of the "
-        f"{group} group's cells against the {reference} cells' normalized "
+        f"{group} group's cells against the {name(reference)} cells' normalized "
         "expression, p-values Benjamini-Hochberg corrected across genes (q); the "
         "fraction of each group's cells detecting the gene and their difference "
         "(x axis); 'Enriched' marks a gene with q < 0.05 whose Wilcoxon score has "
         "the same sign as its detected fraction difference (colored).",
         part=part,
     )
+
+
+def name(group: str) -> str:
+    """`group` as the volcanoes display it: 'rest' is every other cell."""
+    return "other" if group == "rest" else group
 
 
 def enriched(ranking, delta):
@@ -115,7 +132,7 @@ def plot_volcano(ax, group: str, reference: str, labeled, lims=None) -> None:
         ax, labeled if isinstance(labeled, dict) else {g: g for g in labeled}, delta, y
     )
     ax.set(
-        xlabel=f"Detected fraction,\n{group} − {reference}",
+        xlabel=f"Detected fraction,\n{group} − {name(reference)}",
         ylabel="−log$_{10}$ q (Wilcoxon)",
     )
 
@@ -123,7 +140,7 @@ def plot_volcano(ax, group: str, reference: str, labeled, lims=None) -> None:
 def legend(ax) -> None:
     """The volcanoes' shared color key, its title over one row of entries,
     above `ax` (below its panel letter)."""
-    entries = {g.capitalize(): c for g, c in REFERENCE_COLORS.items()}
+    entries = {name(g).capitalize(): c for g, c in REFERENCE_COLORS.items()}
     entries["None"] = style.COLORS["muted"]
     handles = [
         Line2D([], [], ls="", marker="o", color=c, label=label)

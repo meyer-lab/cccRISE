@@ -1,4 +1,4 @@
-.PHONY: clean test ty profile_cpu manuscript source_data source_data_check
+.PHONY: clean test ty profile_cpu manuscript source_data source_data_check tables
 
 # One package per figure (cccrise/figures/figure<N>/; a supplement is nested as
 # figure<N>/figureS_<name>/, or top-level if it supports no one figure), built
@@ -51,7 +51,11 @@ coverage.xml: .venv
 ty: .venv
 	uv run ty check cccrise
 
-manuscript:
+# Appendix tables, as Markdown in output/tables/, included by the Appendix
+tables:
+	uv run python -m cccrise.figures.tables
+
+manuscript: tables
 	quarto render manuscript
 
 clean:

@@ -7,8 +7,9 @@ component are shown, plus each component's top pairs, which are outlined and
 labeled: those with |loading| at least 0.4 x the component's largest, the
 rule `nichenet` picks its tested ligands by (`validation.nichenet.top_pairs`),
 here over every LR pair rather than only those NicheNet can score.
-Conditions and LR pairs are ordered by their most heavily loaded component,
-then by that loading."""
+Conditions are grouped by ALAD status, then six-month outcome
+(`common.condition_strips`), and within a group, like LR pairs, ordered by
+their most heavily loaded component, then by that loading."""
 
 from collections.abc import Sequence
 
@@ -18,6 +19,7 @@ import pandas as pd
 from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
 from .. import common
+from ..figure3._common import condition_obs
 
 DATASET = "alad"
 
@@ -29,23 +31,26 @@ MODES = {  # factor matrix: row label, whether to order rows
 }
 EIGENSTATE_TICKS = (1, 5, 10, 15)
 TOP_LR_FRACTION = 0.15
-AXES = ("square",) * len(MODES)
+AXES = ("slim", "slim", "slim", "square")
 REL_CUTOFF = 0.4  # percent of a components top-weighted ligand above which LR pairs should be labeled
 
 
 def plot(axs):
-    draw(axs, DATASET)
+    draw(axs, DATASET, condition_obs(), common.CONDITION_STRIPS)
 
 
 def draw(
     axs,
     dataset: str,
+    groups: pd.DataFrame,
+    strips: dict,
     eigenstate_ticks: Sequence[int] = EIGENSTATE_TICKS,
     top_lr_fraction: float = TOP_LR_FRACTION,
 ):
-    """`dataset`'s CP factor matrices on `axs` (one per mode), the eigenstate
-    axes ticked at `eigenstate_ticks` and the `top_lr_fraction` of LR pairs
-    shown."""
+    """`dataset`'s CP factor matrices on `axs` (one per mode), conditions
+    grouped by their `groups` (obs indexed by condition) under `strips`
+    (`common.condition_strips`), the eigenstate axes ticked at
+    `eigenstate_ticks` and the `top_lr_fraction` of LR pairs shown."""
     adata = common.load_factors_to_anndata(DATASETS[dataset].factors_path())
     for ax, (key, (ylabel, ordered)) in zip(axs, MODES.items(), strict=True):
         loadings = np.asarray(adata.uns[key], dtype=float)
@@ -59,6 +64,9 @@ def draw(
         else:
             _source_data(key, adata, loadings)
         order = common.dominant_order(loadings) if ordered else np.arange(len(loadings))
+        if key == "A":
+            groups = groups.loc[adata.obs_names]
+            order = common.group_conditions(groups, order, strips)
         image = common.plot_factor_heatmap(ax, loadings[order], "CP component")
         if ordered:
             ax.set_yticks([])
@@ -66,6 +74,8 @@ def draw(
         else:
             ax.set_yticks([t - 1 for t in eigenstate_ticks], eigenstate_ticks)
         ax.set_ylabel(ylabel)
+        if key == "A":
+            common.condition_strips(ax, groups.iloc[order], strips)
         position = np.argsort(order)  # row index -> drawn row
         common.label_heatmap_cells(
             ax,

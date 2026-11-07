@@ -30,7 +30,7 @@ def plot(axs):
     )
     common.mark_rank(ax, core["Rank"])
     ax.set_xlabel("CP rank")
-    ax.set_ylabel("Fit $R^2X$")
+    ax.set_ylabel("Fit R²X")
     common.legend(ax, "below")
 
 

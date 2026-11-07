@@ -12,9 +12,11 @@ from ...utils import celltype_component_association
 from .. import common, style
 from ..figure2 import _common as S
 
+AXES = ("wide",)
 
-def plot(fig):
-    ax = fig.subplots()
+
+def plot(axs):
+    (ax,) = axs
     plot_celltype_eigenstate_association(
         common.get_cell_projections(S.GRANULARITY_DATASET),
         S.GRANULARITY_DATASET,
@@ -27,7 +29,7 @@ def plot(fig):
 
 
 def makeFigure():
-    return common.standalone(plot, (style.FIGURE_WIDTH_DOUBLE, 60 * style.MM))
+    return common.standalone_fixed(__name__)
 
 
 def plot_celltype_eigenstate_association(
@@ -61,4 +63,4 @@ def plot_celltype_eigenstate_association(
     ax.set_xlabel("RISE eigenstate")
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
-    ax.figure.colorbar(image, ax=ax, label="Mean projection", shrink=0.8)
+    common.colorbar(ax, image, "Mean projection")
