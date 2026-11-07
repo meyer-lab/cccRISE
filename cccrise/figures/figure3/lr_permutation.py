@@ -1,13 +1,13 @@
 """Patient-permutation test of whether the outcome-associated CP component's
-top LR pairs are larger in CLAD/Died than in No CLAD samples.
+top LR pairs are larger in CLAD/Died than in stable/recovered samples.
 
 Each LR pair is scored per condition in each component's own
 sender/receiver context, divided by the condition's read depth (as the
-plotted condition loadings are). The CLAD/Died minus No CLAD mean score
-difference is compared against `N_PERMS` permutations of the outcome labels
-by patient (`patient_permutation_differential`); a pair's p is the one-sided
-fraction of permutations reaching its observed difference. The tests are
-`cccrise-alad-programs`' (`run_alad_programs`: `program_pair_tests`,
+plotted condition loadings are). The CLAD/Died minus stable/recovered mean
+score difference is compared against `N_PERMS` permutations of the outcome
+labels by patient (`patient_permutation_differential`); a pair's p is the
+one-sided fraction of permutations reaching its observed difference. The tests
+are `cccrise-alad-programs`' (`run_alad_programs`: `program_pair_tests`,
 `program_permutation` and `program_context_scores`); this module only reads
 and draws them.
 
@@ -32,9 +32,9 @@ from .. import common, style
 from ._common import COMPONENT, SPEC
 from .coordinated_changes import N_TOP
 
-# The groups as axis labels name them, free of the slash in CASE_LABEL
-CASE_DISPLAY = "CLAD+died"
-CONTROL_DISPLAY = "no CLAD"
+# The groups as axis labels name them
+CASE_DISPLAY = "CLAD/died"
+CONTROL_DISPLAY = "stable/recovered"
 AXES = ("square",)
 
 
@@ -115,7 +115,7 @@ def plot_pair_nulls(component: dict, n_top: int, ax) -> None:
     common.reference_line(ax, 0, horizontal=False, linestyle=":")
     ax.set_yticks(rows, LR_NAMES[top], fontsize=common.FACTOR_LABEL_FONT_SIZE)
     ax.set_ylim(-0.6, n_top - 0.4)
-    ax.set_xlabel(f"Standardized {CASE_DISPLAY} −\n{CONTROL_DISPLAY} mean score")
+    ax.set_xlabel(f"Standardized mean score\n{CASE_DISPLAY} − {CONTROL_DISPLAY}")
     common.legend(
         ax,
         "above",

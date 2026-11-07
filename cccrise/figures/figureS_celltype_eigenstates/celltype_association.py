@@ -8,7 +8,7 @@ from matplotlib.patches import Rectangle
 
 from ...utils import celltype_component_association
 from .. import common, style
-from ._common import COMPONENT, DATASET, SPEC
+from ..figure3._common import COMPONENT, DATASET, SPEC
 
 ROLES = ("sender", "receiver")
 AXES = ("square",) * len(ROLES)

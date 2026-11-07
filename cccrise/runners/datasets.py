@@ -239,8 +239,8 @@ class DatasetSpec:
     def nichenet_scores_filename(self) -> str:
         return f"nichenet_scores_{self.output_key}.parquet"
 
-    def nichenet_null_filename(self) -> str:
-        return f"nichenet_null_{self.output_key}.parquet"
+    def nichenet_cell_null_filename(self) -> str:
+        return f"nichenet_cell_null_{self.output_key}.parquet"
 
 
 #: Per-sample cell cap of the registry's IBD cohort, whose results every IBD

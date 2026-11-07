@@ -5,11 +5,10 @@ for co-variation in `coordinated_changes`) marked and named."""
 
 import numpy as np
 import pandas as pd
-from adjustText import adjust_text
 
 from ...factors import load_factors_netcdf
 from .. import common, style
-from ._common import COMPONENT, SPEC, plot_ranked_loadings
+from ._common import COMPONENT, SPEC, label_ranked_head, plot_ranked_loadings
 from .coordinated_changes import N_TOP
 
 # Labels start in a column at this rank, in the empty space above the flat
@@ -44,31 +43,7 @@ def plot(axs):
         f"Every LR pair's loading on CP component {COMPONENT} (cp_D), by rank; "
         f"'Named' marks the {N_TOP} most heavily weighted, labeled in the plot.",
     )
-    top = order[:N_TOP]
-    heights = np.linspace(loadings[top[0]], LABEL_FLOOR * loadings[top[0]], N_TOP)
-    texts = [
-        ax.text(
-            LABEL_RANK, y, names[i], va="center", fontsize=common.FACTOR_LABEL_FONT_SIZE
-        )
-        for y, i in zip(heights, top, strict=True)
-    ]
-    # Every point on the curve is an obstacle, so no label sits on it; labels
-    # move only vertically, keeping their column
-    adjust_text(
-        texts,
-        x=ranks,
-        y=loadings[order],
-        target_x=ranks[:N_TOP],
-        target_y=loadings[top],
-        ax=ax,
-        only_move={"text": "y", "static": "y", "explode": "y", "pull": "y"},
-        time_lim=10,
-        arrowprops={
-            "arrowstyle": "-",
-            "lw": style.LINE_WIDTH_THIN / 2,
-            "color": style.COLORS["reference"],
-        },
-    )
+    label_ranked_head(ax, loadings, names, N_TOP, LABEL_RANK, LABEL_FLOOR)
 
 
 def makeFigure():

@@ -2,7 +2,7 @@
 
 from .. import common, style
 from . import (
-    celltype_association,
+    celltype_pacmap,
     coordinated_changes,
     lr_loadings,
     lr_permutation,
@@ -11,7 +11,7 @@ from . import (
 )
 
 LAYOUT = [
-    [outcome_association, celltype_association],
+    [outcome_association, celltype_pacmap],
     [lr_loadings, coordinated_changes],
     [lr_permutation, lr_volcano],
 ]

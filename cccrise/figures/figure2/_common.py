@@ -192,27 +192,32 @@ def top_pair_genes() -> list[str]:
 
 
 @functools.cache
-def cell_groups() -> pd.Series:
-    """Each cell's group at `GROUP_TAU`, "rest" if in none."""
-    groups = split_cells(*component_weights())
+def cell_groups(tau: float = GROUP_TAU) -> pd.Series:
+    """Each cell's group at `tau`, "rest" if in none."""
+    groups = split_cells(*component_weights(), tau)
     labels = np.full(len(groups["sender"]), "rest", dtype=object)
     for group, mask in groups.items():
         labels[mask] = group
     return pd.Series(pd.Categorical(labels, categories=GROUPS))
 
 
-def rank_genes(groups: tuple[str, ...], reference: str) -> dict[str, pd.DataFrame]:
+@functools.cache
+def rank_genes(
+    groups: tuple[str, ...], reference: str, tau: float = GROUP_TAU
+) -> dict[str, pd.DataFrame]:
     """{group: Wilcoxon score, p, BH q, and the fraction of the group's and of
     the reference's cells detecting it, per gene, highest score first} of each
-    of `groups` against `reference`, from `cccrise-alad-programs`' `group_de`
-    table (scanpy's test of these groups, `run_alad_programs.GROUP_TESTS`).
-    scanpy's fold changes are left out: they assume natural-log data."""
+    of `groups` against `reference` ('rest': every other cell), split at `tau`,
+    from `cccrise-alad-programs`' `group_de` table (scanpy's test,
+    `run_alad_programs.GROUP_TESTS` and `DE_TAUS`). scanpy's fold changes are
+    left out: they assume natural-log data."""
     table = common.alad_programs("group_de")
+    at_tau = np.isclose(table["Tau"].to_numpy(), tau)
     result = {}
     for g in groups:
-        rows = table[(table["Group"] == g) & (table["Reference"] == reference)]
+        rows = table[at_tau & (table["Group"] == g) & (table["Reference"] == reference)]
         if rows.empty:
-            raise KeyError(f"group_de has no {g} vs. {reference} test")
+            raise KeyError(f"group_de has no {g} vs. {reference} test at tau {tau}")
         result[g] = pd.DataFrame(
             {
                 "score": rows["Score"],

@@ -7,16 +7,16 @@ from scipy.sparse import csr_matrix
 from cccrise.runners import run_alad_programs as R
 
 
-def test_detected_fractions_count_positive_entries_per_group():
+def test_detected_fraction_counts_positive_entries_of_the_cells():
     class Cells:
         X = csr_matrix(np.array([[1.0, 0.0], [0.0, 2.0], [3.0, 0.0], [0.0, 0.0]]))
-        var_names = pd.Index(["A", "B"])
 
     labels = np.array(["sender", "receiver", "sender", "rest"], dtype=object)
-    detected = R.detected_fractions(Cells(), labels)  # ty: ignore[invalid-argument-type]
-    assert detected.loc["A", "sender"] == 1.0
-    assert detected.loc["B", "receiver"] == 1.0
-    assert detected.loc["A", "rest"] == 0.0
+    sender = R.detected_fraction(Cells(), labels == "sender")  # ty: ignore[invalid-argument-type]
+    others = R.detected_fraction(Cells(), labels != "sender")  # ty: ignore[invalid-argument-type]
+    assert sender.tolist() == [1.0, 0.0]
+    # "rest" as scanpy tests it: every cell outside the group
+    assert others.tolist() == [0.0, 0.5]
 
 
 def test_permutation_table_keeps_each_top_pair_and_its_test():
