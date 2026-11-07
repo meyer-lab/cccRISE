@@ -187,7 +187,7 @@ As a partial, independent check of this, we thresholded each component's per-cel
 NICHES is blind to state and instead scores each cell as a sender and as a receiver from its own expression of a set of LR pairs\ [@doi:10.1093/bioinformatics/btac775].
 We ran it on each component's carrying pairs and measured each population's NICHES concordance as the share of its cells that NICHES scored above zero.
 The component 3 and 4 populations held more NICHES-positive cells than their fine cell-type labels predict (C3 senders 0.80 against 0.52 and C4 0.73 against 0.46; C3 receivers 0.57 against 0.38 and C4 0.25 against 0.16), and more than when random directions in RISE space replaced the component's loadings, matched for cell type (q ≤ 0.025) ({{< fig 4 niches-concordance >}}).
-Within the same cell types, the component's own direction therefore picked out cells with NICHES signal significantly more often than arbitrary directions did.
+Within the same cell types, the component's own direction therefore picked out cells with NICHES signal more often than arbitrary directions did.
 Across all six components, populations exceeded their labels' prediction (eight of twelve with q < 0.05) ({{< fig 4 niches-concordance >}}, {{< fig niches-ibd concordance >}}), and this measured gap held at every population threshold from 0.1 to 0.6 ({{< fig niches-ibd tau-sweep >}}).
 NICHES concordance could be easily accomplished by weighting any RISE direction, even a random one, by a cell's ligand or receptor expression ({{< fig 4 niches-orderings >}}).
 Nevertheless, CCC-RISE populations still reached high concordance from cell state alone without weighting by expression at all.
