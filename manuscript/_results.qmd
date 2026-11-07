@@ -16,7 +16,7 @@
 RISE projects cells from multiple conditions onto a shared set of eigen-states, effectively aligning them based on gene expression without requiring *a priori* labeling ({{< fig 1 workflow.1 >}})\ [@doi:10.1016/j.cels.2025.101294].
 This alignment step produces a condition by eigen-state by gene tensor that RISE factorizes into components representing patterns of variation across the three modes.
 To overcome the limitations of aggregating data into pre-defined cell types, CCC-RISE infers communication directly from RISE's unsupervised eigen-states rather than individual cells or broad populations ({{< fig 1 workflow.2 >}}).
-For every experimental condition and ligand--receptor (LR) pair defined using CellChat's interaction database, a score is calculated for all combinations of sender and receiver eigen-states by taking the product of the sender's ligand expression with the receiver's receptor expression\ [@doi:10.1038/s41467-021-21246-9].
+For every experimental condition and ligand--receptor (LR) pair defined using CellChat's interaction database\ [@doi:10.1038/s41467-021-21246-9], a score is calculated for all combinations of sender and receiver eigen-states by taking the product of the sender's ligand expression with the receiver's receptor expression.
 This process yields a four-dimensional tensor of data across experimental conditions, sender eigen-states, receiver eigen-states, and LR pairs.
 Finally, to extract patterns from this high-dimensional structure, CCC-RISE employs CPD, which decomposes the tensor into distinct components, each representing a communication program defined by a source of variation across the four modes ({{< fig 1 workflow.3 >}}).
 

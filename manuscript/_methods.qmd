@@ -190,7 +190,7 @@ For each component and grouping, we reported the one-way analysis of variance (A
 RISE condition loadings ($A$) were corrected and tested in the same way, with correction across all RISE component by outcome tests.
 Patient covariates were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
 
-**Individual LR pair associations** For each CPD component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($E$) and receiver ($F$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}e_{s}f_{t}$, where $X_{istl}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in condition $i$.
+**Individual LR pair associations.** For each CPD component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($E$) and receiver ($F$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}e_{s}f_{t}$, where $X_{istl}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in condition $i$.
 These scores were corrected for total sample expression as above and tested against outcome by one-way ANOVA, with correction across the 513 LR pairs.
 For the component's top 10 LR pairs by absolute LR-pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
 These correlations were compared with those of LR pairs drawn 2,000 times from three baselines: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with outcome (q < 0.05).
@@ -215,7 +215,7 @@ Within each condition, the rows of the projection matrix $P_{i}$ were shuffled, 
 This was repeated for 1,000 permutations.
 For each tensor entry, an empirical one-sided p-value was computed against the permuted scores.
 
-Following scDiffCom, we tested whether each LR pair's per-sample score (as in LR pair association testing, divided by the sample's total normalized expression) differed between patient groups\ [@doi:10.1038/s43587-023-00514-x].
+Following scDiffCom, we tested whether each LR pair's per-sample score (computed as for individual LR pair associations, divided by the sample's total normalized expression) differed between patient groups\ [@doi:10.1038/s43587-023-00514-x].
 The test statistic was the difference in mean score between two groups.
 The null was formed by 10,000 permutations of outcome labels between patients, moving samples from the same patient together.
 Empirical one-sided p-values were computed and corrected across the component's top 10 LR pairs.
@@ -235,6 +235,26 @@ For each CPD component:
 6. The null was formed by permuting the top and bottom receiver labels among those cells 1,000 times, preserving group sizes, and repeating the DE test, gene filter, target scoring, and weighted mean on each permutation.
    Only ligands scored on every permutation entered the observed and null weighted means.
 7. An empirical one-sided p-value was computed for each component and corrected across components.
+
+**NICHES concordance.** We tested whether the cells CCC-RISE assigns to a component signal through the component's LR pairs in their own expression by using NICHES\ [@doi:10.1093/bioinformatics/btac775].
+For each CPD component, with sender, receiver, and LR-pair loadings $e$, $f$, and $g$ (its columns of $E$, $F$, and $G$), the sender population was the cells whose per-cell sender loading was at least $\tau = 0.3$ times its largest value, $(Pe)_{j} \geq \tau \max_{j'}(Pe)_{j'}$, and the receiver population was defined likewise from $Pf$.
+A cell past both cutoffs belonged to both populations.
+The component's carrying pairs, $\mathcal{C}$, were the fewest LR pairs, taken in order of $\left| g_{l} \right|$, that carried 90% of $\sum_{l} g_{l}^{2}$.
+NICHES was run on each sample's cells using CCC-RISE's normalized expression, with CellToSystem scoring each cell as a sender and SystemToCell as a receiver, each against the mean of the other cells in its sample.
+Cell $j$'s program score on each side was $n_{j} = \sum_{l \in \mathcal{C}} g_{l}^{2}s_{jl}$, where $s_{jl}$ is its NICHES score for LR pair $l$, and cells with $n_{j} > 0$ were deemed NICHES-positive.
+A population's NICHES concordance was the fraction of its cells that were NICHES-positive.
+
+Each population's concordance was compared with two references.
+The first was the concordance its cell-type labels predict: the mean, over the population's cells, of the fraction of NICHES-positive cells in each cell's fine cell type (or lineage).
+The second replaced the component's loadings with random directions in eigen-state space:
+
+1. Each of 1,000 directions $u$ was drawn uniformly from the unit sphere in $\mathbb{R}^{r}$, and each cell's score became $(Pu)_{j}$ in place of $(Pe)_{j}$ or $(Pf)_{j}$.
+2. From each fine cell type, the cells with the largest scores were taken, as many as the population held from that type.
+3. The concordance of these cells formed the null distribution.
+
+Empirical one-sided p-values against the 1,000 directions were corrected across each cohort's populations.
+To show what concordance depends on, all cells were also ranked by five orderings and the population's number of top-ranked cells taken from each: a random direction ($Pu$ as the median over 200 directions, not matched for cell type), the per-cell loading, the positive part of each of these multiplied by the cell's ligand (senders) or receptor (receivers) expression, and that expression alone.
+This expression was the cell's centered expression of the component's ligands or receptors, each gene weighted by the squared LR-pair loadings $g_{l}^{2}$ of its pairs.
 
 ### Mapping CCC-RISE Components to Cells
 
