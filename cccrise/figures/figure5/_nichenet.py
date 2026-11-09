@@ -106,6 +106,25 @@ def prior_shuffle_strip(ax) -> None:
 
 def closest_strip(ax) -> None:
     t = table().set_index(["Method", "Labelling", "Component"])
+    common.source_data(
+        "nichenet_program_and_carrying_columns",
+        pd.DataFrame(
+            [
+                {
+                    "Program": f"C{program}",
+                    "Method": method,
+                    "Labelling": lab,
+                    "Column": column,
+                    "Effect": t.loc[(method, lab, column), "Effect"],
+                }
+                for program, columns in CLOSEST
+                for method, lab, column in [("cccRISE", "coarse", program), *columns]
+            ]
+        ),
+        "Each CCC-RISE program's ligand-weighted NicheNet target score above its "
+        "mean over shuffled cells (Effect), beside the comparator LR columns "
+        "carrying its LR pairs (`CLOSEST`); cccRISE rows are the program itself.",
+    )
     x, ticks, names = 0.0, [], []
     for program, columns in CLOSEST:
         effect = t.loc[("cccRISE", "coarse", program), "Effect"]

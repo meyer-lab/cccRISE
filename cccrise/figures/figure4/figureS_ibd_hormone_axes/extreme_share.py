@@ -1,7 +1,8 @@
 """Per biopsy (at least `_common.MIN_EE` EE cells), the share of its EE cells
 in each class of Figure 4's marker dot plot (`_common.hormone_extremes`), by
-inflammation status (Kruskal-Wallis q, BH corrected across classes;
-pairwise Mann-Whitney q in the source data): inflammation removes villus-like cells, not crypt-like ones."""
+inflammation status (Kruskal-Wallis q, BH corrected across classes, drawn and in
+the source data; pairwise Mann-Whitney q in the source data): inflammation removes
+villus-like cells, not crypt-like ones."""
 
 import pandas as pd
 from scipy.stats import mannwhitneyu
@@ -48,12 +49,19 @@ def plot(axs):
         "or healthy (H) and CD inflamed (I) biopsies, and its Benjamini-Hochberg "
         "q across all classes and pairs.",
     )
-    S.status_boxes(
+    q = S.status_boxes(
         ax,
         {
             S.EXTREME_LABELS[n].replace(" (", "\n("): list(values.values())
             for n, values in groups.items()
         },
+    )
+    common.source_data(
+        "hormone_extreme_share_kruskal",
+        pd.DataFrame({"Class": list(groups), "q": q}),
+        "Kruskal-Wallis q of each class's per-biopsy share across healthy, CD "
+        "uninflamed, and CD inflamed biopsies (Benjamini-Hochberg corrected across "
+        "classes), as drawn above each class.",
     )
     ax.set_ylabel("Share of biopsy's\nEE cells")
     S.status_legend(

@@ -76,4 +76,10 @@ Crohn's
 [Uu]ninflamed
 binarize
 [Pp]seudobulk(ed|ing|s)?
+Kneedle
+[Hh]omophilic
 prefiltered
+[Mm]esenchymal
+[Pp]ericytes
+[Uu]nderrepresentation
+[Ss]ubsampled

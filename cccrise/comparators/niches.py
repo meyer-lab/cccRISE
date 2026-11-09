@@ -1,6 +1,8 @@
 """Python re-implementation of NICHES (msraredon/NICHES, R).
 
-See :func:`niches`'s docstring for what algorithm this reproduces, how it
+Not used by the manuscript's NICHES analysis, which runs the upstream R package
+(``comparators/niches_system.R`` via ``runners/run_niches.py``); kept for its
+tests. See :func:`niches`'s docstring for what algorithm this reproduces, how it
 differs from the original R package, and how to compare its output against
 cccRISE.
 """
@@ -42,12 +44,11 @@ def niches(
     (msraredon/NICHES, R) as called by ``RunNICHES(..., CellToCell = TRUE)`` --
     reconstructed by reading that function's decompiled body -- it is not a
     wrapper around the R package, and NICHES is not a dependency of this
-    project. It is meant to let cccRISE be benchmarked against NICHES'
-    single-cell-resolution approach without an R runtime (this project
-    previously ran the actual R package via an `R/` comparator harness,
-    since removed in favor of this module). Only the ``CellToCell`` mode is
-    reproduced -- ``CellToSystem``/``SystemToCell``/spatial-neighborhood
-    modes upstream also offers weren't used by that harness either.
+    project. It was written to benchmark cccRISE against NICHES'
+    single-cell-resolution approach without an R runtime; the analysis now
+    runs the upstream R package instead (``runners/run_niches.py``, with
+    ``CellToSystem`` and ``SystemToCell``). Only the ``CellToCell`` mode is
+    reproduced here.
 
     Upstream algorithm: for every pair of cell groups (sender type, receiver
     type -- including a type paired with itself), it builds a per-cell
