@@ -193,7 +193,7 @@ The rank was chosen as the largest rank at which no start's LR pair mode, the la
 
 Associations between components and outcomes were tested with the sample as the unit of analysis, using the corrected CPD condition loadings ($D$).
 For ALAD, we tested nine groupings of samples: ALAD status (control vs. ALAD; control, declined, and recovered); six-month outcome (stable, recovered, CLAD, and died; CLAD vs. stable/recovered, excluding deaths; and died vs. alive); one-year outcome (stable, recovered, CLAD, and died; CLAD vs. no CLAD; and died vs. alive); and acute rejection (yes vs. no).
-For IBD, we tested [placeholder IBD association tests].
+For IBD, we tested three groupings of biopsies by inflammation status: healthy, CD uninflamed, and CD inflamed; healthy vs. CD, pooling uninflamed and inflamed CD biopsies; and CD uninflamed vs. inflamed, excluding healthy biopsies.
 For each component and grouping, we reported the one-way analysis of variance (ANOVA) F statistic and effect size, $\eta^{2} = SS_{between}/SS_{total}$, with p-values corrected across all component by outcome tests.
 RISE condition loadings ($A$) were corrected and tested in the same way, with correction across all RISE component by outcome tests.
 Patient covariates were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
