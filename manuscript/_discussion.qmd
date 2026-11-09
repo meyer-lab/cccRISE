@@ -1,7 +1,5 @@
 ## Discussion
 
-<!-- Legacy discussion text
-
 We have demonstrated that CCC-RISE provides a comprehensive framework for investigating cell-cell communication (CCC) across multiple conditions while maintaining single-cell resolution.
 Current computational tools for CCC largely rely on pseudobulking, a process that aggregates single-cell data into pre-defined clusters and obscures the functional diversity of individual cells.
 This approach depends heavily on the accuracy of initial annotations and often fails to capture the continuous and multifaceted nature of cellular identities.
@@ -47,36 +45,3 @@ By integrating the cell-alignment capabilities of RISE with the pattern-finding 
 As single-cell multi-condition studies become increasingly common, CCC-RISE serves as a powerful tool to unravel the complex cellular dialogues that underpin diseases.
 Understanding CCC will rely on high-level analysis tools like CCC-RISE to map the entire landscape of potential interactions in an unbiased way, followed by targeted experiments to confirm which of these predicted pathways are functionally important.
 
--->
-
-**Acknowledgements:** This work was supported by NIAID U19-AI172713 to A.S.M. and a Cota Robles Fellowship to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice for the development of this method and its application to cell-cell communication.
-
-**Author Contributions:** A.R. and A.S.M. conceived of the study.
-All authors performed the computational analysis and helped analyze the data.
-All authors wrote and revised the paper.
-
-**Declaration of Interests:** The authors declare that they have no competing interests.
-
-**Expanded View and Appendix:** Figures EV1--EV5 accompany this article, and the Appendix includes Appendix Figures S1--S13.
-
-**Resource Availability**
-
-**Lead Contact**
-
-Further information and requests for resources should be directed to and will be fulfilled by the Lead Contact, Aaron Meyer (ameyer@asmlab.org).
-
-**Materials Availability**
-
-This study did not generate new unique reagents.
-
-**Data and Code Availability**
-
-- The ALAD single-cell gene expression and clinical annotations analyzed here were obtained from Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
-
-- The IBD single-cell gene expression, cell-type annotations, and biopsy metadata were obtained from the IBDverse atlas of Krzak et al.\ [@doi:10.1038/s41588-026-02634-7].
-
-- Source data for Figs 2--5, Figs EV1--EV5, and Appendix Figs S1--S13 are provided with this article.
-
-- CCC-RISE and all analyses were implemented in Python 3.13 and are available at https://github.com/meyer-lab/cccRISE.
-
-- Any additional information required to reproduce this work is available from the Lead Contact.
