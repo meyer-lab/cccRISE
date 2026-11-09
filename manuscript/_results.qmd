@@ -145,7 +145,6 @@ Shaded region excludes cells exceeding 180°.
 Dotted ray and arc indicate an example polar coordinate: (0.3, 45°).
 ({{< panel 4 hormone-angle-hist >}}) Distribution of EE cells with polar magnitude of at least 0.3 over polar angles, colored by angle-based thresholds at 30 and 60°.
 ({{< panel 4 hormone-extreme-markers >}}) Expression of crypt, intermediate (int.), and villus EE markers and BMP target genes in each group.
-Markers were curated from Beumer et al.\ (2018, 2020), Gehart et al., and Krzak et al.\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7].
 Genes shown differ between villus-like and crypt-like cells at q < 0.05 (Mann--Whitney U test, Benjamini--Hochberg corrected across all markers tested).
 ({{< panel 4 niches-concordance >}}) NICHES concordance of the component 3 and 4 sender (S) and receiver (R) populations (diamonds), as predicted by their fine cell-type labels (circles) and lineages (ticks), and under 1,000 random RISE directions matched for cell type (grey bars, 5th--95th percentiles).
 Filled diamonds: q < 0.05; one-sided empirical test against the random directions, Benjamini--Hochberg corrected across the 12 populations of the six components.

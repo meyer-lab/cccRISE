@@ -278,12 +278,15 @@ Components were mapped to annotated cell types by the mean per-cell sender and r
 Cells for which either ratio was at least $\tau = 0.3$ formed the sender or receiver group, assigned to the role with the larger ratio.
 Groups were compared by differential gene expression.
 For ALAD analyses, marker genes were curated from Travaglini et al.\ and Sikkema et al.\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2].
-For IBD analyses, marker genes were curated from Beumer et al.\ (2018, 2020), Gehart et al., and Krzak et al.\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7].
 Sender and receiver groups were compared for curated genes, p-values were corrected across candidate markers present in the data, and markers were reported if q < 0.05 and the difference in the fraction of cells detecting the gene was at least 0.2.
 Each group was also compared with all other cells, with correction across all genes.
 
-**Enteroendocrine states.** Each IBD EE cell's component 3 and 4 per-cell sender weights were divided by their largest values among EE cells, and these relative weights gave the cell a polar magnitude and angle (0° for component 3 alone, 90° for component 4 alone).
-Cells of magnitude at least 0.3 were villus-like at angles up to 30°, crypt-like from 60°, and mixed between; the remaining EE cells, including those whose relative weights summed to at most zero, were classed as other.
+**Label-free groups across components.** As above, per-cell weights in each component were divided by their respective maxima across cells.
+Based on these relative weights, a polar magnitude and angle were computed for each cell with angles ranging from 0--90° between components.
+Cells were thresholded by magnitude 0.3, and those above that threshold were partitioned into groups by angle: 0--30°, 30--60°, and 60--90°.
+Groups were compared by differential gene expression.
+For IBD analyses, marker genes were curated from Beumer et al.\ (2018, 2020), Gehart et al., and Krzak et al.\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7].
+Groups were compared for curated genes, p-values were corrected across candidate markers present in the data, and markers were reported if q < 0.05 and the difference in the fraction of cells detecting the gene was at least 0.2.
 
 ### Cell Type Composition
 
