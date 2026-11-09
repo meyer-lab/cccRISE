@@ -24,7 +24,7 @@ Each condition was therefore weighted by the inverse of its mean-centered Froben
 Equivalently, RISE was fit to the weighted slices $w_{i}X_{sc,i}$, and each row of $A$ was divided by $w_{i}$ after fitting so that the factors reconstructed the unweighted data.
 
 **Fitting.** In fitting RISE, we obtained $\mathbf{P}$ and the factor matrices $A$ and $C$.
-First, for fixed projections, the factor matrices were updated as
+First, for fixed projections, the factor matrices were updated as:
 
 $$
   \underset{A,C}{\operatorname{argmin}}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{sc,i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2}
@@ -42,6 +42,12 @@ For a low-rank decomposition, we updated each $P_{i} \in \mathbf{P}$ as $P_{i} =
 This cycle of aligning the tensor and then factoring it was repeated until the decrease in the weighted relative squared error, $\sum_{i}w_{i}^{2}\left\| X_{sc,i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2} / \sum_{i}w_{i}^{2}\left\| X_{sc,i} \right\|^{2}$, between iterations fell below 1×10^-8^, or until 300 iterations elapsed.
 
 RISE enhances the core PARAFAC2 algorithm with key optimizations: $A$ was initialized to ones, $C$ was initialized to the leading $r$ right singular vectors of the stacked, centered, and slice-weighted data, (computed with an iterative (LOBPCG) eigensolver from a random start), and fitted components were ordered by the variance-to-mean ratio of their condition loadings, normalized, and sign-flipped to a consistent orientation\ [@doi:10.1016/j.cels.2025.101294; @doi:10.1137/S1064827500366124; @doi:10/cxfskg; @doi:10.1016/j.chemolab.2021.104312].
+
+**CANDELINC compression.** Analyses requiring many RISE fits (bi-cross-validation, jackknife, and re-initialization, below) used CANDELINC compression\ [@doi:10.1016/S0169-7439(96)00074-3; @doi:10.1137/07070111X].
+During compressed fits, the gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations.
+Each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
+Compressed fits reduced the gene expression space, but yielded nearly identical components to uncompressed fits.
+All RISE fits besides those used for bi-cross-validation, jackknife, and re-initialization testing were uncompressed.
 
 **Visualization.** PaCMAP was applied to the RISE projections of all cells concatenated across conditions, with default parameters, to visualize cell-to-cell variation as an embedding\ [@arxiv:2012.04456].
 
@@ -113,17 +119,12 @@ After filtering the CellChatDB list of interacting LR pairs to the genes in the 
 The uncompressed data were fit with a 17-component RISE model and a 5-component CPD model, selected as described in Rank Selection.
 
 **IBD cohort.** The single-cell gene expression, cell-type annotations, and biopsy metadata of terminal-ileum pinch biopsies were obtained from the IBDverse atlas of Krzak et al.: 343 biopsies, one per individual, from 232 healthy participants and 111 patients with Crohn's disease (CD), 47 uninflamed and 64 inflamed\ [@doi:10.1038/s41588-026-02634-7].
-We excluded the mesenchymal lineage (fibroblasts, endothelial cells, and pericytes; 11,286 of 1,185,861 cells), because the authors attribute its underrepresentation in the atlas to the pinch biopsies and the digestive enzymes, which favor capturing epithelial cells\ [@doi:10.1038/s41588-026-02634-7]; its yield accordingly varied across biopsies, from none to 11% of a biopsy's cells, independently of inflammation status (Kruskal--Wallis p = 0.14).
+We excluded the mesenchymal lineage (fibroblasts, endothelial cells, and pericytes; 11,286 of 1,185,861 cells), because the authors attribute its underrepresentation in the atlas to the pinch biopsies and the digestive enzymes, which favor capturing epithelial cells; its yield accordingly varied across biopsies, from none to 11% of a biopsy's cells, independently of inflammation status (Kruskal--Wallis p = 0.14).
 This left 7 lineages (coarse labels) and 54 annotated cell types (fine labels).
 Cells and genes were filtered and normalized as for ALAD, with the gene filter measured on all remaining cells, and mitochondrial and ribosomal genes were also removed.
-To fit in memory, each biopsy was capped at 2,000 cells drawn at random (seed 0) from its cells passing the count filter, which subsampled 245 of the 343 biopsies and kept 634,534 of 1,174,575 cells.
-The cap kept the composition of each biopsy: within each subsampled biopsy, no lineage's share changed by more than 2.5 percentage points, and every lineage and cell type remained.
+To fit in memory, each biopsy was capped at 2,000 cells drawn at random from the cells passing the count filter, which subsampled 245 of the 343 biopsies and kept 634,534 of 1,174,575 cells.
+The cap kept the composition of each biopsy: within each subsampled biopsy, no lineage's share changed by more than 2.5%, and every lineage and cell type remained.
 The final dataset consisted of 634,534 cells and 23,355 genes, with 1,255 LR pairs retained, and was fit with a 60-component RISE model and a 6-component CPD model, selected as described in Rank Selection.
-
-**RISE compression.** [Claude's sample text:] Analyses requiring many RISE fits (bi-cross-validation, and the jackknife and re-initialization replicates, below) used compressed RISE fits.
-The gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations; each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
-Compressed fits reduced the gene expression space, but yielded nearly identical components to uncompressed fits.
-The RISE fits, besides those used for bi-cross-validation, jackknife, and re-initialization testing, were uncompressed.
 
 ### Fit Evaluation
 
