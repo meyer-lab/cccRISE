@@ -12,11 +12,11 @@ The input to RISE, $X_{sc,i} \in \mathbb{R}^{J_{sc,i} \times K}$, is the normali
 In fitting the RISE model, we seek:
 
 $$
-  \underset{A,C,\mathbf{P}}{argmin}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{sc,i} - P_{i}diag\left( a_{i} \right)C^{T} \right\|^{2}\text{subject to}\ {P_{i}}^{T}P_{i}\mathbf{\ } = \mathbf{I\ \forall\ }i
+  \underset{A,C,\mathbf{P}}{\operatorname{argmin}}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{sc,i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2}\text{subject to}\ {P_{i}}^{T}P_{i}\mathbf{\ } = \mathbf{I\ \forall\ }i
 $$
 
-where $w_{i}$ are the slice weights (see below); $\mathbf{P =}P_{i} \in \mathbb{R}^{J_{sc,i} \times r},\ \ i\  = \ 1,\ 2,\ \ldots,\ I$ are the projection matrices and $r$ is the rank of the RISE decomposition; $diag\left( a_{i} \right)$ is the diagonal matrix whose nonzero entries are equal to the $i$^th^ row of $A \in \mathbb{R}^{I \times r}$, the condition factor matrix; $C \in \mathbb{R}^{K \times r}$ is the gene factor matrix; and $\mathbf{I}$ is the identity matrix\ [@doi:10/cxfskg].
-The general PARAFAC2 model includes a third factor matrix, $B \in \mathbb{R}^{r \times r}$, between $P_{i}$ and $diag\left( a_{i} \right)$; CCC-RISE fixes $B = \mathbf{I}$, so each condition's eigen-state coordinates are the orthonormal columns of $P_{i}$.
+where $w_{i}$ are the slice weights (see below); $\mathbf{P =}P_{i} \in \mathbb{R}^{J_{sc,i} \times r},\ \ i\  = \ 1,\ 2,\ \ldots,\ I$ are the projection matrices and $r$ is the rank of the RISE decomposition; $\operatorname{diag}\left( a_{i} \right)$ is the diagonal matrix whose nonzero entries are equal to the $i$^th^ row of $A \in \mathbb{R}^{I \times r}$, the condition factor matrix; $C \in \mathbb{R}^{K \times r}$ is the gene factor matrix; and $\mathbf{I}$ is the identity matrix\ [@doi:10/cxfskg].
+The general PARAFAC2 model includes a third factor matrix, $B \in \mathbb{R}^{r \times r}$, between $P_{i}$ and $\operatorname{diag}\left( a_{i} \right)$; CCC-RISE fixes $B = \mathbf{I}$, so each condition's eigen-state coordinates are the orthonormal columns of $P_{i}$.
 The $r$ cell eigen-states are therefore defined jointly by the projections and the gene factor: eigen-state $q$ has gene profile $c_{q}$, scaled by $a_{iq}$ in condition $i$, and column $q$ of $P_{i}$ gives each cell's projection onto the shared gene expression factors.
 
 **Slice normalization.** Conditions differ in cell number and total variance, so without weighting, conditions with many or highly variable cells would dominate the fit.
@@ -27,19 +27,19 @@ Equivalently, RISE was fit to the weighted slices $w_{i}X_{sc,i}$, and each row 
 First, for fixed projections, the factor matrices were updated as
 
 $$
-  \underset{A,C}{argmin}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{sc,i} - P_{i}diag\left( a_{i} \right)C^{T} \right\|^{2}
+  \underset{A,C}{\operatorname{argmin}}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{sc,i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2}
 $$
 
 $$
-  = \underset{A,C}{argmin}\sum_{i=1}^{I}\left\| w_{i}P_{i}^{T}X_{sc,i} - diag\left( a_{i} \right)C^{T} \right\|^{2}
+  = \underset{A,C}{\operatorname{argmin}}\sum_{i=1}^{I}\left\| w_{i}P_{i}^{T}X_{sc,i} - \operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2}
 $$
 
 which is equivalent to one alternating least-squares (ALS) update of $A$ and $C$ in a PARAFAC model of the aligned third-order tensor whose $i$^th^ slice along the first mode is $w_{i}P_{i}^{T}X_{sc,i}$, with the eigen-state factor fixed to the identity.
 Then, the projection matrices, $\mathbf{P,}$ were updated by solving the Orthogonal Procrustes problem.
 Given matrices $M,N \in \mathbb{R}^{n \times m}$, the Orthogonal Procrustes problem seeks an orthogonal matrix $Q \in \mathbb{R}^{n \times n}$ that minimizes $\left\| MQ - N \right\|_{F}^{2}$.
 The solution is given by $Q = UV^{T}$, where $U\Sigma V^{T}$ is the singular value decomposition of $N^{T}M$.
-For a low-rank decomposition, we updated each $P_{i} \in \mathbf{P}$ as $P_{i} = UV^{T}$, the product of the $r$ left and right singular vectors from the thin SVD $U\Sigma V^{T}$ of $X_{sc,i}C\,diag\left( a_{i} \right)$.
-This cycle of aligning the tensor and then factoring it was repeated until the decrease in the weighted relative squared error, $\sum_{i}w_{i}^{2}\left\| X_{sc,i} - P_{i}diag\left( a_{i} \right)C^{T} \right\|^{2} / \sum_{i}w_{i}^{2}\left\| X_{sc,i} \right\|^{2}$, between iterations fell below 1×10^-8^, or until 300 iterations elapsed.
+For a low-rank decomposition, we updated each $P_{i} \in \mathbf{P}$ as $P_{i} = UV^{T}$, the product of the $r$ left and right singular vectors from the thin SVD $U\Sigma V^{T}$ of $X_{sc,i}C\,\operatorname{diag}\left( a_{i} \right)$.
+This cycle of aligning the tensor and then factoring it was repeated until the decrease in the weighted relative squared error, $\sum_{i}w_{i}^{2}\left\| X_{sc,i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2} / \sum_{i}w_{i}^{2}\left\| X_{sc,i} \right\|^{2}$, between iterations fell below 1×10^-8^, or until 300 iterations elapsed.
 
 RISE enhances the core PARAFAC2 algorithm with key optimizations: $A$ was initialized to ones, $C$ was initialized to the leading $r$ right singular vectors of the stacked, centered, and slice-weighted data, (computed with an iterative (LOBPCG) eigensolver from a random start), and fitted components were ordered by the variance-to-mean ratio of their condition loadings, normalized, and sign-flipped to a consistent orientation\ [@doi:10.1016/j.cels.2025.101294; @doi:10.1137/S1064827500366124; @doi:10/cxfskg; @doi:10.1016/j.chemolab.2021.104312].
 
@@ -76,10 +76,10 @@ This set of component rank-one tensors are collectively represented in factor ma
 Specifically, CPD seeks
 
 $$
-  \underset{A,B,C}{argmin}\sum_{i=1}^{I}\left\| X_{i} - Bdiag\left( a_{i} \right)C^{T} \right\|^{2}
+  \underset{A,B,C}{\operatorname{argmin}}\sum_{i=1}^{I}\left\| X_{i} - B\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2}
 $$
 
-where $X_{\mathbf{i}}$ is the $i$^th^ slice of $\mathbf{X}$ along the first mode, and $diag\left( a_{i} \right)$ is the diagonal matrix whose nonzero entries are equal to the $i$^th^ row of $A$.
+where $X_{\mathbf{i}}$ is the $i$^th^ slice of $\mathbf{X}$ along the first mode, and $\operatorname{diag}\left( a_{i} \right)$ is the diagonal matrix whose nonzero entries are equal to the $i$^th^ row of $A$.
 The same model extends to the four modes of the communication tensor, yielding the condition ($D$), sender eigen-state ($E$), receiver eigen-state ($F$), and LR pair ($G$) factor matrices.
 
 **Fitting.** While many algorithms exist for deriving CPD, we applied alternating least squares (ALS), wherein each mode is iteratively solved using least squares.
