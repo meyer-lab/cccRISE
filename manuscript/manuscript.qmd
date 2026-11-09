@@ -25,8 +25,8 @@ Cell--cell communication (CCC) coordinates cellular activities that vary dynamic
 Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, methods that preserve single-cell resolution disregard how communication is differentially regulated across multiple conditions.
 To bridge this gap, we developed CCC-RISE, an extension of the tensor-based method Reduction and Insight in Single-cell Exploration (RISE).
 Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by conditions, sender cells, receiver cells, and ligand--receptor pairs, then maps each program back to the individual cells involved.
-Applied to a lung transplant cohort with acute allograft dysfunction, CCC-RISE identified transcriptionally distinct sender and receiver subpopulations beyond available cell-type annotations and recovered coordinated communication programs that associated with disease outcome.
-For example, fibrotic BTC--EGFR signaling was a common feature among lung transplant patients that CCC-RISE subdivided into ciliated epithelial sender cells and basal/secretory epithelial receiver cells.
+Applied to lung transplant and Crohn's Disease cohorts, CCC-RISE identified transcriptionally distinct sender and receiver subpopulations beyond available cell-type labels, revealed coordinated signaling mediated by immune proteins that was associated with disease outcome, and characterized a transitional spectrum of cells between hormone-secreting states.
+Where possible, the above results agreed with existing CCC-inference methods up to the capacity allowed by single-condition or aggregate-cell constraints.
 CCC-RISE thus resolves disease-relevant signaling subpopulations that are invisible to aggregate methods by analyzing multi-condition data while preserving single-cell resolution.
 
 **Highlights:**
