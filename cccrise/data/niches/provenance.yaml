@@ -9,6 +9,70 @@
 shared:
   celltype_key: broad_cell_type
 files:
+  cells_alad.parquet:
+    sha256: 812d2c44d8a869a444a82339b77e2acc2880bf5d854683291091d38f6b542160
+    command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
+      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    group_key: ALADstatus
+    factors_path: cccrise/data/factors/bal_alad_factors.nc
+    factors_sha256: 01d4749ad4901a54b567a28e834a0fe799c0fa6c40eb57743904b960da884295
+    resulting_dims:
+      conditions: 47
+      genes: 16675
+      cells: 51273
+      lr_pairs: 513
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
+    niches_pairs:
+    - BTC^EGFR
+    - BTC^EGFR&ERBB2
+    - CCL17^CCR4
+    - CCL22^CCR4
+    - CCL5^CCR4
+    - CCL4^CCR5
+    - CCL5^CCR5
+    - CCL19^CCR7
+    - CXCL9^CXCR3
+    - CXCL13^CXCR3
+    - XCL1^XCR1
+    - XCL2^XCR1
+    - CD70^CD27
+    - TNFSF4^TNFRSF4
+    - TNFSF18^TNFRSF18
+    - ANGPTL4^SDC1
+    - GZMA^F2R
+    - CADM1^CADM1
+    - ENTPD1^ADORA2A
+    - CD80^CD28
+    - CD80^CTLA4
+    - CEACAM1^CEACAM5
+    - NECTIN2^TIGIT
+    cells_without_niches_score: 25
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
+    git_sha: 005300b71b639aefd233c0a6f9f3e0166be8141b
+    generated: '2026-11-07T05:46:18+00:00'
   cells_ibd.parquet:
     sha256: 511969ef01cebe2a8c907d6c935a0814b8f2381e78de0ad2a1c3b9e5147ab7ea
     command: uv run cccrise-niches --dataset ibd --cells-only
@@ -42,26 +106,9 @@ files:
     git_sha: e2f407400e454d5ec11cb977e3836af851f2c8b4
     generated: '2026-11-06T21:35:07+00:00'
   orderings_alad.parquet:
-    random_state: 0
-    niches_commit: 5d932b8
-    r_versions:
-      r: 4.5.2
-      seurat: 5.6.0
-      matrix: 1.7.4
-    group_tau: 0.3
-    taus:
-    - 0.1
-    - 0.2
-    - 0.3
-    - 0.4
-    - 0.5
-    - 0.6
-    n_population_draws: 1000
-    n_ordering_draws: 200
-    scorable_share: 0.1
-    git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
-    command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE-concordance/rcheck/lib
+    sha256: 67c86974440019c917c33d61528f34d418883a3038437cf68c371464515a9c49
+    command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
+      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -74,6 +121,17 @@ files:
     group_key: ALADstatus
     factors_path: cccrise/data/factors/bal_alad_factors.nc
     factors_sha256: 01d4749ad4901a54b567a28e834a0fe799c0fa6c40eb57743904b960da884295
+    resulting_dims:
+      conditions: 47
+      genes: 16675
+      cells: 51273
+      lr_pairs: 513
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
     niches_pairs:
     - BTC^EGFR
     - BTC^EGFR&ERBB2
@@ -99,13 +157,18 @@ files:
     - CEACAM1^CEACAM5
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
-    resulting_dims:
-      conditions: 47
-      genes: 16675
-      cells: 51273
-      lr_pairs: 513
-    generated: '2026-11-05T00:26:47+00:00'
-    sha256: eec3f579adb933dda37decca97524242901f798ae7b132cbf679bc2a0261b784
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
+    git_sha: 005300b71b639aefd233c0a6f9f3e0166be8141b
+    generated: '2026-11-07T05:46:18+00:00'
   orderings_ibd.parquet:
     random_state: 0
     niches_commit: 5d932b8
@@ -170,26 +233,9 @@ files:
     git_sha: 0d50a13eb4b815120f3bcf451e6f354d50a247c8
     generated: '2026-11-05T03:49:48+00:00'
   populations_alad.parquet:
-    random_state: 0
-    niches_commit: 5d932b8
-    r_versions:
-      r: 4.5.2
-      seurat: 5.6.0
-      matrix: 1.7.4
-    group_tau: 0.3
-    taus:
-    - 0.1
-    - 0.2
-    - 0.3
-    - 0.4
-    - 0.5
-    - 0.6
-    n_population_draws: 1000
-    n_ordering_draws: 200
-    scorable_share: 0.1
-    git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
-    command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE-concordance/rcheck/lib
+    sha256: 8a51264499dc3a51d0a4d568e8d3ced1da06fd7abe5817c4e54d8e91c7d1c047
+    command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
+      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -202,6 +248,17 @@ files:
     group_key: ALADstatus
     factors_path: cccrise/data/factors/bal_alad_factors.nc
     factors_sha256: 01d4749ad4901a54b567a28e834a0fe799c0fa6c40eb57743904b960da884295
+    resulting_dims:
+      conditions: 47
+      genes: 16675
+      cells: 51273
+      lr_pairs: 513
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
     niches_pairs:
     - BTC^EGFR
     - BTC^EGFR&ERBB2
@@ -227,13 +284,18 @@ files:
     - CEACAM1^CEACAM5
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
-    resulting_dims:
-      conditions: 47
-      genes: 16675
-      cells: 51273
-      lr_pairs: 513
-    generated: '2026-11-05T00:26:47+00:00'
-    sha256: 8e833fa72af0111d5003ad742a71593a8947df3d9e0fc8b898342295689d4416
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
+    git_sha: 005300b71b639aefd233c0a6f9f3e0166be8141b
+    generated: '2026-11-07T05:46:18+00:00'
   populations_ibd.parquet:
     random_state: 0
     niches_commit: 5d932b8
@@ -298,26 +360,9 @@ files:
     git_sha: 0d50a13eb4b815120f3bcf451e6f354d50a247c8
     generated: '2026-11-05T03:49:48+00:00'
   tau_alad.parquet:
-    random_state: 0
-    niches_commit: 5d932b8
-    r_versions:
-      r: 4.5.2
-      seurat: 5.6.0
-      matrix: 1.7.4
-    group_tau: 0.3
-    taus:
-    - 0.1
-    - 0.2
-    - 0.3
-    - 0.4
-    - 0.5
-    - 0.6
-    n_population_draws: 1000
-    n_ordering_draws: 200
-    scorable_share: 0.1
-    git_sha: b4fb03c5bec45cff7dcb18faa52f4bd3b97b916f
-    command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE-concordance/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE-concordance/rcheck/lib
+    sha256: 6054b24cf6a6f1aca8a292323bb79c5a0240ba9c4bff43f2554fb4833dec6b78
+    command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
+      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -330,6 +375,17 @@ files:
     group_key: ALADstatus
     factors_path: cccrise/data/factors/bal_alad_factors.nc
     factors_sha256: 01d4749ad4901a54b567a28e834a0fe799c0fa6c40eb57743904b960da884295
+    resulting_dims:
+      conditions: 47
+      genes: 16675
+      cells: 51273
+      lr_pairs: 513
+    random_state: 0
+    niches_commit: 5d932b8
+    r_versions:
+      r: 4.5.2
+      seurat: 5.6.0
+      matrix: 1.7.4
     niches_pairs:
     - BTC^EGFR
     - BTC^EGFR&ERBB2
@@ -355,13 +411,18 @@ files:
     - CEACAM1^CEACAM5
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
-    resulting_dims:
-      conditions: 47
-      genes: 16675
-      cells: 51273
-      lr_pairs: 513
-    generated: '2026-11-05T00:26:47+00:00'
-    sha256: af77d280d35f8f1346c330e5ae5e9c22821d28f6e266c835672538798d469b07
+    group_tau: 0.3
+    taus:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    n_population_draws: 1000
+    n_ordering_draws: 200
+    git_sha: 005300b71b639aefd233c0a6f9f3e0166be8141b
+    generated: '2026-11-07T05:46:18+00:00'
   tau_ibd.parquet:
     random_state: 0
     niches_commit: 5d932b8
