@@ -10,9 +10,9 @@ shared:
   celltype_key: broad_cell_type
 files:
   cells_alad.parquet:
-    sha256: 812d2c44d8a869a444a82339b77e2acc2880bf5d854683291091d38f6b542160
+    sha256: d0e6ed840d6d427e908ca418aa75d45b24fed31d6185a4cdcb6a6fcbc083e7f3
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib
+      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib --r-workers 8
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -30,7 +30,6 @@ files:
       genes: 16675
       cells: 51273
       lr_pairs: 513
-    random_state: 0
     niches_commit: 5d932b8
     r_versions:
       r: 4.5.2
@@ -46,6 +45,7 @@ files:
     - CCL5^CCR5
     - CCL19^CCR7
     - CXCL9^CXCR3
+    - CXCL10^CXCR3
     - CXCL13^CXCR3
     - XCL1^XCR1
     - XCL2^XCR1
@@ -53,6 +53,7 @@ files:
     - TNFSF4^TNFRSF4
     - TNFSF18^TNFRSF18
     - ANGPTL4^SDC1
+    - PRSS3^F2R
     - GZMA^F2R
     - CADM1^CADM1
     - ENTPD1^ADORA2A
@@ -62,6 +63,7 @@ files:
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
     group_tau: 0.3
+    carrying_cap: 20
     taus:
     - 0.1
     - 0.2
@@ -69,10 +71,8 @@ files:
     - 0.4
     - 0.5
     - 0.6
-    n_population_draws: 1000
-    n_ordering_draws: 200
-    git_sha: 005300b71b639aefd233c0a6f9f3e0166be8141b
-    generated: '2026-11-07T05:46:18+00:00'
+    git_sha: 3499d808b802a6274f57df95ec97316d37776468
+    generated: '2026-11-10T12:04:53+00:00'
   cells_ibd.parquet:
     sha256: 511969ef01cebe2a8c907d6c935a0814b8f2381e78de0ad2a1c3b9e5147ab7ea
     command: uv run cccrise-niches --dataset ibd --cells-only
@@ -105,137 +105,10 @@ files:
       lr_pairs: 1255
     git_sha: e2f407400e454d5ec11cb977e3836af851f2c8b4
     generated: '2026-11-06T21:35:07+00:00'
-  orderings_alad.parquet:
-    sha256: 67c86974440019c917c33d61528f34d418883a3038437cf68c371464515a9c49
-    command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib
-    dataset: alad
-    dataset_label: ALAD Lung Transplant BAL
-    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
-    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
-    loader_args:
-      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
-      gene_threshold: 0.001
-      normalize: true
-    condition_key: dsco_id
-    group_key: ALADstatus
-    factors_path: cccrise/data/factors/bal_alad_factors.nc
-    factors_sha256: 01d4749ad4901a54b567a28e834a0fe799c0fa6c40eb57743904b960da884295
-    resulting_dims:
-      conditions: 47
-      genes: 16675
-      cells: 51273
-      lr_pairs: 513
-    random_state: 0
-    niches_commit: 5d932b8
-    r_versions:
-      r: 4.5.2
-      seurat: 5.6.0
-      matrix: 1.7.4
-    niches_pairs:
-    - BTC^EGFR
-    - BTC^EGFR&ERBB2
-    - CCL17^CCR4
-    - CCL22^CCR4
-    - CCL5^CCR4
-    - CCL4^CCR5
-    - CCL5^CCR5
-    - CCL19^CCR7
-    - CXCL9^CXCR3
-    - CXCL13^CXCR3
-    - XCL1^XCR1
-    - XCL2^XCR1
-    - CD70^CD27
-    - TNFSF4^TNFRSF4
-    - TNFSF18^TNFRSF18
-    - ANGPTL4^SDC1
-    - GZMA^F2R
-    - CADM1^CADM1
-    - ENTPD1^ADORA2A
-    - CD80^CD28
-    - CD80^CTLA4
-    - CEACAM1^CEACAM5
-    - NECTIN2^TIGIT
-    cells_without_niches_score: 25
-    group_tau: 0.3
-    taus:
-    - 0.1
-    - 0.2
-    - 0.3
-    - 0.4
-    - 0.5
-    - 0.6
-    n_population_draws: 1000
-    n_ordering_draws: 200
-    git_sha: 005300b71b639aefd233c0a6f9f3e0166be8141b
-    generated: '2026-11-07T05:46:18+00:00'
-  orderings_ibd.parquet:
-    random_state: 0
-    niches_commit: 5d932b8
-    r_versions:
-      r: 4.5.2
-      seurat: 5.6.0
-      matrix: 1.7.4
-    group_tau: 0.3
-    taus:
-    - 0.1
-    - 0.2
-    - 0.3
-    - 0.4
-    - 0.5
-    - 0.6
-    n_population_draws: 1000
-    n_ordering_draws: 200
-    sha256: 62103b490549d318267e4758deba5bb58edf6f582b7e3eba215737a0113ffb72
-    command: uv run cccrise-niches --dataset ibd --niches-source /home/sama/R/niches-src --r-library
-      /home/sama/R/niches-lib --r-workers 16
-    dataset: ibd
-    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
-      0)
-    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
-    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
-    loader_args:
-      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
-      gene_threshold: 0.001
-      normalize: true
-      max_cells_per_condition: 2000
-      cell_cap_seed: 0
-      excluded_broad_cell_types:
-      - Mesenchymal
-    condition_key: sanger_sample_id
-    group_key: inflammation_status
-    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
-      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
-      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
-      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
-      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    factors_path: cccrise/data/factors/ibd_ti_factors.nc
-    factors_sha256: 27180af4a6fbceaacdce5ff6fc172280484e00ff3cc3abfe084c518e065aef71
-    niches_pairs:
-    - CCL3L1^CCR1
-    - CCL8^CCR1
-    - CXCL8^CXCR1
-    - CXCL1^CXCR2
-    - CXCL8^CXCR2
-    - IL1A^IL1R1&IL1RAP
-    - IL1A^IL1R2
-    - IL1B^IL1R2
-    - PYY^NPY1R
-    - GCG^GLP1R
-    - CDH4^CDH4
-    - MAG^MAG
-    cells_without_niches_score: 10
-    resulting_dims:
-      conditions: 343
-      genes: 23355
-      cells: 634534
-      lr_pairs: 1255
-    git_sha: 0d50a13eb4b815120f3bcf451e6f354d50a247c8
-    generated: '2026-11-05T03:49:48+00:00'
   populations_alad.parquet:
-    sha256: 8a51264499dc3a51d0a4d568e8d3ced1da06fd7abe5817c4e54d8e91c7d1c047
+    sha256: fcf8233b40fda38dc2f915bf7e79730d5b2d070bc3fbcbce13e5d1799784473e
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib
+      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib --r-workers 8
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -253,7 +126,6 @@ files:
       genes: 16675
       cells: 51273
       lr_pairs: 513
-    random_state: 0
     niches_commit: 5d932b8
     r_versions:
       r: 4.5.2
@@ -269,6 +141,7 @@ files:
     - CCL5^CCR5
     - CCL19^CCR7
     - CXCL9^CXCR3
+    - CXCL10^CXCR3
     - CXCL13^CXCR3
     - XCL1^XCR1
     - XCL2^XCR1
@@ -276,6 +149,7 @@ files:
     - TNFSF4^TNFRSF4
     - TNFSF18^TNFRSF18
     - ANGPTL4^SDC1
+    - PRSS3^F2R
     - GZMA^F2R
     - CADM1^CADM1
     - ENTPD1^ADORA2A
@@ -285,6 +159,7 @@ files:
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
     group_tau: 0.3
+    carrying_cap: 20
     taus:
     - 0.1
     - 0.2
@@ -292,10 +167,8 @@ files:
     - 0.4
     - 0.5
     - 0.6
-    n_population_draws: 1000
-    n_ordering_draws: 200
-    git_sha: 005300b71b639aefd233c0a6f9f3e0166be8141b
-    generated: '2026-11-07T05:46:18+00:00'
+    git_sha: 3499d808b802a6274f57df95ec97316d37776468
+    generated: '2026-11-10T12:04:53+00:00'
   populations_ibd.parquet:
     random_state: 0
     niches_commit: 5d932b8
@@ -360,9 +233,9 @@ files:
     git_sha: 0d50a13eb4b815120f3bcf451e6f354d50a247c8
     generated: '2026-11-05T03:49:48+00:00'
   tau_alad.parquet:
-    sha256: 6054b24cf6a6f1aca8a292323bb79c5a0240ba9c4bff43f2554fb4833dec6b78
+    sha256: 9ef34ee1efb856a4daedb2d656affe5dcbde69ad743fecd8a78e31ec672a4835
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
-      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib
+      --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib --r-workers 8
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -380,7 +253,6 @@ files:
       genes: 16675
       cells: 51273
       lr_pairs: 513
-    random_state: 0
     niches_commit: 5d932b8
     r_versions:
       r: 4.5.2
@@ -396,6 +268,7 @@ files:
     - CCL5^CCR5
     - CCL19^CCR7
     - CXCL9^CXCR3
+    - CXCL10^CXCR3
     - CXCL13^CXCR3
     - XCL1^XCR1
     - XCL2^XCR1
@@ -403,6 +276,7 @@ files:
     - TNFSF4^TNFRSF4
     - TNFSF18^TNFRSF18
     - ANGPTL4^SDC1
+    - PRSS3^F2R
     - GZMA^F2R
     - CADM1^CADM1
     - ENTPD1^ADORA2A
@@ -412,6 +286,7 @@ files:
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
     group_tau: 0.3
+    carrying_cap: 20
     taus:
     - 0.1
     - 0.2
@@ -419,10 +294,8 @@ files:
     - 0.4
     - 0.5
     - 0.6
-    n_population_draws: 1000
-    n_ordering_draws: 200
-    git_sha: 005300b71b639aefd233c0a6f9f3e0166be8141b
-    generated: '2026-11-07T05:46:18+00:00'
+    git_sha: 3499d808b802a6274f57df95ec97316d37776468
+    generated: '2026-11-10T12:04:53+00:00'
   tau_ibd.parquet:
     random_state: 0
     niches_commit: 5d932b8
