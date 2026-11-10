@@ -10,18 +10,18 @@ shared:
   merge_threshold: 0.15
   iterate_threshold: 300
   carried_share: 0.9
-  carrying_cap: 20
-  git_sha: c43ec26f8d1ce8eb8b113965686072c624151f54
+  carrying_cap: 15
 files:
   seed_agreement_alad.parquet:
+    sha256: 4da35d9040a7f83172609ee342cb03a67209c83cd13f393857ca732023578413
     command: uv run cccrise-scriabin-seeds --dataset alad
     dataset: alad
     scriabin_runs: rcheck/out/shared/alad/s1
     cccrise_refits:
       dir: rcheck/out/cccrise/alad/s1
       seeds: [42001, 42002, 42003, 42004, 42005, 42006, 42007, 42008, 42009, 42010]
-    generated: '2026-11-10T12:05:21+00:00'
-    sha256: 4da35d9040a7f83172609ee342cb03a67209c83cd13f393857ca732023578413
+    git_sha: bb25925dc06e56abe94b3a577b4ebcfb0df902b4
+    generated: '2026-11-10T19:29:38+00:00'
   seed_agreement_ibd.parquet:
     sha256: 7c6a19a37f8305927b55ca9a2a7bddf0244d2ff20ec8569bff63cd261c217c1c
     command: uv run cccrise-scriabin-seeds --dataset ibd
@@ -30,4 +30,5 @@ files:
     cccrise_refits:
       dir: rcheck/out/cccrise/ibd/s1
       seeds: [42, 42001, 42002, 42003, 42004]
-    generated: '2026-11-10T12:07:24+00:00'
+    git_sha: bb25925dc06e56abe94b3a577b4ebcfb0df902b4-dirty
+    generated: '2026-11-10T19:31:45+00:00'
