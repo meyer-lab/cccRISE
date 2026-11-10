@@ -94,7 +94,8 @@ AXIS_SIZE = {
     # A few groups x many genes along x (dot plots)
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
     # Figure 5's panels, sized to share their rows
-    "fig5_map": (62 * MM, 40 * MM),
+    "fig5_cos2_pairs": (34 * MM, 34 * MM),
+    "fig5_variance": (34 * MM, 34 * MM),
     "fig4_best": (36 * MM, 42 * MM),
     "fig5_columns": (40 * MM, 24 * MM),
     "fig5_covariation": (28 * MM, 24 * MM),
@@ -112,8 +113,7 @@ AXIS_SIZE = {
     "split_covariation_c3": (40 * MM, 24 * MM),
     "split_columns_ibd": (46 * MM, 30 * MM),
     "split_modes": (24 * MM, 18 * MM),
-    # `figureS_comparator_map`: two rows of equal width
-    "map_ceiling": (58 * MM, 38 * MM),
+    # `figureS_comparator_depth`
     "split_depth": (158 * MM, 30 * MM),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),

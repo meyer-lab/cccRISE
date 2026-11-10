@@ -167,5 +167,7 @@ def depth_tracking(ax) -> None:
         rotation_mode="anchor",
         fontsize=style.FONT_SIZE_DENSE - 0.7,
     )
-    ax.set(ylim=(0, 1.22), yticks=[0, 0.5, 1], ylabel="Depth tracking, |ρ|")
+    ax.set(
+        ylim=(0, 1.22), yticks=[0, 0.5, 1], ylabel="|ρ| with genes\ndetected per cell"
+    )
     cohort_bars(ax, spans, BAR_DROP)

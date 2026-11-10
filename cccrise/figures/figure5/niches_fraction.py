@@ -5,12 +5,11 @@ cccrise-niches``; `comparators.niches_programs.population_table`), with a
 paired (Wilcoxon signed-rank, two-sided) test over every population of both."""
 
 import pandas as pd
-from matplotlib.lines import Line2D
 from scipy.stats import wilcoxon
 
 from ...runners.datasets import NICHES_DIR, scores_filename
 from .. import common, style
-from ._common import DATASET_COLORS, DATASET_LABELS
+from ._common import DATASET_COLORS, DATASET_LABELS, cohort_handles
 from ._recovery import panel_title
 
 AXES = ("fig4_niches",)
@@ -102,10 +101,7 @@ def plot(axs):
         fontsize=TEXT_SIZE,
     )
     ax.legend(
-        handles=[
-            Line2D([], [], marker="o", ls="", ms=3, color=c, label=DATASET_LABELS[d])
-            for d, c in DATASET_COLORS.items()
-        ],
+        handles=cohort_handles(),
         loc="lower right",
         fontsize=TEXT_SIZE,
         labelspacing=0.08,

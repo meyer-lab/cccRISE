@@ -8,10 +8,10 @@ import pandas as pd
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from matplotlib.patches import Rectangle
+from matplotlib.transforms import blended_transform_factory
 
 from .. import common, style
-from ._ceiling import _cohort_labels
-from ._common import DATASET_LABELS
+from ._common import DATASET_COLORS, DATASET_LABELS
 from ._programs import FITS, best_columns
 
 HEAT = style.CMAPS["weight"]
@@ -57,6 +57,33 @@ def _clean_heatmap(ax) -> None:
     ax.tick_params(length=0, pad=1.5)
     for spine in ax.spines.values():
         spine.set_visible(False)
+
+
+def _cohort_labels(ax, centers: dict) -> None:
+    """Each cohort's name beside a bar in its color, right of `ax`."""
+    trans = blended_transform_factory(ax.transAxes, ax.transData)
+    width = ax.bbox.width / ax.figure.dpi
+    bar, text = 1 + 1.2 * style.MM / width, 1 + 2.4 * style.MM / width
+    for dataset, y in centers.items():
+        ax.plot(
+            [bar, bar],
+            [y[0] - 0.4, y[-1] + 0.4],
+            color=DATASET_COLORS[dataset],
+            lw=2.5,
+            transform=trans,
+            clip_on=False,
+            solid_capstyle="butt",
+        )
+        ax.text(
+            text,
+            y.mean(),
+            DATASET_LABELS[dataset],
+            rotation=-90,
+            ha="left",
+            va="center",
+            fontsize=style.FONT_SIZE_LABEL,
+            transform=trans,
+        )
 
 
 def fit_grid(ax, grids: dict[str, pd.DataFrame]) -> None:
