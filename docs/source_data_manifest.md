@@ -70,23 +70,19 @@ Analyses plotted (with provenance in the zip's README):
 Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/factors/ibd_ti_factors.nc`
 - `cccrise/data/ibd_programs/enteroendocrine_cells_ibd.parquet`
-- `cccrise/data/niches/orderings_ibd.parquet`
-- `cccrise/data/niches/populations_ibd.parquet`
 - `cccrise/data/validation_results/cohort_samples_ibd.parquet`
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| 4A | cccrise/figures/figure4/cp_factor_matrices.py | data | cp_condition_loadings.csv | 50.4 | The IBD CP factor matrices, as Figure 2 draws ALAD's (`figure2.cp_factor_matrices`), biopsies grouped by inflammation status. |
-| 4B | cccrise/figures/figure4/cp_factor_matrices.py | data | cp_sender_eigenstate_loadings.csv | 7.7 | The IBD CP factor matrices, as Figure 2 draws ALAD's (`figure2.cp_factor_matrices`), biopsies grouped by inflammation status. |
-| 4C | cccrise/figures/figure4/cp_factor_matrices.py | data | cp_receiver_eigenstate_loadings.csv | 7.6 | The IBD CP factor matrices, as Figure 2 draws ALAD's (`figure2.cp_factor_matrices`), biopsies grouped by inflammation status. |
-| 4D | cccrise/figures/figure4/cp_factor_matrices.py | data | cp_lr_pair_loadings.csv | 195.3 | The IBD CP factor matrices, as Figure 2 draws ALAD's (`figure2.cp_factor_matrices`), biopsies grouped by inflammation status. |
+| 4A | cccrise/figures/figure4/cp_factor_matrices.py | data | cp_condition_loadings.csv | 50.4 | The IBD CP factor matrices, as Figure 2 draws ALAD's (`figure2.cp_factor_matrices`), biopsies grouped by inflammation status, each status named at a bracket and each LR label placed clear of the others (`compact`). |
+| 4B | cccrise/figures/figure4/cp_factor_matrices.py | data | cp_sender_eigenstate_loadings.csv | 7.7 | The IBD CP factor matrices, as Figure 2 draws ALAD's (`figure2.cp_factor_matrices`), biopsies grouped by inflammation status, each status named at a bracket and each LR label placed clear of the others (`compact`). |
+| 4C | cccrise/figures/figure4/cp_factor_matrices.py | data | cp_receiver_eigenstate_loadings.csv | 7.6 | The IBD CP factor matrices, as Figure 2 draws ALAD's (`figure2.cp_factor_matrices`), biopsies grouped by inflammation status, each status named at a bracket and each LR label placed clear of the others (`compact`). |
+| 4D | cccrise/figures/figure4/cp_factor_matrices.py | data | cp_lr_pair_loadings.csv | 195.3 | The IBD CP factor matrices, as Figure 2 draws ALAD's (`figure2.cp_factor_matrices`), biopsies grouped by inflammation status, each status named at a bracket and each LR label placed clear of the others (`compact`). |
 | 4E-G | cccrise/figures/figure4/ee_state_map.py | data | ee_ec_map.csv | 425.7 | Enteroendocrine (EE), enterochromaffin (EC) and tuft cells on a PaCMAP of their RISE projections (zoomed: only these three annotated types), by annotated type, and each cell's unscaled C3 and C4 sender weight. |
 | 4H | cccrise/figures/figure4/hormone_expression_map.py | data | pyy_gcg_on_ee_ec_map.csv | 215.2 | PYY and GCG, the ligands of C3's and C4's top LR pairs, on the EE/EC part of the zoomed map: one panel split into two axes, each a window onto `ee_state_map`'s PaCMAP (not refit) at exactly its scale, so the EE/EC cluster keeps its shape and size, centered on that cluster. |
 | 4I | cccrise/figures/figure4/hormone_angle_scatter.py | data | hormone_angle_cells.csv | 545.1 | Each EE cell's C3 and C4 sender weight, each over its largest EE value (as Figure 2's cutoff scales them), as a magnitude and an angle (`_common.hormone_angles`; 0 degrees C3 only, 90 C4 only), colored by angle past the magnitude floor (dotted arc, `_common.EXTREME_FLOOR`). |
 | 4J | cccrise/figures/figure4/hormone_angle_hist.py | data | hormone_angle_distribution.csv | 12.2 | The angles of EE cells past the magnitude floor (`hormone_angle_scatter`), bars colored by the class their angle bins a cell into (`_common.hormone_extremes`): C3 high up to `EXTREME_SECTOR` degrees, C4 high from 90 - `EXTREME_SECTOR`, both between. |
 | 4K | cccrise/figures/figure4/hormone_extreme_markers.py | data | hormone_extreme_markers.csv | 2.1 | The EE cells fully in one hormone state (`_common.hormone_extremes`: C3's villus-like and C4's crypt-like extremes, mixed between them, other below the magnitude floor) as Figure 2's marker dot plot, by crypt and villus markers, CCK (the I-cell step between them; Gehart et al. |
-| 4L | cccrise/figures/figure4/niches_concordance.py | data | niches_concordance_by_population.csv | 0.8 | `figures.niches.concordance` on IBD's components 3 and 4. |
-| 4M | cccrise/figures/figure4/niches_orderings.py | data | niches_concordance_by_ordering.csv | 0.6 | `figures.niches.orderings` on IBD's components 3 and 4. |
 
 ## Figure 5
 
@@ -94,13 +90,12 @@ Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/comparators/scores/containment_alad.parquet`
 - `cccrise/data/comparators/scores/containment_ibd.parquet`
 - `cccrise/data/comparators/scores/covariation_alad.parquet`
-- `cccrise/data/comparators/scores/covariation_ibd.parquet`
-- `cccrise/data/comparators/scores/homophily_alad.parquet`
-- `cccrise/data/comparators/scores/homophily_ibd.parquet`
 - `cccrise/data/comparators/scores/label_ceiling_alad.parquet`
 - `cccrise/data/comparators/scores/label_ceiling_ibd.parquet`
 - `cccrise/data/comparators/scores/lr_loadings_alad.parquet`
 - `cccrise/data/comparators/scores/lr_loadings_ibd.parquet`
+- `cccrise/data/comparators/scores/nichenet_alad.parquet`
+- `cccrise/data/comparators/scores/nichenet_ibd.parquet`
 - `cccrise/data/factors/bal_alad_factors.nc`
 - `cccrise/data/ibd_programs/enteroendocrine_cells_ibd.parquet`
 - `cccrise/data/niches/populations_alad.parquet`
@@ -108,14 +103,14 @@ Analyses plotted (with provenance in the zip's README):
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| 5A | cccrise/figures/figure5/program_map.py | data | program_cos2_and_label_ceiling_fine.csv | 0.7 | Figure 5A: each program's best comparator column against its label ceiling. |
-| 5B | cccrise/figures/figure5/column_census.py | data | comparator_column_classes.csv | 10.8 | Figure 5B: what each comparator column is. |
-| 5C | cccrise/figures/figure5/best_column.py | data | program_best_column_cos2.csv | 2.5 | Figure 5C: each program's best column in every fit. |
-| 5D | cccrise/figures/figure5/pair_columns.py | data | program_pairs_in_stac_columns.csv | 9.5 | Figure 5D: how STAC arranges the mixed programs' pairs. |
-| 5E | cccrise/figures/figure5/program_covariation.py | data | program_and_stac_column_covariation.csv | 1.2 | Figure 5E: the mixed programs' co-variation against their STAC columns. |
+| 5A | cccrise/figures/figure5/program_map.py | data | program_cos2_and_pseudobulk_ceiling.csv | 1.0 | Figure 5A: each CCC-RISE component's best single comparator LR column against its pseudobulk ceiling, both on the best reading across cell-type fits (coarse or fine). |
+| 5B | cccrise/figures/figure5/span_containment.py | data | component_containment_in_comparator_span.csv | 3.9 | Figure 5B: each CCC-RISE component's containment in each comparator fit's LR span, \|\|P_S c\|\|^2 (`comparators.scores.containment`): the share of the component's LR loading the best combination of the fit's LR columns rebuilds. |
+| 5C | cccrise/figures/figure5/pair_columns.py | data | component_pairs_in_related_columns_alad.csv | 1.0 | Figure 5C: ALAD C4's carrying pairs in the component and in its related columns of each comparator (PB, STAC; coarse and fine apart), with each comparator's best combination of its columns (Σ) (`_split`). |
+| 5D | cccrise/figures/figure5/program_covariation.py | data | component_and_related_column_covariation_alad.csv | 0.3 | Figure 5D: co-variation of ALAD C4 and of its related columns (5C) over all their carrying pairs, against the random and the expression-matched null (`_split.covariation`). |
+| 5E | cccrise/figures/figure5/nichenet.py | data | nichenet_cell_shuffle_by_column.csv | 12.5 | Figure 5E: Figure 2's NicheNet test on CCC-RISE and every PB and STAC LR column (``cccrise-comparator-nichenet``), ALAD beside IBD, laid out as the depth-tracking panel lays out its fits (`_depth`): each column's ligand-weighted target score above rankings with shuffled cells, filled and named where q < 0.05. |
 | 5F | cccrise/figures/figure5/flow_alad.py | data | c5_epithelial_cell_populations.csv | 0.1 | Figure 5F: BTC-EGFR in STAC and in cccRISE. |
 | 5G | cccrise/figures/figure5/flow_ibd.py | data | ee_states_and_receivers.csv | 0.2 | Figure 5G: PYY and GCG in STAC and in cccRISE. |
-| 5H | cccrise/figures/figure5/niches_fraction.py | data | niches_positive_fraction_by_population.csv | 1.7 | Figure 5H: NICHES-positive cells in cccRISE's populations against what their fine labels predict, ALAD and IBD (``uv run cccrise-niches``). |
+| 5H | cccrise/figures/figure5/niches_fraction.py | data | niches_positive_fraction_by_population.csv | 1.4 | Figure 5H: each CCC-RISE population's fraction NICHES-positive against what cell type predicts, each population cell at the NICHES-positive rate of its fine type in its own sample, ALAD and IBD on one axes (``uv run cccrise-niches``; `comparators.niches_programs.population_table`). |
 
 ## Figure EV1
 
@@ -188,21 +183,20 @@ Analyses plotted (with provenance in the zip's README):
 ## Figure EV5
 
 Analyses plotted (with provenance in the zip's README):
-- `cccrise/data/comparators/scores/containment_alad.parquet`
-- `cccrise/data/comparators/scores/containment_ibd.parquet`
 - `cccrise/data/comparators/scores/covariation_alad.parquet`
 - `cccrise/data/comparators/scores/covariation_ibd.parquet`
-- `cccrise/data/comparators/scores/homophily_alad.parquet`
-- `cccrise/data/comparators/scores/homophily_ibd.parquet`
 - `cccrise/data/comparators/scores/lr_loadings_alad.parquet`
 - `cccrise/data/comparators/scores/lr_loadings_ibd.parquet`
+- `cccrise/data/factors/ibd_ti_factors.nc`
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| EV5A | cccrise/figures/figure5/figureS_comparator_classes/span_containment.py | data | comparator_column_containment.csv | 4.9 | Containment of every comparator column in cccRISE's span. |
-| EV5B | cccrise/figures/figure5/figureS_comparator_classes/program_overlap.py | data | comparator_column_program_overlap.csv | 4.9 | Overlap of every column not contained with one cccRISE program. |
-| EV5C | cccrise/figures/figure5/figureS_comparator_classes/column_breadth.py | data | comparator_column_effective_pairs.csv | 4.7 | Effective LR pairs of every comparator column. |
-| EV5D | cccrise/figures/figure5/figureS_comparator_classes/homophilic_share.py | data | comparator_column_homophilic_share.csv | 4.9 | Homophilic share of the columns the earlier rules leave. |
+| EV5A | cccrise/figures/figure5/figureS_comparator_split/cos2_grid.py | data | program_best_column_cos2.csv | 2.5 | Each CCC-RISE component's best single LR column in every fit, to read against Figure 5B's containment: containment well above the best column's cos^2 is a component held across several columns rather than in one. |
+| EV5B | cccrise/figures/figure5/figureS_comparator_split/alad_c3_columns.py | data | component_pairs_in_related_columns_alad.csv | 9.8 | ALAD C3's carrying pairs in the component and in its carrying columns of every comparator (`changes._split`). |
+| EV5C | cccrise/figures/figure5/figureS_comparator_split/alad_c3_covariation.py | data | component_and_related_column_covariation_alad.csv | 0.8 | Co-variation of ALAD C3 and of its carrying columns, over all carrying pairs against the random and the expression-matched null. |
+| EV5D | cccrise/figures/figure5/figureS_comparator_split/ibd_c1c5_columns.py | data | component_pairs_in_related_columns_ibd.csv | 3.0 | IBD C1 and C5 together: their carrying pairs in each component and in their related columns of each comparator, with each comparator's best combination (Σ); a column carrying both lists both shares, C1 first. |
+| EV5E | cccrise/figures/figure5/figureS_comparator_split/ibd_c1c5_covariation.py | data | component_and_related_column_covariation_ibd.csv | 0.7 | Co-variation of IBD C1 and C5 and of their related columns, over all carrying pairs against the random and the expression-matched null. |
+| EV5F | cccrise/figures/figure5/figureS_comparator_split/ibd_c1c5_modes.py | data | ibd_c1_c5_mode_cosines.csv | 0.1 | Why the comparators merge IBD C1 and C5: the cosine between the two components in each CP mode. |
 
 ## Appendix Figure S1
 
@@ -292,17 +286,12 @@ Analyses plotted (with provenance in the zip's README):
 ## Appendix Figure S7
 
 Analyses plotted (with provenance in the zip's README):
-- `cccrise/data/niches/cells_ibd.parquet`
-- `cccrise/data/niches/orderings_ibd.parquet`
-- `cccrise/data/niches/populations_ibd.parquet`
-- `cccrise/data/niches/tau_ibd.parquet`
+- `cccrise/data/scriabin/seed_agreement_alad.parquet`
+- `cccrise/data/scriabin/seed_agreement_ibd.parquet`
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S7A | cccrise/figures/figure4/figureS_niches_ibd/weight_scatters.py | data | cell_weights_groups.csv | 182510.2 | `figures.niches.weight_scatters` on every IBD component. |
-| S7B | cccrise/figures/figure4/figureS_niches_ibd/concordance.py | data | niches_concordance_by_population.csv | 1.4 | `figures.niches.concordance` on IBD. |
-| S7C | cccrise/figures/figure4/figureS_niches_ibd/tau_sweep.py | data | niches_concordance_by_tau.csv | 5.6 | `figures.niches.tau_sweep` on every IBD component. |
-| S7D | cccrise/figures/figure4/figureS_niches_ibd/orderings.py | data | niches_concordance_by_ordering.csv | 1.1 | `figures.niches.orderings` on IBD. |
+| S7 | cccrise/figures/figure5/figureS_scriabin/figureS_scriabin.py | data | seed_to_seed_lr_set_jaccard.csv | 6.3 | Supplementary figure: why Scriabin is not a comparator. |
 
 ## Appendix Figure S8
 
@@ -352,75 +341,54 @@ Analyses plotted (with provenance in the zip's README):
 ## Appendix Figure S9
 
 Analyses plotted (with provenance in the zip's README):
+- `cccrise/data/comparators/scores/depth_alad.parquet`
+- `cccrise/data/comparators/scores/depth_ibd.parquet`
 - `cccrise/data/comparators/scores/label_ceiling_alad.parquet`
 - `cccrise/data/comparators/scores/label_ceiling_ibd.parquet`
-- `cccrise/data/comparators/scores/lr_loadings_alad.parquet`
-- `cccrise/data/comparators/scores/lr_loadings_ibd.parquet`
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S9A | cccrise/figures/figure5/figureS_comparator_map/sender_ceiling.py | data | label_ceiling_sender.csv | 1.8 | Label ceiling of each program's sender weights, with the panels' key. |
-| S9B | cccrise/figures/figure5/figureS_comparator_map/receiver_ceiling.py | data | label_ceiling_receiver.csv | 1.8 | Label ceiling of each program's receiver weights. |
-| S9C | cccrise/figures/figure5/figureS_comparator_map/alad_columns.py | data | coarse_to_fine_lr_cos2.csv | 9.1 | How each comparator's coarse LR columns map onto its fine ones on ALAD. |
-| S9D | cccrise/figures/figure5/figureS_comparator_map/coarse_map.py | data | program_cos2_and_label_ceiling_coarse.csv | 0.8 | Figure 5A on coarse labels. |
-| S9E | cccrise/figures/figure5/figureS_comparator_map/ibd_columns.py | data | coarse_to_fine_lr_cos2.csv | 3.1 | How each comparator's coarse LR columns map onto its fine ones on IBD. |
+| S9A | cccrise/figures/figure5/figureS_comparator_map/sender_ceiling.py | data | pseudobulk_ceiling_sender.csv | 0.9 | Pseudobulk ceiling of each component's sender weights, with the panels' key. |
+| S9B | cccrise/figures/figure5/figureS_comparator_map/receiver_ceiling.py | data | pseudobulk_ceiling_receiver.csv | 0.9 | Pseudobulk ceiling of each component's receiver weights. |
+| S9C | cccrise/figures/figure5/figureS_comparator_map/depth_tracking.py | data | depth_tracking_by_component.csv | 7.7 | Depth tracking of every method's components, both cohorts, with each fit's box and its test (`_depth.depth_tracking`). |
 
 ## Appendix Figure S10
 
 Analyses plotted (with provenance in the zip's README):
-- `cccrise/data/comparators/scores/covariation_ibd.parquet`
-- `cccrise/data/comparators/scores/depth_alad.parquet`
-- `cccrise/data/comparators/scores/depth_ibd.parquet`
-- `cccrise/data/comparators/scores/lr_loadings_ibd.parquet`
+- `cccrise/data/comparators/scores/associations_alad.parquet`
+- `cccrise/data/comparators/scores/containment_alad.parquet`
+- `cccrise/data/comparators/scores/lr_loadings_alad.parquet`
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S10A | cccrise/figures/figure5/figureS_comparator_split/depth_tracking.py | data | depth_tracking_by_component.csv | 3.5 | Depth tracking of every method's components, both cohorts. |
-| S10B | cccrise/figures/figure5/figureS_comparator_split/mixed_pairs.py | data | program_pairs_in_stac_columns.csv | 1.6 | IBD's mixed programs' pairs in STAC's columns. |
-| S10C | cccrise/figures/figure5/figureS_comparator_split/mixed_covariation.py | data | program_and_stac_column_covariation.csv | 1.2 | IBD's mixed programs' co-variation against their STAC columns. |
+| S10A | cccrise/figures/figure5/figureS_comparator_missed_alad/containment.py | data | comparator_column_containment_alad.csv | 2.2 | ALAD: `_missed.containment`. |
+| S10B | cccrise/figures/figure5/figureS_comparator_missed_alad/associations.py | data | comparator_column_associations_alad.csv | 27.2 | ALAD: `_missed.associations`. |
+| S10C | cccrise/figures/figure5/figureS_comparator_missed_alad/contents.py | data | left_over_column_contents_alad.csv | 5.2 | ALAD: `_missed.contents`. |
 
 ## Appendix Figure S11
 
 Analyses plotted (with provenance in the zip's README):
-- `cccrise/data/comparators/scores/covariation_alad.parquet`
-- `cccrise/data/comparators/scores/covariation_ibd.parquet`
-
-| Panel | Script | Status | Files | Size (KB) | Description |
-|---|---|---|---|---|---|
-| S11A | cccrise/figures/figure5/figureS_comparator_covariation/pairs_used.py | data | top_pairs_tested_by_component.csv | 0.3 | How many top pairs each ALAD component tests, under ALAD. |
-| S11B | cccrise/figures/figure5/figureS_comparator_covariation/all_pairs.py | data | top_pair_covariation_by_component.csv | 2.3 | Top-pair co-variation over all pairs, ALAD. |
-| S11C | cccrise/figures/figure5/figureS_comparator_covariation/disjoint.py | data | gene_disjoint_top_pair_covariation_by_component.csv | 1.9 | Top-pair co-variation over gene-disjoint pairs, ALAD. |
-| S11D | cccrise/figures/figure5/figureS_comparator_covariation/ibd_pairs_used.py | data | top_pairs_tested_by_component.csv | 0.2 | How many top pairs each IBD component tests, with the key above. |
-| S11E | cccrise/figures/figure5/figureS_comparator_covariation/ibd_all_pairs.py | data | top_pair_covariation_by_component.csv | 1.1 | Top-pair co-variation over all pairs, IBD. |
-| S11F | cccrise/figures/figure5/figureS_comparator_covariation/ibd_disjoint.py | data | gene_disjoint_top_pair_covariation_by_component.csv | 1.1 | Top-pair co-variation over gene-disjoint pairs, IBD. |
-
-## Appendix Figure S12
-
-Analyses plotted (with provenance in the zip's README):
-- `cccrise/data/comparators/scores/nichenet_alad.parquet`
-
-| Panel | Script | Status | Files | Size (KB) | Description |
-|---|---|---|---|---|---|
-| S12A | cccrise/figures/figure5/figureS_comparator_nichenet/cell_shuffle.py | data | nichenet_cell_shuffle_by_column.csv | 7.1 | Weighted target score of every column above shuffled cells. |
-| S12B | cccrise/figures/figure5/figureS_comparator_nichenet/prior_shuffle.py | data | nichenet_prior_shuffle_by_column.csv | 6.0 | Weighted score percentile of every column. |
-| S12C | cccrise/figures/figure5/figureS_comparator_nichenet/closest_columns.py | data | nichenet_program_and_carrying_columns.csv | 0.6 | Each program's score against its closest columns. |
-
-## Appendix Figure S13
-
-Analyses plotted (with provenance in the zip's README):
-- `cccrise/data/comparators/scores/associations_alad.parquet`
 - `cccrise/data/comparators/scores/associations_ibd.parquet`
-- `cccrise/data/comparators/scores/containment_alad.parquet`
 - `cccrise/data/comparators/scores/containment_ibd.parquet`
-- `cccrise/data/comparators/scores/covariation_alad.parquet`
-- `cccrise/data/comparators/scores/covariation_ibd.parquet`
-- `cccrise/data/comparators/scores/homophily_alad.parquet`
-- `cccrise/data/comparators/scores/homophily_ibd.parquet`
-- `cccrise/data/comparators/scores/lr_loadings_alad.parquet`
 - `cccrise/data/comparators/scores/lr_loadings_ibd.parquet`
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S13A | cccrise/figures/figure5/figureS_comparator_missed/column_contents.py | data | left_over_column_contents.csv | 3.7 | LR contents of the columns no cccRISE program carries, both cohorts. |
-| S13B | cccrise/figures/figure5/figureS_comparator_missed/alad_associations.py | data | left_over_column_associations.csv | 10.7 | The ALAD left-over columns' associations. |
-| S13C | cccrise/figures/figure5/figureS_comparator_missed/ibd_associations.py | data | left_over_column_associations.csv | 1.9 | The IBD left-over columns' associations. |
+| S11A | cccrise/figures/figure5/figureS_comparator_missed_ibd/containment.py | data | comparator_column_containment_ibd.csv | 1.6 | IBD: `_missed.containment`. |
+| S11B | cccrise/figures/figure5/figureS_comparator_missed_ibd/associations.py | data | comparator_column_associations_ibd.csv | 5.1 | IBD: `_missed.associations`. |
+| S11C | cccrise/figures/figure5/figureS_comparator_missed_ibd/contents.py | data | left_over_column_contents_ibd.csv | 1.8 | IBD: `_missed.contents`. |
+
+## Appendix Figure S12
+
+Analyses plotted (with provenance in the zip's README):
+- `cccrise/data/niches/cells_alad.parquet`
+- `cccrise/data/niches/cells_ibd.parquet`
+- `cccrise/data/niches/tau_alad.parquet`
+- `cccrise/data/niches/tau_ibd.parquet`
+
+| Panel | Script | Status | Files | Size (KB) | Description |
+|---|---|---|---|---|---|
+| S12A | cccrise/figures/figure5/figureS_comparator_niches/alad_weights.py | data | cell_weights_groups_alad.csv | 8937.4 | ALAD: each component's per-cell sender vs. |
+| S12B | cccrise/figures/figure5/figureS_comparator_niches/ibd_weights.py | data | cell_weights_groups_ibd.csv | 182510.2 | IBD: each component's per-cell sender vs. |
+| S12C | cccrise/figures/figure5/figureS_comparator_niches/alad_tau.py | data | niches_positive_fraction_by_tau_alad.csv | 4.8 | ALAD: fraction NICHES-positive minus what cell type predicts, across tau (`_niches.tau_sweep`). |
+| S12D | cccrise/figures/figure5/figureS_comparator_niches/ibd_tau.py | data | niches_positive_fraction_by_tau_ibd.csv | 6.1 | IBD: fraction NICHES-positive minus what cell type predicts, across tau (`_niches.tau_sweep`). |
