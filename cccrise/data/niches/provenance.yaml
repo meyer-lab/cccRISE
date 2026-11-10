@@ -14,7 +14,6 @@ shared:
     seurat: 5.6.0
     matrix: 1.7.4
   group_tau: 0.3
-  carrying_cap: 20
   taus:
   - 0.1
   - 0.2
@@ -71,9 +70,11 @@ files:
     - CEACAM1^CEACAM5
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
-    git_sha: 3499d808b802a6274f57df95ec97316d37776468
-    generated: '2026-11-10T12:04:53+00:00'
+    carrying_cap: 15
+    git_sha: 6cff4170d7fb32f5b688d22fea76587997f5622c
+    generated: '2026-11-10T19:29:11+00:00'
   cells_ibd.parquet:
+    carrying_cap: 20
     sha256: f5f694eb55039973942fb1ef6855d242c6b3cac4fe7e87d1d6e551acab440e15
     command: uv run cccrise-niches --dataset ibd --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
       --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib --r-workers 8
@@ -168,9 +169,11 @@ files:
     - CEACAM1^CEACAM5
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
-    git_sha: 3499d808b802a6274f57df95ec97316d37776468
-    generated: '2026-11-10T12:04:53+00:00'
+    carrying_cap: 15
+    git_sha: 6cff4170d7fb32f5b688d22fea76587997f5622c
+    generated: '2026-11-10T19:29:11+00:00'
   populations_ibd.parquet:
+    carrying_cap: 20
     sha256: 36150bd2c686fd316ccc51811a8a0cf9595124596bf96fb1e62b29df5ccd82bb
     command: uv run cccrise-niches --dataset ibd --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
       --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib --r-workers 8
@@ -265,9 +268,11 @@ files:
     - CEACAM1^CEACAM5
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
-    git_sha: 3499d808b802a6274f57df95ec97316d37776468
-    generated: '2026-11-10T12:04:53+00:00'
+    carrying_cap: 15
+    git_sha: 6cff4170d7fb32f5b688d22fea76587997f5622c
+    generated: '2026-11-10T19:29:11+00:00'
   tau_ibd.parquet:
+    carrying_cap: 20
     sha256: 8fd616fb23821edd65a800e4c95d79392c8000f4c56563455cc15ec7c57de7eb
     command: uv run cccrise-niches --dataset ibd --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
       --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib --r-workers 8
