@@ -136,7 +136,7 @@ def plot_lr_covariation(
         ha="right",
         rotation_mode="anchor",
     )
-    ax.set_ylabel("Pairwise rank correlation\nacross conditions")
+    ax.set_ylabel("Pairwise correlation\nacross conditions")
 
 
 @cache
