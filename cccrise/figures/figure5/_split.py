@@ -444,7 +444,7 @@ def covariation(axs, dataset: str, programs) -> None:
     ax.set(
         ylim=(0, 1),
         yticks=[0, 0.5, 1],
-        ylabel=r"$\bar{\rho}$, shared genes merged",
+        ylabel="$\\bar{\\rho}$, shared\ngenes merged",
         xlim=(t["X"].min() - 0.7, t["X"].max() + 0.7),
     )
     ax.set_xticks(t["X"], t["Name"])
