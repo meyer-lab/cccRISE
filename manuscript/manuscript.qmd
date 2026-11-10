@@ -1,5 +1,5 @@
 ---
-title: "Resolving cell--cell communication programs beyond cell-type boundaries across conditions"
+title: "Resolving single-cell, multi-condition cell--cell communication with CCC-RISE"
 ---
 
 **Authors:** Samuel Amidon^1\*^, Ethan Hurt^1\*^, Andrew Ramirez^1^, Nathaniel Thomas^2^, Daniel R. Calabrese^3,4^, John R. Greenland^3,4^, Aaron S. Meyer^1,5,6\†^
