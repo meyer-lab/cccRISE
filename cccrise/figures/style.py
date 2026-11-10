@@ -111,7 +111,6 @@ AXIS_SIZE = {
     "split_columns_c3": (60 * MM, 40 * MM),
     "split_covariation_c3": (40 * MM, 24 * MM),
     "split_columns_ibd": (46 * MM, 30 * MM),
-    "split_covariation_ibd": (32 * MM, 24 * MM),
     "split_modes": (24 * MM, 18 * MM),
     # `figureS_comparator_map`: two rows of equal width
     "map_ceiling": (58 * MM, 38 * MM),

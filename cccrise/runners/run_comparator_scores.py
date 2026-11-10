@@ -55,7 +55,7 @@ Usage:
     uv run cccrise-comparator-scores --dataset alad
     uv run cccrise-comparator-scores --dataset ibd --fits-only
     uv run cccrise-comparator-scores --dataset ibd --tables \\
-        associations covariation depth inner_loss lr_loadings
+        associations depth inner_loss lr_loadings
 """
 
 import argparse

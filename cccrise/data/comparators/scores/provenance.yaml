@@ -172,45 +172,6 @@ files:
     contained: 0.85
     git_sha: 35a802875846c3bd2126368cc1b3677fc6b451e5
     generated: '2026-11-10T19:25:22+00:00'
-  covariation_ibd.parquet:
-    sha256: b0957eae2512e96264ff37814630c8f661bfd2e1d884e927c7ab647273154c0d
-    command: uv run cccrise-comparator-scores --dataset ibd --tables covariation
-    dataset: ibd
-    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
-      0)
-    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
-    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
-    loader_args:
-      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
-      gene_threshold: 0.001
-      normalize: true
-      max_cells_per_condition: 2000
-      cell_cap_seed: 0
-      excluded_broad_cell_types:
-      - Mesenchymal
-    condition_key: sanger_sample_id
-    celltype_key: broad_cell_type and celltype
-    group_key: inflammation_status
-    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
-      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
-      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
-      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
-      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    labelling: coarse and fine
-    fit_sha256:
-      PB coarse: 93b93b38c121d8b909594aec526f242346f4b49d7c76b3116a00655985cce567
-      PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
-      TC2C coarse: 1eeaf65e598dc6dbf53d58eef9eb75b5cae516ab980e553569e19a726241fafd
-      TC2C fine: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
-      TC2C inner coarse: ee7a9157fb3febc1281c2c3823cbbc1e6fc4fda590c5ab9f423f455fb3607ec1
-      TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
-      STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
-      STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
-    n_null: 1000
-    random_state: 42
-    contained: 0.85
-    git_sha: cac3d81616f6c519e220992eaa57e3bbeb6483ac
-    generated: '2026-11-10T20:19:33+00:00'
   depth_alad.parquet:
     sha256: 85d21f7a8f2ba7b4d90e64947733b4ef27ffbbfe365ec48b15533cda1b029d74
     command: uv run cccrise-comparator-scores --dataset alad
