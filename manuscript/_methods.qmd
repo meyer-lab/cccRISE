@@ -232,21 +232,19 @@ For volcano plots, the effect size of each component's top 20 LR pairs was the l
 
 ### External Biological Validation
 
-**NicheNet downstream-target validation.** We tested whether each component's receiver cells upregulated the downstream targets of the component's ligands, using the NicheNet v2 ligand--target prior\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
-For each CPD component:
-
-1. Receiver cell types were those whose mean per-cell receiver weight was at least 0.4 times that of the top cell type.
-2. Cells above the 90th percentile of receiver weight within those cell types (top receivers) were compared with the remaining cells below the 10th percentile of receiver weight across all cells (bottom receivers) by a Wilcoxon rank-sum test, restricted to genes detected in at least 10% of cells of either group.
-3. To correct for hub genes linked to many ligands, each ligand's top 250 targets in the prior were weighted by $\log(N_{L}/n_{t})$, where $N_{L}$ is the number of ligands in the prior and $n_{t}$ the number of ligands listing target $t$.
-4. Each ligand in the LR resource was given a target score: the weighted AUROC with which the Wilcoxon statistics ranked its targets above non-targets.
-5. Target scores were averaged across ligands, weighted by each ligand's loading, the norm of the LR pair loadings ($G$) of its LR pairs.
-   The result was a summary score per component.
-6. The null was formed by permuting the top and bottom receiver labels among those cells 1,000 times, preserving group sizes, and repeating the DE test, gene filter, target scoring, and weighted mean on each permutation.
-   Only ligands scored on every permutation entered the observed and null weighted means.
-7. An empirical one-sided p-value was computed for each component and corrected across components.
+**NicheNet downstream-target validation.** We tested whether each component's receiver cells upregulated the downstream gene targets of the component's ligands using the NicheNet v2 ligand--gene-target database\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
+For each CPD component, NicheNet scores were computed as follows.
+First, receiver cell types were defined as those whose mean per-cell receiver weight was at least 0.4 times that of the top cell type.
+Per-gene scores were then computed for genes detected in at least 10% of cells of either group by a Wilcoxon rank-sum test between cells above the 90th percentile of receiver weight within those cell types (top receivers) and the remaining cells below the 10th percentile of receiver weight (bottom receivers).
+To correct for hub genes linked to many ligands, each ligand's top 250 targets in the NicheNet database were weighted by $\log(N_{L}/n_{t})$, where $N_{L}$ is the number of ligands in the prior and $n_{t}$ the number of ligands listing target $t$.
+Each ligand was scored by the AUROC with which the Wilcoxon statistics ranked its NicheNet targets above non-targets.
+Target scores were averaged across ligands and weighted by each ligand's loading (the norm of the LR pair loadings ($G$) of its LR pairs), resulting in a summary NicheNet score per component.
+A null was formed by permuting the top and bottom receiver labels among those cells 1,000 times, preserving group sizes, and repeating the DE test, gene filter, target scoring, and weighted mean on each permutation.
+Only ligands scored on every permutation entered the observed and null weighted means.
+Finally, an empirical one-sided p-value was computed for each component and corrected across components.
 
 **NICHES concordance.** We tested whether the cells CCC-RISE assigns to a component signal through the component's LR pairs in their own expression by using NICHES\ [@doi:10.1093/bioinformatics/btac775].
-For each CPD component, with sender, receiver, and LR pair loadings $e$, $f$, and $g$ (its columns of $E$, $F$, and $G$), the sender population was the cells whose per-cell sender weight was at least $\tau = 0.3$ times its largest value, $(Pe)_{j} \geq \tau \max_{j'}(Pe)_{j'}$, and the receiver population was defined likewise from $Pf$.
+For each CPD component, with sender, receiver, and LR pair loadings $e$, $f$, and $g$ (its columns of $E$, $F$, and $G$), the sender population was the cells whose per-cell sender weight was at least $\tau = 0.3$ times its largest value, $(Pe)_{j} \geq \tau \max_{j'}(Pe)_{j'}$, and the receiver population was defined similarly by $(Pf)_{j} \geq \tau \max_{j'}(Pf)_{j'}$.
 Unlike the label-free groups (below), which give each cell one role, a cell past both cutoffs belonged to both populations.
 The component's carrying pairs, $\mathcal{C}$, were the fewest LR pairs, taken in order of $\left| g_{l} \right|$, that carried 90% of $\sum_{l} g_{l}^{2}$, up to 10.
 NICHES was run on each sample's cells using CCC-RISE's normalized expression.
@@ -257,12 +255,10 @@ A population's NICHES concordance was the fraction of its cells that were NICHES
 
 Each population's concordance was compared with two references.
 The first was the concordance its cell-type labels predict: the mean, over the population's cells, of the fraction of NICHES-positive cells in each cell's fine cell type (or lineage).
-The second replaced the component's loadings with random directions in eigen-state space:
-
-1. Each of 1,000 directions $u$ was drawn uniformly from the unit sphere in $\mathbb{R}^{r}$, and each cell's score became $(Pu)_{j}$ in place of $(Pe)_{j}$ or $(Pf)_{j}$.
-2. From each fine cell type, the cells with the largest scores were taken, as many as the population held from that type.
-3. The concordance of these cells formed the null distribution.
-
+The second replaced the component's loadings with random directions in eigen-state space, wherein a null was computed as follows.
+First, each of 1,000 directions $u$ was drawn uniformly from the unit sphere in $\mathbb{R}^{r}$, and each cell's score became $(Pu)_{j}$ in place of $(Pe)_{j}$ or $(Pf)_{j}$.
+From each fine cell type, the cells with the largest scores were taken, as many as the population held from that type.
+The concordance of these cells formed the null distribution.
 Empirical one-sided p-values against the 1,000 directions were corrected across each cohort's populations.
 To show what concordance depends on, all cells were also ranked by five orderings and the population's number of top-ranked cells taken from each: a random direction ($Pu$, not matched for cell type), the per-cell weight, the positive part of each of these multiplied by the cell's ligand (senders) or receptor (receivers) expression, and that expression alone.
 For the two orderings using random directions, concordance was the median over 200 directions.
