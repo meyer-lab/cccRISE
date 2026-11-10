@@ -133,14 +133,14 @@ For RISE, the Frobenius norm of the difference between the scRNA-seq data ($X_{\
 This difference was normalized by the Frobenius norm of the data and subtracted from 1.
 
 $$
-  R^{2}X = 1 - \ \frac{\left\| X_{\mathrm{sc}} - X_{\mathrm{RISE}} \right\|^{2}}{\left\| X_{\mathrm{sc}} \right\|^{2}}
+  R^{2}X = 1 - \ \frac{\lVert X_{\mathrm{sc}} - X_{\mathrm{RISE}} \rVert^{2}}{\lVert X_{\mathrm{sc}} \rVert^{2}}
 $$
 
 For CPD, the Frobenius norm of the difference between the 4D communication tensor after CCC scoring ($X_{\mathrm{CCC\ 4D\ Tensor}}$) and the reconstruction from the CPD factors ($X_{\mathrm{CPD}}$) was calculated.
 This difference was normalized by the Frobenius norm of the data and subtracted from 1:
 
 $$
-  R^{2}X = 1 - \ \frac{\left\| X_{\mathrm{CCC\ 4D\ Tensor}} - X_{\mathrm{CPD}} \right\|^{2}}{\left\| X_{\mathrm{CCC\ 4D\ Tensor}} \right\|^{2}}
+  R^{2}X = 1 - \ \frac{\lVert X_{\mathrm{CCC\ 4D\ Tensor}} - X_{\mathrm{CPD}} \rVert^{2}}{\lVert X_{\mathrm{CCC\ 4D\ Tensor}} \rVert^{2}}
 $$
 
 R^2^X ranges from 0 to 1, with a score of 1 indicating a perfect reconstruction.
