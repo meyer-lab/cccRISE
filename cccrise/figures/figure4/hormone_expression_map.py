@@ -55,7 +55,7 @@ def plot(axs):
     axs[0].set_ylabel("PaCMAP 2")
     # One x label, centered under both axes
     width = style.AXIS_SIZE["half_square"][0]
-    axs[0].set_xlabel("PaCMAP 1 (EE, EC)", fontsize=style.FONT_SIZE_DENSE)
+    axs[0].set_xlabel("PaCMAP 1", fontsize=style.FONT_SIZE_DENSE)
     axs[0].xaxis.label.set_x(1 + style.JOINED_GAP / width / 2)
     common.colorbar(axs[-1], points, S.EXPRESSION_LABEL)
 

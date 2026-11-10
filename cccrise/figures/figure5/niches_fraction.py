@@ -1,5 +1,7 @@
-"""Figure 5H: NICHES-positive cells in cccRISE's populations against what their
-fine labels predict, ALAD and IBD (``uv run cccrise-niches``)."""
+"""Figure 5H: each CCC-RISE population's fraction NICHES-positive against what
+cell type predicts, each population cell at the NICHES-positive rate of its
+fine type in its own sample, ALAD and IBD on one axes (``uv run
+cccrise-niches``; `comparators.niches_programs.population_table`)."""
 
 import pandas as pd
 from matplotlib.lines import Line2D
@@ -20,6 +22,7 @@ LEADERS = [
     ("alad", 5, "sender", "C5 S", (0.1, 0.025)),
 ]
 TEXT_SIZE = style.FONT_SIZE_DENSE - 1
+PREDICTED = "Cell type predicted"
 
 
 def populations() -> pd.DataFrame:
@@ -42,7 +45,7 @@ def _leaders(ax, t: pd.DataFrame) -> None:
         ].iloc[0]
         ax.annotate(
             text,
-            (r["Labels fine"], r["Observed"]),
+            (r[PREDICTED], r["Observed"]),
             xytext=at,
             fontsize=TEXT_SIZE,
             fontweight="bold",
@@ -52,38 +55,21 @@ def _leaders(ax, t: pd.DataFrame) -> None:
         )
 
 
-def _key() -> list:
-    def handle(label, **kwargs):
-        return Line2D([], [], marker="o", ls="", ms=3, label=label, **kwargs)
-
-    return [
-        *[handle(DATASET_LABELS[d], color=c) for d, c in DATASET_COLORS.items()],
-        handle("q < 0.05", color="0.4"),
-        handle("q ≥ 0.05", mfc="white", mec="0.4"),
-    ]
-
-
 def plot(axs):
     ax = axs[0]
     t = populations()
     common.source_data(
         "niches_positive_fraction_by_population",
-        t[["Dataset", "Component", "Side", "Observed", "Labels fine", "Q direction"]],
-        "Share of each population's cells with a non-zero NICHES program score "
-        "(Observed), the share its fine labels predict, and q against random directions.",
+        t[
+            ["Dataset", "Component", "Side", "Cells", "Samples", "Observed", PREDICTED]
+        ].rename(columns={"Observed": "Fraction NICHES-positive"}),
+        "Each population's share of cells with a non-zero NICHES program score, and "
+        "what cell type predicts: each population cell at the NICHES-positive rate of "
+        "its fine cell type in its own sample.",
     )
     for dataset, g in t.groupby("Dataset"):
-        hit = g["Q direction"] < common.SIG_ALPHA
         color = DATASET_COLORS[str(dataset)]
-        ax.scatter(
-            g["Labels fine"],
-            g["Observed"],
-            s=12,
-            lw=0.7,
-            zorder=3,
-            facecolor=[color if h else "white" for h in hit],
-            edgecolor=color,
-        )
+        ax.scatter(g[PREDICTED], g["Observed"], s=12, lw=0.7, zorder=3, color=color)
     ax.plot(
         [0, 1],
         [0, 1],
@@ -98,11 +84,19 @@ def plot(axs):
         ylim=(0, 1),
         xticks=[0, 0.5, 1],
         yticks=[0, 0.5, 1],
-        xlabel="Fine labels",
+        xlabel=PREDICTED,
         ylabel="CCC-RISE",
     )
-    panel_title(ax, "NICHES concordance")
-    ax.legend(handles=_key(), loc="lower right", fontsize=TEXT_SIZE, labelspacing=0.08)
+    panel_title(ax, "Fraction NICHES-positive")
+    ax.legend(
+        handles=[
+            Line2D([], [], marker="o", ls="", ms=3, color=c, label=DATASET_LABELS[d])
+            for d, c in DATASET_COLORS.items()
+        ],
+        loc="lower right",
+        fontsize=TEXT_SIZE,
+        labelspacing=0.08,
+    )
 
 
 def makeFigure():

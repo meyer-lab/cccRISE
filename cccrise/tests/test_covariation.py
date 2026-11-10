@@ -24,6 +24,11 @@ def test_carrying_pairs_stop_once_the_share_is_carried():
     assert covariation.carrying_pairs(lr, share=0.95, cap=2).tolist() == [1, 2]
 
 
+def test_carrying_pairs_cap_at_twenty_by_default():
+    lr = np.ones(30)
+    assert len(covariation.carrying_pairs(lr)) == covariation.CARRYING_CAP == 20
+
+
 def test_baselines_without_associated_pairs_match_those_with():
     rng = np.random.default_rng(0)
     scores = rng.random((12, 40))

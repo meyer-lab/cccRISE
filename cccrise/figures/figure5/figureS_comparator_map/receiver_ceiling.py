@@ -1,4 +1,4 @@
-"""Label ceiling of each program's receiver weights."""
+"""Pseudobulk ceiling of each component's receiver weights."""
 
 from ... import common
 from .._ceiling import ceiling

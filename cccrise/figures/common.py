@@ -42,6 +42,7 @@ from matplotlib.figure import Figure, SubFigure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.text import Text
+from matplotlib.transforms import blended_transform_factory
 from matplotlib.typing import LegendLocType
 
 matplotlib.use("AGG")
@@ -463,11 +464,12 @@ def _draw_fixed(fig: Figure, module) -> list[_AxesBox]:
     return boxes
 
 
-def colorbar(ax: plt.Axes, mappable, label: str):
-    """A colorbar beside `ax`, in its margin rather than taken from its width."""
+def colorbar(ax: plt.Axes, mappable, label: str, start: float = 1.0):
+    """A colorbar beside `ax`, in its margin rather than taken from its width,
+    `style.COLORBAR_PAD` past `start` (axes fraction; 1 is the right edge)."""
     width = ax.bbox.width / ax.figure.dpi
     cax = ax.inset_axes(
-        (1 + style.COLORBAR_PAD / width, 0, style.COLORBAR_WIDTH / width, 1)
+        (start + style.COLORBAR_PAD / width, 0, style.COLORBAR_WIDTH / width, 1)
     )
     return ax.figure.colorbar(mappable, cax=cax, label=label)
 
@@ -1470,11 +1472,16 @@ def group_conditions(
 
 
 def condition_strips(
-    ax: plt.Axes, groups: pd.DataFrame, strips: dict = CONDITION_STRIPS
+    ax: plt.Axes,
+    groups: pd.DataFrame,
+    strips: dict = CONDITION_STRIPS,
+    brackets: bool = False,
 ) -> None:
     """A color strip per `strips` column left of a condition factor matrix
     (rows in `groups`' order), the y label moved left of them, and their
-    legend, titled per strip, right of the matrix."""
+    legend, titled per strip, right of the matrix; with `brackets`, instead of
+    the legend each level is named right of the matrix at a bracket spanning
+    its rows (`_strip_brackets`)."""
     inches = ax.bbox.width / ax.figure.dpi
     step = (STRIP_WIDTH + STRIP_GAP) / inches
     for i, (column, (_, colors)) in enumerate(reversed(strips.items())):
@@ -1485,6 +1492,9 @@ def condition_strips(
         strip.spines[:].set_visible(False)
     strip.set_ylabel(ax.get_ylabel())  # the leftmost strip
     ax.set_ylabel("")
+    if brackets:
+        _strip_brackets(ax, groups, strips)
+        return
     titles = [title for title, _ in strips.values()]
     entries = [
         entry
@@ -1503,6 +1513,66 @@ def condition_strips(
             text.set_fontweight("bold")
 
 
+#: `_strip_brackets`: bracket and name right of the matrix, and a tick (in)
+BRACKET_X, BRACKET_NAME_X, BRACKET_TICK = 0.6 * style.MM, 1.6 * style.MM, 0.5 * style.MM
+
+
+def _runs(levels: list) -> list[tuple[object, int, int]]:
+    """(level, first row, last row) of each run of equal `levels`."""
+    out, start = [], 0
+    for i in range(1, len(levels) + 1):
+        if i == len(levels) or levels[i] != levels[start]:
+            out.append((levels[start], start, i - 1))
+            start = i
+    return out
+
+
+def _strip_brackets(ax: plt.Axes, groups: pd.DataFrame, strips: dict) -> None:
+    """Each run of a strip's level named, in its color, right of the matrix at
+    a bracket spanning its rows; a name that would crowd the one above moves
+    down on a leader line."""
+    width = ax.bbox.width / ax.figure.dpi
+    height = ax.bbox.height / ax.figure.dpi
+    trans = blended_transform_factory(ax.transAxes, ax.transData)
+    bx, nx, tick = (1 + v / width for v in (BRACKET_X, BRACKET_NAME_X, BRACKET_TICK))
+    low, high = sorted(ax.get_ylim())
+    need = 2.4 * style.MM * (high - low) / height  # one name's height, in rows
+    line: dict[str, Any] = {"transform": trans, "clip_on": False}
+    for column, (_, colors) in strips.items():
+        last = -np.inf
+        for level, first, end in _runs(list(groups[column])):
+            color = colors[level]
+            top, bottom = first + 0.1, end - 0.1
+            ax.plot(
+                [bx, bx],
+                [top, bottom],
+                color=color,
+                lw=0.9,
+                solid_capstyle="butt",
+                **line,
+            )
+            for y in (top, bottom):
+                ax.plot([bx - (tick - 1), bx], [y, y], color=color, lw=0.9, **line)
+            middle = (first + end) / 2
+            y = max(middle, last + need)
+            last = y
+            if y != middle:
+                ax.plot(
+                    [bx, nx - 0.3 * (nx - bx)], [middle, y], color=color, lw=0.5, **line
+                )
+            ax.text(
+                nx,
+                y,
+                _sentence_case(level_label(level)),
+                ha="left",
+                va="center",
+                fontsize=style.FONT_SIZE_DENSE,
+                color=color,
+                fontweight="bold",
+                transform=trans,
+            )
+
+
 def _sentence_case(label: str) -> str:
     return label[0].upper() + label[1:]
 
@@ -1515,19 +1585,135 @@ def dominant_order(loadings: np.ndarray) -> np.ndarray:
 
 
 def label_heatmap_cells(
-    ax: plt.Axes, entries: list[tuple[int, int, str]], shape: tuple[int, int]
+    ax: plt.Axes,
+    entries: list[tuple[int, int, str]],
+    shape: tuple[int, int],
+    clear: bool = False,
 ) -> None:
     """Outline each (drawn row, component column, name) cell of a heatmap of
     `shape` and label it beside its column, toward the wider blank side:
     rightward up to the middle component, leftward after it. Labels are
     stacked `FACTOR_LABEL_GAP` apart across both sides, so two labels of one
-    row never share a height."""
+    row never share a height. With `clear`, each label instead goes where it
+    overlaps no outlined cell and no other label (`_clear_labels`)."""
+    if clear:
+        _clear_labels(ax, entries, shape)
+        return
     n_rows, n_cols = shape
     gap = FACTOR_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows  # in rows
     entries = sorted(entries)
     heights = _spread_labels([row for row, _, _ in entries], gap, n_rows)
     for (row, col, name), y in zip(entries, heights, strict=True):
         _label_cell(ax, row, col, name, y, rightward=col < n_cols / 2)
+
+
+def _overlaps(a, b, pad: float = 0.05) -> bool:
+    return not (
+        a[2] + pad <= b[0]
+        or b[2] + pad <= a[0]
+        or a[3] + pad <= b[1]
+        or b[3] + pad <= a[1]
+    )
+
+
+def _label_text(ax, row: float, col: int, name: str, right: bool) -> tuple:
+    """A label beside cell column `col` at height `row`: the text, its
+    leader's start (the column edge) and end."""
+    edge = col + (0.5 if right else -0.5)
+    x = edge + (FACTOR_LEADER_LENGTH if right else -FACTOR_LEADER_LENGTH)
+    text = ax.text(
+        x,
+        row,
+        name,
+        ha="left" if right else "right",
+        va="center",
+        fontsize=FACTOR_LABEL_FONT_SIZE,
+    )
+    return text, edge, x
+
+
+def _data_extent(ax, text) -> tuple[float, float, float, float]:
+    (x0, y0), (x1, y1) = ax.transData.inverted().transform(
+        text.get_window_extent(ax.figure.canvas.get_renderer()).get_points()
+    )
+    return min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)
+
+
+def _is_clear(box, key, boxes: dict, placed: list, n_cols: int, outside: bool) -> bool:
+    """Whether a label's extent clears every other outlined cell and every
+    placed label and (unless `outside`) the heatmap's sides."""
+    if box[0] < -0.5 - 1e-6 or (not outside and box[2] > n_cols - 0.5 + 1e-6):
+        return False
+    if any(_overlaps(box, b) for k, b in boxes.items() if k != key):
+        return False
+    return not any(_overlaps(box, q, 0.0) for q in placed)
+
+
+def _candidates(prefer: bool, gap: float):
+    """(outside, right, dy) to try, in order: the side with room then the
+    other, at the label's own height then up and down in half-gap steps;
+    past the right edge last."""
+    for outside in (False, True):
+        for k in range(8):
+            for dy in (0,) if k == 0 else (k * gap / 2, -k * gap / 2):
+                for right in (True,) if outside else (prefer, not prefer):
+                    yield outside, right, dy
+
+
+def _place_label(ax, row, col, name, boxes, placed, shape) -> tuple:
+    """The first clear place (`_candidates`, `_is_clear`): (text, leader start,
+    end x, y, extent); the default place, with no extent, when none is."""
+    n_rows, n_cols = shape
+    gap = FACTOR_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows
+    prefer = col < n_cols / 2
+    for outside, right, dy in _candidates(prefer, gap):
+        y = min(max(row + dy, 0), n_rows - 1)
+        text, edge, x = _label_text(ax, y, col, name, right)
+        box = _data_extent(ax, text)
+        if _is_clear(box, (row, col), boxes, placed, n_cols, outside):
+            return text, edge, x, y, box
+        text.remove()
+    text, edge, x = _label_text(ax, row, col, name, prefer)
+    return text, edge, x, row, None
+
+
+def _clear_labels(ax: plt.Axes, entries, shape: tuple[int, int]) -> None:
+    """Outline each labeled cell, then place each label clear of every
+    outlined cell and every label already placed (`_place_label`), on a
+    leader line from its cell."""
+    boxes = {
+        (row, col): (col - 0.5, row - 0.5, col + 0.5, row + 0.5)
+        for row, col, _ in entries
+    }
+    for row, col in boxes:
+        ax.add_patch(
+            Rectangle(
+                (col - 0.5, row - 0.5),
+                1,
+                1,
+                fill=False,
+                edgecolor="black",
+                linewidth=style.LINE_WIDTH_THIN,
+            )
+        )
+    placed = []
+    for row, col, name in sorted(entries):
+        _, edge, x, y, box = _place_label(ax, row, col, name, boxes, placed, shape)
+        ax.plot([edge, x], [row, y], color="black", lw=style.LINE_WIDTH_THIN)
+        if box:
+            placed.append(box)
+
+
+def text_right_edge(ax) -> float:
+    """The right edge of `ax`'s texts, in axes fraction (at least 1)."""
+    renderer = ax.figure.canvas.get_renderer()
+    edges = [
+        ax.transAxes.inverted().transform(t.get_window_extent(renderer).get_points())[
+            1, 0
+        ]
+        for t in ax.texts
+    ]
+    return max([1.0, *edges])
 
 
 def _label_cell(

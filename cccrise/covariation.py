@@ -22,11 +22,14 @@ from .import_data import import_ligand_receptor_pairs
 from .utils import load_rise_reference
 
 #: The component's most heavily weighted LR pairs tested for co-variation
-#: (Figure 3); at most this many in Figure 5 (`carrying_pairs`).
+#: (Figure 3).
 N_TOP = 10
 #: Figure 5 tests the fewest top pairs carrying this share of a component's
-#: squared LR loading (`carrying_pairs`).
+#: squared LR loading (`carrying_pairs`) ...
 CARRIED_SHARE = 0.9
+#: ... at most this many (ALAD C3 needs 13 for 90%; a broad TC2C column is
+#: cut here).
+CARRYING_CAP = 20
 COVARIATION_DRAWS = 2000
 #: An expression-matched pair is one of a top pair's this many nearest.
 N_EXPRESSION_NEIGHBORS = 20
@@ -66,7 +69,7 @@ def top_pairs(lr_loadings: np.ndarray, n: int = N_TOP) -> np.ndarray:
 
 
 def carrying_pairs(
-    lr_loadings: np.ndarray, share: float = CARRIED_SHARE, cap: int = N_TOP
+    lr_loadings: np.ndarray, share: float = CARRIED_SHARE, cap: int = CARRYING_CAP
 ) -> np.ndarray:
     """`top_pairs`, as many as the fewest that carry `share` of the squared
     loading, at most `cap`."""

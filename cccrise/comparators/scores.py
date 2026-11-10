@@ -25,7 +25,6 @@ import pandas as pd
 import xarray as xr
 
 from .methods import MODES
-from .tensors import subunits
 
 #: Containment at or above this, and above the null, calls a column contained.
 CONTAINED = 0.85
@@ -189,7 +188,3 @@ def tucker_column_profiles(fit: xr.Dataset, column: int) -> dict[str, np.ndarray
         leading = np.linalg.svd(unfolded, full_matrices=False)[0][:, 0]
         profiles[mode] = fit[f"{mode}_factor"].to_numpy() @ leading
     return profiles
-
-
-def is_homophilic(ligand: str, receptor: str) -> bool:
-    return set(subunits(ligand)) == set(subunits(receptor))

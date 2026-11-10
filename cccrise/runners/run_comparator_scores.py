@@ -39,8 +39,6 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
   (`anova.run_multiple_factors_anova`: read-depth corrected, FDR across the
   fit's associations and components); a STACCato LR column's sample profile
   is its leading core vector mapped through the sample factor.
-- ``homophily``: every component's share of squared LR loading on
-  homophilic pairs (a ligand whose genes are its receptor's).
 - ``depth``: |Spearman ρ| between every component's |sample profile| and
   per-sample depth (median genes detected per cell).
 
@@ -56,7 +54,7 @@ Usage:
     uv run cccrise-comparator-scores --dataset alad
     uv run cccrise-comparator-scores --dataset ibd --fits-only
     uv run cccrise-comparator-scores --dataset ibd --tables \\
-        associations covariation depth homophily inner_loss lr_loadings
+        associations covariation depth inner_loss lr_loadings
 """
 
 import argparse
@@ -389,31 +387,6 @@ def lr_loading_rows(components: list[Components]) -> pd.DataFrame:
     )[["Method", "Component", "LRPair", "Loading"]]
 
 
-def homophily_rows(components: list[Components], adata) -> pd.DataFrame:
-    """Every component's share of squared LR loading on homophilic pairs."""
-    pairs = scored_lr_pairs(import_ligand_receptor_pairs(), adata.var_names).set_index(
-        "lr_pair"
-    )
-    homophilic = pd.Series(
-        [
-            scores.is_homophilic(lig, rec)
-            for lig, rec in zip(pairs["ligand"], pairs["receptor"], strict=True)
-        ],
-        index=pairs.index,
-    )
-    rows = []
-    for comp in components:
-        lr = comp.modes["lr"]
-        squared = lr.to_numpy(float) ** 2
-        mask = homophilic.loc[lr.index.astype(str)].to_numpy()
-        share = squared[mask].sum(axis=0) / squared.sum(axis=0)
-        rows += [
-            {"Method": comp.method, "Component": c, "HomophilicShare": float(v)}
-            for c, v in zip(lr.columns, share, strict=True)
-        ]
-    return pd.DataFrame(rows)
-
-
 def association_rows(spec: DatasetSpec, fits, comparators) -> pd.DataFrame:
     """Every component's outcome associations, cccRISE's (its own fit, as
     Figure 3) and each comparator's (module docstring)."""
@@ -502,7 +475,6 @@ def score_labelling(
         "inner_loss": inner_loss_rows(cells, column, tensors),
         "associations": association_rows(spec, fits, comparators),
         "covariation": covariation_rows(contexts, lr_genes(adata)),
-        "homophily": homophily_rows([cccrise, *comparators], adata),
         "depth": depth_rows(profiles, obs),
     }
 

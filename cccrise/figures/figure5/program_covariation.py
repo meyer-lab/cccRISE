@@ -1,14 +1,15 @@
-"""Figure 5E: the mixed programs' co-variation against their STAC columns."""
+"""Figure 5D: co-variation of ALAD C4 and of its related columns (5C) over all
+their carrying pairs, against the random and the expression-matched null
+(`_split.covariation`)."""
 
 from .. import common
-from ._recovery import program_covariation
+from . import _split
 
-AXES = ("fig4_covariation", "fig4_covariation")
-STACKED = True  # one panel, lettered once (`common._Stack`)
+AXES = ("fig5_covariation",)
 
 
 def plot(axs):
-    program_covariation(axs)
+    _split.covariation(axs, "alad", (4,))
 
 
 def makeFigure():

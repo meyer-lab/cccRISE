@@ -14,13 +14,6 @@ DATASET_LABELS = {"alad": "ALAD", "ibd": "IBD"}
 DATASET_COLORS = {"alad": style.CATEGORICAL[6], "ibd": style.CATEGORICAL[5]}
 #: Comparators of the main figure, in column order.
 COMPARATORS = ("PB", "TC2C", "STAC")
-METHOD_LABELS = {
-    "cccRISE": "CCC-RISE",
-    "PB": "PB",
-    "TC2C": "TC2C",
-    "TC2C inner": "TC2C (published)",
-    "STAC": "STAC",
-}
 METHOD_COLORS = {
     "cccRISE": style.COLORS["emphasis"],
     "PB": style.CATEGORICAL[1],
