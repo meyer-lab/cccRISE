@@ -92,7 +92,7 @@ Associations were tested by one-way ANOVA with Benjamini--Hochberg correction ac
 ({{< panel 3 lr-loadings >}}) CPD component 4 LR pair loadings against their rank, with the top 10 LR pairs labeled.
 ({{< panel 3 coordinated-changes.1 >}}) ANOVA association strength of each LR pair's (n = 513) communication score with six-month outcome.
 Component 4's top 10 LR pairs and its condition loading association strength are marked.
-({{< panel 3 coordinated-changes.2 >}}) Spearman correlation across conditions between each pair of component 4's top 10 LR pairs and between pairs drawn 2,000 times from the remaining LR pairs: at random, matched in expression (each from the 20 pairs nearest a top pair in log mean score), or among the other LR pairs associated with six-month outcome.
+({{< panel 3 coordinated-changes.2 >}}) Spearman correlation across conditions between each pair of component 4's top 10 LR pairs, with LR pairs sharing a ligand or receptor averaged into one, and between pairs drawn 2,000 times from the remaining LR pairs: at random, matched in expression (each from the 20 pairs nearest a top pair in log mean score), or among the other LR pairs associated with six-month outcome.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 ({{< panel 3 lr-permutation >}}) Diamonds: Difference in mean communication score between CLAD/died and stable/recovered samples (n = 14 and 33 samples) of each of component 4's top 10 LR pairs.
 Violins: Null differences across 10,000 permutations of outcome labels between patients.

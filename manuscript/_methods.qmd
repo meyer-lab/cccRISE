@@ -205,6 +205,7 @@ For IBD, these were patient covariates (age, recorded in 10-year bins, and sex),
 **Individual LR pair associations.** For each CPD component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($E$) and receiver ($F$) eigen-state loadings and summed, $S_{l,i} = \sum_{s,t} X_{l,s,t,i}e_{s}f_{t}$, where $X_{l,s,t,i}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in condition $i$.
 These scores were corrected for total sample expression as above and tested against outcome by one-way ANOVA, with correction across the 513 LR pairs.
 For the component's top 10 LR pairs by absolute LR pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
+LR pairs sharing a ligand or receptor gene, which co-vary in part by construction, were first merged into one by averaging their per-sample score ranks, directly or through another shared pair, both among the top LR pairs and within each baseline draw.
 These correlations were compared with those of LR pairs drawn 2,000 times from three baselines: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with outcome (q < 0.05).
 
 ### Robustness Tests
