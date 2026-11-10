@@ -1,8 +1,9 @@
-"""Figure 5H: each CCC-RISE population's fraction NICHES-positive against what
+"""Figure 5I: each CCC-RISE population's fraction NICHES-positive against what
 cell type predicts, each population cell at the NICHES-positive rate of its
 fine type in its own sample, ALAD and IBD on one axes (``uv run
-cccrise-niches``; `comparators.niches_programs.population_table`), with a
-paired (Wilcoxon signed-rank, two-sided) test over every population of both."""
+cccrise-niches``; `comparators.niches_programs.population_table`); the
+source data give a paired (Wilcoxon signed-rank, two-sided) test over every
+population of both."""
 
 import pandas as pd
 from scipy.stats import wilcoxon
@@ -91,15 +92,6 @@ def plot(axs):
         ylabel="CCC-RISE",
     )
     panel_title(ax, "Fraction NICHES-positive")
-    ax.text(
-        0.97,
-        0.13,
-        f"Paired Wilcoxon\n{common.p_text(p)}",
-        transform=ax.transAxes,
-        ha="right",
-        va="bottom",
-        fontsize=TEXT_SIZE,
-    )
     ax.legend(
         handles=cohort_handles(),
         loc="lower right",

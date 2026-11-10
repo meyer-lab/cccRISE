@@ -8,6 +8,7 @@ and the squared correlation with the component's weight is taken
 within each sample x cell type, so it holds at most the ceiling: every point
 sits on or below the diagonal."""
 
+import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
 
@@ -22,8 +23,10 @@ TITLE = "Component Variance Explained ($R^2$)"
 MARKERS = {"sender": ("o", 14), "receiver": ("s", 12)}
 #: Labelled components, by (cohort, component): the most a column holds, the
 #: cohort in the label's color; where the one label sits (data), with a
-#: leader to its sender and its receiver point.
+#: leader from each bottom corner to its sender or receiver point.
 LABELLED = {("alad", 4): (0.9, 0.36), ("ibd", 4): (0.52, 0.3)}
+#: A leader's gap from its label's corner and from its point (points).
+LEADER_GAP = (1.0, 2.5)
 
 
 def best_rows() -> pd.DataFrame:
@@ -49,28 +52,42 @@ def best_rows() -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
+def _leader(ax, start: np.ndarray, end: np.ndarray) -> None:
+    """A leader between two display points, `LEADER_GAP` short of each."""
+    scale = ax.figure.dpi / 72
+    step = (end - start) / np.linalg.norm(end - start)
+    a = start + step * LEADER_GAP[0] * scale
+    b = end - step * LEADER_GAP[1] * scale
+    ax.plot(
+        *ax.transData.inverted().transform([a, b]).T,
+        color="0.4",
+        lw=0.4,
+        zorder=2,
+    )
+
+
 def _labels(ax, t: pd.DataFrame) -> None:
-    """Each of `LABELLED` named once, leaders to its sender and receiver."""
+    """Each of `LABELLED` named once, a leader from its bottom-left corner
+    to its left point and from its bottom-right corner to its right one."""
+    renderer = ax.figure.canvas.get_renderer()
     for (dataset, component), at in LABELLED.items():
+        text = ax.text(
+            *at,
+            f"C{component}",
+            ha="center",
+            va="center",
+            fontsize=LABEL_SIZE,
+            color=DATASET_COLORS[dataset],
+            zorder=4,
+        )
+        box = text.get_window_extent(renderer)
         rows = t[(t["Dataset"] == dataset) & (t["Component"] == component)]
-        for i, (_, r) in enumerate(rows.iterrows()):
-            ax.annotate(
-                f"C{component}" if i == 0 else "",
-                (r["Ceiling"], r["Painted"]),
-                xytext=at,
-                ha="center",
-                va="center",
-                fontsize=LABEL_SIZE,
-                color=DATASET_COLORS[dataset],
-                zorder=4,
-                arrowprops={
-                    "arrowstyle": "-",
-                    "lw": 0.4,
-                    "color": "0.4",
-                    "shrinkA": 3,
-                    "shrinkB": 2,
-                },
-            )
+        points = ax.transData.transform(
+            rows.sort_values("Ceiling")[["Ceiling", "Painted"]].to_numpy()
+        )
+        corners = np.array([[box.x0, box.y0], [box.x1, box.y0]])
+        for corner, point in zip(corners, points, strict=True):
+            _leader(ax, corner, point)
 
 
 def _source(t: pd.DataFrame) -> None:

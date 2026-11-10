@@ -1,8 +1,8 @@
 """Figure 5A: each CCC-RISE component's best single comparator LR column (its
 largest cos^2 with one LR column of any PB, TC2C or STAC fit) against how
-many LR pairs carry it (`covariation.carrying_pairs`), with their Spearman
-rho and, dashed, the axes' anti-diagonal: a perfect negative ordering
-(rho = -1), as 5B's diagonal marks equality. Components sharing a pair count
+many LR pairs carry it (`covariation.carrying_pairs`; their Spearman rho
+in the source data), with, dashed, the axes' anti-diagonal: a perfect
+negative ordering (rho = -1), as 5B's diagonal marks equality. Components sharing a pair count
 and close in cos^2 are dodged apart on the log axis (`dodged`)."""
 
 import numpy as np
@@ -148,17 +148,9 @@ def plot(axs):
     ax.set_xticks([1, 2, 5, 10], ["1", "2", "5", "10"])
     ax.minorticks_off()
     panel_title(ax, TITLE)
-    ax.text(
-        0.04,
-        0.04,
-        f"ρ = {result.statistic:.2f}".replace("-", "−"),
-        transform=ax.transAxes,
-        fontsize=LABEL_SIZE,
-    )
     ax.legend(
         handles=cohort_handles(),
         loc="lower left",
-        bbox_to_anchor=(0, 0.09),  # just above the rho
         fontsize=LABEL_SIZE,
         handletextpad=0.2,
     )

@@ -55,6 +55,9 @@ OFFSETS = sorted(
     ((side * dx, dy) for dx in (4, 9) for dy in range(-30, 31, 3) for side in (1, -1)),
     key=lambda o: (abs(o[0]) + abs(o[1]), -o[0]),
 )
+#: Names set by hand (offset from their point, points), moved after the
+#: rest are placed so no other name moves.
+FIXED = {"P4 C": (7, 9)}
 #: A dot's radius (points) with room to spare, for the collision test.
 DOT_RADIUS = 2.4
 
@@ -114,6 +117,7 @@ def _name_hits(ax, hits: list, points: list) -> None:
     renderer = ax.figure.canvas.get_renderer()
     dots = ax.transData.transform(np.array(points))
     placed: list = []
+    texts = {}
     for name, x, y in sorted(hits, key=lambda h: -h[2]):
         text = ax.annotate(
             name,
@@ -132,6 +136,11 @@ def _name_hits(ax, hits: list, points: list) -> None:
             },
         )
         _place(ax, text, ax.transData.transform((x, y)), dots, placed, renderer)
+        texts[name] = text
+    for name, offset in FIXED.items():
+        if name in texts:
+            texts[name].xyann = offset
+            texts[name].set_ha("left")
 
 
 def _key(ax) -> None:
