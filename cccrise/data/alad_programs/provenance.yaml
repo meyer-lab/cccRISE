@@ -50,18 +50,28 @@ shared:
       - 0.5
       - 0.55
       - 0.6
-  git_sha: 026f36bfaa132a080caf5d8c0496bcba639c8e88
-  generated: '2026-11-07T02:54:19+00:00'
 files:
   group_de_alad.parquet:
+    git_sha: 026f36bfaa132a080caf5d8c0496bcba639c8e88
+    generated: '2026-11-07T02:54:19+00:00'
     sha256: 338583e4f1427f1abd05d34918af48c847925ca22548289ee6001c9266e99d0c
   program_context_scores_alad.parquet:
+    git_sha: 026f36bfaa132a080caf5d8c0496bcba639c8e88
+    generated: '2026-11-07T02:54:19+00:00'
     sha256: 5bb62dc812306cbfe348c976dd210e7396fe219e663baa85680bd43b34aeb112
   program_covariation_alad.parquet:
-    sha256: acdb426e8b977700aba5271c6b19cfbc54047abafa3c8729641763fd78d8d18b
+    sha256: c0a9de940034b81a6fbb75304f05db6af4a1c310b38db310e888d0717adca0cd
+    git_sha: 6af0926146e763227d35a2aa77fadc17d7889074-dirty
+    generated: '2026-11-10T03:16:47+00:00'
   program_lr_association_alad.parquet:
+    git_sha: 026f36bfaa132a080caf5d8c0496bcba639c8e88
+    generated: '2026-11-07T02:54:19+00:00'
     sha256: b17afef6a40c4c4043b7a457a26a685f18a9f7799979aafd75f1fd2adfcebdad
   program_pair_tests_alad.parquet:
+    git_sha: 026f36bfaa132a080caf5d8c0496bcba639c8e88
+    generated: '2026-11-07T02:54:19+00:00'
     sha256: 409e77d999c9a0f42b41836ce0435d713d35c39f703ecda198689aaed0533a4a
   program_permutation_alad.parquet:
+    git_sha: 026f36bfaa132a080caf5d8c0496bcba639c8e88
+    generated: '2026-11-07T02:54:19+00:00'
     sha256: de2295a1340642035083559262a1e40938f71e3d1248534d2e57d27e0c8257ab

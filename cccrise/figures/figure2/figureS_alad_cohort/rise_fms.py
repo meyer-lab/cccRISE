@@ -3,11 +3,9 @@ aggregate RISE stability under the jackknife and seed refits."""
 
 from ....validation.stability import STAGE_RISE
 from ... import common
-from . import _common as S
+from . import _stability as S
 
-# 17 components, a gap, and 2 aggregates: "wide" gives the boxes the width
-# `cpd_fms`'s 8 slots get from "rect"
-AXES = ("wide",)
+AXES = ("fms_rise",)
 
 
 def plot(axs):

@@ -4,11 +4,13 @@ corrected across the replicate's components)."""
 
 from ....validation.stability import JACKKNIFE_AXIS
 from ... import common, style
-from . import _common as S
+from . import _anova_stability as S
+
+AXES = ("square",)
 
 
-def plot(fig):
-    ax = fig.subplots()
+def plot(axs):
+    (ax,) = axs
     significant = (S.replicates()["PAdj"] < S.alpha()).groupby(
         S.replicates()["Component"]
     )
@@ -38,4 +40,4 @@ def plot(fig):
 
 
 def makeFigure():
-    return common.standalone(plot, style.PANEL_SIZE["full"])
+    return common.standalone_fixed(__name__)

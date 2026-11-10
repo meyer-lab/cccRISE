@@ -50,3 +50,16 @@ def test_gene_sharing_pairs_are_left_out():
     disjoint = covariation.pairwise_rank_correlations(scores, [0, 1, 2], genes)
     assert np.isnan(disjoint[0])  # pairs 0 and 1 share R1
     np.testing.assert_array_equal(disjoint[1:], full[1:])
+
+
+def test_gene_sharing_pairs_are_merged():
+    rng = np.random.default_rng(2)
+    scores = rng.random((10, 4))
+    # 0-1 share R1 and 1-2 share L2, so 0, 1 and 2 merge transitively
+    genes = covariation.lr_pair_genes(["L1^R1", "L2^R1", "L2&L3^R2", "L4^R3"])
+    assert covariation.shared_gene_labels([0, 1, 2, 3], genes).tolist() == [0, 0, 0, 1]
+    merged = covariation.pairwise_rank_correlations(scores, [0, 1, 2, 3], genes, True)
+    assert merged.shape == (6,) and np.isnan(merged[1:]).all()
+    ranks = np.argsort(np.argsort(scores, axis=0), axis=0)
+    averaged = np.argsort(np.argsort(ranks[:, :3].mean(1)))
+    np.testing.assert_allclose(merged[0], np.corrcoef(averaged, ranks[:, 3])[0, 1])

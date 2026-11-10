@@ -24,8 +24,10 @@ folder):
     program_covariation_alad.parquet
         Figure 3F: the pairwise rank correlations across conditions of
         `COMPONENT`'s top LR pairs, and of `covariation_baselines`' draws
-        (random, expression-matched, other outcome-associated), each draw's
-        pairs of pairs indexed as `pairwise_rank_correlations` orders them
+        (random, expression-matched, other outcome-associated), each set's
+        pairs sharing a ligand or receptor gene first averaged into one
+        (`pairwise_rank_correlations` with `merge`), each draw's pairs of
+        pairs indexed as it orders them
     program_permutation_alad.parquet
         Figure 3G: `COMPONENT`'s top pairs' CLAD/Died minus No CLAD mean
         depth-normalized context score, its patient-block permutation null and
@@ -62,6 +64,7 @@ from ..covariation import (
     cccrise_tensor,
     context_scores,
     covariation_baselines,
+    lr_pair_genes,
     pairwise_rank_correlations,
     top_pairs,
 )
@@ -228,17 +231,19 @@ def lr_association(scores: np.ndarray, adata: anndata.AnnData, spec) -> pd.DataF
 
 
 def covariation_table(
-    scores: np.ndarray, top: np.ndarray, associated: np.ndarray, seed: int
+    scores: np.ndarray, top: np.ndarray, associated: np.ndarray, seed: int, genes
 ) -> pd.DataFrame:
     """`COMPONENT`'s top pairs' pairwise rank correlations (one draw) and the
-    baselines' draws, long, keeping each draw's pair-of-pairs index."""
+    baselines' draws, those sharing a gene of `genes` averaged into one, long,
+    keeping each draw's pair-of-pairs index."""
     sets = {
-        "Top pairs": pairwise_rank_correlations(scores, top)[None]
-    } | covariation_baselines(scores, top, associated, seed=seed)
+        "Top pairs": pairwise_rank_correlations(scores, top, genes, merge=True)[None]
+    } | covariation_baselines(scores, top, associated, seed, genes, merge=True)
     return pd.concat(
         pd.DataFrame(draws)
         .rename_axis(index="Draw", columns="Pair of pairs")
         .stack()
+        .dropna()  # a draw's padding, past its merged pairs' correlations
         .rename("Rank correlation")
         .reset_index()
         .assign(Component=COMPONENT, Set=name)
@@ -361,7 +366,13 @@ def run_alad_programs(spec: DatasetSpec, random_state: int, command: str) -> Non
     associated = association_table["PAdj"].to_numpy() < SIG_ALPHA
     write(
         "program_covariation",
-        covariation_table(scores, top_pairs(D), associated, random_state),
+        covariation_table(
+            scores,
+            top_pairs(D),
+            associated,
+            random_state,
+            lr_pair_genes(lr, factors.attrs["complex_sep"]),
+        ),
     )
     tests, permutation = pair_tests(tensor, factors, groups, random_state)
     write("program_pair_tests", tests)

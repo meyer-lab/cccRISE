@@ -522,7 +522,7 @@ def placeholder(fig: Figure | SubFigure | plt.Axes, text: str) -> None:
 
 
 def figure_package(figure: str) -> str:
-    """Dotted name of figure `figure`'s package (e.g. '2', 'S_cmp_stability')."""
+    """Dotted name of figure `figure`'s package (e.g. '2', 'S_alad_cohort')."""
     package = f"figure{figure}"
     # Supplements may be nested in their main figure's package
     (master,) = FIGURES_DIR.glob(f"**/{package}/{package}.py")
@@ -530,7 +530,7 @@ def figure_package(figure: str) -> str:
 
 
 def build_figure(figure: str, panel: str | None = None) -> Figure:
-    """Figure `figure` (e.g. '2', 'S_cmp_stability'), or one of its panels."""
+    """Figure `figure` (e.g. '2', 'S_alad_cohort'), or one of its panels."""
     style.apply_style()
     package = figure_package(figure)
     module = importlib.import_module(f"{package}.{panel or f'figure{figure}'}")
@@ -543,7 +543,7 @@ def genFigure():
     uv run cccrise-fbuild 2                      # figures/figure2/figure2.py
     uv run cccrise-fbuild 2 rise_rank_selection  # figures/figure2/rise_rank_selection.py
     uv run cccrise-fbuild 2 --png                # PNG instead of SVG
-    uv run cccrise-fbuild S_cmp_stability        # figures/figure2/figureS_cmp_stability/
+    uv run cccrise-fbuild S_alad_cohort        # figures/figure2/figureS_alad_cohort/
     """
     start = time.time()
     args = [arg for arg in sys.argv[1:] if arg != "--png"]
@@ -827,8 +827,7 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
 
 def plot_r2x_sweep(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -> None:
     """Fit R2X against CP rank of a seeded-start `sweep` ('Rank', 'Start',
-    'Seed', 'FitR2X'): the median over starts, banded by their range, with
-    the Kneedle elbow of the median curve circled."""
+    'Seed', 'FitR2X'): the median over starts, banded by their range."""
     source_data(
         "cp_fit_r2x_by_rank_and_start",
         sweep[["Rank", "Start", "Seed", "FitR2X"]],
@@ -843,33 +842,9 @@ def plot_r2x_sweep(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -
         median.index, by_rank.min(), by_rank.max(), color=color, alpha=0.2, lw=0
     )
     ax.plot(median.index, median, color=color, label="Median start")
-    elbow = kneedle_elbow(median.index, 1 - median.to_numpy())
-    mark_kneedle(ax, elbow, median[elbow])
     mark_rank(ax, rank)
     rank_axis(ax, median.index)
     ax.set_ylabel("Fit R²X")
-
-
-def mark_kneedle(ax: plt.Axes, rank: int, value: float, above: bool = False) -> None:
-    """Circle the Kneedle elbow at (`rank`, `value`) and label it, below
-    right of it (clear of a rising curve) or `above` right (a falling one)."""
-    ax.plot(
-        rank,
-        value,
-        marker="o",
-        markersize=3 * style.MARKER_SIZE,
-        fillstyle="none",
-        markeredgecolor=KNEEDLE_EDGE,
-        markeredgewidth=style.LINE_WIDTH,
-        zorder=4,
-    )
-    ax.annotate(
-        "Kneedle",
-        (rank, value),
-        xytext=(6, 4) if above else (6, -10),
-        textcoords="offset points",
-        fontsize=style.FONT_SIZE_DENSE,
-    )
 
 
 def plot_collinearity_boxes(
@@ -1489,9 +1464,9 @@ def condition_strips(
 ) -> None:
     """A color strip per `strips` column left of a condition factor matrix
     (rows in `groups`' order), the y label moved left of them, and their
-    legend, titled per strip, right of the matrix; with `brackets`, instead of
-    the legend each level is named right of the matrix at a bracket spanning
-    its rows (`_strip_brackets`)."""
+    legend, titled per strip, left of the y label; with `brackets`, instead
+    of the legend each level is named right of the matrix at a bracket
+    spanning its rows (`_strip_brackets`)."""
     inches = ax.bbox.width / ax.figure.dpi
     step = (STRIP_WIDTH + STRIP_GAP) / inches
     for i, (column, (_, colors)) in enumerate(reversed(strips.items())):
@@ -1517,7 +1492,7 @@ def condition_strips(
             ),
         ]
     ]
-    key = legend(ax, "right", handles=entries, handlelength=0.8)
+    key = legend(ax, "left", handles=entries, handlelength=0.8)
     for text in key.get_texts():
         if text.get_text() in titles:
             text.set_fontweight("bold")
