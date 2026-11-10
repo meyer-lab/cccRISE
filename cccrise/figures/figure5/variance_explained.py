@@ -20,11 +20,10 @@ AXES = ("fig5_variance",)
 TITLE = "Component Variance Explained ($R^2$)"
 #: Each side's marker and area.
 MARKERS = {"sender": ("o", 14), "receiver": ("s", 12)}
-#: Labelled points, by (cohort, component, side): the most a column holds.
-LABELLED = {
-    ("alad", 4, "receiver"): ("ALAD C4", (0, 5), "center"),
-    ("ibd", 4, "receiver"): ("IBD C4", (-4, 4), "right"),
-}
+#: Labelled components, by (cohort, component): the most a column holds, the
+#: cohort in the label's color; where the one label sits (data), with a
+#: leader to its sender and its receiver point.
+LABELLED = {("alad", 4): (0.9, 0.36), ("ibd", 4): (0.52, 0.3)}
 
 
 def best_rows() -> pd.DataFrame:
@@ -48,6 +47,30 @@ def best_rows() -> pd.DataFrame:
                 ).reset_index()
             )
     return pd.concat(frames, ignore_index=True)
+
+
+def _labels(ax, t: pd.DataFrame) -> None:
+    """Each of `LABELLED` named once, leaders to its sender and receiver."""
+    for (dataset, component), at in LABELLED.items():
+        rows = t[(t["Dataset"] == dataset) & (t["Component"] == component)]
+        for i, (_, r) in enumerate(rows.iterrows()):
+            ax.annotate(
+                f"C{component}" if i == 0 else "",
+                (r["Ceiling"], r["Painted"]),
+                xytext=at,
+                ha="center",
+                va="center",
+                fontsize=LABEL_SIZE,
+                color=DATASET_COLORS[dataset],
+                zorder=4,
+                arrowprops={
+                    "arrowstyle": "-",
+                    "lw": 0.4,
+                    "color": "0.4",
+                    "shrinkA": 3,
+                    "shrinkB": 2,
+                },
+            )
 
 
 def _source(t: pd.DataFrame) -> None:
@@ -102,22 +125,7 @@ def plot(axs):
             lw=0.3,
             zorder=3,
         )
-    for (dataset, component, side), (text, offset, ha) in LABELLED.items():
-        r = t[
-            (t["Dataset"] == dataset)
-            & (t["Component"] == component)
-            & (t["Side"] == side)
-        ].iloc[0]
-        ax.annotate(
-            text,
-            (r["Ceiling"], r["Painted"]),
-            xytext=offset,
-            textcoords="offset points",
-            ha=ha,
-            va="bottom",
-            fontsize=LABEL_SIZE,
-            color=DATASET_COLORS[dataset],
-        )
+    _labels(ax, t)
     ax.set(
         xlim=(0, 1),
         ylim=(0, 1),

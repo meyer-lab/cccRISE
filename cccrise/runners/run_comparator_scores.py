@@ -46,16 +46,18 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
 Each labelling's permutation nulls draw from their own generator, seeded
 by ``--random-state``, so no table's draws depend on another's.
 
-``--fits-only`` writes only `fit_tables`' tables, which need the fits and
-per-cell weights but no tensors. ``--tables`` scores everything but writes only
-the tables named, so IBD keeps only what its figures read.
+``--fits-only`` writes only `fit_tables`' tables, which need the fits, the
+per-cell weights and the cells' genes detected but no tensors: every table but
+``covariation`` and ``inner_loss``. ``--tables`` scores everything but writes
+only the tables named. IBD keeps only what its figures read and Methods
+quote: `fit_tables`' and ``inner_loss`` (no co-variation; Figure 5 tests it on
+ALAD).
 
 Usage:
 
     uv run cccrise-comparator-scores --dataset alad
     uv run cccrise-comparator-scores --dataset ibd --fits-only
-    uv run cccrise-comparator-scores --dataset ibd --tables \\
-        associations depth inner_loss lr_loadings
+    uv run cccrise-comparator-scores --dataset ibd --tables inner_loss
 """
 
 import argparse
@@ -94,7 +96,7 @@ from .datasets import (
 )
 from .provenance import build_metadata, git_sha, record_output, sha256_file
 
-METHODS = {"pb": "PB", "tc2c": "TC2C", "tc2c_inner": "TC2C inner", "stac": "STAC"}
+METHODS = {"pb": "PB", "tc2c": "TC2C", "stac": "STAC"}
 #: The comparators `label_ceiling_rows` paints on cells.
 CEILING_METHODS = ("PB", "STAC")
 #: Each side's per-cell weights in `load_factors_to_anndata`'s ``obsm``.
@@ -204,15 +206,12 @@ def fit_rank_rows(fits: dict[str, xr.Dataset]) -> pd.DataFrame:
 
 
 def start_congruence_rows(spec: DatasetSpec, labelling: str) -> pd.DataFrame:
-    """Each Tensor-cell2cell variant's `methods.start_congruence`."""
-    frames = []
-    for key in ("tc2c", "tc2c_inner"):
-        path = COMPARATOR_RANKS_DIR / comparator_filename(
-            key, "starts", spec.output_key, labelling
-        )
-        with xr.open_dataset(path, engine="h5netcdf") as starts:
-            frames.append(methods.start_congruence(starts).assign(Method=METHODS[key]))
-    return pd.concat(frames, ignore_index=True)
+    """Tensor-cell2cell's `methods.start_congruence`."""
+    path = COMPARATOR_RANKS_DIR / comparator_filename(
+        "tc2c", "starts", spec.output_key, labelling
+    )
+    with xr.open_dataset(path, engine="h5netcdf") as starts:
+        return methods.start_congruence(starts).assign(Method=METHODS["tc2c"])
 
 
 def inner_loss_rows(
@@ -220,7 +219,7 @@ def inner_loss_rows(
 ) -> pd.DataFrame:
     """What the published Tensor-cell2cell construction drops (module
     docstring), from `context_tensors`' masked and published tensors."""
-    kept = tensors["TC2C inner"].celltypes
+    kept = tensors[PUBLISHED].celltypes
     dropped = ~cells.obs[column].astype(str).isin(list(kept)).to_numpy()
     cell_share = {"Measure": "cells", "Dropped": dropped.sum(), "Total": dropped.size}
     return pd.concat(
@@ -236,15 +235,21 @@ def inner_loss_rows(
 ASSOCIATIONS = {"alad": ALAD_ASSOCIATIONS, "ibd": IBD_ASSOCIATIONS}
 
 
+#: `context_tensors`' key for the published Tensor-cell2cell tensor (only the
+#: cell types in every sample), built only for `inner_loss_rows`.
+PUBLISHED = "TC2C published"
+
+
 def context_tensors(spec: DatasetSpec, adata, column: str) -> dict[str, PooledTensor]:
-    """Each comparator's own tensor on `column`'s cell types."""
+    """Each comparator's own tensor on `column`'s cell types, and the
+    published Tensor-cell2cell tensor (`PUBLISHED`)."""
     lr_pairs = import_ligand_receptor_pairs()
     sample = spec.condition_column
     return {
         "PB": pseudobulk_tensor(adata, sample, column, lr_pairs),
         "STAC": staccato_tensor(adata, sample, column, lr_pairs),
         "TC2C": tensor_cell2cell_tensor(adata, sample, column, lr_pairs),
-        "TC2C inner": tensor_cell2cell_tensor(
+        PUBLISHED: tensor_cell2cell_tensor(
             adata, sample, column, lr_pairs, how="inner"
         ),
     }
@@ -441,10 +446,11 @@ def labelling_components(spec: DatasetSpec, cells, labelling: str) -> tuple:
 
 
 def fit_tables(
-    spec: DatasetSpec, cells, labelling: str, random_state: int, components: tuple
+    spec: DatasetSpec, adata, cells, labelling: str, random_state: int, components
 ) -> dict:
     """The tables of one labelling that need no tensors, from
-    `labelling_components`' `components`."""
+    `labelling_components`' `components` (depth from `adata`'s genes
+    detected)."""
     fits, comparators, cccrise = components
     rng = np.random.default_rng(random_state)
     column = spec.labellings[labelling]
@@ -455,6 +461,11 @@ def fit_tables(
         ),
         "fit_ranks": fit_rank_rows(fits),
         "start_congruence": start_congruence_rows(spec, labelling),
+        "lr_loadings": lr_loading_rows([cccrise, *comparators]),
+        "associations": association_rows(spec, fits, comparators),
+        "depth": depth_rows(
+            sample_profiles(fits, comparators, cccrise), sample_obs(spec, adata)
+        ),
     }
 
 
@@ -464,18 +475,13 @@ def score_labelling(
     """The tables of one labelling (module docstring)."""
     column = spec.labellings[labelling]
     components = labelling_components(spec, cells, labelling)
-    fits, comparators, cccrise = components
+    fits, comparators, _ = components
     tensors = context_tensors(spec, adata, column)
     contexts = component_contexts(fits, comparators, cccrise_context, tensors)
-    profiles = sample_profiles(fits, comparators, cccrise)
-    obs = sample_obs(spec, adata)
     return {
-        **fit_tables(spec, cells, labelling, random_state, components),
-        "lr_loadings": lr_loading_rows([cccrise, *comparators]),
+        **fit_tables(spec, adata, cells, labelling, random_state, components),
         "inner_loss": inner_loss_rows(cells, column, tensors),
-        "associations": association_rows(spec, fits, comparators),
         "covariation": covariation_rows(contexts, lr_genes(adata)),
-        "depth": depth_rows(profiles, obs),
     }
 
 
@@ -513,6 +519,7 @@ def run_comparator_scores(
         tables = {
             lab: fit_tables(
                 spec,
+                adata,
                 cells,
                 lab,
                 random_state,

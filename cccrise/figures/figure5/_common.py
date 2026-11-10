@@ -29,7 +29,6 @@ METHOD_COLORS = {
     "cccRISE": style.COLORS["emphasis"],
     "PB": style.CATEGORICAL[1],
     "TC2C": style.CATEGORICAL[2],
-    "TC2C inner": style.CATEGORICAL[4],
     "STAC": style.CATEGORICAL[3],
 }
 
