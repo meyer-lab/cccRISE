@@ -578,6 +578,35 @@ files:
     n_shuffle: 1000
     git_sha: e7a4b74e472007d97be29ed21774bdae2698be65
     generated: '2026-11-06T08:32:57+00:00'
+  nichenet_ibd.parquet:
+    sha256: f150096a043fc09c904e6c9dd032b1fcdfac4e15a76f4f017fdad44f02ed8bcf
+    command: uv run cccrise-comparator-nichenet --dataset ibd --n-jobs 3
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    celltype_key: broad_cell_type
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    top_perc: 10.0
+    rel_cutoff: 0.4
+    n_shuffle: 1000
+    git_sha: 24ea85ca75f8c2bc3f08c3489ed99fde43b79f23
+    generated: '2026-11-10T13:13:08+00:00'
   start_congruence_alad.parquet:
     sha256: 4eb8d8bb3219797e68d730c39f440d97c70fc8d9423371d42fb7f32c89db2c6f
     command: uv run cccrise-comparator-scores --dataset alad
