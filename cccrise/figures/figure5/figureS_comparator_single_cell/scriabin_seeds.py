@@ -1,4 +1,4 @@
-"""Supplementary figure: why Scriabin is not a comparator. Seed-to-seed
+"""Why Scriabin is not a comparator (`figureS_comparator_single_cell` A). Seed-to-seed
 agreement of Scriabin's interaction programs (upstream R, on CCC-RISE's
 inputs) beside that of CCC-RISE's components' carrying LR pairs, ALAD and
 IBD: each point a pair of seeds, each bar their median (``uv run
@@ -12,7 +12,7 @@ from ....runners.datasets import SCRIABIN_DIR, scores_filename
 from ... import common, style
 from .._common import DATASET_LABELS, METHOD_COLORS
 
-AXES = ("scriabin_seeds",)
+AXES = ("seed_strip",)
 #: Each method's color and offset within its cohort
 METHODS = {
     "cccRISE": ("CCC-RISE", METHOD_COLORS["cccRISE"], -0.18),
@@ -68,14 +68,14 @@ def plot(axs):
         xlim=(-0.6, len(DATASET_LABELS) - 0.4),
         ylim=(0, 1.05),
         yticks=[0, 0.5, 1],
-        ylabel="Seed-to-seed LR-set Jaccard",
+        ylabel="Seed-to-seed\nLR-set Jaccard",
     )
     ax.legend(
         handles=[
             Line2D([], [], ls="", marker="o", ms=3.5, color=color, label=name)
             for name, color, _ in METHODS.values()
         ],
-        loc="center right",
+        loc="center",
         fontsize=style.FONT_SIZE_DENSE,
         handletextpad=0.2,
         frameon=False,

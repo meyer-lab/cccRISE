@@ -1,6 +1,6 @@
 """
 Runner: whether Scriabin's interaction programs and cccRISE's LR sets
-reproduce between random seeds (`figureS_scriabin`), from PR #275's
+reproduce between random seeds (`figureS_comparator_single_cell` A), from PR #275's
 `run_scriabin_stability` (its ``seed_agreement`` analysis, cut to what the
 figure reads).
 

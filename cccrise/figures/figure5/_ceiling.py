@@ -14,8 +14,10 @@ from .. import common, style
 from ._common import DATASET_COLORS, DATASET_LABELS, load
 from ._data import short
 
-#: Pseudobulk's share of a per-cell weight's variance, Figure 5A's y and A/B's x.
+#: Pseudobulk's share of a per-cell weight's variance, Figure 5A's y.
 R2_LABEL = "Pseudobulk variance\nexplained ($R^2$)"
+#: The same on one line, under the supplement's ceilings.
+R2_LABEL_LINE = R2_LABEL.replace("\n", " ")
 MARKER_AREA = 8
 #: Rows between the two cohorts' blocks.
 BLOCK_GAP = 0.5
@@ -122,7 +124,7 @@ def ceiling(ax, side: str) -> None:
         fontsize=style.FONT_SIZE_DENSE,
     )
     ax.tick_params(axis="y", length=0)
-    ax.set_xlabel(R2_LABEL)
+    ax.set_xlabel(R2_LABEL_LINE)
     ax.set_title(side.title(), fontsize=style.FONT_SIZE_LABEL, fontweight="bold")
     _cohort_labels(ax, centers)
 

@@ -143,9 +143,9 @@ figS_comparator_missed_ibd:
   containment: [a]
   associations: [b]
   contents: [c]
-figS_comparator_niches:
-  alad_weights: [a]
-  ibd_weights: [b]
-  alad_tau: [c]
-  ibd_tau: [d]
-figS_scriabin: {}
+figS_comparator_single_cell:
+  scriabin_seeds: [a]
+  alad_weights: [b]
+  ibd_weights: [c]
+  alad_tau: [d]
+  ibd_tau: [e]

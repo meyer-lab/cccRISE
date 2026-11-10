@@ -643,6 +643,16 @@ def source_data(
 # =============================================================================
 
 SIG_ALPHA = 0.05
+
+
+def p_text(p: float, name: str = "p") -> str:
+    """`p` for a panel: "p = 0.03", or "p = 1 × 10⁻⁵" below 0.001, one digit."""
+    if p >= 1e-3:
+        return f"{name} = {p:.1g}" if p < 0.01 else f"{name} = {p:.2f}"
+    mantissa, exponent = f"{p:.0e}".split("e")
+    return rf"{name} = ${mantissa} \times 10^{{{int(exponent)}}}$"
+
+
 #: Seed of every strip plot's jitter (`stripplot`).
 JITTER_SEED = 0
 # Axis-label names of outcome `obs` columns

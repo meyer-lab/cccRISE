@@ -6,7 +6,7 @@ EE cell's C3/C4 sender-weight balance as an angle (I-J), whose extremes
 resolve two functional hormone states inside the annotated enteroendocrine
 type, villus-like (C3) and crypt-like (C4) (K); inflammation depletes the
 villus-like cells (S_ibd_hormone_axes). NICHES is in Figure 5 (5H and
-S_comparator_niches)."""
+S_comparator_single_cell)."""
 
 from .. import common, style
 from . import (

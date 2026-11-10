@@ -1,4 +1,4 @@
-"""Figure 5's NICHES supplement (`figureS_comparator_niches`): CCC-RISE's
+"""Figure 5's NICHES supplement (`figureS_comparator_single_cell`): CCC-RISE's
 sender and receiver populations against upstream NICHES, from the
 `cccrise-niches` tables. A population's fraction NICHES-positive is its share
 of cells with a non-zero NICHES program score; what cell type predicts is

@@ -13,6 +13,8 @@ BAR_DROP = 10.5
 BOX_WIDTH = 0.16
 #: Stars sit just above the y range, at this height.
 STAR_Y = 1.02
+#: Each cohort's Kruskal-Wallis p, at its top left.
+KW_Y = 1.22
 
 
 def cohort_bars(ax, spans: dict, bar_drop: float = BAR_DROP) -> None:
@@ -102,6 +104,14 @@ def depth_tracking(ax) -> None:
         groups = _values(dataset)
         kw, qs = _tests(groups)
         start = x
+        ax.text(
+            x - 0.4,
+            KW_Y,
+            common.p_text(kw, "Kruskal–Wallis p"),
+            ha="left",
+            va="top",
+            fontsize=style.FONT_SIZE_DENSE,
+        )
         for (method, lab), values in groups.items():
             _box(ax, x, values)
             ax.scatter(
@@ -157,5 +167,5 @@ def depth_tracking(ax) -> None:
         rotation_mode="anchor",
         fontsize=style.FONT_SIZE_DENSE - 0.7,
     )
-    ax.set(ylim=(0, 1.12), yticks=[0, 0.5, 1], ylabel="Depth tracking, |ρ|")
+    ax.set(ylim=(0, 1.22), yticks=[0, 0.5, 1], ylabel="Depth tracking, |ρ|")
     cohort_bars(ax, spans, BAR_DROP)

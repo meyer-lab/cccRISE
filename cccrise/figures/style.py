@@ -116,8 +116,6 @@ AXIS_SIZE = {
     # `figureS_comparator_map`: two rows of equal width
     "map_ceiling": (58 * MM, 38 * MM),
     "split_depth": (158 * MM, 30 * MM),
-    # `figureS_scriabin`
-    "scriabin_seeds": (40 * MM, 32 * MM),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
     # Ranked curves with a column of many labels
@@ -140,6 +138,8 @@ AXIS_SIZE["half_square"] = ((AXIS_HEIGHT - JOINED_GAP) / 2, AXIS_HEIGHT)
 # Six joined squares spanning "full" (small multiples)
 _SIXTH = (AXIS_SIZE["full"][0] - 5 * JOINED_GAP) / 6
 AXIS_SIZE["full_sixth"] = (_SIXTH, _SIXTH)
+# `figureS_comparator_single_cell` A: two cohorts' strips beside ALAD's five sixths
+AXIS_SIZE["seed_strip"] = (_SIXTH - 9.5 * MM, _SIXTH)
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
 PANEL_GAP_MAX = 4 * MM

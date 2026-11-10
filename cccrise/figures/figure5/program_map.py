@@ -2,16 +2,18 @@
 against its pseudobulk ceiling, both on the best reading across cell-type
 fits (coarse or fine). Components whose max cos^2 tie and overlap on y
 are spread apart on x (`jittered`); source data keep the
-true cos^2."""
+true cos^2. Breadth: Spearman rho of max cos^2 with each component's number
+of carrying LR pairs (`covariation.carrying_pairs`), over all components."""
 
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
+from scipy.stats import spearmanr
 
 from .. import common
 from ._ceiling import R2_LABEL
 from ._common import DATASET_COLORS, DATASET_LABELS, load
-from ._programs import best_columns
+from ._programs import best_columns, carrying_pairs
 from ._recovery import COS2_LABEL, LABEL_SIZE, panel_title
 
 AXES = ("fig5_map",)
@@ -82,6 +84,10 @@ def best_of_rows() -> pd.DataFrame:
             .reset_index()
         )
     t = pd.concat(frames, ignore_index=True)
+    t["Carrying pairs"] = [
+        len(carrying_pairs(d)[p])
+        for d, p in zip(t["Dataset"], t["Program"], strict=True)
+    ]
     low = t[["sender", "receiver"]].min(axis=1)
     high = t[["sender", "receiver"]].max(axis=1)
     return t.assign(X=jittered(t["Cos2"], low, high))
@@ -101,6 +107,7 @@ def _key() -> list:
 def plot(axs):
     ax = axs[0]
     t = best_of_rows()
+    rho = spearmanr(t["Cos2"], t["Carrying pairs"]).statistic
     common.source_data(
         "program_cos2_and_pseudobulk_ceiling",
         t.rename(
@@ -109,7 +116,10 @@ def plot(axs):
         "Per component: its largest cos^2 with one LR column of any comparator "
         "cell-type fit (Fit names it), and the largest R2 over coarse and fine "
         "cell types of its per-cell sender and receiver weights on sample x cell "
-        "type means. Plotted x is cos^2 with tied components spread apart for display.",
+        "type means; its number of carrying LR pairs (the fewest top pairs carrying "
+        "90% of its squared LR loading, at most 20). Plotted x is cos^2 with tied "
+        "components spread apart for display. Breadth rho: Spearman correlation of "
+        f"cos^2 with carrying pairs over all {len(t)} components ({rho:.2f}).",
     )
     for _, r in t.iterrows():
         color = DATASET_COLORS[r.Dataset]
@@ -136,6 +146,13 @@ def plot(axs):
         ylabel=R2_LABEL,
     )
     panel_title(ax, TITLE)
+    ax.text(
+        0.03,
+        0.04,
+        rf"$\rho_{{\mathrm{{breadth}}}}$ = {rho:.2f}".replace("-", "−"),
+        transform=ax.transAxes,
+        fontsize=LABEL_SIZE,
+    )
     ax.legend(handles=_key(), loc="upper left", fontsize=LABEL_SIZE)
 
 

@@ -1,10 +1,12 @@
 """Figure 5H: each CCC-RISE population's fraction NICHES-positive against what
 cell type predicts, each population cell at the NICHES-positive rate of its
 fine type in its own sample, ALAD and IBD on one axes (``uv run
-cccrise-niches``; `comparators.niches_programs.population_table`)."""
+cccrise-niches``; `comparators.niches_programs.population_table`), with a
+paired (Wilcoxon signed-rank, two-sided) test over every population of both."""
 
 import pandas as pd
 from matplotlib.lines import Line2D
+from scipy.stats import wilcoxon
 
 from ...runners.datasets import NICHES_DIR, scores_filename
 from .. import common, style
@@ -58,14 +60,16 @@ def _leaders(ax, t: pd.DataFrame) -> None:
 def plot(axs):
     ax = axs[0]
     t = populations()
+    p = wilcoxon(t["Observed"], t[PREDICTED]).pvalue
     common.source_data(
         "niches_positive_fraction_by_population",
-        t[
-            ["Dataset", "Component", "Side", "Cells", "Samples", "Observed", PREDICTED]
-        ].rename(columns={"Observed": "Fraction NICHES-positive"}),
+        t[["Dataset", "Component", "Side", "Cells", "Samples", "Observed", PREDICTED]]
+        .rename(columns={"Observed": "Fraction NICHES-positive"})
+        .assign(**{"Wilcoxon signed-rank p (all populations)": p}),
         "Each population's share of cells with a non-zero NICHES program score, and "
         "what cell type predicts: each population cell at the NICHES-positive rate of "
-        "its fine cell type in its own sample.",
+        "its fine cell type in its own sample; and the two-sided Wilcoxon signed-rank "
+        f"p of the two, paired over all {len(t)} populations of both cohorts.",
     )
     for dataset, g in t.groupby("Dataset"):
         color = DATASET_COLORS[str(dataset)]
@@ -88,6 +92,15 @@ def plot(axs):
         ylabel="CCC-RISE",
     )
     panel_title(ax, "Fraction NICHES-positive")
+    ax.text(
+        0.97,
+        0.13,
+        f"Paired Wilcoxon\n{common.p_text(p)}",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=TEXT_SIZE,
+    )
     ax.legend(
         handles=[
             Line2D([], [], marker="o", ls="", ms=3, color=c, label=DATASET_LABELS[d])
