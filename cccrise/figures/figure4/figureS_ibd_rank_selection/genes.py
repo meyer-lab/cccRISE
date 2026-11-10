@@ -1,8 +1,8 @@
 """The IBD RISE gene factor, as the ALAD supplement draws ALAD's
-(`figure2.figureS_rise_factor_matrices.genes`), sized as `factors` beside it."""
+(`figure2.figureS_alad_cohort.genes`), sized as `factors` beside it."""
 
 from ... import common
-from ...figure2.figureS_rise_factor_matrices.genes import draw
+from ...figure2.figureS_alad_cohort.genes import draw
 from .. import _common as S
 from ._common import component_ticks
 

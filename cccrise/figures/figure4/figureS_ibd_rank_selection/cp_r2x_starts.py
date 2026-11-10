@@ -1,5 +1,5 @@
 """IBD CP fit R2X across ten seeded SVD starts per rank, from ``uv run
-cccrise-cpdrank``, with the Kneedle elbow of the median curve."""
+cccrise-cpdrank``."""
 
 from ... import common
 

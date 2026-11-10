@@ -5,7 +5,7 @@ heavily loaded component, then by that loading."""
 
 from ... import common
 from ...figure3._common import condition_obs
-from . import _common as S
+from . import _rise_factors as S
 
 AXES = ("rect",)
 

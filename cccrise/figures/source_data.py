@@ -3,7 +3,7 @@ EMBO Press source data for the manuscript's figures, packaged from what each
 panel saved with `common.source_data` during its figure's last build:
 
     uv run cccrise-sourcedata                    # every figure in `figures()`
-    uv run cccrise-sourcedata 2 S_cmp_stability  # some of them
+    uv run cccrise-sourcedata 2 S_alad_cohort  # some of them
 
 Each figure becomes `output/source_data/<label>.zip` (e.g. `Figure 2.zip`,
 `Figure EV1.zip`, `Appendix Figure S2.zip`), one folder per panel (`2A/`,
