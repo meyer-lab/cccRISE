@@ -6,11 +6,13 @@ import seaborn as sns
 
 from ....validation.stability import JACKKNIFE_AXIS
 from ... import common, style
-from . import _common as S
+from . import _anova_stability as S
+
+AXES = ("rect",)
 
 
-def plot(fig):
-    ax = fig.subplots()
+def plot(axs):
+    (ax,) = axs
     sns.violinplot(
         data=S.replicates(),
         x="Component",
@@ -29,10 +31,10 @@ def plot(fig):
     ax.set_ylim(0, S.replicates()["EtaSquared"].max() * 1.2)  # legend headroom
     ax.set_xlabel("CP component")
     outcome = common.OUTCOME_LABELS.get(S.outcome(), S.outcome())
-    ax.set_ylabel(rf"Jackknife $\eta^2$ ({outcome})")
-    ax.legend(handles=S.reference_legend_handles(), loc="upper center", ncols=2)
+    ax.set_ylabel(rf"Jackknife $\eta^2$" f"\n({outcome})")
+    ax.legend(handles=S.reference_legend_handles(), loc="upper left")
     S.save_source_data()
 
 
 def makeFigure():
-    return common.standalone(plot, style.PANEL_SIZE["full"])
+    return common.standalone_fixed(__name__)

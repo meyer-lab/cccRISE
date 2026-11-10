@@ -4,9 +4,9 @@ FMS axis (labeled there)."""
 
 from ....validation.stability import STAGE_CPD
 from ... import common
-from . import _common as S
+from . import _stability as S
 
-AXES = ("rect",)
+AXES = ("fms_cpd",)
 
 
 def plot(axs):

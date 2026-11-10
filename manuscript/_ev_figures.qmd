@@ -1,13 +1,5 @@
 # Expanded View Figures
 
-![](figures/figureS_alad_cohort/figureS_alad_cohort.svg){width="6.5in"}
-
-**{{< label alad-cohort >}}.
-ALAD cohort and cell type composition.** ({{< panel alad-cohort cohort >}}) Schematic of the ALAD cohort data\ [@doi:10.1016/j.healun.2024.02.007].
-({{< panel alad-cohort celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control, declined ALAD, and recovered ALAD samples, on a square-root scale.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
-
 ![](figures/figureS_cmp5_identity/figureS_cmp5_identity.svg){width="6.5in"}
 
 **{{< label cmp5-identity >}}.
@@ -18,6 +10,27 @@ ALAD CPD component 5 sender and receiver cell identity.** ({{< panel cmp5-identi
 Labeled are ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial markers and ({{< panel cmp5-identity sender-vs-receiver >}}) epithelium-specific genes selected from those differentially expressed between the groups.
 ({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} (Benjamini--Hochberg corrected across these markers) across group cutoffs τ, signed positive when higher in sender cells; dotted line: τ = 0.3 used throughout, dashed lines: q = 0.05.
 ({{< panel cmp5-identity receiver-genes >}}) Gene loadings of eigen-state 15, the eigen-state most heavily weighted by component 5's receiver factor, by rank; the 30 highest-loading genes are labeled.
+
+![](figures/figureS_alad_associations/figureS_alad_associations.svg){width="6.5in"}
+
+**{{< label alad-associations >}}.
+ALAD cell type composition and component--outcome associations.** ({{< panel alad-associations celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control, declined ALAD, and recovered ALAD samples, on a square-root scale.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
+q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
+({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each ALAD outcome.
+\*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
+({{< panel alad-associations death-weights >}}) CPD component 4 condition loadings by ({{< panel alad-associations death-weights.1 >}}) six-month and ({{< panel alad-associations death-weights.2 >}}) one-year death.
+Lines connect samples from the same patient.
+Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
+One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outcomes and components.
+({{< panel alad-associations rise-associations >}}) As in ({{< panel alad-associations cp-associations >}}), for each RISE component's condition loadings.
+({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CPD component 4 sender against receiver weight, with R^2^ across all cells.
+({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.
+\*: p < 0.05, uncorrected.
+({{< panel alad-associations effect-size-distributions >}}) ANOVA η^2^ of each CPD component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by Hungarian matching.
+Diamonds mark the full-cohort η^2^, filled where q < 0.05.
+({{< panel alad-associations significant-fraction >}}) Fraction of jackknife replicates in which each CPD component's association with six-month outcome has q < 0.05.
+q: Benjamini--Hochberg corrected p across the five components of each fit.
 
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 

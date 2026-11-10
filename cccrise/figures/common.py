@@ -520,7 +520,7 @@ def placeholder(fig: Figure | SubFigure | plt.Axes, text: str) -> None:
 
 
 def figure_package(figure: str) -> str:
-    """Dotted name of figure `figure`'s package (e.g. '2', 'S_cmp_stability')."""
+    """Dotted name of figure `figure`'s package (e.g. '2', 'S_alad_cohort')."""
     package = f"figure{figure}"
     # Supplements may be nested in their main figure's package
     (master,) = FIGURES_DIR.glob(f"**/{package}/{package}.py")
@@ -528,7 +528,7 @@ def figure_package(figure: str) -> str:
 
 
 def build_figure(figure: str, panel: str | None = None) -> Figure:
-    """Figure `figure` (e.g. '2', 'S_cmp_stability'), or one of its panels."""
+    """Figure `figure` (e.g. '2', 'S_alad_cohort'), or one of its panels."""
     style.apply_style()
     package = figure_package(figure)
     module = importlib.import_module(f"{package}.{panel or f'figure{figure}'}")
@@ -541,7 +541,7 @@ def genFigure():
     uv run cccrise-fbuild 2                      # figures/figure2/figure2.py
     uv run cccrise-fbuild 2 rise_rank_selection  # figures/figure2/rise_rank_selection.py
     uv run cccrise-fbuild 2 --png                # PNG instead of SVG
-    uv run cccrise-fbuild S_cmp_stability        # figures/figure2/figureS_cmp_stability/
+    uv run cccrise-fbuild S_alad_cohort        # figures/figure2/figureS_alad_cohort/
     """
     start = time.time()
     args = [arg for arg in sys.argv[1:] if arg != "--png"]
@@ -1474,7 +1474,7 @@ def condition_strips(
 ) -> None:
     """A color strip per `strips` column left of a condition factor matrix
     (rows in `groups`' order), the y label moved left of them, and their
-    legend, titled per strip, right of the matrix."""
+    legend, titled per strip, left of the y label."""
     inches = ax.bbox.width / ax.figure.dpi
     step = (STRIP_WIDTH + STRIP_GAP) / inches
     for i, (column, (_, colors)) in enumerate(reversed(strips.items())):
@@ -1497,7 +1497,7 @@ def condition_strips(
             ),
         ]
     ]
-    key = legend(ax, "right", handles=entries, handlelength=0.8)
+    key = legend(ax, "left", handles=entries, handlelength=0.8)
     for text in key.get_texts():
         if text.get_text() in titles:
             text.set_fontweight("bold")

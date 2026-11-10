@@ -6,7 +6,7 @@ component, then by that loading."""
 import numpy as np
 
 from ... import common
-from . import _common as S
+from . import _rise_factors as S
 
 TOP_GENE_FRACTION = 0.1
 AXES = ("rect",)

@@ -38,13 +38,6 @@ fig5:
   flow_alad: [f]
   flow_ibd: [g]
   niches_fraction: [h]
-figS_rise_factor_matrices:
-  factors: [a]
-  genes: [b]
-figS_cmp_stability:
-  cp_collinearity: [a]
-  rise_fms: [b]
-  cpd_fms: [c]
 figS_cmp5_identity:
   eigenstate_scatter: [a]
   cmp_eigenstate_loadings: [b]
@@ -54,17 +47,21 @@ figS_cmp5_identity:
   tau_sweep: [g]
   receiver_genes: [h]
 figS_alad_associations:
-  cp_associations: [a]
-  death_weights: [b, c]
-  rise_associations: [d]
-  sender_receiver_scatter: [e]
-  covariates: [f]
+  celltype_proportions: [a]
+  cp_associations: [b]
+  death_weights: [c, d]
+  rise_associations: [e]
+  sender_receiver_scatter: [f]
+  covariates: [g]
+  effect_size_distributions: [h]
+  significant_fraction: [i]
 figS_alad_cohort:
   cohort: [a]
-  celltype_proportions: [b]
-figS_anova_stability:
-  effect_size_distributions: [a]
-  significant_fraction: [b]
+  factors: [b]
+  genes: [c]
+  cp_collinearity: [d]
+  rise_fms: [e]
+  cpd_fms: [f]
 figS_ccc_scoring:
   factor_match: [a, b]
   anova: [c]

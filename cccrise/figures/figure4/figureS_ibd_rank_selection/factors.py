@@ -9,7 +9,7 @@ from matplotlib.colors import to_rgb
 from matplotlib.patches import Patch
 
 from ... import common
-from ...figure2.figureS_rise_factor_matrices._common import XLABEL, normalized_table
+from ...figure2.figureS_alad_cohort._rise_factors import XLABEL, normalized_table
 from .. import _common as S
 from ._common import component_ticks
 
@@ -46,7 +46,7 @@ def plot(axs):
 
 def status_strip(ax, status: np.ndarray, ylabel: str) -> None:
     """A strip of each row's inflammation status left of the matrix, labeled
-    `ylabel`, and its legend right of the matrix."""
+    `ylabel`, and its legend left of the label."""
     inches = ax.bbox.width / ax.figure.dpi
     strip = ax.inset_axes(
         (-(STRIP_WIDTH + STRIP_GAP) / inches, 0, STRIP_WIDTH / inches, 1)
@@ -57,7 +57,7 @@ def status_strip(ax, status: np.ndarray, ylabel: str) -> None:
     strip.spines[:].set_visible(False)
     key = common.legend(
         ax,
-        "right",
+        "left",
         handles=[Patch(color="none", label="Inflammation status")]
         + [Patch(color=S.GROUP_COLORS[g], label=n) for g, n in S.GROUP_LABELS.items()],
         handlelength=0.8,
