@@ -16,7 +16,7 @@ AXES = ("scriabin_seeds",)
 #: Each method's color and offset within its cohort
 METHODS = {
     "cccRISE": ("CCC-RISE", METHOD_COLORS["cccRISE"], -0.18),
-    "Scriabin": ("Scriabin", style.CATEGORICAL[9], 0.18),
+    "Scriabin": ("Scriabin", style.COLORS["reference"], 0.18),
 }
 JITTER = 0.08
 
