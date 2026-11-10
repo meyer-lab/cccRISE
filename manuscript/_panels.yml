@@ -28,14 +28,15 @@ fig4:
   hormone_angle_hist: [j]
   hormone_extreme_markers: [k]
 fig5:
-  program_map: [a]
-  span_containment: [b]
-  pair_columns: [c]
-  program_covariation: [d]
-  nichenet: [e]
-  flow_alad: [f]
-  flow_ibd: [g]
-  niches_fraction: [h]
+  cos2_pairs: [a]
+  variance_explained: [b]
+  span_containment: [c]
+  pair_columns: [d]
+  program_covariation: [e]
+  nichenet: [f]
+  flow_alad: [g]
+  flow_ibd: [h]
+  niches_fraction: [i]
 figS_cmp5_identity:
   eigenstate_scatter: [a]
   cmp_eigenstate_loadings: [b]
@@ -82,9 +83,6 @@ figS_ibd_rank_selection:
   factors: [h]
   genes: [i]
   eigenstate_heatmap: [j]
-figS_ibd_rise_factor_matrices:
-  factors: [a]
-  genes: [b]
 figS_comparator_rank_selection:
   pb_fit_coarse: [a]
   pb_fit_fine: [b]
@@ -119,17 +117,12 @@ figS_ibd_hormone_axes:
   magnitude_hist: [j]
   marker_floor_sweep: [k]
   extreme_share: [l]
-figS_comparator_map:
-  sender_ceiling: [a]
-  receiver_ceiling: [b]
-  depth_tracking: [c]
 figS_comparator_split:
   cos2_grid: [a]
   alad_c3_columns: [b]
   alad_c3_covariation: [c]
   ibd_c1c5_columns: [d]
-  ibd_c1c5_covariation: [e]
-  ibd_c1c5_modes: [f]
+  ibd_c1c5_modes: [e]
 figS_comparator_missed_alad:
   containment: [a]
   associations: [b]
@@ -144,3 +137,4 @@ figS_comparator_single_cell:
   ibd_weights: [c]
   alad_tau: [d]
   ibd_tau: [e]
+figS_comparator_depth: {}
