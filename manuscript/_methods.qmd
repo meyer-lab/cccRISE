@@ -199,7 +199,7 @@ For each component and grouping, we reported the one-way analysis of variance (A
 For ALAD, RISE condition loadings ($A$) were corrected and tested in the same way, with correction across all RISE component by outcome tests.
 Covariates were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-testing correction, with binary covariates coded 0/1.
 
-**Individual LR pair associations.** For each CPD component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($E$) and receiver ($F$) eigen-state loadings and summed, $S_{il} = \sum_{s,t} X_{istl}e_{s}f_{t}$, where $X_{istl}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in condition $i$.
+**Individual LR pair associations.** For each CPD component, each LR pair's communication score in each sample was computed as the sample's tensor slice for that pair weighted by the component's sender ($E$) and receiver ($F$) eigen-state loadings and summed, $S_{l,i} = \sum_{s,t} X_{l,s,t,i}e_{s}f_{t}$, where $X_{l,s,t,i}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in condition $i$.
 These scores were corrected for total sample expression as above and tested against outcome by one-way ANOVA, with correction across the 513 LR pairs.
 For the component's top 10 LR pairs by absolute LR pair loading, we computed the Spearman correlation of the uncorrected scores across samples between each pair of LR pairs.
 These correlations were compared with those of LR pairs drawn 2,000 times from three baselines: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with outcome (q < 0.05).
@@ -267,7 +267,7 @@ This expression was the cell's centered expression of the ligands or receptors o
 ### Mapping CCC-RISE Components to Cells
 
 **Per-cell sender and receiver weights.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CPD eigen-state factors can be mapped back to individual cells.
-The per-cell sender and receiver weights of all cells are $PE$ and $PF$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row and $E$ and $F$ are the sender and receiver eigen-state factors, respectively.
+The per-cell sender and receiver weights of all cells are $P \cdot E$ and $P \cdot F$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row and $E$ and $F$ are the sender and receiver eigen-state factors, respectively.
 The agreement of a component's sender and receiver cells was summarized by the R^2^ between per-cell sender and receiver weights across all cells.
 Components were mapped to annotated cell types by the mean per-cell sender and receiver weight of each broad cell type.
 
@@ -372,7 +372,7 @@ STACCato has one value per label, so its bands span the whole label.
 ### Batch, Patient, and Technical Variation
 
 RISE does not explicitly remove batch effects, but its structure isolates sample-level variation.
-Each sample is projected by its own projection matrix onto eigen-states shared across samples, so variation in how strongly a sample expresses a program is carried by its condition loading rather than by the eigen-state definitions.
+Each sample is projected by its own projection matrix onto eigen-states shared across samples, so variation in how strongly a sample expresses a program is carried by its condition loading.
 
 Slice normalization prevents samples with many or highly variable cells from dominating the shared eigen-states.
 The total-expression correction removes sample-wide scaling of the condition loadings before association testing.
