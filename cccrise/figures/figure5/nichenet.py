@@ -17,7 +17,7 @@ AXES = ("fig5_nichenet",)
 SLOTS = [("cccRISE", "coarse", "CCC-RISE")] + [
     (m, lab, f"{m} {lab[0].upper()}") for m in ("PB", "STAC") for lab in LABELLINGS
 ]
-SCORE_LABEL = "Weighted target score\nabove shuffled cells"
+SCORE_LABEL = "NicheNet target score\nabove shuffled cells"
 #: Cohort bars below the axes (mm), clear of the rotated fit names.
 BAR_DROP = 9.5
 
