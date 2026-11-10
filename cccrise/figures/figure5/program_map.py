@@ -2,8 +2,10 @@
 against its pseudobulk ceiling, both on the best reading across cell-type
 fits (coarse or fine). Components whose max cos^2 tie and overlap on y
 are spread apart on x (`jittered`); source data keep the
-true cos^2. Breadth: Spearman rho of max cos^2 with each component's number
-of carrying LR pairs (`covariation.carrying_pairs`), over all components."""
+true cos^2. Two Spearman correlations over all components, each with its p:
+max cos^2 with the mean of the sender and receiver R2 (rho_{R2, cos2}), and
+with the number of carrying LR pairs (rho_{LR pairs},
+`covariation.carrying_pairs`)."""
 
 import numpy as np
 import pandas as pd
@@ -105,10 +107,17 @@ def _key() -> list:
     ]
 
 
+def _rho_text(subscript: str, result) -> str:
+    """One correlation's line: "ρ_subscript = −0.85, p = 8 × 10⁻⁴"."""
+    rho = f"{result.statistic:.2f}".replace("-", "−")
+    return rf"$\rho_{{{subscript}}}$ = {rho}, {common.p_text(result.pvalue)}"
+
+
 def plot(axs):
     ax = axs[0]
     t = best_of_rows()
-    rho = spearmanr(t["Cos2"], t["Carrying pairs"]).statistic
+    ceiling = spearmanr(t["Cos2"], t[["sender", "receiver"]].mean(axis=1))
+    pairs = spearmanr(t["Cos2"], t["Carrying pairs"])
     common.source_data(
         "program_cos2_and_pseudobulk_ceiling",
         t.rename(
@@ -120,8 +129,10 @@ def plot(axs):
         "type means; its number of carrying LR pairs (the fewest top pairs carrying "
         f"90% of its squared LR loading, at most {covariation.CARRYING_CAP}). Plotted "
         "x is cos^2 with tied "
-        "components spread apart for display. Breadth rho: Spearman correlation of "
-        f"cos^2 with carrying pairs over all {len(t)} components ({rho:.2f}).",
+        "components spread apart for display. Spearman correlations over all "
+        f"{len(t)} components of cos^2 with the mean of Sender R2 and Receiver R2 "
+        f"(rho {ceiling.statistic:.2f}, p {ceiling.pvalue:.2g}) and with carrying "
+        f"pairs (rho {pairs.statistic:.2f}, p {pairs.pvalue:.2g}).",
     )
     for _, r in t.iterrows():
         color = DATASET_COLORS[r.Dataset]
@@ -148,12 +159,19 @@ def plot(axs):
         ylabel=R2_LABEL,
     )
     panel_title(ax, TITLE)
-    ax.text(
+    ax.text(  # just below the legend
         0.03,
-        0.04,
-        rf"$\rho_{{\mathrm{{breadth}}}}$ = {rho:.2f}".replace("-", "−"),
+        0.71,
+        "\n".join(
+            [
+                _rho_text(r"R^2\!,\,\cos^2", ceiling),
+                _rho_text(r"\mathrm{LR\ pairs}", pairs),
+            ]
+        ),
         transform=ax.transAxes,
+        va="top",
         fontsize=LABEL_SIZE,
+        linespacing=1.4,
     )
     ax.legend(handles=_key(), loc="upper left", fontsize=LABEL_SIZE)
 
