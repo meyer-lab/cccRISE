@@ -38,8 +38,7 @@ files:
     generated: '2026-11-10T11:56:31+00:00'
   associations_ibd.parquet:
     sha256: c2fc9324bb22ac152f043add75b8e2933dbf89d673d15d453ab540e585128781
-    command: uv run cccrise-comparator-scores --dataset ibd --tables associations covariation
-      depth homophily inner_loss lr_loadings
+    command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -74,8 +73,8 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: dacc0585870ee9768f4b232da48731cc94b2a2e2
-    generated: '2026-11-06T09:28:53+00:00'
+    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
+    generated: '2026-11-10T13:15:52+00:00'
   containment_alad.parquet:
     sha256: 67ff8cbd7ea3a923acc3d3f6a3d4a0990361c3b2126bca89e736618abd811117
     command: uv run cccrise-comparator-scores --dataset alad
@@ -107,8 +106,7 @@ files:
     generated: '2026-11-10T11:56:31+00:00'
   containment_ibd.parquet:
     sha256: 395512c7e3301a793db70c8640b0719217fb88f8fac16a288e64545ee83ce49d
-    command: uv run cccrise-comparator-scores --dataset ibd --tables containment fit_ranks
-      label_ceiling start_congruence
+    command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -143,8 +141,8 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: 1c557aeebc719213bdf5afc7ea3443bad2a64ea2
-    generated: '2026-11-06T09:56:50+00:00'
+    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
+    generated: '2026-11-10T13:15:52+00:00'
   covariation_alad.parquet:
     sha256: 1c0de66d549e75a629548b69c2e8aa1516c77125c31ef569f9cfc5a0abb06857
     command: uv run cccrise-comparator-scores --dataset alad
@@ -175,9 +173,8 @@ files:
     git_sha: a61495b4bee0add80927f661aaafeca8e327d6b6
     generated: '2026-11-10T11:56:31+00:00'
   covariation_ibd.parquet:
-    sha256: 1874562b613bc30df9ccdefbb60b9218da9dc4dabf7e220e524d61024fec448a
-    command: uv run cccrise-comparator-scores --dataset ibd --tables associations covariation
-      depth homophily inner_loss lr_loadings
+    sha256: f114017ecd1b26407827f1b5c4c84755dda23401fc51d43134d77402eeae91c0
+    command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -212,8 +209,8 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: dacc0585870ee9768f4b232da48731cc94b2a2e2
-    generated: '2026-11-06T09:28:53+00:00'
+    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
+    generated: '2026-11-10T13:15:52+00:00'
   depth_alad.parquet:
     sha256: 85d21f7a8f2ba7b4d90e64947733b4ef27ffbbfe365ec48b15533cda1b029d74
     command: uv run cccrise-comparator-scores --dataset alad
@@ -245,8 +242,7 @@ files:
     generated: '2026-11-10T11:56:31+00:00'
   depth_ibd.parquet:
     sha256: 4435bd640b2b950a190db72cb72c08839fc11a13dfc85a2a979af558aa158d9b
-    command: uv run cccrise-comparator-scores --dataset ibd --tables associations covariation
-      depth homophily inner_loss lr_loadings
+    command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -281,8 +277,8 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: dacc0585870ee9768f4b232da48731cc94b2a2e2
-    generated: '2026-11-06T09:28:53+00:00'
+    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
+    generated: '2026-11-10T13:15:52+00:00'
   fit_ranks_alad.parquet:
     sha256: e1841ae24df0ce03379649e96d176fdcb6064b511c2f6a80a5cbeb89284508ce
     command: uv run cccrise-comparator-scores --dataset alad
@@ -314,8 +310,7 @@ files:
     generated: '2026-11-10T11:56:31+00:00'
   fit_ranks_ibd.parquet:
     sha256: 41c7da3bf89f30fc955f416f747eae8cc77bcf6d3e950a63ccfd18cd610e64fa
-    command: uv run cccrise-comparator-scores --dataset ibd --tables containment fit_ranks
-      label_ceiling start_congruence
+    command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -350,8 +345,8 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: 1c557aeebc719213bdf5afc7ea3443bad2a64ea2
-    generated: '2026-11-06T09:56:50+00:00'
+    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
+    generated: '2026-11-10T13:15:52+00:00'
   inner_loss_alad.parquet:
     sha256: 41d8093c4851fc75d91d32722ef4b6260a26199f2e303e82223c535786065df5
     command: uv run cccrise-comparator-scores --dataset alad
@@ -383,8 +378,7 @@ files:
     generated: '2026-11-10T11:56:31+00:00'
   inner_loss_ibd.parquet:
     sha256: 876220b41cc142007f21845c33208a60cad99ebee57732f38f012c5777a62713
-    command: uv run cccrise-comparator-scores --dataset ibd --tables associations covariation
-      depth homophily inner_loss lr_loadings
+    command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -419,8 +413,8 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: dacc0585870ee9768f4b232da48731cc94b2a2e2
-    generated: '2026-11-06T09:28:53+00:00'
+    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
+    generated: '2026-11-10T13:15:52+00:00'
   label_ceiling_alad.parquet:
     sha256: d4ee337d1d8bf6615aac852bad00ca5ec476e98ce0202736020b6fc45ac0399b
     command: uv run cccrise-comparator-scores --dataset alad
@@ -452,8 +446,7 @@ files:
     generated: '2026-11-10T11:56:31+00:00'
   label_ceiling_ibd.parquet:
     sha256: 656d4783635d25217b76c2a24f596dd1e9adf5f0db5f624ab4086a47c2ed3e31
-    command: uv run cccrise-comparator-scores --dataset ibd --tables containment fit_ranks
-      label_ceiling start_congruence
+    command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -488,8 +481,8 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: 1c557aeebc719213bdf5afc7ea3443bad2a64ea2
-    generated: '2026-11-06T09:56:50+00:00'
+    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
+    generated: '2026-11-10T13:15:52+00:00'
   lr_loadings_alad.parquet:
     sha256: 6012a7943a2890df26a1cb41df38002150d02b7c9f6b2b48181c149debd184c5
     command: uv run cccrise-comparator-scores --dataset alad
@@ -521,8 +514,7 @@ files:
     generated: '2026-11-10T11:56:31+00:00'
   lr_loadings_ibd.parquet:
     sha256: dee27fa8fc7d341f27739b7cbc1f7ee7db93f7f6a98c84b81cdb0aeb44e363d2
-    command: uv run cccrise-comparator-scores --dataset ibd --tables associations covariation
-      depth homophily inner_loss lr_loadings
+    command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -557,8 +549,8 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: dacc0585870ee9768f4b232da48731cc94b2a2e2
-    generated: '2026-11-06T09:28:53+00:00'
+    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
+    generated: '2026-11-10T13:15:52+00:00'
   nichenet_alad.parquet:
     sha256: d15d7c4baea9e65ae223ca2acfeabb3510986c5d7cb55c195eb07298764240d6
     command: uv run cccrise-comparator-nichenet --dataset alad --n-jobs 12
@@ -638,8 +630,7 @@ files:
     generated: '2026-11-10T11:56:31+00:00'
   start_congruence_ibd.parquet:
     sha256: 08ce960c7b5077daa2302fbd77c4738cd98e3c2e5f4ccc9eb52ca033d7b79208
-    command: uv run cccrise-comparator-scores --dataset ibd --tables containment fit_ranks
-      label_ceiling start_congruence
+    command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -674,5 +665,5 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: 1c557aeebc719213bdf5afc7ea3443bad2a64ea2
-    generated: '2026-11-06T09:56:50+00:00'
+    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
+    generated: '2026-11-10T13:15:52+00:00'
