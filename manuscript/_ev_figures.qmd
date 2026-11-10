@@ -9,7 +9,6 @@ ALAD CPD component 5 sender and receiver cell identity.** ({{< panel cmp5-identi
 ({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Wilcoxon rank-sum q (Benjamini--Hochberg corrected across all genes) between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and all other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and all other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells.
 Labeled are ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial markers and ({{< panel cmp5-identity sender-vs-receiver >}}) epithelium-specific genes selected from those differentially expressed between the groups.
 ({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} (Benjamini--Hochberg corrected across these markers) across group cutoffs τ, signed positive when higher in sender cells; dotted line: τ = 0.3 used throughout, dashed lines: q = 0.05.
-({{< panel cmp5-identity receiver-genes >}}) Gene loadings of eigen-state 15, the eigen-state most heavily weighted by component 5's receiver factor, by rank; the 30 highest-loading genes are labeled.
 
 ![](figures/figureS_alad_associations/figureS_alad_associations.svg){width="6.5in"}
 
@@ -19,10 +18,6 @@ Boxes show the median and interquartile range and whiskers show the most extreme
 q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
 ({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each ALAD outcome.
 \*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
-({{< panel alad-associations death-weights >}}) CPD component 4 condition loadings by ({{< panel alad-associations death-weights.1 >}}) six-month and ({{< panel alad-associations death-weights.2 >}}) one-year death.
-Lines connect samples from the same patient.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all outcomes and components.
 ({{< panel alad-associations rise-associations >}}) As in ({{< panel alad-associations cp-associations >}}), for each RISE component's condition loadings.
 ({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CPD component 4 sender against receiver weight, with R^2^ across all cells.
 ({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.

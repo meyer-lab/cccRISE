@@ -815,8 +815,7 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
 
 def plot_r2x_sweep(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -> None:
     """Fit R2X against CP rank of a seeded-start `sweep` ('Rank', 'Start',
-    'Seed', 'FitR2X'): the median over starts, banded by their range, with
-    the Kneedle elbow of the median curve circled."""
+    'Seed', 'FitR2X'): the median over starts, banded by their range."""
     source_data(
         "cp_fit_r2x_by_rank_and_start",
         sweep[["Rank", "Start", "Seed", "FitR2X"]],
@@ -831,33 +830,9 @@ def plot_r2x_sweep(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -
         median.index, by_rank.min(), by_rank.max(), color=color, alpha=0.2, lw=0
     )
     ax.plot(median.index, median, color=color, label="Median start")
-    elbow = kneedle_elbow(median.index, 1 - median.to_numpy())
-    mark_kneedle(ax, elbow, median[elbow])
     mark_rank(ax, rank)
     rank_axis(ax, median.index)
     ax.set_ylabel("Fit R²X")
-
-
-def mark_kneedle(ax: plt.Axes, rank: int, value: float, above: bool = False) -> None:
-    """Circle the Kneedle elbow at (`rank`, `value`) and label it, below
-    right of it (clear of a rising curve) or `above` right (a falling one)."""
-    ax.plot(
-        rank,
-        value,
-        marker="o",
-        markersize=3 * style.MARKER_SIZE,
-        fillstyle="none",
-        markeredgecolor=KNEEDLE_EDGE,
-        markeredgewidth=style.LINE_WIDTH,
-        zorder=4,
-    )
-    ax.annotate(
-        "Kneedle",
-        (rank, value),
-        xytext=(6, 4) if above else (6, -10),
-        textcoords="offset points",
-        fontsize=style.FONT_SIZE_DENSE,
-    )
 
 
 def plot_collinearity_boxes(

@@ -178,8 +178,8 @@ For IBD, ranks 30 to 90 were tested in steps of 5; mean held-out R^2^X plateaued
 
 **CPD.** CPD ranks from 1 to the selected RISE rank were evaluated on the communication tensor from the uncompressed RISE fit.
 At each rank, CPD was fit from 10 seeded starts of the same SVD initialization used for the reported fit (randomized SVD, seeds 42--51), in single precision on a GPU.
-First, the fit R^2^X of each start was computed, and the elbow of the median R^2^X across starts was located by Kneedle\ [@doi:10.1109/ICDCSW.2011.20].
-Second, the masked imputation R^2^X was computed.
+First, the fit R^2^X of each start was computed.
+Second, the masked imputation R^2^X was computed, as follows.
 Tensor entries were split into 10 random folds, so that every entry was held out once.
 For each fold, the held-out entries were set to zero and the CPD model was fit by masked ALS, which iteratively fills the held-out entries with the current reconstruction.
 The predictions of all held-out entries were pooled into a single R^2^X against the full tensor, and this was averaged over 10 repeated fold splits.
@@ -187,8 +187,8 @@ Imputation fits ran in double precision, because single-precision masked fits di
 A ridge penalty ($\lambda$ = 0.1) was applied to the masked fits only, because the communication tensor is heavy-tailed so an unpenalized masked fit could be dominated by the few largest held-out entries.
 Third, the collinearity of each fit was measured in each mode as the largest absolute cosine between the factor columns of two of its components.
 Fourth, the agreement between starts was measured by the FMS between every pair of a rank's starts.
-Starts with FMS ≥ 0.95 were joined, and each connected group of starts was taken as a distinct minimum; the minimum reached by the most starts is denoted $f_{\max}$.
-The rank was chosen as the largest rank at which no start's LR pair mode, the largest of the four, was collinear; in both cohorts, fewer starts also reached $f_{\max}$ at the next rank.
+Distinct minima were defined as groups of starts with FMS ≥ 0.95.
+The rank was chosen as the largest rank at which no start's LR pair mode was collinear.
 
 ### Clinical Association Testing
 
