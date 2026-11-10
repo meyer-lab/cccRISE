@@ -43,7 +43,7 @@ This cycle of aligning the tensor and then factoring it was repeated until the d
 
 RISE enhances the core PARAFAC2 algorithm with key optimizations: $A$ was initialized to ones, $C$ was initialized to the leading $r$ right singular vectors of the stacked, centered, and slice-weighted data, (computed with an iterative (LOBPCG) eigensolver from a random start), and fitted components were ordered by the variance-to-mean ratio of their condition loadings, normalized, and sign-flipped to a consistent orientation\ [@doi:10.1016/j.cels.2025.101294; @doi:10.1137/S1064827500366124; @doi:10/cxfskg; @doi:10.1016/j.chemolab.2021.104312].
 
-**CANDELINC compression.** Analyses requiring many RISE fits (bi-cross-validation, jackknife, and re-initialization, below) used CANDELINC compression\ [@doi:10.1016/S0169-7439(96)00074-3; @doi:10.1137/07070111X].
+**CANDELINC compression.** Analyses requiring many RISE fits (bi-cross-validation, jackknife, and re-initialization, below) used CANDELINC compression\ [@{doi:10.1016/S0169-7439(96)00074-3}; @doi:10.1137/07070111X].
 During compressed fits, the gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations.
 Each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
 Compressed fits reduced the gene expression space, but yielded nearly identical components to uncompressed fits.
