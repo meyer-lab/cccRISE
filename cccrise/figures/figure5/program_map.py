@@ -10,6 +10,7 @@ import pandas as pd
 from matplotlib.lines import Line2D
 from scipy.stats import spearmanr
 
+from ... import covariation
 from .. import common
 from ._ceiling import R2_LABEL
 from ._common import DATASET_COLORS, DATASET_LABELS, load
@@ -117,7 +118,8 @@ def plot(axs):
         "cell-type fit (Fit names it), and the largest R2 over coarse and fine "
         "cell types of its per-cell sender and receiver weights on sample x cell "
         "type means; its number of carrying LR pairs (the fewest top pairs carrying "
-        "90% of its squared LR loading, at most 20). Plotted x is cos^2 with tied "
+        f"90% of its squared LR loading, at most {covariation.CARRYING_CAP}). Plotted "
+        "x is cos^2 with tied "
         "components spread apart for display. Breadth rho: Spearman correlation of "
         f"cos^2 with carrying pairs over all {len(t)} components ({rho:.2f}).",
     )

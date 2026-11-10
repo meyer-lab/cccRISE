@@ -30,8 +30,9 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
   every method): each pair scored in the component's own sender/receiver
   context on its own method's tensor, the mean Spearman correlation of its
   top pairs (`covariation.carrying_pairs`; ``PairsUsed``) against random
-  and expression-matched draws, over all pairs of pairs and (``_disjoint``)
-  over those sharing no gene; with its top pair's share of squared loading
+  and expression-matched draws, pairs sharing a gene merged into one
+  (``GeneGroups`` of them; `covariation.pairwise_rank_correlations` with
+  ``merge``, as Figure 3F); with its top pair's share of squared loading
   (``TopShare``).
 - ``associations``: each component's sample loadings, cccRISE's and each
   comparator's, against every association of the cohort's figure, as Figure 3 tests
@@ -291,22 +292,23 @@ def component_contexts(fits, comparators, cccrise_context, tensors) -> list[dict
     return contexts
 
 
-def covariation_summary(context: dict, top: np.ndarray, genes=None) -> dict:
+def covariation_summary(context: dict, top: np.ndarray, genes) -> dict:
     """The mean pairwise rank correlation of the LR pairs `top` scored in
-    `context` (`covariation`), and the mean and 95th percentile of that mean
-    over each baseline's draws; with `genes`, over gene-disjoint pairs only.
-    All NaN when `top` leaves no pair of pairs to correlate."""
+    `context` (`covariation`), those sharing a gene (`genes`) merged into one
+    in it and in every draw, and the mean and 95th percentile of that mean
+    over each baseline's draws. All NaN when `top` leaves no two groups to
+    correlate."""
     if len(top) < 2:  # nothing to co-vary with
         return {"Observed": np.nan}
     scored = covariation.context_scores(
         context["tensor"], context["sender"], context["receiver"]
     )
-    observed = covariation.pairwise_rank_correlations(scored, top, genes)
-    if np.isnan(observed).all():  # every pair of pairs shares a gene
+    observed = covariation.pairwise_rank_correlations(scored, top, genes, merge=True)
+    if np.isnan(observed).all():  # every pair merged into one group
         return {"Observed": np.nan}
     summary = {"Observed": np.nanmean(observed)}
     for name, draws in covariation.covariation_baselines(
-        scored, top, genes=genes
+        scored, top, genes=genes, merge=True
     ).items():
         means = np.nanmean(draws, axis=1)
         summary |= {
@@ -317,13 +319,11 @@ def covariation_summary(context: dict, top: np.ndarray, genes=None) -> dict:
 
 
 def covariation_rows(contexts: list[dict], genes: list[set[str]]) -> pd.DataFrame:
-    """Every component's top-pair co-variation (`covariation.carrying_pairs`)
-    over all pairs of its top pairs and, suffixed ``_disjoint``, over those
-    sharing no gene."""
+    """Every component's top-pair co-variation (`covariation.carrying_pairs`),
+    pairs sharing a gene merged (`covariation_summary`)."""
     rows = []
     for context in contexts:
         top = covariation.carrying_pairs(context["lr"])
-        disjoint = covariation_summary(context, top, genes)
         lr = pd.DataFrame(context["lr"])
         rows.append(
             {"Method": context["Method"], "Component": context["Component"]}
@@ -331,9 +331,9 @@ def covariation_rows(contexts: list[dict], genes: list[set[str]]) -> pd.DataFram
                 "EffectiveLR": scores.effective_number(lr).iloc[0],
                 "TopShare": scores.top_share(lr).iloc[0],
                 "PairsUsed": len(top),
+                "GeneGroups": len(set(covariation.shared_gene_labels(top, genes))),
             }
-            | covariation_summary(context, top)
-            | {f"{k}_disjoint": v for k, v in disjoint.items()}
+            | covariation_summary(context, top, genes)
         )
     return pd.DataFrame(rows)
 

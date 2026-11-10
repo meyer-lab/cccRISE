@@ -29,6 +29,7 @@ from matplotlib.colors import Normalize
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 
+from ...covariation import CARRYING_CAP
 from .. import common, style
 from ._common import METHOD_COLORS, load
 from ._data import LABELLINGS, short
@@ -400,6 +401,7 @@ def covariation(axs, dataset: str, programs) -> None:
                 "Method",
                 "Labelling",
                 "PairsUsed",
+                "GeneGroups",
                 "Observed",
                 "random_q95",
                 "expression_matched_q95",
@@ -407,9 +409,10 @@ def covariation(axs, dataset: str, programs) -> None:
         ],
         "Mean pairwise rank correlation across samples of each component's or "
         "column's carrying pairs (the fewest carrying 90% of squared loading, at most "
-        "20), with the 95th percentiles of the random and of the expression-matched "
-        "null; NaN where fewer than two pairs remain. A point is filled when above "
-        "the expression-matched null.",
+        f"{CARRYING_CAP}), pairs sharing a gene merged into one (Gene "
+        "groups of them, as Figure 3F), with the 95th percentiles of the random and "
+        "of the expression-matched null, merged alike; NaN where fewer than two "
+        "groups remain. A point is filled when above the expression-matched null.",
     )
     for _, r in t.iterrows():
         observed, color = r["Observed"], METHOD_COLORS[r.Method]
@@ -441,7 +444,7 @@ def covariation(axs, dataset: str, programs) -> None:
     ax.set(
         ylim=(0, 1),
         yticks=[0, 0.5, 1],
-        ylabel=r"$\bar{\rho}$, all pairs",
+        ylabel=r"$\bar{\rho}$, shared genes merged",
         xlim=(t["X"].min() - 0.7, t["X"].max() + 0.7),
     )
     ax.set_xticks(t["X"], t["Name"])

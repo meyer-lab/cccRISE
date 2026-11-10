@@ -30,7 +30,7 @@ N_TOP = 10
 CARRIED_SHARE = 0.9
 #: ... at most this many (ALAD C3 needs 13 for 90%; a broad TC2C column is
 #: cut here).
-CARRYING_CAP = 20
+CARRYING_CAP = 15
 COVARIATION_DRAWS = 2000
 #: An expression-matched pair is one of a top pair's this many nearest.
 N_EXPRESSION_NEIGHBORS = 20
@@ -109,7 +109,8 @@ def pairwise_rank_correlations(
     and so co-vary almost by construction, are NaN; with `merge` as well,
     they are instead averaged into one (`shared_gene_labels`: the group's
     ranks averaged, then re-ranked), and the fewer correlations NaN-padded
-    to as many as `columns` has pairs of, so draws stack."""
+    to as many as `columns` has pairs of, so draws stack; all NaN when every
+    pair merges into one group."""
     columns = np.asarray(columns)
     ranks = _ranks(scores[:, columns])
     if merge:
@@ -119,6 +120,8 @@ def pairwise_rank_correlations(
         )
     upper = np.triu_indices(ranks.shape[1], 1)
     correlations = np.full(len(columns) * (len(columns) - 1) // 2, np.nan)
+    if ranks.shape[1] < 2:  # one group left: nothing to correlate
+        return correlations
     correlations[: upper[0].size] = np.corrcoef(ranks.T)[upper]
     if genes is not None and not merge:
         shared = [bool(genes[columns[i]] & genes[columns[j]]) for i, j in zip(*upper)]
