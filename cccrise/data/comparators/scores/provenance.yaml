@@ -35,8 +35,8 @@ files:
     git_sha: 74360e82087e045044fec437f9239c9c95c2267b
     generated: '2026-11-10T22:13:05+00:00'
   associations_ibd.parquet:
-    sha256: c2fc9324bb22ac152f043add75b8e2933dbf89d673d15d453ab540e585128781
-    command: uv run cccrise-comparator-scores --dataset ibd
+    sha256: c454a849cff68e805fc28e296a5bc4abaef3fd0ad86afc755f12ca5b8643f230
+    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -64,15 +64,13 @@ files:
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
       TC2C coarse: 1eeaf65e598dc6dbf53d58eef9eb75b5cae516ab980e553569e19a726241fafd
       TC2C fine: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
-      TC2C inner coarse: ee7a9157fb3febc1281c2c3823cbbc1e6fc4fda590c5ab9f423f455fb3607ec1
-      TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
-    generated: '2026-11-10T13:15:52+00:00'
+    git_sha: 4268a829d320e212061737e38f721f07c543d84c
+    generated: '2026-11-10T22:17:59+00:00'
   containment_alad.parquet:
     sha256: f054ba79e99a6e2588b83847d7902cfd5be9c25fd759215f488ccbbb349825ed
     command: uv run cccrise-comparator-scores --dataset alad
@@ -101,8 +99,8 @@ files:
     git_sha: 74360e82087e045044fec437f9239c9c95c2267b
     generated: '2026-11-10T22:13:05+00:00'
   containment_ibd.parquet:
-    sha256: 395512c7e3301a793db70c8640b0719217fb88f8fac16a288e64545ee83ce49d
-    command: uv run cccrise-comparator-scores --dataset ibd
+    sha256: cc5d63db43ae1f0cf0651945467728f4165c83578eeeaeb7ff3ca8ccc9e65c22
+    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -130,15 +128,13 @@ files:
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
       TC2C coarse: 1eeaf65e598dc6dbf53d58eef9eb75b5cae516ab980e553569e19a726241fafd
       TC2C fine: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
-      TC2C inner coarse: ee7a9157fb3febc1281c2c3823cbbc1e6fc4fda590c5ab9f423f455fb3607ec1
-      TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
-    generated: '2026-11-10T13:15:52+00:00'
+    git_sha: 4268a829d320e212061737e38f721f07c543d84c
+    generated: '2026-11-10T22:17:59+00:00'
   covariation_alad.parquet:
     sha256: c300986790a86e9178f3a95e5f7417c811ac48a0ce1ce89ce089e83ae1debc7c
     command: uv run cccrise-comparator-scores --dataset alad
@@ -194,8 +190,8 @@ files:
     git_sha: 74360e82087e045044fec437f9239c9c95c2267b
     generated: '2026-11-10T22:13:05+00:00'
   depth_ibd.parquet:
-    sha256: 4435bd640b2b950a190db72cb72c08839fc11a13dfc85a2a979af558aa158d9b
-    command: uv run cccrise-comparator-scores --dataset ibd
+    sha256: ce650f62429162ec2106154c8c59896229bd5067bf50fec84e04828b9c8a18c3
+    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -223,15 +219,13 @@ files:
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
       TC2C coarse: 1eeaf65e598dc6dbf53d58eef9eb75b5cae516ab980e553569e19a726241fafd
       TC2C fine: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
-      TC2C inner coarse: ee7a9157fb3febc1281c2c3823cbbc1e6fc4fda590c5ab9f423f455fb3607ec1
-      TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
-    generated: '2026-11-10T13:15:52+00:00'
+    git_sha: 4268a829d320e212061737e38f721f07c543d84c
+    generated: '2026-11-10T22:17:59+00:00'
   fit_ranks_alad.parquet:
     sha256: 590a9f2e5ba8d9958bbf20e1447f2072a0965f96f1e52f2ceb58406cf9fb7ac8
     command: uv run cccrise-comparator-scores --dataset alad
@@ -260,8 +254,8 @@ files:
     git_sha: 74360e82087e045044fec437f9239c9c95c2267b
     generated: '2026-11-10T22:13:05+00:00'
   fit_ranks_ibd.parquet:
-    sha256: 41c7da3bf89f30fc955f416f747eae8cc77bcf6d3e950a63ccfd18cd610e64fa
-    command: uv run cccrise-comparator-scores --dataset ibd
+    sha256: 193b54e446b960ead05207890cb18096e9f78ae4fb81168f31ca6c7f657ff664
+    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -289,15 +283,13 @@ files:
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
       TC2C coarse: 1eeaf65e598dc6dbf53d58eef9eb75b5cae516ab980e553569e19a726241fafd
       TC2C fine: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
-      TC2C inner coarse: ee7a9157fb3febc1281c2c3823cbbc1e6fc4fda590c5ab9f423f455fb3607ec1
-      TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
-    generated: '2026-11-10T13:15:52+00:00'
+    git_sha: 4268a829d320e212061737e38f721f07c543d84c
+    generated: '2026-11-10T22:17:59+00:00'
   inner_loss_alad.parquet:
     sha256: 41d8093c4851fc75d91d32722ef4b6260a26199f2e303e82223c535786065df5
     command: uv run cccrise-comparator-scores --dataset alad
@@ -393,7 +385,7 @@ files:
     generated: '2026-11-10T22:13:05+00:00'
   label_ceiling_ibd.parquet:
     sha256: 656d4783635d25217b76c2a24f596dd1e9adf5f0db5f624ab4086a47c2ed3e31
-    command: uv run cccrise-comparator-scores --dataset ibd
+    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -421,15 +413,13 @@ files:
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
       TC2C coarse: 1eeaf65e598dc6dbf53d58eef9eb75b5cae516ab980e553569e19a726241fafd
       TC2C fine: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
-      TC2C inner coarse: ee7a9157fb3febc1281c2c3823cbbc1e6fc4fda590c5ab9f423f455fb3607ec1
-      TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
-    generated: '2026-11-10T13:15:52+00:00'
+    git_sha: 4268a829d320e212061737e38f721f07c543d84c
+    generated: '2026-11-10T22:17:59+00:00'
   lr_loadings_alad.parquet:
     sha256: 29331645f56bcb684b54491dd0fe3806f22ab3688c71a9c57d3796468ff51544
     command: uv run cccrise-comparator-scores --dataset alad
@@ -458,8 +448,8 @@ files:
     git_sha: 74360e82087e045044fec437f9239c9c95c2267b
     generated: '2026-11-10T22:13:05+00:00'
   lr_loadings_ibd.parquet:
-    sha256: dee27fa8fc7d341f27739b7cbc1f7ee7db93f7f6a98c84b81cdb0aeb44e363d2
-    command: uv run cccrise-comparator-scores --dataset ibd
+    sha256: 5d0b26647e04fec4a339faa16089c91ffdc260dccdfe56af4663094410fc784c
+    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -487,15 +477,13 @@ files:
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
       TC2C coarse: 1eeaf65e598dc6dbf53d58eef9eb75b5cae516ab980e553569e19a726241fafd
       TC2C fine: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
-      TC2C inner coarse: ee7a9157fb3febc1281c2c3823cbbc1e6fc4fda590c5ab9f423f455fb3607ec1
-      TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
-    generated: '2026-11-10T13:15:52+00:00'
+    git_sha: 4268a829d320e212061737e38f721f07c543d84c
+    generated: '2026-11-10T22:17:59+00:00'
   nichenet_alad.parquet:
     sha256: d15d7c4baea9e65ae223ca2acfeabb3510986c5d7cb55c195eb07298764240d6
     command: uv run cccrise-comparator-nichenet --dataset alad --n-jobs 12
@@ -572,8 +560,8 @@ files:
     git_sha: 74360e82087e045044fec437f9239c9c95c2267b
     generated: '2026-11-10T22:13:05+00:00'
   start_congruence_ibd.parquet:
-    sha256: 08ce960c7b5077daa2302fbd77c4738cd98e3c2e5f4ccc9eb52ca033d7b79208
-    command: uv run cccrise-comparator-scores --dataset ibd
+    sha256: 5452fc332acf48e73b054a6fa1e5dbf9f924e611048d2832f0dde52ab7e96ff3
+    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -601,12 +589,10 @@ files:
       PB fine: e16909e246cd81ecdc54495f930dc627a3c335bcd87f1414f609dd41da6f2149
       TC2C coarse: 1eeaf65e598dc6dbf53d58eef9eb75b5cae516ab980e553569e19a726241fafd
       TC2C fine: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
-      TC2C inner coarse: ee7a9157fb3febc1281c2c3823cbbc1e6fc4fda590c5ab9f423f455fb3607ec1
-      TC2C inner fine: 9fec2150234fd5dd9cc3e08a4c37c69b249e79b6bb5d71d1c721f283c96adc7d
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: c42005475705ca3a2091067ed78349a1ace4e848
-    generated: '2026-11-10T13:15:52+00:00'
+    git_sha: 4268a829d320e212061737e38f721f07c543d84c
+    generated: '2026-11-10T22:17:59+00:00'
