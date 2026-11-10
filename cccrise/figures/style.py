@@ -110,9 +110,9 @@ AXIS_SIZE = {
     "missed_matrix": (138 * MM, 64 * MM),
     # `figureS_comparator_split`
     "split_columns_c3": (60 * MM, 40 * MM),
-    "split_covariation_c3": (40 * MM, 24 * MM),
-    "split_columns_ibd": (46 * MM, 30 * MM),
-    "split_modes": (24 * MM, 18 * MM),
+    "split_covariation_c3": (36 * MM, 36 * MM),
+    "split_columns_ibd": (70 * MM, 40 * MM),
+    "split_modes": (44 * MM, 30 * MM),
     # `figureS_comparator_depth`
     "split_depth": (158 * MM, 30 * MM),
     # A few rows: stacked bars, small heatmaps
