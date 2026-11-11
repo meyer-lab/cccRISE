@@ -1,5 +1,5 @@
 ---
-title: "Resolving cell--cell communication programs beyond cell-type boundaries across conditions"
+title: "CCC-RISE resolves cellular communication across conditions at single-cell resolution"
 ---
 
 **Authors:** Andrew Ramirez^1^, Nathaniel Thomas^2^, Daniel R. Calabrese^3,4^, John R. Greenland^3,4^, Aaron S. Meyer^1,5,6\*^
