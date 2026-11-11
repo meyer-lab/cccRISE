@@ -3,7 +3,8 @@ one per cohort (`figureS_comparator_missed_<cohort>`): each PB and STAC LR
 column's containment in CCC-RISE's LR span (`containment`), every column's
 strongest association with those of CCC-RISE's components the box lists
 (`associations`), and the carrying pairs of the columns under `MISSED`
-containment (`contents`), the associated ones bold and boxed. A carrying pair of a column is one of the fewest pairs
+containment (`contents`), the associated ones carrying a signalling pair CCC-RISE
+lacks (`lacking`) bold and boxed. A carrying pair of a column is one of the fewest pairs
 carrying 90% of its squared loading (`covariation.carrying_pairs`), as for the
 components."""
 
@@ -323,10 +324,23 @@ def significant(dataset: str) -> set[str]:
     return set(hits["Name"])
 
 
-def _mark(ax, rows: list, xs: dict, hits: set[str]) -> None:
-    """Bold each associated column's name and box its dots in red."""
+def homophilic(pair: str) -> bool:
+    """Whether an LR pair's ligand is its receptor (adhesion, as CNTN2–CNTN2)."""
+    ligand, receptor = pair.split("^", 1)
+    return ligand == receptor
+
+
+def lacking(pairs, ours: set) -> bool:
+    """Whether `pairs` hold a signalling pair CCC-RISE lacks: one outside its
+    carrying pairs (`ours`) that is not homophilic adhesion."""
+    return any(p not in ours and not homophilic(p) for p in pairs)
+
+
+def _mark(ax, rows: list, xs: dict, hits: set[str], ours: set) -> None:
+    """Bold each associated column carrying a signalling pair CCC-RISE lacks
+    (`lacking`) and box its dots in red."""
     for y, (name, _, values) in enumerate(rows):
-        if name not in hits:
+        if name not in hits or not lacking(values.index, ours):
             continue
         ax.get_yticklabels()[y].set_fontweight("bold")
         x = [xs[p] for p in values.index]
@@ -428,7 +442,8 @@ def contents(ax, dataset: str) -> None:
     """Each column under `MISSED` containment, its carrying pairs at
     |loading| / max |loading|, CCC-RISE's own carrying pairs first; a
     CCC-RISE row with each pair's largest such value in any component; the
-    columns with an association at q < 0.05 bold and boxed (`_mark`)."""
+    columns with an association at q < 0.05 that carry a signalling pair
+    CCC-RISE lacks bold and boxed (`_mark`)."""
     rows, pairs, closest = _contents_rows(dataset)
     _contents_source(dataset, rows, closest)
     xs = {p: i for i, p in enumerate(pairs)}
@@ -466,7 +481,7 @@ def contents(ax, dataset: str) -> None:
     ax.tick_params(length=0)
     for spine in ax.spines.values():
         spine.set_visible(False)
-    _mark(ax, rows, xs, significant(dataset))
+    _mark(ax, rows, xs, significant(dataset), cccrise_pairs(dataset))
     _size_key(ax)
 
 

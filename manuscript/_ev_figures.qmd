@@ -58,11 +58,12 @@ q: Mann--Whitney U test, Benjamini--Hochberg corrected across all markers tested
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
 q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across EE cell groups.
 
-![](figures/figureS_comparator_classes/figureS_comparator_classes.svg){width="6.5in"}
+![](figures/figureS_comparator_split/figureS_comparator_split.svg){width="6.5in"}
 
-**{{< label comparator-classes >}}.
-Classes of comparator LR columns.** Every comparator LR column of {{< fig 5 column-census >}}, colored by its class; the rules apply in order, and dashed lines mark their cutoffs.
-({{< panel comparator-classes span-containment >}}) Containment in CCC-RISE's LR pair span; columns contained at 0.85 or more and above their permutation null are the same as a CCC-RISE program.
-({{< panel comparator-classes program-overlap >}}) Share of each remaining column's squared loading on one component's carrying pairs; labels name the component of columns at 0.5 or more.
-({{< panel comparator-classes column-breadth >}}) Effective LR pairs; columns with 20 or more are broad, and those left with fewer than 1.5 are single pairs.
-({{< panel comparator-classes homophilic-share >}}) Homophilic share of the columns left; columns at 0.8 or more are homophilic adhesion, and the rest mixed pairs.
+**{{< label comparator-split >}}.
+Comparators split CCC-RISE programs of many LR pairs and merge opposing ones.** PB, pseudobulk CPD; STAC, STACCato; C and F, coarse and fine labels; LR columns are named by method (P, S) and number, and top LR pairs are as in {{< fig 5 >}}.
+({{< panel comparator-split cos2-pairs >}}) Each CCC-RISE component's largest cos^2^ with one LR column of any comparator fit, against its number of top LR pairs (log scale); the dashed line is the axes' anti-diagonal, a perfect negative ordering.
+({{< panel comparator-split alad-c3-columns >}}) Top LR pairs of ALAD component 3 in the component and in its related columns of each pseudobulk CPD and STACCato fit, as in {{< fig 5 pair-columns >}}; red outlines mark each fit's best combination of its columns (Σ), with the fraction of component 3's LR pair loadings it reconstructs.
+({{< panel comparator-split alad-c3-covariation >}}) Co-variation of the top LR pairs of ALAD component 3 and of the columns in ({{< panel comparator-split alad-c3-columns >}}), as in {{< fig 5 program-covariation >}}; columns left with fewer than two LR pairs after merging those sharing a gene are not tested.
+({{< panel comparator-split ibd-c1c5-columns >}}) Top LR pairs of IBD components 1 and 5 in each component and in their related columns, signed loading relative to each column's largest absolute loading; a column related to both components gives both percentages, component 1 first, and black outlines mark the best combination of STACCato's fine columns (Σ).
+({{< panel comparator-split ibd-c1c5-modes >}}) Cosine between IBD components 1 and 5 in each CPD mode.
