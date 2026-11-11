@@ -229,13 +229,13 @@ requires-dist = [
     { name = "tensorly", specifier = ">=0.10.0" },
     { name = "tensorly-viz", specifier = ">=0.1.7" },
     { name = "threadpoolctl", specifier = ">=3.5" },
-    { name = "vsparse", specifier = ">=0.2.0" },
+    { name = "vsparse", specifier = ">=0.5.0" },
     { name = "xarray", specifier = ">=2024.1.0" },
 ]
 provides-extras = ["gpu"]
 
 [package.metadata.requires-dev]
-analysis = [{ name = "vsparse", specifier = ">=0.2.0" }]
+analysis = [{ name = "vsparse", specifier = ">=0.5.0" }]
 dev = [
     { name = "panache-cli", specifier = ">=3.10.0" },
     { name = "pre-commit", specifier = ">=4.0" },
@@ -3582,18 +3582,19 @@ wheels = [
 
 [[package]]
 name = "vsparse"
-version = "0.4.0"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anndata" },
     { name = "hdf5plugin" },
     { name = "numba" },
+    { name = "numcodecs" },
     { name = "numpy" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/90/36/c4e280f14af925b71c223777389bfa3ad472f4540375880bfe9b50ac6225/vsparse-0.4.0.tar.gz", hash = "sha256:72faa01087fcdd3fd72467638303c53838ff226685b0126cf5c060fc54626742", size = 47657, upload-time = "2026-09-14T17:12:39.176Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/27/2a4c3c3bb697efd9c284cae151a50efada68049aa337edc8168ff617cf12/vsparse-0.5.0.tar.gz", hash = "sha256:49e385d3f24f7aeb32fe764c22c3cf47d446c70e559f2284573bea5b3784247d", size = 57454, upload-time = "2026-10-14T15:39:35.203Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ff/4e/3a167ca192bcb10623cbf403e76798d600e249c7c26f0bd28f24d0ed15b6/vsparse-0.4.0-py3-none-any.whl", hash = "sha256:a294b647dd8fac06746a8d8ffd1a778a31d60a6387d50f5915a406a37d768f2c", size = 54961, upload-time = "2026-09-14T17:12:38.011Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/ad/e929e0fe7a97bbdedc6237a1facded5ace4fd6d03191aec6d89e4c3f9732/vsparse-0.5.0-py3-none-any.whl", hash = "sha256:411a774fa14d37cdc6c23c38d92f34731d787519175531cde316381e4884c385", size = 63429, upload-time = "2026-10-14T15:39:33.811Z" },
 ]
 
 [[package]]

@@ -3,10 +3,14 @@
 import anndata
 import numpy as np
 import pandas as pd
+import pytest
+import scipy.sparse as sp
+import vsparse
 from scipy.sparse import csr_array
 
 from cccrise.import_data import (
     ALAD_PATIENT_OF,
+    _load_normalized,
     add_alad_patient_id,
     add_cond_idxs,
     cap_cells_per_condition,
@@ -255,3 +259,40 @@ def test_cap_cells_per_condition_draws_only_eligible_cells():
 
     keep_all = cap_cells_per_condition(conditions, max_cells=20, eligible=eligible)
     np.testing.assert_array_equal(keep_all, eligible)
+
+
+@pytest.mark.parametrize("fmt", ["csc", "csr"])
+def test_load_normalized_matches_prepare_dataset(tmp_path, fmt):
+    """The vsparse-backed loader reproduces `prepare_dataset(normalize=True)`."""
+    rng = np.random.default_rng(0)
+    counts = sp.random(
+        300,
+        80,
+        density=0.2,
+        random_state=0,
+        format="csr",
+        data_rvs=lambda n: rng.integers(1, 9, n).astype(float),
+    )
+    samples = [f"s{i % 6}" for i in range(300)]
+    obs = pd.DataFrame({"sample": samples}, index=[f"c{i}" for i in range(300)])
+    var = pd.DataFrame(index=[f"g{i}" for i in range(80)])
+    path = tmp_path / "counts.h5ad"
+    packed = vsparse.VCSCAnnData.from_anndata(
+        anndata.AnnData(X=counts, obs=obs, var=var), format=fmt
+    )
+    packed.write_h5ad(path, format="ivcsc")
+
+    loaded = add_cond_idxs(_load_normalized(path, 10.0, 0.001), "sample")
+    expected = prepare_dataset(
+        anndata.AnnData(X=csr_array(counts), obs=obs.copy(), var=var.copy()),
+        "sample",
+        0.001,
+        normalize=True,
+    )
+
+    assert loaded.shape == expected.shape
+    assert list(loaded.var_names) == list(expected.var_names)
+    np.testing.assert_allclose(
+        loaded.X.toarray(), expected.X.toarray(), rtol=1e-5, atol=1e-6
+    )
+    np.testing.assert_allclose(loaded.var["means"], expected.var["means"], rtol=1e-5)

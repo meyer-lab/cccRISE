@@ -111,6 +111,55 @@ def add_alad_patient_id(data: anndata.AnnData) -> anndata.AnnData:
     return data
 
 
+def _normalized_anndata(packed: Any) -> anndata.AnnData:
+    """AnnData of a packed array's depth-normalized (`IBD_NORMALIZATION`) values.
+
+    `to_scipy_sparse` leaves the centering term out of `X` so the matrix stays
+    sparse; `var["means"]` is what `condition_matrices` subtracts once a
+    condition block is densified.
+    """
+    view = packed.normalized(IBD_NORMALIZATION)
+    # CSR whichever way the file was packed (a no-op when it already is).
+    X = csr_array(view.to_scipy_sparse(dtype=np.float32))
+    # vsparse hands back its int64 index arrays whatever the size. Once the
+    # nonzeros fit int32 (e.g. under a cell cap), narrowing them saves 4 bytes
+    # per nonzero here and in every row copy BiCV takes, and is what MKL's
+    # default LP64 interface requires.
+    if X.nnz <= np.iinfo(np.int32).max:
+        X = csr_array(
+            (X.data, X.indices.astype(np.int32), X.indptr.astype(np.int32)),
+            shape=X.shape,
+        )
+    data = anndata.AnnData(
+        X=X,
+        obs=cast(pd.DataFrame, packed.obs).copy(),
+        var=cast(pd.DataFrame, packed.var).copy(),
+    )
+    data.var["means"] = np.asarray(view.means, dtype=np.float64)
+    return data
+
+
+def _load_normalized(
+    filename: str | Path, min_cell_counts: float, gene_threshold: float
+) -> anndata.AnnData:
+    """Load a packed counts file, filter it, and normalize it.
+
+    Cells with at most `min_cell_counts` total counts, and genes whose total
+    counts are at most `gene_threshold` times the number of cells, are dropped;
+    both are measured on the raw counts of the full file. The rest is
+    normalized with `IBD_NORMALIZATION`; see `_normalized_anndata`.
+    """
+    packed = vsparse.load_packed(filename)
+    counts = cast(Any, packed.X)
+    keep_cells = np.asarray(counts.sum(axis=1)).reshape(-1) > min_cell_counts
+    keep_genes = (
+        np.asarray(counts.sum(axis=0)).reshape(-1) > gene_threshold * counts.shape[0]
+    )
+    kept = packed[keep_cells, keep_genes]
+    del packed, counts
+    return _normalized_anndata(kept)
+
+
 def import_alad(
     filename: str | Path = "/opt/IVCSC/BAL-scRNAseq.raw.h5ad",
     gene_threshold: float = 0.001,
@@ -121,7 +170,7 @@ def import_alad(
     patients; see `ALAD_PATIENT_OF`)
     """
     if normalize:
-        data = vsparse.load_and_normalize(
+        data = _load_normalized(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
     else:
@@ -195,9 +244,7 @@ def import_alad(
         )
 
     if normalize:
-        data = add_cond_idxs(data, "dsco_id")
-        data.var["means"] = data.X.mean(axis=0)
-        return data
+        return add_cond_idxs(data, "dsco_id")
 
     return prepare_dataset(
         data, "dsco_id", geneThreshold=gene_threshold, normalize=normalize
@@ -214,12 +261,10 @@ def import_alad_brush(
     """
     print("Loading ALAD brushing data...")
     if normalize:
-        data = vsparse.load_and_normalize(
+        data = _load_normalized(
             filename, min_cell_counts=10.0, gene_threshold=gene_threshold
         )
-        data = add_cond_idxs(data, "subj")
-        data.var["means"] = data.X.mean(axis=0)
-        return data
+        return add_cond_idxs(data, "subj")
 
     data = vsparse.load_packed(filename).to_anndata()
     return prepare_dataset(
@@ -346,26 +391,7 @@ def import_ibdverse(
             data, condition_name, geneThreshold=gene_threshold, normalize=normalize
         )
 
-    # `to_scipy_sparse` leaves the centering term out of `X` so the matrix stays
-    # sparse; `means` is what `condition_matrices` subtracts once a condition
-    # block is densified.
-    view = kept.normalized(IBD_NORMALIZATION)
-    X = view.to_scipy_sparse(dtype=np.float32)
-    # vsparse hands back its int64 index arrays whatever the size. Once the
-    # nonzeros fit int32 (e.g. under a cell cap), narrowing them saves 4 bytes
-    # per nonzero here and in every row copy BiCV takes, and is what MKL's
-    # default LP64 interface requires.
-    if X.nnz <= np.iinfo(np.int32).max:
-        X = csr_array(
-            (X.data, X.indices.astype(np.int32), X.indptr.astype(np.int32)),
-            shape=X.shape,
-        )
-    data = anndata.AnnData(
-        X=X,
-        obs=cast(pd.DataFrame, kept.obs).copy(),
-        var=cast(pd.DataFrame, kept.var).copy(),
-    )
-    data.var["means"] = np.asarray(view.means, dtype=np.float64)
+    data = _normalized_anndata(kept)
     data = use_gene_symbols(data)
     return add_cond_idxs(data, condition_name)
 
