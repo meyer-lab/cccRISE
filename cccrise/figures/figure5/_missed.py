@@ -1,9 +1,9 @@
 """Figure 5's supplements on what the comparators find that CCC-RISE does not,
 one per cohort (`figureS_comparator_missed_<cohort>`): each PB and STAC LR
 column's containment in CCC-RISE's LR span (`containment`), every column's
-strongest association beside CCC-RISE's (`associations`), and the carrying
-pairs of the columns under `MISSED` containment (`contents`), the associated
-ones bold and boxed. A carrying pair of a column is one of the fewest pairs
+strongest association with those of CCC-RISE's components the box lists
+(`associations`), and the carrying pairs of the columns under `MISSED`
+containment (`contents`), the associated ones bold and boxed. A carrying pair of a column is one of the fewest pairs
 carrying 90% of its squared loading (`covariation.carrying_pairs`), as for the
 components."""
 
@@ -43,6 +43,11 @@ TEXT_SIZE = style.FONT_SIZE_DENSE - 0.7
 
 
 GUIDE = {"color": "0.9", "lw": 0.4, "zorder": 1}
+#: Association names placed by hand after `_separate_labels`: offset (points)
+#: and alignment, by cohort and name.
+NUDGES = {
+    "ibd": {"C1": ((3, -6), "left"), "S5 F": ((3, -4), "left")},
+}
 
 
 def dot_size(value):
@@ -120,15 +125,18 @@ def _box(ax, rows: list) -> None:
 
 
 def _associations(ax, dataset: str, columns: pd.DataFrame) -> None:
-    """Each of `columns`' strongest association; the box also lists the
-    cccRISE components significant in each."""
+    """Each of `columns`' strongest association, and that of each CCC-RISE
+    component with one at q < `common.SIG_ALPHA` (blue); the box lists, per
+    association, the columns and components significant in it."""
     t = load("associations", dataset=dataset)
     t = t[t["Association"].isin(ASSOCIATION_NAMES)]
     keys = ["Method", "Labelling", "Component"]
     drawn = t.merge(columns[keys], on=keys)
     programs = t[(t["Method"] == "cccRISE") & (t["Labelling"] == "coarse")]
+    hits = programs[programs["PAdj"] < common.SIG_ALPHA]
     best = (
-        drawn.sort_values(["PAdj", "EtaSquared"], ascending=[True, False])
+        pd.concat([drawn, programs[programs["Component"].isin(hits["Component"])]])
+        .sort_values(["PAdj", "EtaSquared"], ascending=[True, False])
         .drop_duplicates(keys)
         .assign(NegLog=lambda d: -np.log10(d["PAdj"]))
     )
@@ -138,9 +146,8 @@ def _associations(ax, dataset: str, columns: pd.DataFrame) -> None:
             [*keys, "Association", "EtaSquared", "PAdj"]
         ].rename(columns={"EtaSquared": "Eta squared", "PAdj": "q"}),
         "Each PB and STAC column's and CCC-RISE component's associations; the panel "
-        "draws "
-        "each column's lowest q, and its box lists those below "
-        f"{common.SIG_ALPHA}.",
+        "draws each column's lowest q, and each CCC-RISE component's where it is "
+        f"below {common.SIG_ALPHA}; its box lists those below {common.SIG_ALPHA}.",
     )
     for method, g in best.groupby("Method"):
         ax.scatter(
@@ -150,7 +157,7 @@ def _associations(ax, dataset: str, columns: pd.DataFrame) -> None:
             color=METHOD_COLORS[method],
             ec="white",
             lw=0.3,
-            zorder=3,
+            zorder=4 if method == "cccRISE" else 3,
         )
     ax.axhline(
         -np.log10(common.SIG_ALPHA),
@@ -171,6 +178,7 @@ def _associations(ax, dataset: str, columns: pd.DataFrame) -> None:
             xytext=(3, 2),
             textcoords="offset points",
             fontsize=style.FONT_SIZE_DENSE - 1,
+            color=METHOD_COLORS["cccRISE"] if r.Method == "cccRISE" else "black",
             zorder=5,
         )
     _box(ax, _box_rows(pd.concat([drawn, programs])))
@@ -454,12 +462,21 @@ def _size_key(ax) -> None:
 
 
 def associations(ax, dataset: str) -> None:
-    """The branch's association panel (`_missed.associations`) on every PB and
-    STAC column, not only C's: each column's strongest association, those
-    with q < 0.05 named and listed beside CCC-RISE's components."""
+    """Every PB and STAC column's strongest association, with those of the
+    CCC-RISE components the box lists; those with q < 0.05 named and listed,
+    the names in `NUDGES` placed by hand."""
     _associations(ax, dataset, columns(dataset).rename(columns={"Column": "Component"}))
     _clear_box(ax)
     _separate_labels(ax)
+    _nudge(ax, NUDGES.get(dataset, {}))
+
+
+def _nudge(ax, nudges: dict) -> None:
+    """Place each name in `nudges` at its offset and alignment."""
+    for label in (t for t in ax.texts if isinstance(t, Annotation)):
+        if label.get_text() in nudges:
+            label.xyann, ha = nudges[label.get_text()]
+            label.set(ha=ha)
 
 
 def _clear_box(ax) -> None:
