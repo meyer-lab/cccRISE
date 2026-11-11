@@ -11,12 +11,6 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
 - ``containment``: the sample and LR columns of every fit ('Of') in the
   span of every other ('In'), cccRISE and each comparator alike, with the
   row-permutation null.
-- ``label_ceiling``: per cccRISE program, side and labelling, the share of
-  its per-cell weight's variance that (sample x cell type) means hold, the
-  most any method pooling cells by sample and annotation could represent,
-  beside each of `CEILING_METHODS`' LR column closest to the program
-  (greatest |cosine|), painted on cells as the cell's sample loading x its
-  type loading (`label_ceiling_rows`).
 - ``fit_ranks``: each comparator fit's rank.
 - ``start_congruence``: each Tensor-cell2cell start's largest congruence
   product (`methods.start_congruence`).
@@ -97,10 +91,6 @@ from .datasets import (
 from .provenance import build_metadata, git_sha, record_output, sha256_file
 
 METHODS = {"pb": "PB", "tc2c": "TC2C", "stac": "STAC"}
-#: The comparators `label_ceiling_rows` paints on cells.
-CEILING_METHODS = ("PB", "STAC")
-#: Each side's per-cell weights in `load_factors_to_anndata`'s ``obsm``.
-WEIGHTS = {"sender": "sc_B", "receiver": "rc_C"}
 N_NULL = 1000
 HEADER = """\
 cccRISE against the annotation-pooled comparators (Figure 5).
@@ -145,53 +135,6 @@ def column_profiles(
             m: components.modes[m][[column]] for m in ("sample", "sender", "receiver")
         }
     return {m: scores.oriented(f)[column] for m, f in frames.items()}
-
-
-def label_ceiling_rows(
-    spec: DatasetSpec, cells, column: str, fits, comparators, cccrise: Components
-) -> pd.DataFrame:
-    """Each program's label ceiling per side (`scores.group_r2` of its
-    per-cell weight on sample x type), with what each of `CEILING_METHODS`'
-    closest LR column holds of that weight: the column's sample loading x
-    type loading on every cell (`scores.paint_r2`). A type or sample a
-    column's fit lacks has no loading, so paints zero."""
-    labels = cells.obs[column].astype(str).to_numpy()
-    samples = cells.obs[spec.condition_column].astype(str).to_numpy()
-    groups = pd.Series(samples).str.cat(labels, sep="|").to_numpy()
-    programs = cccrise.modes["lr"]
-    weights = {side: np.asarray(cells.obsm[key]) for side, key in WEIGHTS.items()}
-    ceilings = {
-        (side, i): scores.group_r2(w[:, i], groups)
-        for side, w in weights.items()
-        for i in range(programs.shape[1])
-    }
-    rows = []
-    for other in comparators:
-        if other.method not in CEILING_METHODS:
-            continue
-        columns = other.modes["lr"]
-        reference = programs.loc[columns.index].to_numpy()
-        cosine = np.abs(
-            scores.unit_columns(reference).T @ scores.unit_columns(columns.to_numpy())
-        )
-        for i, program in enumerate(programs.columns):
-            closest = columns.columns[int(cosine[i].argmax())]
-            profile = column_profiles(fits[other.method], other, closest)
-            sample = profile["sample"].reindex(samples, fill_value=0).to_numpy()
-            for side, w in weights.items():
-                paint = profile[side].reindex(labels, fill_value=0).to_numpy()
-                rows.append(
-                    {
-                        "Side": side,
-                        "Component": program,
-                        "Ceiling": ceilings[side, i],
-                        "Method": other.method,
-                        "Column": closest,
-                        "Cosine": float(cosine[i].max()),
-                        "Painted": scores.paint_r2(w[:, i], sample * paint),
-                    }
-                )
-    return pd.DataFrame(rows)
 
 
 def fit_rank_rows(fits: dict[str, xr.Dataset]) -> pd.DataFrame:
@@ -446,19 +389,15 @@ def labelling_components(spec: DatasetSpec, cells, labelling: str) -> tuple:
 
 
 def fit_tables(
-    spec: DatasetSpec, adata, cells, labelling: str, random_state: int, components
+    spec: DatasetSpec, adata, labelling: str, random_state: int, components
 ) -> dict:
     """The tables of one labelling that need no tensors, from
     `labelling_components`' `components` (depth from `adata`'s genes
     detected)."""
     fits, comparators, cccrise = components
     rng = np.random.default_rng(random_state)
-    column = spec.labellings[labelling]
     return {
         "containment": containment_rows([cccrise, *comparators], rng),
-        "label_ceiling": label_ceiling_rows(
-            spec, cells, column, fits, comparators, cccrise
-        ),
         "fit_ranks": fit_rank_rows(fits),
         "start_congruence": start_congruence_rows(spec, labelling),
         "lr_loadings": lr_loading_rows([cccrise, *comparators]),
@@ -479,7 +418,7 @@ def score_labelling(
     tensors = context_tensors(spec, adata, column)
     contexts = component_contexts(fits, comparators, cccrise_context, tensors)
     return {
-        **fit_tables(spec, adata, cells, labelling, random_state, components),
+        **fit_tables(spec, adata, labelling, random_state, components),
         "inner_loss": inner_loss_rows(cells, column, tensors),
         "covariation": covariation_rows(contexts, lr_genes(adata)),
     }
@@ -520,7 +459,6 @@ def run_comparator_scores(
             lab: fit_tables(
                 spec,
                 adata,
-                cells,
                 lab,
                 random_state,
                 labelling_components(spec, cells, lab),

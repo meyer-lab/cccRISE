@@ -24,7 +24,7 @@ from ..import_data import (
 DATA_DIR = Path(__file__).parent.parent / "data"
 #: Core factorizations written by `run_ccc_rise`.
 FACTORS_DIR = DATA_DIR / "factors"
-#: RISE and CP rank-selection sweeps (`run_rise_rank`, `run_cpd_rank`).
+#: RISE and CPD rank-selection sweeps (`run_rise_rank`, `run_cpd_rank`).
 RANK_SELECTION_DIR = DATA_DIR / "rank_selection_results"
 #: Validation experiments: stability, significance, NicheNet, and the
 #: alternate communication-score comparison (`ALT_SCORE_METHODS_DIR`).

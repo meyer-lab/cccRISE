@@ -172,7 +172,7 @@ def run_alt_comm_score(
 
     print(f"=== Alt communication-score generation: {spec.label} ===")
     print(
-        f"    RISE rank={rise_rank}  CP rank={cp_rank}  "
+        f"    RISE rank={rise_rank}  CPD rank={cp_rank}  "
         f"scores={COMMUNICATION_SCORES}  random_state={random_state}  "
         f"backend={spec.backend or 'auto'}"
     )
@@ -259,7 +259,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="RISE rank of the shared RISE fit.",
     )
     parser.add_argument(
-        "--cp-rank", type=int, required=True, help="CP rank every method is fit at."
+        "--cp-rank", type=int, required=True, help="CPD rank every method is fit at."
     )
     parser.add_argument(
         "--hill-k",

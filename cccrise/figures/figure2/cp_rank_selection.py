@@ -1,4 +1,4 @@
-"""CP rank selection: fit and imputation R2X from ``uv run cccrise-cpdrank``
+"""CPD rank selection: fit and imputation R2X from ``uv run cccrise-cpdrank``
 (on the canonical RISE fit's tensor), and the LR pair mode's collinearity
 across ten seeded SVD starts per rank (the other modes' are in the stability
 supplement)."""
@@ -20,13 +20,13 @@ def plot(axs):
     common.source_data(
         "cp_fit_r2x_by_rank",
         sweep[["Rank", "FitR2X"]],
-        "R2X of the full-tensor CP fit (the production start) at each CP rank.",
+        "R2X of the full-tensor CP fit (the production start) at each CPD rank.",
         part=0,
     )
     common.source_data(
         "cp_imputation_r2x_by_rank",
         repeats,
-        "K-fold imputation R2X of each CP rank, one row per repeat of the "
+        "K-fold imputation R2X of each CPD rank, one row per repeat of the "
         "fold split (with its seed); plotted as mean +/- SD over repeats.",
         part=0,
     )

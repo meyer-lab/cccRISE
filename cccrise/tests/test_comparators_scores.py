@@ -74,15 +74,3 @@ def test_inner_losses_count_what_dropping_a_type_removes():
     # observed: s1 has 4 entries, s2 only a->a; dropping b removes s1's 3
     assert table.loc["observed entries", "Dropped"] == 3
     assert table.loc["signal", "Share"] == pytest.approx(3 / 5)
-
-
-def test_group_r2_is_the_share_group_means_hold():
-    values = np.array([1.0, 1.0, 3.0, 3.0])
-    assert scores.group_r2(values, np.array([0, 0, 1, 1])) == pytest.approx(1)
-    assert scores.group_r2(values, np.array([0, 1, 0, 1])) == pytest.approx(0)
-
-
-def test_paint_r2_ignores_sign_and_scale_and_constants():
-    values = np.array([1.0, 2.0, 4.0, 8.0])
-    assert scores.paint_r2(values, -3 * values) == pytest.approx(1)
-    assert scores.paint_r2(values, np.ones(4)) == 0

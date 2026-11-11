@@ -143,7 +143,7 @@ def alad_programs(table: str) -> pd.DataFrame:
 
 
 def load_cpd_rank(dataset: str) -> pd.DataFrame:
-    """`cccrise-cpdrank`'s sweep for `dataset`: one row per CP rank and
+    """`cccrise-cpdrank`'s sweep for `dataset`: one row per CPD rank and
     seeded start (see `production_fits`)."""
     return load_runner_output(DATASETS[dataset].cpd_rank_filename(), RANK_SELECTION_DIR)
 
@@ -176,7 +176,7 @@ def per_rank(sweep: pd.DataFrame) -> pd.DataFrame:
 
 
 def selected_ranks(dataset: str) -> tuple[int, int]:
-    """(RISE rank, CP rank) of `dataset`'s canonical fit, from its provenance."""
+    """(RISE rank, CPD rank) of `dataset`'s canonical fit, from its provenance."""
     ranks = read_metadata(DATASETS[dataset].factors_path())["rank_selection"]
     return ranks["rise"]["rank"], ranks["cpd"]["rank"]
 
@@ -747,10 +747,10 @@ def plot_cpd_fit_r2x(
     color: str = style.COLORS["fit"],
     marker: str | None = "o",
 ):
-    """Full-tensor CP fit R2X against CP rank, from `cccrise-cpdrank`."""
+    """Full-tensor CP fit R2X against CPD rank, from `cccrise-cpdrank`."""
     ax.plot(sweep["Rank"], sweep["FitR2X"], marker=marker, color=color, label="Fit")
     mark_rank(ax, rank)
-    ax.set_xlabel("CP rank")
+    ax.set_xlabel("CPD rank")
     ax.set_ylabel("Fit R²X")
 
 
@@ -765,7 +765,7 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     ax.legend(loc="upper right")
 
 
-# --- CP rank selection across seeded starts (ALAD Fig 2, IBD Fig 4) -----------
+# --- CPD rank selection across seeded starts (ALAD Fig 2, IBD Fig 4) -----------
 # Drawn from `cccrise-cpdrank`'s seeded starts: fit R2X across starts, each
 # mode's collinearity, and the distinct minima the starts reach.
 
@@ -797,7 +797,7 @@ def rank_axis(ax: plt.Axes, ranks) -> None:
     ranks = np.asarray(ranks)
     ax.set_xticks(ranks[ranks % 2 == 1] if ranks.max() > 10 else ranks)
     ax.set_xlim(0.4, ranks.max() + 0.6)
-    ax.set_xlabel("CP rank")
+    ax.set_xlabel("CPD rank")
 
 
 def kneedle_elbow(x, y) -> int:
@@ -826,12 +826,12 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
 
 
 def plot_r2x_sweep(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -> None:
-    """Fit R2X against CP rank of a seeded-start `sweep` ('Rank', 'Start',
+    """Fit R2X against CPD rank of a seeded-start `sweep` ('Rank', 'Start',
     'Seed', 'FitR2X'): the median over starts, banded by their range."""
     source_data(
         "cp_fit_r2x_by_rank_and_start",
         sweep[["Rank", "Start", "Seed", "FitR2X"]],
-        "Fit R2X of every seeded SVD start at every CP rank (start 0 is the "
+        "Fit R2X of every seeded SVD start at every CPD rank (start 0 is the "
         "production fit); plotted as the median over starts, banded by their "
         "range.",
     )
@@ -854,7 +854,7 @@ def plot_collinearity_boxes(
     part: int | None = None,
     wrap_key: bool = False,
 ) -> None:
-    """Per CP rank, the largest |cosine| between two components' LR pair
+    """Per CPD rank, the largest |cosine| between two components' LR pair
     factors (`plot_start_boxes`). `part` is `source_data`'s."""
     sweep = _collinearity_sweep(dataset, ["D"], part)
     plot_start_boxes(ax, sweep, "MaxCosD", load_minima(dataset), rank, wrap_key)
@@ -870,7 +870,7 @@ def plot_start_boxes(
     wrap_key: bool = False,
     key_loc: LegendLocType | None = "lower right",
 ) -> None:
-    """Per CP rank, `column` of a seeded-start `sweep` ('Rank', 'Seed'): a
+    """Per CPD rank, `column` of a seeded-start `sweep` ('Rank', 'Seed'): a
     box over the starts with each start overlaid, colored by whether it
     reaches its rank's most common solution (`minima`, as
     `rank_selection.distinct_minima`) and keyed at `key_loc` (no key if
@@ -931,7 +931,7 @@ def plot_collinearity_medians(
     part: int | None = None,
     key_rank: bool = True,
 ) -> None:
-    """Per CP rank and mode in `modes` (`CP_MODES` keys), the largest |cosine|
+    """Per CPD rank and mode in `modes` (`CP_MODES` keys), the largest |cosine|
     between two components: the median over the seeded starts in an
     interquartile-range band, keyed at the lower right with `rank`'s line if
     `key_rank`. `part` is `source_data`'s."""
@@ -969,7 +969,7 @@ def _collinearity_sweep(
     source_data(
         "cp_max_cosine_by_rank",
         sweep[["Rank", "Start", "Seed", *columns]],
-        "Per CP rank and seeded SVD start, the largest absolute cosine between "
+        "Per CPD rank and seeded SVD start, the largest absolute cosine between "
         "two components in each mode (MaxCosA condition, B sender, C receiver, "
         "D ligand-receptor pair).",
         part=part,
@@ -991,14 +991,14 @@ def plot_minima(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
 def plot_minima_table(
     ax: plt.Axes, table: pd.DataFrame, rank: int | None = None
 ) -> None:
-    """The starts reaching each distinct minimum at each CP rank (`table`, as
+    """The starts reaching each distinct minimum at each CPD rank (`table`, as
     `rank_selection.distinct_minima`), stacked from the one most starts
     reach (blue; of two tied, the one with the higher R2X) up, the others
     grey (keyed by `plot_start_boxes`), with `rank` marked above its bar."""
     source_data(
         "cp_minima_by_rank",
         table,
-        "Distinct minima per CP rank (starts joined at FMS >= 0.95): the "
+        "Distinct minima per CPD rank (starts joined at FMS >= 0.95): the "
         "starts reaching each, its best R2X, its FMS to the minimum most "
         "starts reach (where two minima tie for most, 'Tied', to the one with "
         "the higher R2X), its order by starts (1 = most; ties: higher R2X), "

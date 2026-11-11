@@ -63,7 +63,7 @@ def plot(axs):
     common.source_data(
         "niches_positive_fraction_by_population",
         t[["Dataset", "Component", "Side", "Cells", "Samples", "Observed", PREDICTED]]
-        .rename(columns={"Observed": "Fraction NICHES-positive"})
+        .rename(columns={"Observed": "Fraction NICHES+"})
         .assign(**{"Wilcoxon signed-rank p (all populations)": p}),
         "Each population's share of cells with a non-zero NICHES program score, and "
         "what cell type predicts: each population cell at the NICHES-positive rate of "

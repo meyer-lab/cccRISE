@@ -55,7 +55,7 @@ def tau_sweep(ax, dataset: str) -> None:
     )
     common.source_data(
         f"niches_positive_fraction_by_tau_{dataset}",
-        table.rename(columns={"Observed": "Fraction NICHES-positive"}),
+        table.rename(columns={"Observed": "Fraction NICHES+"}),
         "Each population at each tau (its cutoff as a fraction of that weight's "
         "largest value): its cells and samples, fraction NICHES-positive, what cell "
         "type predicts (each cell at its fine type's rate in its own sample) and the "
@@ -88,7 +88,7 @@ def tau_sweep(ax, dataset: str) -> None:
             )
     ax.set_xlabel("Tau (τ)")
     ax.set_ylabel(
-        "Δ fraction NICHES-positive\n(CCC-RISE − cell type)",
+        "Δ fraction NICHES+\n(CCC-RISE − cell type)",
         fontsize=style.FONT_SIZE_DENSE,
     )
     ax.set_title(

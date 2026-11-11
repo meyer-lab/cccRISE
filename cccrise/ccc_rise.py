@@ -202,7 +202,7 @@ def calc_communication_score(
 
 
 def validate_cp_rank(cp_rank: int, tensor_shape: tuple[int, ...]) -> None:
-    """Reject a CP rank larger than the tensor's smallest mode.
+    """Reject a CPD rank larger than the tensor's smallest mode.
 
     Above that, tensorly's SVD initialization falls back to a full SVD of a
     mode unfolding -- an allocation quadratic in the unfolding's long axis, so

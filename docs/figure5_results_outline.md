@@ -21,7 +21,7 @@ module, `figureS_ibd_*`. Their EV or Appendix numbers are still to be assigned i
   - The mesenchymal lineage is excluded as a biopsy-sampling artefact.
   - Every biopsy is from a different individual (343 individuals), so biopsies are the unit
     of every test.
-- **Model.** RISE rank 60, CP rank 6 (`figureS_ibd_rank_selection`, chosen as Figure 2A–D
+- **Model.** RISE rank 60, CPD rank 6 (`figureS_ibd_rank_selection`, chosen as Figure 2A–D
   chooses ALAD's). `figureS_ibd_rank_selection` H–I shows the RISE condition and gene
   factors as for ALAD.
 - **Cohort.** `figureS_ibd_rank_selection` A gives the schematic placeholder and

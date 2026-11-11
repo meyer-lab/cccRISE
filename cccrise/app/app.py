@@ -380,7 +380,7 @@ def server(input, output, session):
                 "full-data fit R2X and bi-cross-validation (BiCV) train and test "
                 "R2X, CPD fit and k-fold imputation R2X, and CPD component "
                 "collinearity. Dashed lines mark the RISE rank "
-                f"(**{rise_rank()}**) and CP rank (**{cp_rank()}**) of the loaded "
+                f"(**{rise_rank()}**) and CPD rank (**{cp_rank()}**) of the loaded "
                 "factors used by the remaining tabs."
             )
         ]
