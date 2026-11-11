@@ -97,7 +97,7 @@ def save_source_data(tables: list[dict[str, pd.DataFrame]]) -> None:
     common.source_data(
         "loading_lr_by_score",
         long("lr", "LR pair", _shown_pairs),
-        "One row per (default-score CP component, LR pair shown, score): the LR "
+        "One row per (default-score CPD component, LR pair shown, score): the LR "
         "loading of the score's paired component divided by its largest "
         f"|loading| (dot color and area); shown are each score's top {TOP_N_LR} "
         "pairs.",
@@ -109,7 +109,7 @@ def save_source_data(tables: list[dict[str, pd.DataFrame]]) -> None:
             long(kind, "Cell type", lambda t: t).assign(Role=role)
             for kind, role in (("sender", "Sender"), ("receiver", "Receiver"))
         ),
-        "One row per (default-score CP component, role, cell type, score): the "
+        "One row per (default-score CPD component, role, cell type, score): the "
         "cell type's mean per-cell sender or receiver weight on the score's "
         "paired component, divided by its largest |mean| across cell types "
         "(the heatmaps).",

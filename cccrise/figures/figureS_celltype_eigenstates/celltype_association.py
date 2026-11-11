@@ -27,13 +27,13 @@ def plot(axs):
             f"mean_{role}_weight_by_celltype",
             table.rename_axis(index="Cell type").add_prefix("Component "),
             f"Mean per-cell {role} weight of each annotated cell type's cells on "
-            "every CP component.",
+            "every CPD component.",
             part=part,
         )
     common.source_data(
         "cell_component_weights",
         _cell_weights(adata),
-        "Every cell's sender and receiver weight on each CP component, with its "
+        "Every cell's sender and receiver weight on each CPD component, with its "
         "sample and annotated cell type: the values averaged per cell type.",
     )
     draw_weights(axs, tables, COMPONENT)
@@ -65,7 +65,7 @@ def draw_weights(axs, tables, outlined: int | None = None) -> None:
             )
         ax.set_xticks(range(table.shape[1]), table.columns)
         ax.set_yticks(range(len(table)), table.index, fontsize=style.FONT_SIZE_DENSE)
-        ax.set_xlabel(f"CP component\n({role} weight)")
+        ax.set_xlabel(f"CPD component\n({role} weight)")
         ax.tick_params(length=0)
         ax.spines[:].set_visible(False)
     # Same cell types in both, so the rows are labeled once

@@ -268,28 +268,30 @@ def _heatmap_source(h: _Heatmap) -> None:
                 "LR pair",
                 label,
                 "Component",
-                "Share of component rebuilt",
+                "Share of component reconstructed",
             ],
         ),
         "Each component's carrying pairs in the component, in each PB and STAC "
-        f"column rebuilding at least {REBUILT:.0%} of it or with at least "
+        f"column reconstructing at least {REBUILT:.0%} of it or with at least "
         f"{ON_COMPONENT:.0%} of its own squared loading on the component's carrying "
         "pairs, and, where a comparator shows two or more columns, in its best "
         f"combination of all its columns (Column {SUM}, the projection whose squared "
         "norm is the containment); each column's "
         + ("signed loading" if h.signed else "|loading|")
         + " relative to its heaviest pair, and the share of each component's squared "
-        "loading the column rebuilds.",
+        "loading the column reconstructs.",
     )
 
 
 def _heatmap_axes(h: _Heatmap) -> None:
     """Ticks and heads; the percentages' row names under the CCC-RISE column;
     one component unlabeled at the side (the title names it)."""
-    h.labels[0] = "\n" + "\n".join(f"C{p} rebuilt" for p in h.programs)
+    h.labels[0] = "\n" + "\n".join(f"C{p} reconstructed" for p in h.programs)
+    h.ticks[0] = 1.0  # row names flush right of the CCC-RISE column, as its head
     end = h.x - BLOCK_GAP
     ax = h.ax
     _pair_axes(ax, h.rows, h.spans, end, (h.ticks, h.labels, []), h.heads)
+    ax.get_xticklabels()[0].set(ha="right", multialignment="right")
     for text in [t for t in ax.texts if t.get_text() == "CCC-RISE"]:
         text.set(x=1.0, ha="right")  # flush right of its one column
     if len(h.programs) == 1:
@@ -318,7 +320,7 @@ def pair_heatmap(
     columns, its best combination of all its columns (Σ, outlined); each column
     scaled to its heaviest pair, |loading| or `signed`. Under each column, the
     share of each component it rebuilds (Σ: the containment), one line per
-    component, the lines named under the CCC-RISE column ("C4 rebuilt")."""
+    component, the lines named under the CCC-RISE column ("C4 reconstructed")."""
     rows, spans = _pair_rows(dataset, programs)
     h = _Heatmap(ax, dataset, tuple(programs), rows, spans, signed)
     cccrise = lr_matrix(dataset, "cccRISE")

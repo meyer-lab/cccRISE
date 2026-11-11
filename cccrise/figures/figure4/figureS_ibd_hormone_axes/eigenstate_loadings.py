@@ -30,7 +30,7 @@ def plot(axs):
             index=pd.Index(rows, name="Eigenstate"),
         ).assign(Role=[r for r, js in groups.items() for _ in js]),
         "C3 and C4 sender (B; sender rows) and receiver (C; receiver rows) "
-        "loadings on each eigenstate either program loads on.",
+        "loadings on each eigen-state either program loads on.",
     )
     ax.imshow(loadings, cmap=style.CMAPS["diverging"], vmin=-1, vmax=1, aspect="auto")
     for (r, c), value in np.ndenumerate(loadings):

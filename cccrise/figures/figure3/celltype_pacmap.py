@@ -48,7 +48,7 @@ def plot(axs):
     for spine in axs[1].spines.values():
         spine.set(visible=True, linestyle=style.LINE_STYLE_REFERENCE)
         spine.set_edgecolor(style.COLORS["reference"])
-    common.colorbar(axs[1], points, f"Eigenstate {EIGENSTATE} projection")
+    common.colorbar(axs[1], points, f"Eigen-state {EIGENSTATE} projection")
     common.source_data(
         "pacmap_celltype_eigenstate",
         pd.DataFrame(
@@ -56,13 +56,13 @@ def plot(axs):
                 "PaCMAP 1": x,
                 "PaCMAP 2": y,
                 "Cell type": celltypes,
-                f"Eigenstate {EIGENSTATE} projection": projection,
+                f"Eigen-state {EIGENSTATE} projection": projection,
                 "In blow-up": inside,
             },
             index=adata.obs_names.rename("Cell barcode"),
         ),
         "One row per cell: its PaCMAP coordinates, annotated cell type, and "
-        f"projection onto RISE eigenstate {EIGENSTATE}; 'In blow-up' marks the "
+        f"projection onto RISE eigen-state {EIGENSTATE}; 'In blow-up' marks the "
         "lymphocyte-cluster cells drawn in the right panel.",
     )
 

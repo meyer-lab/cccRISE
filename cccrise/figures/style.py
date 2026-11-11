@@ -94,8 +94,6 @@ AXIS_SIZE = {
     # A few groups x many genes along x (dot plots)
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
     # Figure 5's panels, sized to share their rows
-    "fig5_cos2_pairs": (34 * MM, 34 * MM),
-    "fig5_variance": (34 * MM, 34 * MM),
     "fig4_best": (36 * MM, 42 * MM),
     "fig5_columns": (40 * MM, 24 * MM),
     "fig5_covariation": (28 * MM, 24 * MM),
@@ -109,6 +107,7 @@ AXIS_SIZE = {
     "missed_associations": (46 * MM, 28 * MM),
     "missed_matrix": (138 * MM, 64 * MM),
     # `figureS_comparator_split`
+    "split_cos2_pairs": (34 * MM, 34 * MM),
     "split_columns_c3": (60 * MM, 40 * MM),
     "split_covariation_c3": (36 * MM, 36 * MM),
     "split_columns_ibd": (70 * MM, 40 * MM),

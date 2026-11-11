@@ -1,23 +1,22 @@
-"""Figure 5A: each CCC-RISE component's best single comparator LR column (its
-largest cos^2 with one LR column of any PB, TC2C or STAC fit) against how
-many LR pairs carry it (`covariation.carrying_pairs`; their Spearman rho
+"""Figure EV5A: each CCC-RISE component's best single comparator LR column
+(its largest cos^2 with one LR column of any PB, TC2C or STAC fit) against
+how many LR pairs carry it (`covariation.carrying_pairs`; their Spearman rho
 in the source data), with, dashed, the axes' anti-diagonal: a perfect
-negative ordering (rho = -1), as 5B's diagonal marks equality. Components sharing a pair count
-and close in cos^2 are dodged apart on the log axis (`dodged`)."""
+negative ordering (rho = -1). Components sharing a pair count and close in
+cos^2 are dodged apart on the log axis (`dodged`)."""
 
 import numpy as np
 import pandas as pd
 from matplotlib import patheffects
 from scipy.stats import spearmanr
 
-from ... import covariation
-from .. import common, style
-from ._common import DATASET_COLORS, DATASET_LABELS, cohort_handles
-from ._programs import best_columns, carrying_pairs
-from ._recovery import COS2_LABEL, LABEL_SIZE, panel_title
+from .... import covariation
+from ... import common, style
+from .._common import DATASET_COLORS, DATASET_LABELS, cohort_handles
+from .._programs import best_columns, carrying_pairs
+from .._recovery import COS2_LABEL, LABEL_SIZE
 
-AXES = ("fig5_cos2_pairs",)
-TITLE = "Best Single Column"
+AXES = ("split_cos2_pairs",)
 #: Components sharing an LR pair count within this cos^2 are dodged apart, a
 #: factor of exp(`DODGE`) on the log axis.
 TIE = 0.06
@@ -142,12 +141,11 @@ def plot(axs):
         xlim=XLIM,
         ylim=(0, 1.05),
         yticks=[0, 0.5, 1],
-        xlabel="Carrying LR pairs",
+        xlabel="Number of LR pairs",
         ylabel=COS2_LABEL,
     )
     ax.set_xticks([1, 2, 5, 10], ["1", "2", "5", "10"])
     ax.minorticks_off()
-    panel_title(ax, TITLE)
     ax.legend(
         handles=cohort_handles(),
         loc="lower left",

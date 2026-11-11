@@ -171,7 +171,7 @@ def weight_scatters(axs, dataset: str) -> None:
     common.source_data(
         f"cell_weights_groups_{dataset}",
         pd.DataFrame({"Cell": table["Cell"], **cells}),
-        "One row per cell: its sender and receiver weight on each CP component, "
+        "One row per cell: its sender and receiver weight on each CPD component, "
         "each relative to that weight's largest value, and its group: sender or "
         f"receiver if only that relative weight is at least {GROUP_TAU}, both if "
         "both are, rest otherwise.",

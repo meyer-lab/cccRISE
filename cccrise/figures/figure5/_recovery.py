@@ -1,7 +1,7 @@
 """Figure 5's shared drawing helpers: panel titles, colorbars and heatmap
 cells (`_cell`), each component's best single column in every fit
-(`best_column_grid`, `figureS_comparator_split` A) and the axes of a
-pairs-by-columns heatmap (`_pair_axes`, `_split`)."""
+(`best_column_grid`, Figure 5A) and the axes of a pairs-by-columns heatmap
+(`_pair_axes`, `_split`)."""
 
 import numpy as np
 import pandas as pd
@@ -37,6 +37,16 @@ def colorbar_under(ax, label: str, drop: float, x0=0.2, width=0.6) -> None:
     cax.set_xticks([0, 1])
     cax.tick_params(labelsize=style.FONT_SIZE_DENSE, length=1.5, pad=1)
     cax.set_xlabel(label, fontsize=style.FONT_SIZE_DENSE, labelpad=0)
+
+
+def colorbar_right(ax, label: str) -> None:
+    """A vertical colorbar right of a `fit_grid`'s cohort labels."""
+    width = ax.bbox.width / ax.figure.dpi
+    cax = ax.inset_axes((1 + 7 * style.MM / width, 0.2, 2 * style.MM / width, 0.6))
+    ax.figure.colorbar(ScalarMappable(Normalize(0, 1), HEAT), cax=cax)
+    cax.set_yticks([0, 1])
+    cax.tick_params(labelsize=style.FONT_SIZE_DENSE, length=1.5, pad=1)
+    cax.set_ylabel(label, fontsize=style.FONT_SIZE_DENSE, labelpad=1)
 
 
 def _cell(ax, x: float, y: float, value: float, text: bool = False) -> None:
@@ -136,7 +146,7 @@ def best_column_grid(ax) -> None:
             for dataset, label in DATASET_LABELS.items()
         },
     )
-    colorbar_under(ax, COS2_LABEL, drop=0.13)
+    colorbar_right(ax, "Comparator\nmax cos$^2$")
 
 
 def _pair_axes(ax, rows, spans, end: float, ticks, heads) -> None:

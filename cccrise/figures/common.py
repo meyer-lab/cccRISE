@@ -1060,7 +1060,7 @@ LEVEL_ORDER = [
 def plot_association_heatmap(
     table: pd.DataFrame,
     ax: plt.Axes,
-    xlabel: str = "CP component",
+    xlabel: str = "CPD component",
     p_column: str = "PAdj",
     p_label: str = "FDR",
     annotate: bool = True,
@@ -1139,7 +1139,7 @@ def plot_association_effect_sizes(
     for xi, value in zip(x[significant], values[significant], strict=True):
         ax.text(xi, value, "*", ha="center", va="bottom", fontweight="bold")
     ax.set_xticks(x, components)
-    ax.set_xlabel("CP component")
+    ax.set_xlabel("CPD component")
     ax.set_ylabel(r"$\eta^2$")
     ax.set_ylim(0, np.nanmax(values) * 1.2)
     if "Association" in rows:
@@ -1331,7 +1331,7 @@ def plot_component_eigenstate_loadings(
         )
     ax.axhline(0, color=style.COLORS["reference"], linewidth=style.LINE_WIDTH_THIN)
     ax.set_xticks(sorted(labeled))
-    ax.set(xlabel="RISE eigenstate", ylabel="Loading")
+    ax.set(xlabel="RISE eigen-state", ylabel="Loading")
     ax.legend(loc="upper left")
 
 

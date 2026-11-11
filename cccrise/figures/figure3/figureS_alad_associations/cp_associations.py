@@ -20,7 +20,7 @@ def plot(axs):
         table,
         pd.DataFrame(loadings, columns=range(1, loadings.shape[1] + 1)),
         "component",
-        "each CP component's condition loading, read-depth corrected as tested",
+        "each CPD component's condition loading, read-depth corrected as tested",
         "is Benjamini-Hochberg FDR-corrected across all associations and components",
     )
 

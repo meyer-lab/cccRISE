@@ -187,6 +187,9 @@ def _associations(ax, dataset: str, columns: pd.DataFrame) -> None:
 METHODS = ("PB", "STAC")
 FITS = [(m, lab) for m in METHODS for lab in LABELLINGS]
 #: Workshop-only axes sizes, so the matrix's labels and key fit the page.
+#: The head over CCC-RISE's pairs in C, and wrapped where it is wider than them.
+CARRIED_HEAD = "Top LR pairs of CCC-RISE components"
+CARRIED_HEAD_WRAPPED = "Top LR pairs\nof CCC-RISE\ncomponents"
 #: Columns below this containment in CCC-RISE's span are drawn in B and C.
 MISSED = 0.5
 #: Gap between fits' bars, in bars.
@@ -286,7 +289,7 @@ def containment(ax, dataset: str) -> None:
         ax,
         dataset,
         "Containment",
-        "Containment in\nCCC-RISE LR span",
+        "Fraction of LR pair\nloadings reconstructed\nby CCC-RISE",
         None,
         null=True,
     )
@@ -388,12 +391,37 @@ def _contents_grid(ax, n_rows: int, xs: dict, split: float) -> float:
     for yy in [*range(n_rows), y]:
         ax.plot([-0.7, len(xs) - 0.3], [yy, yy], **GUIDE)
     ax.axvline(split, color="0.3", lw=0.6, zorder=2)
-    for x, text in (
-        (split / 2, "CCC-RISE carrying pairs"),
-        ((split + len(xs)) / 2, "Not carried by CCC-RISE"),
-    ):
-        ax.text(x, -1.2, text, ha="center", va="bottom", fontsize=TEXT_SIZE)
+    ax.text(
+        (split + len(xs)) / 2,
+        -1.2,
+        "Other LR pairs",
+        ha="center",
+        va="bottom",
+        fontsize=TEXT_SIZE,
+    )
+    _carried_head(ax, split)
     return y
+
+
+def _carried_head(ax, split: float) -> None:
+    """The head over CCC-RISE's pairs: one centered line where it fits over
+    them, else wrapped and flush right of the line between them and the rest."""
+    head = ax.text(
+        split / 2,
+        -1.2,
+        CARRIED_HEAD,
+        ha="center",
+        va="bottom",
+        fontsize=TEXT_SIZE,
+    )
+    left = ax.transData.transform((-0.7, 0))[0]
+    if head.get_window_extent(ax.figure.canvas.get_renderer()).x0 < left:
+        head.set(
+            x=split - 0.15,
+            text=CARRIED_HEAD_WRAPPED,
+            ha="right",
+            multialignment="right",
+        )
 
 
 def contents(ax, dataset: str) -> None:

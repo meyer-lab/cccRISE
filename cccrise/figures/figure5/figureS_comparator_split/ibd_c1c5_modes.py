@@ -12,7 +12,12 @@ from ... import common, style
 from .._common import METHOD_COLORS
 
 AXES = ("split_modes",)
-MODES = {"cp_A": "Samples", "cp_B": "Senders", "cp_C": "Receivers", "cp_D": "LR pairs"}
+MODES = {
+    "cp_A": "Conditions",
+    "cp_B": "Senders",
+    "cp_C": "Receivers",
+    "cp_D": "LR pairs",
+}
 PAIR = (1, 5)
 
 
@@ -30,7 +35,7 @@ def plot(axs):
         "ibd_c1_c5_mode_cosines",
         pd.Series(cosines, name="Cosine").rename_axis("Mode"),
         "Cosine between IBD components 1 and 5 in each CP mode (sample, sender "
-        "eigenstate, receiver eigenstate and LR pair loadings).",
+        "eigen-state, receiver eigen-state and LR pair loadings).",
     )
     y = np.arange(len(cosines))
     ax.barh(y, list(cosines.values()), color=METHOD_COLORS["cccRISE"], height=0.6)

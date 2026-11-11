@@ -11,7 +11,6 @@ from scipy.stats import wilcoxon
 from ...runners.datasets import NICHES_DIR, scores_filename
 from .. import common, style
 from ._common import DATASET_COLORS, DATASET_LABELS, cohort_handles
-from ._recovery import panel_title
 
 AXES = ("fig4_niches",)
 #: The populations of Figure 5F and G, and where their labels sit.
@@ -88,10 +87,9 @@ def plot(axs):
         ylim=(0, 1),
         xticks=[0, 0.5, 1],
         yticks=[0, 0.5, 1],
-        xlabel=PREDICTED,
-        ylabel="CCC-RISE",
+        xlabel="Cell-Type Predicted Fraction NICHES+",
+        ylabel="CCC-RISE Fraction NICHES+",
     )
-    panel_title(ax, "Fraction NICHES-positive")
     ax.legend(
         handles=cohort_handles(),
         loc="lower right",

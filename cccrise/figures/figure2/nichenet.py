@@ -105,7 +105,7 @@ def draw(axs, dataset: str) -> None:
     common.reference_line(ax, 0.5)
     ax.set_xticks(x, components)
     ax.set_xlim(-0.6, len(components) - 0.4)
-    ax.set_xlabel("CP component")
+    ax.set_xlabel("CPD component")
     ax.set_ylabel("NicheNet target score")
     common.colorbar(ax, points, "Relative ligand weight")
     common.legend(
@@ -126,7 +126,7 @@ def _source_data(tests: pd.DataFrame, null: pd.Series, scores: pd.DataFrame) -> 
             ["component", "ligand", "auroc", "weight", "rel_weight", "is_top"]
         ].rename(
             columns={
-                "component": "CP component",
+                "component": "CPD component",
                 "ligand": "Ligand",
                 "auroc": "NicheNet target score (AUROC)",
                 "weight": "Ligand weight",
@@ -134,7 +134,7 @@ def _source_data(tests: pd.DataFrame, null: pd.Series, scores: pd.DataFrame) -> 
                 "is_top": "Top ligand",
             }
         ),
-        "One row per ligand NicheNet scores and CP component: the AUROC of the "
+        "One row per ligand NicheNet scores and CPD component: the AUROC of the "
         "component's top vs. bottom receiver ranking for the ligand's "
         "downstream targets; the ligand's weight in the component (and relative "
         "to the component's largest, plotted floored at 1e-3); whether it is one "
@@ -143,7 +143,7 @@ def _source_data(tests: pd.DataFrame, null: pd.Series, scores: pd.DataFrame) -> 
     common.source_data(
         "nichenet_weighted_score_tests",
         tests,
-        "Per CP component: the ligand-weighted mean NicheNet target score "
+        "Per CPD component: the ligand-weighted mean NicheNet target score "
         "(weighted_auroc), its mean over the cell-shuffled rankings (null_mean), "
         "and the one-sided permutation p, Benjamini-Hochberg adjusted across "
         "components (q).",
@@ -151,7 +151,7 @@ def _source_data(tests: pd.DataFrame, null: pd.Series, scores: pd.DataFrame) -> 
     common.source_data(
         "nichenet_cell_shuffle_weighted_scores",
         null.rename("weighted_auroc"),
-        "The ligand-weighted mean target score per CP component on each ranking "
+        "The ligand-weighted mean target score per CPD component on each ranking "
         "with the top/bottom receiver labels shuffled (replicate): the test's "
         "null. The grey boxes pool the per-ligand scores of these rankings.",
     )

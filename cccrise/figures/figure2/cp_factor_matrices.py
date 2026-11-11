@@ -25,8 +25,8 @@ DATASET = "alad"
 
 MODES = {  # factor matrix: row label, whether to order rows
     "A": ("Condition", True),
-    "B": ("Sender eigenstate", False),
-    "C": ("Receiver eigenstate", False),
+    "B": ("Sender eigen-state", False),
+    "C": ("Receiver eigen-state", False),
     "D": ("LR pair", True),
 }
 EIGENSTATE_TICKS = (1, 5, 10, 15)
@@ -71,7 +71,7 @@ def draw(
         if key == "A":
             groups = groups.loc[adata.obs_names]
             order = common.group_conditions(groups, order, strips)
-        image = common.plot_factor_heatmap(ax, loadings[order], "CP component")
+        image = common.plot_factor_heatmap(ax, loadings[order], "CPD component")
         if ordered:
             ax.set_yticks([])
             ylabel += f"s (n={len(loadings)})"
