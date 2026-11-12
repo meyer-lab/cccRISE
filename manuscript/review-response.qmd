@@ -62,11 +62,11 @@ We discuss this in the revised text (l. XXX).
 >    I recognize the field lacks gold standards, but simulation frameworks with defined communication ground truth exist (e.g., the SERGIO-based CCC simulator) and would allow the authors to quantify the resolution advantage.
 >    At minimum, the manuscript should provide a quantitative concordance/discordance analysis against Scriabin on the same data.
 
-[Also needs to be updated once comparator work is complete.]
-<!-- Points to address are:
-<!-- - quantitative evaluations of subpopulation identity (projection-based group definitions in ALAD 5/IBD 3--4),
-<!-- - quantitative evaluation of "true" biology (NicheNet analysis, reference R1 C1 NICHES concordance),
-<!-- - lack of Scriabin concordance (reference R1 C1),
+[Also needs to be updated once comparator work is complete. Paragraphs 2 and 3 need updating, the others are done.]
+ Points to address are:
+<!-- - quantitative evaluations of subpopulation identity (projection-based group definitions in ALAD 5/IBD 3--4),-->
+- quantitative evaluation of "true" biology (NicheNet analysis, reference R1 C1 NICHES concordance),
+- lack of Scriabin concordance (reference R1 C1),
 <!-- - and refusal to use synthetic data-->
 
 We agree that our qualitative observations did not adequatley support this claim.
@@ -153,7 +153,7 @@ We describe the new association testing in [Figure 3A, S_alad_associations], [Fi
 On the negative result: with the rank-selection overhaul and new association testing methodology, this result has flipped.
 Now, in the ALAD cohort, a single component shows a graded, statistically significant association with six-month outcome after correction, and the same component is significantly associated with six-month and one-year death, as shown in [Fig3A] and [S_alad_associations].
 Instead, we fail to identify any communication programs associated with ALAD status, which is now stated in the Results rather than left to the reader to notice [Results XXX].
-We discuss why: with 47 samples from 45 recipients and few events, the cohort has limited statistical power, and the significant associations depend on a small number of highly weighted samples [Discussion XXX]
+We discuss why: with 47 samples from 45 recipients and few events, the cohort has limited statistical power, and the significant associations depend on a small number of highly weighted samples [Discussion XXX].
 We accordingly frame the clinical claims as hypothesis-generating [Discussion XXX].
 
 > 6. No significance testing for communication programs.
@@ -164,7 +164,6 @@ We agree and have implemented two complementary permutation-based null models fo
 
 The first asks whether a given tensor entry is unusual at all, the direct analogue of CellPhoneDB/CellChat's own null, which permutes discrete cell-cluster labels and recomputes each cluster pair's mean-expression score.
 RISE has no discrete clusters and so we generalize the permutation accordingly: within each condition, we shuffle the cell's raw expression each eigen-state loading row is paired with, and recompute the communication tensor from these shuffled pairings.
-This breaks the real cell/eigen-state association while holding cell counts, the loading distribution, and LR identity fixed, giving every tensor entry an empirical p-value (and a z-score, from the same null's mean and standard deviation) against a null of "random" eigen-state assignment.
 The results of this permutation test are contained within [Figure 2 significance] and the approach is defined in Methods section [XXX].
 
 A second test answers whether an entry differs between two groups of samples, akin to scDiffCom's own permutation scheme.
@@ -255,30 +254,30 @@ Our rationale is further discussed in the response to Reviewer #1 Comment #2.
 
 We agree that biological coherence should be tested rather than argued, and we have added various quantitations to support this.
 
-<!-- Paragraph 1: negative GO results -->
+[Fill in negative GO results paragraph]
 - We attempted to perform gene set enrichment on highly weighted LR pairs for each component in each dataset.
 - We observed no significant GO terms in any case.
 - We hypothesize why:
 
-<!-- Paragraph 2: coordinated immune programs/LR co-variation analysis -->
-- In place of gene set enrichment, to quantify biological coherence, we present a co-variation analysis among top-weighted LR pairs of outcome-associatedd components.
-- We present these results in [Figure 3 XXX] and [Figure 5 XXX] and define the process in Methods section [XXX]
-- We further bolster the biological coherence of CCC-RISE components using the previously described NicheNet and NICHES validations.
-- Together these address the mathematical-artifact concern from two directions---the component's LR pairs move together in expression space and their known gene targets are visibly upregulated in the cells the component says are receiving.
+In place of gene set enrichment, to quantify biological coherence, we present a co-variation analysis among top-weighted LR pairs of outcome-associated components.
+We present these results in [Figure 3 XXX] and [Figure 5 XXX] and define the process in Methods section [XXX].
+The enhanced co-variation of top-weighted LR pairs relative to other groups of LR pairs indicates that the communication program represents a coherent transcriptional pattern.
+We further test the biological coherence of CCC-RISE components using the previously described NicheNet validations (Reviewer #1 Comment #2).
+Together these address the mathematical-artifact concern from two directions---the component's LR pairs move together in expression space and their known gene targets are visibly upregulated in the cells the component says are receiving.
 
 > 3. The authors compute communication scores as the product of ligand and receptor expression between eigen-states.
 >    However, this simple calculation does not involve any statistical test and may produce incorrect cell-cell communication inferences between eigen-states as well as between individual cells.
 >    The authors should demonstrate whether the inferred communication patterns are robust to alternative CCC score calculation frameworks, such as those used in CellChat and CellPhoneDB.
 
 We agree, and this comment overlaps with Reviewer #1 Comment #6 on statistical robustness of communication tensor entries.
-Briefly, we add a cell-permuted null akin to CellChat and CellPhoneDB that generates a null distribution of communication tensor entries with which CCC-RISE communication tensor entries are compared.
+Briefly, we add a cell-permuted null that generates a distribution of communication tensor entries with which CCC-RISE communication tensor entries are compared.
 Additionally, the reviewer was correct to raise concerns over incorrect CCC scores resulting from the expression product, which is discussed in detail in Reviewer #1 Comment #3.
 Briefly, the expression product between two negatively loaded genes resulted in a spurious positive communication score, which we address by adding back per-gene mean expression before computing communication scores.
 Please see the referenced reviewer responses for more detailed explanations.
 
-To address the reviewer's third point, we implemented four interchangeable scoring functions and confirmed each behaves as expected on held-out unit tests: our original expression product; the arithmetic-mean score; a geometric-mean variant; and a CellChat-style saturating Hill function.
+To address the reviewer's third point, we implemented four interchangeable scoring functions: our original expression product; the arithmetic-mean score; a geometric-mean variant; and a CellChat-style saturating Hill function.
 All three non-product options are defined to require non-negative input and clip accordingly, exactly like CellChat and CellPhoneDB's own formulations, a requirement our re-centering fix now satisfies for RISE eigen-state loadings, and that would otherwise have produced errors (e.g. `NaN`s from a negative-argument square root in the geometric-mean score) or nonsensical output (an unbounded, sometimes-negative "saturating" score) had it been fed the original signed loadings.
-We report a comparison between communication programs identified by each of these scoring methods in [figure S_ccc_scoring] and describe the approach in detail in Methods section [XXX].
+We report a comparison between communication programs identified by each of these scoring methods in [figure S_ccc_scoring] and describe each score' construction in detail in Methods section [XXX].
 
 > 4. Although metrics were provided to guide the selection of the two key hyperparameters (number of RISE components and number of CPD components), it remains unclear why 35 RISE components and 8 CPD components were chosen rather than, for example, 30-50 RISE components or 6-12 CPD components.
 >    The metrics do not provide clear guidance for hyperparameter selection.
