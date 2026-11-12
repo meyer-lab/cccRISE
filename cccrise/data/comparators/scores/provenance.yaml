@@ -136,8 +136,8 @@ files:
     git_sha: 4268a829d320e212061737e38f721f07c543d84c
     generated: '2026-11-10T22:17:59+00:00'
   covariation_alad.parquet:
-    sha256: c300986790a86e9178f3a95e5f7417c811ac48a0ce1ce89ce089e83ae1debc7c
-    command: uv run cccrise-comparator-scores --dataset alad
+    sha256: 9992fd23ba5b4148c24fe0e49a8aefd6f614c5a8883648cc53112d38ac64c7af
+    command: uv run cccrise-comparator-scores --dataset alad --tables covariation
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -160,8 +160,8 @@ files:
     n_null: 1000
     random_state: 42
     contained: 0.85
-    git_sha: 74360e82087e045044fec437f9239c9c95c2267b
-    generated: '2026-11-10T22:13:05+00:00'
+    git_sha: e593e09f2c99d4fb1319ce88d6a87a656875de6c
+    generated: '2026-11-12T07:51:06+00:00'
   depth_alad.parquet:
     sha256: c93bf0c758abad9666bc0933f85f4909eeb23dc489f5aaf6f8afc36126293d3b
     command: uv run cccrise-comparator-scores --dataset alad
