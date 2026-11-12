@@ -94,10 +94,11 @@ AXIS_SIZE = {
     # A few groups x many genes along x (dot plots)
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
     # Figure 5's panels, sized to share their rows
-    "fig4_best": (36 * MM, 42 * MM),
-    "fig5_columns": (40 * MM, 24 * MM),
-    "fig5_covariation": (28 * MM, 24 * MM),
-    "fig5_nichenet": (60 * MM, 24 * MM),
+    "fig5_best": (30 * MM, 18 * MM),
+    "fig5_columns": (26 * MM, 22 * MM),
+    "fig5_covariation": (24 * MM, 28 * MM),
+    "fig5_nichenet": (46 * MM, 32 * MM),
+    "fig5_labels": (44 * MM, 38 * MM),
     "fig4_flow_alad": (34 * MM, 49 * MM),
     "fig4_flow_ibd": (72 * MM, 49 * MM),
     "fig4_niches": (42 * MM, 42 * MM),
@@ -112,9 +113,8 @@ AXIS_SIZE = {
     "split_covariation_c3": (36 * MM, 36 * MM),
     "split_columns_ibd": (70 * MM, 40 * MM),
     "split_modes": (44 * MM, 30 * MM),
-    # `figureS_comparator_labels`: coarse-to-fine flows, a cohort each
-    "labels_columns": (72 * MM, 41 * MM),
-    # `figureS_comparator_depth`
+    # `figureS_comparator_ibd_and_depth`: IBD's recovery grids, then depth
+    "ibd_grid": (62 * MM, 28 * MM),
     "split_depth": (158 * MM, 30 * MM),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),

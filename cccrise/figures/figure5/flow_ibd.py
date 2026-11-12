@@ -1,4 +1,4 @@
-"""Figure 5G: PYY and GCG in STAC and in cccRISE."""
+"""Figure 5I: PYY and GCG in STAC and in cccRISE."""
 
 from .. import common
 from ._flows import flow_ibd

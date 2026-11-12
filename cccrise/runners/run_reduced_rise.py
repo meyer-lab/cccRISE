@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Runner: CCC-RISE refit at a lower RISE rank, for the label-sensitivity
-supplement (`figureS_comparator_labels`).
+panels of Figure 5 (E-F, `figure5._coarse_fine`).
 
 The comparators' coarse -> fine test asks what a label-based method keeps and
 loses when its cell-type labels get finer. CCC-RISE has no labels; its

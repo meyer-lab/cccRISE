@@ -1,4 +1,4 @@
-"""Figure 5F: BTC-EGFR in STAC and in cccRISE."""
+"""Figure 5H: BTC-EGFR in STAC and in cccRISE."""
 
 from .. import common
 from ._flows import flow_alad

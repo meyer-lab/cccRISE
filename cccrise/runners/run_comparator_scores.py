@@ -24,7 +24,8 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
   every method): each pair scored in the component's own sender/receiver
   context on its own method's tensor, the mean Spearman correlation of its
   top pairs (`covariation.carrying_pairs`; ``PairsUsed``) against random
-  and expression-matched draws, pairs sharing a gene merged into one
+  and expression-matched draws (each null's 95th percentile and one-sided
+  empirical p), pairs sharing a gene merged into one
   (``GeneGroups`` of them; `covariation.pairwise_rank_correlations` with
   ``merge``, as Figure 3F); with its top pair's share of squared loading
   (``TopShare``).
@@ -244,8 +245,9 @@ def covariation_summary(context: dict, top: np.ndarray, genes) -> dict:
     """The mean pairwise rank correlation of the LR pairs `top` scored in
     `context` (`covariation`), those sharing a gene (`genes`) merged into one
     in it and in every draw, and the mean and 95th percentile of that mean
-    over each baseline's draws. All NaN when `top` leaves no two groups to
-    correlate."""
+    over each baseline's draws, with its one-sided empirical p: one plus the
+    draws whose mean reaches the observed, over one plus the draws with a
+    mean. All NaN when `top` leaves no two groups to correlate."""
     if len(top) < 2:  # nothing to co-vary with
         return {"Observed": np.nan}
     scored = covariation.context_scores(
@@ -259,9 +261,13 @@ def covariation_summary(context: dict, top: np.ndarray, genes) -> dict:
         scored, top, genes=genes, merge=True
     ).items():
         means = np.nanmean(draws, axis=1)
+        means = means[~np.isnan(means)]
+        if not means.size:  # every draw merged into one group
+            continue
         summary |= {
-            f"{name}_mean": np.nanmean(means),
-            f"{name}_q95": np.nanquantile(means, 0.95),
+            f"{name}_mean": means.mean(),
+            f"{name}_q95": np.quantile(means, 0.95),
+            f"{name}_p": (1 + (means >= summary["Observed"]).sum()) / (1 + means.size),
         }
     return summary
 

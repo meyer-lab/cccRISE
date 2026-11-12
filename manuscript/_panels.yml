@@ -32,10 +32,12 @@ fig5:
   span_containment: [b]
   pair_columns: [c]
   program_covariation: [d]
-  nichenet: [e]
-  flow_alad: [f]
-  flow_ibd: [g]
-  niches_fraction: [h]
+  labels_alad: [e]
+  labels_ibd: [f]
+  nichenet: [g]
+  flow_alad: [h]
+  flow_ibd: [i]
+  niches_fraction: [j]
 figS_cmp5_identity:
   eigenstate_scatter: [a]
   cmp_eigenstate_loadings: [b]
@@ -123,11 +125,11 @@ figS_comparator_split:
   ibd_c1c5_columns: [d]
   ibd_c1c5_modes: [e]
 figS_comparator_missed_alad:
-  containment: [a]
+  share: [a]
   associations: [b]
   contents: [c]
 figS_comparator_missed_ibd:
-  containment: [a]
+  share: [a]
   associations: [b]
   contents: [c]
 figS_comparator_single_cell:
@@ -136,4 +138,7 @@ figS_comparator_single_cell:
   ibd_weights: [c]
   alad_tau: [d]
   ibd_tau: [e]
-figS_comparator_depth: {}
+figS_comparator_ibd_and_depth:
+  ibd_best: [a]
+  ibd_containment: [b]
+  depth: [c]

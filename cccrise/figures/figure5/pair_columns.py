@@ -10,7 +10,7 @@ AXES = ("fig5_columns",)
 
 
 def plot(axs):
-    _split.pair_heatmap(axs[0], "alad", (4,), "ALAD C4", drop=0.3)
+    _split.pair_heatmap(axs[0], "alad", (4,), "ALAD C4", drop=0.24)
 
 
 def makeFigure():

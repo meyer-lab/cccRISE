@@ -1,7 +1,7 @@
 """Figure EV5A: each CCC-RISE component's best single comparator LR column
 (its largest cos^2 with one LR column of any PB, TC2C or STAC fit) against
-how many LR pairs carry it (`covariation.carrying_pairs`; their Spearman rho
-in the source data), with, dashed, the axes' anti-diagonal: a perfect
+how many LR pairs carry it (`covariation.carrying_pairs`; their Spearman p
+over the legend, rho in the source data), with, dashed, the axes' anti-diagonal: a perfect
 negative ordering (rho = -1). Components sharing a pair count and close in
 cos^2 are dodged apart on the log axis (`dodged`)."""
 
@@ -107,7 +107,7 @@ def plot(axs):
     common.source_data(
         "component_cos2_and_carrying_pairs",
         t[["Dataset", "Program", "Cos2", "Fit", "Carrying pairs"]].rename(
-            columns={"Program": "Component", "Cos2": "Max cos2"}
+            columns={"Program": "Component", "Cos2": "Best-match cos2"}
         ),
         "Per component: its largest cos^2 with one LR column of any comparator "
         "cell-type fit (Fit names it), and its number of carrying LR pairs (the "
@@ -141,7 +141,7 @@ def plot(axs):
         xlim=XLIM,
         ylim=(0, 1.05),
         yticks=[0, 0.5, 1],
-        xlabel="Number of LR pairs",
+        xlabel="Number of top LR pairs",
         ylabel=COS2_LABEL,
     )
     ax.set_xticks([1, 2, 5, 10], ["1", "2", "5", "10"])
@@ -151,6 +151,9 @@ def plot(axs):
         loc="lower left",
         fontsize=LABEL_SIZE,
         handletextpad=0.2,
+        title=common.p_text(result.pvalue, "Spearman p"),
+        title_fontsize=LABEL_SIZE,
+        alignment="left",
     )
 
 

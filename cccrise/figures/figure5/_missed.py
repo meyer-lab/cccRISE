@@ -1,12 +1,13 @@
 """Figure 5's supplements on what the comparators find that CCC-RISE does not,
 one per cohort (`figureS_comparator_missed_<cohort>`): each PB and STAC LR
-column's containment in CCC-RISE's LR span (`containment`), every column's
+column's largest share of its squared loading on one CCC-RISE component's
+carrying pairs (`share`; the measure of 5C's related columns), every column's
 strongest association with those of CCC-RISE's components the box lists
-(`associations`), and the carrying pairs of the columns under `MISSED`
-containment (`contents`), the associated ones carrying a signalling pair CCC-RISE
-lacks (`lacking`) bold and boxed. A carrying pair of a column is one of the fewest pairs
-carrying 90% of its squared loading (`covariation.carrying_pairs`), as for the
-components."""
+(`associations`), and the carrying pairs of the columns under `MISSED` share
+(`contents`), the associated ones carrying a signalling pair CCC-RISE lacks
+(`lacking`) bold and boxed. A carrying pair of a column is one of the fewest
+pairs carrying 90% of its squared loading (`covariation.carrying_pairs`), as
+for the components."""
 
 from functools import cache
 
@@ -20,7 +21,7 @@ from .. import common, style
 from ._common import METHOD_COLORS, load
 from ._data import LABELLINGS, short
 from ._programs import lr_matrix
-from ._recovery import LINK, LOADING_LABEL, panel_title
+from ._recovery import LINK, LOADING_LABEL
 
 #: The associations drawn, by their short names (not IBD's 3-way status).
 ASSOCIATION_NAMES = {
@@ -187,11 +188,8 @@ def _associations(ax, dataset: str, columns: pd.DataFrame) -> None:
 
 METHODS = ("PB", "STAC")
 FITS = [(m, lab) for m in METHODS for lab in LABELLINGS]
-#: Workshop-only axes sizes, so the matrix's labels and key fit the page.
-#: The head over CCC-RISE's pairs in C, and wrapped where it is wider than them.
-CARRIED_HEAD = "Top LR pairs of CCC-RISE components"
-CARRIED_HEAD_WRAPPED = "Top LR pairs\nof CCC-RISE\ncomponents"
-#: Columns below this containment in CCC-RISE's span are drawn in B and C.
+#: Columns placing less than this share of their squared loading on one
+#: CCC-RISE component's carrying pairs are drawn in B and C.
 MISSED = 0.5
 #: Gap between fits' bars, in bars.
 FIT_GAP = 1.2
@@ -214,36 +212,41 @@ def cccrise_pairs(dataset: str) -> set:
     return set().union(*map(set, carrying(dataset, "cccRISE").values()))
 
 
+def _on_components(squared: pd.Series, dataset: str) -> np.ndarray:
+    """A column's share of its squared loading on each CCC-RISE component's
+    carrying pairs."""
+    members = pd.DataFrame(
+        {k: squared.index.isin(p) for k, p in carrying(dataset, "cccRISE").items()},
+        index=squared.index,
+    ).to_numpy(float)
+    return squared.to_numpy() / squared.sum() @ members
+
+
 @cache
 def columns(dataset: str) -> pd.DataFrame:
-    """Every PB and STAC LR column: its containment in CCC-RISE's LR span with
-    its row-permutation null, and its carrying pairs' share among CCC-RISE's."""
-    t = load("containment", dataset=dataset)
-    t = t[(t["In"] == "cccRISE") & (t["Mode"] == "lr") & t["Of"].isin(METHODS)]
-    ours = cccrise_pairs(dataset)
+    """Every PB and STAC LR column: the CCC-RISE component on whose carrying
+    pairs it places the largest share of its squared loading, and that share
+    (`_split.on_component`, as 5C's related columns)."""
     rows = []
-    for r in t.itertuples():
-        pairs = carrying(dataset, r.Of, r.Labelling)[int(r.Component)]
-        shared = [p for p in pairs if p in ours]
-        rows.append(
-            {
-                "Method": r.Of,
-                "Labelling": r.Labelling,
-                "Column": int(r.Component),
-                "Name": _column_name(r.Of, int(r.Component), r.Labelling),
-                "Containment": r.Containment,
-                "NullQ95": r.NullQ95,
-                "Pairs": len(pairs),
-                "Shared": len(shared),
-                "Share": len(shared) / len(pairs),
-            }
-        )
+    for method, lab in FITS:
+        lr = lr_matrix(dataset, method, lab)
+        for c in lr.columns:
+            shares = _on_components(lr[c] ** 2, dataset)
+            rows.append(
+                {
+                    "Method": method,
+                    "Labelling": lab,
+                    "Column": int(c),
+                    "Name": _column_name(method, int(c), lab),
+                    "Share": float(shares.max()),
+                    "Of": int(np.argmax(shares) + 1),
+                }
+            )
     return pd.DataFrame(rows)
 
 
-def _bars(
-    ax, dataset: str, value: str, ylabel: str, title: str | None, null=None
-) -> None:
+def _bars(ax, dataset: str, value: str, ylabel: str) -> None:
+    """Each column's `value` as a bar, fits side by side."""
     t = columns(dataset)
     x, ticks, names, heads = 0.0, [], [], {}
     for method, lab in FITS:
@@ -252,8 +255,6 @@ def _bars(
         start = x
         for r in g.itertuples():
             ax.bar(x, getattr(r, value), width=0.8, color=METHOD_COLORS[method], lw=0)
-            if null:
-                ax.plot([x - 0.4, x + 0.4], [r.NullQ95] * 2, color="0.2", lw=0.6)
             ticks.append(x)
             names.append(short(method, r.Column))
             x += 1
@@ -273,26 +274,22 @@ def _bars(
             fontsize=TEXT_SIZE,
             transform=ax.get_xaxis_transform(),
         )
-    if title:
-        panel_title(ax, title, pad=12)
 
 
-def containment(ax, dataset: str) -> None:
+def share(ax, dataset: str) -> None:
     common.source_data(
-        f"comparator_column_containment_{dataset}",
-        columns(dataset)[["Method", "Labelling", "Name", "Containment", "NullQ95"]],
-        "Each PB and STAC LR column's containment in CCC-RISE's LR span (squared "
-        "norm of its unit loading's projection), with the 95th percentile of that "
-        "with the span's LR pairs permuted (NullQ95, black ticks): the containment a "
-        "column reaches by chance in a span of CCC-RISE's size.",
+        f"comparator_column_share_{dataset}",
+        columns(dataset)[["Method", "Labelling", "Name", "Share", "Of"]].rename(
+            columns={"Of": "CCC-RISE component"}
+        ),
+        "Each PB and STAC LR column's largest share of its squared LR pair loading "
+        "on one CCC-RISE component's carrying pairs, and that component.",
     )
     _bars(
         ax,
         dataset,
-        "Containment",
-        "Fraction of LR pair\nloadings reconstructed\nby CCC-RISE",
-        None,
-        null=True,
+        "Share",
+        "Squared loading on\ncomponent's top LR pairs",
     )
     ax.axhline(
         MISSED,
@@ -304,10 +301,11 @@ def containment(ax, dataset: str) -> None:
 
 
 def missed(dataset: str) -> pd.DataFrame:
-    """The PB and STAC columns under `MISSED` containment in CCC-RISE's span."""
+    """The PB and STAC columns placing under `MISSED` of their squared loading
+    on any one CCC-RISE component's carrying pairs."""
     t = columns(dataset)
-    return t[t["Containment"] < MISSED].sort_values(
-        ["Method", "Labelling", "Containment", "Column"]
+    return t[t["Share"] < MISSED].sort_values(
+        ["Method", "Labelling", "Share", "Column"]
     )
 
 
@@ -358,10 +356,10 @@ def _mark(ax, rows: list, xs: dict, hits: set[str], ours: set) -> None:
 
 
 def _contents_rows(dataset: str) -> tuple[list, list, pd.Series]:
-    """Each column under `MISSED` containment, its name, method and carrying
-    pairs at |loading| / max |loading|; the pairs, CCC-RISE's carrying ones
-    first; and each pair's largest such value in a CCC-RISE component."""
-    ours = cccrise_pairs(dataset)
+    """Each column under `MISSED` share, its name, method and carrying
+    pairs at |loading| / max |loading|; the pairs, in order of first
+    appearance down the rows (a diagonal); and each pair's largest such value
+    in a CCC-RISE component."""
     rows, pairs = [], []
     for r in missed(dataset).to_dict("records"):
         method, lab, col = r["Method"], r["Labelling"], r["Column"]
@@ -369,7 +367,6 @@ def _contents_rows(dataset: str) -> tuple[list, list, pd.Series]:
         kept = carrying(dataset, method, lab)[col]
         rows.append((r["Name"], method, (column.abs() / column.abs().max()).loc[kept]))
         pairs += [p for p in kept if p not in pairs]
-    pairs = [p for p in pairs if p in ours] + [p for p in pairs if p not in ours]
     cccrise = lr_matrix(dataset, "cccRISE").abs()
     closest = (cccrise / cccrise.max()).max(axis=1).reindex(pairs).fillna(0)
     return rows, pairs, closest
@@ -390,57 +387,26 @@ def _contents_source(dataset: str, rows: list, closest: pd.Series) -> None:
             [long(v, n) for n, _, v in rows] + [long(closest, "CCC-RISE")],
             ignore_index=True,
         ),
-        f"Each PB or STAC column under {MISSED} containment in CCC-RISE's LR span, "
+        f"Each PB or STAC column placing under {MISSED} of its squared loading on "
+        "one CCC-RISE component's carrying pairs, "
         "its carrying pairs; the CCC-RISE row gives each pair's largest value in any "
         "component.",
     )
 
 
-def _contents_grid(ax, n_rows: int, xs: dict, split: float) -> float:
-    """Guides, the line between CCC-RISE's pairs and the rest, and their
-    headers; the CCC-RISE row's y."""
+def _contents_grid(ax, n_rows: int, xs: dict) -> float:
+    """Guides; the CCC-RISE row's y."""
     y = n_rows + 0.3
     for x in xs.values():
         ax.plot([x, x], [-0.7, y + 0.7], **GUIDE)
     for yy in [*range(n_rows), y]:
         ax.plot([-0.7, len(xs) - 0.3], [yy, yy], **GUIDE)
-    ax.axvline(split, color="0.3", lw=0.6, zorder=2)
-    ax.text(
-        (split + len(xs)) / 2,
-        -1.2,
-        "Other LR pairs",
-        ha="center",
-        va="bottom",
-        fontsize=TEXT_SIZE,
-    )
-    _carried_head(ax, split)
     return y
 
 
-def _carried_head(ax, split: float) -> None:
-    """The head over CCC-RISE's pairs: one centered line where it fits over
-    them, else wrapped and flush right of the line between them and the rest."""
-    head = ax.text(
-        split / 2,
-        -1.2,
-        CARRIED_HEAD,
-        ha="center",
-        va="bottom",
-        fontsize=TEXT_SIZE,
-    )
-    left = ax.transData.transform((-0.7, 0))[0]
-    if head.get_window_extent(ax.figure.canvas.get_renderer()).x0 < left:
-        head.set(
-            x=split - 0.15,
-            text=CARRIED_HEAD_WRAPPED,
-            ha="right",
-            multialignment="right",
-        )
-
-
 def contents(ax, dataset: str) -> None:
-    """Each column under `MISSED` containment, its carrying pairs at
-    |loading| / max |loading|, CCC-RISE's own carrying pairs first; a
+    """Each column under `MISSED` share, its carrying pairs at
+    |loading| / max |loading|, in order of first appearance; a
     CCC-RISE row with each pair's largest such value in any component; the
     columns with an association at q < 0.05 that carry a signalling pair
     CCC-RISE lacks bold and boxed (`_mark`)."""
@@ -456,8 +422,7 @@ def contents(ax, dataset: str) -> None:
             lw=0,
             zorder=3,
         )
-    split = sum(p in cccrise_pairs(dataset) for p in pairs) - 0.5
-    y = _contents_grid(ax, len(rows), xs, split)
+    y = _contents_grid(ax, len(rows), xs)
     ax.scatter(
         list(xs.values()),
         [y] * len(xs),

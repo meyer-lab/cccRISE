@@ -8,7 +8,7 @@ AXES = ("split_covariation_c3",)
 
 
 def plot(axs):
-    _split.covariation(axs, "alad", (3,))
+    _split.covariation(axs, "alad", (3,), key_loc="lower left")
 
 
 def makeFigure():

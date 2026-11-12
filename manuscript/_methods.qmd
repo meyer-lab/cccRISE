@@ -259,6 +259,7 @@ A population's NICHES concordance was the fraction of its cells that were NICHES
 
 Each population's concordance was compared with two references.
 The first was the concordance its cell-type labels predict: the mean, over the population's cells, of the fraction of NICHES-positive cells in each cell's fine cell type (or lineage).
+Populations' concordance was compared with this prediction by a two-sided Wilcoxon signed-rank test, paired over all populations of both cohorts.
 The second replaced the component's loadings with random directions in eigen-state space, wherein a null was computed as follows.
 First, each of 1,000 directions $u$ was drawn uniformly from the unit sphere in $\mathbb{R}^{r}$, and each cell's score became $(Pu)_{j}$ in place of $(Pe)_{j}$ or $(Pf)_{j}$.
 From each fine cell type, the cells with the largest scores were taken, as many as the population held from that type.
@@ -322,12 +323,16 @@ On the same input tensors, the re-implementation matched the authors' R scripts 
 Each mode kept the components with more than 1% of the eigenvalue share of its unfolding, giving 16 and 14 LR columns on ALAD and 5 and 12 on IBD.
 
 **Comparing components and LR columns.** The match between a CCC-RISE component and an LR column was the squared cosine (cos^2^) of their LR pair loadings over CCC-RISE's LR pairs.
+Across the components of both cohorts, each component's largest cos^2^ with any comparator column was compared with its number of carrying pairs by Spearman correlation.
 Containment was the share of a unit LR column's squared norm in the span of all of another fit's LR columns, computed by QR projection.
 A column was contained at a value of at least 0.85 and above the 95th percentile of 1,000 row permutations of the span, which accounts for span size.
 A column's effective LR pairs were the inverse Simpson index of its squared loadings, $\left( \sum_{l} x_{l}^{2} \right)^{2}/\sum_{l} x_{l}^{4}$, so that $k$ equal loadings give $k$.
 A column's homophilic share was the share of its squared loading on LR pairs whose ligand and receptor are the same gene.
 Carrying pairs were defined as for NICHES concordance.
 Coarse and fine LR columns of a method were joined where their cos^2^ was at least 0.09.
+For CCC-RISE, the counterpart of finer labels is a higher RISE rank: the full pipeline was refit with uncompressed RISE at rank 10 (ALAD) and 30 (IBD), and its CPD rank was chosen by hand from 10 seeded starts at each of ranks 1 to 10.
+This gave 4 in ALAD, where the collinearity rule above allowed 8, and 5 in IBD, where no rank was collinear: the last rank before the largest absolute cosine between LR pair factors rose from 0.03 to 0.29.
+Its components were joined to the reported fit's in the same way.
 
 **Column classes.** Each comparator LR column took the first class it met, in order:
 
@@ -348,10 +353,10 @@ Columns carrying at least 10% of a component were tested for co-variation.
 
 **Co-variation across methods.** The co-variation test of individual LR pair associations was extended to every component and LR column.
 LR pairs were scored in each component's own context on its own method's tensor, weighting that tensor by the component's sender and receiver loadings as in $S_{il}$, and each component's carrying pairs were tested in place of its top 10 LR pairs.
-The statistic was the mean pairwise Spearman correlation across samples, $\bar{\rho}$, compared with 2,000 random and 2,000 expression-matched draws; a component passed when $\bar{\rho}$ exceeded the larger of the two 95th percentiles, the stricter null.
+The statistic was the mean pairwise Spearman correlation across samples, $\bar{\rho}$, compared with 2,000 random and 2,000 expression-matched draws.
+Its one-sided empirical p-value against each null was one plus the number of draws whose mean correlation reached $\bar{\rho}$, over one plus the number of draws, and p-values against the expression-matched null were corrected across each component and the LR columns shown with it (q < 0.05).
 The test was repeated over gene-disjoint pairs of LR pairs only, dropping pairs that share any gene from the statistic and from each draw, and a component with no such pairs could not be tested.
 Components and columns with fewer than two carrying pairs could not be tested at all (IBD components 2, 3, 4, and 6), and the supplementary summary omits columns whose top LR pair carries at least 0.8 of the squared loading, which leaves that pair little to co-vary with.
-These are percentile thresholds and not corrected tests.
 
 **Detection depth.** A sample's detection depth was its median number of genes detected per cell.
 Depth tracking was the absolute Spearman correlation across samples between a component's absolute condition loadings and detection depth.

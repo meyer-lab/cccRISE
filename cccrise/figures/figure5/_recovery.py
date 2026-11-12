@@ -1,7 +1,7 @@
-"""Figure 5's shared drawing helpers: panel titles, colorbars and heatmap
+"""Figure 5's shared drawing helpers: colorbars and heatmap
 cells (`_cell`), each component's best single column in every fit
-(`best_column_grid`, Figure 5A) and the axes of a pairs-by-columns heatmap
-(`_pair_axes`, `_split`)."""
+(`best_column_grid`, Figure 5A and the IBD supplement) and the axes of a
+pairs-by-columns heatmap (`_pair_axes`, `_split`)."""
 
 import numpy as np
 import pandas as pd
@@ -15,22 +15,20 @@ from ._common import DATASET_COLORS, DATASET_LABELS
 from ._programs import FITS, best_columns
 
 HEAT = style.CMAPS["weight"]
-#: Outline of a comparator's best combination of its columns (`_split`).
+#: Red marks tying panels to the missed supplements (`_missed`, `_coarse_fine`).
 LINK = "#d00000"
 #: Gap between a heatmap's blocks of columns, in columns.
 BLOCK_GAP = 0.3
 LOADING_LABEL = "|Loading| / max |loading|"
-COS2_LABEL = "Comparator max cos$^2$"
+COS2_LABEL = "Best-match cos$^2$"
 LABEL_SIZE = style.FONT_SIZE_DENSE - 0.7
 
 
-def panel_title(ax, text: str, pad: float = 3) -> None:
-    ax.set_title(text, fontsize=style.FONT_SIZE_LABEL, fontweight="bold", pad=pad)
-
-
-def colorbar_under(ax, label: str, drop: float, x0=0.2, width=0.6) -> None:
+def colorbar_under(
+    ax, label: str, drop: float, x0=0.2, width=0.6, thickness=0.04
+) -> None:
     """A horizontal colorbar `drop` of `ax`'s height below it."""
-    cax = ax.inset_axes((x0, -drop, width, 0.04))
+    cax = ax.inset_axes((x0, -drop, width, thickness))
     ax.figure.colorbar(
         ScalarMappable(Normalize(0, 1), HEAT), cax=cax, orientation="horizontal"
     )
@@ -39,14 +37,20 @@ def colorbar_under(ax, label: str, drop: float, x0=0.2, width=0.6) -> None:
     cax.set_xlabel(label, fontsize=style.FONT_SIZE_DENSE, labelpad=0)
 
 
-def colorbar_right(ax, label: str) -> None:
-    """A vertical colorbar right of a `fit_grid`'s cohort labels."""
-    width = ax.bbox.width / ax.figure.dpi
-    cax = ax.inset_axes((1 + 7 * style.MM / width, 0.2, 2 * style.MM / width, 0.6))
-    ax.figure.colorbar(ScalarMappable(Normalize(0, 1), HEAT), cax=cax)
-    cax.set_yticks([0, 1])
-    cax.tick_params(labelsize=style.FONT_SIZE_DENSE, length=1.5, pad=1)
-    cax.set_ylabel(label, fontsize=style.FONT_SIZE_DENSE, labelpad=1)
+#: `colorbar_beneath`: the bar's top below the axes, and its thickness (mm)
+BENEATH_DROP, BENEATH_THICKNESS = 5.2, 1.6
+
+
+def colorbar_beneath(ax, label: str) -> None:
+    """`colorbar_under` a `fit_grid`'s fit labels at a fixed distance and
+    thickness (mm), whatever the grid's height."""
+    height = ax.bbox.height / ax.figure.dpi / style.MM
+    colorbar_under(
+        ax,
+        label,
+        (BENEATH_DROP + BENEATH_THICKNESS) / height,
+        thickness=BENEATH_THICKNESS / height,
+    )
 
 
 def _cell(ax, x: float, y: float, value: float, text: bool = False) -> None:
@@ -127,14 +131,13 @@ def fit_grid(ax, grids: dict[str, pd.DataFrame]) -> None:
     _cohort_labels(ax, centers)
 
 
-def best_column_grid(ax) -> None:
-    """Each program's best single column in each fit, ALAD over IBD."""
-    t = pd.concat(
-        [best_columns(d).assign(Dataset=DATASET_LABELS[d]) for d in DATASET_LABELS]
-    )
+def best_column_grid(ax, datasets=tuple(DATASET_LABELS)) -> None:
+    """Each program's best single column in each fit, the cohorts of
+    `datasets` one under another (ALAD over IBD); no colorbar."""
+    t = pd.concat([best_columns(d).assign(Dataset=DATASET_LABELS[d]) for d in datasets])
     common.source_data(
         "program_best_column_cos2",
-        t.rename(columns={"Cos2": "Max cos2"}),
+        t.rename(columns={"Cos2": "Best-match cos2"}),
         "Each program's largest cos^2 with one LR column of each comparator fit.",
     )
     fit_grid(
@@ -144,9 +147,9 @@ def best_column_grid(ax) -> None:
                 index="Program", columns=["Method", "Labelling"], values="Cos2"
             )
             for dataset, label in DATASET_LABELS.items()
+            if dataset in datasets
         },
     )
-    colorbar_right(ax, "Comparator\nmax cos$^2$")
 
 
 def _pair_axes(ax, rows, spans, end: float, ticks, heads) -> None:

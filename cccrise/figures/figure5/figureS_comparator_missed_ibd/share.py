@@ -1,13 +1,13 @@
-"""ALAD: `_missed.containment`."""
+"""IBD: `_missed.share`."""
 
 from ... import common
-from .._missed import containment as draw
+from .._missed import share as draw
 
 AXES = ("missed_bars",)
 
 
 def plot(axs):
-    draw(axs[0], "alad")
+    draw(axs[0], "ibd")
 
 
 def makeFigure():

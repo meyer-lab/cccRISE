@@ -9,7 +9,7 @@ AXES = ("split_columns_ibd",)
 
 
 def plot(axs):
-    _split.pair_heatmap(axs[0], "ibd", (1, 5), "IBD C1 and C5", drop=0.23, signed=True)
+    _split.pair_heatmap(axs[0], "ibd", (1, 5), "IBD C1 and C5", drop=0.12, signed=True)
 
 
 def makeFigure():

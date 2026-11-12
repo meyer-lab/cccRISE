@@ -28,6 +28,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
+from scipy.stats import false_discovery_control
 
 from ...covariation import CARRYING_CAP
 from .. import common, style
@@ -36,12 +37,10 @@ from ._data import LABELLINGS, short
 from ._programs import _unit, carrying_pairs, lr_matrix
 from ._recovery import (
     BLOCK_GAP,
-    LINK,
     LOADING_LABEL,
     _cell,
     _pair_axes,
     colorbar_under,
-    panel_title,
 )
 
 #: The comparators, each labelling its own.
@@ -157,7 +156,7 @@ def _block(ax, x: float, rows, loadings: dict, signed: bool) -> list:
     return out
 
 
-def _outline(ax, x: float, spans: dict, signed: bool) -> None:
+def _outline(ax, x: float, spans: dict) -> None:
     for y0, y1 in spans.values():
         ax.add_patch(
             Rectangle(
@@ -165,7 +164,7 @@ def _outline(ax, x: float, spans: dict, signed: bool) -> None:
                 1,
                 y1 - y0,
                 fc="none",
-                ec="black" if signed else LINK,
+                ec="black",
                 lw=1.1,
                 zorder=6,
                 clip_on=False,
@@ -209,37 +208,22 @@ class _Heatmap:
         return drawn
 
 
-def _shares(parts: pd.DataFrame, programs) -> str:
-    """One line per component, as the rows under CCC-RISE name them: the share
-    of it the column rebuilds, or a dash."""
-    held = dict(zip(parts["Program"], parts["Rebuilt"], strict=True))
-    return "\n".join(f"{held[p]:.0%}" if p in held else "–" for p in programs)
-
-
 def _related(h: _Heatmap, g: pd.DataFrame, method: str, lab: str) -> None:
-    """A comparator's related columns, each ticked with its shares."""
+    """A comparator's related columns, each ticked with its name."""
     matrix = lr_matrix(h.dataset, method, lab)
     for column, parts in g.groupby("Column", sort=False):
         name = short(method, column)
-        drawn = h.column(
-            {p: matrix[column] for p in h.programs},
-            f"{name}\n{_shares(parts, h.programs)}",
-        )
+        drawn = h.column({p: matrix[column] for p in h.programs}, name)
         carries = ", ".join(f"C{q}" for q in parts["Program"])
-        rebuilt = ", ".join(f"{r:.3f}" for r in parts["Rebuilt"])
-        h.values += [
-            (method, lab, name, pair, v, carries, rebuilt) for pair, v, _ in drawn
-        ]
+        h.values += [(method, lab, name, pair, v, carries) for pair, v, _ in drawn]
 
 
 def _sum(h: _Heatmap, method: str, lab: str) -> None:
-    """A comparator's best combination of all its columns, outlined, ticked
-    with each component's containment."""
+    """A comparator's best combination of all its columns, outlined."""
     sums = {p: projection(h.dataset, p, method, lab)[0] for p in h.programs}
-    held = [projection(h.dataset, p, method, lab)[1].sum() for p in h.programs]
-    _outline(h.ax, h.x, h.spans, h.signed)
-    drawn = h.column(sums, f"{SUM}\n" + "\n".join(f"{v:.0%}" for v in held))
-    h.values += [(method, lab, SUM, pair, v, f"C{p}", "") for pair, v, p in drawn]
+    _outline(h.ax, h.x, h.spans)
+    drawn = h.column(sums, SUM)
+    h.values += [(method, lab, SUM, pair, v, f"C{p}") for pair, v, p in drawn]
 
 
 def _fit_block(h: _Heatmap, chosen: pd.DataFrame, method: str, lab: str) -> None:
@@ -268,7 +252,6 @@ def _heatmap_source(h: _Heatmap) -> None:
                 "LR pair",
                 label,
                 "Component",
-                "Share of component reconstructed",
             ],
         ),
         "Each component's carrying pairs in the component, in each PB and STAC "
@@ -278,20 +261,16 @@ def _heatmap_source(h: _Heatmap) -> None:
         f"combination of all its columns (Column {SUM}, the projection whose squared "
         "norm is the containment); each column's "
         + ("signed loading" if h.signed else "|loading|")
-        + " relative to its heaviest pair, and the share of each component's squared "
-        "loading the column reconstructs.",
+        + " relative to its heaviest pair.",
     )
 
 
 def _heatmap_axes(h: _Heatmap) -> None:
-    """Ticks and heads; the percentages' row names under the CCC-RISE column;
-    one component unlabeled at the side (the title names it)."""
-    h.labels[0] = "\n" + "\n".join(f"C{p} reconstructed" for p in h.programs)
-    h.ticks[0] = 1.0  # row names flush right of the CCC-RISE column, as its head
+    """Ticks and heads; one component unlabeled at the side (the CCC-RISE
+    column's tick names it)."""
     end = h.x - BLOCK_GAP
     ax = h.ax
     _pair_axes(ax, h.rows, h.spans, end, (h.ticks, h.labels, []), h.heads)
-    ax.get_xticklabels()[0].set(ha="right", multialignment="right")
     for text in [t for t in ax.texts if t.get_text() == "CCC-RISE"]:
         text.set(x=1.0, ha="right")  # flush right of its one column
     if len(h.programs) == 1:
@@ -311,21 +290,20 @@ def pair_heatmap(
     ax,
     dataset: str,
     programs,
-    title: str | None,
+    name: str | None,
     drop: float = 0.24,
     signed: bool = False,
 ) -> None:
     """Each component's carrying pairs in the component and in its related
     columns of each comparator, then, where a comparator shows two or more
     columns, its best combination of all its columns (Σ, outlined); each column
-    scaled to its heaviest pair, |loading| or `signed`. Under each column, the
-    share of each component it rebuilds (Σ: the containment), one line per
-    component, the lines named under the CCC-RISE column ("C4 reconstructed")."""
+    scaled to its heaviest pair, |loading| or `signed`, each ticked with its
+    name, the component's column with `name` (e.g. 'ALAD C4')."""
     rows, spans = _pair_rows(dataset, programs)
     h = _Heatmap(ax, dataset, tuple(programs), rows, spans, signed)
     cccrise = lr_matrix(dataset, "cccRISE")
     h.values = [
-        ("cccRISE", "", f"C{p}", pair, v, f"C{p}", "")
+        ("cccRISE", "", f"C{p}", pair, v, f"C{p}")
         for pair, v, p in _block(
             ax, 0.0, rows, {p: cccrise[p] for p in programs}, signed
         )
@@ -334,9 +312,8 @@ def pair_heatmap(
     for method, lab in FITS:
         _fit_block(h, chosen, method, lab)
     _heatmap_source(h)
+    h.labels[0] = name or ""
     _heatmap_axes(h)
-    if title:
-        panel_title(ax, title, pad=15)
     if signed:
         _signed_colorbar(ax, drop)
     else:
@@ -388,13 +365,74 @@ NULL_TICKS: dict[str, dict[str, Any]] = {
 }
 
 
-def covariation(axs, dataset: str, programs) -> None:
+def with_q(t: pd.DataFrame) -> pd.DataFrame:
+    """`t` with the expression-matched null's BH q over its tested rows (those
+    left with two or more gene groups)."""
+    tested = t["Observed"].notna()
+    q = pd.Series(np.nan, index=t.index)
+    q[tested] = false_discovery_control(t.loc[tested, "expression_matched_p"])
+    return t.assign(expression_matched_q=q)
+
+
+def _lollipop(ax, r) -> None:
+    """One row's observed co-variation over its nulls' ticks, filled where its
+    q is below `common.SIG_ALPHA`."""
+    observed, color = r["Observed"], METHOD_COLORS[r.Method]
+    bars = [r[f"{null}_q95"] for null in NULL_TICKS]
+    ax.plot(
+        [r.X, r.X],
+        [min(observed, *bars), max(observed, *bars)],
+        color="0.8",
+        lw=0.6,
+        zorder=1,
+    )
+    for null, tick in NULL_TICKS.items():
+        ax.plot(
+            [r.X - 0.3, r.X + 0.3],
+            [r[f"{null}_q95"]] * 2,
+            zorder=2,
+            **{k: v for k, v in tick.items() if k != "label"},
+        )
+    hit = r["expression_matched_q"] < common.SIG_ALPHA
+    ax.scatter(
+        r.X,
+        observed,
+        s=14,
+        lw=0.8,
+        zorder=3,
+        facecolor=color if hit else "white",
+        edgecolor=color,
+    )
+
+
+def _covariation_key(ax, loc: str) -> None:
+    """The nulls' ticks along the top row, filled and hollow points (as Figure
+    5E keys them) along the bottom, at `loc` inside the axes."""
+    ticks = [Line2D([], [], **tick) for tick in NULL_TICKS.values()]
+    point = {"ls": "", "marker": "o", "ms": 3.2, "mec": "0.4"}
+    filled = Line2D([], [], mfc="0.4", label=f"q < {common.SIG_ALPHA}", **point)
+    hollow = Line2D([], [], mfc="white", label=f"q ≥ {common.SIG_ALPHA}", **point)
+    ax.legend(
+        handles=[ticks[0], filled, ticks[1], hollow],
+        loc=loc,
+        ncol=2,
+        fontsize=style.FONT_SIZE_DENSE - 1.2,
+        handlelength=1.4,
+        handletextpad=0.3,
+        columnspacing=0.8,
+        borderaxespad=0.1,
+        frameon=False,
+    )
+
+
+def covariation(axs, dataset: str, programs, key_loc: str = "lower center") -> None:
     """Each component's and related column's co-variation over all its carrying
     pairs, against both nulls' 95th percentiles (random dashed,
-    expression-matched solid, keyed along the bottom); filled
-    when above the expression-matched null."""
+    expression-matched solid); filled where its one-sided empirical p against
+    the expression-matched null, BH-corrected over the panel's tested rows
+    (`with_q`), is below `common.SIG_ALPHA`; keyed at `key_loc`."""
     (ax,) = axs
-    t = covariation_rows(dataset, programs)
+    t = with_q(covariation_rows(dataset, programs))
     common.source_data(
         f"component_and_related_column_covariation_{dataset}",
         t[
@@ -407,42 +445,23 @@ def covariation(axs, dataset: str, programs) -> None:
                 "Observed",
                 "random_q95",
                 "expression_matched_q95",
+                "random_p",
+                "expression_matched_p",
+                "expression_matched_q",
             ]
         ],
         "Mean pairwise rank correlation across samples of each component's or "
         "column's carrying pairs (the fewest carrying 90% of squared loading, at most "
         f"{CARRYING_CAP}), pairs sharing a gene merged into one (Gene "
         "groups of them, as Figure 3F), with the 95th percentiles of the random and "
-        "of the expression-matched null, merged alike; NaN where fewer than two "
-        "groups remain. A point is filled when above the expression-matched null.",
+        "of the expression-matched null, merged alike, and each null's one-sided "
+        "empirical p ((1 + draws at or above the observed) / (1 + draws)); the "
+        "expression-matched p's Benjamini-Hochberg q over the panel's tested rows; "
+        "NaN where fewer than two groups remain. A point is filled when q < "
+        f"{common.SIG_ALPHA}.",
     )
     for _, r in t.iterrows():
-        observed, color = r["Observed"], METHOD_COLORS[r.Method]
-        bars = [r[f"{null}_q95"] for null in NULL_TICKS]
-        ax.plot(
-            [r.X, r.X],
-            [min(observed, *bars), max(observed, *bars)],
-            color="0.8",
-            lw=0.6,
-            zorder=1,
-        )
-        for null, tick in NULL_TICKS.items():
-            ax.plot(
-                [r.X - 0.3, r.X + 0.3],
-                [r[f"{null}_q95"]] * 2,
-                zorder=2,
-                **{k: v for k, v in tick.items() if k != "label"},
-            )
-        above = observed > r["expression_matched_q95"]
-        ax.scatter(
-            r.X,
-            observed,
-            s=14,
-            lw=0.8,
-            zorder=3,
-            facecolor=color if above else "white",
-            edgecolor=color,
-        )
+        _lollipop(ax, r)
     ax.set(
         ylim=(0, 1),
         yticks=[0, 0.5, 1],
@@ -453,16 +472,4 @@ def covariation(axs, dataset: str, programs) -> None:
     ax.tick_params(axis="x", labelrotation=55, labelsize=style.FONT_SIZE_DENSE - 0.7)
     for label in ax.get_xticklabels():
         label.set(ha="right", rotation_mode="anchor")
-    ax.legend(  # the nulls' 95th percentiles, flat along the bottom inside
-        handles=[Line2D([], [], **tick) for tick in NULL_TICKS.values()],
-        title=None,
-        loc="lower center",
-        bbox_to_anchor=(0.5, 0.0),
-        ncol=2,
-        fontsize=style.FONT_SIZE_DENSE - 1.2,
-        handlelength=1.4,
-        handletextpad=0.3,
-        columnspacing=0.8,
-        borderaxespad=0.1,
-        frameon=False,
-    )
+    _covariation_key(ax, key_loc)
