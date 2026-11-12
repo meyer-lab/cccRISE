@@ -468,6 +468,107 @@ files:
     n_shuffle: 1000
     git_sha: 24ea85ca75f8c2bc3f08c3489ed99fde43b79f23
     generated: '2026-11-10T13:13:08+00:00'
+  reduced_rise_lr_loadings_alad.parquet:
+    sha256: 1dd9e7b287f4c397a7b24f984dfdc4b495f59c520bfadcde949bbe522bf3663d
+    command: uv run cccrise-reduced-rise --dataset alad --rise-rank 10 --cp-rank 4 --cpd-rank-notes
+      'Chosen by hand from a 10-start CPD sweep (ranks 1-10) on the RISE 10 fit; the largest
+      rank with no start collinear in the LR pair mode was 8.'
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    celltype_key: broad_cell_type
+    group_key: ALADstatus
+    rise_rank: 10
+    cp_rank: 4
+    reported_fit:
+      factors_file: bal_alad_factors.nc
+      rise_rank: 17
+      cp_rank: 5
+    cpd_rank_notes: Chosen by hand from a 10-start CPD sweep (ranks 1-10) on the RISE 10 fit;
+      the largest rank with no start collinear in the LR pair mode was 8.
+    random_state: 42
+    rise_compressed: false
+    rise_backend: cupy
+    rise_n_iter_max: 300
+    rise_tol: 1.0e-08
+    cp_n_iter_max: 4000
+    cp_tol: 1.0e-12
+    cp_fit_options:
+      init: svd
+      svd: randomized_svd
+      normalize_factors: true
+    cp_device: auto
+    cp_backend: cupy
+    cp_dtype: float32
+    r2x_rise: 0.02836240008254709
+    r2x_cp: 0.5295499108923396
+    git_sha: f4d232d962f12ea44219d0332544f9e96e3fe857
+    generated: '2026-11-12T06:00:19+00:00'
+  reduced_rise_lr_loadings_ibd.parquet:
+    celltype_key: broad_cell_type
+    random_state: 42
+    rise_compressed: false
+    rise_n_iter_max: 300
+    rise_tol: 1.0e-08
+    cp_n_iter_max: 4000
+    cp_tol: 1.0e-12
+    cp_fit_options:
+      init: svd
+      svd: randomized_svd
+      normalize_factors: true
+    cp_device: auto
+    cp_backend: cupy
+    cp_dtype: float32
+    git_sha: 59f209c1f391a3b1d1ba42d184190c9570d1821b-dirty
+    sha256: adfab11e08107f0e933cd110dd3e5489bd47bb31b5fc4d7b0df0a6f3e0e8338d
+    command: 'uv run cccrise-reduced-rise --dataset ibd --rise-rank 30 --cp-rank 5 --cpd-rank-notes
+      ''Chosen by hand from a 10-start CPD sweep (ranks 1-10) on the RISE 30 fit, which had
+      no collinearity cliff (LR pair max |cos| <= 0.29 at every rank, every start agreeing):
+      the last rank before LR pair max |cos| steps from 0.03 to 0.29.'''
+    dataset: ibd
+    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+      0)
+    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
+    loader_args:
+      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
+      gene_threshold: 0.001
+      normalize: true
+      max_cells_per_condition: 2000
+      cell_cap_seed: 0
+      excluded_broad_cell_types:
+      - Mesenchymal
+    condition_key: sanger_sample_id
+    group_key: inflammation_status
+    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
+      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
+      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
+      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+    rise_rank: 30
+    cp_rank: 5
+    reported_fit:
+      factors_file: ibd_ti_factors.nc
+      rise_rank: 60
+      cp_rank: 6
+    cpd_rank_notes: 'Chosen by hand from a 10-start CPD sweep (ranks 1-10) on the RISE 30
+      fit, which had no collinearity cliff (LR pair max |cos| <= 0.29 at every rank, every
+      start agreeing): the last rank before LR pair max |cos| steps from 0.03 to 0.29.'
+    rise_backend: cpu
+    r2x_rise: 0.026438443552270985
+    r2x_cp: 0.5254932807190733
+    generated: '2026-11-12T01:30:29+00:00'
+    consolidated_post_hoc: '2026-11-11: copied from a scratch run (COMPARATOR_SCORES_DIR redirected)
+      rather than rerun in place, to save its ~1.5 h. Ran uncommitted at 59f209c; first committed
+      in f4d232d, where the runner changed only the header it writes this folder''s file under,
+      and nothing else it calls changed. ALAD''s rerun at f4d232d matched its scratch run
+      (LR column cos^2 >= 0.99999998, |loading diff| <= 1e-4).'
   start_congruence_alad.parquet:
     sha256: c53207cc09edf3a6d2ab2cb546c2cc57a3da516d8a3ecb56bc81e45cc61dc322
     command: uv run cccrise-comparator-scores --dataset alad
@@ -532,3 +633,9 @@ files:
     contained: 0.85
     git_sha: 4268a829d320e212061737e38f721f07c543d84c
     generated: '2026-11-10T22:17:59+00:00'
+
+# Records with `consolidated_post_hoc` were written by their runs as per-file
+# `<stem>.provenance.yaml` sidecars and merged here, on the date it gives,
+# without rerunning: their settings and git_sha are as the runs recorded them,
+# and their `command` was reconstructed from those settings. Running a command
+# replaces its files' records.
