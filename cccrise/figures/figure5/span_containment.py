@@ -19,7 +19,6 @@ def rows(datasets=tuple(DATASET_LABELS)) -> pd.DataFrame:
     frames = []
     for dataset in datasets:
         t = load("containment", dataset=dataset)
-        t = t[(t["Of"] == "cccRISE") & (t["Mode"] == "lr")]
         frames.append(
             t[t["In"].isin({m for m, _ in FITS})].assign(
                 Dataset=DATASET_LABELS[dataset]

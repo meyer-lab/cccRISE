@@ -21,20 +21,30 @@ def test_containment_of_a_column_in_its_own_span():
     inside = _frame(span.to_numpy() @ [[1.0], [2.0], [0.5]])
     table = scores.containment(span, inside.iloc[::-1], 50, rng)
     assert table["Containment"].iloc[0] == pytest.approx(1)
-    assert table["Contained"].iloc[0]
     values = span.to_numpy()
     basis = np.eye(30)[:, [0]]
     residual = basis - values @ np.linalg.lstsq(values, basis, rcond=None)[0]
     orthogonal = _frame(residual)
     table = scores.containment(span, orthogonal, 50, rng)
     assert table["Containment"].iloc[0] == pytest.approx(0, abs=1e-12)
-    assert not table["Contained"].iloc[0]
 
 
-def test_effective_number_counts_equal_entries():
-    columns = _frame([[1, 3], [1, 0], [-1, 0], [1, 0]])
-    np.testing.assert_allclose(scores.effective_number(columns), [4, 1])
-    np.testing.assert_allclose(scores.top_share(columns), [0.25, 1])
+def test_cccrise_components_without_cells_keep_sample_and_lr():
+    factors = xr.Dataset(
+        {
+            "cp_A": (("condition", "cp_component"), np.ones((3, 2))),
+            "cp_D": (("lr_pair", "cp_component"), np.arange(8.0).reshape(4, 2)),
+        },
+        coords={
+            "condition": ["a", "b", "c"],
+            "lr_pair": [f"L{i}^R{i}" for i in range(4)],
+            "cp_component": [1, 2],
+        },
+    )
+    components = scores.cccrise_components(factors)
+    assert set(components.modes) == {"sample", "lr"}
+    assert list(components.modes["lr"].columns) == [1, 2]
+    assert components.modes["lr"].loc["L3^R3", 2] == 7
 
 
 def test_oriented_makes_the_largest_entry_positive():

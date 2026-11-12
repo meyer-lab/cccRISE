@@ -8,9 +8,9 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
 ``Labelling`` column), each recorded in the folder's ``provenance.yaml``
 (`provenance.record_output`), as `comparators.scores` defines them:
 
-- ``containment``: the sample and LR columns of every fit ('Of') in the
-  span of every other ('In'), cccRISE and each comparator alike, with the
-  row-permutation null.
+- ``containment``: each cccRISE component's LR pair loadings in the LR
+  column span of each comparator fit ('In'), with the row-permutation null
+  (Figure 5B, Appendix Figure S5B).
 - ``fit_ranks``: each comparator fit's rank.
 - ``start_congruence``: each Tensor-cell2cell start's largest congruence
   product (`methods.start_congruence`).
@@ -27,8 +27,7 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
   and expression-matched draws (each null's 95th percentile and one-sided
   empirical p), pairs sharing a gene merged into one
   (``GeneGroups`` of them; `covariation.pairwise_rank_correlations` with
-  ``merge``, as Figure 3F); with its top pair's share of squared loading
-  (``TopShare``).
+  ``merge``, as Figure 3F).
 - ``associations``: each component's sample loadings, cccRISE's and each
   comparator's, against every association of the cohort's figure, as Figure 3 tests
   cccRISE's
@@ -44,20 +43,22 @@ by ``--random-state``, so no table's draws depend on another's.
 ``--fits-only`` writes only `fit_tables`' tables, which need the fits, the
 per-cell weights and the cells' genes detected but no tensors: every table but
 ``covariation`` and ``inner_loss``. ``--tables`` scores everything but writes
-only the tables named. IBD keeps only what its figures read and Methods
-quote: `fit_tables`' and ``inner_loss`` (no co-variation; Figure 5 tests it on
-ALAD).
+only the tables named; with ``--fits-only`` it scores only those, and when
+they are all `DATA_FREE` (cccRISE's factors and the fits alone) the dataset
+is never loaded, which IBD's needs over 40 GB for. IBD keeps only what its
+figures read and Methods quote: `fit_tables`' and ``inner_loss`` (no
+co-variation; Figure 5 tests it on ALAD).
 
 Usage:
 
     uv run cccrise-comparator-scores --dataset alad
     uv run cccrise-comparator-scores --dataset ibd --fits-only
+    uv run cccrise-comparator-scores --dataset ibd --fits-only --tables containment
     uv run cccrise-comparator-scores --dataset ibd --tables inner_loss
 """
 
 import argparse
 import copy
-from itertools import permutations
 
 import numpy as np
 import pandas as pd
@@ -110,14 +111,15 @@ def load_fits(spec: DatasetSpec, labelling: str) -> dict[str, xr.Dataset]:
     return fits
 
 
-def containment_rows(fits: list[Components], rng) -> pd.DataFrame:
-    """Every fit's sample and LR columns in every other fit's span."""
+def containment_rows(
+    cccrise: Components, comparators: list[Components], rng
+) -> pd.DataFrame:
+    """cccRISE's LR columns in each comparator fit's LR span."""
     frames = [
-        scores.containment(span.modes[mode], of.modes[mode], N_NULL, rng).assign(
-            Of=of.method, In=span.method, Mode=mode
+        scores.containment(span.modes["lr"], cccrise.modes["lr"], N_NULL, rng).assign(
+            In=span.method
         )
-        for of, span in permutations(fits, 2)
-        for mode in ("sample", "lr")
+        for span in comparators
     ]
     return pd.concat(frames, ignore_index=True)
 
@@ -278,12 +280,9 @@ def covariation_rows(contexts: list[dict], genes: list[set[str]]) -> pd.DataFram
     rows = []
     for context in contexts:
         top = covariation.carrying_pairs(context["lr"])
-        lr = pd.DataFrame(context["lr"])
         rows.append(
             {"Method": context["Method"], "Component": context["Component"]}
             | {
-                "EffectiveLR": scores.effective_number(lr).iloc[0],
-                "TopShare": scores.top_share(lr).iloc[0],
                 "PairsUsed": len(top),
                 "GeneGroups": len(set(covariation.shared_gene_labels(top, genes))),
             }
@@ -379,7 +378,8 @@ def _associations(adata, spec: DatasetSpec) -> pd.DataFrame:
 
 
 def labelling_components(spec: DatasetSpec, cells, labelling: str) -> tuple:
-    """One labelling's fits, their `Components` and cccRISE's."""
+    """One labelling's fits, their `Components` and cccRISE's (its sender and
+    receiver only with `cells`)."""
     fits = load_fits(spec, labelling)
     comparators = [
         scores.comparator_components(method, fit) for method, fit in fits.items()
@@ -394,23 +394,40 @@ def labelling_components(spec: DatasetSpec, cells, labelling: str) -> tuple:
     return fits, comparators, cccrise
 
 
+#: `fit_tables`' tables that read only the fits and cccRISE's factors, never
+#: the dataset or its per-cell weights.
+DATA_FREE = ("containment", "fit_ranks", "start_congruence", "lr_loadings")
+
+
 def fit_tables(
-    spec: DatasetSpec, adata, labelling: str, random_state: int, components
+    spec: DatasetSpec,
+    adata,
+    labelling: str,
+    random_state: int,
+    components,
+    only: list[str] | None = None,
 ) -> dict:
-    """The tables of one labelling that need no tensors, from
-    `labelling_components`' `components` (depth from `adata`'s genes
-    detected)."""
+    """The tables of one labelling that need no tensors, or only those named
+    in `only`, from `labelling_components`' `components` (depth from
+    `adata`'s genes detected). Containment's draws come first from the
+    labelling's generator, so they don't depend on `only`."""
     fits, comparators, cccrise = components
     rng = np.random.default_rng(random_state)
-    return {
-        "containment": containment_rows([cccrise, *comparators], rng),
-        "fit_ranks": fit_rank_rows(fits),
-        "start_congruence": start_congruence_rows(spec, labelling),
-        "lr_loadings": lr_loading_rows([cccrise, *comparators]),
-        "associations": association_rows(spec, fits, comparators),
-        "depth": depth_rows(
+    builders = {
+        "containment": lambda: containment_rows(cccrise, comparators, rng),
+        "fit_ranks": lambda: fit_rank_rows(fits),
+        "start_congruence": lambda: start_congruence_rows(spec, labelling),
+        "lr_loadings": lambda: lr_loading_rows([cccrise, *comparators]),
+        "associations": lambda: association_rows(spec, fits, comparators),
+        "depth": lambda: depth_rows(
             sample_profiles(fits, comparators, cccrise), sample_obs(spec, adata)
         ),
+    }
+    unknown = set(only or ()) - set(builders)
+    if unknown:
+        raise ValueError(f"Not fit tables: {sorted(unknown)}")
+    return {
+        what: build() for what, build in builders.items() if not only or what in only
     }
 
 
@@ -444,6 +461,50 @@ def merged_labellings(tables: dict) -> dict:
     }
 
 
+def _load(spec: DatasetSpec) -> tuple:
+    """The dataset and its cells with cccRISE's per-cell weights."""
+    adata = spec.load()
+    return adata, load_factors_to_anndata(spec.factors_path(), adata=adata)
+
+
+def _fit_only_tables(
+    spec: DatasetSpec, labellings, random_state: int, only: list[str] | None
+) -> dict:
+    """`fit_tables`' tables (or `only` those) of every labelling, loading the
+    dataset only when one of them needs it (not all `DATA_FREE`)."""
+    if only and set(only) <= set(DATA_FREE):
+        adata = cells = None
+    else:
+        adata, cells = _load(spec)
+    return {
+        lab: fit_tables(
+            spec,
+            adata,
+            lab,
+            random_state,
+            labelling_components(spec, cells, lab),
+            only,
+        )
+        for lab in labellings
+    }
+
+
+def _all_tables(spec: DatasetSpec, labellings, random_state: int) -> dict:
+    """Every table of every labelling (`score_labelling`)."""
+    adata, cells = _load(spec)
+    factors = load_factors_netcdf(spec.factors_path())
+    cccrise_context = (
+        covariation.cccrise_tensor(spec.factors_path(), adata, spec.condition_column),
+        *(factors[k].to_numpy().astype(float) for k in ("cp_B", "cp_C", "cp_D")),
+    )
+    return {
+        labelling: score_labelling(
+            spec, adata, cells, labelling, random_state, cccrise_context
+        )
+        for labelling in labellings
+    }
+
+
 def run_comparator_scores(
     spec: DatasetSpec,
     random_state: int,
@@ -457,33 +518,11 @@ def run_comparator_scores(
     git_sha()
     labellings = list(spec.labellings)
     print(f"=== Comparator scores: {spec.label}; {', '.join(labellings)} ===")
-    adata = spec.load()
-    cells = load_factors_to_anndata(spec.factors_path(), adata=adata)
     metadata = _metadata(spec, labellings, random_state)
     if fits_only:
-        tables = {
-            lab: fit_tables(
-                spec,
-                adata,
-                lab,
-                random_state,
-                labelling_components(spec, cells, lab),
-            )
-            for lab in labellings
-        }
-        write_tables(spec, merged_labellings(tables), metadata, command)
-        return
-    factors = load_factors_netcdf(spec.factors_path())
-    cccrise_context = (
-        covariation.cccrise_tensor(spec.factors_path(), adata, spec.condition_column),
-        *(factors[k].to_numpy().astype(float) for k in ("cp_B", "cp_C", "cp_D")),
-    )
-    tables = {
-        labelling: score_labelling(
-            spec, adata, cells, labelling, random_state, cccrise_context
-        )
-        for labelling in labellings
-    }
+        tables = _fit_only_tables(spec, labellings, random_state, only)
+    else:
+        tables = _all_tables(spec, labellings, random_state)
     merged = merged_labellings(tables)
     write_tables(
         spec,
@@ -510,7 +549,6 @@ def _metadata(spec: DatasetSpec, labellings, random_state: int) -> dict:
             "fit_sha256": inputs,
             "n_null": N_NULL,
             "random_state": random_state,
-            "contained": scores.CONTAINED,
         }
     )
 
@@ -539,7 +577,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--tables",
         nargs="+",
         help="Score everything but write only these tables, so a cohort keeps "
-        "only the tables a figure reads.",
+        "only the tables a figure reads; with --fits-only, score only these "
+        "(without loading the dataset when all are DATA_FREE).",
     )
     return parser
 
