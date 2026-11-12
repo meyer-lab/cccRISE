@@ -18,8 +18,8 @@ model file is kept:
 
 beside the comparator scores (`COMPARATOR_SCORES_DIR`), recorded in that
 folder's `provenance.yaml` under its header (`run_comparator_scores.HEADER`).
-The CPD rank is chosen by hand from a sweep on the reduced fit (`run_cpd_rank`
-on its factors), and `--cpd-rank-notes` records why.
+The CPD rank is selected from a CPD rank sweep on the reduced fit
+(`run_cpd_rank` on its factors), by the procedure used for the reported fits.
 
     uv run cccrise-reduced-rise --dataset alad --rise-rank 10 --cp-rank 4
 """
@@ -68,7 +68,6 @@ def run_reduced_rise(
     cp_rank: int,
     command: str,
     random_state: int = 42,
-    cpd_rank_notes: str | None = None,
 ) -> pd.DataFrame:
     """Fit CCC-RISE at `rise_rank` / `cp_rank` and write its LR loadings."""
     git_sha()
@@ -103,7 +102,6 @@ def run_reduced_rise(
                 "rise_rank": reported["rise"]["rank"],
                 "cp_rank": reported["cpd"]["rank"],
             },
-            "cpd_rank_notes": cpd_rank_notes,
             "random_state": random_state,
             "rise_compressed": False,
             "rise_backend": spec.backend or "auto",
@@ -130,12 +128,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rise-rank", type=int, required=True)
     parser.add_argument("--cp-rank", type=int, required=True)
     parser.add_argument("--random-state", type=int, default=42)
-    parser.add_argument(
-        "--cpd-rank-notes",
-        type=str,
-        default=None,
-        help="Why this CPD rank, recorded in the provenance file.",
-    )
     return parser
 
 
@@ -147,7 +139,6 @@ def main(argv: list[str] | None = None) -> None:
         args.cp_rank,
         command,
         args.random_state,
-        args.cpd_rank_notes,
     )
 
 

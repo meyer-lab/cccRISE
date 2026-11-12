@@ -10,8 +10,7 @@ modes are left out and its sample and LR columns are scored on their own.
 
 - `containment`: the share of a unit column's squared norm in another fit's
   column span, ``||P_S c||^2`` (the fraction of a cccRISE component's LR pair
-  loadings a comparator fit reconstructs, Figure 5B), beside the 95th
-  percentile of that share with the span's rows permuted.
+  loadings a comparator fit reconstructs, Figure 5B).
 - `inner_losses`: what Tensor-cell2cell's published construction (only the
   cell types present in every sample) drops from its masked tensor.
 """
@@ -66,24 +65,14 @@ def _projected(span: np.ndarray, columns: np.ndarray) -> np.ndarray:
     return np.sum((basis.T @ unit_columns(columns)) ** 2, axis=0)
 
 
-def containment(
-    span: pd.DataFrame, columns: pd.DataFrame, n_null: int, rng: np.random.Generator
-) -> pd.DataFrame:
+def containment(span: pd.DataFrame, columns: pd.DataFrame) -> pd.DataFrame:
     """Per column of `columns`: its containment in `span`'s column span (rows
-    matched by label), and the 95th percentile of that with `span`'s rows
-    permuted."""
+    matched by label)."""
     span = span.loc[columns.index].to_numpy(float)
-    values = columns.to_numpy(float)
-    observed = _projected(span, values)
-    null = np.array(
-        [_projected(span[rng.permutation(len(span))], values) for _ in range(n_null)]
-    )
-    q95 = np.quantile(null, 0.95, axis=0)
     return pd.DataFrame(
         {
             "Component": columns.columns,
-            "Containment": observed,
-            "NullQ95": q95,
+            "Containment": _projected(span, columns.to_numpy(float)),
         }
     )
 

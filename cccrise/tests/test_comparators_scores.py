@@ -19,13 +19,13 @@ def test_containment_of_a_column_in_its_own_span():
     rng = np.random.default_rng(0)
     span = _frame(rng.standard_normal((30, 3)))
     inside = _frame(span.to_numpy() @ [[1.0], [2.0], [0.5]])
-    table = scores.containment(span, inside.iloc[::-1], 50, rng)
+    table = scores.containment(span, inside.iloc[::-1])
     assert table["Containment"].iloc[0] == pytest.approx(1)
     values = span.to_numpy()
     basis = np.eye(30)[:, [0]]
     residual = basis - values @ np.linalg.lstsq(values, basis, rcond=None)[0]
     orthogonal = _frame(residual)
-    table = scores.containment(span, orthogonal, 50, rng)
+    table = scores.containment(span, orthogonal)
     assert table["Containment"].iloc[0] == pytest.approx(0, abs=1e-12)
 
 
