@@ -495,26 +495,8 @@ files:
     git_sha: e222e9255242ffba90d8f25e5b716cd46a08e87d
     generated: '2026-11-12T12:58:53+00:00'
   reduced_rise_lr_loadings_ibd.parquet:
-    celltype_key: broad_cell_type
-    random_state: 42
-    rise_compressed: false
-    rise_n_iter_max: 300
-    rise_tol: 1.0e-08
-    cp_n_iter_max: 4000
-    cp_tol: 1.0e-12
-    cp_fit_options:
-      init: svd
-      svd: randomized_svd
-      normalize_factors: true
-    cp_device: auto
-    cp_backend: cupy
-    cp_dtype: float32
-    git_sha: 59f209c1f391a3b1d1ba42d184190c9570d1821b-dirty
-    sha256: adfab11e08107f0e933cd110dd3e5489bd47bb31b5fc4d7b0df0a6f3e0e8338d
-    command: 'uv run cccrise-reduced-rise --dataset ibd --rise-rank 30 --cp-rank 5 --cpd-rank-notes
-      ''Chosen by hand from a 10-start CPD sweep (ranks 1-10) on the RISE 30 fit, which had
-      no collinearity cliff (LR pair max |cos| <= 0.29 at every rank, every start agreeing):
-      the last rank before LR pair max |cos| steps from 0.03 to 0.29.'''
+    sha256: 0ec94e37e37379b38ffeb876edcbe7ef5febb30964ca4adc629469263ae1f9f4
+    command: uv run cccrise-reduced-rise --dataset ibd --rise-rank 30 --cp-rank 5
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -529,6 +511,7 @@ files:
       excluded_broad_cell_types:
       - Mesenchymal
     condition_key: sanger_sample_id
+    celltype_key: broad_cell_type
     group_key: inflammation_status
     dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
       and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
@@ -541,18 +524,24 @@ files:
       factors_file: ibd_ti_factors.nc
       rise_rank: 60
       cp_rank: 6
-    cpd_rank_notes: 'Chosen by hand from a 10-start CPD sweep (ranks 1-10) on the RISE 30
-      fit, which had no collinearity cliff (LR pair max |cos| <= 0.29 at every rank, every
-      start agreeing): the last rank before LR pair max |cos| steps from 0.03 to 0.29.'
+    random_state: 42
+    rise_compressed: false
     rise_backend: cpu
-    r2x_rise: 0.026438443552270985
-    r2x_cp: 0.5254932807190733
-    generated: '2026-11-12T01:30:29+00:00'
-    consolidated_post_hoc: '2026-11-11: copied from a scratch run (COMPARATOR_SCORES_DIR redirected)
-      rather than rerun in place, to save its ~1.5 h. Ran uncommitted at 59f209c; first committed
-      in f4d232d, where the runner changed only the header it writes this folder''s file under,
-      and nothing else it calls changed. ALAD''s rerun at f4d232d matched its scratch run
-      (LR column cos^2 >= 0.99999998, |loading diff| <= 1e-4).'
+    rise_n_iter_max: 300
+    rise_tol: 1.0e-08
+    cp_n_iter_max: 4000
+    cp_tol: 1.0e-12
+    cp_fit_options:
+      init: svd
+      svd: randomized_svd
+      normalize_factors: true
+    cp_device: auto
+    cp_backend: cupy
+    cp_dtype: float32
+    r2x_rise: 0.026438443488292385
+    r2x_cp: 0.5254932772055431
+    git_sha: 45b088348643ed7a915734c8d9e07e5925090292
+    generated: '2026-11-12T14:03:07+00:00'
   start_congruence_alad.parquet:
     sha256: c53207cc09edf3a6d2ab2cb546c2cc57a3da516d8a3ecb56bc81e45cc61dc322
     command: uv run cccrise-comparator-scores --dataset alad
@@ -616,9 +605,3 @@ files:
     contained: 0.85
     git_sha: 4268a829d320e212061737e38f721f07c543d84c
     generated: '2026-11-10T22:17:59+00:00'
-
-# Records with `consolidated_post_hoc` were written by their runs as per-file
-# `<stem>.provenance.yaml` sidecars and merged here, on the date it gives,
-# without rerunning: their settings and git_sha are as the runs recorded them,
-# and their `command` was reconstructed from those settings. Running a command
-# replaces its files' records.
