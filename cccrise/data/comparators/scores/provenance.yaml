@@ -31,9 +31,8 @@ files:
       STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
     n_null: 1000
     random_state: 42
-    contained: 0.85
-    git_sha: 74360e82087e045044fec437f9239c9c95c2267b
-    generated: '2026-11-10T22:13:05+00:00'
+    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
+    generated: '2026-11-12T09:49:08+00:00'
   associations_ibd.parquet:
     sha256: c454a849cff68e805fc28e296a5bc4abaef3fd0ad86afc755f12ca5b8643f230
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
@@ -72,7 +71,7 @@ files:
     git_sha: 4268a829d320e212061737e38f721f07c543d84c
     generated: '2026-11-10T22:17:59+00:00'
   containment_alad.parquet:
-    sha256: f054ba79e99a6e2588b83847d7902cfd5be9c25fd759215f488ccbbb349825ed
+    sha256: d346b57c87a4e04915730b7f44c7d273fff89210f4a8548be306e50f6a8ac2ce
     command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -95,12 +94,11 @@ files:
       STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
     n_null: 1000
     random_state: 42
-    contained: 0.85
-    git_sha: 74360e82087e045044fec437f9239c9c95c2267b
-    generated: '2026-11-10T22:13:05+00:00'
+    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
+    generated: '2026-11-12T09:49:08+00:00'
   containment_ibd.parquet:
-    sha256: cc5d63db43ae1f0cf0651945467728f4165c83578eeeaeb7ff3ca8ccc9e65c22
-    command: uv run cccrise-comparator-scores --dataset ibd --fits-only
+    sha256: 5571d3505d02723183a39f2e633be993315a11a9f43c0126f2e8f47f70883cb4
+    command: uv run cccrise-comparator-scores --dataset ibd --fits-only --tables containment
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -132,12 +130,11 @@ files:
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
     n_null: 1000
     random_state: 42
-    contained: 0.85
-    git_sha: 4268a829d320e212061737e38f721f07c543d84c
-    generated: '2026-11-10T22:17:59+00:00'
+    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa-dirty
+    generated: '2026-11-12T09:52:05+00:00'
   covariation_alad.parquet:
-    sha256: 9992fd23ba5b4148c24fe0e49a8aefd6f614c5a8883648cc53112d38ac64c7af
-    command: uv run cccrise-comparator-scores --dataset alad --tables covariation
+    sha256: 44fcd9accc865001dd44e8f08f47b77097ab391ffd89e3be445b5d375712b962
+    command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -159,9 +156,8 @@ files:
       STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
     n_null: 1000
     random_state: 42
-    contained: 0.85
-    git_sha: e593e09f2c99d4fb1319ce88d6a87a656875de6c
-    generated: '2026-11-12T07:51:06+00:00'
+    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
+    generated: '2026-11-12T09:49:08+00:00'
   depth_alad.parquet:
     sha256: c93bf0c758abad9666bc0933f85f4909eeb23dc489f5aaf6f8afc36126293d3b
     command: uv run cccrise-comparator-scores --dataset alad
@@ -186,9 +182,8 @@ files:
       STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
     n_null: 1000
     random_state: 42
-    contained: 0.85
-    git_sha: 74360e82087e045044fec437f9239c9c95c2267b
-    generated: '2026-11-10T22:13:05+00:00'
+    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
+    generated: '2026-11-12T09:49:08+00:00'
   depth_ibd.parquet:
     sha256: ce650f62429162ec2106154c8c59896229bd5067bf50fec84e04828b9c8a18c3
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
@@ -250,9 +245,8 @@ files:
       STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
     n_null: 1000
     random_state: 42
-    contained: 0.85
-    git_sha: 74360e82087e045044fec437f9239c9c95c2267b
-    generated: '2026-11-10T22:13:05+00:00'
+    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
+    generated: '2026-11-12T09:49:08+00:00'
   fit_ranks_ibd.parquet:
     sha256: 193b54e446b960ead05207890cb18096e9f78ae4fb81168f31ca6c7f657ff664
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
@@ -314,9 +308,8 @@ files:
       STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
     n_null: 1000
     random_state: 42
-    contained: 0.85
-    git_sha: 74360e82087e045044fec437f9239c9c95c2267b
-    generated: '2026-11-10T22:13:05+00:00'
+    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
+    generated: '2026-11-12T09:49:08+00:00'
   inner_loss_ibd.parquet:
     sha256: 876220b41cc142007f21845c33208a60cad99ebee57732f38f012c5777a62713
     command: uv run cccrise-comparator-scores --dataset ibd
@@ -380,9 +373,8 @@ files:
       STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
     n_null: 1000
     random_state: 42
-    contained: 0.85
-    git_sha: 74360e82087e045044fec437f9239c9c95c2267b
-    generated: '2026-11-10T22:13:05+00:00'
+    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
+    generated: '2026-11-12T09:49:08+00:00'
   lr_loadings_ibd.parquet:
     sha256: 5d0b26647e04fec4a339faa16089c91ffdc260dccdfe56af4663094410fc784c
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
@@ -593,9 +585,8 @@ files:
       STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
     n_null: 1000
     random_state: 42
-    contained: 0.85
-    git_sha: 74360e82087e045044fec437f9239c9c95c2267b
-    generated: '2026-11-10T22:13:05+00:00'
+    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
+    generated: '2026-11-12T09:49:08+00:00'
   start_congruence_ibd.parquet:
     sha256: 5452fc332acf48e73b054a6fa1e5dbf9f924e611048d2832f0dde52ab7e96ff3
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
