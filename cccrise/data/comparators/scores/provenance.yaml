@@ -457,10 +457,8 @@ files:
     git_sha: 8b10f515f7150e64f9219a55c2f0b7b881188ad1
     generated: '2026-11-12T12:58:07+00:00'
   reduced_rise_lr_loadings_alad.parquet:
-    sha256: 1dd9e7b287f4c397a7b24f984dfdc4b495f59c520bfadcde949bbe522bf3663d
-    command: uv run cccrise-reduced-rise --dataset alad --rise-rank 10 --cp-rank 4 --cpd-rank-notes
-      'Chosen by hand from a 10-start CPD sweep (ranks 1-10) on the RISE 10 fit; the largest
-      rank with no start collinear in the LR pair mode was 8.'
+    sha256: 9ff998458a93f4717280db2ba5c1d8f223a2654be2eef1e51278886d24e521da
+    command: uv run cccrise-reduced-rise --dataset alad --rise-rank 10 --cp-rank 4
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -478,8 +476,6 @@ files:
       factors_file: bal_alad_factors.nc
       rise_rank: 17
       cp_rank: 5
-    cpd_rank_notes: Chosen by hand from a 10-start CPD sweep (ranks 1-10) on the RISE 10 fit;
-      the largest rank with no start collinear in the LR pair mode was 8.
     random_state: 42
     rise_compressed: false
     rise_backend: cupy
@@ -494,10 +490,10 @@ files:
     cp_device: auto
     cp_backend: cupy
     cp_dtype: float32
-    r2x_rise: 0.02836240008254709
-    r2x_cp: 0.5295499108923396
-    git_sha: f4d232d962f12ea44219d0332544f9e96e3fe857
-    generated: '2026-11-12T06:00:19+00:00'
+    r2x_rise: 0.028362457450302414
+    r2x_cp: 0.5295517860964609
+    git_sha: e222e9255242ffba90d8f25e5b716cd46a08e87d
+    generated: '2026-11-12T12:58:53+00:00'
   reduced_rise_lr_loadings_ibd.parquet:
     celltype_key: broad_cell_type
     random_state: 42
