@@ -1,7 +1,8 @@
 """Figure 5C: ALAD C4's carrying pairs in the component and in its related
-columns of each comparator (PB, STAC; coarse and fine apart), with each
-comparator's best combination of its columns (Σ) (`_split`). ALAD C3 is in the
-split supplement."""
+columns of each comparator (PB, STAC; coarse and fine apart; C4 has only
+STAC's), with a fit's best combination of its columns (Σ) where it shows two
+or more (`_split`; C4's show one each, so no Σ). ALAD C3 is in the split
+supplement."""
 
 from .. import common
 from . import _split

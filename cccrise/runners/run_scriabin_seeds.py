@@ -22,7 +22,8 @@ Inputs (git-ignored, under ``rcheck/out/``): the R runs, one folder per seed
 holding each sample's ``<sample>.json`` (its modules and cell count) and
 ``.rds``; the refits, ``cccrise/<dataset>/s1/seed<seed>.npz`` (``cp_D``,
 ``lr_symbols``). PR #275 made both (``rcheck/faithful/ip_runs.R``,
-``rcheck/shared/cccrise_refits.py``).
+``rcheck/shared/cccrise_refits.py``, on its branch, not this one). The refits
+are end-to-end (RISE and CP) with compressed RISE at the reported ranks.
 
     uv run cccrise-scriabin-seeds --dataset alad
 """

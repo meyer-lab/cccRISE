@@ -18,8 +18,8 @@ model file is kept:
 
 beside the comparator scores (`COMPARATOR_SCORES_DIR`), recorded in that
 folder's `provenance.yaml` under its header (`run_comparator_scores.HEADER`).
-The CPD rank is selected from a CPD rank sweep on the reduced fit
-(`run_cpd_rank` on its factors), by the procedure used for the reported fits.
+The CPD rank is selected by CCC-RISE's rank selection (`run_cpd_rank`'s
+seeded-start sweep and its diagnostics) on the reduced fit.
 
     uv run cccrise-reduced-rise --dataset alad --rise-rank 10 --cp-rank 4
 """

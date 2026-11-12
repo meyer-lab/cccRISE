@@ -1,5 +1,5 @@
 """Whether a component's LR pairs move together across conditions (Figure
-3F, generalized to every method in Figure 5E).
+3F, generalized to every method in Figure 5D).
 
 Each LR pair is scored per condition in the component's own sender/receiver
 context (`context_scores`: the communication tensor's slice for that pair,

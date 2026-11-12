@@ -189,7 +189,7 @@ def _associations(ax, dataset: str, columns: pd.DataFrame) -> None:
 METHODS = ("PB", "STAC")
 FITS = [(m, lab) for m in METHODS for lab in LABELLINGS]
 #: Columns placing less than this share of their squared loading on one
-#: CCC-RISE component's carrying pairs are drawn in B and C.
+#: CCC-RISE component's carrying pairs are drawn in C.
 MISSED = 0.5
 #: Gap between fits' bars, in bars.
 FIT_GAP = 1.2
@@ -310,8 +310,8 @@ def missed(dataset: str) -> pd.DataFrame:
 
 
 def significant(dataset: str) -> set[str]:
-    """Names of B's columns whose strongest association (of the association
-    panel's) has q < `common.SIG_ALPHA`."""
+    """Names of C's columns (those below `MISSED`) whose strongest association
+    (of the association panel's) has q < `common.SIG_ALPHA`."""
     t = load("associations", dataset=dataset)
     t = t[t["Association"].isin(ASSOCIATION_NAMES) & (t["PAdj"] < common.SIG_ALPHA)]
     hits = missed(dataset).merge(
@@ -451,8 +451,7 @@ def contents(ax, dataset: str) -> None:
 
 
 def _size_key(ax) -> None:
-    """The dot sizes in a black-outlined box at the grid's top right, as the
-    branch's missed supplement draws its key (`_missed._key`)."""
+    """The dot sizes in a black-outlined box at the grid's top right."""
     w, h = 26 * style.MM, 9 * style.MM
     width, height = ax.bbox.width / ax.figure.dpi, ax.bbox.height / ax.figure.dpi
     key = ax.inset_axes(

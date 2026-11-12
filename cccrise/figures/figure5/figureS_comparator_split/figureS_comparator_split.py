@@ -3,9 +3,8 @@ components. Each component's best single comparator LR column against how
 many LR pairs carry it (A); ALAD C3's carrying pairs in its related columns
 of each comparator (B) and their co-variation (C); IBD C1 and C5 together
 (D), which share related columns, and the cosine between C1 and C5 in each
-CP mode (E). IBD has no co-variation panel: merging pairs that share a gene
-(as Figure 3F) leaves C1 and C5 two and three gene groups, too few to
-test."""
+CP mode (E). IBD has no co-variation panel: the co-variation test was run in
+ALAD only."""
 
 from ... import common, style
 from . import (

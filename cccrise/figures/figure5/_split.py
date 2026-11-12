@@ -10,13 +10,13 @@ A column is shown with a component (`related_columns`) when it bears on it
 from either side:
 
 - it rebuilds at least `REBUILT` of the component (its part of the
-  containment times the containment), or
+  containment, b_j (u_j . c)), or
 - at least `ON_COMPONENT` of the column's own squared loading sits on the
   component's carrying pairs (the column is about the component, even when it
   holds only a piece of it, as a column of one of its pairs).
 
 A fit showing two or more columns also draws the sum, P c itself (`SUM`),
-outlined and labelled with the containment."""
+outlined in black."""
 
 from dataclasses import dataclass, field
 from functools import cache
@@ -124,7 +124,7 @@ def _fit_name(method: str, lab: str) -> str:
     return f"{method} {lab[0].upper()}"
 
 
-#: Signed panels' colormap, and the Σ outline (red, black on the diverging map).
+#: Signed panels' colormap.
 DIVERGING = style.CMAPS["diverging"]
 SIGNED_LABEL = "Loading / max |loading|"
 
@@ -407,9 +407,9 @@ def _lollipop(ax, r) -> None:
 
 def _covariation_key(ax, loc: str) -> None:
     """The nulls' ticks along the top row, filled and hollow points (as Figure
-    5E keys them) along the bottom, at `loc` inside the axes."""
+    5G keys them) along the bottom, at `loc` inside the axes."""
     ticks = [Line2D([], [], **tick) for tick in NULL_TICKS.values()]
-    point = {"ls": "", "marker": "o", "ms": 3.2, "mec": "0.4"}
+    point: dict[str, Any] = {"ls": "", "marker": "o", "ms": 3.2, "mec": "0.4"}
     filled = Line2D([], [], mfc="0.4", label=f"q < {common.SIG_ALPHA}", **point)
     hollow = Line2D([], [], mfc="white", label=f"q ≥ {common.SIG_ALPHA}", **point)
     ax.legend(

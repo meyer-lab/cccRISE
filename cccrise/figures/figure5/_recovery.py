@@ -15,7 +15,7 @@ from ._common import DATASET_COLORS, DATASET_LABELS
 from ._programs import FITS, best_columns
 
 HEAT = style.CMAPS["weight"]
-#: Red marks tying panels to the missed supplements (`_missed`, `_coarse_fine`).
+#: Red marks tying panels to the missed supplements (`_missed`).
 LINK = "#d00000"
 #: Gap between a heatmap's blocks of columns, in columns.
 BLOCK_GAP = 0.3

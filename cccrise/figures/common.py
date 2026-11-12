@@ -800,26 +800,6 @@ def rank_axis(ax: plt.Axes, ranks) -> None:
     ax.set_xlabel("CPD rank")
 
 
-def kneedle_elbow(x, y) -> int:
-    """Elbow of a convex, decreasing curve by offline Kneedle (Satopaa et al.
-    2011, sensitivity 1, as `kneed.KneeLocator(curve="convex",
-    direction="decreasing")`)."""
-    x, y = np.asarray(x, float), np.asarray(y, float)
-    xn, yn = ((v - v.min()) / (v.max() - v.min()) for v in (x, y))
-    diff = (yn.max() - yn) - xn
-    maxima = [
-        i
-        for i in range(1, x.size - 1)
-        if diff[i] >= diff[i - 1] and diff[i] >= diff[i + 1]
-    ]
-    step = float(np.abs(np.diff(xn)).mean())
-    for i, m in enumerate(maxima):
-        stop = maxima[i + 1] if i + 1 < len(maxima) else x.size
-        if np.any(diff[m + 1 : stop] < diff[m] - step):
-            return int(x[m])
-    return int(x[int(np.argmax(diff))])
-
-
 def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
     """`plot_r2x_sweep` of `dataset`'s CP sweep."""
     plot_r2x_sweep(ax, load_cpd_rank(dataset), rank)

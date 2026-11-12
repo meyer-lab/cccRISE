@@ -92,8 +92,7 @@ def staccato(
     5. Reconstructs the covariate-driven fitted tensor by mode-multiplying
        the coefficient tensor by the original (unrotated) covariate matrices.
 
-    Only mode 1 (typically samples) accepts a supplied covariate here, matching
-    how this project's R harness called STACCato (``run_staccato.R``): modes
+    Only mode 1 (typically samples) accepts a supplied covariate here: modes
     2-4 (LR-pair, sender, receiver) are always unsupervised (``X_k = I``), so
     ``core_shape[1:]`` behaves like an ordinary Tucker rank on those modes.
 
@@ -101,32 +100,11 @@ def staccato(
     ---------------------------
     STACCato is Tucker, not CP: its four factor matrices don't share a rank
     and aren't tied together component-by-component the way cccRISE's CP
-    factors (``A``/``B``/``C``/``D``, see ``ccc_rise.py``) are. Reviewer #1
-    specifically asked for an ALAD-status AUC comparison, not a factor-level
-    concordance score, so the two intended comparisons are:
-
-    1. **Downstream ALAD-status AUC (the reviewer's ask).** Feed this
-       function's per-sample mode-1 scores -- ``covariate @ result.W1`` when
-       ``covariate`` was supplied, or ``result.W1`` directly when it wasn't
-       -- into the same ANOVA/association pipeline already used to
-       score cccRISE's condition factor ``A`` (see ``anova.py``), and
-       report both effect sizes side by side.
-    2. **Per-mode factor congruence (optional, for the concordance figure).**
-       Build the input tensor the same way for both methods -- run
-       ``ccc_rise.calc_communication_score_pseudobulk`` /
-       ``pseudobulk_cp_decomposition`` on the same exported dataset used
-       here, so both sides decompose an (as close as possible) identical
-       sender x receiver x LR-pair x sample/condition tensor. Reindex
-       ``W2``/``W3``/``W4`` (LR-pair, sender, receiver -- already
-       label-indexed via ``lr_names``/``sender_names``/``receiver_names``)
-       against cccRISE's ``D``/``B``/``C`` on shared labels, compute a
-       cosine/Tucker congruence-coefficient matrix per mode between the two
-       methods' columns, and solve the assignment with
-       ``scipy.optimize.linear_sum_assignment`` to report each STACCato
-       component's best-matching cccRISE component. Do this per mode
-       independently -- Tucker's core tensor mixes components across modes,
-       so there is no single shared component index to compare like there is
-       between two CP decompositions.
+    factors are. Figure 5 therefore compares its LR pair factor's columns
+    (``W2``) with cccRISE's LR pair loadings (cos^2 and span containment,
+    ``scores.containment``), and gives each LR column sample, sender and
+    receiver profiles from the leading vector of its core slice
+    (``scores.tucker_column_profiles``).
 
     Parameters
     ----------

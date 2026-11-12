@@ -186,30 +186,43 @@ In sum, CCC-RISE components 3 and 4 described sender cells on a continuum betwee
 ::: {#fig-5}
 ![](figures/figure5/figure5.svg){width="6.5in"}
 
-**CCC-RISE resolves CCC programs that pseudobulk methods reach only in part.** PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato; C and F, coarse and fine labels.
-LR columns are named by method (P, T, S) and number; a component's top LR pairs are the fewest that carry 90% of its squared LR pair loading (at most 15).
-({{< panel 5 cos2-grid >}}) Largest squared cosine (cos^2^) between each ALAD CCC-RISE component's LR pair loadings and one LR column of each comparator fit (IBD in {{< fig comparator-ibd-and-depth ibd-best >}}).
-({{< panel 5 span-containment >}}) Fraction of each ALAD CCC-RISE component's LR pair loadings reconstructed by the best combination of all LR columns of each comparator fit (the squared norm of its unit LR pair loading's projection onto the fit's LR column span; IBD in {{< fig comparator-ibd-and-depth ibd-containment >}}).
-({{< panel 5 pair-columns >}}) Top LR pairs of ALAD component 4 in the component and in the STACCato columns related to it, each column's absolute loading relative to its largest.
-A column is related to a component when it reconstructs at least 10% of the component or places at least 25% of its own squared loading on the component's top LR pairs.
-({{< panel 5 program-covariation >}}) Mean pairwise Spearman correlation across conditions of the top LR pairs of ALAD component 4 and of the columns in ({{< panel 5 pair-columns >}}), LR pairs sharing a gene merged into one; dashed and solid ticks mark the 95th percentiles of 2,000 random and 2,000 expression-matched draws of LR pairs.
-Filled: q < 0.05 against the expression-matched draws, one-sided empirical test, Benjamini--Hochberg corrected across the component and its columns.
-({{< panel 5 labels-alad labels-ibd >}}) LR columns each method keeps and loses when cells are described more finely, ALAD (left) and IBD (right): the coarse (C) columns of pseudobulk CPD and STACCato above their fine (F) ones, and CCC-RISE's components at a lower RISE rank (10 in ALAD, 30 in IBD) above the reported fit's (17 and 60).
-Lines join columns whose LR pair cos^2^ is at least 0.09, wider for larger cos^2^.
-NEGR1--NEGR1 is the single top LR pair of the IBD RISE rank 30 component that matches no reported component.
-({{< panel 5 nichenet >}}) Ligand-weighted NicheNet target score of each CCC-RISE component and pseudobulk CPD and STACCato LR column, above its mean over 1,000 rankings with the high and low receiver cells' labels shuffled.
-High receivers were the top 10% of cells by receiver weight within the component's receiver cell types for CCC-RISE, and every cell of the cell types loading at least 0.4 of the column's largest receiver loading for comparators; low receivers were the bottom 10% of cells (CCC-RISE) or the lowest-loading cell types up to 10% of cells (comparators).
-Filled and named: q < 0.05, one-sided empirical test, Benjamini--Hochberg corrected across the components or columns of each fit; Tensor-cell2cell is not shown ({{< fig comparator-ibd-and-depth depth >}}).
-({{< panel 5 flow-alad >}}) BTC--EGFR in STACCato's S10 (fine) and in ALAD component 5 among the 288 cells labeled lung epithelium.
-Bars show each population's fraction of the label's cells: 61 ciliated-like sender and 53 basal/secretory-like receiver cells ({{< fig 2 sender-receiver-strata >}}'s 67 and 58 include 6 and 5 cells of other labels).
-({{< panel 5 flow-ibd >}}) PYY--NPY1R and GCG--GLP1R in STACCato's S5 and S4 (fine) and in IBD components 3 and 4.
-Bars show fractions of each cell type's cells: the 3,058 EE cells in villus-like (510), mixed (346), crypt-like (413), and other (1,789) groups, as in {{< fig 4 hormone-angle-hist >}}, and the 546 of 972 EC and 1,268 of 4,712 tuft cells past the receiver cutoff.
-Sender and receiver sides have their own scales, and STACCato's band widths are schematic.
-In ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}), below threshold marks a cell type's cells outside the CCC-RISE populations, whose per-cell weight is under 0.3 of its largest value.
-({{< panel 5 niches-fraction >}}) Fraction NICHES+ of every CCC-RISE sender (S) and receiver (R) population in ALAD and IBD against the fraction predicted by cell type, each population cell at the NICHES+ rate of its fine cell type in its own condition; the dashed line marks equality.
-A cell is NICHES+ when it expresses at least one of the component's top ligands or receptors and the matching partner is expressed in its condition.
-Labeled: the populations of the components in ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}).
-Two-sided Wilcoxon signed-rank test over all 22 populations, p = 5 × 10^−7^.
+**CCC-RISE resolves CCC programs that pseudobulk methods recover only in part.** PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato; C and F, coarse and fine cell-type labels.
+LR columns are named by method (P, T, S) and number.
+A component's or column's top LR pairs are the fewest that carry 90% of its squared LR pair loading.
+({{< panel 5 cos2-grid >}}) Largest squared cosine (cos^2^) between the LR pair loadings of each ALAD CCC-RISE component (n = 5) and any single LR column of each comparator fit.
+({{< panel 5 span-containment >}}) Fraction of each ALAD CCC-RISE component's LR pair loadings reconstructed by the best linear combination of all LR columns of each comparator fit.
+({{< panel 5 pair-columns >}}) Top LR pairs of ALAD component 4 (n = 6) in the component and in its related comparator LR columns.
+Each column's absolute loading is shown relative to its largest.
+A comparator LR column is related to a component when it reconstructs at least 10% of the component or places at least 25% of its own squared loading on the component's top LR pairs.
+For component 4, these are STAC's S12 (coarse) and S14 (fine).
+({{< panel 5 program-covariation >}}) Mean pairwise Spearman correlation across samples (n = 47) among the top LR pairs of ALAD component 4 and of each column in ({{< panel 5 pair-columns >}}), each over its own top LR pairs.
+LR pairs sharing a gene were merged into one group: component 4 has 6 LR pairs in 4 groups, S12 has 7 in 6, and S14 has 11 in 8.
+Dashed and solid ticks mark the 95th percentiles of random and expression-matched draws of as many LR pairs.
+Filled points have q < 0.05.
+The test is one-sided and empirical, against the expression-matched draws, with Benjamini--Hochberg correction across the three tests.
+({{< panel 5 labels-alad labels-ibd >}}) LR columns that each method keeps and loses when cells are described more finely, in ALAD ({{< panel 5 labels-alad >}}) and IBD ({{< panel 5 labels-ibd >}}).
+For PB and STAC, the coarse LR columns sit above the fine ones.
+For CCC-RISE, the components of a refit at a lower RISE rank sit above those of the reported fit.
+Lines join columns whose LR pair cos^2^ is at least 0.09, and wider lines mean larger cos^2^.
+NEGR1--NEGR1 is the single top LR pair of the IBD rank-30 component.
+({{< panel 5 nichenet >}}) NicheNet target score of each CCC-RISE component and each PB and STAC LR column, minus its mean over rankings in which the labels of the high and low receiver cells were shuffled.
+Filled and named points have q < 0.05.
+The test is one-sided and empirical, against the shuffled rankings, with Benjamini--Hochberg correction across the components or columns of each fit.
+({{< panel 5 flow-alad >}}) BTC--EGFR in STAC's fine column S10 and in ALAD component 5, among the 288 cells with the fine label epithelial cells.
+Bars show each population's fraction of the label's cells: 61 ciliated-like sender cells and 53 basal/secretory-like receiver cells, as in {{< fig 2 sender-receiver-strata >}}.
+({{< panel 5 flow-ibd >}}) PYY--NPY1R and GCG--GLP1R in STAC's fine columns S5 and S4, and in IBD components 3 and 4.
+Bars show fractions of each cell type's cells.
+The 3,058 EE cells fall into villus-like (510), mixed (346), crypt-like (413) and other (1,789) groups, as in {{< fig 4 hormone-angle-hist >}}.
+Sender and receiver sides are scaled separately.
+STAC's band widths are schematic, since it gives one value per label.
+In ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}), "below threshold" marks a cell type's cells that lie outside the CCC-RISE populations, because their per-cell weight is under 0.3 of its largest value.
+({{< panel 5 niches-fraction >}}) Fraction of NICHES+ cells in each CCC-RISE sender (S) and receiver (R) population, against the fraction predicted by cell type.
+n = 22 populations: 10 in ALAD and 12 in IBD.
+The prediction takes each cell of the population at the NICHES+ rate of its fine cell type in its own sample.
+A cell is NICHES+ when its NICHES score, summed over the component's top LR pairs, is non-zero.
+The dashed line marks equality.
+The labeled points are the populations shown in ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}).
+Two-sided Wilcoxon signed-rank test, paired over the 22 populations: p = 5 × 10^−7^.
 :::
 
 To identify CCC patterns that only single-cell resolution reveals, we compared CCC-RISE with three comparator methods that each build a pseudobulked communication tensor.
@@ -241,10 +254,15 @@ Component 1 represented an IL-1 brake through the decoy receptor IL1R2 while com
 STACCato's fine fit mixed the two programs across columns S6 and S3, so recovering either program required combining both columns ({{< fig comparator-split ibd-c1c5-columns >}}).
 Concisely, CCC-RISE revealed the coordination of LR pairs that comparators kept apart and separated opposing arms of one immune program where comparators mixed them.
 
-Of the comparator columns that placed less than half their squared loading on any one CCC-RISE component's top LR pairs, five were disease-associated and carried LR pairs CCC-RISE lacked ({{< fig comparator-missed-alad share associations >}}; {{< fig comparator-missed-ibd share associations >}}).
+Among comparator columns that placed less than half of their squared loading on the top LR pairs of any single CCC-RISE component, five were disease-associated and carried LR pairs that CCC-RISE lacked ({{< fig comparator-missed-alad share associations >}}; {{< fig comparator-missed-ibd share associations >}}).
 In ALAD, STACCato's coarse column S11 carried AREG–EGFR and pseudobulk CPD's fine column P5 carried TNFSF11–TNFRSF11A/B ({{< fig comparator-missed-alad contents >}}).
 In IBD, STACCato's coarse column S5, fine column S8, and pseudobulk CPD's coarse column P3 joined CXCR1/CXCR2 ligands\ [@doi:10.1038/s41591-021-01520-5] with SAA1–FPR2\ [@doi:10.1084/jem.189.2.395] in a neutrophil-recruitment axis ({{< fig comparator-missed-ibd contents >}}).
-IBD component 5 covered this axis only partly with differing CXCR1/CXCR2 ligands.
+IBD component 5 covered this signaling only partly, through different CXCR1/CXCR2 ligands.
+Intriguingly, neither ALAD S11 nor IBD P3 had a counterpart in the same method's fine fit ({{< fig 5 labels-alad labels-ibd >}}).
+Indeed, across both datasets, 12 of the 31 coarse STACCato and pseudobulk CPD columns had no fine counterpart.
+To test whether CCC-RISE showed a similar granularity dependence, we refit ALAD and IBD at a reduced RISE rank and compared each lower-rank component with the higher-rank fit ({{< fig 5 labels-alad labels-ibd >}}).
+Every lower-rank component carried over except one IBD component loaded entirely on a single homophilic adhesion pair, and the higher-rank fit added new components alongside them.
+Thus, although comparators captured disease-associated signalling that CCC-RISE missed in part, comparator columns were largely sensitive to how cells were exactly labelled, whereas adding eigen-states in CCC-RISE both conserved components and added new ones.
 
 To assess whether single-cell resolution better identified the receivers responding to prioritized ligands, we applied the ligand-weighted NicheNet target score to each comparator ({{< fig 5 nichenet >}}).
 Because comparators assign one receiver loading per cell type, we contrasted all cells of the most highly loaded cell types against all cells of the least loaded.

@@ -11,8 +11,8 @@ tested against rankings with the two groups' labels shuffled among their cells
   cell types against the bottom cells of the dataset.
 - **Comparators:** a column has one receiver value per label, so no cells can be
   taken within a label. High is every cell of the labels at or above
-  `nichenet.rel_cutoff` of the largest, low the lowest labels up to `TOP_PERC`
-  percent of cells. A column whose labels all clear the cutoff has no low group
+  `REL_CUTOFF` of the largest, low the lowest labels, added until they hold at
+  least `TOP_PERC` percent of cells. A column whose labels all clear the cutoff has no low group
   and names no receiver; it takes the top labels up to `TOP_PERC` percent
   instead (``Rule`` "fallback").
 

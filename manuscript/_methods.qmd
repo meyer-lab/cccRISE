@@ -314,7 +314,7 @@ The rank came from Kneedle rather than by eye and we kept the best of the starts
 
 **STACCato.** Entries were pseudobulk products with the default filters of LIANA, as in the authors' pipeline\ [@doi:10.1016/j.ajhg.2026.05.005; @doi:10.1038/s41467-022-30755-0].
 We kept every cell type, where the authors keep those present in at least 80% of samples, and set absent entries to zero.
-An unsupervised Tucker decomposition, without a sample covariate, was fit with a Python re-implementation of the authors' algorithm, using the default stopping settings of the authors' paper and code.
+An unsupervised Tucker decomposition, without a sample covariate, was fit using the default stopping settings of the authors' paper and code.
 On the same input tensors, the re-implementation matched the authors' R scripts numerically.
 Each mode kept the components with more than 1% of the eigenvalue share of its unfolding, giving 16 and 14 LR columns on ALAD and 5 and 12 on IBD.
 

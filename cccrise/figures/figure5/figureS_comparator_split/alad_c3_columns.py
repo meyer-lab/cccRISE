@@ -1,5 +1,5 @@
-"""ALAD C3's carrying pairs in the component and in its carrying
-columns of every comparator (`changes._split`)."""
+"""ALAD C3's carrying pairs in the component and in its related columns of
+each PB and STAC fit, with each fit's best combination (Σ) (`_split`)."""
 
 from ... import common
 from .. import _split

@@ -1,7 +1,7 @@
 """Supplementary figure: the single-cell comparators. Why Scriabin is not one:
 its interaction programs do not reproduce between seeds, CCC-RISE's
 components' carrying LR pairs do (A). CCC-RISE's populations for NICHES
-(Figure 5H): each component's per-cell sender vs. receiver weight with its
+(Figure 5J): each component's per-cell sender vs. receiver weight with its
 sender, receiver and both populations, ALAD (B) and IBD (C); and each
 population's fraction NICHES-positive minus what cell type predicts (within
 sample) across tau, ALAD (D) and IBD (E)."""

@@ -11,7 +11,7 @@ recorded in its folder's ``provenance.yaml`` (`provenance.record_output`):
 - **pb** (pseudobulk CPD): ``rank_selection/pb_rank_*`` and ``pb_start_fms_*``,
   cccRISE's own sweep (`run_cpd_rank.start_sweep`: seeded SVD starts per rank,
   up to the tensor's smallest mode or the dataset and labelling's
-  `methods.PB_UPPER_RANKS`). The rank is chosen from these by hand;
+  `methods.PB_UPPER_RANKS`).
   ``--pb-rank <labelling>=<rank>`` writes the best start (highest fit R2X)
   of the minimum most of that rank's saved starts reach (f_max;
   `rank_selection.distinct_minima`) as ``fits/pb_*``.
