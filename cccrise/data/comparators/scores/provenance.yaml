@@ -413,8 +413,8 @@ files:
     git_sha: 4268a829d320e212061737e38f721f07c543d84c
     generated: '2026-11-10T22:17:59+00:00'
   nichenet_alad.parquet:
-    sha256: d15d7c4baea9e65ae223ca2acfeabb3510986c5d7cb55c195eb07298764240d6
-    command: uv run cccrise-comparator-nichenet --dataset alad --n-jobs 12
+    sha256: b3ed900c656c2e7e1450290cb2f45579661fb06a198f9bf371b49ddab6138115
+    command: uv run cccrise-comparator-nichenet --dataset alad --n-jobs 8
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -429,8 +429,8 @@ files:
     top_perc: 10.0
     rel_cutoff: 0.4
     n_shuffle: 1000
-    git_sha: e7a4b74e472007d97be29ed21774bdae2698be65
-    generated: '2026-11-06T08:32:57+00:00'
+    git_sha: 97e29c24dd5287c13cc81c4c873fe04eeef82df1
+    generated: '2026-11-12T10:15:55+00:00'
   nichenet_ibd.parquet:
     sha256: f150096a043fc09c904e6c9dd032b1fcdfac4e15a76f4f017fdad44f02ed8bcf
     command: uv run cccrise-comparator-nichenet --dataset ibd --n-jobs 3
