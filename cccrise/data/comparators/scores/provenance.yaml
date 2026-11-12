@@ -432,7 +432,7 @@ files:
     git_sha: 97e29c24dd5287c13cc81c4c873fe04eeef82df1
     generated: '2026-11-12T10:15:55+00:00'
   nichenet_ibd.parquet:
-    sha256: f150096a043fc09c904e6c9dd032b1fcdfac4e15a76f4f017fdad44f02ed8bcf
+    sha256: 5369ff2d8c4acd39624819f74294a82c781111ffb362521abf8717a69c8fdac3
     command: uv run cccrise-comparator-nichenet --dataset ibd --n-jobs 3
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -458,8 +458,8 @@ files:
     top_perc: 10.0
     rel_cutoff: 0.4
     n_shuffle: 1000
-    git_sha: 24ea85ca75f8c2bc3f08c3489ed99fde43b79f23
-    generated: '2026-11-10T13:13:08+00:00'
+    git_sha: 8b10f515f7150e64f9219a55c2f0b7b881188ad1
+    generated: '2026-11-12T12:58:07+00:00'
   reduced_rise_lr_loadings_alad.parquet:
     sha256: 1dd9e7b287f4c397a7b24f984dfdc4b495f59c520bfadcde949bbe522bf3663d
     command: uv run cccrise-reduced-rise --dataset alad --rise-rank 10 --cp-rank 4 --cpd-rank-notes
