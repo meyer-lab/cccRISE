@@ -376,11 +376,12 @@ STACCato has one value per label, so its bands span the whole label.
 ### Batch, Patient, and Technical Variation
 
 RISE does not explicitly remove batch effects, but its structure isolates sample-level variation.
-Each sample is projected by its own projection matrix onto eigen-states shared across samples, so variation in how strongly a sample expresses a program is carried by its condition loading.
+Each sample is projected by its own projection matrix onto eigen-states shared across samples, so variation in how strongly a sample expresses a program is carried by its condition loading rather than distorting the shared eigen-state definitions; the eigen-states themselves are estimated from structure common across samples.
+Technical variation that acts uniformly on a sample (e.g., sequencing depth, capture efficiency) is therefore expressed as a condition-factor offset, so we test associations on the condition factor with the sample as the unit of analysis rather than the cell.
 
-Slice normalization prevents samples with many or highly variable cells from dominating the shared eigen-states.
-The total-expression correction removes sample-wide scaling of the condition loadings before association testing.
-All associations were tested with the sample as the unit of analysis.
+Technical variation was also explicitly handled by the following.
+Slice normalization prevented samples with many or highly variable cells from dominating the shared eigen-states.
+The total-expression correction removed sample-wide scaling of the condition loadings before association testing.
 A recipient's samples were kept together in the jackknife and in outcome-label permutations.
 
 ### Quantification and Statistical Analysis

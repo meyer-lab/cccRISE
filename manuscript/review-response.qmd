@@ -72,8 +72,8 @@ We discuss this in the revised text (l. XXX).
 We agree that our qualitative observations did not adequatley support this claim.
 Our revision adds three quantitative lines of reasoning/evidence.
 
-First, we over-hauled our strategy for defining subpopulations beyond classical cell-type boundaries. 
-The reviewer is correct to point out the weakness of the qualitative PaCMAP embeddings and communication-score heatmaps. 
+First, we over-hauled our strategy for defining subpopulations beyond classical cell-type boundaries.
+The reviewer is correct to point out the weakness of the qualitative PaCMAP embeddings and communication-score heatmaps.
 Instead, we now define subpopulations based on quantitative per-cell sender and receiver loadings derived from the projection matrices and sender/receiver factor matrices.
 For more detail on our new strategy, we point the reviewer to {{< panel 2 sender-receiver-strata >}}, {{< panel 4 hormone-angle-scatter >}}, and Methods section [XXX].
 
@@ -81,7 +81,7 @@ For more detail on our new strategy, we point the reviewer to {{< panel 2 sender
 Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, then we take a weighted average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
 We apply this pipeline to CCC-RISE and to each comparator method.
-For more detail on this extension of the NicheNet database, we point the reviewer to 
+For more detail on this extension of the NicheNet database, we point the reviewer to
 {{< panel 2 nichenet >}}, [Figure 5 NicheNet reference], and Methods section [XXX].
 One limitation that we encountered in this analysis is that there is only moderate overlap between the LR pairs highlighted by our method, and the NicheNet target database, due to the limited coverage of the latter.
 
@@ -130,9 +130,11 @@ Therefore, we retained the communication tensor factorization as signed, and use
 >    Please clarify the CV scheme and, if selection was not nested, re-estimate performance with nested CV.
 
 We have substantially revised our approach to rank selection to address the overfitting concern and to improve the interpretability of the results.
-In addition to the concerns the reviewers raised, selecting the decomposition rank based on an external prediction limited the use of our approach to applications where such a prediction was available.
-Our responses to Reviewer #2 Comments #4 and #5 discuss the new rank selection procedure in depth and expand upon the limitations of our previous approach.
-The new rank selection procedures are showcased in [Figure 2a--d], [Figure S_ibd_rank_selection], and Methods section [XXX].
+Briefly, we now use a bi-cross-validation (BiCV) scheme to select RISE rank and a cross-component collinearity and stability analysis to select CPD rank, none of which see the sample labels.
+In addition to providing a benchmark for the rank selection, the internal BiCV scheme also provides a more reliable estimate of the classifier's performance as it is exposed only to the molecular data and not to the sample labels.
+Further, selecting the decomposition rank based on an external prediction limited the use of our approach to applications where such a prediction was available, which the new rank selection scheme avoids.
+Our response to Reviewer #2 Comment #4 discusses the new rank selection procedure in depth and Reviewer #1 Comment #5 expands upon the limitations of our previous approach.
+The new rank selection results are showcased in [Figure 2a--d] and [Figure S_ibd_rank_selection] and the procedure is described in Methods section [XXX].
 
 > 5. Small samples and no independent validation of the classifier.
 >    The COVID cohort has 12 samples; fitting an 18-component L1 logistic regression at the patient level is prone to overfitting.
@@ -286,29 +288,20 @@ We report a comparison between communication programs identified by each of thes
 >    More importantly, a sensitivity analysis should be performed to show how identified components and biological conclusions change across parameter ranges and random seeds of the RISE and CPD factorization.
 >    In addition, the authors describe the Factor Match Score in the Methods section to evaluate the stability of the RISE and CPD factorization but do not use it in the data analysis.
 
-[TODO.]
-- Update CPD rank selection, reference methods text
-- Separately address inconsistent rank selection metrics per dataset
-- Separately address sensitivity analysis: jackknife and re-initialization
-- Separately address FMS issue
-
-[From R1C4, integrate here or delete]
-<!-- In addition to providing a benchmark for the rank selection, this internal cross-validation scheme also provides a more reliable estimate of the classifier's performance, and a more internally consistent framing of the model, since the decomposition is meant to be a reliable representation of the molecular data.-->
-
 We agree, and rank selection has been reworked so that a single criterion applies to both datasets and neither criterion consults sample labels.
 
-The RISE rank is selected by bi-cross-validation: the model is fit with blocks of the expression data held out, and the rank is chosen by reconstruction of those held-out entries (l. XXX, Fig. XXX).
-The CPD rank is selected by core consistency (CORCONDIA) together with a component-collinearity screen, which identify the rank beyond which the model becomes degenerate --- components begin to duplicate one another in one or two modes and to cancel (l. XXX, Fig. XXX).
-Both criteria are computed by the same runner, with the same parameters, for both datasets, and both depend only on the molecular data; this is also what removes the nested-cross-validation concern raised by Reviewer #1 (major comment #4), because no outcome label enters model selection.
-In the course of this work we found and fixed an error in the held-out design used by the earlier cross-validation, which had systematically depressed held-out scores; the reported sweeps are regenerated with the corrected implementation, and the parameters and code version behind each committed sweep are recorded alongside it (l. XXX).
-We acknowledge that these criteria identify a defensible range rather than a single sharp optimum, and we therefore report the sensitivity analysis below rather than claiming a uniquely correct rank.
+The RISE rank is selected by bi-cross-validation: the model is fit with blocks of the expression data held out, and the rank is chosen by reconstruction of those held-out entries.
+The CPD rank is selected by collinearity between components of the LR pair mode together with stability of factorizations under re-initialization.
+Both criteria are computed by the same runner, with the same parameters, for both datasets, and both depend only on the molecular data.
+The multi-replicate nature of these rank selection procedures also serves as a sensitivity analysis under a parameter sweep, where the paramter is rank.
+[Add some words on the "sharpness" of each metric. BiCV is sharp for ALAD, not for IBD. CPD criteria are sharp for both.]
+The new rank-selection procedure is showcased in [Figure 2 A--D] and described in detail in Methods sections [XXX, YYY].
 
-We now also use the Factor Match Score in the analysis rather than only defining it.
-Components are refit under four perturbations --- resampling cells within conditions, resampling patients, resampling LR pairs, and re-initializing with a different random seed --- and each component is matched to the reference fit by Hungarian assignment and scored by FMS, alongside per-fit diagnostics (R2X, core consistency, collinearity) (Fig. XXX, l. XXX).
+We now also use the Factor Match Score (FMS) to compare individual fits during sensitivity analyses rather than only defining it.
+At the final rank as selected by the above procedures, components are refit under two perturbations---leave-one-patient-out jackknife and re-initializing with a different random seed---and each component is matched to a reference fit by Hungarian assignment and scored by FMS.
+Patient jackknife interrogates the contribution of individual patients to the stability of factorization results.
 Random-seed refitting serves as the reference point for how much of the observed spread is attributable to the data rather than to initialization.
-We report these results honestly: at the selected ranks most components are highly reproducible (aggregate FMS near 0.9), while a minority are not, and the two failure modes we observe are distinguishable --- a component whose variance is redistributed across two components of another fit (the information is retained, organized differently) versus one only partially recovered (Fig. XXX).
-We also found that unstable components, and components effectively describing a single patient, are a symptom of over-fitting the rank; this observation is part of what drove the rank down relative to the original submission, and we report it as a practical diagnostic that readers can apply to their own data (l. XXX).
-Finally, we show how the biological conclusions behave across the rank range, by tracking components across ranks and showing that the reported programs and their condition associations persist (Fig. XXX).
+The results of these sensitivity analyses are reported in [Figure 2 supplementary], [Figure 4 supplementary], and described in detail in Methods section [xxx]
 
 > 5. Different methods were used for identifying condition-specific components across datasets, and inconsistent results were observed.
 >    In the COVID-19 analysis, the authors use Spearman correlation between condition factors and disease severity to identify condition-specific components (Components 3, 5, 8).
@@ -319,29 +312,20 @@ Finally, we show how the biological conclusions behave across the rank range, by
 >    In the COVID-19 analysis, no components were enriched in the Control condition.
 >    While quantitative methods such as Spearman correlation and logistic regression are valuable for identifying condition-specific components, the results should be consistent with the fundamental inferred condition factors.
 
-[Done]
 We agree, and the two datasets are now analyzed identically.
 The original difference was historical: Spearman correlation was used for the COVID-19 data because the pseudobulk analysis we were comparing against had done so.
-In the revision, component--condition associations are tested by ANOVA in both datasets, with multiple-testing correction across components and outcomes (l. XXX).
+In the revision, component--condition associations are tested by ANOVA in both datasets, with multiple-testing correction across components and outcomes (Methods section [XXX]).
 
-[Replace with reference to R1C5]
-We did not simply standardize on the original logistic regression.
-Bootstrapping the full pipeline showed that the L1 penalty distributes weight arbitrarily among collinear components, and that the selected penalty strength varies across resamples, so which components appeared "predictive" changed with rank and with the resample even when the underlying communication program was stable (l. XXX).
-ANOVA avoids this, and it also handles the graded outcomes (control / recovered / progressed) directly rather than forcing a binary contrast.
-
-[Update text to discuss the meaning of different directions with different associations (ALAD up, IBD down)]
-On consistency with the condition factors: we now present the association result and the condition factor together, so the reported association can be read off the factor itself (Fig. XXX).
+On consistency with the condition factors: we now present the association result and the condition loadings together, so the reported association can be read off the factor itself ([Figure 3A]).
 The component associated with six-month ALAD outcome shows a monotone, step-wise separation across outcome groups, which is visible in the raw condition factor and is not an artifact of the test.
-We have also clarified what the condition factor is and is not: because the tensor is centered, components describe *variation* in communication around the cohort average rather than total communication, so a component loading uniformly high in one group reflects the direction of that variation, and the apparent absence of "control-enriched" components in the original figure reflects sign convention and scaling rather than the absence of control-associated signal.
-The revised figures state the normalization on the colorbar (see minor comment #5), which we expect resolves most of this reading.
+We would also like to clarify what the condition factor is and is not: because the tensor is centered, components describe *variation* in communication around the cohort average rather than total communication, so a component loading uniformly high in one group reflects the direction of that variation, and the apparent absence of "control-enriched" components in the original figure reflects sign convention and scaling rather than the absence of control-associated signal.
+The revised figures state the normalization on the colorbar (see Reviewer #2 Minor Comment #5), which we expect resolves most of this reading.
 
 > 6. The mathematical symbols in the equations and their biological meanings are not consistently defined or clearly explained.
 >    The Methods section jumps between concepts without a logical flow, making it difficult to follow.
 >    It would be much more helpful to restructure the Methods section to describe the workflow sequentially according to Fig. 1: (1) Reduction and Insight in Single-cell Exploration (RISE) to obtain eigen-states, (2) construction of the aligned 4D communication tensor, and (3) Canonical Polyadic Decomposition (CPD) to extract communication programs.
 >    Please clearly define each mathematical symbol and its biological interpretation.
 >    The mathematical symbols throughout the Methods section should be consistent.
-
-[Could probably shorten this and reference methods text]
 
 We have revised the Methods section to describe the workflow sequentially according to Fig. 1: RISE to obtain eigen-states, construction of the aligned 4D communication tensor, and CPD to extract communication programs, each now in its own subsection in that order.
 
@@ -357,15 +341,13 @@ In the course of this we also caught and corrected a mislabeling in the original
 >    Could a simpler approach-such as canonical correlation analysis (CCA) or other dimensionality reduction methods (e.g., PCA, NMF, VAE)-achieve similar results?
 >    What are the advantages of PARAFAC2-derived states in capturing communication-relevant heterogeneity?
 
-[Done]
-
 This is an interesting point.
 In fact, at a high level, a similar approach could indeed be taken using other methods that project single cell RNA-seq data into a lower-dimensional space.
 As described in our previous work\ [@pmid:40378843], PARAFAC2 is uniquely suited for multi-condition single-cell analysis because it provides a unique solution for decomposing the data into a low-dimensional representation that captures both cell type heterogeneity and quantitation of the variation across conditions.
 By contrast, PCA is rotationally invariant and so it and VAE models will not provide a unique solution to provide a reliable basis for interpretable communication scoring.
 CCA provides a unique solution, but cannot be easily broken into a description of the differences between conditions, separated from the single-cell variation.
 NMF does provide a unique solution, and it is possible to quantitate the abundance of a pattern within each condition, but non-negativity splits counter-balanced regulatory patterns, such as differentiation programs, into multiple non-negative components.
-We have expanded our introduction to the manuscript to include a more detailed comparison of these methods and the relative advantage of PARAFAC2.
+We have expanded our introduction to the manuscript to include a more detailed comparison of these methods and the relative advantage of PARAFAC2 ([Introduction section?].
 
 In unpublished work, we have a more extensive benchmarking between these alternatives.
 In fact, we find that, using the bi-cross-validation strategy described above, that PARAFAC2 consistently outperforms all of these methods in prediction of held-out single cell RNA-seq data, suggesting that it is a better representation of the data.
@@ -375,58 +357,35 @@ However, this more mechanistic and detailed discussion will have to remain beyon
 > 2. The analysis spans multiple patient samples and conditions, but it is unclear how batch effects, patient heterogeneity, or technical variation are handled.
 >    Do the RISE and CPD projections inherently correct for such effects?
 
-[Reference methods text and cut here]
-
-We have added an explicit treatment of this in the Methods (l. XXX).
-
-RISE does not correct batch effects in the sense of removing them, but its structure does isolate them.
-Each sample is fit with its own projection matrix onto a shared set of eigen-states, so sample-level variation in how strongly a given program is expressed is carried by that sample's condition loading rather than distorting the shared eigen-state definitions; the eigen-states themselves are estimated from structure common across samples.
-Technical variation that acts uniformly on a sample (e.g., sequencing depth, capture efficiency) is therefore expressed as a condition-factor offset, which is why we test associations on the condition factor with the sample as the unit of analysis rather than the cell.
-
-This is not a complete answer, and we say so.
-Variation that affects genes non-uniformly, or that is confounded with the condition of interest, is not separable by this structure from biological signal, and in the ALAD cohort two recipients contributed two samples each, which we account for by keeping a recipient's samples together in all resampling and cross-validation splits (l. XXX).
-The resampling analysis in major comment #4 is also the relevant empirical check here: a component driven by a single sample or batch shows up as a component whose factor match score collapses when that sample is not drawn, and we report per-component stability for exactly this reason (Fig. XXX).
+We have added an explicit treatment of this in the Methods.
+Instead of re-stating that description here, we point the reviewer to the corresponding Methods section [XXX].
+The resampling analysis in Reviewer #2 Comment #4 is also the relevant empirical check here: a component driven by a single sample or batch shows up as a component whose factor match score collapses when that sample is not drawn, and we report per-component stability for exactly this reason.
 
 > 3. How should the LR pairs with negative loadings in each inferred component be interpreted?
 >    Why not use a non-negative CPD model for better interpretability?
 
-[Done]
-
-Please refer to Reviewer #1's major comment #3, where we address these important points.
+Please refer to Reviewer #1 Comment #3, where we address these important points.
 
 > 4. The logistic regression used to identify condition-associated components is not fully described.
 >    The input features (e.g., component loadings, sample associations) and the outcome variable (e.g., ALAD status, clinical stability) are not clearly specified.
 
-[Update to concisely say that we moved away from logreg and fully describe outcome variables tested in methods]
-
-We have fully specified this in the Methods (l. XXX).
-The features are the rows of the CPD condition factor matrix with one row per sample and one column per communication component.
-We have included no other covariates; the unit of analysis is the sample, and a recipient's samples are kept within the same fold wherever data are split.
-The outcomes are stated per test: ALAD status, six-month and one-year outcome, CLAD, and death for the lung-transplant cohort, and disease status for the IBD cohort.
-
-As described under major comment #5, the primary association test is now ANOVA across outcome groups with multiple-testing correction across components and outcomes.
-Where a classifier is reported, we state the model, the penalty, and the cross-validation scheme (l. XXX).
+We have moved away from logistic regression to test clinical associations.
+We carefully describe the new ANOVA association testing scheme and explicitly state all patient labels and covariates tested for association in Methods section [XXX].
 
 > 5. All colorbars should clearly indicate whether the displayed values are normalized (e.g., Fig. 2b, 2i, 2m).
 >    How was the normalization performed?
 
-[Update methods refs]
-
-We have now ensured that all colorbars clearly indicate whether and how the displayed values are normalized, and that the normalization is defined in the Methods (l. XXX).
-Factor matrices are shown with each component scaled to unit maximum absolute loading so that components are visually comparable, with the scaling stated on the axis label; communication-score heatmaps are shown on the score's own scale, labeled as such (Fig. XXX).
+[Confirm colorbars actually state normalization]
+We have now ensured that all colorbars clearly indicate whether and how the displayed values are normalized, and that the normalization is defined in the Methods section [XXX].
 
 > 6. How was PaCMAP performed to project cells into 2D space?
 
-[Update methods refs]
-
-We have expanded the Methods to describe this fully (l. XXX).
+We have expanded the Methods to describe this fully (Methods section [XXX]).
 PaCMAP is applied to the concatenated RISE projection matrices across all conditions so that the embedding is a visualization of the same low-dimensional space the communication scores are computed in, and cells from different samples are directly comparable within it.
 The parameters used are now stated alongside the software version and random seed.
 
 > 7. In Fig. 1d, the purple heatmap is incorrectly labeled as "sender Eigen-state Factor."
 >    Please correct this labeling.
 
-[Update figure panel letter]
-
 We thank the reviewer for catching this.
-The label has been corrected in Fig. 1d, and we have checked every other panel label in Fig. 1.
+The label has been corrected in Figure [XXX], and we have checked every other panel label in Figure 1.
