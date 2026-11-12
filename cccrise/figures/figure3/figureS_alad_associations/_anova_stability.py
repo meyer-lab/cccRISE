@@ -72,7 +72,7 @@ def save_source_data() -> None:
     common.source_data(
         "anova_jackknife_replicates",
         replicates()[REPLICATE_COLUMNS],
-        "One row per (leave-one-patient-out replicate, CP component): the "
+        "One row per (leave-one-patient-out replicate, CPD component): the "
         "left-out patient (LeftOut), the refit component matched to the "
         "full-cohort component (MatchedComponent, by factor match score FMS), "
         f"and its one-way ANOVA against {outcome()}. P is raw; PAdj is "
@@ -81,7 +81,7 @@ def save_source_data() -> None:
     common.source_data(
         "anova_full_cohort",
         reference(),
-        f"One row per CP component: its full-cohort one-way ANOVA against "
+        f"One row per CPD component: its full-cohort one-way ANOVA against "
         f"{outcome()} (the diamonds). P is raw; PAdj is Benjamini-Hochberg "
         f"corrected across components; filled where PAdj < {alpha():g}.",
     )

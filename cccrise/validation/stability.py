@@ -1,6 +1,6 @@
 """
 Component and association stability of the CCC-RISE pipeline at fixed RISE and
-CP ranks.
+CPD ranks.
 
 This analysis evaluates whether the identified components recovered at those fixed
 ranks are stable and reproducible and whether each CP component's association with

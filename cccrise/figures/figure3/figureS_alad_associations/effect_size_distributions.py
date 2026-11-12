@@ -29,7 +29,7 @@ def plot(axs):
     reference = S.reference()
     S.reference_markers(ax, np.arange(len(reference)), reference["EtaSquared"])
     ax.set_ylim(0, S.replicates()["EtaSquared"].max() * 1.2)  # legend headroom
-    ax.set_xlabel("CP component")
+    ax.set_xlabel("CPD component")
     outcome = common.OUTCOME_LABELS.get(S.outcome(), S.outcome())
     ax.set_ylabel(rf"Jackknife $\eta^2$" f"\n({outcome})")
     ax.legend(handles=S.reference_legend_handles(), loc="upper left")

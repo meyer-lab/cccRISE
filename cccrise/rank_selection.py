@@ -16,7 +16,7 @@ Factors = list[np.ndarray]
 #: selected ranks (per-component FMS 1.000 to the float64 CPU fits).
 CP_DTYPE = "float32"
 #: Precision of masked (imputation) fits: in float32 the EM fill-in on ALAD
-#: went NaN at CP rank 8 (float64: imputation R2X 0.311), though it matched
+#: went NaN at CPD rank 8 (float64: imputation R2X 0.311), though it matched
 #: float64 to 1e-4 at ranks 3 and 5.
 MASKED_CP_DTYPE = "float64"
 #: CP fit precisions and devices callers may choose (`fit_cp_on_device`).

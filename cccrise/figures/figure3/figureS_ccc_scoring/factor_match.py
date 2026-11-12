@@ -41,7 +41,7 @@ def similarity_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
     common.source_data(
         "factor_match_scores",
         table[["Method", "Component", "MatchedComponent", "MatchScore"]],
-        "One row per (alternate score, default-score CP component): the "
+        "One row per (alternate score, default-score CPD component): the "
         "alternate score's paired component and their match score (factor "
         "match score on the condition and LR modes).",
         part=0,
@@ -49,8 +49,8 @@ def similarity_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
     common.source_data(
         "factor_match_cosines",
         table.drop(columns="MatchScore"),
-        "One row per (alternate score, default-score CP component): the |cosine| "
-        "between the paired components' sender (B) and receiver (C) eigenstate "
+        "One row per (alternate score, default-score CPD component): the |cosine| "
+        "between the paired components' sender (B) and receiver (C) eigen-state "
         "loadings, and their mean (the bars).",
         part=1,
     )

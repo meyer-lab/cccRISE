@@ -1,13 +1,17 @@
-"""Figure 5D: how STAC arranges the mixed programs' pairs."""
+"""Figure 5C: ALAD C4's carrying pairs in the component and in its related
+columns of each comparator (PB, STAC; coarse and fine apart; C4 has only
+STAC's), with a fit's best combination of its columns (Σ) where it shows two
+or more (`_split`; C4's show one each, so no Σ). ALAD C3 is in the split
+supplement."""
 
 from .. import common
-from ._recovery import pair_columns
+from . import _split
 
-AXES = ("fig4_columns",)
+AXES = ("fig5_columns",)
 
 
 def plot(axs):
-    pair_columns(axs[0])
+    _split.pair_heatmap(axs[0], "alad", (4,), "ALAD C4", drop=0.24)
 
 
 def makeFigure():

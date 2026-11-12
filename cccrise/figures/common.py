@@ -42,6 +42,7 @@ from matplotlib.figure import Figure, SubFigure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.text import Text
+from matplotlib.transforms import blended_transform_factory
 from matplotlib.typing import LegendLocType
 
 matplotlib.use("AGG")
@@ -142,7 +143,7 @@ def alad_programs(table: str) -> pd.DataFrame:
 
 
 def load_cpd_rank(dataset: str) -> pd.DataFrame:
-    """`cccrise-cpdrank`'s sweep for `dataset`: one row per CP rank and
+    """`cccrise-cpdrank`'s sweep for `dataset`: one row per CPD rank and
     seeded start (see `production_fits`)."""
     return load_runner_output(DATASETS[dataset].cpd_rank_filename(), RANK_SELECTION_DIR)
 
@@ -175,7 +176,7 @@ def per_rank(sweep: pd.DataFrame) -> pd.DataFrame:
 
 
 def selected_ranks(dataset: str) -> tuple[int, int]:
-    """(RISE rank, CP rank) of `dataset`'s canonical fit, from its provenance."""
+    """(RISE rank, CPD rank) of `dataset`'s canonical fit, from its provenance."""
     ranks = read_metadata(DATASETS[dataset].factors_path())["rank_selection"]
     return ranks["rise"]["rank"], ranks["cpd"]["rank"]
 
@@ -463,11 +464,12 @@ def _draw_fixed(fig: Figure, module) -> list[_AxesBox]:
     return boxes
 
 
-def colorbar(ax: plt.Axes, mappable, label: str):
-    """A colorbar beside `ax`, in its margin rather than taken from its width."""
+def colorbar(ax: plt.Axes, mappable, label: str, start: float = 1.0):
+    """A colorbar beside `ax`, in its margin rather than taken from its width,
+    `style.COLORBAR_PAD` past `start` (axes fraction; 1 is the right edge)."""
     width = ax.bbox.width / ax.figure.dpi
     cax = ax.inset_axes(
-        (1 + style.COLORBAR_PAD / width, 0, style.COLORBAR_WIDTH / width, 1)
+        (start + style.COLORBAR_PAD / width, 0, style.COLORBAR_WIDTH / width, 1)
     )
     return ax.figure.colorbar(mappable, cax=cax, label=label)
 
@@ -641,6 +643,16 @@ def source_data(
 # =============================================================================
 
 SIG_ALPHA = 0.05
+
+
+def p_text(p: float, name: str = "p") -> str:
+    """`p` for a panel: "p = 0.03", or "p = 1 × 10⁻⁵" below 0.001, one digit."""
+    if p >= 1e-3:
+        return f"{name} = {p:.1g}" if p < 0.01 else f"{name} = {p:.2f}"
+    mantissa, exponent = f"{p:.0e}".split("e")
+    return rf"{name} = ${mantissa} \times 10^{{{int(exponent)}}}$"
+
+
 #: Seed of every strip plot's jitter (`stripplot`).
 JITTER_SEED = 0
 # Axis-label names of outcome `obs` columns
@@ -735,10 +747,10 @@ def plot_cpd_fit_r2x(
     color: str = style.COLORS["fit"],
     marker: str | None = "o",
 ):
-    """Full-tensor CP fit R2X against CP rank, from `cccrise-cpdrank`."""
+    """Full-tensor CP fit R2X against CPD rank, from `cccrise-cpdrank`."""
     ax.plot(sweep["Rank"], sweep["FitR2X"], marker=marker, color=color, label="Fit")
     mark_rank(ax, rank)
-    ax.set_xlabel("CP rank")
+    ax.set_xlabel("CPD rank")
     ax.set_ylabel("Fit R²X")
 
 
@@ -753,7 +765,7 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     ax.legend(loc="upper right")
 
 
-# --- CP rank selection across seeded starts (ALAD Fig 2, IBD Fig 4) -----------
+# --- CPD rank selection across seeded starts (ALAD Fig 2, IBD Fig 4) -----------
 # Drawn from `cccrise-cpdrank`'s seeded starts: fit R2X across starts, each
 # mode's collinearity, and the distinct minima the starts reach.
 
@@ -785,27 +797,7 @@ def rank_axis(ax: plt.Axes, ranks) -> None:
     ranks = np.asarray(ranks)
     ax.set_xticks(ranks[ranks % 2 == 1] if ranks.max() > 10 else ranks)
     ax.set_xlim(0.4, ranks.max() + 0.6)
-    ax.set_xlabel("CP rank")
-
-
-def kneedle_elbow(x, y) -> int:
-    """Elbow of a convex, decreasing curve by offline Kneedle (Satopaa et al.
-    2011, sensitivity 1, as `kneed.KneeLocator(curve="convex",
-    direction="decreasing")`)."""
-    x, y = np.asarray(x, float), np.asarray(y, float)
-    xn, yn = ((v - v.min()) / (v.max() - v.min()) for v in (x, y))
-    diff = (yn.max() - yn) - xn
-    maxima = [
-        i
-        for i in range(1, x.size - 1)
-        if diff[i] >= diff[i - 1] and diff[i] >= diff[i + 1]
-    ]
-    step = float(np.abs(np.diff(xn)).mean())
-    for i, m in enumerate(maxima):
-        stop = maxima[i + 1] if i + 1 < len(maxima) else x.size
-        if np.any(diff[m + 1 : stop] < diff[m] - step):
-            return int(x[m])
-    return int(x[int(np.argmax(diff))])
+    ax.set_xlabel("CPD rank")
 
 
 def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
@@ -814,12 +806,12 @@ def plot_r2x_starts(ax: plt.Axes, dataset: str, rank: int | None = None) -> None
 
 
 def plot_r2x_sweep(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -> None:
-    """Fit R2X against CP rank of a seeded-start `sweep` ('Rank', 'Start',
+    """Fit R2X against CPD rank of a seeded-start `sweep` ('Rank', 'Start',
     'Seed', 'FitR2X'): the median over starts, banded by their range."""
     source_data(
         "cp_fit_r2x_by_rank_and_start",
         sweep[["Rank", "Start", "Seed", "FitR2X"]],
-        "Fit R2X of every seeded SVD start at every CP rank (start 0 is the "
+        "Fit R2X of every seeded SVD start at every CPD rank (start 0 is the "
         "production fit); plotted as the median over starts, banded by their "
         "range.",
     )
@@ -842,7 +834,7 @@ def plot_collinearity_boxes(
     part: int | None = None,
     wrap_key: bool = False,
 ) -> None:
-    """Per CP rank, the largest |cosine| between two components' LR pair
+    """Per CPD rank, the largest |cosine| between two components' LR pair
     factors (`plot_start_boxes`). `part` is `source_data`'s."""
     sweep = _collinearity_sweep(dataset, ["D"], part)
     plot_start_boxes(ax, sweep, "MaxCosD", load_minima(dataset), rank, wrap_key)
@@ -858,7 +850,7 @@ def plot_start_boxes(
     wrap_key: bool = False,
     key_loc: LegendLocType | None = "lower right",
 ) -> None:
-    """Per CP rank, `column` of a seeded-start `sweep` ('Rank', 'Seed'): a
+    """Per CPD rank, `column` of a seeded-start `sweep` ('Rank', 'Seed'): a
     box over the starts with each start overlaid, colored by whether it
     reaches its rank's most common solution (`minima`, as
     `rank_selection.distinct_minima`) and keyed at `key_loc` (no key if
@@ -919,7 +911,7 @@ def plot_collinearity_medians(
     part: int | None = None,
     key_rank: bool = True,
 ) -> None:
-    """Per CP rank and mode in `modes` (`CP_MODES` keys), the largest |cosine|
+    """Per CPD rank and mode in `modes` (`CP_MODES` keys), the largest |cosine|
     between two components: the median over the seeded starts in an
     interquartile-range band, keyed at the lower right with `rank`'s line if
     `key_rank`. `part` is `source_data`'s."""
@@ -957,7 +949,7 @@ def _collinearity_sweep(
     source_data(
         "cp_max_cosine_by_rank",
         sweep[["Rank", "Start", "Seed", *columns]],
-        "Per CP rank and seeded SVD start, the largest absolute cosine between "
+        "Per CPD rank and seeded SVD start, the largest absolute cosine between "
         "two components in each mode (MaxCosA condition, B sender, C receiver, "
         "D ligand-receptor pair).",
         part=part,
@@ -979,14 +971,14 @@ def plot_minima(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
 def plot_minima_table(
     ax: plt.Axes, table: pd.DataFrame, rank: int | None = None
 ) -> None:
-    """The starts reaching each distinct minimum at each CP rank (`table`, as
+    """The starts reaching each distinct minimum at each CPD rank (`table`, as
     `rank_selection.distinct_minima`), stacked from the one most starts
     reach (blue; of two tied, the one with the higher R2X) up, the others
     grey (keyed by `plot_start_boxes`), with `rank` marked above its bar."""
     source_data(
         "cp_minima_by_rank",
         table,
-        "Distinct minima per CP rank (starts joined at FMS >= 0.95): the "
+        "Distinct minima per CPD rank (starts joined at FMS >= 0.95): the "
         "starts reaching each, its best R2X, its FMS to the minimum most "
         "starts reach (where two minima tie for most, 'Tied', to the one with "
         "the higher R2X), its order by starts (1 = most; ties: higher R2X), "
@@ -1048,7 +1040,7 @@ LEVEL_ORDER = [
 def plot_association_heatmap(
     table: pd.DataFrame,
     ax: plt.Axes,
-    xlabel: str = "CP component",
+    xlabel: str = "CPD component",
     p_column: str = "PAdj",
     p_label: str = "FDR",
     annotate: bool = True,
@@ -1127,7 +1119,7 @@ def plot_association_effect_sizes(
     for xi, value in zip(x[significant], values[significant], strict=True):
         ax.text(xi, value, "*", ha="center", va="bottom", fontweight="bold")
     ax.set_xticks(x, components)
-    ax.set_xlabel("CP component")
+    ax.set_xlabel("CPD component")
     ax.set_ylabel(r"$\eta^2$")
     ax.set_ylim(0, np.nanmax(values) * 1.2)
     if "Association" in rows:
@@ -1319,7 +1311,7 @@ def plot_component_eigenstate_loadings(
         )
     ax.axhline(0, color=style.COLORS["reference"], linewidth=style.LINE_WIDTH_THIN)
     ax.set_xticks(sorted(labeled))
-    ax.set(xlabel="RISE eigenstate", ylabel="Loading")
+    ax.set(xlabel="RISE eigen-state", ylabel="Loading")
     ax.legend(loc="upper left")
 
 
@@ -1445,11 +1437,16 @@ def group_conditions(
 
 
 def condition_strips(
-    ax: plt.Axes, groups: pd.DataFrame, strips: dict = CONDITION_STRIPS
+    ax: plt.Axes,
+    groups: pd.DataFrame,
+    strips: dict = CONDITION_STRIPS,
+    brackets: bool = False,
 ) -> None:
     """A color strip per `strips` column left of a condition factor matrix
     (rows in `groups`' order), the y label moved left of them, and their
-    legend, titled per strip, left of the y label."""
+    legend, titled per strip, left of the y label; with `brackets`, instead
+    of the legend each level is named right of the matrix at a bracket
+    spanning its rows (`_strip_brackets`)."""
     inches = ax.bbox.width / ax.figure.dpi
     step = (STRIP_WIDTH + STRIP_GAP) / inches
     for i, (column, (_, colors)) in enumerate(reversed(strips.items())):
@@ -1460,6 +1457,9 @@ def condition_strips(
         strip.spines[:].set_visible(False)
     strip.set_ylabel(ax.get_ylabel())  # the leftmost strip
     ax.set_ylabel("")
+    if brackets:
+        _strip_brackets(ax, groups, strips)
+        return
     titles = [title for title, _ in strips.values()]
     entries = [
         entry
@@ -1478,6 +1478,66 @@ def condition_strips(
             text.set_fontweight("bold")
 
 
+#: `_strip_brackets`: bracket and name right of the matrix, and a tick (in)
+BRACKET_X, BRACKET_NAME_X, BRACKET_TICK = 0.6 * style.MM, 1.6 * style.MM, 0.5 * style.MM
+
+
+def _runs(levels: list) -> list[tuple[object, int, int]]:
+    """(level, first row, last row) of each run of equal `levels`."""
+    out, start = [], 0
+    for i in range(1, len(levels) + 1):
+        if i == len(levels) or levels[i] != levels[start]:
+            out.append((levels[start], start, i - 1))
+            start = i
+    return out
+
+
+def _strip_brackets(ax: plt.Axes, groups: pd.DataFrame, strips: dict) -> None:
+    """Each run of a strip's level named, in its color, right of the matrix at
+    a bracket spanning its rows; a name that would crowd the one above moves
+    down on a leader line."""
+    width = ax.bbox.width / ax.figure.dpi
+    height = ax.bbox.height / ax.figure.dpi
+    trans = blended_transform_factory(ax.transAxes, ax.transData)
+    bx, nx, tick = (1 + v / width for v in (BRACKET_X, BRACKET_NAME_X, BRACKET_TICK))
+    low, high = sorted(ax.get_ylim())
+    need = 2.4 * style.MM * (high - low) / height  # one name's height, in rows
+    line: dict[str, Any] = {"transform": trans, "clip_on": False}
+    for column, (_, colors) in strips.items():
+        last = -np.inf
+        for level, first, end in _runs(list(groups[column])):
+            color = colors[level]
+            top, bottom = first + 0.1, end - 0.1
+            ax.plot(
+                [bx, bx],
+                [top, bottom],
+                color=color,
+                lw=0.9,
+                solid_capstyle="butt",
+                **line,
+            )
+            for y in (top, bottom):
+                ax.plot([bx - (tick - 1), bx], [y, y], color=color, lw=0.9, **line)
+            middle = (first + end) / 2
+            y = max(middle, last + need)
+            last = y
+            if y != middle:
+                ax.plot(
+                    [bx, nx - 0.3 * (nx - bx)], [middle, y], color=color, lw=0.5, **line
+                )
+            ax.text(
+                nx,
+                y,
+                _sentence_case(level_label(level)),
+                ha="left",
+                va="center",
+                fontsize=style.FONT_SIZE_DENSE,
+                color=color,
+                fontweight="bold",
+                transform=trans,
+            )
+
+
 def _sentence_case(label: str) -> str:
     return label[0].upper() + label[1:]
 
@@ -1490,19 +1550,135 @@ def dominant_order(loadings: np.ndarray) -> np.ndarray:
 
 
 def label_heatmap_cells(
-    ax: plt.Axes, entries: list[tuple[int, int, str]], shape: tuple[int, int]
+    ax: plt.Axes,
+    entries: list[tuple[int, int, str]],
+    shape: tuple[int, int],
+    clear: bool = False,
 ) -> None:
     """Outline each (drawn row, component column, name) cell of a heatmap of
     `shape` and label it beside its column, toward the wider blank side:
     rightward up to the middle component, leftward after it. Labels are
     stacked `FACTOR_LABEL_GAP` apart across both sides, so two labels of one
-    row never share a height."""
+    row never share a height. With `clear`, each label instead goes where it
+    overlaps no outlined cell and no other label (`_clear_labels`)."""
+    if clear:
+        _clear_labels(ax, entries, shape)
+        return
     n_rows, n_cols = shape
     gap = FACTOR_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows  # in rows
     entries = sorted(entries)
     heights = _spread_labels([row for row, _, _ in entries], gap, n_rows)
     for (row, col, name), y in zip(entries, heights, strict=True):
         _label_cell(ax, row, col, name, y, rightward=col < n_cols / 2)
+
+
+def _overlaps(a, b, pad: float = 0.05) -> bool:
+    return not (
+        a[2] + pad <= b[0]
+        or b[2] + pad <= a[0]
+        or a[3] + pad <= b[1]
+        or b[3] + pad <= a[1]
+    )
+
+
+def _label_text(ax, row: float, col: int, name: str, right: bool) -> tuple:
+    """A label beside cell column `col` at height `row`: the text, its
+    leader's start (the column edge) and end."""
+    edge = col + (0.5 if right else -0.5)
+    x = edge + (FACTOR_LEADER_LENGTH if right else -FACTOR_LEADER_LENGTH)
+    text = ax.text(
+        x,
+        row,
+        name,
+        ha="left" if right else "right",
+        va="center",
+        fontsize=FACTOR_LABEL_FONT_SIZE,
+    )
+    return text, edge, x
+
+
+def _data_extent(ax, text) -> tuple[float, float, float, float]:
+    (x0, y0), (x1, y1) = ax.transData.inverted().transform(
+        text.get_window_extent(ax.figure.canvas.get_renderer()).get_points()
+    )
+    return min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)
+
+
+def _is_clear(box, key, boxes: dict, placed: list, n_cols: int, outside: bool) -> bool:
+    """Whether a label's extent clears every other outlined cell and every
+    placed label and (unless `outside`) the heatmap's sides."""
+    if box[0] < -0.5 - 1e-6 or (not outside and box[2] > n_cols - 0.5 + 1e-6):
+        return False
+    if any(_overlaps(box, b) for k, b in boxes.items() if k != key):
+        return False
+    return not any(_overlaps(box, q, 0.0) for q in placed)
+
+
+def _candidates(prefer: bool, gap: float):
+    """(outside, right, dy) to try, in order: the side with room then the
+    other, at the label's own height then up and down in half-gap steps;
+    past the right edge last."""
+    for outside in (False, True):
+        for k in range(8):
+            for dy in (0,) if k == 0 else (k * gap / 2, -k * gap / 2):
+                for right in (True,) if outside else (prefer, not prefer):
+                    yield outside, right, dy
+
+
+def _place_label(ax, row, col, name, boxes, placed, shape) -> tuple:
+    """The first clear place (`_candidates`, `_is_clear`): (text, leader start,
+    end x, y, extent); the default place, with no extent, when none is."""
+    n_rows, n_cols = shape
+    gap = FACTOR_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows
+    prefer = col < n_cols / 2
+    for outside, right, dy in _candidates(prefer, gap):
+        y = min(max(row + dy, 0), n_rows - 1)
+        text, edge, x = _label_text(ax, y, col, name, right)
+        box = _data_extent(ax, text)
+        if _is_clear(box, (row, col), boxes, placed, n_cols, outside):
+            return text, edge, x, y, box
+        text.remove()
+    text, edge, x = _label_text(ax, row, col, name, prefer)
+    return text, edge, x, row, None
+
+
+def _clear_labels(ax: plt.Axes, entries, shape: tuple[int, int]) -> None:
+    """Outline each labeled cell, then place each label clear of every
+    outlined cell and every label already placed (`_place_label`), on a
+    leader line from its cell."""
+    boxes = {
+        (row, col): (col - 0.5, row - 0.5, col + 0.5, row + 0.5)
+        for row, col, _ in entries
+    }
+    for row, col in boxes:
+        ax.add_patch(
+            Rectangle(
+                (col - 0.5, row - 0.5),
+                1,
+                1,
+                fill=False,
+                edgecolor="black",
+                linewidth=style.LINE_WIDTH_THIN,
+            )
+        )
+    placed = []
+    for row, col, name in sorted(entries):
+        _, edge, x, y, box = _place_label(ax, row, col, name, boxes, placed, shape)
+        ax.plot([edge, x], [row, y], color="black", lw=style.LINE_WIDTH_THIN)
+        if box:
+            placed.append(box)
+
+
+def text_right_edge(ax) -> float:
+    """The right edge of `ax`'s texts, in axes fraction (at least 1)."""
+    renderer = ax.figure.canvas.get_renderer()
+    edges = [
+        ax.transAxes.inverted().transform(t.get_window_extent(renderer).get_points())[
+            1, 0
+        ]
+        for t in ax.texts
+    ]
+    return max([1.0, *edges])
 
 
 def _label_cell(

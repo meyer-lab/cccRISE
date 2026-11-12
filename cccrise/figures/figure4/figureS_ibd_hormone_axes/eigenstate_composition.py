@@ -24,7 +24,7 @@ def plot(axs):
     common.source_data(
         "eigenstate_category_share",
         share[list(H.CATEGORY_COLORS)],
-        "Share of each eigenstate's squared RISE projection, over all cells, "
+        "Share of each eigen-state's squared RISE projection, over all cells, "
         "carried by each cell category (immune lineages pooled).",
     )
     left = np.zeros(len(rows))

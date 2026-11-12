@@ -17,6 +17,8 @@ def plot(axs):
         "Annotated type of each EE, EC and tuft cell, on the zoomed map.",
     )
     ee_state_map.type_map(axs[0], cells)
+    # Figure 4E drops the zoom note its own row explains; here it sits under maps
+    axs[0].set_xlabel(f"PaCMAP 1 ({S.ZOOM_NOTE})")
 
 
 def makeFigure():

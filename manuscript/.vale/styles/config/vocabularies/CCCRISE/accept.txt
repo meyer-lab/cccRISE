@@ -83,3 +83,6 @@ prefiltered
 [Pp]ericytes
 [Uu]nderrepresentation
 [Ss]ubsampled
+STAC's
+Jaccard
+subsamples

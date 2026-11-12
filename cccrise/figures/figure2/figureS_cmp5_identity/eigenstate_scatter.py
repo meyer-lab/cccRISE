@@ -20,12 +20,12 @@ def plot(axs):
         "rise_eigenstate_projection_per_cell",
         pd.DataFrame(
             {
-                f"Eigenstate {S.GRANULARITY_SENDER_EIGENSTATE} projection": x,
-                f"Eigenstate {S.GRANULARITY_RECEIVER_EIGENSTATE} projection": y,
+                f"Eigen-state {S.GRANULARITY_SENDER_EIGENSTATE} projection": x,
+                f"Eigen-state {S.GRANULARITY_RECEIVER_EIGENSTATE} projection": y,
             },
             index=adata.obs_names.rename("Cell barcode"),
         ),
-        "One row per cell: its projection onto the two RISE eigenstates with the "
+        "One row per cell: its projection onto the two RISE eigen-states with the "
         "granularity component's largest sender (x) and receiver (y) loadings.",
     )
     ax.scatter(
@@ -39,8 +39,8 @@ def plot(axs):
     common.reference_line(ax, 0, False)
     common.reference_line(ax, 0)
     ax.set(
-        xlabel=f"Eigenstate {S.GRANULARITY_SENDER_EIGENSTATE} projection",
-        ylabel=f"Eigenstate {S.GRANULARITY_RECEIVER_EIGENSTATE} projection",
+        xlabel=f"Eigen-state {S.GRANULARITY_SENDER_EIGENSTATE} projection",
+        ylabel=f"Eigen-state {S.GRANULARITY_RECEIVER_EIGENSTATE} projection",
     )
 
 

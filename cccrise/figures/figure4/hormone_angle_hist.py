@@ -14,7 +14,6 @@ from . import _common as S
 AXES = ("square",)
 ANGLE_BINS = np.arange(-45, 135.1, 7.5)
 HEADROOM = 1.3  # y limit over the tallest bar's, for the lines' key
-CLASS_KEY_SHIFT = 0.06  # axes widths the class key moves left of center
 #: Reference angles: {label: (angles, line style)}
 REFERENCES: dict[str, tuple[tuple[float, ...], LineStyleType]] = {
     "Thresholds": ((S.EXTREME_SECTOR, 90 - S.EXTREME_SECTOR), "--"),
@@ -59,39 +58,37 @@ def plot(axs):
     ax.set_xlabel(
         f"Angle (°), magnitude ≥ {S.EXTREME_FLOOR}", fontsize=style.FONT_SIZE_DENSE
     )
+    # Both keys inside the axes, in the room above the bars: the lines' at the
+    # top right, the classes' at the top left, one entry per row
     lines = ax.legend(
         handles=[
             Line2D([], [], color=style.COLORS["ink"], linestyle=ls, label=label)
             for label, (_, ls) in REFERENCES.items()
         ],
         loc="upper right",
-        fontsize=style.FONT_SIZE_DENSE,
-        ncols=len(REFERENCES),
+        fontsize=style.FONT_SIZE_DENSE - 0.5,
         handlelength=1.1,
         handletextpad=0.25,
-        columnspacing=0.5,
-        borderaxespad=0.1,
+        labelspacing=0.2,
+        borderaxespad=0.15,
         borderpad=0.1,
+        frameon=False,
     )
     ax.add_artist(lines)  # kept when the class key below replaces `ax.legend_`
-    classes = common.legend(
-        ax,
-        "above",
+    ax.legend(
         handles=[
             Patch(facecolor=color, edgecolor=style.COLORS["ink"], label=label)
             for label, color in S.SECTOR_COLORS.items()
         ],
-        fontsize=style.FONT_SIZE_DENSE,
-        ncols=len(S.SECTOR_COLORS),
+        loc="upper left",
+        fontsize=style.FONT_SIZE_DENSE - 0.5,
         handlelength=0.8,
         handletextpad=0.3,
-        columnspacing=0.6,
+        labelspacing=0.2,
+        borderaxespad=0.15,
+        borderpad=0.1,
+        frameon=False,
     )
-    # Wider than the axes: hangs over the gaps instead of widening them, a
-    # little left of center to stay clear of the next panel's letter
-    classes.set_in_layout(False)
-    x, y = classes.get_bbox_to_anchor().transformed(ax.transAxes.inverted()).p0
-    classes.set_bbox_to_anchor((x - CLASS_KEY_SHIFT, y), transform=ax.transAxes)
 
 
 def makeFigure():

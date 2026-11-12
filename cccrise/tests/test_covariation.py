@@ -24,6 +24,11 @@ def test_carrying_pairs_stop_once_the_share_is_carried():
     assert covariation.carrying_pairs(lr, share=0.95, cap=2).tolist() == [1, 2]
 
 
+def test_carrying_pairs_cap_at_fifteen_by_default():
+    lr = np.ones(30)
+    assert len(covariation.carrying_pairs(lr)) == covariation.CARRYING_CAP == 15
+
+
 def test_baselines_without_associated_pairs_match_those_with():
     rng = np.random.default_rng(0)
     scores = rng.random((12, 40))
@@ -58,3 +63,10 @@ def test_gene_sharing_pairs_are_merged():
     ranks = np.argsort(np.argsort(scores, axis=0), axis=0)
     averaged = np.argsort(np.argsort(ranks[:, :3].mean(1)))
     np.testing.assert_allclose(merged[0], np.corrcoef(averaged, ranks[:, 3])[0, 1])
+
+
+def test_pairs_merged_into_one_group_leave_nothing_to_correlate():
+    scores = np.random.default_rng(3).random((10, 2))
+    genes = covariation.lr_pair_genes(["L1^R1", "L2^R1"])  # share R1
+    merged = covariation.pairwise_rank_correlations(scores, [0, 1], genes, True)
+    assert merged.shape == (1,) and np.isnan(merged).all()
