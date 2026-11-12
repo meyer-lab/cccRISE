@@ -112,6 +112,8 @@ AXIS_SIZE = {
     "split_covariation_c3": (36 * MM, 36 * MM),
     "split_columns_ibd": (70 * MM, 40 * MM),
     "split_modes": (44 * MM, 30 * MM),
+    # `figureS_comparator_labels`: coarse-to-fine flows, a cohort each
+    "labels_columns": (72 * MM, 41 * MM),
     # `figureS_comparator_depth`
     "split_depth": (158 * MM, 30 * MM),
     # A few rows: stacked bars, small heatmaps
