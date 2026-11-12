@@ -33,19 +33,12 @@ def containment_grid(ax, datasets=tuple(DATASET_LABELS)) -> None:
     t = rows(datasets)
     common.source_data(
         "component_containment_in_comparator_span",
-        t.rename(columns={"In": "Fit method", "NullQ95": "Row-permutation null q95"})[
-            [
-                "Dataset",
-                "Component",
-                "Fit method",
-                "Labelling",
-                "Containment",
-                "Row-permutation null q95",
-            ]
+        t.rename(columns={"In": "Fit method"})[
+            ["Dataset", "Component", "Fit method", "Labelling", "Containment"]
         ],
-        "Each CCC-RISE component's LR loading's containment in each comparator fit's "
-        "LR column span (squared norm of its projection, unit loading), with the 95th "
-        "percentile of that containment with the span's LR pairs permuted.",
+        "Each CCC-RISE component's LR pair loadings' containment in each comparator "
+        "fit's LR column span: the squared norm of the unit loading's projection, the "
+        "fraction of the loadings the fit's best combination of columns reconstructs.",
     )
     fit_grid(
         ax,
