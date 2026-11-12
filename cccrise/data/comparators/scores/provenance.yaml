@@ -95,7 +95,7 @@ files:
     git_sha: e9c7e70d2e3c41645fc3d8199640c93f9e087fef
     generated: '2026-11-12T12:58:10+00:00'
   containment_ibd.parquet:
-    sha256: 5571d3505d02723183a39f2e633be993315a11a9f43c0126f2e8f47f70883cb4
+    sha256: 90a94511a976f2435b8726d523352473cc2e4cbe59e1de1916d613f2a69b6181
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only --tables containment
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -126,10 +126,8 @@ files:
       TC2C fine: 1446884e8e068656b4b86241f33bc3d02dba56189cd793724a0aff80fba120d1
       STAC coarse: 39199d29bea9ab0f3d28ce117b09fd34331bc9d6c4a4db22cf8a78e1d945cb09
       STAC fine: 74a105fc864dbf738422b4764d6f8fdb434a2934c31d0db905625ba06ba38a08
-    n_null: 1000
-    random_state: 42
-    git_sha: 473227ad052347fc37893a61553251dafa6b6fdd
-    generated: '2026-11-12T09:52:41+00:00'
+    git_sha: 668c6f01699b4c17a3232cb402054cfb300e9789
+    generated: '2026-11-12T12:58:16+00:00'
   covariation_alad.parquet:
     sha256: 44fcd9accc865001dd44e8f08f47b77097ab391ffd89e3be445b5d375712b962
     command: uv run cccrise-comparator-scores --dataset alad
