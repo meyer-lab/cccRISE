@@ -99,9 +99,9 @@ AXIS_SIZE = {
     "fig5_covariation": (24 * MM, 28 * MM),
     "fig5_nichenet": (46 * MM, 32 * MM),
     "fig5_labels": (44 * MM, 38 * MM),
-    "fig4_flow_alad": (34 * MM, 49 * MM),
-    "fig4_flow_ibd": (72 * MM, 49 * MM),
-    "fig4_niches": (42 * MM, 42 * MM),
+    "fig5_flow_alad": (34 * MM, 49 * MM),
+    "fig5_flow_ibd": (72 * MM, 49 * MM),
+    "fig5_niches": (42 * MM, 42 * MM),
     # `figureS_comparator_missed_<cohort>`: a row of bars and associations, then
     # the LR contents
     "missed_bars": (98 * MM, 28 * MM),

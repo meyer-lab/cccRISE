@@ -9,7 +9,7 @@ counterpart is the RISE rank, the number of eigen-states its cells are
 described by. This runner refits the whole pipeline (`run_ccc_rise`'s
 settings: uncompressed RISE, CP from the production SVD start on the
 default device and precision) at `--rise-rank` and `--cp-rank` and writes
-only the fit's LR pair loadings, which is all the supplement reads, so no
+only the fit's LR pair loadings, which is all Figure 5E-F reads, so no
 model file is kept:
 
     reduced_rise_lr_loadings_<dataset>.parquet

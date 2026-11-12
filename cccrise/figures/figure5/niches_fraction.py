@@ -12,7 +12,7 @@ from ...runners.datasets import NICHES_DIR, scores_filename
 from .. import common, style
 from ._common import DATASET_COLORS, DATASET_LABELS, cohort_handles
 
-AXES = ("fig4_niches",)
+AXES = ("fig5_niches",)
 #: The populations of Figure 5H and I, and where their labels sit.
 LEADERS = [
     ("ibd", 3, "sender", "C3 S", (0.3, 0.93)),

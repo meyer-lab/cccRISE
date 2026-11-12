@@ -3,7 +3,7 @@
 from .. import common
 from ._flows import flow_ibd
 
-AXES = ("fig4_flow_ibd",)
+AXES = ("fig5_flow_ibd",)
 
 
 def plot(axs):
