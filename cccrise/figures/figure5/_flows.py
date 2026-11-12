@@ -181,7 +181,7 @@ def flow_alad(ax) -> None:
         ax,
         [
             Patch(color=EPITHELIAL, alpha=BAND_ALPHA, label="BTC–EGFR"),
-            Patch(color=BELOW, label="Below cutoff"),
+            Patch(color=BELOW, label="Below threshold"),
         ],
         2,
     )
@@ -310,7 +310,7 @@ def flow_ibd(ax) -> None:
             Patch(color=pyy, alpha=BAND_ALPHA, label="PYY–NPY1R"),
             Patch(color=gcg, alpha=BAND_ALPHA, label="GCG–GLP1R"),
             Patch(color=both, alpha=0.8, label="Both"),
-            Patch(color=BELOW, label="Below cutoff"),
+            Patch(color=BELOW, label="Below threshold"),
         ],
         4,
     )

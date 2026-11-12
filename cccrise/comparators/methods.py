@@ -9,9 +9,7 @@
   1..`TC2C_UPPER_RANKS` (by dataset and labelling), as its package's
   ``run_tensor_cell2cell_pipeline``. On the masked tensor the package forces
   random starts, and the fit is the lowest-error start at the elbow rank (its
-  "robust" preset keeps the best of many runs; `best_start`). On the paper's
-  unmasked ``inner`` tensor the fit is one SVD start, as the paper's BALF
-  analysis (`tensor_cell2cell_fit`'s `init`). Deviations meant to let it
+  "robust" preset keeps the best of many runs; `best_start`). Deviations meant to let it
   perform its best: fits run with cccRISE's tolerance and precision for up to
   `TC2C_N_ITER_MAX` iterations (upstream 100 at tol 1e-6), the rank is
   Kneedle's (the paper chose by eye), and the best start is kept; the

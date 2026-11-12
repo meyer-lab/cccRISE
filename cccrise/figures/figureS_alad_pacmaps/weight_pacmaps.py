@@ -29,7 +29,7 @@ def plot(axs):
         ),
         (
             adata.obsm["projections"][:, EIGENSTATE - 1],
-            f"Eigenstate {EIGENSTATE} projection",
+            f"Eigen-state {EIGENSTATE} projection",
             "Projection",
         ),
     )

@@ -157,7 +157,7 @@ def run_pipeline(
     git_sha()
 
     print(f"=== cccRISE pipeline: {spec.label} ===")
-    print(f"    RISE rank={rise_rank}  CP rank={cp_rank}  seed={random_state}")
+    print(f"    RISE rank={rise_rank}  CPD rank={cp_rank}  seed={random_state}")
 
     print("1. Loading data and ligand-receptor pairs...")
     adata = spec.load()
@@ -281,7 +281,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--cpd-rank-notes",
         type=str,
         default=None,
-        help="Rationale for the chosen CP rank, recorded in the provenance file.",
+        help="Rationale for the chosen CPD rank, recorded in the provenance file.",
     )
     return parser
 

@@ -60,7 +60,7 @@ def plot_celltype_eigenstate_association(
     for label in ax.get_xticklabels():
         if int(label.get_text()) in highlight:
             label.set_fontweight("bold")
-    ax.set_xlabel("RISE eigenstate")
+    ax.set_xlabel("RISE eigen-state")
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
     common.colorbar(ax, image, "Mean projection")

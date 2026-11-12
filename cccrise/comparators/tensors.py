@@ -25,7 +25,8 @@ how cells are pooled and pairs scored:
   (``how="outer_cells"``, the package's option for such types). The paper
   itself kept only the types present in every sample (``how="inner"``, no
   mask), which on ALAD drops most immune and epithelial types; that
-  construction is kept as a sensitivity check.
+  construction is kept only to measure what it drops
+  (`runners.run_comparator_scores`' ``inner_loss``).
 
 A complex's expression is the minimum over its subunits, and an LR pair is
 kept when every gene it names was measured, as in Tensor-cell2cell. Pairs are

@@ -136,7 +136,7 @@ def plot_lr_covariation(
         ha="right",
         rotation_mode="anchor",
     )
-    ax.set_ylabel("Pairwise rank correlation\nacross conditions")
+    ax.set_ylabel("Pairwise correlation\nacross conditions")
 
 
 @cache
@@ -209,9 +209,9 @@ def _source_data(result: dict) -> None:
         pd.DataFrame(result["scores"], index=conditions, columns=names).rename_axis(
             index="Condition"
         ),
-        f"Each LR pair's raw communication score per condition in CP component "
+        f"Each LR pair's raw communication score per condition in CPD component "
         f"{COMPONENT}'s sender/receiver context (the tensor slice weighted by "
-        "the component's sender and receiver eigenstate loadings, summed).",
+        "the component's sender and receiver eigen-state loadings, summed).",
     )
     top = np.isin(np.arange(len(names)), result["top"])
     common.source_data(

@@ -19,22 +19,32 @@ def test_containment_of_a_column_in_its_own_span():
     rng = np.random.default_rng(0)
     span = _frame(rng.standard_normal((30, 3)))
     inside = _frame(span.to_numpy() @ [[1.0], [2.0], [0.5]])
-    table = scores.containment(span, inside.iloc[::-1], 50, rng)
+    table = scores.containment(span, inside.iloc[::-1])
     assert table["Containment"].iloc[0] == pytest.approx(1)
-    assert table["Contained"].iloc[0]
     values = span.to_numpy()
     basis = np.eye(30)[:, [0]]
     residual = basis - values @ np.linalg.lstsq(values, basis, rcond=None)[0]
     orthogonal = _frame(residual)
-    table = scores.containment(span, orthogonal, 50, rng)
+    table = scores.containment(span, orthogonal)
     assert table["Containment"].iloc[0] == pytest.approx(0, abs=1e-12)
-    assert not table["Contained"].iloc[0]
 
 
-def test_effective_number_counts_equal_entries():
-    columns = _frame([[1, 3], [1, 0], [-1, 0], [1, 0]])
-    np.testing.assert_allclose(scores.effective_number(columns), [4, 1])
-    np.testing.assert_allclose(scores.top_share(columns), [0.25, 1])
+def test_cccrise_components_without_cells_keep_sample_and_lr():
+    factors = xr.Dataset(
+        {
+            "cp_A": (("condition", "cp_component"), np.ones((3, 2))),
+            "cp_D": (("lr_pair", "cp_component"), np.arange(8.0).reshape(4, 2)),
+        },
+        coords={
+            "condition": ["a", "b", "c"],
+            "lr_pair": [f"L{i}^R{i}" for i in range(4)],
+            "cp_component": [1, 2],
+        },
+    )
+    components = scores.cccrise_components(factors)
+    assert set(components.modes) == {"sample", "lr"}
+    assert list(components.modes["lr"].columns) == [1, 2]
+    assert components.modes["lr"].loc["L3^R3", 2] == 7
 
 
 def test_oriented_makes_the_largest_entry_positive():
@@ -74,15 +84,3 @@ def test_inner_losses_count_what_dropping_a_type_removes():
     # observed: s1 has 4 entries, s2 only a->a; dropping b removes s1's 3
     assert table.loc["observed entries", "Dropped"] == 3
     assert table.loc["signal", "Share"] == pytest.approx(3 / 5)
-
-
-def test_group_r2_is_the_share_group_means_hold():
-    values = np.array([1.0, 1.0, 3.0, 3.0])
-    assert scores.group_r2(values, np.array([0, 0, 1, 1])) == pytest.approx(1)
-    assert scores.group_r2(values, np.array([0, 1, 0, 1])) == pytest.approx(0)
-
-
-def test_paint_r2_ignores_sign_and_scale_and_constants():
-    values = np.array([1.0, 2.0, 4.0, 8.0])
-    assert scores.paint_r2(values, -3 * values) == pytest.approx(1)
-    assert scores.paint_r2(values, np.ones(4)) == 0

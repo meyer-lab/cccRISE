@@ -20,8 +20,8 @@ def plot(axs):
     common.source_data(
         "eigenstate_category_association",
         table,
-        "Per eigenstate the hormone programs (C3, C4) load on and cell category: "
-        "cells, their mean RISE projection, and their share of the eigenstate's "
+        "Per eigen-state the hormone programs (C3, C4) load on and cell category: "
+        "cells, their mean RISE projection, and their share of the eigen-state's "
         "squared projection over all cells.",
     )
     mean = table.pivot(

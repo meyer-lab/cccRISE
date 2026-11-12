@@ -31,7 +31,7 @@ def plot(axs):
         rows = points[(points["Association"] == name) & (points["Component"] == k)]
         draw_violins(ax, rows, levels(association(name)))
         ax.set_ylim(top=STATS_HEADROOM * ax.get_ylim()[1])
-        ax.set_ylabel(f"CP component {k} loading")
+        ax.set_ylabel(f"CPD component {k} loading")
         ax.text(
             0.03,
             0.97,
@@ -114,7 +114,7 @@ def _source_data(points: pd.DataFrame, table: pd.DataFrame) -> None:
     common.source_data(
         "cp_loadings_by_status",
         points,
-        "Each biopsy's read-depth-corrected loading on each drawn CP component "
+        "Each biopsy's read-depth-corrected loading on each drawn CPD component "
         "and its group in the association drawn with it.",
     )
     tested = pd.concat(

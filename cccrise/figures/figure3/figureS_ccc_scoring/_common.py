@@ -164,5 +164,5 @@ def grouped_bar(
                     xi, value, "*", ha="center", va="bottom", fontsize=SIG_FONT_SIZE
                 )
     ax.set_xticks(x, data.index)
-    ax.set_xlabel("CP component")
+    ax.set_xlabel("CPD component")
     ax.set_ylabel(ylabel)

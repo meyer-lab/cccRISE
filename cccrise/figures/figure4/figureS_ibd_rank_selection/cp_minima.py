@@ -1,4 +1,4 @@
-"""Distinct minima the ten seeded SVD starts reach at each IBD CP rank, from
+"""Distinct minima the ten seeded SVD starts reach at each IBD CPD rank, from
 ``uv run cccrise-cpdrank``."""
 
 from ... import common

@@ -1,9 +1,9 @@
 """Supplementary figure: each annotation-pooled comparator's own rank
 selection, on ALAD and IBD together, one column per method and labelling.
-Pseudobulk CPD by cccRISE's own procedure (fit R2X across ten seeded SVD
-starts with the Kneedle elbow; as Figure 2C and D, the LR pair mode's
-collinearity per start and the share of starts at the most common minimum);
-Tensor-cell2cell by its authors' elbow, then how nearly two of a start's
+Pseudobulk CPD by cccRISE's rank-selection sweep (fit R2X across ten seeded
+SVD starts; as Figure 2C and D, the LR pair mode's collinearity per start and
+the share of starts at the most common minimum); Tensor-cell2cell by the
+Kneedle elbow of its error, then how nearly two of a start's
 components duplicate each other, per start (its non-negative factors overlap
 by construction, so per-mode collinearity would not read as pseudobulk
 CPD's), and the same share of its ten random starts; STACCato by its

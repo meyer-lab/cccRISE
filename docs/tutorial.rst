@@ -160,7 +160,7 @@ Plot the fit and imputation R²X, and, for each start, the largest cosine simila
 - **Fit R²X**: rises with every added component.
 - **Imputation R²X**: the prediction of masked tensor entries. Ranks that keep improving it capture structure rather than noise.
 - **LR pair collinearity**: once two components' LR pair factors become near-duplicates (max cosine near 1), added components split existing programs rather than finding new ones, and the starts disagree on which solution they reach.
-- **ALAD**: the canonical fit uses CP rank 5 (dashed line), the largest rank at which every start reaches the same solution without collinear LR pair factors.
+- **ALAD**: the canonical fit uses CPD rank 5 (dashed line), the largest rank at which every start reaches the same solution without collinear LR pair factors.
 
 
 Running the Factorization

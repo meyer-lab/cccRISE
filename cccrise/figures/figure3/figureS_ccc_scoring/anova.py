@@ -60,7 +60,7 @@ def save_source_data(eta: pd.DataFrame, sig: pd.DataFrame) -> None:
     common.source_data(
         "anova_outcome_by_score",
         shown,
-        "One row per (default-score CP component, score): the eta-squared of "
+        "One row per (default-score CPD component, score): the eta-squared of "
         "the score's paired component (the bars); Significant marks raw "
         f"P < {common.SIG_ALPHA} (asterisks).",
     )
@@ -72,13 +72,13 @@ def save_source_data(eta: pd.DataFrame, sig: pd.DataFrame) -> None:
     common.source_data(
         "anova_outcome_by_score_components",
         tables[columns],
-        "One row per (score, CP component in that score's own numbering): its "
+        "One row per (score, CPD component in that score's own numbering): its "
         "one-way ANOVA against the outcome. P is raw (uncorrected).",
     )
     common.source_data(
         "loading_condition_by_score",
         pd.concat([sample_loadings(m).assign(Method=labels[m]) for m in labels]),
-        "One row per (score, BAL sample, CP component in that score's own "
+        "One row per (score, BAL sample, CPD component in that score's own "
         "numbering): the read-depth-corrected condition loading the ANOVA "
         "tested, and the sample's outcome group.",
     )

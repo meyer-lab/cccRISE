@@ -25,8 +25,8 @@ DATASET = "alad"
 
 MODES = {  # factor matrix: row label, whether to order rows
     "A": ("Condition", True),
-    "B": ("Sender eigenstate", False),
-    "C": ("Receiver eigenstate", False),
+    "B": ("Sender eigen-state", False),
+    "C": ("Receiver eigen-state", False),
     "D": ("LR pair", True),
 }
 EIGENSTATE_TICKS = (1, 5, 10, 15)
@@ -46,11 +46,15 @@ def draw(
     strips: dict,
     eigenstate_ticks: Sequence[int] = EIGENSTATE_TICKS,
     top_lr_fraction: float = TOP_LR_FRACTION,
+    compact: bool = False,
 ):
     """`dataset`'s CP factor matrices on `axs` (one per mode), conditions
     grouped by their `groups` (obs indexed by condition) under `strips`
     (`common.condition_strips`), the eigenstate axes ticked at
-    `eigenstate_ticks` and the `top_lr_fraction` of LR pairs shown."""
+    `eigenstate_ticks` and the `top_lr_fraction` of LR pairs shown. With
+    `compact`, the strips are named at brackets instead of a legend and each
+    LR label is placed clear of every outlined cell and other label, the
+    colorbar right of any that has to sit past the matrix."""
     adata = common.load_factors_to_anndata(DATASETS[dataset].factors_path())
     for ax, (key, (ylabel, ordered)) in zip(axs, MODES.items(), strict=True):
         loadings = np.asarray(adata.uns[key], dtype=float)
@@ -67,7 +71,7 @@ def draw(
         if key == "A":
             groups = groups.loc[adata.obs_names]
             order = common.group_conditions(groups, order, strips)
-        image = common.plot_factor_heatmap(ax, loadings[order], "CP component")
+        image = common.plot_factor_heatmap(ax, loadings[order], "CPD component")
         if ordered:
             ax.set_yticks([])
             ylabel += f"s (n={len(loadings)})"
@@ -75,14 +79,16 @@ def draw(
             ax.set_yticks([t - 1 for t in eigenstate_ticks], eigenstate_ticks)
         ax.set_ylabel(ylabel)
         if key == "A":
-            common.condition_strips(ax, groups.iloc[order], strips)
+            common.condition_strips(ax, groups.iloc[order], strips, brackets=compact)
         position = np.argsort(order)  # row index -> drawn row
         common.label_heatmap_cells(
             ax,
             [(position[r], c, name) for r, (c, name) in labeled.items()],
             loadings.shape,
+            clear=compact,
         )
-    common.colorbar(axs[-1], image, "Loading / max |loading|")
+    start = common.text_right_edge(axs[-1]) if compact else 1.0
+    common.colorbar(axs[-1], image, "Loading / max |loading|", start=start)
 
 
 def _source_data(key: str, adata, loadings, shown=None) -> None:

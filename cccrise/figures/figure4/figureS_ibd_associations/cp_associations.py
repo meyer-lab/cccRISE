@@ -18,7 +18,7 @@ def plot(axs):
         table,
         S.corrected_loadings("cp_A"),
         "component",
-        "each CP component's condition loading, read-depth corrected as tested",
+        "each CPD component's condition loading, read-depth corrected as tested",
         FDR,
     )
 

@@ -138,8 +138,7 @@ def key(ax: plt.Axes) -> None:
 
 
 def pb_fit(axs, labelling: str) -> None:
-    """Fit R2X by rank: the median over starts, banded by their range, with
-    its Kneedle elbow circled."""
+    """Fit R2X by rank: the median over starts, banded by their range."""
     ax = axs[0]
     sweeps = both_cohorts(lambda d: load("pb", "rank", d, labelling))
     common.source_data(
@@ -153,8 +152,6 @@ def pb_fit(axs, labelling: str) -> None:
         by_rank = sweeps[sweeps["Dataset"] == name].groupby("Rank")["FitR2X"]
         median = by_rank.median()
         band(ax, by_rank, median, dataset)
-        elbow = common.kneedle_elbow(median.index, 1 - median.to_numpy())
-        circle_kneedle(ax, elbow, median[elbow])
         mark_chosen(ax, fit_rank("pb", dataset, labelling), dataset)
         top = max(top, int(median.index.max()))
     finish_ranks(ax, top)

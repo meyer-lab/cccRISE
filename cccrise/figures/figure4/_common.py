@@ -318,11 +318,17 @@ def group_stats(
 
 
 def dotplot(
-    ax, mean: pd.DataFrame, detected: pd.DataFrame, sections: dict[str, list[str]]
+    ax,
+    mean: pd.DataFrame,
+    detected: pd.DataFrame,
+    sections: dict[str, list[str]],
+    size_key: str = "right",
 ):
     """Figure 2's marker dot plot (`figure2._common.plot_dotplot`) for any
     groups: dot size the fraction detecting a gene, color its mean over the
-    gene's largest group mean, genes under `sections` names."""
+    gene's largest group mean, genes under `sections` names. The size key sits
+    right of the colorbar, or with `size_key` "below", in a row just under the
+    gene names."""
     fontsize = common.style.FONT_SIZE_DENSE
     genes = label_sections(ax, sections, fontsize)
     relative = mean[genes] / mean[genes].max()
@@ -340,15 +346,28 @@ def dotplot(
     ax.set_yticks(range(len(mean)), mean.index, fontsize=fontsize)
     ax.set_ylim(len(mean) - 0.5, -0.5)
     common.colorbar(ax, points, "Mean expr.\n/ max group")
-    common.legend(
-        ax,
-        "right",
-        handles=[
-            ax.scatter([], [], s=DOT_SIZE_MAX * f, color=common.style.COLORS["ink"])
-            for f in DOT_FRACTIONS
-        ],
-        labels=[f"{f:.0%}" for f in DOT_FRACTIONS],
+    handles = [
+        ax.scatter([], [], s=DOT_SIZE_MAX * f, color=common.style.COLORS["ink"])
+        for f in DOT_FRACTIONS
+    ]
+    labels = [f"{f:.0%}" for f in DOT_FRACTIONS]
+    if size_key == "right":
+        common.legend(ax, "right", handles=handles, labels=labels, title="Detected")
+        return
+    bottom = ax.transAxes.inverted().transform(ax.get_tightbbox().get_points())[0, 1]
+    gap = 0.3 * common.style.MM / (ax.bbox.height / ax.figure.dpi)
+    ax.legend(
+        handles=handles,
+        labels=labels,
         title="Detected",
+        loc="upper center",
+        bbox_to_anchor=(0.5, bottom - gap),
+        borderaxespad=0,
+        ncols=len(labels),
+        fontsize=fontsize,
+        title_fontsize=fontsize,
+        columnspacing=0.8,
+        handletextpad=0.2,
     )
 
 

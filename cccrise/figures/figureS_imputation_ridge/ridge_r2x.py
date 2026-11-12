@@ -29,7 +29,7 @@ def plot(axs):
         **S.CORE_MARKER,
     )
     common.mark_rank(ax, core["Rank"])
-    ax.set_xlabel("CP rank")
+    ax.set_xlabel("CPD rank")
     ax.set_ylabel("Fit R²X")
     common.legend(ax, "below")
 
