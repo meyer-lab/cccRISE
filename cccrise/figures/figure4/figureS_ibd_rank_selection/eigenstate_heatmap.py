@@ -1,5 +1,5 @@
 """Cell category x every RISE eigenstate: each category's mean projection
-(as `figureS_celltype_eigenstates` for ALAD), from
+(as Figure 3's `celltype_eigenstates` for ALAD), from
 `run_ibd_programs.eigenstate_celltypes`, categories as
 `figureS_ibd_hormone_axes` breaks the hormone programs' eigenstates down."""
 
@@ -18,8 +18,8 @@ def plot(axs):
     common.source_data(
         "eigenstate_category_association_all",
         table,
-        "Per RISE eigenstate and cell category: cells, their mean RISE projection, "
-        "and their share of the eigenstate's squared projection over all cells.",
+        "Per RISE eigen-state and cell category: cells, their mean RISE projection, "
+        "and their share of the eigen-state's squared projection over all cells.",
     )
     mean = table.pivot(
         index="Category", columns="Eigenstate", values="Mean projection"
@@ -36,7 +36,7 @@ def plot(axs):
         range(mean.shape[1]), mean.columns, rotation=90, fontsize=style.FONT_SIZE_DENSE
     )
     ax.set_yticks(range(len(mean)), mean.index, fontsize=style.FONT_SIZE_DENSE)
-    ax.set_xlabel("RISE eigenstate")
+    ax.set_xlabel("RISE eigen-state")
     ax.tick_params(length=0)
     common.colorbar(ax, image, "Mean projection")
 

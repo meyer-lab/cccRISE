@@ -42,10 +42,9 @@ def scriabin(
     in ``scriabin::GenerateInteractome()`` (BlishLab/scriabin, R),
     reconstructed by reading that function's decompiled body -- it is not a
     wrapper around the R package, and scriabin is not a dependency of this
-    project. It is meant to let cccRISE be benchmarked against Scriabin's
-    single-cell-resolution approach without an R runtime (this project
-    previously ran the actual R package via an `R/` comparator harness,
-    since removed in favor of this module).
+    project. It is not used by the manuscript, whose Scriabin results come
+    from the R package itself (read by ``runners/run_scriabin_seeds.py``); it
+    is kept for its tests.
 
     Upstream computes, for every (sender cell, receiver cell, LR-pair)
     triple, ``edgeweight = log1p(ligand_expr) * log1p(receptor_expr)``,

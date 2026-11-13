@@ -251,7 +251,7 @@ def cell_table() -> pd.DataFrame:
 
 CELL_TABLE_DESCRIPTION = (
     f"One row per cell: its sample, annotated cell type, sender and receiver "
-    f"weight on CP component {GRANULARITY_COMPONENT}, and group (sender or "
+    f"weight on CPD component {GRANULARITY_COMPONENT}, and group (sender or "
     f"receiver if either weight is at least {GROUP_TAU} x that weight's "
     "largest value, assigned to the role of the larger relative weight; rest "
     "otherwise)."
@@ -364,7 +364,7 @@ def _save_markers(sections: dict[str, list[str]]) -> None:
         "marker_expression_per_cell",
         cells.rename_axis("Cell barcode"),
         "One row per cell: its group (sender, receiver, or rest, split on its "
-        f"CP component {GRANULARITY_COMPONENT} weights) and normalized "
+        f"CPD component {GRANULARITY_COMPONENT} weights) and normalized "
         "expression of each plotted marker gene, the values the dot plot "
         "summarizes.",
     )

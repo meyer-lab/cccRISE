@@ -54,7 +54,7 @@ def plot(axs):
                 "BH q": false_discovery_control(p),
             }
         ),
-        f"The CP component {COMPONENT}'s {N_TOP} most heavily weighted LR pairs: "
+        f"The CPD component {COMPONENT}'s {N_TOP} most heavily weighted LR pairs: "
         f"{CASE_DISPLAY} minus {CONTROL_DISPLAY} mean depth-normalized score, "
         f"the SD of its null over {N_PERMS} patient-block permutations of the "
         "outcome (the plot's units), one-sided permutation p, and p "

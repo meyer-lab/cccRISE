@@ -1,21 +1,19 @@
 """The IBD RISE condition factor (A), each component divided by its largest
 magnitude (keeping sign), as the ALAD supplement draws ALAD's: biopsies
-grouped by inflammation status (a color strip left of the matrix), and
-within a status ordered by their most heavily loaded component, then by that
-loading."""
+grouped by inflammation status (a color strip left of the matrix, each
+status named at a bracket, as Figure 4A names them), and within a status
+ordered by their most heavily loaded component, then by that loading."""
 
 import numpy as np
-from matplotlib.colors import to_rgb
-from matplotlib.patches import Patch
+import pandas as pd
 
 from ... import common
-from ...figure2.figureS_rise_factor_matrices._common import XLABEL, normalized_table
+from ...figure2.figureS_alad_cohort._rise_factors import XLABEL, normalized_table
 from .. import _common as S
+from ..cp_factor_matrices import STRIPS
 from ._common import component_ticks
 
 AXES = ("rect",)
-STRIP_WIDTH = 1.2 * common.style.MM
-STRIP_GAP = 0.4 * common.style.MM
 
 
 def plot(axs):
@@ -41,28 +39,10 @@ def plot(axs):
         "component's largest |loading| (sign kept), with its inflammation status.",
     )
     ax.set_yticks([])
-    status_strip(ax, status[order], f"Conditions (n={len(conditions)})")
-
-
-def status_strip(ax, status: np.ndarray, ylabel: str) -> None:
-    """A strip of each row's inflammation status left of the matrix, labeled
-    `ylabel`, and its legend right of the matrix."""
-    inches = ax.bbox.width / ax.figure.dpi
-    strip = ax.inset_axes(
-        (-(STRIP_WIDTH + STRIP_GAP) / inches, 0, STRIP_WIDTH / inches, 1)
+    ax.set_ylabel(f"Conditions (n={len(conditions)})")
+    common.condition_strips(
+        ax, pd.DataFrame({S.GROUP_COLUMN: status[order]}), STRIPS, brackets=True
     )
-    rgb = [to_rgb(S.GROUP_COLORS[s]) for s in status]
-    strip.imshow(np.array(rgb)[:, None], aspect="auto", interpolation="nearest")
-    strip.set(xticks=[], yticks=[], ylabel=ylabel)
-    strip.spines[:].set_visible(False)
-    key = common.legend(
-        ax,
-        "right",
-        handles=[Patch(color="none", label="Inflammation status")]
-        + [Patch(color=S.GROUP_COLORS[g], label=n) for g, n in S.GROUP_LABELS.items()],
-        handlelength=0.8,
-    )
-    key.get_texts()[0].set_fontweight("bold")
 
 
 def makeFigure():

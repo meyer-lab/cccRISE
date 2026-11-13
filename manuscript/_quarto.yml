@@ -19,8 +19,8 @@ metadata-files:
     - _panels.yml
 shortcodes:
     - _panels.lua
-ev_figures: [alad_cohort, cmp5_identity, ccc_scoring, ibd_hormone_axes, comparator_classes]
-appendix_figures: [rise_factor_matrices, cmp_stability, alad_associations, anova_stability, ibd_rank_selection, ibd_associations, niches_ibd, comparator_rank_selection, comparator_map, comparator_split, comparator_covariation, comparator_nichenet, comparator_missed]
+ev_figures: [cmp5_identity, alad_associations, ccc_scoring, ibd_hormone_axes, comparator_split]
+appendix_figures: [alad_cohort, ibd_rank_selection, ibd_associations, comparator_rank_selection, comparator_ibd_and_depth, comparator_missed_alad, comparator_missed_ibd, comparator_single_cell]
 # Appendix tables (Appendix Table S1, ...), written by `python -m cccrise.figures.tables`
 appendix_tables: [alad_outcome_groups]
 

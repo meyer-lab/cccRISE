@@ -24,7 +24,7 @@ from ..import_data import (
 DATA_DIR = Path(__file__).parent.parent / "data"
 #: Core factorizations written by `run_ccc_rise`.
 FACTORS_DIR = DATA_DIR / "factors"
-#: RISE and CP rank-selection sweeps (`run_rise_rank`, `run_cpd_rank`).
+#: RISE and CPD rank-selection sweeps (`run_rise_rank`, `run_cpd_rank`).
 RANK_SELECTION_DIR = DATA_DIR / "rank_selection_results"
 #: Validation experiments: stability, significance, NicheNet, and the
 #: alternate communication-score comparison (`ALT_SCORE_METHODS_DIR`).
@@ -41,6 +41,7 @@ COMPARATOR_SCORES_DIR = COMPARATORS_DIR / "scores"
 IBD_PROGRAMS_DIR = DATA_DIR / "ibd_programs"
 #: Upstream NICHES against cccRISE's populations (`run_niches`)
 NICHES_DIR = DATA_DIR / "niches"
+SCRIABIN_DIR = DATA_DIR / "scriabin"
 #: Figure 2's and Figure 3's ALAD program tables (`run_alad_programs`)
 ALAD_PROGRAMS_DIR = DATA_DIR / "alad_programs"
 
@@ -226,9 +227,6 @@ class DatasetSpec:
 
     def stability_filename(self) -> str:
         return f"component_stability_{self.output_key}.parquet"
-
-    def anova_point_estimate_filename(self) -> str:
-        return f"anova_point_estimate_{self.output_key}.parquet"
 
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.output_key}.parquet"

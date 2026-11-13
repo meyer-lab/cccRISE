@@ -7,6 +7,7 @@ from .. import common, style
 from . import _common as S
 
 AXES = ("square",) * 3
+PACMAP_X = "PaCMAP 1"
 
 
 def plot(axs):
@@ -24,7 +25,7 @@ def plot(axs):
     type_map(axs[0], cells)
     for ax, k in zip(axs[1:], (3, 4), strict=True):
         points = S.weight_map(ax, xy, cells[f"C{k} sender weight"].to_numpy())
-        S.map_axes(ax, f"C{k} sender weight")
+        S.map_axes(ax, f"C{k} sender weight", xlabel=PACMAP_X)
     common.colorbar(axs[-1], points, "Weight")
 
 
@@ -52,7 +53,7 @@ def type_map(ax, cells) -> None:
             fontweight="bold",
             path_effects=S.LABEL_HALO,
         )
-    S.map_axes(ax)
+    S.map_axes(ax, xlabel=PACMAP_X)
 
 
 def makeFigure():

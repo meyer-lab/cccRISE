@@ -1,5 +1,5 @@
 """Whether a component's LR pairs move together across conditions (Figure
-3F, generalized to every method in Figure 5E).
+3F, generalized to every method in Figure 5D).
 
 Each LR pair is scored per condition in the component's own sender/receiver
 context (`context_scores`: the communication tensor's slice for that pair,
@@ -15,6 +15,7 @@ from pathlib import Path
 import anndata
 import numpy as np
 import pandas as pd
+from scipy.sparse.csgraph import connected_components
 
 from .ccc_rise import calculate_interaction_tensor
 from .factors import load_factors_netcdf
@@ -22,11 +23,14 @@ from .import_data import import_ligand_receptor_pairs
 from .utils import load_rise_reference
 
 #: The component's most heavily weighted LR pairs tested for co-variation
-#: (Figure 3); at most this many in Figure 5 (`carrying_pairs`).
+#: (Figure 3).
 N_TOP = 10
 #: Figure 5 tests the fewest top pairs carrying this share of a component's
-#: squared LR loading (`carrying_pairs`).
+#: squared LR loading (`carrying_pairs`) ...
 CARRIED_SHARE = 0.9
+#: ... at most this many (ALAD C3 needs 13 for 90%; a broad TC2C column is
+#: cut here).
+CARRYING_CAP = 15
 COVARIATION_DRAWS = 2000
 #: An expression-matched pair is one of a top pair's this many nearest.
 N_EXPRESSION_NEIGHBORS = 20
@@ -66,7 +70,7 @@ def top_pairs(lr_loadings: np.ndarray, n: int = N_TOP) -> np.ndarray:
 
 
 def carrying_pairs(
-    lr_loadings: np.ndarray, share: float = CARRIED_SHARE, cap: int = N_TOP
+    lr_loadings: np.ndarray, share: float = CARRIED_SHARE, cap: int = CARRYING_CAP
 ) -> np.ndarray:
     """`top_pairs`, as many as the fewest that carry `share` of the squared
     loading, at most `cap`."""
@@ -76,17 +80,50 @@ def carrying_pairs(
     return top_pairs(lr_loadings, min(n, cap))
 
 
-def pairwise_rank_correlations(scores: np.ndarray, columns, genes=None) -> np.ndarray:
+def lr_pair_genes(names, complex_sep: str = "&") -> list[set[str]]:
+    """Each LR pair's set of genes (every subunit), from its
+    `ligand^receptor` name."""
+    return [
+        set(str(name).replace("^", complex_sep).split(complex_sep)) for name in names
+    ]
+
+
+def shared_gene_labels(columns, genes) -> np.ndarray:
+    """Each of `columns`' group: LR pairs linked by a shared gene, directly or
+    through other `columns`, are one group, numbered by first appearance."""
+    shared = np.array([[bool(genes[i] & genes[j]) for j in columns] for i in columns])
+    return connected_components(shared, directed=False)[1]
+
+
+def _ranks(values: np.ndarray) -> np.ndarray:
+    return np.argsort(np.argsort(values, axis=0), axis=0)
+
+
+def pairwise_rank_correlations(
+    scores: np.ndarray, columns, genes=None, merge: bool = False
+) -> np.ndarray:
     """Spearman correlation across conditions of every pair of `columns`
     (upper triangle): each LR pair's scores are ranked across conditions and
     the Pearson correlation of those ranks taken. With `genes` (each LR
     pair's set of genes, every subunit), pairs of pairs that share a gene,
-    and so co-vary almost by construction, are NaN."""
+    and so co-vary almost by construction, are NaN; with `merge` as well,
+    they are instead averaged into one (`shared_gene_labels`: the group's
+    ranks averaged, then re-ranked), and the fewer correlations NaN-padded
+    to as many as `columns` has pairs of, so draws stack; all NaN when every
+    pair merges into one group."""
     columns = np.asarray(columns)
-    ranks = np.argsort(np.argsort(scores[:, columns], axis=0), axis=0)
-    upper = np.triu_indices(len(columns), 1)
-    correlations = np.corrcoef(ranks.T)[upper]
-    if genes is not None:
+    ranks = _ranks(scores[:, columns])
+    if merge:
+        labels = shared_gene_labels(columns, genes)
+        ranks = _ranks(
+            np.column_stack([ranks[:, labels == g].mean(1) for g in np.unique(labels)])
+        )
+    upper = np.triu_indices(ranks.shape[1], 1)
+    correlations = np.full(len(columns) * (len(columns) - 1) // 2, np.nan)
+    if ranks.shape[1] < 2:  # one group left: nothing to correlate
+        return correlations
+    correlations[: upper[0].size] = np.corrcoef(ranks.T)[upper]
+    if genes is not None and not merge:
         shared = [bool(genes[columns[i]] & genes[columns[j]]) for i, j in zip(*upper)]
         correlations[np.array(shared, bool)] = np.nan
     return correlations
@@ -98,6 +135,7 @@ def covariation_baselines(
     associated: np.ndarray | None = None,
     seed: int = 0,
     genes=None,
+    merge: bool = False,
 ) -> dict[str, np.ndarray]:
     """`pairwise_rank_correlations` (draws x pairs of pairs) of as many LR
     pairs as `top`, drawn `COVARIATION_DRAWS` times from the LR pairs outside
@@ -113,8 +151,9 @@ def covariation_baselines(
       associated with the outcome; all of them when there are fewer than
       `top`.
 
-    With `genes`, correlations between pairs sharing a gene are NaN
-    (`pairwise_rank_correlations`); the draws themselves are unchanged."""
+    With `genes`, correlations between pairs sharing a gene are NaN, or with
+    `merge` those pairs averaged into one (`pairwise_rank_correlations`); the
+    draws themselves are unchanged."""
     rng = np.random.default_rng(seed)
     pool = np.setdiff1d(np.arange(scores.shape[1]), top)
     level = np.log10(scores.mean(axis=0) + 1e-12)
@@ -141,7 +180,7 @@ def covariation_baselines(
     return {
         name: np.array(
             [
-                pairwise_rank_correlations(scores, draw(), genes)
+                pairwise_rank_correlations(scores, draw(), genes, merge)
                 for _ in range(COVARIATION_DRAWS)
             ]
         )

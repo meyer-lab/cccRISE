@@ -170,7 +170,7 @@ def run_stability(
     git_sha()
 
     print(f"=== Component and association stability: {spec.label} ===")
-    print(f"    RISE rank {rise_rank}, CP rank {cp_rank}, {n_replicates} replicates")
+    print(f"    RISE rank {rise_rank}, CPD rank {cp_rank}, {n_replicates} replicates")
     print(f"    Axes: {', '.join(axes)}")
     print(
         f"    alpha={alpha}  group_column={group_column!r}  "
@@ -403,7 +403,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--cp-rank",
         type=int,
         required=True,
-        help="CP rank every fit uses; see rank_selection.select_cpd_rank.",
+        help="CPD rank every fit uses; see rank_selection.select_cpd_rank.",
     )
     parser.add_argument(
         "--axes",

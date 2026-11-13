@@ -55,6 +55,7 @@ def plot(axs):
         mean.set_axis(labels),
         detected.set_axis(labels),
         {n: [g for g in genes if g in shown] for n, genes in SECTIONS.items()},
+        size_key="below",
     )
 
 

@@ -17,7 +17,9 @@ summed over eigenstates).
 - Co-variation of the `N_TOP` pairs: the Spearman correlation across
   conditions of every pair of them (`pairwise_rank_correlations`), ranks so a
   few conditions in which many LR pairs spike together do not dominate it.
-  Each baseline box pools those correlations over `COVARIATION_DRAWS` draws of
+  Pairs sharing a ligand or receptor gene, which co-vary almost by
+  construction, are first averaged into one (their ranks averaged), in the
+  top pairs and in every draw alike. Each baseline box pools those correlations over `COVARIATION_DRAWS` draws of
   as many LR pairs from outside that set (`program_covariation`, from
   `covariation_baselines`): random,
   expression-matched (one pair per top pair from its `N_EXPRESSION_NEIGHBORS`
@@ -34,6 +36,8 @@ from ...covariation import (
     COVARIATION_DRAWS,
     N_EXPRESSION_NEIGHBORS,
     N_TOP,
+    lr_pair_genes,
+    shared_gene_labels,
     top_pairs,
 )
 from .. import common, style
@@ -98,9 +102,9 @@ def plot_lr_covariation(
 ) -> None:
     """Pairwise rank correlations of the top pairs (boxed, with each pair of
     pairs as a point) beside every draw's pairwise correlations, pooled, per
-    baseline."""
+    baseline (NaN where a draw merged pairs)."""
     groups = {f"Cmp. {COMPONENT} top {N_TOP}": observed} | {
-        BASELINES[name][0]: draws.ravel() for name, draws in baselines.items()
+        BASELINES[name][0]: draws[~np.isnan(draws)] for name, draws in baselines.items()
     }
     # Green, as the top pairs are in the association panel
     colors = [style.COLORS["highlight"]] + [color for _, color in BASELINES.values()]
@@ -132,7 +136,7 @@ def plot_lr_covariation(
         ha="right",
         rotation_mode="anchor",
     )
-    ax.set_ylabel("Pairwise rank correlation\nacross conditions")
+    ax.set_ylabel("Pairwise correlation\nacross conditions")
 
 
 @cache
@@ -180,7 +184,8 @@ def context_score_matrix() -> np.ndarray:
 
 def covariation_draws() -> tuple[np.ndarray, dict[str, np.ndarray]]:
     """The top pairs' pairwise rank correlations, and each baseline's draws
-    (draws x pairs of pairs), in `covariation_baselines`' order."""
+    (draws x pairs of pairs, NaN past a draw's merged pairs), in
+    `covariation_baselines`' order."""
     rows = common.alad_programs("program_covariation").query("Component == @COMPONENT")
     draws = {
         str(name): group.pivot(
@@ -204,9 +209,9 @@ def _source_data(result: dict) -> None:
         pd.DataFrame(result["scores"], index=conditions, columns=names).rename_axis(
             index="Condition"
         ),
-        f"Each LR pair's raw communication score per condition in CP component "
+        f"Each LR pair's raw communication score per condition in CPD component "
         f"{COMPONENT}'s sender/receiver context (the tensor slice weighted by "
-        "the component's sender and receiver eigenstate loadings, summed).",
+        "the component's sender and receiver eigen-state loadings, summed).",
     )
     top = np.isin(np.arange(len(names)), result["top"])
     common.source_data(
@@ -220,19 +225,23 @@ def _source_data(result: dict) -> None:
         f"{result['component_eta']:.4f}.",
         part=0,
     )
-    pairs = np.triu_indices(N_TOP, 1)
     top_names = names[result["top"]]
+    labels = shared_gene_labels(result["top"], lr_pair_genes(names))
+    merged = np.array([" + ".join(top_names[labels == g]) for g in np.unique(labels)])
+    pairs = np.triu_indices(len(merged), 1)
     common.source_data(
         "top_pair_rank_correlations",
         pd.DataFrame(
             {
-                "LR pair 1": top_names[pairs[0]],
-                "LR pair 2": top_names[pairs[1]],
+                "LR pair 1": merged[pairs[0]],
+                "LR pair 2": merged[pairs[1]],
                 "Spearman correlation": result["observed"],
             }
         ),
         f"Spearman correlation across conditions of every pair of the component's "
-        f"top {N_TOP} LR pairs.",
+        f"top {N_TOP} LR pairs, those sharing a ligand or receptor gene averaged "
+        "into one (joined by '+'; their per-condition ranks averaged, then "
+        "re-ranked).",
         part=1,
     )
     common.source_data(
@@ -241,6 +250,7 @@ def _source_data(result: dict) -> None:
             pd.DataFrame(draws)
             .rename_axis(index="Draw", columns="Pair of pairs")
             .stack()
+            .dropna()
             .rename("Spearman correlation")
             .reset_index()
             .assign(Baseline=BASELINES[name][0])
@@ -250,7 +260,8 @@ def _source_data(result: dict) -> None:
         f"{N_TOP} LR pairs from outside the top pairs, per baseline: random, "
         f"expression-matched (one per top pair from its {N_EXPRESSION_NEIGHBORS} "
         "nearest pairs in log mean score), and other outcome-associated pairs "
-        "(adjusted p < 0.05).",
+        "(adjusted p < 0.05), each draw's pairs sharing a gene averaged into one "
+        "as above.",
         part=1,
     )
 
