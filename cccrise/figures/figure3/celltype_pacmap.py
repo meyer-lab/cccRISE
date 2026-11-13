@@ -16,12 +16,14 @@ from matplotlib.patches import Rectangle
 
 from ...runners.datasets import DATASETS
 from .. import common, style
+from ..figure4._common import map_axes
 from ..figureS_alad_pacmaps.weight_pacmaps import plot_value_scatter
 from ._common import DATASET
 
 EIGENSTATE = 16  # cp_B and cp_C of `COMPONENT` both load on it alone
 BACKGROUND_TYPE = "Macrophages"  # most of the cells: drawn beneath the rest
 LYMPHOCYTES = ("CD4 T cells", "CD8 T cells", "NK cells")
+ZOOM_XLABEL = "PaCMAP 1 (zoom: lymphocytes)"
 CLUSTER_RADIUS = 3  # PaCMAP units around the lymphocytes' median: their island
 BOX_QUANTILES = (0, 1)  # of the island's lymphocytes, per axis: its full extent
 BOX_PAD = 0.05  # of the box's size, on each side
@@ -33,9 +35,6 @@ def plot(axs):
     x, y = np.asarray(adata.obsm["PaCMAP"]).T
     celltypes = adata.obs[DATASETS[DATASET].celltype_column].astype(str).to_numpy()
     projection = adata.obsm["projections"][:, EIGENSTATE - 1]
-    for ax in axs:  # PaCMAP coordinates have no units
-        ax.set(xticks=[], yticks=[])
-        ax.spines[:].set_visible(False)
     _celltype_scatter(axs[0], x, y, celltypes)
     box = _lymphocyte_box(axs[0], x, y, np.isin(celltypes, LYMPHOCYTES))
     inside = (
@@ -44,7 +43,7 @@ def plot(axs):
     points = plot_value_scatter(axs[1], x[inside], y[inside], projection[inside])
     points.set_sizes([style.POINT_SIZE_BACKGROUND])
     axs[1].set(xlim=(box[0], box[0] + box[2]), ylim=(box[1], box[1] + box[3]))
-    axs[1].set_xlabel("Lymphocytes")
+    map_axes(axs[1], xlabel=ZOOM_XLABEL)
     for spine in axs[1].spines.values():
         spine.set(visible=True, linestyle=style.LINE_STYLE_REFERENCE)
         spine.set_edgecolor(style.COLORS["reference"])
@@ -82,7 +81,7 @@ def _celltype_scatter(ax, x, y, celltypes) -> None:
         linewidths=0,
         rasterized=True,
     )
-    ax.set_xlabel("Cell type")
+    map_axes(ax, xlabel="PaCMAP 1")
     common.legend(
         ax,
         "right",
