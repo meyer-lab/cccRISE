@@ -1,5 +1,5 @@
 """Cell category x every RISE eigenstate: each category's mean projection
-(as `figureS_celltype_eigenstates` for ALAD), from
+(as Figure 3's `celltype_eigenstates` for ALAD), from
 `run_ibd_programs.eigenstate_celltypes`, categories as
 `figureS_ibd_hormone_axes` breaks the hormone programs' eigenstates down."""
 

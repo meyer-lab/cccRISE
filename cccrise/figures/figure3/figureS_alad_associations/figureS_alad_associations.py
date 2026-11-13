@@ -1,6 +1,5 @@
 """Supplementary figure: each sample's annotated cell type composition by
-ALAD status; association of every CP component with the ALAD outcomes, and
-the outcome-associated CP component's per-cell sender vs. receiver weights;
+ALAD status; association of every CP component with the ALAD outcomes;
 association of every RISE component with the outcomes; association of each
 patient covariate with the outcomes; and the CP component - outcome
 associations under patient jackknifing."""
@@ -12,7 +11,6 @@ from . import (
     cp_associations,
     effect_size_distributions,
     rise_associations,
-    sender_receiver_scatter,
     significant_fraction,
 )
 
@@ -20,7 +18,7 @@ LAYOUT = [
     [celltype_proportions],
     [cp_associations],
     [rise_associations],
-    [sender_receiver_scatter, covariates],
+    [covariates],
     [effect_size_distributions, significant_fraction],
 ]
 

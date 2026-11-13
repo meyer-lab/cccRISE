@@ -19,7 +19,6 @@ q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected a
 ({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each ALAD outcome.
 \*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
 ({{< panel alad-associations rise-associations >}}) As in ({{< panel alad-associations cp-associations >}}), for each RISE component's condition loadings.
-({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CPD component 4 sender against receiver weight, with R^2^ across all cells.
 ({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 ({{< panel alad-associations effect-size-distributions >}}) ANOVA η^2^ of each CPD component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by Hungarian matching.
