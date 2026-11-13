@@ -9,11 +9,8 @@ per-component sender, receiver or sample pattern, so its sender and receiver
 modes are left out and its sample and LR columns are scored on their own.
 
 - `containment`: the share of a unit column's squared norm in another fit's
-  column span, ``||P_S c||^2``, called contained at `CONTAINED` or above when
-  it is also above the 95th percentile of a row-permutation null.
-- `effective_number`: the inverse Simpson index of a column's squared
-  loadings, ``(sum x^2)^2 / sum x^4``; k equal entries give k. For samples it
-  is the participation ratio.
+  column span, ``||P_S c||^2`` (the fraction of a cccRISE component's LR pair
+  loadings a comparator fit reconstructs, Figure 5B).
 - `inner_losses`: what Tensor-cell2cell's published construction (only the
   cell types present in every sample) drops from its masked tensor.
 """
@@ -25,10 +22,6 @@ import pandas as pd
 import xarray as xr
 
 from .methods import MODES
-from .tensors import subunits
-
-#: Containment at or above this, and above the null, calls a column contained.
-CONTAINED = 0.85
 
 
 @dataclass(frozen=True)
@@ -72,55 +65,16 @@ def _projected(span: np.ndarray, columns: np.ndarray) -> np.ndarray:
     return np.sum((basis.T @ unit_columns(columns)) ** 2, axis=0)
 
 
-def containment(
-    span: pd.DataFrame, columns: pd.DataFrame, n_null: int, rng: np.random.Generator
-) -> pd.DataFrame:
+def containment(span: pd.DataFrame, columns: pd.DataFrame) -> pd.DataFrame:
     """Per column of `columns`: its containment in `span`'s column span (rows
-    matched by label), the 95th percentile of that with `span`'s rows
-    permuted, and whether it is contained."""
+    matched by label)."""
     span = span.loc[columns.index].to_numpy(float)
-    values = columns.to_numpy(float)
-    observed = _projected(span, values)
-    null = np.array(
-        [_projected(span[rng.permutation(len(span))], values) for _ in range(n_null)]
-    )
-    q95 = np.quantile(null, 0.95, axis=0)
     return pd.DataFrame(
         {
             "Component": columns.columns,
-            "Containment": observed,
-            "NullQ95": q95,
-            "Contained": (observed >= CONTAINED) & (observed > q95),
+            "Containment": _projected(span, columns.to_numpy(float)),
         }
     )
-
-
-def group_r2(values: np.ndarray, groups: np.ndarray) -> float:
-    """The share of `values`' variance its `groups`' means hold."""
-    means = pd.Series(values).groupby(groups).transform("mean").to_numpy()
-    return float(
-        1 - np.sum((values - means) ** 2) / np.sum((values - values.mean()) ** 2)
-    )
-
-
-def paint_r2(values: np.ndarray, painted: np.ndarray) -> float:
-    """The squared correlation of `values` with `painted`: 0 for a constant
-    `painted`, which holds none of their variance."""
-    return float(np.corrcoef(values, painted)[0, 1] ** 2) if painted.std() > 0 else 0.0
-
-
-def effective_number(columns: pd.DataFrame) -> pd.Series:
-    """Per column, the inverse Simpson index of its squared loadings."""
-    squared = columns.to_numpy(float) ** 2
-    return pd.Series(
-        squared.sum(axis=0) ** 2 / (squared**2).sum(axis=0), index=columns.columns
-    )
-
-
-def top_share(columns: pd.DataFrame) -> pd.Series:
-    """Per column, its largest entry's share of the squared loading."""
-    squared = columns.to_numpy(float) ** 2
-    return pd.Series(squared.max(axis=0) / squared.sum(axis=0), index=columns.columns)
 
 
 def oriented(columns: pd.DataFrame) -> pd.DataFrame:
@@ -141,20 +95,22 @@ def celltype_profiles(
 
 
 def cccrise_components(
-    factors: xr.Dataset, cells, celltype_column: str, celltypes
+    factors: xr.Dataset, cells=None, celltype_column: str = "", celltypes=()
 ) -> Components:
     """cccRISE's CP components, its sender and receiver on `celltypes` from
-    `cells`' per-cell loadings (``obsm["sc_B"]``, ``obsm["rc_C"]``)."""
+    `cells`' per-cell loadings (``obsm["sc_B"]``, ``obsm["rc_C"]``); without
+    `cells`, only its sample and LR modes, which need no dataset."""
     names = factors["cp_component"].to_numpy()
-    labels = cells.obs[celltype_column].astype(str)
     modes = {
         "sample": pd.DataFrame(
             factors["cp_A"].to_numpy(), factors["condition"].to_numpy()
         ),
-        "sender": celltype_profiles(cells.obsm["sc_B"], labels, celltypes),
-        "receiver": celltype_profiles(cells.obsm["rc_C"], labels, celltypes),
         "lr": pd.DataFrame(factors["cp_D"].to_numpy(), factors["lr_pair"].to_numpy()),
     }
+    if cells is not None:
+        labels = cells.obs[celltype_column].astype(str)
+        modes["sender"] = celltype_profiles(cells.obsm["sc_B"], labels, celltypes)
+        modes["receiver"] = celltype_profiles(cells.obsm["rc_C"], labels, celltypes)
     return Components(
         "cccRISE", {m: frame.set_axis(names, axis=1) for m, frame in modes.items()}
     )
@@ -189,7 +145,3 @@ def tucker_column_profiles(fit: xr.Dataset, column: int) -> dict[str, np.ndarray
         leading = np.linalg.svd(unfolded, full_matrices=False)[0][:, 0]
         profiles[mode] = fit[f"{mode}_factor"].to_numpy() @ leading
     return profiles
-
-
-def is_homophilic(ligand: str, receptor: str) -> bool:
-    return set(subunits(ligand)) == set(subunits(receptor))

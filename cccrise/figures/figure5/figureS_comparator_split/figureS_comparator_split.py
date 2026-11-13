@@ -1,11 +1,24 @@
-"""Supplementary figure: depth tracking of every method's components (A), and
-IBD's mixed programs: their pairs in STAC's columns (B) and their co-variation
-against those columns (C)."""
+"""Supplementary figure (EV5): how the comparators split and merge CCC-RISE's
+components. Each component's best single comparator LR column against how
+many LR pairs carry it (A); ALAD C3's carrying pairs in its related columns
+of each comparator (B) and their co-variation (C); IBD C1 and C5 together
+(D), which share related columns, and the cosine between C1 and C5 in each
+CP mode (E). IBD has no co-variation panel: the co-variation test was run in
+ALAD only."""
 
 from ... import common, style
-from . import depth_tracking, mixed_covariation, mixed_pairs
+from . import (
+    alad_c3_columns,
+    alad_c3_covariation,
+    cos2_pairs,
+    ibd_c1c5_columns,
+    ibd_c1c5_modes,
+)
 
-LAYOUT = [[depth_tracking], [mixed_pairs, mixed_covariation]]
+LAYOUT = [
+    [cos2_pairs, alad_c3_columns, alad_c3_covariation],
+    [ibd_c1c5_columns, ibd_c1c5_modes],
+]
 
 
 def makeFigure():

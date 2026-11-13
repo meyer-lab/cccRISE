@@ -6,16 +6,13 @@ Runs NICHES on each component's carrying pairs through
 for the folder):
 
     populations_<dataset>.parquet
-        per component and side, the population's NICHES concordance and score
-        against what its labels predict, its NICHES+ cells, and random
-        directions' 5th and 95th percentiles, p and BH q
-    orderings_<dataset>.parquet
-        per component, side and ordering, the concordance of the population's
-        number of cells, and NICHES's share of all cells
+        per component and side, the population's cells, samples, NICHES+
+        cells and NICHES concordance, and what cell type predicts within
+        sample (`niches_programs.population_table`)
     tau_<dataset>.parquet
-        per population and tau, its concordance and its labels'
+        the same at every tau (`niches_programs.tau_table`)
     cells_<dataset>.parquet
-        per cell, its coarse and fine label and its unscaled sender and
+        per cell, its sample, coarse and fine label and its unscaled sender and
         receiver weight on each component (`cell_frame`), so figures plotting
         per-cell weights read them instead of loading and projecting the cohort
 
@@ -45,26 +42,18 @@ import scipy.io
 import xarray as xr
 import yaml
 from scipy.sparse import csr_matrix
-from threadpoolctl import threadpool_limits
 
 from ..comparators.niches_programs import (
     MODES,
-    N_ORDERING_DRAWS,
-    N_POPULATION_DRAWS,
-    SIDES,
     TAUS,
     Cohort,
-    centred_signal,
-    centred_tokens,
-    ordering_table,
     pair_tokens,
     population_table,
     program_score,
-    random_directions,
     tau_table,
     token_expression,
 )
-from ..covariation import carrying_pairs
+from ..covariation import CARRYING_CAP, carrying_pairs
 from ..factors import load_factors_netcdf, load_factors_to_anndata
 from ..figures.figure2._common import GROUP_TAU
 from ._cli import (
@@ -144,11 +133,12 @@ def run_upstream(
 
 
 def cell_frame(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataFrame:
-    """Each cell's name, labels and unscaled per-cell weights."""
+    """Each cell's name, sample, labels and unscaled per-cell weights."""
     obs = cast(pd.DataFrame, adata.obs)
     labels = spec.labellings
     frame = {
         "Cell": adata.obs_names.astype(str),
+        "Sample": obs[spec.condition_column].astype(str).to_numpy(),
         "Coarse": obs[labels["coarse"]].astype(str).to_numpy(),
         "Fine": obs[labels["fine"]].astype(str).to_numpy(),
     }
@@ -156,34 +146,6 @@ def cell_frame(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataFrame:
         for k, column in enumerate(np.asarray(adata.obsm[key]).T):
             frame[f"{side} C{k + 1}"] = column
     return pd.DataFrame(frame)
-
-
-def add_signal(
-    frame: pd.DataFrame,
-    adata: anndata.AnnData,
-    loadings: np.ndarray,
-    lr_pairs: np.ndarray,
-) -> pd.DataFrame:
-    """`frame` with each side and component's `centred_signal`."""
-    genes = pd.Index(adata.var_names.astype(str))
-    sides = pair_tokens(lr_pairs)
-    known = set(genes)
-    tokens = sorted(
-        t
-        for t in set(sides["ligand"]) | set(sides["receptor"])
-        if set(t.split("&")) <= known
-    )
-    expression = token_expression(adata.X, genes, tokens)
-    means = pd.Series(adata.var["means"].to_numpy(), index=genes)
-    centred = centred_tokens(expression, tokens, means)
-    columns = {
-        f"Signal {side.title()} C{k + 1}": centred_signal(
-            centred, tokens, sides[role], loadings[:, k]
-        )
-        for side, role in zip(SIDES, ("ligand", "receptor"), strict=True)
-        for k in range(loadings.shape[1])
-    }
-    return pd.concat([frame, pd.DataFrame(columns)], axis=1)
 
 
 def add_program_scores(
@@ -255,12 +217,14 @@ def fit_metadata(spec: DatasetSpec, dims: dict) -> dict:
 def write_cells(
     spec: DatasetSpec, frame: pd.DataFrame, metadata: dict, command: str
 ) -> None:
-    """`cell_frame`'s columns of `frame` (not the signal or NICHES columns
-    added later), labels as categories."""
-    columns = ["Cell", "Coarse", "Fine"] + [
+    """`cell_frame`'s columns of `frame` (not the NICHES columns added later),
+    sample and labels as categories."""
+    columns = ["Cell", "Sample", "Coarse", "Fine"] + [
         c for c in frame.columns if c.startswith(("Sender C", "Receiver C"))
     ]
-    cells = frame[columns].astype({"Coarse": "category", "Fine": "category"})
+    cells = frame[columns].astype(
+        {"Sample": "category", "Coarse": "category", "Fine": "category"}
+    )
     write(spec, "cells", cells, metadata, command)
 
 
@@ -277,38 +241,25 @@ def run_niches(spec: DatasetSpec, args: argparse.Namespace, command: str) -> Non
     if args.cells_only:
         write_cells(spec, frame, build_metadata(fit_metadata(spec, dims)), command)
         return
-    print("2. Per-cell signal...", flush=True)
-    frame = add_signal(frame, adata, loadings, lr_pairs)
-    print("3. NICHES...", flush=True)
+    print("2. NICHES...", flush=True)
     frame, pairs, versions = niches_scores(frame, adata, spec, loadings, lr_pairs, args)
-    projections = np.asarray(adata.obsm["projections"], dtype=np.float32)
     del adata
     scored = frame["NICHES Sender C1"].notna().to_numpy()
-    cohort = Cohort(frame[scored].reset_index(drop=True), projections[scored])
-    print("4. Populations...", flush=True)
-    directions = random_directions(
-        projections.shape[1], N_POPULATION_DRAWS, args.random_state
-    )
-    # One BLAS thread: a draw's float32 near-ties don't depend on the thread count
-    with threadpool_limits(1):
-        populations = population_table(cohort, directions)
-        orderings = ordering_table(cohort, directions[:, :N_ORDERING_DRAWS])
+    cohort = Cohort(frame[scored].reset_index(drop=True))
+    print("3. Populations...", flush=True)
     metadata = build_metadata(
         fit_metadata(spec, dims)
         | {
-            "random_state": args.random_state,
             "niches_commit": commit,
             "r_versions": versions,
             "niches_pairs": (pairs["ligand"] + "^" + pairs["receptor"]).tolist(),
             "cells_without_niches_score": int((~scored).sum()),
             "group_tau": GROUP_TAU,
+            "carrying_cap": CARRYING_CAP,
             "taus": list(TAUS),
-            "n_population_draws": N_POPULATION_DRAWS,
-            "n_ordering_draws": N_ORDERING_DRAWS,
         }
     )
-    write(spec, "populations", populations, metadata, command)
-    write(spec, "orderings", orderings, metadata, command)
+    write(spec, "populations", population_table(cohort), metadata, command)
     write(spec, "tau", tau_table(cohort), metadata, command)
     write_cells(spec, frame, metadata, command)
 
@@ -334,7 +285,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write only the per-cell table (cells_<dataset>); skips R and NICHES.",
     )
     parser.add_argument("--r-workers", type=int, default=8)
-    parser.add_argument("--random-state", type=int, default=0)
     return parser
 
 

@@ -1,4 +1,4 @@
-"""Distinct minima the ten seeded SVD starts reach at each CP rank: how many
+"""Distinct minima the ten seeded SVD starts reach at each CPD rank: how many
 starts reach each, stacked from the one most starts reach (f_max)."""
 
 from .. import common

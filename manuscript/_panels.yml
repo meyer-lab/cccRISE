@@ -15,11 +15,13 @@ fig2:
   celltype_composition: [n]
 fig3:
   outcome_association: [a]
-  celltype_pacmap: [b, c]
-  lr_loadings: [d]
-  coordinated_changes: [e, f]
-  lr_permutation: [g]
-  lr_volcano: [h]
+  celltype_eigenstates: [b]
+  celltype_pacmap: [c, d]
+  sender_receiver_scatter: [e]
+  lr_loadings: [f]
+  coordinated_changes: [g, h]
+  lr_permutation: [i]
+  lr_volcano: [j]
 fig4:
   cp_factor_matrices: [a, b, c, d]
   ee_state_map: [e, f, g]
@@ -27,17 +29,17 @@ fig4:
   hormone_angle_scatter: [i]
   hormone_angle_hist: [j]
   hormone_extreme_markers: [k]
-  niches_concordance: [l]
-  niches_orderings: [m]
 fig5:
-  program_map: [a]
-  column_census: [b]
-  best_column: [c]
-  pair_columns: [d]
-  program_covariation: [e]
-  flow_alad: [f]
-  flow_ibd: [g]
-  niches_fraction: [h]
+  cos2_grid: [a]
+  span_containment: [b]
+  pair_columns: [c]
+  program_covariation: [d]
+  labels_alad: [e]
+  labels_ibd: [f]
+  nichenet: [g]
+  flow_alad: [h]
+  flow_ibd: [i]
+  niches_fraction: [j]
 figS_cmp5_identity:
   eigenstate_scatter: [a]
   cmp_eigenstate_loadings: [b]
@@ -49,10 +51,9 @@ figS_alad_associations:
   celltype_proportions: [a]
   cp_associations: [b]
   rise_associations: [c]
-  sender_receiver_scatter: [d]
-  covariates: [e]
-  effect_size_distributions: [f]
-  significant_fraction: [g]
+  covariates: [d]
+  effect_size_distributions: [e]
+  significant_fraction: [f]
 figS_alad_cohort:
   cohort: [a]
   factors: [b]
@@ -62,17 +63,13 @@ figS_alad_cohort:
   cpd_fms: [f]
 figS_ccc_scoring:
   factor_match: [a, b]
-  anova: [c]
-  interpretation: [d, e]
+  interpretation: [c, d]
 figS_imputation_ridge:
   ridge_r2x: [a]
   ridge_fms: [b]
 figS_alad_pacmaps:
   pacmaps: [a, b]
   weight_pacmaps: [c, d, e]
-figS_celltype_eigenstates:
-  association: [a]
-  celltype_association: [b, c]
 figS_ibd_rank_selection:
   cohort: [a]
   rise_rank_selection: [b]
@@ -84,9 +81,6 @@ figS_ibd_rank_selection:
   factors: [h]
   genes: [i]
   eigenstate_heatmap: [j]
-figS_ibd_rise_factor_matrices:
-  factors: [a]
-  genes: [b]
 figS_comparator_rank_selection:
   pb_fit_coarse: [a]
   pb_fit_fine: [b]
@@ -102,13 +96,6 @@ figS_comparator_rank_selection:
   tc2c_minima_fine: [l]
   stac_shares_coarse: [m]
   stac_shares_fine: [n]
-figS_comparator_covariation:
-  pairs_used: [a]
-  all_pairs: [b]
-  disjoint: [c]
-  ibd_pairs_used: [d]
-  ibd_all_pairs: [e]
-  ibd_disjoint: [f]
 figS_ibd_inflammatory_programs:
   top_pair_permutation: [a, b]
   high_sender_genes: [c]
@@ -128,31 +115,27 @@ figS_ibd_hormone_axes:
   magnitude_hist: [j]
   marker_floor_sweep: [k]
   extreme_share: [l]
-figS_niches_ibd:
-  weight_scatters: [a]
-  concordance: [b]
-  tau_sweep: [c]
-  orderings: [d]
-figS_comparator_classes:
-  span_containment: [a]
-  program_overlap: [b]
-  column_breadth: [c]
-  homophilic_share: [d]
-figS_comparator_map:
-  sender_ceiling: [a]
-  receiver_ceiling: [b]
-  alad_columns: [c]
-  coarse_map: [d]
-  ibd_columns: [e]
-figS_comparator_nichenet:
-  cell_shuffle: [a]
-  prior_shuffle: [b]
-  closest_columns: [c]
-figS_comparator_missed:
-  column_contents: [a]
-  alad_associations: [b]
-  ibd_associations: [c]
 figS_comparator_split:
-  depth_tracking: [a]
-  mixed_pairs: [b]
-  mixed_covariation: [c]
+  cos2_pairs: [a]
+  alad_c3_columns: [b]
+  alad_c3_covariation: [c]
+  ibd_c1c5_columns: [d]
+  ibd_c1c5_modes: [e]
+figS_comparator_missed_alad:
+  share: [a]
+  associations: [b]
+  contents: [c]
+figS_comparator_missed_ibd:
+  share: [a]
+  associations: [b]
+  contents: [c]
+figS_comparator_single_cell:
+  scriabin_seeds: [a]
+  alad_weights: [b]
+  ibd_weights: [c]
+  alad_tau: [d]
+  ibd_tau: [e]
+figS_comparator_ibd_and_depth:
+  ibd_best: [a]
+  ibd_containment: [b]
+  depth: [c]

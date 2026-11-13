@@ -17,7 +17,7 @@ from ....validation.stability import JACKKNIFE_AXIS
 from ... import common, style
 
 DATASET = "alad"
-COMPONENT_NAMES = {"RISE": "RISE", "CPD": "CP"}  # stage -> axis label
+COMPONENT_NAMES = {"RISE": "RISE", "CPD": "CPD"}  # stage -> axis label
 AGGREGATE_AXES = (JACKKNIFE_AXIS, "seed_only")
 
 

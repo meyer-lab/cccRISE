@@ -46,7 +46,7 @@ def plot_outcome_weights(ax, association: str, component: int) -> None:
         show_counts=False,
         **{k: spec[k] for k in REGROUPING_KEYS if k in spec},
     )
-    ax.set_ylabel(f"CP component {component} loading")
+    ax.set_ylabel(f"CPD component {component} loading")
     ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE)
 
 
@@ -70,7 +70,7 @@ def _source_data(association: str, component: int) -> None:
     common.source_data(
         "cp_loadings_by_outcome",
         outcome_points(association, component),
-        f"Each sample's read-depth-corrected loading on CP component {component} "
+        f"Each sample's read-depth-corrected loading on CPD component {component} "
         f"and its level of '{association}', with its patient (a patient's "
         "samples are joined in the plot).",
     )

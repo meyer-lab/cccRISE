@@ -5,14 +5,14 @@ Runner: the NicheNet tests on cccRISE and every comparator LR column of a cohort
 Each column gets a high and a low group of cells and the target scores of every
 ligand on their differential expression (`nichenet.component_ligand_scores`),
 tested against rankings with the two groups' labels shuffled among their cells
-and against copies of the prior with its links reassigned.
+(Figure 5G).
 
 - **cccRISE:** as Figure 2, the top receiver cells of each component's receiver
   cell types against the bottom cells of the dataset.
 - **Comparators:** a column has one receiver value per label, so no cells can be
   taken within a label. High is every cell of the labels at or above
-  `nichenet.rel_cutoff` of the largest, low the lowest labels up to `TOP_PERC`
-  percent of cells. A column whose labels all clear the cutoff has no low group
+  `REL_CUTOFF` of the largest, low the lowest labels, added until they hold at
+  least `TOP_PERC` percent of cells. A column whose labels all clear the cutoff has no low group
   and names no receiver; it takes the top labels up to `TOP_PERC` percent
   instead (``Rule`` "fallback").
 
@@ -120,24 +120,22 @@ def _score_column(job: tuple) -> tuple:
     return key, column, observed, int(pos.sum()), int((~pos).sum()), null
 
 
-def _fit_tests(key, columns: dict, D, lr_pairs, prior, n_jobs: int) -> pd.DataFrame:
-    """Both tests of one fit's columns, adjusted within it."""
+def _fit_tests(key, columns: dict, D, lr_pairs, prior) -> pd.DataFrame:
+    """The cell-shuffle test of one fit's columns, adjusted within it."""
     rankings = {c: v[:3] for c, v in columns.items()}
     ligand_scores = nichenet.component_ligand_scores(
         D, lr_pairs, prior, rankings, REL_CUTOFF
     )
     cell_null = pd.concat([v[3] for v in columns.values()], ignore_index=True)
-    prior_null = nichenet.shuffled_percentiles(
-        ligand_scores, rankings, prior, N_SHUFFLE, n_jobs
-    )
     cells = nichenet.weighted_score_tests(ligand_scores, cell_null)[0]
-    priors = nichenet.weighted_percentile_tests(ligand_scores, prior_null)[0]
-    return (
-        cells.merge(priors, on="component", suffixes=("_cell", "_prior"))
-        .drop(columns="top_ligands")
-        .rename(columns={"component": "Component"})
-        .assign(Method=key[0], Labelling=key[1])
-    )
+    return cells.rename(
+        columns={
+            "component": "Component",
+            "null_mean": "null_mean_cell",
+            "p": "p_cell",
+            "q": "q_cell",
+        }
+    ).assign(Method=key[0], Labelling=key[1])
 
 
 def _lr_pairs(names) -> pd.DataFrame:
@@ -208,7 +206,6 @@ def run_comparator_nichenet(
             adata.uns["D"],
             _lr_pairs(adata.uns["lr_pairs"]),
             prior,
-            n_jobs,
         )
     ]
     for key, fit in fits.items():
@@ -219,7 +216,6 @@ def run_comparator_nichenet(
                 np.nan_to_num(fit["lr_factor"].to_numpy()),
                 _lr_pairs(fit["lr"].to_numpy()),
                 prior,
-                n_jobs,
             )
         )
     sizes = pd.DataFrame(

@@ -30,13 +30,13 @@ def plot(axs):
         "cp_eigenstate_loadings",
         pd.DataFrame(
             {
-                "RISE eigenstate": np.arange(1, len(sender) + 1),
+                "RISE eigen-state": np.arange(1, len(sender) + 1),
                 "Sender loading (B)": sender,
                 "Receiver loading (C)": receiver,
             }
         ),
-        f"CP component {S.GRANULARITY_COMPONENT}'s sender (B) and receiver (C) "
-        "factor loading on each RISE eigenstate.",
+        f"CPD component {S.GRANULARITY_COMPONENT}'s sender (B) and receiver (C) "
+        "factor loading on each RISE eigen-state.",
     )
 
 

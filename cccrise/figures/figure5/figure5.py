@@ -1,26 +1,31 @@
 """Figure 5: what a cell-type-blind model finds that label-based models do not.
-Each cccRISE program between its best comparator column and its label ceiling
-(A); what each comparator column is (B); each program's best column in every
-fit (C); how STAC arranges the pairs of two mixed programs (D) and whether its
-columns keep their co-variation (E); what STAC reports for BTC-EGFR (F) and for
-PYY and GCG (G) beside what cccRISE resolves; and the NICHES-positive cells of
-cccRISE's populations against what their labels predict (H)."""
+Each ALAD CCC-RISE component's best single LR column in every comparator fit
+(A) and its containment in each fit's LR span (B); ALAD C4's carrying pairs
+in its related comparator columns (C) and the co-variation of each (D); what
+each method keeps and loses when its cells are described more finely, ALAD
+(E) and IBD (F); NicheNet on every PB and STAC column and CCC-RISE component
+of both cohorts (G); what STAC
+reports for BTC-EGFR (H) and for PYY and GCG (I) beside what CCC-RISE
+resolves; and the fraction NICHES-positive of CCC-RISE's populations against
+what cell type predicts (J)."""
 
 from .. import common, style
 from . import (
-    best_column,
-    column_census,
+    cos2_grid,
     flow_alad,
     flow_ibd,
+    labels_alad,
+    labels_ibd,
+    nichenet,
     niches_fraction,
     pair_columns,
     program_covariation,
-    program_map,
+    span_containment,
 )
 
 LAYOUT = [
-    [program_map, column_census],
-    [best_column, pair_columns, program_covariation],
+    [cos2_grid, span_containment, pair_columns, program_covariation],
+    [labels_alad, labels_ibd, nichenet],
     [flow_alad, flow_ibd, niches_fraction],
 ]
 

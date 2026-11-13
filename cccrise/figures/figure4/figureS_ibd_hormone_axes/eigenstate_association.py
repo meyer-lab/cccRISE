@@ -1,5 +1,5 @@
 """Cell category x the hormone programs' eigenstates: each category's mean
-RISE projection (as `figureS_celltype_eigenstates` for ALAD), from
+RISE projection (as Figure 3's `celltype_eigenstates` for ALAD), from
 `run_ibd_programs.eigenstate_celltypes`. The sender eigenstates are EE
 cells', the receiver eigenstates EC and tuft cells'."""
 
@@ -20,8 +20,8 @@ def plot(axs):
     common.source_data(
         "eigenstate_category_association",
         table,
-        "Per eigenstate the hormone programs (C3, C4) load on and cell category: "
-        "cells, their mean RISE projection, and their share of the eigenstate's "
+        "Per eigen-state the hormone programs (C3, C4) load on and cell category: "
+        "cells, their mean RISE projection, and their share of the eigen-state's "
         "squared projection over all cells.",
     )
     mean = table.pivot(

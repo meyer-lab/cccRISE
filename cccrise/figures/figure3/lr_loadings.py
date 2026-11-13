@@ -40,7 +40,7 @@ def plot(axs):
                 "Named": ranks <= N_TOP,
             }
         ),
-        f"Every LR pair's loading on CP component {COMPONENT} (cp_D), by rank; "
+        f"Every LR pair's loading on CPD component {COMPONENT} (cp_D), by rank; "
         f"'Named' marks the {N_TOP} most heavily weighted, labeled in the plot.",
     )
     label_ranked_head(ax, loadings, names, N_TOP, LABEL_RANK, LABEL_FLOOR)

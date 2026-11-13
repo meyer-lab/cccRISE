@@ -1,5 +1,7 @@
 """The IBD CP factor matrices, as Figure 2 draws ALAD's
-(`figure2.cp_factor_matrices`), biopsies grouped by inflammation status."""
+(`figure2.cp_factor_matrices`), biopsies grouped by inflammation status, each
+status named at a bracket and each LR label placed clear of the others
+(`compact`)."""
 
 from .. import common
 from ..figure2.cp_factor_matrices import AXES, draw  # noqa: F401  (AXES: this panel's)
@@ -14,7 +16,7 @@ STRIPS = {GROUP_COLUMN: ("Inflammation status", GROUP_COLORS)}
 
 def plot(axs):
     groups = samples().set_index(samples()[SPEC.condition_column].astype(str))
-    draw(axs, DATASET, groups, STRIPS, EIGENSTATE_TICKS, TOP_LR_FRACTION)
+    draw(axs, DATASET, groups, STRIPS, EIGENSTATE_TICKS, TOP_LR_FRACTION, compact=True)
 
 
 def makeFigure():

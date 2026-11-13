@@ -22,8 +22,8 @@ def plot(axs):
     common.source_data(
         "permutation_significance_by_lr_pair",
         lr_table,
-        "One row per LR pair, over every condition x sender eigenstate x "
-        "receiver eigenstate entry: mean observed communication score, mean of "
+        "One row per LR pair, over every condition x sender eigen-state x "
+        "receiver eigen-state entry: mean observed communication score, mean of "
         "its cell-permutation null, mean and median z-score against the null, "
         "fraction of entries with permutation p < 0.05 and < 0.01 (uncorrected), "
         "and the largest observed score. Each entry's observed score, p-value, "

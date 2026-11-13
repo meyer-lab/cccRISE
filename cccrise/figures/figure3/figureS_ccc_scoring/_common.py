@@ -10,7 +10,6 @@ independent check of the pairing.
 """
 
 from functools import cache
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -24,9 +23,8 @@ from ....runners.datasets import (
     DEFAULT_COMMUNICATION_SCORE,
     comparison_output_dir,
 )
-from ....runners.provenance import read_metadata
 from ....validation.stability import align_to_reference_components
-from ... import common, style
+from ... import style
 
 DATASET = "alad"
 SPEC = DATASETS[DATASET]
@@ -49,12 +47,8 @@ SCORE_SOURCES = {
 SCORE_COLORS = dict(
     zip(SCORE_LABELS, [style.CATEGORICAL[i] for i in (0, 1, 2, 4)], strict=True)
 )
-SIG_FONT_SIZE = 1.5 * style.FONT_SIZE_LABEL  # significance asterisks
 #: Modes CP components are paired across methods on: condition and LR.
 MATCH_MODES = (0, 3)
-HINT = (
-    f"    uv run cccrise-altcommscore --dataset {DATASET} --rise-rank <N> --cp-rank <M>"
-)
 
 
 @cache
@@ -116,17 +110,6 @@ def matched_pairs(method: str) -> list[tuple[int, int]]:
     ]
 
 
-def load_method_output(filename: str, method: str) -> pd.DataFrame:
-    return common.load_runner_output(
-        filename, root=comparison_output_dir(method), hint=HINT
-    )
-
-
-def default_provenance(filename: str, key: str) -> Any:
-    """`key` from the provenance sidecar of the default score's `filename`."""
-    return read_metadata(comparison_output_dir(DEFAULT_SCORE) / filename)[key]
-
-
 def score_label(method: str) -> str:
     """`method`'s name, followed by its source in parentheses."""
     source = SCORE_SOURCES.get(method)
@@ -139,11 +122,9 @@ def method_legend(fig) -> None:
     fig.legend(handles=handles, loc="outside upper center", ncols=len(handles))
 
 
-def grouped_bar(
-    ax: plt.Axes, data: pd.DataFrame, ylabel: str, sig: pd.DataFrame | None = None
-) -> None:
+def grouped_bar(ax: plt.Axes, data: pd.DataFrame, ylabel: str) -> None:
     """One bar group per row of `data` (a component), one bar per method
-    column; `sig` marks significant bars with an asterisk."""
+    column."""
     n_methods = data.shape[1]
     width = 0.8 / n_methods
     x = np.arange(len(data))
@@ -156,13 +137,6 @@ def grouped_bar(
             label=score_label(method),
             color=SCORE_COLORS[method],
         )
-        if sig is not None:
-            for xi, value in zip(
-                offset[sig[method]], data[method][sig[method]], strict=True
-            ):
-                ax.text(
-                    xi, value, "*", ha="center", va="bottom", fontsize=SIG_FONT_SIZE
-                )
     ax.set_xticks(x, data.index)
-    ax.set_xlabel("CP component")
+    ax.set_xlabel("CPD component")
     ax.set_ylabel(ylabel)

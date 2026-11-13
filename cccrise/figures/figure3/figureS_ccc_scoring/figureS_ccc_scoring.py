@@ -1,6 +1,6 @@
 """Supplementary figure: CCC-RISE across the four communication scores --
-how closely each alternate score's CP components match the default's, their
-outcome associations, and what each component represents under each score."""
+how closely each alternate score's CP components match the default's, and
+what each component represents under each score."""
 
 from string import ascii_uppercase
 
@@ -9,16 +9,15 @@ from matplotlib.transforms import Bbox
 
 from ... import common, style
 from . import _common as S
-from . import anova, factor_match, interpretation
+from . import factor_match, interpretation
 
 PANELS = {
     "factor_match": factor_match,
-    "anova": anova,
     "interpretation": interpretation,
 }
 LAYOUT = [
-    ["factor_match"] * 2 + ["anova"],
-    ["interpretation"] * 3,
+    ["factor_match"],
+    ["interpretation"],
 ]
 # mm per row; the interpretation grid needs ~30 mm per CP component.
 ROW_HEIGHTS = [52, 188]

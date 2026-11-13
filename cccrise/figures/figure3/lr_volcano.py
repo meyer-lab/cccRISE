@@ -36,7 +36,7 @@ def plot(axs):
     common.source_data(
         "top_pairs_by_component",
         _volcano_data(result),
-        f"Every CP component's {N_SHOWN} most heavily weighted LR pairs (by "
+        f"Every CPD component's {N_SHOWN} most heavily weighted LR pairs (by "
         f"|loading| rank), in their own component's context: {CASE_DISPLAY} and "
         f"{CONTROL_DISPLAY} mean depth-normalized scores, the log2 ratio "
         "plotted (means offset by 1e-3 x the component's median positive mean), "

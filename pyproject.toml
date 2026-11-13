@@ -59,6 +59,7 @@ cccrise-cpdrank = "cccrise.runners.run_cpd_rank:main"
 cccrise-comparators = "cccrise.runners.run_comparators:main"
 cccrise-comparator-scores = "cccrise.runners.run_comparator_scores:main"
 cccrise-comparator-nichenet = "cccrise.runners.run_comparator_nichenet:main"
+cccrise-reduced-rise = "cccrise.runners.run_reduced_rise:main"
 cccrise-stability = "cccrise.runners.run_stability:main"
 cccrise-significance = "cccrise.runners.run_significance:main"
 cccrise-nichenet = "cccrise.runners.run_nichenet:main"
@@ -67,6 +68,7 @@ cccrise-cohort = "cccrise.runners.run_cohort:main"
 cccrise-ibd-programs = "cccrise.runners.run_ibd_programs:main"
 cccrise-alad-programs = "cccrise.runners.run_alad_programs:main"
 cccrise-niches = "cccrise.runners.run_niches:main"
+cccrise-scriabin-seeds = "cccrise.runners.run_scriabin_seeds:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]

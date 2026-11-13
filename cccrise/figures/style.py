@@ -94,28 +94,28 @@ AXIS_SIZE = {
     # A few groups x many genes along x (dot plots)
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
     # Figure 5's panels, sized to share their rows
-    "fig4_map": (62 * MM, 28 * MM),
-    "fig4_census": (72 * MM, 27 * MM),
-    "fig4_best": (36 * MM, 42 * MM),
-    "fig4_columns": (54 * MM, 36 * MM),
-    "fig4_covariation": (23 * MM, 15 * MM),
-    "fig4_flow_alad": (34 * MM, 49 * MM),
-    "fig4_flow_ibd": (72 * MM, 49 * MM),
-    "fig4_niches": (42 * MM, 42 * MM),
-    # A full-width axes low enough to stack both cohorts' co-variation
-    "full_low": (FIGURE_WIDTH_DOUBLE - 14 * MM, 18 * MM),
-    "full_strip_low": (FIGURE_WIDTH_DOUBLE - 14 * MM, 8 * MM),
-    # `figureS_comparator_missed`
-    "missed_matrix": (156 * MM, 68 * MM),
-    "missed_associations": (62 * MM, 32 * MM),
+    "fig5_best": (30 * MM, 18 * MM),
+    "fig5_columns": (26 * MM, 22 * MM),
+    "fig5_covariation": (24 * MM, 28 * MM),
+    "fig5_nichenet": (46 * MM, 32 * MM),
+    "fig5_labels": (44 * MM, 38 * MM),
+    "fig5_flow_alad": (34 * MM, 49 * MM),
+    "fig5_flow_ibd": (72 * MM, 49 * MM),
+    "fig5_niches": (42 * MM, 42 * MM),
+    # `figureS_comparator_missed_<cohort>`: a row of bars and associations, then
+    # the LR contents
+    "missed_bars": (98 * MM, 28 * MM),
+    "missed_associations": (46 * MM, 28 * MM),
+    "missed_matrix": (138 * MM, 64 * MM),
     # `figureS_comparator_split`
+    "split_cos2_pairs": (34 * MM, 34 * MM),
+    "split_columns_c3": (60 * MM, 40 * MM),
+    "split_covariation_c3": (36 * MM, 36 * MM),
+    "split_columns_ibd": (70 * MM, 40 * MM),
+    "split_modes": (44 * MM, 30 * MM),
+    # `figureS_comparator_ibd_and_depth`: IBD's recovery grids, then depth
+    "ibd_grid": (62 * MM, 28 * MM),
     "split_depth": (158 * MM, 30 * MM),
-    "split_pairs": (58 * MM, 36 * MM),
-    "split_covariation": (44 * MM, 20 * MM),
-    # `figureS_comparator_map`: two rows of equal width
-    "map_ceiling": (30 * MM, 36 * MM),
-    "map_coarse": (76 * MM, 30 * MM),
-    "map_columns": (72 * MM, 41 * MM),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
     # Ranked curves with a column of many labels
@@ -138,6 +138,8 @@ AXIS_SIZE["half_square"] = ((AXIS_HEIGHT - JOINED_GAP) / 2, AXIS_HEIGHT)
 # Six joined squares spanning "full" (small multiples)
 _SIXTH = (AXIS_SIZE["full"][0] - 5 * JOINED_GAP) / 6
 AXIS_SIZE["full_sixth"] = (_SIXTH, _SIXTH)
+# `figureS_comparator_single_cell` A: two cohorts' strips beside ALAD's five sixths
+AXIS_SIZE["seed_strip"] = (_SIXTH - 9.5 * MM, _SIXTH)
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
 PANEL_GAP_MAX = 4 * MM

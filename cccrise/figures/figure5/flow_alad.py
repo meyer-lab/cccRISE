@@ -1,9 +1,9 @@
-"""Figure 5F: BTC-EGFR in STAC and in cccRISE."""
+"""Figure 5H: BTC-EGFR in STAC and in cccRISE."""
 
 from .. import common
 from ._flows import flow_alad
 
-AXES = ("fig4_flow_alad",)
+AXES = ("fig5_flow_alad",)
 
 
 def plot(axs):
