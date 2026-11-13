@@ -32,8 +32,6 @@ q: Benjamini--Hochberg corrected p across the five components of each fit.
 **{{< label ccc-scoring >}}.
 CCC-RISE components across communication scoring methods.** ({{< panel ccc-scoring factor-match.1 >}}) Match score (mean \|cosine\| over the condition and LR pair modes) of each CPD component of the product score to its Hungarian-matched component under each alternate score.
 ({{< panel ccc-scoring factor-match.2 >}}) Mean sender and receiver \|cosine\| of the matched components, an independent check of the matching.
-({{< panel ccc-scoring anova >}}) ANOVA η^2^ of each CPD component's condition loadings against six-month outcome under each score, numbered by the matched product-score component.
-\*: p < 0.05.
 ({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
 LR pairs shown are the union of each score's top 3.
 

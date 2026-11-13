@@ -62,8 +62,7 @@ figS_alad_cohort:
   cpd_fms: [f]
 figS_ccc_scoring:
   factor_match: [a, b]
-  anova: [c]
-  interpretation: [d, e]
+  interpretation: [c, d]
 figS_imputation_ridge:
   ridge_r2x: [a]
   ridge_fms: [b]

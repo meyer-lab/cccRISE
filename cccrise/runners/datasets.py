@@ -228,9 +228,6 @@ class DatasetSpec:
     def stability_filename(self) -> str:
         return f"component_stability_{self.output_key}.parquet"
 
-    def anova_point_estimate_filename(self) -> str:
-        return f"anova_point_estimate_{self.output_key}.parquet"
-
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.output_key}.parquet"
 
