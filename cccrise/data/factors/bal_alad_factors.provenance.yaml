@@ -6,7 +6,7 @@
 dataset: alad
 dataset_label: ALAD Lung Transplant BAL
 source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
-source_sha256: 19e7056711e65fcdc57c59abd1a62857d76549fa597dc648ff7560448dd3213e
+source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
 loader_args:
   filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
   gene_threshold: 0.001
@@ -25,26 +25,32 @@ cp_fit_options:
   svd: randomized_svd
   normalize_factors: true
 backend: cupy
+cp_device: auto
+cp_backend: cupy
+cp_dtype: float32
 communication_score: expression_product
 hill_k: 0.5
 pacmap_embedding: true
-lr_pairs_annotated: 2005
+lr_pairs_annotated: 1938
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
-  lr_pairs: 513
-interaction_tensor_shape: [47, 17, 17, 513]
-r2x_pf2: 0.03151461990700155
-r2x_cp: 0.4552965625966162
+  lr_pairs: 575
+interaction_tensor_shape: [47, 17, 17, 575]
+r2x_pf2: 0.03151452350359807
+r2x_cp: 0.6214852498034491
 rank_selection:
   rise:
     rank: 17
     sweep_file: cccrise/data/rank_selection_results/rise_rank_alad.parquet
-    notes: null
+    notes: BiCV argmax (rank 17; paired comparison vs ranks 8-16 t <= -2.0); RISE does not
+      read the LR resource
   cpd:
-    rank: 5
+    rank: 7
     sweep_file: cccrise/data/rank_selection_results/cpd_rank_alad.parquet
-    notes: null
-git_sha: 840d7792ba71d70f424c8baac87a96f809b7cf42
-generated: '2026-10-01T16:52:10+00:00'
+    notes: 'Largest rank with no start''s LR mode collinear (max |cos| < 0.9; CP 8: 0.962)
+      and the most-reached minimum at 8/10 starts (CP 4-6: 10/10); starts-only sweep (10 seeded
+      starts, no imputation)'
+git_sha: 1f6968a669d93ae0588e81a8d7c572d5718e5e4d
+generated: '2026-11-13T23:13:03+00:00'
