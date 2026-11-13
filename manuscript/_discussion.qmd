@@ -39,8 +39,9 @@ This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell 
 <!--Paragraph 4: Clinical associations with ALAD and IBD (revised version of ALAD paragraphs)-->
 - A key goal of multi-condition CCC inference methods is to identify communication programs associated with disease state.
 - CCC-RISE exhibited this capability in both the ALAD cohort and an independent cohort of CD patients.
-- In the context of lung transplantation, CCC-RISE component 4 showed significant step-wise association with six-month outcome, but the low statistical power of the dataset procluded our ability to make further assertions about said association.
-- In the context of CD, CCC-RISE identified a pair of hormone-communication programs among enteroendocrine, enterochromafin, and tuft cells associated with the shift from CD inflammation state (uninflamed->inflamed).
+- In the context of lung transplantation, CCC-RISE component 4 exhibited a significant step-wise association with six-month outcome, but the low statistical power of the dataset procluded our ability to make further assertions and contrained our findings to being hypothesis-generating.
+- The IBD dataset provided richness and statistical power beyond the ALAD data.
+- Here, CCC-RISE identified a complementary pair of hormone-communication programs among EE, enterochromafin (EC), and tuft cells that was negatively associated with the shift from CD uninflamed to CD inflamed state.
 - Literature on impact of inflammation on EE cells?
 - Discussion of cell abundance associations (cell type composition tracks inflammation state and EE sender subpopulations decline with inflammation)?
 
