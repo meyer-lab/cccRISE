@@ -306,7 +306,7 @@ Ranks were swept up to 25 (ALAD fine) and 20 (IBD fine), and up to the number of
 The selected ranks were 4 (coarse) and 5 (fine) on ALAD and 6 and 5 on IBD.
 
 **Tensor-cell2cell.** Each gene's expression was the fraction of a cell type's cells detecting it, and each entry was the mean of the ligand and receptor values\ [@doi:10.1038/s41467-022-31369-2].
-Non-negative CPD was fit from 10 random starts at each rank up to 25 (coarse) and 20 (fine) on ALAD and 15 on IBD, and the rank was taken at the Kneedle elbow of the mean error.
+Non-negative CPD was fit from 10 random starts at each rank up to 25 (coarse) and 15 (fine) on ALAD and 15 on IBD, and the rank was taken at the Kneedle elbow of the mean error.
 Ranks were 8 and 6 on ALAD and 3 and 3 on IBD.
 We departed from the published analysis in four ways, each meant to let the method perform at its best.
 The published analysis kept only cell types present in every sample so we kept every cell type and masked absent entries.
