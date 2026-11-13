@@ -19,7 +19,6 @@ q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected a
 ({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each ALAD outcome.
 \*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
 ({{< panel alad-associations rise-associations >}}) As in ({{< panel alad-associations cp-associations >}}), for each RISE component's condition loadings.
-({{< panel alad-associations sender-receiver-scatter >}}) Per-cell CPD component 4 sender against receiver weight, with R^2^ across all cells.
 ({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 ({{< panel alad-associations effect-size-distributions >}}) ANOVA η^2^ of each CPD component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by Hungarian matching.
@@ -32,8 +31,6 @@ q: Benjamini--Hochberg corrected p across the five components of each fit.
 **{{< label ccc-scoring >}}.
 CCC-RISE components across communication scoring methods.** ({{< panel ccc-scoring factor-match.1 >}}) Match score (mean \|cosine\| over the condition and LR pair modes) of each CPD component of the product score to its Hungarian-matched component under each alternate score.
 ({{< panel ccc-scoring factor-match.2 >}}) Mean sender and receiver \|cosine\| of the matched components, an independent check of the matching.
-({{< panel ccc-scoring anova >}}) ANOVA η^2^ of each CPD component's condition loadings against six-month outcome under each score, numbered by the matched product-score component.
-\*: p < 0.05.
 ({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
 LR pairs shown are the union of each score's top 3.
 

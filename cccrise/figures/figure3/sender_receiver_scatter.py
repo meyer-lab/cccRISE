@@ -1,11 +1,14 @@
 """Per-cell sender vs. receiver weight on the outcome-associated CP
-component, with the R² between them across all cells."""
+component, colored by each cell's projection onto `EIGENSTATE` on the
+lymphocyte blow-up's scale, with the R² between them across all cells."""
 
 import numpy as np
 import pandas as pd
 
-from ... import common, style
-from .._common import COMPONENT, DATASET, SPEC
+from .. import common, style
+from ..figureS_alad_pacmaps.weight_pacmaps import plot_value_scatter
+from ._common import COMPONENT, DATASET, EIGENSTATE, SPEC
+from .celltype_pacmap import projection_limit
 
 AXES = ("square",)
 
@@ -15,14 +18,10 @@ def plot(axs):
     adata = common.get_cell_projections(DATASET)
     sender = adata.obsm["sc_B"][:, COMPONENT - 1]
     receiver = adata.obsm["rc_C"][:, COMPONENT - 1]
-    ax.scatter(
-        sender,
-        receiver,
-        color=style.COLORS["emphasis"],
-        s=style.POINT_SIZE_CELL,
-        linewidths=0,
-        rasterized=True,
-    )
+    projection = adata.obsm["projections"][:, EIGENSTATE - 1]
+    points = plot_value_scatter(ax, sender, receiver, projection)
+    points.set_clim(-projection_limit(), projection_limit())
+    common.colorbar(ax, points, f"Eigen-state {EIGENSTATE} projection")
     r2 = np.corrcoef(sender, receiver)[0, 1] ** 2
     common.source_data(
         f"weight_component{COMPONENT}_cells",
@@ -32,10 +31,12 @@ def plot(axs):
                 "Sample": adata.obs[SPEC.condition_column].to_numpy(),
                 "Sender weight": sender,
                 "Receiver weight": receiver,
+                f"Eigen-state {EIGENSTATE} projection": projection,
             }
         ),
         f"One row per cell: its per-cell sender and receiver weight on CP "
-        f"component {COMPONENT} (the points). R² = {r2:.4f} is the squared "
+        f"component {COMPONENT} (the points), and its projection onto RISE "
+        f"eigen-state {EIGENSTATE} (the colors). R² = {r2:.4f} is the squared "
         "Pearson correlation between the two across all cells.",
     )
     ax.text(

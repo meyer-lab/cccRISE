@@ -25,6 +25,8 @@ SPEC = DATASETS[DATASET]
 
 # The CP component associated with the 6-month outcome
 COMPONENT = 4
+# The RISE eigen-state `COMPONENT`'s cp_B and cp_C both load on alone
+EIGENSTATE = 16
 OUTCOME = "6-Month Outcome (4-Way)"
 
 #: Outcome associations tested against every CP component: `name` labels the
