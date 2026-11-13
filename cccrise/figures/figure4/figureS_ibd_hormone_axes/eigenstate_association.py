@@ -1,5 +1,5 @@
 """Cell category x the hormone programs' eigenstates: each category's mean
-RISE projection (as `figureS_celltype_eigenstates` for ALAD), from
+RISE projection (as Figure 3's `celltype_eigenstates` for ALAD), from
 `run_ibd_programs.eigenstate_celltypes`. The sender eigenstates are EE
 cells', the receiver eigenstates EC and tuft cells'."""
 

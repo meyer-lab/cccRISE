@@ -1,30 +1,26 @@
-"""Cell type x RISE eigenstate association (mean projection), with the
-eigenstates behind Figure 2's granularity component highlighted."""
+"""Cell type x RISE eigenstate association (mean projection), with
+`EIGENSTATE`, the eigenstate behind the outcome-associated component's sender
+and receiver weights, outlined."""
 
 from collections.abc import Sequence
 
 import anndata
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.patches import Rectangle
 
 from ...runners.datasets import DATASETS
 from ...utils import celltype_component_association
 from .. import common, style
-from ..figure2 import _common as S
+from ._common import DATASET, EIGENSTATE
 
-AXES = ("wide",)
+AXES = ("double_rect",)
 
 
 def plot(axs):
     (ax,) = axs
     plot_celltype_eigenstate_association(
-        common.get_cell_projections(S.GRANULARITY_DATASET),
-        S.GRANULARITY_DATASET,
-        ax,
-        highlight=(
-            S.GRANULARITY_SENDER_EIGENSTATE,
-            S.GRANULARITY_RECEIVER_EIGENSTATE,
-        ),
+        common.get_cell_projections(DATASET), DATASET, ax, highlight=(EIGENSTATE,)
     )
 
 
@@ -40,7 +36,7 @@ def plot_celltype_eigenstate_association(
 ) -> None:
     """Cell type (rows, `style.CELL_TYPES` order) x RISE eigenstate mean
     projection (mean over the cell type's cells of each eigenstate projection),
-    with the `highlight` eigenstates' labels bold."""
+    with the `highlight` eigenstates' columns outlined by dashed boxes."""
     table = celltype_component_association(
         adata,
         factor_type="eigenstate",
@@ -57,9 +53,20 @@ def plot_celltype_eigenstate_association(
     )
     ax.set_xticks(range(table.shape[1]), table.columns)
     ax.set_yticks(range(len(table)), table.index)
-    for label in ax.get_xticklabels():
-        if int(label.get_text()) in highlight:
-            label.set_fontweight("bold")
+    for eigenstate in highlight:
+        column = table.columns.get_loc(eigenstate)
+        ax.add_patch(
+            Rectangle(
+                (column - 0.5, -0.5),
+                1,
+                len(table),
+                fill=False,
+                linestyle=style.LINE_STYLE_REFERENCE,
+                edgecolor=style.COLORS["ink"],
+                linewidth=style.LINE_WIDTH,
+                clip_on=False,
+            )
+        )
     ax.set_xlabel("RISE eigen-state")
     ax.tick_params(length=0)
     ax.spines[:].set_visible(False)
