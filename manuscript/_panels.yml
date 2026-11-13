@@ -15,11 +15,13 @@ fig2:
   celltype_composition: [n]
 fig3:
   outcome_association: [a]
-  celltype_pacmap: [b, c]
-  lr_loadings: [d]
-  coordinated_changes: [e, f]
-  lr_permutation: [g]
-  lr_volcano: [h]
+  celltype_eigenstates: [b]
+  celltype_pacmap: [c, d]
+  sender_receiver_scatter: [e]
+  lr_loadings: [f]
+  coordinated_changes: [g, h]
+  lr_permutation: [i]
+  lr_volcano: [j]
 fig4:
   cp_factor_matrices: [a, b, c, d]
   ee_state_map: [e, f, g]
@@ -49,10 +51,9 @@ figS_alad_associations:
   celltype_proportions: [a]
   cp_associations: [b]
   rise_associations: [c]
-  sender_receiver_scatter: [d]
-  covariates: [e]
-  effect_size_distributions: [f]
-  significant_fraction: [g]
+  covariates: [d]
+  effect_size_distributions: [e]
+  significant_fraction: [f]
 figS_alad_cohort:
   cohort: [a]
   factors: [b]
@@ -62,17 +63,13 @@ figS_alad_cohort:
   cpd_fms: [f]
 figS_ccc_scoring:
   factor_match: [a, b]
-  anova: [c]
-  interpretation: [d, e]
+  interpretation: [c, d]
 figS_imputation_ridge:
   ridge_r2x: [a]
   ridge_fms: [b]
 figS_alad_pacmaps:
   pacmaps: [a, b]
   weight_pacmaps: [c, d, e]
-figS_celltype_eigenstates:
-  association: [a]
-  celltype_association: [b, c]
 figS_ibd_rank_selection:
   cohort: [a]
   rise_rank_selection: [b]

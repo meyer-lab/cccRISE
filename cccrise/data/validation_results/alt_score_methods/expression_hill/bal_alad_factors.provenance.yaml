@@ -18,6 +18,9 @@ random_state: 42
 rise_rank: 17
 cp_rank: 5
 backend: cupy
+cp_device: auto
+cp_backend: cupy
+cp_dtype: float32
 component_numbering: core fit cccrise/data/factors/bal_alad_factors.nc (validation.relabel_workflow_fit)
 rise_n_iter_max: 300
 rise_tol: 1.0e-08
@@ -27,7 +30,7 @@ cp_fit_options:
   init: svd
   svd: randomized_svd
   normalize_factors: true
-r2x_pf2: 0.03151459624015329
-r2x_cp: 0.24981549071093234
-git_sha: c57a630ed90bbc5f6495f4b1966f47bcbaf2a8d4
-generated: '2026-10-17T17:19:35+00:00'
+r2x_pf2: 0.031514764297569275
+r2x_cp: 0.2499029327008372
+git_sha: e954b0b5c280f1509703c7949d58f06b27cd3a1a
+generated: '2026-11-13T18:24:15+00:00'
