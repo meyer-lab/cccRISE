@@ -9,8 +9,6 @@ Below, we include each reviewer comment followed by our point-by-point response.
 
 ## Reviewer #1
 
-<!-- All of reviewer 1 has been edited. -->
-
 > The authors present CCC-RISE, an extension of their PARAFAC2-based RISE framework to cell-cell communication (CCC).
 > Rather than pseudobulking single-cell data into fixed cell-type labels, CCC-RISE computes ligand-receptor (LR) communication scores between label-free "eigen-states," assembles a 4-D tensor (sender eigen-state x receiver eigen-state x LR pair x condition), factorizes it by canonical polyadic decomposition (CPD), and projects the resulting components back onto individual cells.
 > The stated advance is a method that models communication across conditions while retaining single-cell resolution, thereby exposing signaling subpopulations that cut across conventional cell-type boundaries.
@@ -40,10 +38,16 @@ Also, as detailed below, we now compare our results to a broad panel of existing
 >    - For the multi-condition tensor claim: Tensor-cell2cell (Armingol et al., the actual tool) and/or STACCato, which are the closest methodological competitors.
 >      For this, please also report ALAD status AUC as for CCC-RISE
 
-We agree that a self-constructed pseudobulk baseline cannot carry this claim, and we now benchmark against the published methods the reviewer names.
-To run them on equal footing, we re-implemented Scriabin, NICHES, and STACCato in Python from the upstream algorithms, and we drive all of themfrom the same ligand-receptor resource and normalized expression, so each comparison isolates the contribution of the algorithm (l. XXX).
+[Needs to be updated based on final comparator work.]
+Points to address are:
+- single-cell resolution validation (concordance with NICHES, problems with Scriabin),
+- single-condition performance (problems with Scriabin),
+- and multi-condition tensor validation (similarities/differences with Tensor-cell2cell, STACCato, and pseudobulk)
 
-For the single-cell-resolution claim, we reconstruct a per-cell-pair communication score from CCC-RISE (per-cell RISE projections combined with the sender, receiver, and LR-pair CPD factors) and compare it against Scriabin's and NICHES' per-cell-pair edge weights on the same sampled sender/receiver cells and the same LR pairs, reporting rank concordance per condition (Fig. XXX).
+We agree that a self-constructed pseudobulk baseline cannot carry this claim, and we now benchmark against the published methods the reviewer names.
+To run them on equal footing, we re-implemented Scriabin, NICHES, and STACCato in Python from the upstream algorithms, and we drive all of themfrom the same ligand-receptor resource and normalized expression, so each comparison isolates the contribution of the algorithm (Methods section *Comparator Methods*).
+
+For the single-cell-resolution claim, we reconstruct a per-cell-pair communication score from CCC-RISE (per-cell RISE projections combined with the sender, receiver, and LR pair CPD factors) and compare it against Scriabin's and NICHES' per-cell-pair edge weights on the same sampled sender/receiver cells and the same LR pairs, reporting rank concordance per condition (Fig. XXX).
 We repeat this on a single-condition subset to test directly whether CCC-RISE degrades relative to Scriabin when there is no cross-condition structure to exploit, and report where the multi-condition model does and does not add value (l. XXX).
 We anticipate that CCC-RISE is strongly concordant with Scriabin within a condition --- the two agree on which cell pairs signal --- while the multi-condition model is what makes the resulting programs comparable *across* conditions, which is the claim the manuscript actually rests on.
 
@@ -58,20 +62,32 @@ We discuss this in the revised text (l. XXX).
 >    I recognize the field lacks gold standards, but simulation frameworks with defined communication ground truth exist (e.g., the SERGIO-based CCC simulator) and would allow the authors to quantify the resolution advantage.
 >    At minimum, the manuscript should provide a quantitative concordance/discordance analysis against Scriabin on the same data.
 
-<!-- Somewhere, we need to talk about the benefit over Scriabin of finding _patterns_ of communication. -->
+[Also needs to be updated once comparator work is complete. Paragraphs 2 and 3 need updating, the others are done.]
+ Points to address are:
+<!-- - quantitative evaluations of subpopulation identity (projection-based group definitions in ALAD 5/IBD 3--4),-->
+- quantitative evaluation of "true" biology (NicheNet analysis, reference R1 C1 NICHES concordance),
+- lack of Scriabin concordance (reference R1 C1),
+<!-- - and refusal to use synthetic data-->
 
 We agree that our qualitative observations did not adequatley support this claim.
-Our revision adds three quantitative lines of evidence.
+Our revision adds three quantitative lines of reasoning/evidence.
 
-First, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix).
-For each component, we took its top-loading ligands and ask whether their curated downstream targets are preferentially upregulated in the receiver cells that component implicates, scoring this with the standard ligand-activity AUROC (Fig. XXX, l. XXX).
-This provides a per-component accuracy number derived from held-out biology, and is computed identically for CCC-RISE and for the pseudobulk baseline.
-One limitation that we encountered in this analysis is that there is only moderate overlap between the receptor-ligand pairs highlighted by our method, and the NicheNet target database, due to the limited coverage of the latter.
+First, we over-hauled our strategy for defining subpopulations beyond classical cell-type boundaries.
+The reviewer is correct to point out the weakness of the qualitative PaCMAP embeddings and communication-score heatmaps.
+Instead, we now define subpopulations based on quantitative per-cell sender and receiver loadings derived from the projection matrices and sender/receiver factor matrices.
+For more detail on our new strategy, we point the reviewer to {{< fig 2 sender-receiver-strata >}}, {{< fig 4 hormone-angle-scatter >}}, and Methods section *Mapping CCC-RISE Components to Cells*.
 
-Second, we now also report the concordance analysis against Scriabin on the same data (Fig. XXX).
+[Update based on NicheNet comparator results. Otherwise, done.]
+Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
+Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, then we take a weighted average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
+We apply this pipeline to CCC-RISE and to each comparator method.
+For more detail on this extension of the NicheNet database, we point the reviewer to
+{{< fig 2 nichenet >}}, {{< fig comparator-nichenet >}}, and Methods sections *External Biological Validation* and *Comparator Methods*.
+One limitation that we encountered in this analysis is that there is only moderate overlap between the LR pairs highlighted by our method, and the NicheNet target database, due to the limited coverage of the latter.
 
-Third, we now quantify reproducibility: components are refit under resampling of cells, of patients, and of LR pairs, and under re-initialization, and each component is scored by a Hungarian-matched factor match score against the reference fit (Fig. XXX, l. XXX).
-This distinguishes components that reflect shared structure from those that are fit to individual patients, and we report the latter as such.
+[Update with Scriabin result]
+Third, as a quantitative evaluation of sender and receiver cell loadings, we report a concordance analysis against NICHES, which we discussed extensively above in response to Reviewer #1 Comment #1.
+As explained there, while we would have liked to report concordance with Scriabin, ...
 
 We deliberately did not build the suggested analysis on a SERGIO-style simulator.
 Simulated communication ground truth is generated under an assumed model of how ligand--receptor signaling shapes expression, and agreement with it mainly certifies that our score matches that assumption; where a simulation disagrees with the real-data result, it is not clear which should be believed.
@@ -92,17 +108,16 @@ That term alone has no reliable relationship to actual signaling strength, which
 
 We have changed the communication score to add the per-gene mean back to each eigen-state's ligand/receptor loading before scoring, so that the score is computed on an approximation of actual non-negative expression rather than on centered loadings directly.
 This uses the same centering reference as RISE and makes every entry of the communication tensor non-negative by construction, which we then verified empirically holds across both datasets.
-We describe this convention explicitly in the Methods (sign convention paragraph).
+We describe this convention explicitly in the Methods section *Construction of the Aligned 4D Communication Tensor*.
 
 We also considered decomposing each eigen-state into separate non-negative positive- and negative-loading components (analogous to how non-negative matrix factorization resolves a signed PCA-like axis into two unipolar programs).
 We have independent evidence, from a companion investigation that compares PARAFAC2 to other methods such as iNMF, MOFA+, etc., that this bidirectional structure often represents coherent biology rather than noise.
 For instance, ablating the minority-sign arm of a component measurably degrades held-out reconstruction, and non-negative methods independently recover the same positive/negative split as two distinct, functionally coherent, antagonistic programs.
 We ultimately did not adopt this as the primary fix because it doubles the sender/receiver dimension of the communication tensor and still requires classifying which cells belong to which arm, whereas re-centering the score resolves the non-negativity concern directly without changing the rank of the model.
-We note the bidirectional-loading evidence in the Discussion as a data point for why we did not additionally constrain RISE itself to be non-negative (see response to Reviewer #2, minor comment #3).
 
 Finally, we also evaluated whether the communication tensor should be factored with the factor matrices constrained to be non-negative.
 Across multiple datasets, we observed that this constraint significantly reduced the ability of factorization to impute held-out data, indicating that it reduced the fidelity of the factorization as a representation of the communication scoring.
-Therefore, we retained the communication tensor factorization as signed, and use our results as an opportunity to explain how these signs should be interpreted (l. XXX)
+Therefore, we retained the communication tensor factorization as signed, and use our results as an opportunity to explain how these signs should be interpreted (i.e., IBD components 1 and 5, Figure 5 Results paragraph 3).
 
 > 4. Risk of overfitting in the ALAD classifier.
 >    For the ALAD cohort, the number of eigenstates and CPD components were selected because they "yielded the optimal predictive performance for ALAD status".
@@ -111,28 +126,31 @@ Therefore, we retained the communication tensor factorization as signed, and use
 >    Please clarify the CV scheme and, if selection was not nested, re-estimate performance with nested CV.
 
 We have substantially revised our approach to rank selection to address the overfitting concern and to improve the interpretability of the results.
-In addition to the concerns the reviewers raised, selecting the decomposition rank based on an external prediction limited the use of our approach to applications where such a prediction was available.
-Instead, we now consistently select the rank of our decompositions based on an internal cross-validation scheme, wherein the decomposition is benchmarked in its ability to predict a left-out portion of the tensor.
-In addition to providing a benchmark for the rank selection, this internal cross-validation scheme also provides a more reliable estimate of the classifier's performance, and a more internally consistent framing of the model, since the decomposition is meant to be a reliable representation of the molecular data.
+Briefly, we now use a bi-cross-validation (BiCV) scheme to select RISE rank and a cross-component collinearity and stability analysis to select CPD rank, none of which see the sample labels.
+In addition to providing a benchmark for the rank selection, the internal BiCV scheme also provides a more reliable estimate of the classifier's performance as it is exposed only to the molecular data and not to the sample labels.
+Further, selecting the decomposition rank based on an external prediction limited the use of our approach to applications where such a prediction was available, which the new rank selection scheme avoids.
+Our response to Reviewer #2 Comment #4 discusses the new rank selection procedure in depth and Reviewer #1 Comment #5 expands upon the limitations of our previous approach.
+The new rank selection results are showcased in {{< fig 2 rise-rank-selection cp-minima >}} and {{< fig ibd-rank-selection >}} and the procedure is described in Methods section *Rank Selection*.
 
 > 5. Small samples and no independent validation of the classifier.
 >    The COVID cohort has 12 samples; fitting an 18-component L1 logistic regression at the patient level is prone to overfitting.
 >    There is no external cohort reproducing the classifier.
 >    The authors' own finding that the components do not predict CLAD or death should be stated more prominently, as it shows limitations of the clinical claims.
 
-<!-- We need to come back to this. -->
-
 We agree on both counts.
-The twelve-sample COVID-19 cohort has been replaced as the primary demonstration by the IBDverse terminal-ileum biopsy cohort (343 samples; 232 healthy and 111 Crohn's disease), which is large enough to support patient-level association testing and to hold out samples for evaluation rather than reporting resubstitution performance (l. XXX).
+The twelve-sample COVID-19 cohort has been replaced as the primary demonstration by the ALAD dataset, and we supplement this with the IBDverse terminal-ileum biopsy cohort (343 samples; 232 healthy and 111 Crohn's disease), which is large enough to support patient-level association testing.
 
 We have also changed how condition associations are tested.
-L1-penalized logistic regression proved unstable in exactly the way this comment anticipates: with collinear components, the penalty selects arbitrarily among them, and the selected regularization strength varies from resample to resample, so the identity of the "predictive" components changed with rank and with the bootstrap draw.
-We therefore test component--condition associations by ANOVA, applied identically to both datasets, with multiple-testing correction across components and outcomes (l. XXX; see also Reviewer #2, major comment #5).
+In data not shown here, L1-penalized logistic regression proved unstable in exactly the way this comment anticipates: with collinear components, the penalty selects arbitrarily among them, and the selected regularization strength varies from resample to resample, so the identity of the "predictive" components changed with rank and with the bootstrap draw.
+We therefore opted to test component--condition associations by ANOVA, applied identically to both datasets, with multiple-testing correction across components and outcomes.
+We describe the new association testing in {{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}, {{< fig ibd-associations cp-associations status-loadings >}}, and Methods section *Clinical Association Testing*.
 
-On the negative result: it is now stated in the Results rather than left to the reader to notice.
-In the ALAD cohort, a single component shows a graded, statistically significant association with six-month outcome after correction, and no component is significantly associated with CLAD or death (Fig. XXX, l. XXX).
-We discuss why: with 47 samples from 45 recipients and few events, the cohort has little power for those endpoints, and CLAD and death are also separated from the sampled timepoint by considerably more intervening biology than the six-month outcome is.
-We accordingly frame the clinical claims as hypothesis-generating (l. XXX).
+[Need to confirm these claims are present in text]
+On the negative result: with the rank-selection overhaul and new association testing methodology, this result has flipped.
+Now, in the ALAD cohort, a single component shows a graded, statistically significant association with six-month outcome after correction, and the same component is significantly associated with six-month and one-year death, as shown in {{< fig 3 outcome-association >}} and {{< fig alad-associations cp-associations >}}.
+Instead, we fail to identify any communication programs associated with ALAD status, which is now stated in the Results rather than left to the reader to notice [Results XXX].
+We discuss why: with 47 samples from 45 recipients and few events, the cohort has limited statistical power, and the significant associations depend on a small number of highly weighted samples [Discussion XXX].
+We accordingly frame the clinical claims as hypothesis-generating [Discussion XXX].
 
 > 6. No significance testing for communication programs.
 >    Unlike CellPhoneDB/CellChat, CCC-RISE provides no null model or significance assessment for whether a component's communication exceeds chance.
@@ -142,12 +160,11 @@ We agree and have implemented two complementary permutation-based null models fo
 
 The first asks whether a given tensor entry is unusual at all, the direct analogue of CellPhoneDB/CellChat's own null, which permutes discrete cell-cluster labels and recomputes each cluster pair's mean-expression score.
 RISE has no discrete clusters and so we generalize the permutation accordingly: within each condition, we shuffle the cell's raw expression each eigen-state loading row is paired with, and recompute the communication tensor from these shuffled pairings.
-This breaks the real cell/eigen-state association while holding cell counts, the loading distribution, and LR identity fixed, giving every tensor entry an empirical p-value (and a z-score, from the same null's mean and standard deviation) against a null of "random" eigen-state assignment.
-This null works across any of the four scoring functions described in our response to Reviewer #2's comment #3.
+The results of this permutation test are contained within {{< fig 2 permutation-lr-significance >}} and the approach is defined in Methods section *Significance Against Nulls*.
 
 A second test answers whether an entry differs between two groups of samples, akin to scDiffCom's own permutation scheme.
 We adapted this to CCC-RISE's structure directly: since the communication tensor already has one slice per sample along its condition axis (the same axis as the CPD condition factor), we permute *which existing sample-slice counts as which group*, rather than resampling cells and rebuilding the tensor, allowing us to calculate this test exactly and efficiently.
-We report [NEW OBSERVED-VS-NULL PANEL --- TBD]{.placeholder} showing both tests applied to the reported components.
+We report the results of this permutation test within {{< fig 3 lr-permutation lr-volcano >}} and the approach is defined in Methods section *Significance Against Nulls*.
 
 > 7. Missing multi-condition/differential CCC baselines from the literature.
 >    Several directly relevant multi-condition CCC methods are absent from the reference list entirely and should be discussed:
@@ -155,22 +172,19 @@ We report [NEW OBSERVED-VS-NULL PANEL --- TBD]{.placeholder} showing both tests 
 >    - scDiffCom (Lagger et al., Nat Aging 2023), a dedicated differential CCC between conditions with permutation-based significance (c.f. comment #6).
 >    - CrossTalkeR (Nagai et al., Bioinformatics 2021), differential LR-network analysis across conditions.
 
-We have added both methods to the introduction and discussion, and cite them alongside CellPhoneDB/CellChat as the established precedent for permutation-based CCC significance testing (l. XXX).
-As addressed in response to other comments, we have also added direct comparisons of our results to the approaches taken by these methods.
+We have added both methods as well as NATMI to the Introduction and the reference list\ [@doi:10.1038/s43587-023-00514-x; @doi:10.1093/bioinformatics/btab370; @doi:10.1038/s41467-020-18873-z].
+These methods collectively define an additional class of CCC-inference approaches that analyze conditions in a pair-wise manner, and they are introduced accordingly.
 
 > 8. Inconsistency between the "label-free" premise and label-dependent interpretation.
 >    Every program is ultimately described through annotated cell types, and annotations are explicitly reused.
 >    The framing that CCC-RISE works "beyond cell-type boundaries" should either be tones down or it should be demonstrated for least one program how biological identity was established without using pre-existing labels.
 
-<!-- We need to come back to this. -->
-
 This is a good point.
-We have revised the manuscript to consistently work directly with the cell eigenstates, and explicitly call out where these do or do not align with our cell type annotations.
+We have revised the manuscript to consistently work directly with the cell eigen-states, and explicitly call out where these do or do not align with independent cell-type annotations.
 
-As a concrete demonstration, the ALAD component associated with six-month outcome is defined entirely from eigen-state loadings: classifying every cell by its sender and receiver loading percentiles, without reference to any annotation, separates a population that is a strong receiver but not a strong sender for this program (Fig. XXX, l. XXX).
-Only afterward do we ask what the existing annotations call these cells, and the answer is the point: the population is a subset of the CD4+ T cell annotation, and the remaining CD4+ T cells --- carrying the same label --- do not participate as receivers.
-The program's top LR pairs (T and NK cell activation and adhesion signaling) are likewise read off the LR factor without reference to labels (l. XXX).
-So annotations are used as an interpretive check on label-free structure rather than as its input, and we have rewritten the relevant passages to make that order explicit rather than describing every program through its cell-type labels (l. XXX).
+As a concrete demonstration, the ALAD component 5 describing BTC--EGFR signaling is defined entirely from eigen-state loadings: classifying every cell by its sender and receiver loading percentiles, without reference to any annotation, separates a population that is a strong receiver but not a strong sender for this program and vice versa ({{< fig 2 sender-receiver-strata >}}).
+Only afterward do we ask what the existing annotations call these cells, and the answer is the point: the sender and receiver groups are distinct subpopulations of epithelial cells.
+Annotations are thus used as an interpretive check on label-free structure rather than as its input, and we have rewritten the relevant passages to make that order explicit rather than describing every program through its cell-type labels ({{< fig 2 sender-receiver-strata celltype-composition >}}) and ({{< fig 4 hormone-angle-scatter hormone-extreme-markers >}}).
 
 ## Reviewer #2
 
@@ -184,11 +198,9 @@ So annotations are used as an interpretive check on label-free structure rather 
 > Several methodological justifications and validation gaps should be well addressed.
 > The methodological descriptions are also confusing, with inconsistent mathematical symbols.
 
-<!-- EDITED. -->
-
 We thank the reviewer for recognizing the conceptual contribution, and we agree that the original submission did not establish CCC-RISE as a practical tool.
-The revision addresses this on three fronts: quantitative evaluation against published methods and against a curated ligand-to-target prior (comments #1 and #2); a principled, dataset-agnostic procedure for choosing both ranks, together with a stability analysis across resampling and random seeds (comment #4); and a rewritten Methods section that follows the Fig. 1 pipeline order with a single consistent set of symbols (comment #6).
-We have additionally replaced the twelve-sample COVID-19 cohort with the 343-sample IBDverse cohort as the primary demonstration, corrected the communication score so that it operates on non-negative expression (comment #3), and added permutation-based significance testing.
+The revision addresses this on three fronts: quantitative evaluation against published methods and against a curated ligand-to-target prior (Comments #1 and #2); a principled, dataset-agnostic procedure for choosing both ranks, together with a stability analysis across subsampling and random seeds (Comment #4); and a rewritten Methods section that follows the Fig. 1 pipeline order with a single consistent set of symbols (Comment #6).
+We have additionally replaced the twelve-sample COVID-19 cohort with the 343-sample IBDverse cohort, corrected the communication score so that it operates on non-negative expression (Comment #3), and added permutation-based significance testing.
 Point-by-point responses follow.
 
 ### Major Comments
@@ -201,18 +213,35 @@ Point-by-point responses follow.
 >    One notable difference is the learned condition factor matrix.
 >    These results suggest that CCC-RISE may miss many meaningful communication patterns revealed by the cell-type-based methods.
 
-We agree, and we have added quantitative evaluation; much of this overlaps with Reviewer #1's comments #1 and #2, which we summarize here.
+[Need to review comparator paragraphs after comparator work is finalized.]
+<!-- - Quantitative metrics for recovery of "real" biology (NicheNet, NICHES, reference R1 C1 for NICHES, R1 C2 for NicheNet)
+<!-- - Performance relative to comparators (tensor-based methods, reference R1 C1)
+<!-- - Refusal to use synthetic data (should re-state for this reviewer or reference R1 C2)-->
 
-We now run Tensor-cell2cell and STACCato (the closest multi-condition tensor methods) and Scriabin and NICHES (the closest single-cell-resolution methods) on the same data, from the same LR resource and preprocessing, and report head-to-head performance: condition-status classification AUC for the tensor methods and per-cell-pair score concordance for the single-cell methods (Fig. XXX, l. XXX).
-Because no cohort carries experimentally established communication ground truth, our accuracy metric is recovery of curated ligand → downstream-target relationships (NicheNet ligand-activity AUROC) in the receiver cells each component implicates --- reported for CCC-RISE, for the pseudobulk equivalent, and for the comparator methods where their output permits it (Fig. XXX).
-We chose this over a simulated ground truth (e.g. SERGIO-based CCC simulators) because a simulator encodes an assumed model of how signaling shapes expression; recovering it certifies agreement with that assumption rather than with the biology of these tissues.
-We state this reasoning in the manuscript rather than leaving the omission unexplained (l. XXX).
+We agree, and we have added quantitative evaluation and communication program recovery between methods; much of this overlaps with Reviewer #1 Comments #1 and #2, which we summarize here.
 
+We take two approaches to quantify recovery of "real" biology.
+First, we compare differentially expressed genes in each component's receiver cells with each ligand's downstream gene targets, as defined by the NicheNet v2 ligand--target matrix\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
+This analysis is discussed in detail in Reviewer #1 Comment #2, {{< fig 2 nichenet >}}, and Methods section *External Biological Validation*.
+Second, we measure the concordance between cells with high CCC-RISE sender/receiver weights and cells classified as senders/receivers by NICHES\ [@doi:10.1093/bioinformatics/btac775].
+This analysis is discussed in detail in Reviewer #1 Comment #1, {{< fig 4 niches-concordance niches-orderings >}}, {{< fig 5 niches-fraction >}}, {{< fig niches-ibd >}}, and Methods section *External Biological Validation*.
+
+[Update based on comparator results, reference R1 C1]
+Additionally, we now run Tensor-cell2cell and STACCato (the closest multi-condition tensor methods) and Scriabin and NICHES (the closest single-cell-resolution methods) on the same data, from the same LR resource and preprocessing, and report head-to-head performance: condition-status classification AUC for the tensor methods and per-cell-pair score concordance for the single-cell methods (Fig. XXX, l. XXX).
+[Consolidate into R1 C2 and reference]
+Because no cohort carries experimentally established communication ground truth, our accuracy metric is recovery of curated ligand → downstream-target relationships (NicheNet ligand-activity AUROC) in the receiver cells each component implicates --- reported for CCC-RISE, for the pseudobulk equivalent, and for the comparator methods where their output permits it ({{< fig 2 nichenet >}}, {{< fig comparator-nichenet >}}).
+
+[Update based on comparator results, reference R1 C1, or cut]
 On whether CCC-RISE recovers what cell-type-based decomposition finds: we now report an explicit matched-component comparison against the pseudobulk CPD model, giving for each pseudobulk component its best-matching CCC-RISE component and the congruence of that match per mode (Fig. XXX).
 We would also note that the two models are not estimating the same quantity, and we have made this clearer in the text (l. XXX).
 The pseudobulk tensor is built from cell-type means, so its components describe communication between cell types; CCC-RISE describes the *variation* in communication across conditions at eigen-state resolution, where a single cell-type-level pattern may be split across eigen-states that cut within a type, and a program confined to a subpopulation is diluted --- and may be absent --- in the cell-type average.
 A component-for-component correspondence is therefore not the expected result, and where it fails we now say which of the two behaviors is responsible instead of presenting the discrepancy without comment.
 The condition-factor differences the reviewer notes are largely a consequence of this: both the rank and the condition-association test have changed in the revision (see comment #4 and comment #5), and the revised comparison is made at the ranks each model's own selection criterion supports.
+
+[Confirm we actually wish to talk about simulated data somewhere in the manuscript.]
+We chose these quantitations over a simulated ground truth (e.g. SERGIO-based CCC simulators) because a simulator encodes an assumed model of how signaling shapes expression; recovering it certifies agreement with that assumption rather than with the biology of these tissues.
+We state this reasoning in the manuscript rather than leaving the omission unexplained [Text reference].
+Our rationale is further discussed in the response to Reviewer #1 Comment #2.
 
 > 2. The manuscript interprets CCC components based on known biology through case studies but does not systematically validate them to demonstrate that the identified programs reflect coherent biological processes.
 >    It is unclear whether these components/programs represent distinct biological processes or mathematical artifacts of the decomposition.
@@ -220,30 +249,33 @@ The condition-factor differences the reviewer notes are largely a consequence of
 >    Particularly for the condition-specific programs, does the enriched biological processes reflect the condition states?
 >    In addition, GO enrichment analysis should also be performed for the differentially weighted genes identified by logistic regression, such as those shown in Fig. 4q, r, w, and x.
 
-We agree that biological coherence should be tested rather than argued, and we have added systematic enrichment analysis.
+We agree that biological coherence should be tested rather than argued, and we have added various quantitations to support this.
 
-For each component, we perform gene-set/GO enrichment on the genes of its top-weighted LR pairs, and separately on the genes that distinguish the cell populations the component implicates (the analysis previously shown as differentially weighted genes) (Fig. XXX, l. XXX).
-For the condition-associated components we report whether the enriched processes correspond to the condition state --- for the ALAD component associated with six-month outcome, we anticipate enrichment for lymphocyte activation, adhesion, and cytotoxicity terms consistent with the T/NK-cell programs its top LR pairs describe (l. XXX).
-We report these results whether or not they are confirmatory; a component whose top LR pairs carry no coherent enrichment is labeled as such rather than interpreted.
+We attempted to perform gene set enrichment on highly weighted LR pairs, but we observed no significant GO terms in any component across either ALAD or IBD.
+We hypothesize why: the LR pairs retained after filtering consist of a list of 575 pairs, which already makes the test underpowered relative to standard gene set enrichment on a list of genes.
+To make things worse, in order to measure enrichement of terms in a component, we weighted each LR pair by its CPD component loading, which further reduced the power of the analysis due to the sparse nature of the LR pair factor matrices.
+We thus attribute the failure of this analysis to the limited size of the available LR pairs rather than the lack of biological coherence.
 
-We would add that enrichment of an LR list tests coherence rather than causality, so we pair it with the NicheNet-style test described under comment #1: whether the curated downstream targets of a component's ligands are actually induced in that component's receiver cells (Fig. XXX).
-Together these address the mathematical-artifact concern from two directions --- the component's ligands hang together functionally, and their known consequences are visible in the cells the component says are receiving.
+Given the limitations of gene set enrichment, we went on to quantify biological coherence by two alternate approaches.
+First, we present a co-variation analysis among top-weighted LR pairs of outcome-associated components, wherein the correlation of communication scores between LR pairs implicated by a component is compared with that of those randomly drawn from other groups.
+We present these results in {{< fig 3 coordinated-changes.2 >}} and {{< fig 5 program-covariation >}} and define the process in detail in Methods sections *Clinical Association Testing* and *Comparator Methods*.
+The enhanced co-variation of top-weighted LR pairs relative to other groups of LR pairs indicates that the communication program represents a coherent transcriptional pattern.
+Second, we further test the biological coherence of CCC-RISE components using the previously described NicheNet validations (Reviewer #1 Comment #2).
+Together, these address the mathematical-artifact concern from two directions---the component's LR pairs move together in expression space and their known gene targets are visibly upregulated in the cells the component says are receiving.
 
 > 3. The authors compute communication scores as the product of ligand and receptor expression between eigen-states.
 >    However, this simple calculation does not involve any statistical test and may produce incorrect cell-cell communication inferences between eigen-states as well as between individual cells.
 >    The authors should demonstrate whether the inferred communication patterns are robust to alternative CCC score calculation frameworks, such as those used in CellChat and CellPhoneDB.
 
-We agree, and this comment overlaps with Reviewer #1's major comment #3 on sign ambiguity --- please see that response for the underlying fix, which we summarize here alongside the scoring-robustness work this comment specifically asks for.
+We agree, and this comment overlaps with Reviewer #1 Comment #6 on statistical robustness of communication tensor entries.
+Briefly, we add a cell-permuted null that generates a distribution of communication tensor entries with which CCC-RISE communication tensor entries are compared.
+Additionally, the reviewer was correct to raise concerns over incorrect CCC scores resulting from the expression product, which is discussed in detail in Reviewer #1 Comment #3.
+Briefly, the expression product between two negatively loaded genes resulted in a spurious positive communication score, which we address by adding back per-gene mean expression before computing communication scores.
+Please see the referenced reviewer responses for more detailed explanations.
 
-Our original score was the outer product of eigen-state ligand/receptor loadings taken as-is; because those loadings are deviations from a per-gene mean rather than expression levels, the score could take a spuriously large positive value from two negative (below-mean) loadings, with no relationship to actual signaling strength.
-We now add the relevant per-gene mean back to each loading before scoring, so the score approximates real, non-negative ligand/receptor expression rather than a product of centered factors; negative residuals from the linear reconstruction (a rare, small effect of approximating expression linearly) are clipped to zero.
-
-We then implemented four interchangeable scoring functions on top of this corrected, non-negative input and confirmed each behaves as expected on held-out unit tests: our original expression product; the arithmetic-mean score used by CellPhoneDB; a geometric-mean variant; and a CellChat-style saturating Hill function, `L·R / (Kh + L·R)`, which we added specifically in response to this comment (`Kh` is the half-saturation constant, exposed as a parameter and tuned to the scale of our expression values rather than left at CellChat's $[0,1]$-normalized default).
-All three non-product options are defined to require non-negative input and clip accordingly, exactly like CellChat and CellPhoneDB's own formulations --- a requirement our re-centering fix now satisfies for RISE eigen-state loadings, and that would otherwise have produced errors (e.g. `NaN`s from a negative-argument square root in the geometric-mean score) or nonsensical output (an unbounded, sometimes-negative "saturating" score) had it been fed the original signed loadings.
-We report [NEW ROBUSTNESS PANEL --- TBD]{.placeholder} comparing the reported components under each of these four scoring strategies and show the headline components are stable across the choice of combination function.
-
-We separately generalized our permutation-based null (shuffling which cell's expression each eigen-state loading is paired with, holding raw expression and LR identity fixed, the direct continuous-loading analogue of CellChat/CellPhoneDB's cluster-label permutation) so it works with any of the four scoring strategies above rather than only the original product, and validated the vectorized implementation used for the (up to thousands of) permutations against the reference scoring path for each strategy.
-This assigns every communication-tensor entry an empirical p-value and effect size regardless of which scoring function is used, addressing the "no statistical test" part of this comment directly (see response to major comment #6, Reviewer #1) in a way that itself is not tied to one particular, potentially non-robust choice of score.
+To address the reviewer's third point, we implemented four interchangeable scoring functions: our original expression product; the arithmetic-mean score; a geometric-mean variant; and a CellChat-style saturating Hill function.
+All three non-product options are defined to require non-negative input and clip accordingly, exactly like CellChat and CellPhoneDB's own formulations, a requirement our re-centering fix now satisfies for RISE eigen-state loadings, and that would otherwise have produced errors (e.g. `NaN`s from a negative-argument square root in the geometric-mean score) or nonsensical output (an unbounded, sometimes-negative "saturating" score) had it been fed the original signed loadings.
+We report a comparison between communication programs identified by each of these scoring methods in {{< fig ccc-scoring >}} and describe each score' construction in detail in Methods sections *Construction of the Aligned 4D Communication Tensor* and *Robustness Tests*.
 
 > 4. Although metrics were provided to guide the selection of the two key hyperparameters (number of RISE components and number of CPD components), it remains unclear why 35 RISE components and 8 CPD components were chosen rather than, for example, 30-50 RISE components or 6-12 CPD components.
 >    The metrics do not provide clear guidance for hyperparameter selection.
@@ -255,18 +287,19 @@ This assigns every communication-tensor entry an empirical p-value and effect si
 
 We agree, and rank selection has been reworked so that a single criterion applies to both datasets and neither criterion consults sample labels.
 
-The RISE rank is selected by bi-cross-validation: the model is fit with blocks of the expression data held out, and the rank is chosen by reconstruction of those held-out entries (l. XXX, Fig. XXX).
-The CPD rank is selected by core consistency (CORCONDIA) together with a component-collinearity screen, which identify the rank beyond which the model becomes degenerate --- components begin to duplicate one another in one or two modes and to cancel (l. XXX, Fig. XXX).
-Both criteria are computed by the same runner, with the same parameters, for both datasets, and both depend only on the molecular data; this is also what removes the nested-cross-validation concern raised by Reviewer #1 (major comment #4), because no outcome label enters model selection.
-In the course of this work we found and fixed an error in the held-out design used by the earlier cross-validation, which had systematically depressed held-out scores; the reported sweeps are regenerated with the corrected implementation, and the parameters and code version behind each committed sweep are recorded alongside it (l. XXX).
-We acknowledge that these criteria identify a defensible range rather than a single sharp optimum, and we therefore report the sensitivity analysis below rather than claiming a uniquely correct rank.
+The RISE rank is selected by bi-cross-validation: the model is fit with blocks of the expression data held out, and the rank is chosen by reconstruction of those held-out entries.
+The CPD rank is selected by collinearity between components of the LR pair mode together with stability of factorizations under re-initialization.
+For ALAD, both the BiCV and the collinearity clearly indicate an optimal rank.
+For IBD, CPD collinearity provides a similarly specific choice, while BiCV plateaus instead of turning over, but still shows a clear point at which additional components do not improve predictive performance.
+Both criteria are computed by the same runner, with the same parameters, for both datasets, and both depend only on the molecular data.
+The multi-replicate nature of these rank selection procedures also serves as a sensitivity analysis under a parameter sweep, where the paramter is rank.
+The new rank-selection procedure is showcased in {{< fig 2 rise-rank-selection cp-minima >}} and {{< fig ibd-rank-selection >}} and described in detail in Methods sections *Fit Evaluation* and *Rank Selection*.
 
-We now also use the Factor Match Score in the analysis rather than only defining it.
-Components are refit under four perturbations --- resampling cells within conditions, resampling patients, resampling LR pairs, and re-initializing with a different random seed --- and each component is matched to the reference fit by Hungarian assignment and scored by FMS, alongside per-fit diagnostics (R2X, core consistency, collinearity) (Fig. XXX, l. XXX).
+We now also use the Factor Match Score (FMS) to compare individual fits during sensitivity analyses rather than only defining it.
+At the final rank as selected by the above procedures, components are refit under two perturbations---leave-one-patient-out jackknife and re-initializing with a different random seed---and each component is matched to a reference fit by Hungarian assignment and scored by FMS.
+Patient jackknife interrogates the contribution of individual patients to the stability of factorization results.
 Random-seed refitting serves as the reference point for how much of the observed spread is attributable to the data rather than to initialization.
-We report these results honestly: at the selected ranks most components are highly reproducible (aggregate FMS near 0.9), while a minority are not, and the two failure modes we observe are distinguishable --- a component whose variance is redistributed across two components of another fit (the information is retained, organized differently) versus one only partially recovered (Fig. XXX).
-We also found that unstable components, and components effectively describing a single patient, are a symptom of over-fitting the rank; this observation is part of what drove the rank down relative to the original submission, and we report it as a practical diagnostic that readers can apply to their own data (l. XXX).
-Finally, we show how the biological conclusions behave across the rank range, by tracking components across ranks and showing that the reported programs and their condition associations persist (Fig. XXX).
+The results of these sensitivity analyses are reported in {{< fig alad-cohort rise-fms cpd-fms >}} and described in detail in Methods section *Robustness Tests*.
 
 > 5. Different methods were used for identifying condition-specific components across datasets, and inconsistent results were observed.
 >    In the COVID-19 analysis, the authors use Spearman correlation between condition factors and disease severity to identify condition-specific components (Components 3, 5, 8).
@@ -279,16 +312,12 @@ Finally, we show how the biological conclusions behave across the rank range, by
 
 We agree, and the two datasets are now analyzed identically.
 The original difference was historical: Spearman correlation was used for the COVID-19 data because the pseudobulk analysis we were comparing against had done so.
-In the revision, component--condition associations are tested by ANOVA in both datasets, with multiple-testing correction across components and outcomes (l. XXX).
+In the revision, component--condition associations are tested by ANOVA in both datasets, with multiple-testing correction across components and outcomes (Methods section *Clinical Association Testing*).
 
-We did not simply standardize on the original logistic regression.
-Bootstrapping the full pipeline showed that the L1 penalty distributes weight arbitrarily among collinear components, and that the selected penalty strength varies across resamples, so which components appeared "predictive" changed with rank and with the resample even when the underlying communication program was stable (l. XXX).
-ANOVA avoids this, and it also handles the graded outcomes (control / recovered / progressed) directly rather than forcing a binary contrast.
-
-On consistency with the condition factors: we now present the association result and the condition factor together, so the reported association can be read off the factor itself (Fig. XXX).
+On consistency with the condition factors: we now present the association result and the condition loadings together, so the reported association can be read off the factor itself ({{< fig 3 outcome-association >}}).
 The component associated with six-month ALAD outcome shows a monotone, step-wise separation across outcome groups, which is visible in the raw condition factor and is not an artifact of the test.
-We have also clarified what the condition factor is and is not: because the tensor is centered, components describe *variation* in communication around the cohort average rather than total communication, so a component loading uniformly high in one group reflects the direction of that variation, and the apparent absence of "control-enriched" components in the original figure reflects sign convention and scaling rather than the absence of control-associated signal.
-The revised figures state the normalization on the colorbar (see minor comment #5), which we expect resolves most of this reading.
+We would also like to clarify what the condition factor is and is not: because the tensor is centered, components describe *variation* in communication around the cohort average rather than total communication, so a component loading uniformly high in one group reflects the direction of that variation, and the apparent absence of "control-enriched" components in the original figure reflects sign convention and scaling rather than the absence of control-associated signal.
+The revised figures state the normalization on the colorbar (see Reviewer #2 Minor Comment #5), which we expect resolves most of this reading.
 
 > 6. The mathematical symbols in the equations and their biological meanings are not consistently defined or clearly explained.
 >    The Methods section jumps between concepts without a logical flow, making it difficult to follow.
@@ -296,14 +325,9 @@ The revised figures state the normalization on the colorbar (see minor comment #
 >    Please clearly define each mathematical symbol and its biological interpretation.
 >    The mathematical symbols throughout the Methods section should be consistent.
 
-<!-- EDITED. -->
-
 We have revised the Methods section to describe the workflow sequentially according to Fig. 1: RISE to obtain eigen-states, construction of the aligned 4D communication tensor, and CPD to extract communication programs, each now in its own subsection in that order.
 
 We have also gone through the Methods and standardized notation so that each symbol has one meaning throughout.
-Previously, the same letters were reused with different meanings in different places: most notably, $R$ denoted both the rank of a decomposition and receptor expression, and the four factor matrices of the CCC-RISE communication tensor were left unnamed until the Factor Match Score equations, where they collided with letters RISE had already assigned to different quantities (e.g., $C$ meant both "gene factor matrix" for RISE and "condition factor matrix" for CPD).
-We now reserve lowercase $r$ for rank throughout, so that $R$ refers unambiguously to receptor expression; RISE retains its existing $A$ (condition), $B$ (cell eigen-state), and $C$ (gene) factor matrices; and the communication tensor's four factor matrices are introduced by name where the tensor itself is defined, using a disjoint set of letters ($D$ condition, $E$ sender eigen-state, $F$ receiver eigen-state, $G$ LR pair) that cannot be confused with RISE's.
-In the course of this we also caught and corrected a mislabeling in the original Factor Match Score description, which called the RISE gene factor matrix $B$ rather than $C$.
 
 ### Minor Comments
 
@@ -312,15 +336,13 @@ In the course of this we also caught and corrected a mislabeling in the original
 >    Could a simpler approach-such as canonical correlation analysis (CCA) or other dimensionality reduction methods (e.g., PCA, NMF, VAE)-achieve similar results?
 >    What are the advantages of PARAFAC2-derived states in capturing communication-relevant heterogeneity?
 
-<!-- EDITED. -->
-
 This is an interesting point.
 In fact, at a high level, a similar approach could indeed be taken using other methods that project single cell RNA-seq data into a lower-dimensional space.
 As described in our previous work\ [@pmid:40378843], PARAFAC2 is uniquely suited for multi-condition single-cell analysis because it provides a unique solution for decomposing the data into a low-dimensional representation that captures both cell type heterogeneity and quantitation of the variation across conditions.
 By contrast, PCA is rotationally invariant and so it and VAE models will not provide a unique solution to provide a reliable basis for interpretable communication scoring.
 CCA provides a unique solution, but cannot be easily broken into a description of the differences between conditions, separated from the single-cell variation.
 NMF does provide a unique solution, and it is possible to quantitate the abundance of a pattern within each condition, but non-negativity splits counter-balanced regulatory patterns, such as differentiation programs, into multiple non-negative components.
-We have expanded our introduction to the manuscript to include a more detailed comparison of these methods and the relative advantage of PARAFAC2.
+We have expanded our introduction to the manuscript to include a more detailed comparison of these methods and the relative advantage of PARAFAC2 (final paragraph of the Introduction).
 
 In unpublished work, we have a more extensive benchmarking between these alternatives.
 In fact, we find that, using the bi-cross-validation strategy described above, that PARAFAC2 consistently outperforms all of these methods in prediction of held-out single cell RNA-seq data, suggesting that it is a better representation of the data.
@@ -330,48 +352,34 @@ However, this more mechanistic and detailed discussion will have to remain beyon
 > 2. The analysis spans multiple patient samples and conditions, but it is unclear how batch effects, patient heterogeneity, or technical variation are handled.
 >    Do the RISE and CPD projections inherently correct for such effects?
 
-We have added an explicit treatment of this in the Methods (l. XXX).
-
-RISE does not correct batch effects in the sense of removing them, but its structure does isolate them.
-Each sample is fit with its own projection matrix onto a shared set of eigen-states, so sample-level variation in how strongly a given program is expressed is carried by that sample's condition loading rather than distorting the shared eigen-state definitions; the eigen-states themselves are estimated from structure common across samples.
-Technical variation that acts uniformly on a sample (e.g., sequencing depth, capture efficiency) is therefore expressed as a condition-factor offset, which is why we test associations on the condition factor with the sample as the unit of analysis rather than the cell.
-
-This is not a complete answer, and we say so.
-Variation that affects genes non-uniformly, or that is confounded with the condition of interest, is not separable by this structure from biological signal, and in the ALAD cohort two recipients contributed two samples each, which we account for by keeping a recipient's samples together in all resampling and cross-validation splits (l. XXX).
-The resampling analysis in major comment #4 is also the relevant empirical check here: a component driven by a single sample or batch shows up as a component whose factor match score collapses when that sample is not drawn, and we report per-component stability for exactly this reason (Fig. XXX).
+We have added an explicit treatment of this in the Methods.
+Instead of re-stating that description here, we point the reviewer to the corresponding Methods section *Batch, Patient, and Technical Variation*.
+The resampling analysis in Reviewer #2 Comment #4 is also the relevant empirical check here: a component driven by a single sample or batch shows up as a component whose factor match score collapses when that sample is not drawn, and we report per-component stability for exactly this reason.
 
 > 3. How should the LR pairs with negative loadings in each inferred component be interpreted?
 >    Why not use a non-negative CPD model for better interpretability?
 
-<!-- EDITED below here. -->
-
-Please refer to Reviewer #1's major comment #3, where we address these important points.
+Please refer to Reviewer #1 Comment #3, where we address these important points.
 
 > 4. The logistic regression used to identify condition-associated components is not fully described.
 >    The input features (e.g., component loadings, sample associations) and the outcome variable (e.g., ALAD status, clinical stability) are not clearly specified.
 
-We have fully specified this in the Methods (l. XXX).
-The features are the rows of the CPD condition factor matrix with one row per sample and one column per communication component.
-We have included no other covariates; the unit of analysis is the sample, and a recipient's samples are kept within the same fold wherever data are split.
-The outcomes are stated per test: ALAD status, six-month and one-year outcome, CLAD, and death for the lung-transplant cohort, and disease status for the IBD cohort.
-
-As described under major comment #5, the primary association test is now ANOVA across outcome groups with multiple-testing correction across components and outcomes.
-Where a classifier is reported, we state the model, the penalty, and the cross-validation scheme (l. XXX).
+We have moved away from logistic regression to test clinical associations.
+We carefully describe the new ANOVA association testing scheme and explicitly state all patient labels and covariates tested for association in Methods section *Clinical Association Testing*.
 
 > 5. All colorbars should clearly indicate whether the displayed values are normalized (e.g., Fig. 2b, 2i, 2m).
 >    How was the normalization performed?
 
-We have now ensured that all colorbars clearly indicate whether and how the displayed values are normalized, and that the normalization is defined in the Methods (l. XXX).
-Factor matrices are shown with each component scaled to unit maximum absolute loading so that components are visually comparable, with the scaling stated on the axis label; communication-score heatmaps are shown on the score's own scale, labeled as such (Fig. XXX).
+We have now ensured that all colorbars clearly indicate whether and how the displayed values are normalized, and that the normalization is defined in the Methods section *Canonical Polyadic Decomposition* when relevant.
 
 > 6. How was PaCMAP performed to project cells into 2D space?
 
-We have expanded the Methods to describe this fully (l. XXX).
+We have expanded the Methods to describe this fully (Methods section *Reduction and Insight in Single-cell Exploration*).
 PaCMAP is applied to the concatenated RISE projection matrices across all conditions so that the embedding is a visualization of the same low-dimensional space the communication scores are computed in, and cells from different samples are directly comparable within it.
-The parameters used are now stated alongside the software version and random seed.
+The parameters used are now stated explicitly.
 
 > 7. In Fig. 1d, the purple heatmap is incorrectly labeled as "sender Eigen-state Factor."
 >    Please correct this labeling.
 
 We thank the reviewer for catching this.
-The label has been corrected in Fig. 1d, and we have checked every other panel label in Fig. 1.
+The label has been corrected in Figure 1E (Figure 1 was re-arranged, with D mapping to E), and we have checked every other panel label in Figure 1.
