@@ -183,7 +183,6 @@ Each sample's fraction of cells in each coarse cell type was compared across gro
 **Individual LR pair testing.** For a CPD component with sender and receiver eigen-state loadings $e$ and $f$, the score of LR pair $l$ in sample $i$ was $S_{l,i} = \sum_{s,t} \mathcal{X}_{i,s,t,l}\,e_{s}f_{t}$, where $\mathcal{X}_{i,s,t,l}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in sample $i$.
 Each analysis used one normalization of $S_{l,i}$: division by the sample's total normalized expression for individual associations and for the outcome-label permutation test (Significance Against Nulls); and none for co-variation.
 The total-expression correction applied to condition loadings (above) was not used for LR pair scores, as its trend is fit to the norm across all LR pairs at once and so couples the pairs' corrected scores.
-
 Each LR pair's normalized score was tested against outcome by one-way ANOVA, corrected across the 575 LR pairs.
 
 A set of top LR pairs was tested for co-variation across samples by the Spearman correlation of their uncorrected scores.

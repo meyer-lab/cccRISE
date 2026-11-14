@@ -14,9 +14,9 @@ condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
 factors_path: cccrise/data/factors/bal_alad_factors.nc
-factors_sha256: 35729fa4b7013741c4cb953ccae5282f56805459b514192ad8685431e1b07712
-cp_rank: 7
-components: [1, 2, 3, 4, 5, 6, 7]
+factors_sha256: 0e4269511a6cd1e83caa9ba2e9eb4e26d20a25deb76b816a7f80afe38f12a34f
+cp_rank: 6
+components: [1, 2, 3, 4, 5, 6]
 top_perc: 10.0
 de_method: wilcoxon
 min_expr_frac: 0.1
@@ -29,5 +29,5 @@ resulting_dims:
   genes: 16675
   cells: 51273
   lr_pairs: 575
-git_sha: 6b44b177477924f0e74f5a5146d6d911b8b49062-dirty
-generated: '2026-11-14T01:45:31+00:00'
+git_sha: 4db094f9271cd8956ce14a447574fdd1183298c6-dirty
+generated: '2026-11-14T04:55:04+00:00'

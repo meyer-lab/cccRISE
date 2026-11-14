@@ -28,7 +28,7 @@ from ._common import DATASET, EIGENSTATE
 BACKGROUND_TYPE = "Macrophages"  # most of the cells: drawn beneath the rest
 LYMPHOCYTES = ("CD4 T cells", "CD8 T cells", "NK cells")
 ZOOM_XLABEL = "PaCMAP 1 (zoom: lymphocytes)"
-CLUSTER_RADIUS = 3  # PaCMAP units around the lymphocytes' median: their island
+CLUSTER_RADIUS = 4  # PaCMAP units around the lymphocytes' median: their island
 BOX_QUANTILES = (0, 1)  # of the island's lymphocytes, per axis: its full extent
 BOX_PAD = 0.05  # of the box's size, on each side
 AXES = ("square",) * 2

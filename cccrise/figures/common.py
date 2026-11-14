@@ -858,7 +858,7 @@ def plot_start_boxes(
     common_seeds = minima.query("Order == 1").set_index("Rank")["Seeds"]
     sweep = sweep.assign(
         Common=[s in common_seeds[r] for r, s in zip(sweep["Rank"], sweep["Seed"])]
-    )
+    ).sort_values("Common", ascending=False, kind="stable")  # other solutions on top
     kw = {"data": sweep, "x": "Rank", "y": column, "native_scale": True, "ax": ax}
     sns.boxplot(
         **kw,
