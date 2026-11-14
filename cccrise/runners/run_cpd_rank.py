@@ -193,7 +193,7 @@ def ridge_comparison(
     frames, fits_by_rank = [], {}
     # The ridge fit runs in the masked fits' precision: in float32 it went NaN
     # on ALAD from CPD rank 4
-    ridge_kwargs = fit_kwargs | {"dtype": MASKED_CP_DTYPE}
+    ridge_kwargs: dict[str, Any] = fit_kwargs | {"dtype": MASKED_CP_DTYPE}
     for rank in ranks:
         fits = [
             fit_cp_on_device(tensor, rank, **fit_kwargs),

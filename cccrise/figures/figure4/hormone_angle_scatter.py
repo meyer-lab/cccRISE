@@ -84,7 +84,7 @@ def _guides(ax) -> None:
     )
     ax.scatter(*point, color=style.COLORS["ink"], s=style.POINT_SIZE, zorder=3)
     ax.annotate(
-        f"{EXAMPLE_ANGLE}°, {FLOOR}",
+        f"{FLOOR}  {EXAMPLE_ANGLE}°",
         point,
         xytext=(-4, -4),  # 45 degrees down-left, onto the low-weight cells
         textcoords="offset points",

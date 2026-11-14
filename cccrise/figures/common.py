@@ -39,7 +39,9 @@ import yaml
 from matplotlib import pyplot as plt
 from matplotlib.colors import to_rgb
 from matplotlib.figure import Figure, SubFigure
+from matplotlib.legend import Legend
 from matplotlib.lines import Line2D
+from matplotlib.offsetbox import DrawingArea
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.text import Text
 from matplotlib.transforms import blended_transform_factory
@@ -703,10 +705,11 @@ def stripplot(**kwargs):
         np.random.set_state(state)
 
 
-def mark_rank(ax: plt.Axes, rank: int | None) -> None:
-    """Vertical reference line at the rank the canonical fit uses."""
+def mark_rank(ax: plt.Axes, rank: int | None, top: float = 1) -> None:
+    """Vertical reference line at the rank the canonical fit uses, up to `top`
+    (axes fraction) to leave room for a key above it."""
     if rank is not None:
-        ax.axvline(rank, zorder=0, **RANK_LINE)
+        ax.axvline(rank, ymax=top, zorder=0, **RANK_LINE)
 
 
 def reference_line(
@@ -787,7 +790,7 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     plot_mean_sd(ax, mean.index, mean, sd, style.COLORS["heldout"], "Imputation")
     ax.set_ylabel("R²X")
     ax.set_ylim(top=1.25 * ax.dataLim.y1)  # headroom for the legend
-    ax.legend(loc="upper right")
+    ax.legend(loc="upper right", borderaxespad=0.1)
 
 
 # --- CPD rank selection across seeded starts (ALAD Fig 2, IBD Fig 4) -----------
@@ -858,11 +861,13 @@ def plot_collinearity_boxes(
     rank: int | None = None,
     part: int | None = None,
     wrap_key: bool = False,
+    key_loc: LegendLocType | None = "lower right",
 ) -> None:
     """Per CPD rank, the largest |cosine| between two components' LR pair
     factors (`plot_start_boxes`). `part` is `source_data`'s."""
     sweep = _collinearity_sweep(dataset, ["D"], part)
-    plot_start_boxes(ax, sweep, "MaxCosD", load_minima(dataset), rank, wrap_key)
+    minima = load_minima(dataset)
+    plot_start_boxes(ax, sweep, "MaxCosD", minima, rank, wrap_key, key_loc)
     ax.set_ylabel("LR pair max |cosine|")
 
 
@@ -879,7 +884,7 @@ def plot_start_boxes(
     box over the starts with each start overlaid, colored by whether it
     reaches its rank's most common solution (`minima`, as
     `rank_selection.distinct_minima`) and keyed at `key_loc` (no key if
-    None), its labels on two lines each if `wrap_key`."""
+    None), its labels one word per line if `wrap_key`."""
     common_seeds = minima.query("Order == 1").set_index("Rank")["Seeds"]
     sweep = sweep.assign(
         Common=[s in common_seeds[r] for r, s in zip(sweep["Rank"], sweep["Seed"])]
@@ -914,7 +919,7 @@ def plot_start_boxes(
             marker="o",
             markersize=style.MARKER_SIZE,
             color=SOLUTION_COLORS[c],
-            label=SOLUTION_LABELS[c].replace(" s", "\ns" if wrap_key else " s"),
+            label=SOLUTION_LABELS[c].replace(" ", "\n" if wrap_key else " "),
         )
         for c in (True, False)
     ]
@@ -1501,6 +1506,29 @@ def condition_strips(
     for text in key.get_texts():
         if text.get_text() in titles:
             text.set_fontweight("bold")
+    _center_titles(ax, key, titles)
+
+
+def _center_titles(ax: plt.Axes, key: Legend, titles: list[str]) -> None:
+    """Center `key`'s `titles` rows (their empty handles dropped), and its
+    other rows as one left-aligned block, on a common axis, by padding each
+    row's left."""
+    renderer = ax.figure.canvas.get_renderer()  # ty: ignore[unresolved-attribute]
+    rows = [
+        row
+        for column in key._legend_handle_box.get_children()  # ty: ignore[unresolved-attribute]
+        for row in column.get_children()
+    ]
+    is_title = [row.get_children()[1].get_text() in titles for row in rows]
+    for row in itertools.compress(rows, is_title):
+        del row.get_children()[0]
+    widths = np.array([row.get_bbox(renderer).width for row in rows])
+    entries = ~np.array(is_title)
+    # Entry rows share the block's width, so their handles stay aligned
+    widths[entries] = widths[entries].max()
+    pads = (widths.max() - widths) / 2 / renderer.points_to_pixels(1.0)
+    for row, pad in zip(rows, pads, strict=True):
+        row.get_children().insert(0, DrawingArea(pad, 0))
 
 
 #: `_strip_brackets`: bracket and name right of the matrix, and a tick (in)

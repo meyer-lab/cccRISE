@@ -101,7 +101,8 @@ def draw(axs, dataset: str) -> None:
             box.set_facecolor(face)
     # One row of marks over every component's points
     top = [scores["auroc"].max()] * len(components)
-    significance_marks(ax, x, top, tests.set_index("component")["q"].loc[components])
+    q = tests.set_index("component")["q"].loc[components]
+    significance_marks(ax, x, top, q, values=True)
     common.reference_line(ax, 0.5)
     ax.set_xticks(x, components)
     ax.set_xlim(-0.6, len(components) - 0.4)
@@ -182,19 +183,24 @@ def ligand_points(ax, component_scores, x, rng, width: float = 0.6):
     return points
 
 
-def significance_marks(ax, positions, tops, q) -> None:
+def significance_marks(ax, positions, tops, q, values: bool = False) -> None:
     """A star above each of `positions` (at its data's top, `tops`) where `q`
-    is below `SIG_ALPHA`, else n.s."""
+    is below `SIG_ALPHA`, else n.s.; with `values`, `q` itself, greyed where
+    not significant."""
     for x, top, value in zip(positions, tops, q, strict=True):
         significant = value < common.SIG_ALPHA
+        if values:
+            label = f"{value:#.2g}"
+        else:
+            label = "*" if significant else "n.s."
         ax.text(
             x,
             top + TEST_PAD,
-            "*" if significant else "n.s.",
+            label,
             ha="center",
             va="bottom",
             fontsize=style.FONT_SIZE_DENSE,
-            fontweight="bold" if significant else "normal",
+            fontweight="bold" if significant and not values else "normal",
             color=style.COLORS["ink"] if significant else style.COLORS["reference"],
         )
 

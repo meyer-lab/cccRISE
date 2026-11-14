@@ -67,8 +67,7 @@ Two-sided Spearman correlation: ρ = −0.85, p = 8 × 10^−4^.
 Each column's absolute loading is shown relative to its largest.
 Outlined columns (Σ) show the best combination of all of a fit's LR columns, drawn for each fit with two or more related columns.
 ({{< panel comparator-split alad-c3-covariation >}}) Co-variation of ALAD component 3 and of the columns in ({{< panel comparator-split alad-c3-columns >}}), as in {{< fig 5 program-covariation >}}, across samples (n = 47), each over its own top LR pairs.
-Columns left with fewer than two LR pairs after merging those that share a gene are not tested: P3 C, S1 C, S3 F and S2 F.
-One-sided empirical test against the expression-matched draws, with BH correction across the eight tested.
+Columns left with fewer than two LR pairs after merging those that share a gene are not tested: P3 C, S1 C, S3 F and S2 F. One-sided empirical test against the expression-matched draws, with BH correction across the eight tested.
 Filled points have q < 0.05.
 ({{< panel comparator-split ibd-c1c5-columns >}}) Top LR pairs of IBD components 1 (n = 4) and 5 (n = 5) in each component and in their related columns.
 Each column's signed loading is shown relative to its largest absolute loading.

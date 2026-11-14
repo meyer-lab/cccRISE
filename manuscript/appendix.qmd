@@ -115,8 +115,7 @@ H, healthy; CD, Crohn's disease; U and I, CD uninflamed and inflamed.
 Fifteen columns fall below 0.5.
 ({{< panel comparator-missed-ibd associations >}}) Each column's strongest association with a biopsy grouping.
 One-way ANOVA across biopsies (n = 343), with Benjamini--Hochberg correction across all three groupings and all components of each fit.
-The panel draws H vs. CD and U vs. I.
-({{< panel comparator-missed-ibd contents >}}) Top LR pairs of the 15 columns below 0.5 in ({{< panel comparator-missed-ibd share >}}), sized by absolute loading relative to the column's largest.
+The panel draws H vs. CD and U vs. I. ({{< panel comparator-missed-ibd contents >}}) Top LR pairs of the 15 columns below 0.5 in ({{< panel comparator-missed-ibd share >}}), sized by absolute loading relative to the column's largest.
 The CCC-RISE row shows each LR pair's largest such value in any CCC-RISE component.
 Bold names and red boxes mark the columns with q < 0.05 in ({{< panel comparator-missed-ibd associations >}}) that carry a top LR pair outside every CCC-RISE component's top LR pairs whose ligand and receptor are different genes.
 

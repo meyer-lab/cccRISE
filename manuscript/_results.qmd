@@ -39,7 +39,7 @@ CCC-RISE's embeddings and factor matrices thus trace LR signaling programs acros
 ({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by fraction of entries significant (as above).
 ({{< panel 2 nichenet >}}) NicheNet target score of each ligand (n = 215) per CPD component on differential expression between the component's top and bottom receiver cells (light boxes; points colored and sized by the ligand's weight in the component), and with the cell labels shuffled (grey boxes, pooled).
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
-\*: q < 0.05 for the ligand-weighted mean score against its 1,000 cell-shuffled values; one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components.
+Values above boxes give the q-value of the ligand-weighted mean score against its 1,000 cell-shuffled values (one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components); q ≥ 0.05 in grey.
 ({{< panel 2 sender-receiver-strata >}}) Per-cell component 6 sender against receiver weight.
 ({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each component 6 group.
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of component 6 sender/receiver groups, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
@@ -241,14 +241,14 @@ Columns matched components less as the number of top LR pairs in a component inc
 However, one-to-one matching was an incomplete measure of component containment as a comparator could still carry a component's top LR pairs but distributed across several LR columns.
 To quantify this possibility, we computed the fraction of each component's LR pair loadings that the best combination of all LR columns in a comparator fit reconstructed ({{< fig 5 span-containment >}}).
 STACCato's fine fit reconstructed most of ALAD component 3 and IBD component 1 despite its closest single column matching to less than half of either component.
-Noteworthily, no comparator fit reconstructed more than 46% of the outcome associated ALAD component 4.
+Notably, no comparator fit reconstructed more than 46% of the outcome associated ALAD component 4.
 Tensor-cell2cell reconstructed little of any component and instead tracked the number of genes detected per cell in each condition ({{< fig comparator-ibd-and-depth depth >}}), so we omitted it from the remaining comparisons.
 Some comparator fits therefore matched CCC-RISE components with a smaller amount of top LR pairs but split the broader immune programs across several LR columns or failed to recover components entirely.
 
 We next characterized what information comparators lost about CCC when they missed or rearranged a component's top LR pairs.
-STACCato's coarse S12 and fine S14 columns captured the co-stimulatory CD70–CD27 pair present in ALAD component 4, but neither column placed meaningful weight on the component's remaining granzyme and chemokine pairs ({{< fig 5 pair-columns >}}).
+STACCato's coarse S12 and fine S14 columns captured the co-stimulatory CD70--CD27 pair present in ALAD component 4, but neither column placed meaningful weight on the component's remaining granzyme and chemokine pairs ({{< fig 5 pair-columns >}}).
 The top LR pairs of component 4 correlated across conditions beyond expression-matched LR pairs, and the component associated significantly with ALAD outcomes; however, S12 and S14 showed neither property ({{< fig 5 program-covariation >}}; {{< fig comparator-missed-alad associations >}}).
-This deviation suggested that CCC-RISE grouped CD70–CD27 into a more informative coordinated signaling program.
+This deviation suggested that CCC-RISE grouped CD70--CD27 into a more informative coordinated signaling program.
 By contrast, STACCato's coarse and fine fits split ALAD component 3 into four and six LR columns, respectively ({{< fig comparator-split alad-c3-columns >}}; {{< fig comparator-missed-alad share >}}).
 Once again, none of these columns correlated across conditions beyond expression-matched LR pairs, whereas CCC-RISE's single component did, indicating that these LR columns are all pieces of one coordinated program ({{< fig comparator-split alad-c3-covariation >}}).
 In IBD, components 1 and 5 shared conditions, senders, and receivers but carried slightly opposing LR pairs ({{< fig comparator-split ibd-c1c5-modes >}}).
@@ -257,8 +257,8 @@ STACCato's fine fit mixed the two programs across columns S6 and S3, so recoveri
 Concisely, CCC-RISE revealed the coordination of LR pairs that comparators kept apart and separated opposing arms of one immune program where comparators mixed them.
 
 Among comparator columns that placed less than half of their squared loading on the top LR pairs of any single CCC-RISE component, five were disease-associated and carried LR pairs that CCC-RISE lacked ({{< fig comparator-missed-alad share associations >}}; {{< fig comparator-missed-ibd share associations >}}).
-In ALAD, STACCato's coarse column S11 carried AREG–EGFR and pseudobulk CPD's fine column P5 carried TNFSF11–TNFRSF11A/B ({{< fig comparator-missed-alad contents >}}).
-In IBD, STACCato's coarse column S5, fine column S8, and pseudobulk CPD's coarse column P3 joined CXCR1/CXCR2 ligands\ [@doi:10.1038/s41591-021-01520-5] with SAA1–FPR2\ [@doi:10.1084/jem.189.2.395] in a neutrophil-recruitment axis ({{< fig comparator-missed-ibd contents >}}).
+In ALAD, STACCato's coarse column S11 carried AREG--EGFR and pseudobulk CPD's fine column P5 carried TNFSF11--TNFRSF11A/B ({{< fig comparator-missed-alad contents >}}).
+In IBD, STACCato's coarse column S5, fine column S8, and pseudobulk CPD's coarse column P3 joined CXCR1/CXCR2 ligands\ [@doi:10.1038/s41591-021-01520-5] with SAA1--FPR2\ [@doi:10.1084/jem.189.2.395] in a neutrophil-recruitment axis ({{< fig comparator-missed-ibd contents >}}).
 IBD component 5 covered this signaling only partly, through different CXCR1/CXCR2 ligands.
 Intriguingly, neither ALAD S11 nor IBD P3 had a counterpart in the same method's fine label fit ({{< fig 5 labels-alad labels-ibd >}}).
 Across both datasets, 12 of the 31 coarse STACCato and pseudobulk CPD columns had no fine counterpart.
@@ -274,9 +274,9 @@ The hormone components 3 and 4 did not exceed shuffled cells under any method.
 Thus, CCC-RISE receivers showed downstream target expression in ALAD where STACCato receivers did not, whereas in IBD every method that captured the inflammatory program also captured its downstream response.
 
 Finally, where a comparator did recover a component's LR pairs, we compared how each method assigned the communicating sender and receiver populations.
-STACCato's fine column S10 recovered the BTC–EGFR signaling of ALAD component 5 but assigned this signaling from the epithelial cell type to itself.
-Component 5 instead placed BTC–EGFR signaling between ciliated-like senders and basal/secretory-like receivers ({{< fig 5 flow-alad >}}).
-Likewise, STACCato's fine columns S5 and S4 recovered the PYY–NPY1R and GCG–GLP1R signaling of IBD components 3 and 4 but sent both hormones from all EE cells to all EC or tuft cells.
+STACCato's fine column S10 recovered the BTC--EGFR signaling of ALAD component 5 but assigned this signaling from the epithelial cell type to itself.
+Component 5 instead placed BTC--EGFR signaling between ciliated-like senders and basal/secretory-like receivers ({{< fig 5 flow-alad >}}).
+Likewise, STACCato's fine columns S5 and S4 recovered the PYY--NPY1R and GCG--GLP1R signaling of IBD components 3 and 4 but sent both hormones from all EE cells to all EC or tuft cells.
 CCC-RISE instead separated villus-like PYY senders from crypt-like GCG senders along a continuum of EE cells ({{< fig 5 flow-ibd >}}).
 Because CCC-RISE weights cells by eigen-state rather than directly by ligand and receptor expression, we checked these subpopulations against an independent single-cell measure.
 Scriabin also represents interaction programs per cell\ [@doi:10.1038/s41587-023-01782-z], but we found its LR sets agreed poorly between random seeds ({{< fig comparator-single-cell scriabin-seeds >}}).
