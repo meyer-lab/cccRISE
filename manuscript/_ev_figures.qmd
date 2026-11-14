@@ -6,25 +6,25 @@
 ALAD CPD component 6 sender and receiver cell identity.** ({{< panel cmp5-identity eigenstate-scatter >}}) Per-cell projection onto the eigen-states most heavily weighted by component 6's sender (eigen-state 17) and receiver (eigen-state 15) factors.
 ({{< panel cmp5-identity cmp-eigenstate-loadings >}}) Component 6 sender and receiver eigen-state loadings.
 ({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell type markers in component 6's sender/receiver groups and all other cells\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2].
-({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Wilcoxon rank-sum q (Benjamini--Hochberg corrected across all genes) between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and all other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and all other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells.
+({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Wilcoxon rank-sum q (Benjamini--Hochberg (BH) corrected across all genes) between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and all other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and all other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells.
 Labeled are ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial markers and ({{< panel cmp5-identity sender-vs-receiver >}}) epithelium-specific genes selected from those differentially expressed between the groups.
-({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} (Benjamini--Hochberg corrected across these markers) across group cutoffs τ, signed positive when higher in sender cells; dotted line: τ = 0.3 used throughout, dashed lines: q = 0.05.
+({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} (BH corrected across these markers) across group cutoffs τ, signed positive when higher in sender cells; dotted line: τ = 0.3 used throughout, dashed lines: q = 0.05.
 
 ![](figures/figureS_alad_associations/figureS_alad_associations.svg){width="6.5in"}
 
 **{{< label alad-associations >}}.
 ALAD cell type composition and component--outcome associations.** ({{< panel alad-associations celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control, declined ALAD, and recovered ALAD samples, on a square-root scale.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
+Boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5-times the IQR.
+q: Kruskal--Wallis test across the three groups, BH corrected across cell types.
 ({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each ALAD outcome.
-\*: q < 0.05, Benjamini--Hochberg corrected across all outcomes and components.
+\*: q < 0.05, BH corrected across all outcomes and components.
 ({{< panel alad-associations rise-associations >}}) As in ({{< panel alad-associations cp-associations >}}), for each RISE component's condition loadings.
 ({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 ({{< panel alad-associations effect-size-distributions >}}) ANOVA η^2^ of each CPD component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by Hungarian matching.
 Diamonds mark the full-cohort η^2^, filled where q < 0.05.
 ({{< panel alad-associations significant-fraction >}}) Fraction of jackknife replicates in which each CPD component's association with six-month outcome has q < 0.05.
-q: Benjamini--Hochberg corrected p across the six components of each fit.
+q: BH corrected p across the six components of each fit.
 
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 
@@ -50,10 +50,10 @@ Dashed line: the magnitude threshold (0.3) used to group cells in {{< fig 4 horm
 ({{< panel ibd-hormone-axes marker-floor-sweep >}}) q-values signifying the significance of gene expression differences in villus- and crypt-like cells, swept over polar magnitude threshold.
 Genes shown are the six with the highest q-value at any magnitude of those listed in {{< fig 4 hormone-extreme-markers >}}.
 Dotted line: the magnitude threshold used in {{< fig 4 hormone-extreme-markers >}}; dashed line: q = 0.05.
-q: Mann--Whitney U test, Benjamini--Hochberg corrected across all markers tested at each threshold.
+q: Mann--Whitney U test, BH corrected across all markers tested at each threshold.
 ({{< panel ibd-hormone-axes extreme-share >}}) Contribution of EE cell groups to total EE cell population stratified by biopsy type, for biopsies with at least 3 EE cells (healthy, n = 200; CD uninflamed, n = 44; CD inflamed, n = 45).
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across EE cell groups.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+q: Kruskal--Wallis test across the three groups, BH corrected across EE cell groups.
 
 ![](figures/figureS_comparator_split/figureS_comparator_split.svg){width="6.5in"}
 
@@ -68,7 +68,7 @@ Each column's absolute loading is shown relative to its largest.
 Outlined columns (Σ) show the best combination of all of a fit's LR columns, drawn for each fit with two or more related columns.
 ({{< panel comparator-split alad-c3-covariation >}}) Co-variation of ALAD component 3 and of the columns in ({{< panel comparator-split alad-c3-columns >}}), as in {{< fig 5 program-covariation >}}, across samples (n = 47), each over its own top LR pairs.
 Columns left with fewer than two LR pairs after merging those that share a gene are not tested: P3 C, S1 C, S3 F and S2 F.
-One-sided empirical test against the expression-matched draws, with Benjamini--Hochberg correction across the eight tested.
+One-sided empirical test against the expression-matched draws, with BH correction across the eight tested.
 Filled points have q < 0.05.
 ({{< panel comparator-split ibd-c1c5-columns >}}) Top LR pairs of IBD components 1 (n = 4) and 5 (n = 5) in each component and in their related columns.
 Each column's signed loading is shown relative to its largest absolute loading.

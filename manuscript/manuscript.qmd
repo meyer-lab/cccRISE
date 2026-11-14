@@ -12,7 +12,7 @@ title: "CCC-RISE resolves cellular communication across conditions at single-cel
 ^4^Medical Service, San Francisco VA Health Care System, San Francisco, CA 94121, USA\
 ^5^Jonsson Comprehensive Cancer Center, UCLA, Los Angeles, CA, USA\
 ^6^Eli and Edythe Broad Center of Regenerative Medicine and Stem Cell Research, UCLA, Los Angeles, CA 90095, USA\
-^\*^equal contribution\
+^\*^Equal contribution\
 ^\†^Corresponding author.
 Email: <ameyer@asmlab.org>
 
