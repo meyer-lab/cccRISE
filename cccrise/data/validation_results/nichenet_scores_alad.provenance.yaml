@@ -14,20 +14,20 @@ condition_key: dsco_id
 celltype_key: broad_cell_type
 group_key: ALADstatus
 factors_path: cccrise/data/factors/bal_alad_factors.nc
-factors_sha256: 01d4749ad4901a54b567a28e834a0fe799c0fa6c40eb57743904b960da884295
-cp_rank: 5
-components: [1, 2, 3, 4, 5]
+factors_sha256: 35729fa4b7013741c4cb953ccae5282f56805459b514192ad8685431e1b07712
+cp_rank: 7
+components: [1, 2, 3, 4, 5, 6, 7]
 top_perc: 10.0
 de_method: wilcoxon
 min_expr_frac: 0.1
 rel_cutoff: 0.4
 receiver_celltype_column: broad_cell_type
-n_shuffle: 1000
+n_cell_shuffle: 1000
 nichenet_ligand_target_url: https://zenodo.org/records/7074291/files/ligand_target_matrix_nsga2r_final.rds
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
-  lr_pairs: 513
-git_sha: 883ceff5f5f55775d5dd1818e74bbfe2d9ae7773
-generated: '2026-10-15T21:38:07+00:00'
+  lr_pairs: 575
+git_sha: 6b44b177477924f0e74f5a5146d6d911b8b49062-dirty
+generated: '2026-11-14T01:45:31+00:00'
