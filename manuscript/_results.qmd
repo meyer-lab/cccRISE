@@ -68,7 +68,8 @@ While only 10% of each LR pair's entries exceeded this null at p < 0.05, mean ob
 Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring how well differential expression (DE) in the component's top receiver cells recovered each ligand's NicheNet-predicted downstream gene targets ({{< fig 2 nichenet >}})\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Averaged with each ligand's weight in the component, target scores exceeded those obtained with the top and bottom receiver labels shuffled among cells for components 2 and 6 ({{< fig 2 nichenet >}}).
 Thus, the receiver cells of components 2 and 6 upregulated the downstream gene targets of the ligands most heavily weighted by those components.
-Collectively, these results show that CCC-RISE components are stable, robust to cell permutations, and align with external ligand--gene-target inference data.
+Other components were trending towards significance but likely remained underpowered do to limited overlap between the NicheNet v2 database and the CellChatDB LR interaction database (e.g., component 5, q=0.062, missing LCK, GZMA, and CD69).
+Collectively, these results show that CCC-RISE components were stable, robust to cell permutations, and aligned with external ligand--gene-target inference data.
 
 RISE eigen-states allow cellular identity to be traced from CPD component weights back to single-cell gene expression without depending on prior annotations.
 We illustrate this with component 6, whose sender and receiver loadings were spread across multiple eigen-states, suggesting signaling between populations ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}).
