@@ -49,7 +49,10 @@ Each projected condition slice was further truncated to its leading $L$ left sin
 Compressed fits reduced the gene expression space, but yielded nearly identical components to uncompressed fits.
 All RISE fits besides those used for bi-cross-validation, jackknife, and re-initialization testing were uncompressed.
 
-**Visualization.** PaCMAP was applied to the RISE projections of all cells concatenated across conditions, with default parameters, to visualize cell-to-cell variation as an embedding\ [@arxiv:2012.04456].
+**Visualization.** PaCMAP was applied to the RISE projections of all cells concatenated across conditions to visualize cell-to-cell variation as an embedding\ [@arxiv:2012.04456].
+PaCMAP was run with its default parameters: two output dimensions, Euclidean distances, 10 nearest neighbors, mid-near and further pair ratios of 0.5 and 2, PCA initialization, and 450 iterations.
+Because the projections had at most 100 dimensions, PaCMAP min-max scaled and centered them rather than first reducing them by PCA.
+To resolve the IBD enteroendocrine (EE), enterochromaffin (EC), and tuft cells, PaCMAP was refit with the same parameters to the projections of only these cells.
 
 ### Construction of the Aligned 4D Communication Tensor
 

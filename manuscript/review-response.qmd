@@ -374,7 +374,6 @@ We have now ensured that all colorbars clearly indicate whether and how the disp
 
 > 6. How was PaCMAP performed to project cells into 2D space?
 
-[Ensure methods actually report everything claimed here]
 We have expanded the Methods to describe this fully (Methods section *Reduction and Insight in Single-cell Exploration*).
 PaCMAP is applied to the concatenated RISE projection matrices across all conditions so that the embedding is a visualization of the same low-dimensional space the communication scores are computed in, and cells from different samples are directly comparable within it.
 The parameters used are now stated explicitly.
