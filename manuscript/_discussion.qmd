@@ -20,6 +20,7 @@ We therefore characterized the cells based on their position along a spectrum be
 This analysis thus represents a third mode of interpretation, which was distinct not only in its consideration of two components simultaneously but also in its evaluation of continuous, partially overlapping cell states.
 
 <!--Paragraph 3: showcase CCC-RISE's single-cell resolution with ALAD cmp 5 and 4 (revised version of Covid paragraph)-->
+[SMA: in component 5, I'm struggling with linking such a broad communication signature to literature in a concise way. I could focus on a few LR pairs and link them to lung disease or I could try to justify the co-regulation claims currently present.]
 - Applied to a cohort of lung transplant patients, CCC-RISE demonstrated a unique capacity to resolve communication at a subpopulation level, uncovering functional heterogeneity within standard cell-type annotations.
 - The airway repair and fibrosis pathway defined by ALAD component 6 was mediated by BTC--EGFR signaling between ciliated epithelial sender cells and basal and secretory epithelial receiver cells.
 - In healthy lung epithelium, BTC secreted by submucosal ciliated cells is known to initiate tissue repair upon binding EGFR and other growth factor receptors predomintantly expressed on bronchial basal cells\ [@doi:10.1165/ajrcmb.20.5.3308].
