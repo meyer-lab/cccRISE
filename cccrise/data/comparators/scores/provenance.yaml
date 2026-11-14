@@ -8,7 +8,7 @@
 shared: {}
 files:
   associations_alad.parquet:
-    sha256: 1cfa1b173af1886c1f6190d1a8a9447dd39abb5e41f53ebae38fa701d7b392f3
+    sha256: 3b32e214f30b0a80bb432586e53d7f2fcb5a1f5fb7c7177fcde451d8e761120c
     command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -23,16 +23,14 @@ files:
     group_key: ALADstatus
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
-      PB fine: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
-      TC2C coarse: 4e08c52b1546e385a529787ec3b317bf0370dbc4d8d1dd3669d19d76ba8edfba
-      TC2C fine: 58baa343e7d39c8352d631832980f5db7a73d1bf3ced832e2f1f21b638d75626
-      STAC coarse: a406bdd8df00994928bed80b86d2c81fe74f991b4d3cea10585cb8f876e36027
-      STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
-    n_null: 1000
-    random_state: 42
-    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
-    generated: '2026-11-12T09:49:08+00:00'
+      PB coarse: a0b6a48e5f9c37a3f104e3a71f06f6dbaee603d59de4072d582647846936df62
+      PB fine: 6a424aa8baf12a39aa7be13ac39f81bc1355155c51453567e82200b4b8a417c4
+      TC2C coarse: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
+      TC2C fine: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
+      STAC coarse: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
+      STAC fine: b4593d295824cfce63d34faa4fc5f491ee5f9efd2fa3bedd76a1daee22c2da99
+    git_sha: 1831ba55070ad6a008d483acaa19fb6b3ebbf6be
+    generated: '2026-11-14T01:00:46+00:00'
   associations_ibd.parquet:
     sha256: c454a849cff68e805fc28e296a5bc4abaef3fd0ad86afc755f12ca5b8643f230
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
@@ -71,8 +69,8 @@ files:
     git_sha: 4268a829d320e212061737e38f721f07c543d84c
     generated: '2026-11-10T22:17:59+00:00'
   containment_alad.parquet:
-    sha256: 12beae8a85c5be9badb5933e4a2235d0b1f3e07bf0ba7458ace32c0bbbe59926
-    command: uv run cccrise-comparator-scores --dataset alad --fits-only --tables containment
+    sha256: 48ff110fb0734897fdb0282d43fea72df5066f0c9941601c6e582c70142e4988
+    command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -86,14 +84,14 @@ files:
     group_key: ALADstatus
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
-      PB fine: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
-      TC2C coarse: 4e08c52b1546e385a529787ec3b317bf0370dbc4d8d1dd3669d19d76ba8edfba
-      TC2C fine: 58baa343e7d39c8352d631832980f5db7a73d1bf3ced832e2f1f21b638d75626
-      STAC coarse: a406bdd8df00994928bed80b86d2c81fe74f991b4d3cea10585cb8f876e36027
-      STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
-    git_sha: e9c7e70d2e3c41645fc3d8199640c93f9e087fef
-    generated: '2026-11-12T12:58:10+00:00'
+      PB coarse: a0b6a48e5f9c37a3f104e3a71f06f6dbaee603d59de4072d582647846936df62
+      PB fine: 6a424aa8baf12a39aa7be13ac39f81bc1355155c51453567e82200b4b8a417c4
+      TC2C coarse: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
+      TC2C fine: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
+      STAC coarse: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
+      STAC fine: b4593d295824cfce63d34faa4fc5f491ee5f9efd2fa3bedd76a1daee22c2da99
+    git_sha: 1831ba55070ad6a008d483acaa19fb6b3ebbf6be
+    generated: '2026-11-14T01:00:46+00:00'
   containment_ibd.parquet:
     sha256: 90a94511a976f2435b8726d523352473cc2e4cbe59e1de1916d613f2a69b6181
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only --tables containment
@@ -129,7 +127,7 @@ files:
     git_sha: 668c6f01699b4c17a3232cb402054cfb300e9789
     generated: '2026-11-12T12:58:16+00:00'
   covariation_alad.parquet:
-    sha256: 44fcd9accc865001dd44e8f08f47b77097ab391ffd89e3be445b5d375712b962
+    sha256: e1c7fa2374d2e7cc07e61e5a628a3c01d430ed575021278d6100590ef4f2bf63
     command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -144,18 +142,16 @@ files:
     group_key: ALADstatus
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
-      PB fine: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
-      TC2C coarse: 4e08c52b1546e385a529787ec3b317bf0370dbc4d8d1dd3669d19d76ba8edfba
-      TC2C fine: 58baa343e7d39c8352d631832980f5db7a73d1bf3ced832e2f1f21b638d75626
-      STAC coarse: a406bdd8df00994928bed80b86d2c81fe74f991b4d3cea10585cb8f876e36027
-      STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
-    n_null: 1000
-    random_state: 42
-    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
-    generated: '2026-11-12T09:49:08+00:00'
+      PB coarse: a0b6a48e5f9c37a3f104e3a71f06f6dbaee603d59de4072d582647846936df62
+      PB fine: 6a424aa8baf12a39aa7be13ac39f81bc1355155c51453567e82200b4b8a417c4
+      TC2C coarse: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
+      TC2C fine: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
+      STAC coarse: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
+      STAC fine: b4593d295824cfce63d34faa4fc5f491ee5f9efd2fa3bedd76a1daee22c2da99
+    git_sha: 1831ba55070ad6a008d483acaa19fb6b3ebbf6be
+    generated: '2026-11-14T01:00:46+00:00'
   depth_alad.parquet:
-    sha256: c93bf0c758abad9666bc0933f85f4909eeb23dc489f5aaf6f8afc36126293d3b
+    sha256: f66aaf099fdb6f812b82ccd94e839863691dfb81495a6118d7c87b82de80bfcc
     command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -170,16 +166,14 @@ files:
     group_key: ALADstatus
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
-      PB fine: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
-      TC2C coarse: 4e08c52b1546e385a529787ec3b317bf0370dbc4d8d1dd3669d19d76ba8edfba
-      TC2C fine: 58baa343e7d39c8352d631832980f5db7a73d1bf3ced832e2f1f21b638d75626
-      STAC coarse: a406bdd8df00994928bed80b86d2c81fe74f991b4d3cea10585cb8f876e36027
-      STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
-    n_null: 1000
-    random_state: 42
-    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
-    generated: '2026-11-12T09:49:08+00:00'
+      PB coarse: a0b6a48e5f9c37a3f104e3a71f06f6dbaee603d59de4072d582647846936df62
+      PB fine: 6a424aa8baf12a39aa7be13ac39f81bc1355155c51453567e82200b4b8a417c4
+      TC2C coarse: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
+      TC2C fine: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
+      STAC coarse: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
+      STAC fine: b4593d295824cfce63d34faa4fc5f491ee5f9efd2fa3bedd76a1daee22c2da99
+    git_sha: 1831ba55070ad6a008d483acaa19fb6b3ebbf6be
+    generated: '2026-11-14T01:00:46+00:00'
   depth_ibd.parquet:
     sha256: ce650f62429162ec2106154c8c59896229bd5067bf50fec84e04828b9c8a18c3
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
@@ -218,7 +212,7 @@ files:
     git_sha: 4268a829d320e212061737e38f721f07c543d84c
     generated: '2026-11-10T22:17:59+00:00'
   fit_ranks_alad.parquet:
-    sha256: 590a9f2e5ba8d9958bbf20e1447f2072a0965f96f1e52f2ceb58406cf9fb7ac8
+    sha256: 8d2a1f6816177e94d33b539f0cd11457c672b2e03bb35ed4b766903959d12a46
     command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -233,16 +227,14 @@ files:
     group_key: ALADstatus
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
-      PB fine: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
-      TC2C coarse: 4e08c52b1546e385a529787ec3b317bf0370dbc4d8d1dd3669d19d76ba8edfba
-      TC2C fine: 58baa343e7d39c8352d631832980f5db7a73d1bf3ced832e2f1f21b638d75626
-      STAC coarse: a406bdd8df00994928bed80b86d2c81fe74f991b4d3cea10585cb8f876e36027
-      STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
-    n_null: 1000
-    random_state: 42
-    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
-    generated: '2026-11-12T09:49:08+00:00'
+      PB coarse: a0b6a48e5f9c37a3f104e3a71f06f6dbaee603d59de4072d582647846936df62
+      PB fine: 6a424aa8baf12a39aa7be13ac39f81bc1355155c51453567e82200b4b8a417c4
+      TC2C coarse: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
+      TC2C fine: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
+      STAC coarse: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
+      STAC fine: b4593d295824cfce63d34faa4fc5f491ee5f9efd2fa3bedd76a1daee22c2da99
+    git_sha: 1831ba55070ad6a008d483acaa19fb6b3ebbf6be
+    generated: '2026-11-14T01:00:46+00:00'
   fit_ranks_ibd.parquet:
     sha256: 193b54e446b960ead05207890cb18096e9f78ae4fb81168f31ca6c7f657ff664
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
@@ -281,7 +273,7 @@ files:
     git_sha: 4268a829d320e212061737e38f721f07c543d84c
     generated: '2026-11-10T22:17:59+00:00'
   inner_loss_alad.parquet:
-    sha256: 41d8093c4851fc75d91d32722ef4b6260a26199f2e303e82223c535786065df5
+    sha256: 87c9974f086e8e9fe04cad10f077471ad5a2d0c3c360b33ec9e545d18aa334ca
     command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -296,16 +288,14 @@ files:
     group_key: ALADstatus
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
-      PB fine: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
-      TC2C coarse: 4e08c52b1546e385a529787ec3b317bf0370dbc4d8d1dd3669d19d76ba8edfba
-      TC2C fine: 58baa343e7d39c8352d631832980f5db7a73d1bf3ced832e2f1f21b638d75626
-      STAC coarse: a406bdd8df00994928bed80b86d2c81fe74f991b4d3cea10585cb8f876e36027
-      STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
-    n_null: 1000
-    random_state: 42
-    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
-    generated: '2026-11-12T09:49:08+00:00'
+      PB coarse: a0b6a48e5f9c37a3f104e3a71f06f6dbaee603d59de4072d582647846936df62
+      PB fine: 6a424aa8baf12a39aa7be13ac39f81bc1355155c51453567e82200b4b8a417c4
+      TC2C coarse: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
+      TC2C fine: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
+      STAC coarse: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
+      STAC fine: b4593d295824cfce63d34faa4fc5f491ee5f9efd2fa3bedd76a1daee22c2da99
+    git_sha: 1831ba55070ad6a008d483acaa19fb6b3ebbf6be
+    generated: '2026-11-14T01:00:46+00:00'
   inner_loss_ibd.parquet:
     sha256: 876220b41cc142007f21845c33208a60cad99ebee57732f38f012c5777a62713
     command: uv run cccrise-comparator-scores --dataset ibd
@@ -346,7 +336,7 @@ files:
     git_sha: c42005475705ca3a2091067ed78349a1ace4e848
     generated: '2026-11-10T13:15:52+00:00'
   lr_loadings_alad.parquet:
-    sha256: 29331645f56bcb684b54491dd0fe3806f22ab3688c71a9c57d3796468ff51544
+    sha256: 31c2f6b405023fce13ab1cc9357dc09d2ad0cdf4a446b0e663ca097f793d8a0e
     command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -361,16 +351,14 @@ files:
     group_key: ALADstatus
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
-      PB fine: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
-      TC2C coarse: 4e08c52b1546e385a529787ec3b317bf0370dbc4d8d1dd3669d19d76ba8edfba
-      TC2C fine: 58baa343e7d39c8352d631832980f5db7a73d1bf3ced832e2f1f21b638d75626
-      STAC coarse: a406bdd8df00994928bed80b86d2c81fe74f991b4d3cea10585cb8f876e36027
-      STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
-    n_null: 1000
-    random_state: 42
-    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
-    generated: '2026-11-12T09:49:08+00:00'
+      PB coarse: a0b6a48e5f9c37a3f104e3a71f06f6dbaee603d59de4072d582647846936df62
+      PB fine: 6a424aa8baf12a39aa7be13ac39f81bc1355155c51453567e82200b4b8a417c4
+      TC2C coarse: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
+      TC2C fine: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
+      STAC coarse: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
+      STAC fine: b4593d295824cfce63d34faa4fc5f491ee5f9efd2fa3bedd76a1daee22c2da99
+    git_sha: 1831ba55070ad6a008d483acaa19fb6b3ebbf6be
+    generated: '2026-11-14T01:00:46+00:00'
   lr_loadings_ibd.parquet:
     sha256: 5d0b26647e04fec4a339faa16089c91ffdc260dccdfe56af4663094410fc784c
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
@@ -543,7 +531,7 @@ files:
     git_sha: 45b088348643ed7a915734c8d9e07e5925090292
     generated: '2026-11-12T14:03:07+00:00'
   start_congruence_alad.parquet:
-    sha256: c53207cc09edf3a6d2ab2cb546c2cc57a3da516d8a3ecb56bc81e45cc61dc322
+    sha256: 270a24a833b0510b07bd479a4c9e2c48731de18b4866baaf4a6801a97c1b4dc6
     command: uv run cccrise-comparator-scores --dataset alad
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -558,16 +546,14 @@ files:
     group_key: ALADstatus
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 86448160ccb7682f2c83603c2015e38a565ba1256534d62a1cd667d55a4e2f60
-      PB fine: 35440e40102a8f29173a6803419a1f521b15515792fb22d3f272117bcbc2783f
-      TC2C coarse: 4e08c52b1546e385a529787ec3b317bf0370dbc4d8d1dd3669d19d76ba8edfba
-      TC2C fine: 58baa343e7d39c8352d631832980f5db7a73d1bf3ced832e2f1f21b638d75626
-      STAC coarse: a406bdd8df00994928bed80b86d2c81fe74f991b4d3cea10585cb8f876e36027
-      STAC fine: f028031bea24afe015b7e90aa9bdf483e44ed03b5492e31b15632a020661cbc5
-    n_null: 1000
-    random_state: 42
-    git_sha: 215540ec6c9473f055a3cbc0efad7fa962e447aa
-    generated: '2026-11-12T09:49:08+00:00'
+      PB coarse: a0b6a48e5f9c37a3f104e3a71f06f6dbaee603d59de4072d582647846936df62
+      PB fine: 6a424aa8baf12a39aa7be13ac39f81bc1355155c51453567e82200b4b8a417c4
+      TC2C coarse: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
+      TC2C fine: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
+      STAC coarse: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
+      STAC fine: b4593d295824cfce63d34faa4fc5f491ee5f9efd2fa3bedd76a1daee22c2da99
+    git_sha: 1831ba55070ad6a008d483acaa19fb6b3ebbf6be
+    generated: '2026-11-14T01:00:46+00:00'
   start_congruence_ibd.parquet:
     sha256: 5452fc332acf48e73b054a6fa1e5dbf9f924e611048d2832f0dde52ab7e96ff3
     command: uv run cccrise-comparator-scores --dataset ibd --fits-only
