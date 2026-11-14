@@ -106,7 +106,7 @@ $$
 
 where $x$ is the scaled expression and $g(x)$ the transformed expression.
 Finally, each gene was centered on its mean, $\mu$, which RISE subtracts internally.
-The final dataset consisted of 51,273 cells and 16,675 genes, with 513 LR pairs retained, and was fit with a 17-component RISE model and a 5-component CPD model, selected as described in Rank Selection.
+The final dataset consisted of 51,273 cells and 16,675 genes, with 575 LR pairs retained, and was fit with a 17-component RISE model and a 6-component CPD model, selected as described in Rank Selection.
 
 **IBD cohort.** The single-cell gene expression, cell-type annotations, and biopsy metadata of terminal-ileum pinch biopsies were obtained from the IBDverse atlas of Krzak et al.: 343 biopsies, one per individual, from 232 healthy participants and 111 patients with Crohn's disease (CD), 47 uninflamed and 64 inflamed\ [@doi:10.1038/s41588-026-02634-7].
 We excluded the mesenchymal lineage (fibroblasts, endothelial cells, and pericytes; 11,286 of 1,185,861 cells), because the authors attribute its underrepresentation in the atlas to the pinch biopsies and the digestive enzymes, which favor capturing epithelial cells; its yield accordingly varied across biopsies, from none to 11% of a biopsy's cells, independently of inflammation status (Kruskal--Wallis p = 0.14).
@@ -223,7 +223,7 @@ Each tensor entry was given an empirical p-value against 1,000 permutations.
 
 Following scDiffCom, we tested whether each LR pair's per-sample score, divided by the sample's total normalized expression, differed between CLAD/died and stable/recovered samples\ [@doi:10.1038/s43587-023-00514-x].
 The statistic was the difference in mean score between the two groups, compared with 10,000 permutations of outcome labels between patients, which moved a patient's samples together and exchanged labels only between patients with the same number of samples.
-Empirical p-values were corrected across component 4's top 10 LR pairs by absolute loading.
+Empirical p-values were corrected across component 5's top 10 LR pairs by absolute loading.
 For volcano plots, the effect size of each component's top 20 LR pairs by absolute loading was the log~2~ ratio of the two groups' mean scores, plotted against the uncorrected p-value.
 
 ### Mapping CCC-RISE Components to Cells
@@ -242,7 +242,7 @@ Eigen-states were mapped to cell types by the mean projection of each cell type'
 Cells with magnitude of at least $\tau$ were villus-like at $\theta \leq 30°$, crypt-like at $\theta \geq 60°$, and mixed in between; all other EE cells were "other".
 
 **Comparing groups.** Groups were compared by differential gene expression (Quantification and Statistical Analysis).
-For ALAD component 5, sender and receiver groups were compared on curated epithelial subtype markers\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2], corrected across the markers present in the data, and markers were reported if q < 0.05 and their detection rates differed by at least 0.2.
+For ALAD component 6, sender and receiver groups were compared on curated epithelial subtype markers\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2], corrected across the markers present in the data, and markers were reported if q < 0.05 and their detection rates differed by at least 0.2.
 Each group was also compared with all other cells, and the groups with each other, corrected across all genes.
 For IBD components 3 and 4, villus-like and crypt-like cells were compared by Mann--Whitney U tests on 11 curated crypt, intermediate, villus, and BMP-target genes\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7], corrected across those genes, and the test was repeated across magnitude thresholds.
 Each biopsy's share of its EE cells in each polar group, for biopsies with at least 3 such cells, was compared across biopsy types by a Kruskal--Wallis test, corrected across the four groups.
