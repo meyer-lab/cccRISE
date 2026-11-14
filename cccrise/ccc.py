@@ -301,10 +301,12 @@ def filter_complex_ppi_by_proteins(
 
     integrated_a_complexes = set()
     integrated_b_complexes = set()
+    # Not `elif`: a complex can partner on both sides (CellChatDB's ITGA4&ITGB1
+    # is the ligand of VCAM1 and the receptor of FN1), and must be kept on both.
     for k, v in complexes.items():
         if all(p in shared_a_complexes for p in v):
             integrated_a_complexes.add(k)
-        elif all(p in shared_b_complexes for p in v):
+        if all(p in shared_b_complexes for p in v):
             integrated_b_complexes.add(k)
 
     integrated_a = shared_a_genes.union(integrated_a_complexes)
