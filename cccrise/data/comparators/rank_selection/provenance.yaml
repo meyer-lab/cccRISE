@@ -163,7 +163,7 @@ files:
     git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
     generated: '2026-11-14T03:32:23+00:00'
   pb_rank_ibd_fine.parquet:
-    sha256: 613f8b3cd27f18f8e2093251fccf2b5a358f7ce6d2a784f3eae36ea22f5ef2f4
+    sha256: 9743ae5601043c95d8c189af214f26d26b8445ce535fb71112fe5f4b22d10154
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -188,7 +188,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1255]
+      tensor_shape: [343, 54, 54, 1337]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -248,7 +248,7 @@ files:
     method: pb
     labelling: fine
     pb:
-      ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+      ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
       start_seeds: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]
       cp_fit_options:
         init: svd
@@ -258,13 +258,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T04:19:34+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+    git_sha: d68b8a5129e83e3e27885395847dc275eb0e3804
+    generated: '2026-11-14T06:38:16+00:00'
   pb_start_fms_alad_coarse.parquet:
     sha256: 82534b762d73e1d2439f2f85c7a73ff4f520fd134f1da202e56c4ee84ee6b88e
     command: uv run cccrise-comparators --dataset alad --methods pb
@@ -419,7 +414,7 @@ files:
     git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
     generated: '2026-11-14T03:32:23+00:00'
   pb_start_fms_ibd_fine.parquet:
-    sha256: 2eee54f455e120b2dd1a4c2a02867ffc6931409b66eb20d6eb5b0b102445155e
+    sha256: 4514a4a72930723642d6c948e240d6722b4eeeeaa50f0a2e2b4044197f097a0e
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -444,7 +439,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1255]
+      tensor_shape: [343, 54, 54, 1337]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -504,7 +499,7 @@ files:
     method: pb
     labelling: fine
     pb:
-      ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+      ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
       start_seeds: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]
       cp_fit_options:
         init: svd
@@ -514,13 +509,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T04:19:34+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+    git_sha: d68b8a5129e83e3e27885395847dc275eb0e3804
+    generated: '2026-11-14T06:38:16+00:00'
   stac_shares_alad_coarse.parquet:
     sha256: 063315c5064d5a4336cc7dbea15f1eee748d3e176fd211673d1f3fc0d19730e3
     command: uv run cccrise-comparators --dataset alad --methods stac
