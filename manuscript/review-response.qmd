@@ -39,10 +39,7 @@ Also, as detailed below, we now compare our results to a broad panel of existing
 >      For this, please also report ALAD status AUC as for CCC-RISE
 
 [Needs to be updated based on final comparator work.]
-Points to address are:
-- single-cell resolution validation (concordance with NICHES, problems with Scriabin),
-- single-condition performance (problems with Scriabin),
-- and multi-condition tensor validation (similarities/differences with Tensor-cell2cell, STACCato, and pseudobulk)
+Points to address are: - single-cell resolution validation (concordance with NICHES, problems with Scriabin), - single-condition performance (problems with Scriabin), - and multi-condition tensor validation (similarities/differences with Tensor-cell2cell, STACCato, and pseudobulk)
 
 We agree that a self-constructed pseudobulk baseline cannot carry this claim, and we now benchmark against the published methods the reviewer names.
 To run them on equal footing, we re-implemented Scriabin, NICHES, and STACCato in Python from the upstream algorithms, and we drive all of themfrom the same ligand-receptor resource and normalized expression, so each comparison isolates the contribution of the algorithm (Methods section *Comparator Methods*).
@@ -62,12 +59,9 @@ We discuss this in the revised text (l. XXX).
 >    I recognize the field lacks gold standards, but simulation frameworks with defined communication ground truth exist (e.g., the SERGIO-based CCC simulator) and would allow the authors to quantify the resolution advantage.
 >    At minimum, the manuscript should provide a quantitative concordance/discordance analysis against Scriabin on the same data.
 
-[Also needs to be updated once comparator work is complete. Paragraphs 2 and 3 need updating, the others are done.]
- Points to address are:
-<!-- - quantitative evaluations of subpopulation identity (projection-based group definitions in ALAD 5/IBD 3--4),-->
-- quantitative evaluation of "true" biology (NicheNet analysis, reference R1 C1 NICHES concordance),
-- lack of Scriabin concordance (reference R1 C1),
-<!-- - and refusal to use synthetic data-->
+[Also needs to be updated once comparator work is complete.
+Paragraphs 2 and 3 need updating, the others are done.]
+Points to address are: <!-- - quantitative evaluations of subpopulation identity (projection-based group definitions in ALAD 5/IBD 3--4),--> - quantitative evaluation of "true" biology (NicheNet analysis, reference R1 C1 NICHES concordance), - lack of Scriabin concordance (reference R1 C1), <!-- - and refusal to use synthetic data-->
 
 We agree that our qualitative observations did not adequatley support this claim.
 Our revision adds three quantitative lines of reasoning/evidence.
@@ -77,16 +71,15 @@ The reviewer is correct to point out the weakness of the qualitative PaCMAP embe
 Instead, we now define subpopulations based on quantitative per-cell sender and receiver loadings derived from the projection matrices and sender/receiver factor matrices.
 For more detail on our new strategy, we point the reviewer to {{< fig 2 sender-receiver-strata >}}, {{< fig 4 hormone-angle-scatter >}}, and Methods section *Mapping CCC-RISE Components to Cells*.
 
-[Update based on NicheNet comparator results. Otherwise, done.]
+[Update based on NicheNet comparator results.
+Otherwise, done.]
 Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, then we take a weighted average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
 We apply this pipeline to CCC-RISE and to each comparator method.
-For more detail on this extension of the NicheNet database, we point the reviewer to
-{{< fig 2 nichenet >}}, {{< fig comparator-nichenet >}}, and Methods sections *External Biological Validation* and *Comparator Methods*.
+For more detail on this extension of the NicheNet database, we point the reviewer to {{< fig 2 nichenet >}}, {{< fig comparator-nichenet >}}, and Methods sections *External Biological Validation* and *Comparator Methods*.
 One limitation that we encountered in this analysis is that there is only moderate overlap between the LR pairs highlighted by our method, and the NicheNet target database, due to the limited coverage of the latter.
 
-[Update with Scriabin result]
-Third, as a quantitative evaluation of sender and receiver cell loadings, we report a concordance analysis against NICHES, which we discussed extensively above in response to Reviewer #1 Comment #1.
+[Update with Scriabin result] Third, as a quantitative evaluation of sender and receiver cell loadings, we report a concordance analysis against NICHES, which we discussed extensively above in response to Reviewer #1 Comment #1.
 As explained there, while we would have liked to report concordance with Scriabin, ...
 
 We deliberately did not build the suggested analysis on a SERGIO-style simulator.
@@ -108,7 +101,7 @@ That term alone has no reliable relationship to actual signaling strength, which
 
 We have changed the communication score to add the per-gene mean back to each eigen-state's ligand/receptor loading before scoring, so that the score is computed on an approximation of actual non-negative expression rather than on centered loadings directly.
 This uses the same centering reference as RISE and makes every entry of the communication tensor non-negative by construction, which we then verified empirically holds across both datasets.
-We describe this convention explicitly in the Methods section *Construction of the Aligned 4D Communication Tensor*.
+We describe this convention explicitly in the *Eigen-state expression* paragraph of Methods section *Construction of the Aligned 4D Communication Tensor*.
 
 We also considered decomposing each eigen-state into separate non-negative positive- and negative-loading components (analogous to how non-negative matrix factorization resolves a signed PCA-like axis into two unipolar programs).
 We have independent evidence, from a companion investigation that compares PARAFAC2 to other methods such as iNMF, MOFA+, etc., that this bidirectional structure often represents coherent biology rather than noise.
@@ -145,8 +138,7 @@ In data not shown here, L1-penalized logistic regression proved unstable in exac
 We therefore opted to test component--condition associations by ANOVA, applied identically to both datasets, with multiple-testing correction across components and outcomes.
 We describe the new association testing in {{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}, {{< fig ibd-associations cp-associations status-loadings >}}, and Methods section *Clinical Association Testing*.
 
-[Need to confirm these claims are present in text]
-On the negative result: with the rank-selection overhaul and new association testing methodology, this result has flipped.
+[Need to confirm these claims are present in text] On the negative result: with the rank-selection overhaul and new association testing methodology, this result has flipped.
 Now, in the ALAD cohort, a single component shows a graded, statistically significant association with six-month outcome after correction, and the same component is significantly associated with six-month and one-year death, as shown in {{< fig 3 outcome-association >}} and {{< fig alad-associations cp-associations >}}.
 Instead, we fail to identify any communication programs associated with ALAD status, which is now stated in the Results rather than left to the reader to notice [Results XXX].
 We discuss why: with 47 samples from 45 recipients and few events, the cohort has limited statistical power, and the significant associations depend on a small number of highly weighted samples [Discussion XXX].
@@ -226,13 +218,10 @@ This analysis is discussed in detail in Reviewer #1 Comment #2, {{< fig 2 nichen
 Second, we measure the concordance between cells with high CCC-RISE sender/receiver weights and cells classified as senders/receivers by NICHES\ [@doi:10.1093/bioinformatics/btac775].
 This analysis is discussed in detail in Reviewer #1 Comment #1, {{< fig 4 niches-concordance niches-orderings >}}, {{< fig 5 niches-fraction >}}, {{< fig niches-ibd >}}, and Methods section *External Biological Validation*.
 
-[Update based on comparator results, reference R1 C1]
-Additionally, we now run Tensor-cell2cell and STACCato (the closest multi-condition tensor methods) and Scriabin and NICHES (the closest single-cell-resolution methods) on the same data, from the same LR resource and preprocessing, and report head-to-head performance: condition-status classification AUC for the tensor methods and per-cell-pair score concordance for the single-cell methods (Fig. XXX, l. XXX).
-[Consolidate into R1 C2 and reference]
-Because no cohort carries experimentally established communication ground truth, our accuracy metric is recovery of curated ligand → downstream-target relationships (NicheNet ligand-activity AUROC) in the receiver cells each component implicates --- reported for CCC-RISE, for the pseudobulk equivalent, and for the comparator methods where their output permits it ({{< fig 2 nichenet >}}, {{< fig comparator-nichenet >}}).
+[Update based on comparator results, reference R1 C1] Additionally, we now run Tensor-cell2cell and STACCato (the closest multi-condition tensor methods) and Scriabin and NICHES (the closest single-cell-resolution methods) on the same data, from the same LR resource and preprocessing, and report head-to-head performance: condition-status classification AUC for the tensor methods and per-cell-pair score concordance for the single-cell methods (Fig. XXX, l. XXX).
+[Consolidate into R1 C2 and reference] Because no cohort carries experimentally established communication ground truth, our accuracy metric is recovery of curated ligand → downstream-target relationships (NicheNet ligand-activity AUROC) in the receiver cells each component implicates --- reported for CCC-RISE, for the pseudobulk equivalent, and for the comparator methods where their output permits it ({{< fig 2 nichenet >}}, {{< fig comparator-nichenet >}}).
 
-[Update based on comparator results, reference R1 C1, or cut]
-On whether CCC-RISE recovers what cell-type-based decomposition finds: we now report an explicit matched-component comparison against the pseudobulk CPD model, giving for each pseudobulk component its best-matching CCC-RISE component and the congruence of that match per mode (Fig. XXX).
+[Update based on comparator results, reference R1 C1, or cut] On whether CCC-RISE recovers what cell-type-based decomposition finds: we now report an explicit matched-component comparison against the pseudobulk CPD model, giving for each pseudobulk component its best-matching CCC-RISE component and the congruence of that match per mode (Fig. XXX).
 We would also note that the two models are not estimating the same quantity, and we have made this clearer in the text (l. XXX).
 The pseudobulk tensor is built from cell-type means, so its components describe communication between cell types; CCC-RISE describes the *variation* in communication across conditions at eigen-state resolution, where a single cell-type-level pattern may be split across eigen-states that cut within a type, and a program confined to a subpopulation is diluted --- and may be absent --- in the cell-type average.
 A component-for-component correspondence is therefore not the expected result, and where it fails we now say which of the two behaviors is responsible instead of presenting the discrepancy without comment.
@@ -293,7 +282,7 @@ For ALAD, both the BiCV and the collinearity clearly indicate an optimal rank.
 For IBD, CPD collinearity provides a similarly specific choice, while BiCV plateaus instead of turning over, but still shows a clear point at which additional components do not improve predictive performance.
 Both criteria are computed by the same runner, with the same parameters, for both datasets, and both depend only on the molecular data.
 The multi-replicate nature of these rank selection procedures also serves as a sensitivity analysis under a parameter sweep, where the paramter is rank.
-The new rank-selection procedure is showcased in {{< fig 2 rise-rank-selection cp-minima >}} and {{< fig ibd-rank-selection >}} and described in detail in Methods sections *Fit Evaluation* and *Rank Selection*.
+The new rank-selection procedure is showcased in {{< fig 2 rise-rank-selection cp-minima >}} and {{< fig ibd-rank-selection >}} and described in detail in Methods sections *Fit Evaluation and Component Comparison* and *Rank Selection*.
 
 We now also use the Factor Match Score (FMS) to compare individual fits during sensitivity analyses rather than only defining it.
 At the final rank as selected by the above procedures, components are refit under two perturbations---leave-one-patient-out jackknife and re-initializing with a different random seed---and each component is matched to a reference fit by Hungarian assignment and scored by FMS.
@@ -353,7 +342,7 @@ However, this more mechanistic and detailed discussion will have to remain beyon
 >    Do the RISE and CPD projections inherently correct for such effects?
 
 We have added an explicit treatment of this in the Methods.
-Instead of re-stating that description here, we point the reviewer to the corresponding Methods section *Batch, Patient, and Technical Variation*.
+Instead of re-stating that description here, we point the reviewer to the *Batch and patient effects* paragraph of Methods section *Clinical Association Testing*.
 The resampling analysis in Reviewer #2 Comment #4 is also the relevant empirical check here: a component driven by a single sample or batch shows up as a component whose factor match score collapses when that sample is not drawn, and we report per-component stability for exactly this reason.
 
 > 3. How should the LR pairs with negative loadings in each inferred component be interpreted?
