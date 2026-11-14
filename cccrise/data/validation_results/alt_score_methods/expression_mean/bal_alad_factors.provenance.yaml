@@ -16,7 +16,7 @@ communication_score: expression_mean
 hill_k: 0.5
 random_state: 42
 rise_rank: 17
-cp_rank: 5
+cp_rank: 7
 backend: cupy
 cp_device: auto
 cp_backend: cupy
@@ -30,7 +30,7 @@ cp_fit_options:
   init: svd
   svd: randomized_svd
   normalize_factors: true
-r2x_pf2: 0.031514764297569275
-r2x_cp: 0.4708014216551991
-git_sha: e954b0b5c280f1509703c7949d58f06b27cd3a1a
-generated: '2026-11-13T18:23:34+00:00'
+r2x_pf2: 0.03151454766334394
+r2x_cp: 0.5534664468142441
+git_sha: a1e205a0e32849aaeb7cf57ac8e14ecd7c107a41-dirty
+generated: '2026-11-14T03:49:56+00:00'
