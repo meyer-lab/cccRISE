@@ -474,6 +474,31 @@ def colorbar(ax: plt.Axes, mappable, label: str, start: float = 1.0):
     return ax.figure.colorbar(mappable, cax=cax, label=label)
 
 
+#: Values beyond this percentile of |value| saturate `plot_value_scatter`'s
+#: color scale.
+SATURATION_PERCENTILE = 99
+
+
+def plot_value_scatter(
+    ax, x, y, values, saturation_percentile: float = SATURATION_PERCENTILE
+):
+    """Cells colored by `values` on the diverging scale, saturating at
+    `saturation_percentile`, the largest magnitudes drawn on top."""
+    vmax = float(np.percentile(np.abs(values), saturation_percentile))
+    order = np.argsort(np.abs(values))
+    return ax.scatter(
+        x[order],
+        y[order],
+        c=values[order],
+        cmap=style.CMAPS["diverging"],
+        vmin=-vmax,
+        vmax=vmax,
+        s=style.POINT_SIZE_CELL,
+        linewidths=0,
+        rasterized=True,
+    )
+
+
 def legend(ax: plt.Axes, side: str = "right", **kwargs):
     """A legend outside `ax` on `side` ('right', 'left', 'above', 'below'),
     beyond its tick labels, axis labels, title, and colorbar, so like

@@ -13,7 +13,6 @@ from matplotlib.patches import Patch
 
 from cccrise.figures import common, style
 from cccrise.figures.figure3._common import plot_ranked_loadings
-from cccrise.figures.figureS_alad_pacmaps.weight_pacmaps import plot_value_scatter
 from cccrise.runners.datasets import DATASETS
 from cccrise.utils import (
     binned_complex_ligand_product_matrix,
@@ -378,7 +377,7 @@ def plot_value_pacmap(
     """Cells on the PaCMAP colored by `values`, saturating at
     `saturation_percentile` of |values|."""
     x, y = np.asarray(adata.obsm["PaCMAP"]).T
-    points = plot_value_scatter(ax, x, y, values, saturation_percentile)
+    points = common.plot_value_scatter(ax, x, y, values, saturation_percentile)
     pacmap_axes(ax)
     # An inset follows the equal-aspect box rather than the full axes slot
     plt.colorbar(points, cax=ax.inset_axes((1.03, 0.0, 0.04, 1.0)), label=cbar_label)
