@@ -20,10 +20,13 @@ shared:
   celltype_key: broad_cell_type
   group_key: ALADstatus
   factors_path: cccrise/data/factors/bal_alad_factors.nc
+  factors_sha256: 35729fa4b7013741c4cb953ccae5282f56805459b514192ad8685431e1b07712
   random_state: 0
   n_perms: 10000
   n_top: 10
+  component: 6
   outcome: 6-Month Outcome (4-Way)
+  granularity_component: 7
   group_tests:
   - - - sender
       - receiver
@@ -42,25 +45,22 @@ shared:
       - 0.5
       - 0.55
       - 0.6
-  factors_sha256: 35729fa4b7013741c4cb953ccae5282f56805459b514192ad8685431e1b07712
-  component: 6
-  granularity_component: 7
   resulting_dims:
     conditions: 47
     genes: 16675
     cells: 51273
     lr_pairs: 575
-  git_sha: 1b05c62ec5f622f4515b6fd01696218aad1d6574-dirty
-  generated: '2026-11-14T02:07:09+00:00'
+  git_sha: 5dc7cf623d155244770e2a7d24255df555b54b5e-dirty
+  generated: '2026-11-14T03:47:40+00:00'
 files:
   group_de_alad.parquet:
     sha256: 7544b6b01285d66b6a8b4051975fa9c920ccb0afd38bd03adfa8b5901f11e67f
   program_context_scores_alad.parquet:
     sha256: 6cfd168e5492212e954f373c52f68b7fd5e532e2588c780c5ebbf12f7e9ef1a8
   program_covariation_alad.parquet:
-    sha256: b34911100856cbb5237b4ce5f5e772d63e59b507bd0dd9bcad1e71bbda9ba49e
+    sha256: 43b0fb569cbbf10883d75ed4afb032e587ed20c20945ddac756fcdee5d16bf4b
   program_lr_association_alad.parquet:
-    sha256: 30a9ab6df939dc5d7b9f682924aea3deb50c14a53d1dfe76d4e4ed8fc21d39ca
+    sha256: 63c87e361dfca2487e57cd244af2b16035c59960fba7d09c491ab85d2f0d1874
   program_pair_tests_alad.parquet:
     sha256: 25216587ab286fdac0a604157c4bba45b2c25aaba5686ef83f5d3e6fc9e42d2d
   program_permutation_alad.parquet:
