@@ -2,11 +2,11 @@
 
 <!--Paragrpah 1: re-introduce CCC-RISE's key contribution (revised from original)-->
 We have demonstrated that CCC-RISE provides a comprehensive framework for investigating cell--cell communication (CCC) across multiple conditions while maintaining single-cell resolution.
-Current computational tools for CCC largely rely on pseudobulking, a process that aggregates single-cell data into pre-defined clusters and obscures the functional diversity of individual cells.
-This approach depends heavily on the accuracy of initial annotations and often fails to capture the continuous and multifaceted nature of cellular identities.
-To address these limitations, CCC-RISE leverages RISE to project cells into non-exclusive, data-driven "eigen-states" based on shared expression patterns rather than rigid cell types, thus bypassing the limitations of cell annotation.
-By scoring communication directly between eigen-states and decomposing the resulting communication tensor, CCC-RISE allows researchers to trace communication programs back to individual cells and subpopulations responsible for sending and receiving molecular signals.
-Further, eigen-states capture continuous and overlapping cellular identities, which is particularly critical for analyzing rare cell populations or for identifying subpopulations with distinct roles in communication
+Existing computational tools for CCC largely rely on pseudobulking, a process that aggregates single-cell data into pre-defined clusters and obscures the functional diversity of individual cells.
+This approach depends heavily on the accuracy of annotations and often fails to capture the continuous and multifaceted nature of cellular identities.
+To address these limitations, CCC-RISE scores communication between "eigen-states," which are shared patterns of gene expression identified by RISE.
+Because each cell can be represented as a continuous combination of eigen-states, CCC-RISE allows researchers to map communication programs back onto individual cells according to how strongly each cell participates as a sender or receiver.
+CCC-RISE therefore resolves both distinct and overlapping signaling subpopulations at a granularity defined exclusively by the data.
 
 <!--Paragrpah 2: Introduce modes of interpretation for CCC-RISE (entirely new)-->
 While exploring the advantages of CCC-RISE through ALAD and IBD cohorts, we showcased three distinct modes of interpretation that each defined different kinds of communicating populations through eigen-states.
@@ -37,6 +37,7 @@ This analysis thus represents a third mode of interpretation, which was distinct
 -  While CD70 is typically repressed shortly after normal T cell activation, sustained expression marks alloreactive T cells\ [@doi:10.1182/bloodadvances.2024012909].
 - By engaging CD27 on neighboring cytotoxic CD4+ receiver cells---which display distinct, high-metabolic markers such as ADA---these CD70+ senders create a continuous, self-amplifying feedback loop.
 This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell proliferation and lowering the activation threshold of the surrounding immune environment\ [@doi:10.1182/bloodadvances.2024012909; @doi:10.4049/jimmunol.179.4.2609; @doi:10.3389/fimmu.2021.715909; @doi:10.1111/j.1600-6143.2005.01215.x].
+- CD70-CD27 might split off into its own component with refitting. This component, if holds, also contains HLA-CD8a LRs  which makes it a strong T-cell activation signal.
 
 <!--Paragraph 4: Clinical associations with ALAD and IBD (revised version of ALAD paragraphs)-->
 - A key goal of multi-condition CCC inference methods is to identify communication programs associated with disease state.
@@ -48,15 +49,21 @@ This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell 
 - Discussion of cell abundance associations (cell type composition tracks inflammation state and EE sender subpopulations decline with inflammation)?
 
 <!--Paragrpah 5: comparator discussion (entirely new)-->
-[Comparator placeholder]
+Methods such as Tensor-cell2cell and STACCato establish communication programs from a four-dimensional tensor decomposition, similar to CCC-RISE, to capture between-condition variability\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].
+However, this multi-condition decomposition occurs only after annotation has pooled all cells into one condition used to fix cell-types, thus removing between-condition variation in cell state before the decomposition can use it.
+Conversely, CCC-RISE performs between-condition covariation at both steps of its decomposition resulting in largely coordinated communication programs that pseudobulk methods either split across columns or failed to recover entirely.
+While we used NICHES to show our subpopulations aligned with independently scored single-cell populations more than cell-type--defined populations, we observed that even other single-cell methods relied on aggregation or subsampling procedures to remain tractable\ [@doi:10.1093/bioinformatics/btac775].
+We found the subsampling step in particular to be a source of instability that affected method's like Scriabin's ability to be compared against\ [@doi:10.1038/s41587-023-01782-z].
+Because its communication tensor grows with the number of eigen-states rather than cells, CCC-RISE scores communication per-cell while still scaling to large multi-condition cohorts.
 
 <!--Paragrpah 6: limitations and future directions (revised from original)-->
-While RISE's eigen-states arm CCC-RISE with enhanced single-cell granularity, they also introduce limitations inherent to data reduction and transcriptomic inference.
-Users must define the number of eigen-states and components, a flexible but challenging process that can be aided by metrics such as the Factor Match Score\ [@doi:10.1137/07070111X; @doi:10.1016/j.cels.2024.07.004].
-Future work could incorporate subsampling approaches to assess factor reproducibility and enable empirical power calculations to estimate the sample size required to detect meaningful variation\ [@doi:10.1038/s41467-025-60702-8; @doi:10.1093/bioinformatics/btaa607; @doi:10.1186/s12859-019-3167-9; @doi:10.3390/biom13020221].
-Additionally, like all transcriptomic inference tools, CCC-RISE relies on the assumption that gene expression is a sufficiently accurate surrogate of protein abundance and functional interaction.
+Although RISE's eigen-states enable CCC-RISE to perform tensor decomposition while retaining single-cell resolution, CCC-RISE is not immune from limitations inherent to decomposition techniques and transcriptomic inference at large.
+Principally, researchers must select the rank for both the RISE and CPD steps, a challenging, empirical process that can be aided by held-out prediction such as bi-cross-validation and by resampling such as the jackknife\ [@doi:10.1214/08-AOAS227; @{doi:10.1016/S0169-7439(02)00090-4}].
+Additionally, like other transcriptomic CCC methods, CCC-RISE scores only the interactions catalogued in curated resources such as CellChatDB, so it cannot discover new ligand--receptor interactions, and its inferences depend on the resource chosen\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41467-022-30755-0].
+Downstream validation is similarly bounded by priors such as NicheNet, whose ligand--target links are incomplete and not specific to a tissue or disease context, limiting how accurately the downstream effects of a communication program can be quantified\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
+CCC-RISE also assumes that gene expression is a proportional proxy for protein translation, secretion, and functional interaction.
 Because post-transcriptional regulation and binding kinetics can decouple mRNA levels from functional protein interactions, the communication patterns identified should be interpreted as hypotheses requiring experimental validation\ [@doi:10.1093/bib/bbaf280; @doi:10.1038/s41598-019-40939-2].
-Emerging technologies like single-cell proteomics will be crucial for CCC inferring methods to improve the accuracy of predictions\ [@doi:10.1038/s41592-025-02620-7; @doi:10.1016/j.xgen.2025.100973].
+Emerging technologies like single-cell proteomics and spatial transcriptomics, together with CCC models that constrain signaling by physical proximity, will be crucial to improve both the capture and validation of molecular signaling\ [@doi:10.1038/s41592-025-02620-7; @doi:10.1016/j.xgen.2025.100973; @doi:10.1038/s41592-022-01728-4].
 
 <!--Paragrpah 7: summary (copied from original)-->
 In summary, CCC-RISE provides an unbiased framework for investigating CCC across multiple conditions at single-cell resolution.
