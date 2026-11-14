@@ -62,7 +62,8 @@ Shared patterns in smaller modes were expected because of the limited number of 
 Further, re-initialized factorizations became unstable at rank 7 and beyond, which, combined with the emergence of collinearity at rank 8, encouraged us to decompose the communication tensor using CPD rank 6 ({{< fig 2 cp-minima >}}, {{< fig 2 cp-factor-matrices >}}).
 
 We next asked whether the communication programs captured by CCC-RISE were stable, robust against cell permutation, and aligned with external biological validation.
-At the selected rank, RISE and CPD components were stable over re-initialization and leave-one-patient-out jackknife ({{< fig alad-cohort rise-fms cpd-fms >}}).
+At the selected rank, most RISE and CPD components were stable over re-initialization and leave-one-patient-out jackknife ({{< fig alad-cohort rise-fms cpd-fms >}}).
+The two exceptions, RISE component 3 and CPD component 1, were unstable during patient jackknife because they each heavily weighted an especially small subset of patients ({{< fig 2 cp-factor-matrices.1 >}}, {{< fig alad-cohort factors >}}).
 To assess robustness, we extended the significance testing of CellPhoneDB and CellChat to continuous eigen-states by shuffling which cell's expression is paired with each eigen-state projection and recomputing the communication tensor\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
 While only 10% of each LR pair's entries exceeded this null at p < 0.05, mean observed scores exceeded mean null scores for nearly every LR pair, indicating that aggregate LR scores and select individual communication tensor entries were robust to cell permutation ({{< fig 2 permutation-lr-significance >}}).
 Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring how well differential expression (DE) in the component's top receiver cells recovered each ligand's NicheNet-predicted downstream gene targets ({{< fig 2 nichenet >}})\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
@@ -125,8 +126,8 @@ These results indicate that, by modeling variation across conditions, cells, and
 
 Given the limited size of the ALAD cohort and the small number of patients in the "died" group, we tested whether the component 5 association could be explained by patient covariates, individual patients, or random patient grouping.
 No patient covariate (besides Caucasian ethnicity, which was weakly associated with one-year death) was associated with outcome, even before multiple-test correction ({{< fig alad-associations covariates >}}).
-Further, the six-month outcome association remained significant in 42 of 45 leave-one-patient-out jackknife replicates ({{< fig alad-associations effect-size-distributions significant-fraction >}}).
-Of the three exceptions, one patient fell in the died group and carried the largest component 5 condition loading.
+Further, the six-month outcome association remained significant in 44 of 45 leave-one-patient-out jackknife replicates ({{< fig alad-associations effect-size-distributions significant-fraction >}}).
+The one exception left out the patient who fell in the died group and carried the largest component 5 condition loading.
 While these associations did hinge on one especially highly weighted patient, the coordinated program represented by the associated component is a real biological pattern present in the expression data.
 We next applied scDiffCom's condition-label--permutation scheme to our communication tensor to test whether each LR pair's difference in communication score between CLAD/died and stable/recovered samples exceeded those obtained with permuted patient outcome labels\ [@doi:10.1038/s43587-023-00514-x].
 Six of component 5's ten top LR pairs had higher communication scores in CLAD/died samples than in stable/recovered samples (q < 0.05), indicating that communication scores constructed through RISE exceeded chance in their ability to stratify patients ({{< fig 3 lr-permutation lr-volcano >}}).
