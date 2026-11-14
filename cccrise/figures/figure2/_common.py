@@ -17,7 +17,7 @@ from .. import common, style
 # subpopulations, and the RISE eigenstates of its largest sender (B) and
 # receiver (C) loadings
 GRANULARITY_DATASET = "alad"
-GRANULARITY_COMPONENT = 5
+GRANULARITY_COMPONENT = 7
 GRANULARITY_SENDER_EIGENSTATE, GRANULARITY_RECEIVER_EIGENSTATE = 17, 15
 # Cells are split on their per-cell sender (`obsm["sc_B"]`) and receiver
 # (`obsm["rc_C"]`) weights on the component alone (`split_cells`), each
