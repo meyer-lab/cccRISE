@@ -174,7 +174,7 @@ These methods collectively define an additional class of CCC-inference approache
 This is a good point.
 We have revised the manuscript to consistently work directly with the cell eigen-states, and explicitly call out where these do or do not align with independent cell-type annotations.
 
-As a concrete demonstration, the ALAD component 5 describing BTC--EGFR signaling is defined entirely from eigen-state loadings: classifying every cell by its sender and receiver loading percentiles, without reference to any annotation, separates a population that is a strong receiver but not a strong sender for this program and vice versa ({{< fig 2 sender-receiver-strata >}}).
+As a concrete demonstration, the ALAD component 6 describing BTC--EGFR signaling is defined entirely from eigen-state loadings: classifying every cell by its sender and receiver loading percentiles, without reference to any annotation, separates a population that is a strong receiver but not a strong sender for this program and vice versa ({{< fig 2 sender-receiver-strata >}}).
 Only afterward do we ask what the existing annotations call these cells, and the answer is the point: the sender and receiver groups are distinct subpopulations of epithelial cells.
 Annotations are thus used as an interpretive check on label-free structure rather than as its input, and we have rewritten the relevant passages to make that order explicit rather than describing every program through its cell-type labels ({{< fig 2 sender-receiver-strata celltype-composition >}}) and ({{< fig 4 hormone-angle-scatter hormone-extreme-markers >}}).
 

@@ -3,9 +3,9 @@
 ![](figures/figureS_cmp5_identity/figureS_cmp5_identity.svg){width="6.5in"}
 
 **{{< label cmp5-identity >}}.
-ALAD CPD component 5 sender and receiver cell identity.** ({{< panel cmp5-identity eigenstate-scatter >}}) Per-cell projection onto the eigen-states most heavily weighted by component 5's sender (eigen-state 17) and receiver (eigen-state 15) factors.
-({{< panel cmp5-identity cmp-eigenstate-loadings >}}) Component 5 sender and receiver eigen-state loadings.
-({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell type markers in component 5's sender/receiver groups and all other cells\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2].
+ALAD CPD component 6 sender and receiver cell identity.** ({{< panel cmp5-identity eigenstate-scatter >}}) Per-cell projection onto the eigen-states most heavily weighted by component 6's sender (eigen-state 17) and receiver (eigen-state 15) factors.
+({{< panel cmp5-identity cmp-eigenstate-loadings >}}) Component 6 sender and receiver eigen-state loadings.
+({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell type markers in component 6's sender/receiver groups and all other cells\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2].
 ({{< panel cmp5-identity group-vs-rest sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene against its Wilcoxon rank-sum q (Benjamini--Hochberg corrected across all genes) between ({{< panel cmp5-identity group-vs-rest.1 >}}) sender and all other cells, ({{< panel cmp5-identity group-vs-rest.2 >}}) receiver and all other cells, and ({{< panel cmp5-identity sender-vs-receiver >}}) sender and receiver cells.
 Labeled are ({{< panel cmp5-identity group-vs-rest >}}) canonical pan-epithelial markers and ({{< panel cmp5-identity sender-vs-receiver >}}) epithelium-specific genes selected from those differentially expressed between the groups.
 ({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} (Benjamini--Hochberg corrected across these markers) across group cutoffs τ, signed positive when higher in sender cells; dotted line: τ = 0.3 used throughout, dashed lines: q = 0.05.
@@ -24,7 +24,7 @@ q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected a
 ({{< panel alad-associations effect-size-distributions >}}) ANOVA η^2^ of each CPD component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to the reference's by Hungarian matching.
 Diamonds mark the full-cohort η^2^, filled where q < 0.05.
 ({{< panel alad-associations significant-fraction >}}) Fraction of jackknife replicates in which each CPD component's association with six-month outcome has q < 0.05.
-q: Benjamini--Hochberg corrected p across the five components of each fit.
+q: Benjamini--Hochberg corrected p across the six components of each fit.
 
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 

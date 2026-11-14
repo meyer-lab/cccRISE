@@ -47,6 +47,7 @@ from cccrise.app.plots import (
 )
 from cccrise.figures import style
 from cccrise.figures.common import (
+    SATURATION_PERCENTILE,
     plot_association_effect_sizes,
     plot_category_component_weights,
     plot_collinearity_medians,
@@ -55,7 +56,6 @@ from cccrise.figures.common import (
     plot_rise_rank,
 )
 from cccrise.figures.figure3._common import ASSOCIATIONS
-from cccrise.figures.figureS_alad_pacmaps.weight_pacmaps import SATURATION_PERCENTILE
 from cccrise.runners.datasets import DATASETS as RUNNER_DATASETS
 from cccrise.utils import celltype_component_association
 

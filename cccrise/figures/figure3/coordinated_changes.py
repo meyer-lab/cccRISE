@@ -10,8 +10,9 @@ summed over eigenstates).
 
 - Association: each pair's scores, and the component's condition loadings,
   get the component ANOVA against the 6-month outcome
-  (`program_lr_association`: one-way ANOVA over the outcome groups, eta^2 as
-  the effect size, Benjamini-Hochberg FDR across the 513 LR pairs). The histogram
+  (`program_lr_association`: one-way ANOVA over the outcome groups of each
+  pair's scores divided by the condition's read depth, eta^2 as the effect
+  size, Benjamini-Hochberg FDR across LR pairs). The histogram
   is every LR pair's eta^2, with the whole component's eta^2 and its `N_TOP`
   most heavily weighted LR pairs' marked.
 - Co-variation of the `N_TOP` pairs: the Spearman correlation across
@@ -23,8 +24,9 @@ summed over eigenstates).
   as many LR pairs from outside that set (`program_covariation`, from
   `covariation_baselines`): random,
   expression-matched (one pair per top pair from its `N_EXPRESSION_NEIGHBORS`
-  nearest pairs in log mean score), and other associated (FDR < 0.05 on their
-  own), so every box is a distribution of single pairwise correlations.
+  nearest pairs in log mean score), the same without pairs carrying an HLA
+  gene, and other associated (FDR < 0.05 on their own), so every box is a
+  distribution of single pairwise correlations.
 """
 
 from functools import cache
@@ -52,6 +54,7 @@ from ._common import (
 BASELINES = {  # label, color
     "random": ("Random", style.COLORS["muted"]),
     "expression_matched": ("Expr.-matched", style.COLORS["receiver"]),
+    "expression_matched_excluded": ("Expr.-matched, no HLA", style.COLORS["emphasis"]),
     "associated": ("Other associated", style.COLORS["up"]),
 }
 AXES = ("square", "square")
@@ -107,7 +110,7 @@ def plot_lr_covariation(
         BASELINES[name][0]: draws[~np.isnan(draws)] for name, draws in baselines.items()
     }
     # Green, as the top pairs are in the association panel
-    colors = [style.COLORS["highlight"]] + [color for _, color in BASELINES.values()]
+    colors = [style.COLORS["highlight"]] + [BASELINES[name][1] for name in baselines]
     boxes = ax.boxplot(
         list(groups.values()),
         widths=0.6,
@@ -219,7 +222,8 @@ def _source_data(result: dict) -> None:
         result["per_lr"][["F", "P", "PAdj", "EtaSquared"]].assign(
             **{"LR pair": names, f"Cmp {COMPONENT} top {N_TOP}": top}
         ),
-        f"One-way ANOVA of each LR pair's read-depth-corrected scores over "
+        f"One-way ANOVA of each LR pair's scores, divided by the condition's "
+        f"read depth, over "
         f"'{OUTCOME}': F, p, Benjamini-Hochberg-adjusted p across LR pairs, and "
         f"eta-squared (histogram). The whole component's eta-squared is "
         f"{result['component_eta']:.4f}.",
@@ -259,7 +263,8 @@ def _source_data(result: dict) -> None:
         f"The same correlations for {COVARIATION_DRAWS} draws (seeded) of "
         f"{N_TOP} LR pairs from outside the top pairs, per baseline: random, "
         f"expression-matched (one per top pair from its {N_EXPRESSION_NEIGHBORS} "
-        "nearest pairs in log mean score), and other outcome-associated pairs "
+        "nearest pairs in log mean score), the same without pairs carrying an "
+        "HLA gene, and other outcome-associated pairs "
         "(adjusted p < 0.05), each draw's pairs sharing a gene averaged into one "
         "as above.",
         part=1,
