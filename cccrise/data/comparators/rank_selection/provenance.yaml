@@ -618,7 +618,7 @@ files:
     git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
     generated: '2026-11-13T23:47:28+00:00'
   stac_shares_ibd_coarse.parquet:
-    sha256: 2a12e88c710ab3b9b59c94e4874eaf888e4465b685556b46f470bb3459cb891b
+    sha256: 5c1fb55c6d63bc91ab344cb2a1acee25857355c0ee32373d74c94f7a3b5eb415
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods stac
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -643,7 +643,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: numpy
     tensor:
-      tensor_shape: [343, 7, 7, 1255]
+      tensor_shape: [343, 7, 7, 1337]
       observed_share: 1.0
       celltypes:
       - B cell
@@ -658,18 +658,13 @@ files:
     stac:
       varexp_percent: 1.0
       core_shape:
-        sample: 6
+        sample: 7
         sender: 4
         receiver: 3
         lr: 5
       random_state: 42
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T07:50:09+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+    git_sha: e1a68354dbb28b52d973b7799b2b51489f19ff00
+    generated: '2026-11-14T05:34:04+00:00'
   stac_shares_ibd_fine.parquet:
     sha256: 94da02c867b8df9ac0fd1ff0a684e89033c9560458a02d5436ceeb5f2da1424a
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods stac
@@ -877,7 +872,7 @@ files:
     git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
     generated: '2026-11-14T00:54:43+00:00'
   tc2c_elbow_ibd_coarse.parquet:
-    sha256: e61655d09dd003d24450890c56ef9a75d05e55c8ed301c4e8a4da10e88b2ae25
+    sha256: 71b3256a6a515729767139e6d805d77072168d9814c570aafe64f5e37deffb70
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -902,7 +897,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1255]
+      tensor_shape: [343, 7, 7, 1337]
       observed_share: 0.9853037424882489
       celltypes:
       - B cell
@@ -922,19 +917,13 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 48
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-      low_memory: false
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T06:05:10+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
+    generated: '2026-11-14T05:32:41+00:00'
   tc2c_elbow_ibd_fine.parquet:
     sha256: 9f2ba5e59b7fb8c7e6e5dce2069a995492f04366be2216832e77f6925fe5206f
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods tc2c
@@ -1153,7 +1142,7 @@ files:
     git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
     generated: '2026-11-14T00:54:43+00:00'
   tc2c_start_fms_ibd_coarse.parquet:
-    sha256: 779961022407f836294acb2f5ead86a11124de6633e0dae3d38a8b37da4ea85e
+    sha256: c70c70f8b0f7e4f058f967ba3bedf7706ef335cf50373fe0db98766896a942c0
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -1178,7 +1167,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1255]
+      tensor_shape: [343, 7, 7, 1337]
       observed_share: 0.9853037424882489
       celltypes:
       - B cell
@@ -1198,19 +1187,13 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 48
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-      low_memory: false
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T06:05:10+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
+    generated: '2026-11-14T05:32:41+00:00'
   tc2c_start_fms_ibd_fine.parquet:
     sha256: 78e1165ddddcb90d97748511ae683cb643578c6273eda6cdfae1dcee04864470
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods tc2c
@@ -1429,7 +1412,7 @@ files:
     git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
     generated: '2026-11-14T00:54:43+00:00'
   tc2c_starts_ibd_coarse.nc:
-    sha256: d5b5a810aad70ccbf11d40d955953e69558db44d06f9b7c9770ba771891710bd
+    sha256: 7d7065bdf2c02d7edddf3e74f9d5ebda0ba764a41614ad47ac75f12e59180e81
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -1454,7 +1437,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1255]
+      tensor_shape: [343, 7, 7, 1337]
       observed_share: 0.9853037424882489
       celltypes:
       - B cell
@@ -1474,19 +1457,13 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 48
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-      low_memory: false
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T06:05:10+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
+    generated: '2026-11-14T05:32:41+00:00'
   tc2c_starts_ibd_fine.nc:
     sha256: e993d7d1eb9c486ae50decf0d1350cef98b6e317bea33303a11fd6c4950bb3bb
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods tc2c
