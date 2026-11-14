@@ -187,7 +187,7 @@ Each LR pair's normalized score was tested against outcome by one-way ANOVA, cor
 
 A set of top LR pairs was tested for co-variation across samples by the Spearman correlation of their uncorrected scores.
 LR pairs sharing a ligand or receptor gene, directly or through another pair, co-vary in part by construction and were first merged into one group by averaging their per-sample score ranks.
-Observed correlations were compared with those of as many LR pairs drawn 2,000 times, and merged in the same way, from each baseline: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score, both from all LR pairs and from those without an HLA gene; and the other LR pairs associated with outcome (q < 0.05).
+Observed correlations were compared with those of as many LR pairs drawn 2,000 times, and merged in the same way, from each baseline: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with outcome (q < 0.05).
 The statistic was the mean pairwise correlation between groups, $\bar{\rho}$, with an empirical p-value against each baseline; p-values against the expression-matched baseline were corrected across the component and the comparator LR columns related to it.
 Components and columns with fewer than two groups were not tested.
 

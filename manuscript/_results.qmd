@@ -98,6 +98,7 @@ Associations were tested by one-way ANOVA with Benjamini--Hochberg correction ac
 Component 5's top 10 LR pairs and its condition loading association strength are marked.
 ({{< panel 3 coordinated-changes.2 >}}) Spearman correlation across conditions between each pair of component 5's top 10 LR pairs, with LR pairs sharing a ligand or receptor averaged into one, and between pairs drawn 2,000 times from the remaining LR pairs: at random, matched in expression (each from the 20 pairs nearest a top pair in log mean score), or among the other LR pairs associated with six-month outcome.
 Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
+\*: q < 0.05 for the mean correlation of the top 10 LR pairs against the mean correlations of each baseline's 2,000 draws; one-sided empirical test, Benjamini--Hochberg corrected across the three baselines.
 ({{< panel 3 lr-permutation >}}) Diamonds: Difference in mean communication score between CLAD/died and stable/recovered samples (n = 14 and 33 samples) of each of component 5's top 10 LR pairs.
 Violins: Null differences across 10,000 permutations of outcome labels between patients.
 All results are normalized by standard deviations of the null.
@@ -120,8 +121,7 @@ CPD groups LR pairs based on covariation across conditions, senders, and receive
 Indeed, while some of component 5's top LR pairs exhibited strong individual association with outcome, they were not the only highly associated LR pairs and were not defined as a group by their ability to stratify patients ({{< fig 3 coordinated-changes.1 >}}).
 Individual outcome association therefore did not explain which LR pairs component 5 grouped together.
 Instead, component 5's top LR pairs were more strongly correlated with one another across conditions than randomly drawn LR pairs or other LR pairs with a significant outcome association ({{< fig 3 coordinated-changes.2 >}}).
-Interestingly, LR pairs matched to component 5 by mean communication score were as highly correlated as top-weighted LR pairs, but only when human leukocyte antigen (HLA) genes were included, suggesting that the co-variation within component 5 LR pairs was the result of general upregulation of immune activity.
-The non-HLA expression-matched baseline excludes shared abundance as the source of this coordination, and the outcome-associated baseline shows that it is not explained by a common association with outcome.
+The expression-matched baseline excludes shared abundance as the source of this coordination, and the outcome-associated baseline shows that it is not explained by a common association with outcome.
 These results indicate that, by modeling variation across conditions, cells, and LR pairs, CCC-RISE isolates coordinated communication axes from sets of individually varying programs.
 
 Given the limited size of the ALAD cohort and the small number of patients in the "died" group, we tested whether the component 5 association could be explained by patient covariates, individual patients, or random patient grouping.

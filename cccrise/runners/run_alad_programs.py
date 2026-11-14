@@ -24,8 +24,7 @@ folder):
     program_covariation_alad.parquet
         Figure 3F: the pairwise rank correlations across conditions of
         `COMPONENT`'s top LR pairs, and of `covariation_baselines`' draws
-        (random, expression-matched, expression-matched without HLA pairs,
-        other outcome-associated), each set's
+        (random, expression-matched, other outcome-associated), each set's
         pairs sharing a ligand or receptor gene first averaged into one
         (`pairwise_rank_correlations` with `merge`), each draw's pairs of
         pairs indexed as it orders them
@@ -242,14 +241,10 @@ def covariation_table(
 ) -> pd.DataFrame:
     """`COMPONENT`'s top pairs' pairwise rank correlations (one draw) and the
     baselines' draws, those sharing a gene of `genes` averaged into one, long,
-    keeping each draw's pair-of-pairs index. The expression-matched baseline
-    is drawn twice: from every pair, and from those without an HLA gene."""
-    hla = np.array([any(g.startswith("HLA-") for g in pair) for pair in genes])
+    keeping each draw's pair-of-pairs index."""
     sets = {
         "Top pairs": pairwise_rank_correlations(scores, top, genes, merge=True)[None]
-    } | covariation_baselines(
-        scores, top, associated, seed, genes, merge=True, excluded=hla
-    )
+    } | covariation_baselines(scores, top, associated, seed, genes, merge=True)
     return pd.concat(
         pd.DataFrame(draws)
         .rename_axis(index="Draw", columns="Pair of pairs")
