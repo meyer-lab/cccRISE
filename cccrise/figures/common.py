@@ -1431,7 +1431,7 @@ def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
 CONDITION_STRIPS = {
     "ALADstatus": (
         "ALAD status",
-        {"control": "0.85", "declined": "0.25", "recovered": "0.55"},
+        {"control": "0.85", "recovered": "0.55", "declined": "0.25"},
     ),
     "6monthcondition": (
         "6-mo outcome",
