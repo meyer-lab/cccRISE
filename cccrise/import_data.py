@@ -54,11 +54,25 @@ def import_ligand_receptor_pairs(
     filename: str | Path = LR_PAIRS_PATH,
     update_interaction_names: bool = True,
 ) -> pd.DataFrame:
-    """Import ligand-receptor pairs from a parquet file with caching."""
+    """Import ligand-receptor pairs from a parquet file with caching.
+
+    Each pair's genes come from ``ligand_symbol`` / ``receptor_symbol`` (gene
+    symbols, complex subunits joined by ``&``, as resolved through CellChatDB's
+    complex table) when the file has them. Resources without them fall back to
+    parsing the display label ``interaction_name_2``, which in CellChatDB does
+    not always name the genes (e.g. ``FLT3L - FLT3`` for FLT3LG).
+    """
     df = pd.read_parquet(filename)
 
     if update_interaction_names:
-        if "interaction_name_2" in df.columns:
+        if {"ligand_symbol", "receptor_symbol"} <= set(df.columns):
+            df["ligand"] = (
+                df["ligand_symbol"].astype(str).str.upper().astype("category")
+            )
+            df["receptor"] = (
+                df["receptor_symbol"].astype(str).str.upper().astype("category")
+            )
+        elif "interaction_name_2" in df.columns:
             df["ligand"] = (
                 df["interaction_name_2"]
                 .apply(lambda x: x.split(" - ")[0].upper())
