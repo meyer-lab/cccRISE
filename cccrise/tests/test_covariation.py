@@ -42,6 +42,24 @@ def test_baselines_without_associated_pairs_match_those_with():
         np.testing.assert_array_equal(draws, full[name])
 
 
+def test_excluded_pairs_add_a_matched_baseline_drawn_without_them():
+    rng = np.random.default_rng(0)
+    scores = rng.random((12, 40))
+    top = np.arange(5)
+    # Excluded pairs move in lockstep, so any draw holding two of them would
+    # correlate perfectly
+    excluded = np.zeros(40, bool)
+    excluded[5:25] = True
+    scores[:, excluded] = scores[:, [0]] + np.arange(20) * 1e-3
+    plain = covariation.covariation_baselines(scores, top)
+    full = covariation.covariation_baselines(scores, top, excluded=excluded)
+    assert list(full) == ["random", "expression_matched", "expression_matched_excluded"]
+    np.testing.assert_array_equal(
+        full["expression_matched"], plain["expression_matched"]
+    )
+    assert np.all(full["expression_matched_excluded"] < 1 - 1e-9)
+
+
 def test_gene_sharing_pairs_are_left_out():
     rng = np.random.default_rng(1)
     scores = rng.random((10, 3))
