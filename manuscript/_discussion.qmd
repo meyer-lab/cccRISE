@@ -58,7 +58,7 @@ Because its communication tensor grows with the number of eigen-states rather th
 
 <!--Paragrpah 6: limitations and future directions (revised from original)-->
 Although RISE's eigen-states enable CCC-RISE to perform tensor decomposition while retaining single-cell resolution, CCC-RISE is not immune from limitations inherent to decomposition techniques and transcriptomic inference at large.
-Principally, researchers must select the rank for both the RISE and CPD steps, a challenging, empirical process that can be aided by held-out prediction such as bi-cross-validation and by resampling such as the jackknife\ [@doi:10.1214/08-AOAS227; @doi:10.1016/S0169-7439(02)00090-4].
+Principally, researchers must select the rank for both the RISE and CPD steps, a challenging, empirical process that can be aided by held-out prediction such as bi-cross-validation and by resampling such as the jackknife\ [@doi:10.1214/08-AOAS227; @{doi:10.1016/S0169-7439(02)00090-4}].
 Additionally, like other transcriptomic CCC methods, CCC-RISE scores only the interactions catalogued in curated resources such as CellChatDB, so it cannot discover new ligand--receptor interactions, and its inferences depend on the resource chosen\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41467-022-30755-0].
 Downstream validation is similarly bounded by priors such as NicheNet, whose ligand--target links are incomplete and not specific to a tissue or disease context, limiting how accurately the downstream effects of a communication program can be quantified\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 CCC-RISE also assumes that gene expression is a proportional proxy for protein translation, secretion, and functional interaction.
