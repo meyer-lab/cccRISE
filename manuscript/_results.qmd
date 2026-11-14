@@ -42,7 +42,7 @@ Boxes show the median and interquartile range and whiskers show the most extreme
 \*: q < 0.05 for the ligand-weighted mean score against its 1,000 cell-shuffled values; one-sided empirical test, Benjamini--Hochberg corrected across the five components.
 ({{< panel 2 sender-receiver-strata >}}) Per-cell component 5 sender against receiver weight.
 ({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each group.
-({{< panel 2 celltype-composition >}}) Annotated cell-type composition of each group, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
+({{< panel 2 celltype-composition >}}) Annotated cell-type composition of component 5 sender/receiver groups, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
 :::
 
 We first applied CCC-RISE to a lung transplant dataset in which conditions represented individual bronchoalveolar lavage (BAL) samples from lung-transplant patients with and without acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007].
@@ -79,7 +79,7 @@ Further, all subpopulation markers remained significantly differentially express
 These eigen-state--derived epithelial labels aligned closely with available annotations, but represented subpopulations more granular than those defined in the data ({{< fig 2 celltype-composition >}}).
 In sum, label-free interpretation of CCC-RISE factors isolated a well-validated CCC program, wherein ciliated epithelial cells secrete betacellulin (BTC) that binds basal and secretory epithelial cells through epidermal growth factor receptors EGFR and ErbB2, inducing tissue repair or fibrosis depending on disease context ({{< fig 2 cp-factor-matrices.4 >}})\ [@doi:10.1165/ajrcmb.20.5.3308; @doi:10.1038/ki.2012.43; @doi:10.3390/cells11060986].
 
-### CCC-RISE identifies a coordinated immune signaling program associated with CLAD
+### CCC-RISE identifies coordinated immune communication that drives ALAD progression
 
 ::: {#fig-3}
 ![](figures/figure3/figure3.svg){width="6.5in"}
