@@ -39,7 +39,7 @@ CCC-RISE's embeddings and factor matrices thus trace LR signaling programs acros
 ({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by fraction of entries significant (as above).
 ({{< panel 2 nichenet >}}) NicheNet target score of each ligand (n = 215) per CPD component on differential expression between the component's top and bottom receiver cells (light boxes; points colored and sized by the ligand's weight in the component), and with the cell labels shuffled (grey boxes, pooled).
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
-Values above boxes give the q-value of the ligand-weighted mean score against its 1,000 cell-shuffled values (one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components); q ≥ 0.05 in grey.
+q-values above boxes test the ligand-weighted mean score against its 1,000 cell-shuffled values (one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components); bold: q < 0.05.
 ({{< panel 2 sender-receiver-strata >}}) Per-cell component 6 sender against receiver weight.
 ({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each component 6 group.
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of component 6 sender/receiver groups, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].

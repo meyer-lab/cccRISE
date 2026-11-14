@@ -185,24 +185,34 @@ def ligand_points(ax, component_scores, x, rng, width: float = 0.6):
 
 def significance_marks(ax, positions, tops, q, values: bool = False) -> None:
     """A star above each of `positions` (at its data's top, `tops`) where `q`
-    is below `SIG_ALPHA`, else n.s.; with `values`, `q` itself, greyed where
-    not significant."""
+    is below `SIG_ALPHA`, else n.s.; with `values`, `q` itself (the first
+    prefixed 'q = ' to its left) in black, bold where significant."""
     for x, top, value in zip(positions, tops, q, strict=True):
         significant = value < common.SIG_ALPHA
         if values:
-            label = f"{value:#.2g}"
+            label, color = f"{value:.2f}", "black"
         else:
             label = "*" if significant else "n.s."
-        ax.text(
+            color = style.COLORS["ink" if significant else "reference"]
+        text = ax.text(
             x,
             top + TEST_PAD,
             label,
             ha="center",
             va="bottom",
             fontsize=style.FONT_SIZE_DENSE,
-            fontweight="bold" if significant and not values else "normal",
-            color=style.COLORS["ink"] if significant else style.COLORS["reference"],
+            fontweight="bold" if significant else "normal",
+            color=color,
         )
+        if values and x == positions[0]:
+            ax.annotate(
+                "q = ",
+                (0, 0),
+                xycoords=text,
+                ha="right",
+                va="bottom",
+                fontsize=style.FONT_SIZE_DENSE,
+            )
 
 
 def makeFigure():
