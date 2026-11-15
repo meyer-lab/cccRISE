@@ -20,7 +20,9 @@ def draw(ax, dataset: str) -> None:
     sweep = common.load_runner_output(
         DATASETS[dataset].rise_rank_filename(), RANK_SELECTION_DIR
     )
-    lines = common.plot_rise_rank(sweep, ax, rank=common.selected_ranks(dataset)[0])
+    lines = common.plot_rise_rank(sweep, ax)
+    # The rank line stops below the key
+    common.mark_rank(ax, common.selected_ranks(dataset)[0], top=1 - KEY_HEADROOM)
     common.source_data(
         "bicv_r2x_by_rise_rank",
         sweep,

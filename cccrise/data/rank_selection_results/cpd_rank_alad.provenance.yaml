@@ -14,8 +14,8 @@ celltype_key: broad_cell_type
 group_key: ALADstatus
 factors_file: bal_alad_factors.nc
 rise_rank: 17
-canonical_cp_rank: 5
-cp_ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+canonical_cp_rank: 6
+cp_ranks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 n_starts: 10
 start_seeds: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]
 cp_n_iter_max: 4000
@@ -27,16 +27,19 @@ cp_fit_options:
 cp_device: auto
 cp_backend: cupy
 cp_dtype: float32
-imputation_repeats: 0
+imputation_repeats: 10
 imputation_options:
   n_folds: 10
   l2_reg: 0.1
 imputation_dtype: float64
-compare_ridge: false
+compare_ridge: true
+ridge_dtype: float64
 random_state: 42
 files:
   sweep: cpd_rank_alad.parquet
   start_fms: cpd_start_fms_alad.parquet
+  imputation: cpd_imputation_alad.parquet
+  ridge: cpd_ridge_alad.parquet
 interaction_tensor_shape: [47, 17, 17, 575]
 complex_sep: '&'
 communication_score: expression_product
@@ -45,8 +48,8 @@ resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
-  lr_pairs: 513
-lr_pairs_annotated: 2005
-r2x_pf2: 0.03151461990700155
-git_sha: d90a12ce201d4f371366c3fe959c4ef69d0f6af9
-generated: '2026-11-13T23:06:30+00:00'
+  lr_pairs: 575
+lr_pairs_annotated: 1938
+r2x_pf2: 0.031514619604229965
+git_sha: 9ae45f6a2f9fad11d8fb7b80738979af2f8cbca6-dirty
+generated: '2026-11-14T20:47:48+00:00'

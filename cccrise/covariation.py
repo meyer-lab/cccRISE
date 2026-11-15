@@ -136,7 +136,6 @@ def covariation_baselines(
     seed: int = 0,
     genes=None,
     merge: bool = False,
-    excluded: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
     """`pairwise_rank_correlations` (draws x pairs of pairs) of as many LR
     pairs as `top`, drawn `COVARIATION_DRAWS` times from the LR pairs outside
@@ -147,9 +146,6 @@ def covariation_baselines(
       pair's `N_EXPRESSION_NEIGHBORS` nearest pairs in log mean score
       (without replacement within a draw), so the draw matches the top pairs'
       expression levels.
-    - expression_matched_excluded (when `excluded`, a boolean mask, is
-      given): expression_matched, with the pairs it marks left out of the
-      neighbors.
     - associated (when `associated`, a boolean mask, is given): drawn
       uniformly from the other pairs it marks, i.e. those significantly
       associated with the outcome; all of them when there are fewer than
@@ -184,10 +180,6 @@ def covariation_baselines(
         "random": lambda: rng.choice(pool, len(top), replace=False),
         "expression_matched": matched(pool),
     }
-    if excluded is not None:
-        draws["expression_matched_excluded"] = matched(
-            np.setdiff1d(pool, np.flatnonzero(excluded))
-        )
     if associated is not None:
         associated_pool = np.setdiff1d(np.flatnonzero(associated), top)
         draws["associated"] = lambda: rng.choice(
