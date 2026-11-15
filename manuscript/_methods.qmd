@@ -187,7 +187,7 @@ Each LR pair's normalized score was tested against outcome by one-way ANOVA, cor
 
 A set of top LR pairs was tested for co-variation across samples by the Spearman correlation of their uncorrected scores.
 LR pairs sharing a ligand or receptor gene, directly or through another pair, co-vary in part by construction and were first merged into one group by averaging their per-sample score ranks.
-Observed correlations were compared with those of as many LR pairs drawn 2,000 times, and merged in the same way, from each baseline: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score, both from all LR pairs and from those without an HLA gene; and the other LR pairs associated with outcome (q < 0.05).
+Observed correlations were compared with those of as many LR pairs drawn 2,000 times, and merged in the same way, from each baseline: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with outcome (q < 0.05).
 The statistic was the mean pairwise correlation between groups, $\bar{\rho}$, with an empirical p-value against each baseline; p-values against the expression-matched baseline were corrected across the component and the comparator LR columns related to it.
 Components and columns with fewer than two groups were not tested.
 
@@ -324,7 +324,7 @@ Where stated, analyses instead used a fixed number of LR pairs by absolute loadi
 
 **Empirical p-values.** Where a statistic was compared with $N$ draws from a null (permutations, shuffles, or random draws), its one-sided empirical p-value was $(1 + k)/(1 + N)$, where $k$ is the number of draws at least as large as the observed statistic, so the smallest attainable p-value is $1/(1 + N)$.
 
-**Multiple-test correction.** p-values were corrected by the Benjamini--Hochberg procedure across the family of tests stated with each analysis, and corrected values were reported as q, with q < 0.05 considered significant\ [@doi:10.1111/j.2517-6161.1995.tb02031.x].
+**Multiple-test correction.** p-values were corrected by the Benjamini--Hochberg (BH) procedure across the family of tests stated with each analysis, and corrected values were reported as q, with q < 0.05 considered significant\ [@doi:10.1111/j.2517-6161.1995.tb02031.x].
 
 **Differential gene expression.** Unless stated otherwise, two groups of cells were compared gene by gene with two-sided Wilcoxon rank-sum tests on the normalized expression of all cells in each group, using scanpy without tie correction\ [@doi:10.1186/s13059-017-1382-0].
 A gene's detection rate in a group was the fraction of the group's cells with nonzero expression.

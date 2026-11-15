@@ -10,7 +10,11 @@ AXES = ("square",)
 
 def plot(axs):
     common.plot_collinearity_boxes(
-        axs[0], DATASET, rank=common.selected_ranks(DATASET)[1]
+        axs[0],
+        DATASET,
+        rank=common.selected_ranks(DATASET)[1],
+        wrap_key=True,
+        key_loc="center right",
     )
 
 

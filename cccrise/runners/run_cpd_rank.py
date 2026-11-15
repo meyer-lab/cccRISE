@@ -191,10 +191,13 @@ def ridge_comparison(
     fits by rank.
     """
     frames, fits_by_rank = [], {}
+    # The ridge fit runs in the masked fits' precision: in float32 it went NaN
+    # on ALAD from CPD rank 4
+    ridge_kwargs: dict[str, Any] = fit_kwargs | {"dtype": MASKED_CP_DTYPE}
     for rank in ranks:
         fits = [
-            fit_cp_on_device(tensor, rank, l2_reg=reg, **fit_kwargs)
-            for reg in (0.0, l2_reg)
+            fit_cp_on_device(tensor, rank, **fit_kwargs),
+            fit_cp_on_device(tensor, rank, l2_reg=l2_reg, **ridge_kwargs),
         ]
         fits_by_rank[rank] = fits
         matched = per_component_fms(fits[0][1], fits[1][1])
@@ -355,6 +358,7 @@ def run_cpd_rank_selection(
             "imputation_options": IMPUTATION_OPTIONS,
             "imputation_dtype": MASKED_CP_DTYPE,
             "compare_ridge": compare_ridge,
+            "ridge_dtype": MASKED_CP_DTYPE,
             "random_state": random_state,
             "files": {key: Path(name).name for key, name in paths.items()},
             "interaction_tensor_shape": list(tensor.shape),
