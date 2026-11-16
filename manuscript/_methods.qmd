@@ -56,7 +56,7 @@ To resolve the IBD enteroendocrine (EE), enterochromaffin (EC), and tuft cells, 
 ### Construction of the Aligned 4D Communication Tensor
 
 From the eigen-states that RISE produces, CCC scores were calculated for all relevant LR pairs in each condition, with each pair of eigen-states as sender and receiver.
-LR pairs were obtained from the human CellChatDB resource of 2,005 annotated interactions, including multimeric complexes\ [@doi:10.1038/s41467-021-21246-9].
+LR pairs were obtained from the human CellChatDB resource of 1,938 annotated interactions, including multimeric complexes\ [@doi:10.1038/s41467-021-21246-9].
 Pairs were retained only if every ligand and receptor subunit gene was present in the expression data, and the expression of a multimeric complex was taken as the minimum expression of its subunits.
 
 **Eigen-state expression.** The expression of eigen-state $q$ in condition $i$ was the corresponding row of $P_{i}^{T}X_{\mathrm{sc},i} + \mathbf{1}\mu^{T}$, clipped at 0.
@@ -114,7 +114,7 @@ This left 7 lineages (coarse labels) and 54 annotated cell types (fine labels).
 Cells and genes were filtered and normalized as for ALAD, with the gene filter measured on all remaining cells, and mitochondrial and ribosomal genes were also removed.
 To fit in memory, each biopsy was capped at 2,000 cells drawn at random from the cells passing the count filter, which subsampled 245 of the 343 biopsies and kept 634,534 of 1,174,575 cells.
 The cap kept the composition of each biopsy: within each subsampled biopsy, no lineage's share changed by more than 2.5%, and every lineage and cell type remained.
-The final dataset consisted of 634,534 cells and 23,355 genes, with 1,255 LR pairs retained, and was fit with a 60-component RISE model and a 6-component CPD model, selected as described in Rank Selection.
+The final dataset consisted of 634,534 cells and 23,355 genes, with 1,337 LR pairs retained, and was fit with a 60-component RISE model and a 6-component CPD model, selected as described in Rank Selection.
 
 ### Fit Evaluation and Component Comparison
 
@@ -156,7 +156,7 @@ The held-out R^2^X was then computed on the block of held-out cells and held-out
 For ALAD, ranks 1 to 50 were tested and we selected the rank maximizing the mean held-out R^2^X.
 For IBD, ranks 30 to 90 were tested in steps of 5; mean held-out R^2^X plateaued without a clear maximum, so we selected the smallest rank whose mean was within one standard error of the largest (rank 85), rank 60.
 
-**CPD.** CPD ranks from 1 to the selected RISE rank were evaluated on the communication tensor from the uncompressed RISE fit.
+**CPD.** CPD ranks from 1 to the selected RISE rank (for ALAD) or to 20 (for IBD) were evaluated on the communication tensor from the uncompressed RISE fit.
 At each rank, CPD was fit from 10 seeded starts of the same SVD initialization used for the reported fit (randomized SVD, seeds 42--51), in single precision on a GPU, and four quantities were computed.
 First, the fit R^2^X of each start.
 Second, the imputation R^2^X: tensor entries were split into 10 random folds, and for each fold the held-out entries were set to zero and CPD was fit by masked ALS, which iteratively fills the held-out entries with the current reconstruction.
@@ -285,11 +285,11 @@ Comparator condition loadings were tested for association as in Clinical Associa
 
 **Pseudobulk CPD.** Each entry was the product of mean ligand expression in the sender and mean receptor expression in the receiver, with cell types absent from a sample set to zero.
 CPD was fit and its rank selected as for CCC-RISE, so pseudobulk CPD differed from CCC-RISE only in the tensor it decomposed.
-Ranks were swept up to 25 (ALAD fine) and 20 (IBD fine), and up to the number of cell types on coarse labels.
+Ranks were swept up to 15 on fine labels in both cohorts, and up to the number of cell types on coarse labels.
 The selected ranks were 4 (coarse) and 5 (fine) on ALAD and 6 and 5 on IBD.
 
 **Tensor-cell2cell.** Each gene's expression was the fraction of a cell type's cells detecting it, and each entry was the mean of the ligand and receptor values\ [@doi:10.1038/s41467-022-31369-2].
-Non-negative CPD was fit from 10 random starts at each rank up to 25 (coarse) and 15 (fine) on ALAD and 15 on IBD, and the rank was taken at the Kneedle elbow of the mean error, giving 8 and 6 on ALAD and 3 and 3 on IBD.
+Non-negative CPD was fit from 10 random starts at each rank up to 25 (coarse) and 15 (fine) on ALAD and 15 on IBD, and the rank was taken at the Kneedle elbow of the mean error, giving 10 and 5 on ALAD and 3 and 3 on IBD.
 A start's congruence was the largest absolute product, over the four modes, of the cosines between two of its components.
 We departed from the published analysis in four ways, each meant to let the method perform at its best: we kept every cell type and masked absent entries, where the published analysis keeps only cell types present in every sample; took the rank from Kneedle rather than by eye; kept the lowest-error start; and ran up to 1,000 iterations at a tolerance of 10^−12^ rather than 100 at 10^−6^.
 
