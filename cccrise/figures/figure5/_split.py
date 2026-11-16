@@ -380,7 +380,7 @@ def null_draws(dataset: str, t: pd.DataFrame) -> pd.DataFrame:
     keys = t.assign(Labelling=t["Labelling"].replace("", "coarse"))
     draws = load("covariation_draws", dataset=dataset)
     return keys[["Name", "Method", "Labelling", "Component"]].merge(draws)[
-        ["Name", "Null", "Draw", "Mean correlation"]
+        ["Name", "Null", "Draw", "Pair of pairs", "Spearman correlation"]
     ]
 
 
@@ -473,9 +473,10 @@ def covariation(axs, dataset: str, programs, key_loc: str = "lower center") -> N
     common.source_data(
         f"covariation_null_draws_{dataset}",
         null_draws(dataset, t),
-        "Each null draw's mean pairwise rank correlation for every component and "
-        "column of the co-variation file (by Name), merged alike: the draws behind "
-        "its 95th percentiles and p's.",
+        "Each null draw's pairwise rank correlations (Spearman, across samples) "
+        "for every component and column of the co-variation file (by Name), pair "
+        "of pairs by pair of pairs, merged alike: each draw's mean is a point of "
+        "the null behind its 95th percentiles and p's.",
     )
     for _, r in t.iterrows():
         _lollipop(ax, r)
