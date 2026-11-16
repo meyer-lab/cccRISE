@@ -157,20 +157,28 @@ def covariation_baselines(
     rng = np.random.default_rng(seed)
     pool = np.setdiff1d(np.arange(scores.shape[1]), top)
     level = np.log10(scores.mean(axis=0) + 1e-12)
-    neighbors = [
-        pool[np.argsort(np.abs(level[pool] - level[t]))[:N_EXPRESSION_NEIGHBORS]]
-        for t in top
-    ]
 
-    def matched_draw():
-        draw = []
-        for candidates in neighbors:
-            draw.append(rng.choice(np.setdiff1d(candidates, draw)))
+    def matched(candidates_pool):
+        neighbors = [
+            candidates_pool[
+                np.argsort(np.abs(level[candidates_pool] - level[t]))[
+                    :N_EXPRESSION_NEIGHBORS
+                ]
+            ]
+            for t in top
+        ]
+
+        def draw():
+            picked = []
+            for candidates in neighbors:
+                picked.append(rng.choice(np.setdiff1d(candidates, picked)))
+            return picked
+
         return draw
 
     draws = {
         "random": lambda: rng.choice(pool, len(top), replace=False),
-        "expression_matched": matched_draw,
+        "expression_matched": matched(pool),
     }
     if associated is not None:
         associated_pool = np.setdiff1d(np.flatnonzero(associated), top)

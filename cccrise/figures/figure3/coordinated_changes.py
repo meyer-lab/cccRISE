@@ -10,8 +10,9 @@ summed over eigenstates).
 
 - Association: each pair's scores, and the component's condition loadings,
   get the component ANOVA against the 6-month outcome
-  (`program_lr_association`: one-way ANOVA over the outcome groups, eta^2 as
-  the effect size, Benjamini-Hochberg FDR across the 513 LR pairs). The histogram
+  (`program_lr_association`: one-way ANOVA over the outcome groups of each
+  pair's scores divided by the condition's read depth, eta^2 as the effect
+  size, Benjamini-Hochberg FDR across LR pairs). The histogram
   is every LR pair's eta^2, with the whole component's eta^2 and its `N_TOP`
   most heavily weighted LR pairs' marked.
 - Co-variation of the `N_TOP` pairs: the Spearman correlation across
@@ -23,14 +24,22 @@ summed over eigenstates).
   as many LR pairs from outside that set (`program_covariation`, from
   `covariation_baselines`): random,
   expression-matched (one pair per top pair from its `N_EXPRESSION_NEIGHBORS`
-  nearest pairs in log mean score), and other associated (FDR < 0.05 on their
-  own), so every box is a distribution of single pairwise correlations.
+  nearest pairs in log mean score), and other associated (FDR < 0.05 on their own), so every box is a
+  distribution of single pairwise correlations.
+- Significance of the top pairs against each baseline (`covariation_tests`,
+  the one statistic this module computes): the share of that baseline's draws
+  whose mean correlation reaches the top pairs' mean (one-sided empirical
+  p, +1 smoothed so its floor is 1 / (`COVARIATION_DRAWS` + 1), as Figure 5's
+  `program_covariation` test), Benjamini-Hochberg-adjusted across baselines. Draws, not pooled
+  correlations, are the unit: pairs of pairs within a draw share pairs, so a
+  test over the pooled correlations would overstate n.
 """
 
 from functools import cache
 
 import numpy as np
 import pandas as pd
+from scipy.stats import false_discovery_control
 
 from ...covariation import (
     COVARIATION_DRAWS,
@@ -41,6 +50,7 @@ from ...covariation import (
     top_pairs,
 )
 from .. import common, style
+from ..figure2.nichenet import significance_marks
 from ._common import (
     COMPONENT,
     OUTCOME,
@@ -63,7 +73,9 @@ def plot(axs):
     plot_lr_association_distribution(
         result["lr_eta"], result["component_eta"], result["top"], axs[0]
     )
-    plot_lr_covariation(result["observed"], result["baselines"], axs[1])
+    plot_lr_covariation(
+        result["observed"], result["baselines"], result["tests"]["PAdj"], axs[1]
+    )
 
 
 def plot_lr_association_distribution(
@@ -98,16 +110,17 @@ def plot_lr_association_distribution(
 
 
 def plot_lr_covariation(
-    observed: np.ndarray, baselines: dict[str, np.ndarray], ax
+    observed: np.ndarray, baselines: dict[str, np.ndarray], padj, ax
 ) -> None:
     """Pairwise rank correlations of the top pairs (boxed, with each pair of
     pairs as a point) beside every draw's pairwise correlations, pooled, per
-    baseline (NaN where a draw merged pairs)."""
+    baseline (NaN where a draw merged pairs), each baseline starred above its
+    whisker where the top pairs exceed it (`padj`)."""
     groups = {f"Cmp. {COMPONENT} top {N_TOP}": observed} | {
         BASELINES[name][0]: draws[~np.isnan(draws)] for name, draws in baselines.items()
     }
     # Green, as the top pairs are in the association panel
-    colors = [style.COLORS["highlight"]] + [color for _, color in BASELINES.values()]
+    colors = [style.COLORS["highlight"]] + [BASELINES[name][1] for name in baselines]
     boxes = ax.boxplot(
         list(groups.values()),
         widths=0.6,
@@ -128,6 +141,8 @@ def plot_lr_covariation(
         linewidths=0,
         zorder=3,
     )
+    upper_whiskers = [w.get_ydata().max() for w in boxes["whiskers"][3::2]]
+    significance_marks(ax, range(2, len(groups) + 1), upper_whiskers, padj)
     common.reference_line(ax, 0)
     ax.set_xticks(
         range(1, len(groups) + 1),
@@ -168,7 +183,29 @@ def coordinated_analysis() -> dict:
         "top": top,
         "observed": observed,
         "baselines": baselines,
+        "tests": covariation_tests(observed, baselines),
     }
+
+
+def covariation_tests(
+    observed: np.ndarray, baselines: dict[str, np.ndarray]
+) -> pd.DataFrame:
+    """Each baseline's one-sided empirical p of the top pairs' mean
+    correlation against its per-draw means, BH-adjusted across baselines."""
+    mean = observed.mean()
+    draw_means = {name: np.nanmean(d, axis=1) for name, d in baselines.items()}
+    p = [(1 + (m >= mean).sum()) / (1 + len(m)) for m in draw_means.values()]
+    return pd.DataFrame(
+        {
+            "Baseline": [BASELINES[name][0] for name in baselines],
+            "Top pairs mean": mean,
+            "Baseline median of draw means": [
+                np.median(m) for m in draw_means.values()
+            ],
+            "P": p,
+            "PAdj": false_discovery_control(p),
+        }
+    )
 
 
 def context_score_matrix() -> np.ndarray:
@@ -185,8 +222,9 @@ def context_score_matrix() -> np.ndarray:
 def covariation_draws() -> tuple[np.ndarray, dict[str, np.ndarray]]:
     """The top pairs' pairwise rank correlations, and each baseline's draws
     (draws x pairs of pairs, NaN past a draw's merged pairs), in
-    `covariation_baselines`' order."""
+    `covariation_baselines`' order, for the sets in `BASELINES`."""
     rows = common.alad_programs("program_covariation").query("Component == @COMPONENT")
+    rows = rows[rows["Set"].isin(["Top pairs", *BASELINES])]
     draws = {
         str(name): group.pivot(
             index="Draw", columns="Pair of pairs", values="Rank correlation"
@@ -219,7 +257,8 @@ def _source_data(result: dict) -> None:
         result["per_lr"][["F", "P", "PAdj", "EtaSquared"]].assign(
             **{"LR pair": names, f"Cmp {COMPONENT} top {N_TOP}": top}
         ),
-        f"One-way ANOVA of each LR pair's read-depth-corrected scores over "
+        f"One-way ANOVA of each LR pair's scores, divided by the condition's "
+        f"read depth, over "
         f"'{OUTCOME}': F, p, Benjamini-Hochberg-adjusted p across LR pairs, and "
         f"eta-squared (histogram). The whole component's eta-squared is "
         f"{result['component_eta']:.4f}.",
@@ -262,6 +301,15 @@ def _source_data(result: dict) -> None:
         "nearest pairs in log mean score), and other outcome-associated pairs "
         "(adjusted p < 0.05), each draw's pairs sharing a gene averaged into one "
         "as above.",
+        part=1,
+    )
+    common.source_data(
+        "covariation_tests",
+        result["tests"],
+        "The top pairs' mean correlation against each baseline's draws: "
+        "one-sided empirical p, the share of draws (+1 smoothed, of "
+        f"{COVARIATION_DRAWS} + 1) whose mean correlation is at least the top "
+        "pairs', and Benjamini-Hochberg-adjusted p across baselines (stars).",
         part=1,
     )
 

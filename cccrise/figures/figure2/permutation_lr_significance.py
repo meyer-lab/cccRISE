@@ -12,6 +12,7 @@ from .. import common, style
 DATASET = "alad"
 AXES = ("square", "square")
 COLORBAR_TICKS = (0, common.SIG_ALPHA, 0.1, 0.2)
+KEY_HEADROOM = 1.25  # y-limit over the histogram's, for the legend
 
 
 def plot(axs):
@@ -50,11 +51,12 @@ def _calibration(lr_table, ax):
         edgecolor="white",
         linewidth=style.LINE_WIDTH_THIN,
     )
-    common.reference_line(
+    null_line = common.reference_line(
         ax, common.SIG_ALPHA, horizontal=False, label="Permutation null (5%)"
     )
+    null_line.set_ydata([0, 1 / KEY_HEADROOM])  # stops below the legend
     ax.set_xlim(0, x_max)
-    ax.set_ylim(top=ax.get_ylim()[1] * 1.25)  # headroom for the legend
+    ax.set_ylim(top=ax.get_ylim()[1] * KEY_HEADROOM)
     ax.set_xlabel("Fraction of entries significant\nper LR pair (p < 0.05)")
     ax.set_ylabel("Density")
     ax.legend(loc="upper right")

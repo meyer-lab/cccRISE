@@ -18,20 +18,20 @@ communication_score: expression_product
 complex_sep: '&'
 complex_agg_method: min
 hill_k: 0.5
-r2x_rise: 0.03151461990700155
+r2x_rise: 0.03151452350359807
 random_state: 42
-total_tensor_entries: 6968079
-cohort_fraction_significant_p05: 0.09865086202380886
-cohort_fraction_significant_p01: 0.044465052706779015
-cohort_median_zscore: -0.03535967794118733
-cohort_mean_zscore: 0.25789627021944717
+total_tensor_entries: 7810225
+cohort_fraction_significant_p05: 0.09803904496989524
+cohort_fraction_significant_p01: 0.04462944409412021
+cohort_median_zscore: -0.034834180415300994
+cohort_mean_zscore: 0.2527611825464701
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
-  lr_pairs: 513
+  lr_pairs: 575
 outputs:
 - cccrise/data/validation_results/significance_lr_alad.parquet
 - cccrise/data/validation_results/significance_entries_alad.nc
-git_sha: 155b23d1b52b41dfae1f7aae3bd855c5f6f47839
-generated: '2026-10-28T21:15:45+00:00'
+git_sha: 3c435efb1949cb5d29b564e6c8328de35dab97ff-dirty
+generated: '2026-11-14T01:13:54+00:00'

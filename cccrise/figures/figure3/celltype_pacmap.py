@@ -19,16 +19,12 @@ from matplotlib.patches import Rectangle
 from ...runners.datasets import DATASETS
 from .. import common, style
 from ..figure4._common import map_axes
-from ..figureS_alad_pacmaps.weight_pacmaps import (
-    SATURATION_PERCENTILE,
-    plot_value_scatter,
-)
 from ._common import DATASET, EIGENSTATE
 
 BACKGROUND_TYPE = "Macrophages"  # most of the cells: drawn beneath the rest
 LYMPHOCYTES = ("CD4 T cells", "CD8 T cells", "NK cells")
 ZOOM_XLABEL = "PaCMAP 1 (zoom: lymphocytes)"
-CLUSTER_RADIUS = 3  # PaCMAP units around the lymphocytes' median: their island
+CLUSTER_RADIUS = 4  # PaCMAP units around the lymphocytes' median: their island
 BOX_QUANTILES = (0, 1)  # of the island's lymphocytes, per axis: its full extent
 BOX_PAD = 0.05  # of the box's size, on each side
 AXES = ("square",) * 2
@@ -51,7 +47,7 @@ def plot(axs):
             linewidth=style.LINE_WIDTH_THIN,
         )
     )
-    points = plot_value_scatter(axs[1], x[inside], y[inside], projection[inside])
+    points = common.plot_value_scatter(axs[1], x[inside], y[inside], projection[inside])
     points.set_sizes([style.POINT_SIZE_BACKGROUND])
     axs[1].set(xlim=(box[0], box[0] + box[2]), ylim=(box[1], box[1] + box[3]))
     map_axes(axs[1], xlabel=ZOOM_XLABEL)
@@ -121,7 +117,8 @@ def projection_limit() -> float:
     projection = common.get_cell_projections(DATASET).obsm["projections"]
     return float(
         np.percentile(
-            np.abs(projection[blowup()[1], EIGENSTATE - 1]), SATURATION_PERCENTILE
+            np.abs(projection[blowup()[1], EIGENSTATE - 1]),
+            common.SATURATION_PERCENTILE,
         )
     )
 

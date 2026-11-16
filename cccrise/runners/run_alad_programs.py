@@ -18,9 +18,9 @@ folder):
         sender/receiver context (`covariation.context_scores`), with the
         condition's patient, CLAD/Died vs. No CLAD group and read depth
     program_lr_association_alad.parquet
-        Figure 3E: each LR pair's one-way ANOVA of its read-depth-corrected
-        context scores over the 6-month outcome (F, p, Benjamini-Hochberg q
-        across pairs, eta^2), as the component's loadings are tested
+        Figure 3E: each LR pair's one-way ANOVA of its context scores, each
+        divided by its condition's read depth, over the 6-month outcome (F, p,
+        Benjamini-Hochberg q across pairs, eta^2)
     program_covariation_alad.parquet
         Figure 3F: the pairwise rank correlations across conditions of
         `COMPONENT`'s top LR pairs, and of `covariation_baselines`' draws
@@ -217,16 +217,22 @@ def contrast(adata: anndata.AnnData, spec: DatasetSpec) -> pd.DataFrame:
     )
 
 
-def lr_association(scores: np.ndarray, adata: anndata.AnnData, spec) -> pd.DataFrame:
+def lr_association(
+    scores: np.ndarray, depth: np.ndarray, adata: anndata.AnnData, spec
+) -> pd.DataFrame:
     """The component ANOVA against `OUTCOME` on each column of `scores`
-    (conditions x LR pairs) in place of the condition loadings."""
+    (conditions x LR pairs) divided by its condition's read `depth`, in place
+    of the condition loadings. Not `utils.correct_conditions`: its depth trend
+    is fit to every column's norm at once, so it couples the LR pairs and, at
+    low depth, divides by values near or below zero."""
     tested = copy.copy(adata)
-    tested.uns = {**adata.uns, "A": scores}
+    tested.uns = {**adata.uns, "A": scores / depth[:, None]}
     return run_multiple_factors_anova(
         tested,
         [association(OUTCOME)],
         condition_column=spec.condition_column,
         correction="fdr_bh",
+        read_depth_correct=False,
     )
 
 
@@ -349,7 +355,9 @@ def run_alad_programs(spec: DatasetSpec, random_state: int, command: str) -> Non
         for m in ("cp_B", "cp_C", "cp_D")
     )
     scores = context_scores(tensor, B, C)
-    association_table = lr_association(scores, adata, spec)
+    association_table = lr_association(
+        scores, groups["Read depth"].to_numpy(), adata, spec
+    )
     write(
         "program_context_scores",
         pd.DataFrame(scores, columns=lr)

@@ -24,7 +24,7 @@ DATASET = "alad"
 SPEC = DATASETS[DATASET]
 
 # The CP component associated with the 6-month outcome
-COMPONENT = 4
+COMPONENT = 5
 # The RISE eigen-state `COMPONENT`'s cp_B and cp_C both load on alone
 EIGENSTATE = 16
 OUTCOME = "6-Month Outcome (4-Way)"
@@ -238,9 +238,19 @@ def label_ranked_head(
         ax=ax,
         only_move={"text": "y", "static": "y", "explode": "y", "pull": "y"},
         time_lim=10,
-        arrowprops={
-            "arrowstyle": "-",
-            "lw": style.LINE_WIDTH_THIN / 2,
-            "color": style.COLORS["reference"],
-        },
     )
+    # Leader lines from each point to the middle of its label's left edge
+    for text, i, rank in zip(texts, top, ranks[:n_top], strict=True):
+        ax.annotate(
+            "",
+            (rank, loadings[i]),
+            xytext=(0, 0.5),
+            textcoords=text,
+            arrowprops={
+                "arrowstyle": "-",
+                "shrinkA": 1,
+                "shrinkB": 2,
+                "lw": style.LINE_WIDTH_THIN / 2,
+                "color": style.COLORS["reference"],
+            },
+        )

@@ -20,8 +20,8 @@ For every experimental condition and ligand--receptor (LR) pair defined using Ce
 This process yields a four-dimensional tensor of data across experimental conditions, sender eigen-states, receiver eigen-states, and LR pairs.
 Finally, to extract patterns from this high-dimensional structure, CCC-RISE employs CPD, which decomposes the tensor into distinct components, each representing a communication program defined by a source of variation across the four modes ({{< fig 1 workflow.3 >}}).
 
-CCC-RISE preserves cell identity through the projection matrices and eigen-state--component associations, which allows for interpretation of CPD factors with single-cell resolution.
-The eigen-states define shared gene-expression programs, so the projection matrices weight cells from every condition in a common embedding where proximity reflects transcriptional similarity ({{< fig 1 embedding >}}).
+CCC-RISE preserves cell identity through its projection matrices and eigen-state--component associations, which allows for interpretation of CPD factors at single-cell resolution.
+The eigen-states define shared gene-expression programs, so the projection matrices weight cells from every condition in a common embedding where close proximity reflects transcriptional similarity ({{< fig 1 embedding >}}).
 Further, by multiplying the RISE projections with the sender and receiver eigen-state factors, the associations of individual cells with each communication component are recovered ({{< fig 1 cell-mapping >}}).
 CCC-RISE's embeddings and factor matrices thus trace LR signaling programs across conditions without losing the granularity of the underlying single-cell data ({{< fig 1 component-interpretation >}}).
 
@@ -32,17 +32,17 @@ CCC-RISE's embeddings and factor matrices thus trace LR signaling programs acros
 
 **CCC-RISE isolates stable, robust communication programs among epithelial subpopulations.** ({{< panel 2 rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
 ({{< panel 2 cp-rank-selection.1 >}}) CPD fit R^2^X and aggregate imputation R^2^X of held-out entries over 10 folds across ranks; mean ± SD over 10 repeated fold splits per rank.
-({{< panel 2 cp-rank-selection.2 >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each of 10 seeded SVD starts per rank (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey); boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-({{< panel 2 cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel 2 cp-rank-selection.2 >}}).
-({{< panel 2 cp-factor-matrices >}}) CPD factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs; conditions are grouped by ALAD status, then six-month outcome (color strips).
-({{< panel 2 permutation-lr-significance.1 >}}) Fraction of each LR pair's (n = 513) condition by sender by receiver entries exceeding a null of within-sample cell permutations at p < 0.05 (one-sided empirical test).
+({{< panel 2 cp-rank-selection.2 >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each of 10 seeded SVD starts per rank (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey); boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5-times the IQR.
+({{< panel 2 cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue) and each other solution (grey).
+({{< panel 2 cp-factor-matrices >}}) CPD factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs; conditions are grouped by ALAD status, then six-month outcome.
+({{< panel 2 permutation-lr-significance.1 >}}) Fraction of each LR pair's (n = 575) condition by sender by receiver entries exceeding a null of within-sample cell permutations at p < 0.05 (one-sided empirical test).
 ({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by fraction of entries significant (as above).
-({{< panel 2 nichenet >}}) NicheNet target score of each ligand (n = 185) per CPD component on DE between the component's top receiver cells (above the 90th percentile of receiver weight within its receiver cell types) and bottom receiver cells (below the 10th percentile across all cells) (light boxes; points colored and sized by the ligand's weight in the component, opaque for the ligands of its top LR pairs), and on 1,000 rankings with the top/bottom labels shuffled among those cells (grey boxes, pooled).
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-\*: q < 0.05 for the ligand-weighted mean score against its 1,000 cell-shuffled values; one-sided empirical test, Benjamini--Hochberg corrected across the five components.
-({{< panel 2 sender-receiver-strata >}}) Per-cell component 5 sender against receiver weight.
-({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each group.
-({{< panel 2 celltype-composition >}}) Annotated cell-type composition of each group, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
+({{< panel 2 nichenet >}}) NicheNet target score of each ligand (n = 215) per CPD component on differential expression between the component's top and bottom receiver cells (light boxes; points colored and sized by the ligand's weight in the component), and with the cell labels shuffled (grey boxes, pooled).
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+q-values above boxes test the ligand-weighted mean score against its 1,000 cell-shuffled values (one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components); bold: q < 0.05.
+({{< panel 2 sender-receiver-strata >}}) Per-cell component 6 sender against receiver weight.
+({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each component 6 group.
+({{< panel 2 celltype-composition >}}) Annotated cell-type composition of component 6 sender/receiver groups, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
 :::
 
 We first applied CCC-RISE to a lung transplant dataset in which conditions represented individual bronchoalveolar lavage (BAL) samples from lung-transplant patients with and without acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007].
@@ -57,21 +57,23 @@ Both CPD fit R^2^X and imputation R^2^X generally increased with rank, indicatin
 However, neither reconstruction metric provided a specific choice for CPD rank, so we turned from prediction accuracy to measures of collinearity, degeneracy, and instability.
 Specifically, we varied CPD rank and SVD initialization seed, refactored the communication tensor, and computed the cosine similarity between components.
 The cross-component collinearity within condition, sender eigen-state, and receiver eigen-state modes increased rapidly with rank, a trend that was stable across starts ({{< fig alad-cohort cp-collinearity >}}).
-Conversely, the LR pair mode became collinear in at least one start at rank 6 ({{< fig 2 cp-rank-selection.2 >}}).
+Conversely, the LR pair mode became collinear in at least one start at rank 8 ({{< fig 2 cp-rank-selection.2 >}}).
 Shared patterns in smaller modes were expected because of the limited number of variation sources amongst conditions and eigen-states, whereas collinearity in the largest mode (LR pairs) indicated problematic degeneracy; it became non-trivial to separate shared communication patterns from artifacts of overfitting at high rank.
-Further, re-initialized factorizations became unstable at rank 6 and beyond, which, combined with the emergence of collinearity at rank 6, encouraged us to decompose the communication tensor using CPD rank 5 ({{< fig 2 cp-minima >}}, {{< fig 2 cp-factor-matrices >}}).
+Further, re-initialized factorizations became unstable at rank 7 and beyond, which, combined with the emergence of collinearity at rank 8, encouraged us to decompose the communication tensor using CPD rank 6 ({{< fig 2 cp-minima >}}, {{< fig 2 cp-factor-matrices >}}).
 
 We next asked whether the communication programs captured by CCC-RISE were stable, robust against cell permutation, and aligned with external biological validation.
-At the selected rank, RISE and CPD components were stable over re-initialization and leave-one-patient-out jackknife ({{< fig alad-cohort rise-fms cpd-fms >}}).
+At the selected rank, most RISE and CPD components were stable over re-initialization and leave-one-patient-out jackknife ({{< fig alad-cohort rise-fms cpd-fms >}}).
+The two exceptions, RISE component 3 and CPD component 1, were unstable during patient jackknife because they each heavily weighted an especially small subset of patients ({{< fig 2 cp-factor-matrices.1 >}}, {{< fig alad-cohort factors >}}).
 To assess robustness, we extended the significance testing of CellPhoneDB and CellChat to continuous eigen-states by shuffling which cell's expression is paired with each eigen-state projection and recomputing the communication tensor\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
 While only 10% of each LR pair's entries exceeded this null at p < 0.05, mean observed scores exceeded mean null scores for nearly every LR pair, indicating that aggregate LR scores and select individual communication tensor entries were robust to cell permutation ({{< fig 2 permutation-lr-significance >}}).
 Finally, we tested whether each component's receiver cells showed transcriptional evidence of ligand signaling by scoring how well differential expression (DE) in the component's top receiver cells recovered each ligand's NicheNet-predicted downstream gene targets ({{< fig 2 nichenet >}})\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
-Averaged with each ligand's weight in the component, target scores exceeded those obtained with the top and bottom receiver labels shuffled among cells for components 4 and 5 (q = 0.02), with components 1 and 2 trending (q = 0.09 and 0.053) ({{< fig 2 nichenet >}}).
-Thus, the receiver cells of components 4 and 5 upregulated the downstream gene targets of the ligands most heavily weighted by those components.
-Collectively, these results show that CCC-RISE components are stable, robust to cell permutations, and align with external ligand--gene-target inference data.
+Averaged with each ligand's weight in the component, target scores exceeded those obtained with the shuffled receiver labels for components 2 and 6 ({{< fig 2 nichenet >}}).
+Thus, the receiver cells of components 2 and 6 upregulated the downstream gene targets of the ligands most heavily weighted by those components.
+Other components were trending towards significance but likely remained underpowered do to limited overlap between the NicheNet v2 database and the CellChatDB LR interaction database (e.g., component 5, q=0.062, missing LCK, GZMA, and CD69).
+Collectively, these results show that CCC-RISE components were stable, robust to cell permutations, and aligned with external ligand--gene-target inference data.
 
 RISE eigen-states allow cellular identity to be traced from CPD component weights back to single-cell gene expression without depending on prior annotations.
-We illustrate this with component 5, whose sender and receiver loadings were spread across multiple eigen-states, suggesting signaling between populations ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}).
+We illustrate this with component 6, whose sender and receiver loadings were spread across multiple eigen-states, suggesting signaling between populations ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}).
 Combining these loadings with each cell's RISE projections gave per-cell sender and receiver weights, which few cells carried simultaneously; thresholding defined 67 sender and 58 receiver cells with weights greater than 0.3 times the top cell's sender or receiver weight, respectively ({{< fig 2 sender-receiver-strata >}}).
 We found that these groups both expressed canonical epithelial marker genes (FXYD3, EPCAM, and ELF3) at higher levels than all other cells (q < 0.05) ({{< fig cmp5-identity celltype-markers group-vs-rest >}}).
 Individually, the groups expressed unique epithelial subpopulation markers, indicating communication between ciliated sender cells and basal/secretory receiver cells ({{< fig 2 epithelial-markers >}}, {{< fig cmp5-identity sender-vs-receiver >}}).
@@ -79,69 +81,70 @@ Further, all subpopulation markers remained significantly differentially express
 These eigen-state--derived epithelial labels aligned closely with available annotations, but represented subpopulations more granular than those defined in the data ({{< fig 2 celltype-composition >}}).
 In sum, label-free interpretation of CCC-RISE factors isolated a well-validated CCC program, wherein ciliated epithelial cells secrete betacellulin (BTC) that binds basal and secretory epithelial cells through epidermal growth factor receptors EGFR and ErbB2, inducing tissue repair or fibrosis depending on disease context ({{< fig 2 cp-factor-matrices.4 >}})\ [@doi:10.1165/ajrcmb.20.5.3308; @doi:10.1038/ki.2012.43; @doi:10.3390/cells11060986].
 
-### CCC-RISE identifies a coordinated immune signaling program associated with CLAD
+### CCC-RISE identifies coordinated immune communication driving ALAD progression
 
 ::: {#fig-3}
 ![](figures/figure3/figure3.svg){width="6.5in"}
 
-**CCC-RISE identifies a coordinated immune signaling axis associated with ALAD outcome.** ({{< panel 3 outcome-association >}}) CPD component 4 condition loadings stratified by six-month outcome: stable (n = 21), ALAD-recovered (n = 12), CLAD (n = 12), and died (n = 2).
-Lines connect samples from the same patient, boxes show the median and interquartile range, and whiskers show the most extreme values within 1.5-times the interquartile range.
-Associations were tested by one-way ANOVA with Benjamini--Hochberg correction across all outcomes and components.
+**CCC-RISE identifies a coordinated immune signaling axis associated with ALAD outcome.** ({{< panel 3 outcome-association >}}) CPD component 5 condition loadings stratified by six-month outcome: stable (n = 21), ALAD-recovered (n = 12), CLAD (n = 12), and died (n = 2).
+Lines connect samples from the same patient, boxes show the median and IQR, and whiskers show the most extreme values within 1.5-times the IQR.
+Associations were tested by one-way ANOVA with BH correction across all outcomes and components.
 ({{< panel 3 celltype-eigenstates >}}) Mean projection of each annotated cell type's cells onto each RISE eigen-state; the dashed box marks eigen-state 16.
-({{< panel 3 celltype-pacmap.1 >}}) PaCMAP embedding of all cells colored by annotated cell type, drawn in random order so that overlapping cell types remain visible; the dashed box marks the lymphocyte cluster.
+({{< panel 3 celltype-pacmap.1 >}}) PaCMAP embedding of all cells colored by annotated cell type, drawn in random order; the dashed box marks the lymphocyte cluster.
 ({{< panel 3 celltype-pacmap.2 >}}) The lymphocyte cluster colored by each cell's projection onto eigen-state 16.
-({{< panel 3 sender-receiver-scatter >}}) Per-cell CPD component 4 sender against receiver weight, with R^2^ across all cells, colored by each cell's projection onto eigen-state 16.
-({{< panel 3 lr-loadings >}}) CPD component 4 LR pair loadings against their rank, with the top 10 LR pairs labeled.
-({{< panel 3 coordinated-changes.1 >}}) ANOVA association strength of each LR pair's (n = 513) communication score with six-month outcome.
-Component 4's top 10 LR pairs and its condition loading association strength are marked.
-({{< panel 3 coordinated-changes.2 >}}) Spearman correlation across conditions between each pair of component 4's top 10 LR pairs, with LR pairs sharing a ligand or receptor averaged into one, and between pairs drawn 2,000 times from the remaining LR pairs: at random, matched in expression (each from the 20 pairs nearest a top pair in log mean score), or among the other LR pairs associated with six-month outcome.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-({{< panel 3 lr-permutation >}}) Diamonds: Difference in mean communication score between CLAD/died and stable/recovered samples (n = 14 and 33 samples) of each of component 4's top 10 LR pairs.
-Violins: Null differences across 10,000 permutations of outcome labels between patients.
+({{< panel 3 sender-receiver-scatter >}}) Per-cell CPD component 5 sender against receiver weight, with R^2^ across all cells, colored by each cell's projection onto eigen-state 16.
+({{< panel 3 lr-loadings >}}) CPD component 5 LR pair loadings against their rank, with the top 10 LR pairs labeled.
+({{< panel 3 coordinated-changes.1 >}}) ANOVA association strength of each LR pair's (n = 575) communication score with six-month outcome.
+Component 5's top 10 LR pairs and its condition loading association strength are marked.
+({{< panel 3 coordinated-changes.2 >}}) Spearman correlation across conditions between each pair of component 5's top 10 LR pairs, and between pairs drawn 2,000 times from the remaining LR pairs: at random, matched in expression (each from the 20 pairs nearest a top pair in log mean score), or among the other LR pairs associated with six-month outcome, with LR pairs sharing a ligand or receptor averaged into one rank.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+\*: q < 0.05 for the mean correlation of the top 10 LR pairs against the mean correlations of each baseline's 2,000 draws; one-sided empirical test, BH corrected across the three baselines.
+({{< panel 3 lr-permutation >}}) Difference in mean communication score between CLAD/died and stable/recovered samples (n = 14 and 33 samples) of each of component 5's top 10 LR pairs (diamonds).
+Distributions show null differences across 10,000 permutations of outcome labels between patients.
 All results are normalized by standard deviations of the null.
-q: one-sided empirical test, Benjamini--Hochberg corrected across the 10 pairs.
-({{< panel 3 lr-volcano >}}) Ratio of mean communication score in CLAD/died to stable/recovered samples against one-sided empirical p for each CPD component's top 20 LR pairs by loading; component 4's top 10 pairs are labeled where p < 0.05.
+q: one-sided empirical test, BH corrected across the 10 pairs.
+({{< panel 3 lr-volcano >}}) Ratio of mean communication score in CLAD/died to stable/recovered samples against one-sided empirical p for each CPD component's top 20 LR pairs by loading; component 5's top 10 pairs are labeled where p < 0.05.
 :::
 
 Having demonstrated CCC-RISE's capacity to resolve cellular subpopulation heterogeneity, we next asked whether CCC-RISE components were associated with clinical outcome.
 The proportional abundances of the broad cell types in these samples showed no significant difference between control, declined, and recovered samples, confirming that cell-type composition did not trivially drive patient associations ({{< fig alad-associations celltype-proportions >}}).
-ANOVA of each component's condition loadings against patient outcomes revealed significant associations between CPD component 4 and three outcomes after multiple-test correction: six-month outcome, comprising stable, ALAD-recovered, CLAD, and died groups, and six-month and one-year death ({{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}).
+ANOVA of each component's condition loadings against patient outcomes revealed significant associations between CPD component 5 and three outcomes after multiple-test correction: six-month outcome---comprising stable, ALAD-recovered, CLAD, and died groups---and six-month and one-year death ({{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}).
 The same test applied to the condition loadings of RISE components yielded no significant associations, suggesting that outcome associations emerged only through inferred intercellular communication ({{< fig alad-associations rise-associations >}}).
-Component 4's sender and receiver factors both loaded almost exclusively on eigen-state 16, which projected most strongly onto the lymphocyte cluster of CD4+ T cells, CD8+ T cells, and natural killer (NK) cells ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig 3 celltype-eigenstates >}}).
-However, the lymphocyte cluster defined by RISE projection matrices was non-uniformly loaded onto eigen-state 16, suggesting that CPD component 4 represented communication among a subset of lymphocytes ({{< fig 3 celltype-pacmap >}}).
-Per-cell sender and receiver weights on component 4 were nearly identical, indicating that the same cells were acting as both senders and receivers of component 4 signals ({{< fig 3 sender-receiver-scatter >}}).
-Component 4's top LR pairs consisted of markers of immune cell activation/exhaustion (GZMA--F2R, ENTPD1--ADORA2A, and NECTIN3--TIGIT), immune-activating chemokines and receptors (CCL4/CCL5--CCR4/CCR5 and CXCL13--CXCR3), and activating co-stimulatory ligands and receptors (CD70--CD27 and TNFSF4--TNFRSF4) ({{< fig 3 lr-loadings >}}).
-CPD component 4 thus collectively represents an inflammatory communication axis within activated immune populations that is upregulated in CLAD-positive and deceased lung-transplant recipients.
-Further, this communication program aligns with a previously identified increase in CD8+ T cell activation and NK cell cytotoxicity during the ALAD--CLAD transition\ [@doi:10.1016/j.healun.2024.02.007].
+Component 5's sender and receiver factors both loaded almost exclusively on eigen-state 16, which projected most strongly onto the lymphocyte cluster of CD4+ T cells, CD8+ T cells, and natural killer (NK) cells ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig 3 celltype-eigenstates >}}).
+However, the lymphocyte cluster defined by RISE projection matrices was non-uniformly loaded onto eigen-state 16, suggesting that CPD component 5 represented communication among a subset of lymphocytes ({{< fig 3 celltype-pacmap >}}).
+Per-cell sender and receiver weights on component 5 were nearly identical, indicating that the same cells were acting as both senders and receivers of component 5 signals ({{< fig 3 sender-receiver-scatter >}}).
+Component 5's top LR pairs consisted of markers of immune cell activation (LCK--CD8A/B, GZMA--F2R, CD70--CD27, and CD69--KLRB1), markers of inhibition/exhaustion (CLECL2D--KLRB1 and NECTIN3--TIGIT), and immune-activating chemokines and their receptors (CCL4/CCL5--CCR4/CCR5 and CXCL13--CXCR3) ({{< fig 3 lr-loadings >}}).
+CPD component 5 thus collectively represents an inflammatory communication axis within activated immune populations that is upregulated in CLAD-positive and deceased lung-transplant recipients.
+Further, this communication program aligns with a previously identified increase in CD8+ T cell activation and NK cell cytotoxicity during progression from ALAD to CLAD\ [@doi:10.1016/j.healun.2024.02.007].
 
 CPD groups LR pairs based on covariation across conditions, senders, and receivers rather than by their association with outcome.
-Indeed, while some of component 4's top LR pairs exhibited strong individual association with outcome, they were not the only highly associated LR pairs and were not defined as a group by their ability to stratify patients ({{< fig 3 coordinated-changes.1 >}}).
-Individual outcome association therefore did not explain which LR pairs component 4 grouped together.
-Instead, component 4's top LR pairs were more strongly correlated with one another across conditions than randomly drawn LR pairs, LR pairs matched in mean communication score (LR expression), or other LR pairs with a significant outcome association ({{< fig 3 coordinated-changes.2 >}}).
+Indeed, while some of component 5's top LR pairs exhibited strong individual association with outcome, they were not the only highly associated LR pairs and were not defined as a group by their ability to stratify patients ({{< fig 3 coordinated-changes.1 >}}).
+Individual outcome association therefore did not explain which LR pairs component 5 grouped together.
+Instead, component 5's top LR pairs were more strongly correlated with one another across conditions than randomly drawn LR pairs or other LR pairs with a significant outcome association ({{< fig 3 coordinated-changes.2 >}}).
 The expression-matched baseline excludes shared abundance as the source of this coordination, and the outcome-associated baseline shows that it is not explained by a common association with outcome.
 These results indicate that, by modeling variation across conditions, cells, and LR pairs, CCC-RISE isolates coordinated communication axes from sets of individually varying programs.
 
-Given the limited size of the ALAD cohort and the small number of patients in the "died" group, we tested whether the component 4 association could be explained by patient covariates, individual patients, or random patient grouping.
+Given the limited size of the ALAD cohort and the small number of patients in the "died" group, we tested whether the component 5 association could be explained by patient covariates, individual patients, or random patient grouping.
 No patient covariate (besides Caucasian ethnicity, which was weakly associated with one-year death) was associated with outcome, even before multiple-test correction ({{< fig alad-associations covariates >}}).
-Further, the six-month outcome association remained significant in 42 of 45 leave-one-patient-out jackknife replicates ({{< fig alad-associations effect-size-distributions significant-fraction >}}).
-Of the three exceptions, one patient fell in the died group and carried the largest component 4 condition loading.
+Further, the six-month outcome association remained significant in 44 of 45 leave-one-patient-out jackknife replicates ({{< fig alad-associations effect-size-distributions significant-fraction >}}).
+The one exception left out the patient who fell in the died group and carried the largest component 5 condition loading.
 While these associations did hinge on one especially highly weighted patient, the coordinated program represented by the associated component is a real biological pattern present in the expression data.
-We next applied scDiffCom's condition-label--permutation scheme to our communication tensor to test whether each LR pair's difference in communication score between CLAD/died and stable/recovered samples exceeded those obtained with permuted patient outcome labels\ [@doi:10.1038/s43587-023-00514-x].
-Eight of component 4's ten top LR pairs had higher communication scores in CLAD/died samples than in stable/recovered samples (q < 0.05), indicating that communication scores constructed through RISE exceeded chance in their ability to stratify patients ({{< fig 3 lr-permutation lr-volcano >}}).
+We next applied scDiffCom's condition label--permutation scheme to our communication tensor to test whether each LR pair's difference in communication score between CLAD/died and stable/recovered samples exceeded those obtained with permuted patient outcome labels\ [@doi:10.1038/s43587-023-00514-x].
+Six of component 5's ten top LR pairs had higher communication scores in CLAD/died samples than in stable/recovered samples (q < 0.05), indicating that communication scores constructed through RISE exceeded chance in their ability to stratify patients ({{< fig 3 lr-permutation lr-volcano >}}).
 
-Choice of CCC scoring method used to construct the communication tensor is a known source of disagreement between tools, so we asked whether the program described by component 4 was dependent on our choice of expression-product scoring\ [@doi:10.1038/s41467-022-30755-0; @doi:10.1038/s41576-020-00292-x].
+Choice of CCC scoring method used to construct the communication tensor is a known source of disagreement between tools, so we asked whether the programs described by components 5 and 6 were dependent on our choice of expression-product scoring\ [@doi:10.1038/s41467-022-30755-0; @doi:10.1038/s41576-020-00292-x].
 We compared four approaches used to convert expression to LR interaction scores: product, used by CCC-RISE and NATMI\ [@doi:10.1038/s41467-020-18873-z]; mean, used by Tensor-cell2cell and CellPhoneDB\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41596-020-0292-x]; geometric mean (gmean), used by scDiffCom\ [@doi:10.1038/s43587-023-00514-x]; and the Hill function-inspired score used by CellChat\ [@doi:10.1038/s41467-021-21246-9].
 Upon recomputing the communication tensor from a single RISE fit using each scoring method, we observed that each alternate score generally yielded a CPD fit closely matching that of CCC-RISE's product ({{< fig ccc-scoring factor-match >}}).
-The alternate scores captured LR pairs similar to those of the product score, especially in components 4 and 5 ({{< fig ccc-scoring interpretation.1 >}}).
-For component 4, every score identified T and NK cells as senders, and the Hill score identified the same cells as receivers, whereas the mean and gmean scores instead implicated epithelial receivers ({{< fig ccc-scoring interpretation.2 >}}).
-Overall, CCC-RISE's expression product agreed closely with CellChat's expression Hill function, and even lower-FMS scores closely matched the LR pairs and either the sender or receiver eigen-states of components 4 and 5.
+The alternate scores captured LR pairs similar to those of the product score, especially in components 5 and 6 ({{< fig ccc-scoring interpretation.1 >}}).
+Similarly, every score implicated the same broad sender and receiver cell types in components 5 and 6 except the product score, which pointed to epithelial cells as receivers of component 5's immune signals ({{< fig ccc-scoring interpretation.2 >}}).
+Overall, CCC-RISE's expression product mostly agreed with other available scoring methods, and most disagreements were confined to a single method in a single component; besides in component 4, CCC-RISE never disagreed with all three methods in the same component.
 
-### CCC-RISE uncovers hormonal communication that varies continuously over cells in IBD
+### CCC-RISE uncovers hormonal communication that varies in a continuu across cell types in IBD
 
 ::: {#fig-4}
 ![](figures/figure4/figure4.svg){width="6.5in"}
 
-**Complementary CCC-RISE components describe states along a continuous population of hormone-secreting enteroendocrine cells in IBD.** ({{< panel 4 cp-factor-matrices >}}) CPD factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
+**Complementary CCC-RISE components describe states along a population of hormone-secreting enteroendocrine cells in IBD.** ({{< panel 4 cp-factor-matrices >}}) CPD factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs.
 ({{< panel 4 ee-state-map >}}) RISE projection embeddings of EE, EC, and tuft cells colored by ({{< panel 4 ee-state-map.1 >}}) cell type as annotated in the IBDverse data, ({{< panel 4 ee-state-map.2 >}}) component 3 sender weight, or ({{< panel 4 ee-state-map.3 >}}) component 4 sender weight.
 ({{< panel 4 hormone-expression-map >}}) RISE projection embeddings of EE and EC cells colored by PYY (left) or GCG (right) expression normalized to the expression in the top 1% of expressing cells.
 ({{< panel 4 hormone-angle-scatter >}}) Each EE cell's component 3/4 sender weight normalized to the maximum weight, colored by polar angle where the polar magnitude is at least 0.3 (dotted arc).
@@ -149,14 +152,14 @@ Shaded region excludes cells exceeding 180°.
 Dotted ray and arc indicate an example polar coordinate: (0.3, 45°).
 ({{< panel 4 hormone-angle-hist >}}) Distribution of EE cells with polar magnitude of at least 0.3 over polar angles, colored by angle-based thresholds at 30 and 60°.
 ({{< panel 4 hormone-extreme-markers >}}) Expression of crypt, intermediate (int.), and villus EE markers and BMP target genes in each group.
-Genes shown differ between villus-like and crypt-like cells at q < 0.05 (Mann--Whitney U test, Benjamini--Hochberg corrected across all markers tested).
+Genes shown differ between villus-like and crypt-like cells at q < 0.05 (Mann--Whitney U test, BH corrected across all markers tested).
 :::
 
 We next sought to extend CCC-RISE to an inflammatory bowel disease (IBD) dataset (IBDverse), representing a biologically distinct disease context with enhanced statistical power compared with the ALAD dataset\ [@doi:10.1038/s41588-026-02634-7].
 In the IBD data, conditions comprised terminal-ileum punch biopsies from individual donors of three groups: healthy (no Crohn's Disease; CD), CD uninflamed, and CD inflamed ({{< fig ibd-rank-selection cohort >}}).
-We selected the IBD ranks with the same BiCV and CPD analyses as for ALAD to construct a CCC-RISE model on IBDverse while avoiding overfitting.
+We selected the IBD ranks with the same BiCV and CPD analyses as for ALAD to construct a CCC-RISE model on IBDverse.
 Unlike for ALAD, held-out R^2^X in the RISE BiCV sweep plateaued without a clear maximum, so we used rank 60, the smallest rank within one standard error of the largest held-out R^2^X (rank 85), to decompose the normalized expression tensor ({{< fig ibd-rank-selection rise-rank-selection bicv-test >}}).
-CPD fit R^2^X increased monotonically and did not provide a clear choice of rank, but the LR pair mode first became collinear at rank 7, so we decomposed the communication tensor at rank 6 ({{< fig ibd-rank-selection cp-r2x-starts mode-collinearity >}}).
+Again, CPD fit R^2^X did not provide a clear choice of rank, but the collinearity criteria did: the LR pair mode first became collinear at rank 7, so we decomposed the communication tensor at rank 6 ({{< fig ibd-rank-selection cp-r2x-starts mode-collinearity >}}).
 CCC-RISE yielded components that described healthy and inflamed gut communication programs, including opposing activating/inhibitory immune signaling (components 1 and 5), myeloid--driven axon maintenance (component 2), and hormone secretion (components 3--4) ({{< fig 4 cp-factor-matrices >}}, {{< fig ibd-rank-selection factors eigenstate-heatmap >}}).
 
 The data describe a number of diverse communication programs, so we tested the associations of CPD condition with biopsy type to narrow our interpretation onto clinically relevant programs.
@@ -168,7 +171,7 @@ Thus, CPD components were associated with inflammation status and tracked cell-t
 CPD components 3 and 4 represented distinct, but complementary, hormone-signaling axes.
 They associated with similar sender eigen-states---albeit with distinct distributions---that collectively defined a subpopulation of enteroendocrine (EE) cells ({{< fig ibd-hormone-axes eigenstate-loadings eigenstate-composition >}}).
 Conversely, their receiver eigen-states were entirely distinct and uniquely associated with either enterochromaffin (EC) cells (component 3) or tuft cells (component 4) ({{< fig ibd-hormone-axes eigenstate-loadings eigenstate-composition >}}).
-We therefore restricted our analysis to EE, EC, and tuft cells (as annotated in the IBDverse data) and visualized single-cell heterogeneity in the component 3/4 signaling axis using RISE projection embeddings ({{< fig 4 ee-state-map.1 >}}, {{< fig ibd-hormone-axes cell-map >}}, {{< panel ibd-hormone-axes type-map >}}).
+We therefore restricted our analysis to EE, EC, and tuft cells and visualized single-cell heterogeneity in the component 3/4 signaling axis using RISE projection embeddings ({{< fig 4 ee-state-map.1 >}}, {{< fig ibd-hormone-axes cell-map >}}, {{< panel ibd-hormone-axes type-map >}}).
 Cells with high sender weights in either components 3 or 4 inhabited distinct regions of the broader EE cell cluster, but partially overlapped with each other, indicating that the components represented a non-exclusive pair of EE subpopulations ({{< fig 4 ee-state-map.2 ee-state-map.3 >}}).
 Further, cells with the highest expression of PYY predominantly overlapped with those of high component 3 sender weight, and those with high GCG (GLP-1) expression overlapped with those of high component 4 sender weight, indicating that sender groups were primarily defined by the gene expression of those two hormones ({{< fig 4 hormone-expression-map >}}).
 Component 3 and 4 receiver cells were trivially exclusive, and also matched the expression levels of their respective receptors (NPY1R and GLP1R) ({{< fig ibd-hormone-axes receiver-maps.1 receptor-maps.1 >}}, {{< panel ibd-hormone-axes receiver-maps.2 receptor-maps.2 >}}).
@@ -176,19 +179,19 @@ Component 3 and 4 receiver cells were trivially exclusive, and also matched the 
 We went on to characterize the overlapping EE subpopulations represented by components 3 and 4.
 There was no clear separation of cells by component 3/4 per-cell sender weight, indicating that the components were consistent with the hormonal plasticity of EE cells within the GLP-1-producing lineage ({{< fig 4 hormone-angle-scatter >}})\ [@doi:10.1210/endrev/bnaa018; @doi:10.1016/j.cell.2018.12.029].
 Transforming the sender weight axes to polar coordinates and measuring the distribution of cells over polar angles revealed that two states dominated the continuum of cell identities ({{< fig 4 hormone-angle-hist >}}, {{< fig ibd-hormone-axes magnitude-hist >}}).
-While we recognize the continuous nature of these populations, we attempted to binarize the cells into component 3-high, component 4-high, both, or neither groups using their polar coordinates in order to annotate the cells against canonical markers ({{< fig 4 hormone-angle-hist >}}).
+Acknowledging the continuous nature of these populations, we attempted to binarize the cells into component 3-high, component 4-high, both, or neither groups using their polar coordinates in order to annotate the cells against canonical markers ({{< fig 4 hormone-angle-hist >}}).
 The four groups of cells were characterized by distinct gene expression: component 3-high cells expressed hormones associated with villus EE cells, component 4-high cells expressed crypt-associated genes, and mixed cells expressed CCK, which marks the intermediate stage between GLP-1-producing and villus cells ({{< fig 4 hormone-extreme-markers >}})\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7].
 Further, the crypt-to-villus transition is driven by BMP activity, and we saw a stepwise increase in expression of BMP targets from crypt-like to mixed to villus-like cells ({{< fig 4 hormone-extreme-markers >}})\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036].
 All genes except the intermediate marker CCK remained differentially expressed (q < 0.05) between crypt- and villus-like cells across magnitude thresholds up to 0.9, after which low cell counts reduce statistical power ({{< fig ibd-hormone-axes marker-floor-sweep >}}).
 In agreement with the loss of function following inflammation indicated by component 3 associations ({{< fig ibd-associations status-loadings.1 >}}), component 3-high cells gradually contributed less to the overall EE population in a step-wise manner over healthy, CD uninflamed, and CD inflamed biopsies, indicating that more-exposed, villus-like cells are more sensitive to inflammatory pressure compared with other EE subpopulations ({{< fig ibd-hormone-axes extreme-share >}}).
 In sum, CCC-RISE components 3 and 4 described sender cells on a continuum between two prevailing states with distinct activity: crypt-like producers of GCG communicating with tuft cells and villus-like producers of PYY communicating with EC cells.
 
-### CCC-RISE reveals CCC structure that pseudobulk methods obscure
+### CCC-RISE reveals CCC structure obscured by pseudobulk methods
 
 ::: {#fig-5}
 ![](figures/figure5/figure5.svg){width="6.5in"}
 
-**CCC-RISE resolves CCC programs that pseudobulk methods recover only in part.** PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato; C and F, coarse and fine cell-type labels.
+**CCC-RISE prioritizes coordinated CCC programs that pseudobulk methods miss or recover only in part.** PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato; C and F, coarse and fine cell-type labels.
 LR columns are named by method (P, T, S) and number.
 A component's or column's top LR pairs are the fewest that carry 90% of its squared LR pair loading.
 ({{< panel 5 cos2-grid >}}) Largest squared cosine (cos^2^) between the LR pair loadings of each ALAD CCC-RISE component (n = 5) and any single LR column of each comparator fit.
@@ -201,7 +204,7 @@ For component 4, these are STAC's S12 (coarse) and S14 (fine).
 LR pairs sharing a gene were merged into one group: component 4 has 6 LR pairs in 4 groups, S12 has 7 in 6, and S14 has 11 in 8.
 Dashed and solid ticks mark the 95th percentiles of random and expression-matched draws of as many LR pairs.
 Filled points have q < 0.05.
-The test is one-sided and empirical, against the expression-matched draws, with Benjamini--Hochberg correction across the three tests.
+The test is one-sided and empirical, against the expression-matched draws, with BH correction across the three tests.
 ({{< panel 5 labels-alad labels-ibd >}}) LR columns that each method keeps and loses when cells are described more finely, in ALAD ({{< panel 5 labels-alad >}}) and IBD ({{< panel 5 labels-ibd >}}).
 For PB and STAC, the coarse LR columns sit above the fine ones.
 For CCC-RISE, the components of a refit at a lower RISE rank sit above those of the reported fit.
@@ -209,46 +212,43 @@ Lines join columns whose LR pair cos^2^ is at least 0.09, and wider lines mean l
 NEGR1--NEGR1 is the single top LR pair of the IBD rank-30 component.
 ({{< panel 5 nichenet >}}) NicheNet target score of each CCC-RISE component and each PB and STAC LR column, minus its mean over rankings in which the labels of the high and low receiver cells were shuffled.
 Filled and named points have q < 0.05.
-The test is one-sided and empirical, against the shuffled rankings, with Benjamini--Hochberg correction across the components or columns of each fit.
+The test is one-sided and empirical, against the shuffled rankings, with BH correction across the components or columns of each fit.
 ({{< panel 5 flow-alad >}}) BTC--EGFR in STAC's fine column S10 and in ALAD component 5, among the 288 cells with the fine label epithelial cells.
-Bars show each population's fraction of the label's cells: 61 ciliated-like sender cells and 53 basal/secretory-like receiver cells, as in {{< fig 2 sender-receiver-strata >}}.
+Bars show each population's fraction of the label's cells.
 ({{< panel 5 flow-ibd >}}) PYY--NPY1R and GCG--GLP1R in STAC's fine columns S5 and S4, and in IBD components 3 and 4.
 Bars show fractions of each cell type's cells.
-The 3,058 EE cells fall into villus-like (510), mixed (346), crypt-like (413) and other (1,789) groups, as in {{< fig 4 hormone-angle-hist >}}.
 Sender and receiver sides are scaled separately.
-STAC's band widths are schematic, since it gives one value per label.
 In ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}), "below threshold" marks a cell type's cells that lie outside the CCC-RISE populations, because their per-cell weight is under 0.3 of its largest value.
 ({{< panel 5 niches-fraction >}}) Fraction of NICHES+ cells in each CCC-RISE sender (S) and receiver (R) population, against the fraction predicted by cell type.
 n = 22 populations: 10 in ALAD and 12 in IBD.
 The prediction takes each cell of the population at the NICHES+ rate of its fine cell type in its own sample.
 A cell is NICHES+ when its NICHES score, summed over the component's top LR pairs, is non-zero.
 The dashed line marks equality.
-The labeled points are the populations shown in ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}).
 Two-sided Wilcoxon signed-rank test, paired over the 22 populations: p = 5 × 10^−7^.
 :::
 
-To identify CCC patterns that only single-cell resolution reveals, we compared CCC-RISE with three comparator methods that each build a pseudobulked communication tensor.
+To identify CCC patterns that only single-cell resolution reveals, we compared CCC-RISE with three multi-condition pseudobulk methods.
 Tensor-cell2cell\ [@doi:10.1038/s41467-022-31369-2] and STACCato\ [@doi:10.1016/j.ajhg.2026.05.005] served as external benchmarks, each with its own communication score, decomposition, and rank selection.
-Pseudobulk CPD served as a matched ablation to CCC-RISE that replaced the RISE factorization with pseudobulking.
-To test sensitivity to annotation granularity, we fit each comparator to ALAD and IBD using the coarse (8 and 7 cell types, respectively) and fine (26 and 54) labels provided with each dataset ({{< fig comparator-rank-selection pb-fit-coarse stac-shares-fine >}}).
-Published Tensor-cell2cell drops any cell type absent from a single condition, but we instead kept every cell type and masked absent entries to avoid losing substantial data.
+Pseudobulk CPD served as a matched ablation to CCC-RISE by swapping the RISE-derived communication tensor with a pseudobulked version.
+To test sensitivity to annotation granularity, we fit each comparator method to both the ALAD and IBD cohorts using their provided coarse (8 and 7 cell types, respectively) and fine (26 and 54) labels ({{< fig comparator-rank-selection pb-fit-coarse stac-shares-fine >}}).
+Tensor-cell2cell defaults to dropping any cell type absent from a single condition, but to avoid losing substantial data, we chose to mask absent cell type entries.
 The other two comparators handled this by zero-filling absent entries.
 
 We first evaluated whether the comparators recovered each CCC-RISE component's LR pairs.
 Each comparator fit grouped LR pairs through the column of its LR pair factor, hereafter called LR columns.
 For each component, we identified the closest LR column across all comparator fits by squared cosine similarity to the component's LR pair loadings ({{< fig 5 cos2-grid >}}).
 Columns matched components less as the number of top LR pairs in a component increased ({{< fig comparator-split cos2-pairs >}}).
-However, simple one-to-one matching was an incomplete measure of component containment as a comparator could still carry a component's top LR pairs distributed across several LR columns.
-To quantify this, we computed the fraction of each component's LR pair loadings that the best combination of all LR columns in a comparator fit reconstructed ({{< fig 5 span-containment >}}).
-STACCato's fine fit reconstructed most of ALAD component 3 and IBD component 1, although its closest single column matched to less than half of either.
-No comparator fit reconstructed more than 46% of the outcome associated ALAD component 4.
+However, one-to-one matching was an incomplete measure of component containment as a comparator could still carry a component's top LR pairs but distributed across several LR columns.
+To quantify this possibility, we computed the fraction of each component's LR pair loadings that the best combination of all LR columns in a comparator fit reconstructed ({{< fig 5 span-containment >}}).
+STACCato's fine fit reconstructed most of ALAD component 3 and IBD component 1 despite its closest single column matching to less than half of either component.
+Notably, no comparator fit reconstructed more than 46% of the outcome associated ALAD component 4.
 Tensor-cell2cell reconstructed little of any component and instead tracked the number of genes detected per cell in each condition ({{< fig comparator-ibd-and-depth depth >}}), so we omitted it from the remaining comparisons.
-Comparators therefore matched CCC-RISE components with few top LR pairs but split the broader immune programs across several LR columns or failed to recover them.
+Some comparator fits therefore matched CCC-RISE components with a smaller amount of top LR pairs but split the broader immune programs across several LR columns or failed to recover components entirely.
 
 We next characterized what information comparators lost about CCC when they missed or rearranged a component's top LR pairs.
-STACCato's coarse S12 and fine S14 columns captured the co-stimulatory CD70–CD27 pair present in ALAD component 4, but neither column placed meaningful weight on the component's remaining granzyme and chemokine pairs ({{< fig 5 pair-columns >}}).
+STACCato's coarse S12 and fine S14 columns captured the co-stimulatory CD70--CD27 pair present in ALAD component 4, but neither column placed meaningful weight on the component's remaining granzyme and chemokine pairs ({{< fig 5 pair-columns >}}).
 The top LR pairs of component 4 correlated across conditions beyond expression-matched LR pairs, and the component associated significantly with ALAD outcomes; however, S12 and S14 showed neither property ({{< fig 5 program-covariation >}}; {{< fig comparator-missed-alad associations >}}).
-This deviation suggested that CCC-RISE grouped CD70–CD27 into a more informative coordinated signaling program.
+This deviation suggested that CCC-RISE grouped CD70--CD27 into a more informative coordinated signaling program.
 By contrast, STACCato's coarse and fine fits split ALAD component 3 into four and six LR columns, respectively ({{< fig comparator-split alad-c3-columns >}}; {{< fig comparator-missed-alad share >}}).
 Once again, none of these columns correlated across conditions beyond expression-matched LR pairs, whereas CCC-RISE's single component did, indicating that these LR columns are all pieces of one coordinated program ({{< fig comparator-split alad-c3-covariation >}}).
 In IBD, components 1 and 5 shared conditions, senders, and receivers but carried slightly opposing LR pairs ({{< fig comparator-split ibd-c1c5-modes >}}).
@@ -257,14 +257,14 @@ STACCato's fine fit mixed the two programs across columns S6 and S3, so recoveri
 Concisely, CCC-RISE revealed the coordination of LR pairs that comparators kept apart and separated opposing arms of one immune program where comparators mixed them.
 
 Among comparator columns that placed less than half of their squared loading on the top LR pairs of any single CCC-RISE component, five were disease-associated and carried LR pairs that CCC-RISE lacked ({{< fig comparator-missed-alad share associations >}}; {{< fig comparator-missed-ibd share associations >}}).
-In ALAD, STACCato's coarse column S11 carried AREG–EGFR and pseudobulk CPD's fine column P5 carried TNFSF11–TNFRSF11A/B ({{< fig comparator-missed-alad contents >}}).
-In IBD, STACCato's coarse column S5, fine column S8, and pseudobulk CPD's coarse column P3 joined CXCR1/CXCR2 ligands\ [@doi:10.1038/s41591-021-01520-5] with SAA1–FPR2\ [@doi:10.1084/jem.189.2.395] in a neutrophil-recruitment axis ({{< fig comparator-missed-ibd contents >}}).
+In ALAD, STACCato's coarse column S11 carried AREG--EGFR and pseudobulk CPD's fine column P5 carried TNFSF11--TNFRSF11A/B ({{< fig comparator-missed-alad contents >}}).
+In IBD, STACCato's coarse column S5, fine column S8, and pseudobulk CPD's coarse column P3 joined CXCR1/CXCR2 ligands\ [@doi:10.1038/s41591-021-01520-5] with SAA1--FPR2\ [@doi:10.1084/jem.189.2.395] in a neutrophil-recruitment axis ({{< fig comparator-missed-ibd contents >}}).
 IBD component 5 covered this signaling only partly, through different CXCR1/CXCR2 ligands.
-Intriguingly, neither ALAD S11 nor IBD P3 had a counterpart in the same method's fine fit ({{< fig 5 labels-alad labels-ibd >}}).
-Indeed, across both datasets, 12 of the 31 coarse STACCato and pseudobulk CPD columns had no fine counterpart.
-To test whether CCC-RISE showed a similar granularity dependence, we refit ALAD and IBD at a reduced RISE rank and compared each lower-rank component with the higher-rank fit ({{< fig 5 labels-alad labels-ibd >}}).
-Every lower-rank component carried over except one IBD component loaded entirely on a single homophilic adhesion pair, and the higher-rank fit added new components alongside them.
-Thus, although comparators captured disease-associated signalling that CCC-RISE missed in part, comparator columns were largely sensitive to how cells were exactly labelled, whereas adding eigen-states in CCC-RISE both conserved components and added new ones.
+Intriguingly, neither ALAD S11 nor IBD P3 had a counterpart in the same method's fine label fit ({{< fig 5 labels-alad labels-ibd >}}).
+Across both datasets, 12 of the 31 coarse STACCato and pseudobulk CPD columns had no fine counterpart.
+To test whether CCC-RISE showed a similar granularity dependence, we refit ALAD and IBD at a reduced RISE rank and compared each lower-rank component to it's closest higher-rank component ({{< fig 5 labels-alad labels-ibd >}}).
+Crucially, every lower-rank component carried over except one IBD component loaded entirely on a single homophilic adhesion pair, and the higher-rank fit only added new components alongside them.
+Thus, although comparators captured disease-associated signalling that CCC-RISE missed in part, comparator columns were largely sensitive to how cells were exactly labelled, whereas adding eigen-states in CCC-RISE both conserved components while simultaneously adding new ones.
 
 To assess whether single-cell resolution better identified the receivers responding to prioritized ligands, we applied the ligand-weighted NicheNet target score to each comparator ({{< fig 5 nichenet >}}).
 Because comparators assign one receiver loading per cell type, we contrasted all cells of the most highly loaded cell types against all cells of the least loaded.
@@ -274,13 +274,13 @@ The hormone components 3 and 4 did not exceed shuffled cells under any method.
 Thus, CCC-RISE receivers showed downstream target expression in ALAD where STACCato receivers did not, whereas in IBD every method that captured the inflammatory program also captured its downstream response.
 
 Finally, where a comparator did recover a component's LR pairs, we compared how each method assigned the communicating sender and receiver populations.
-STACCato's fine column S10 recovered the BTC–EGFR signaling of ALAD component 5 but assigned this signaling from the epithelial cell type to itself.
-Component 5 instead placed BTC–EGFR signaling between ciliated-like senders and basal/secretory-like receivers ({{< fig 5 flow-alad >}}).
-Likewise, STACCato's fine columns S5 and S4 recovered the PYY–NPY1R and GCG–GLP1R signaling of IBD components 3 and 4 but sent both hormones from all EE cells to all EC or tuft cells.
+STACCato's fine column S10 recovered the BTC--EGFR signaling of ALAD component 5 but assigned this signaling from the epithelial cell type to itself.
+Component 5 instead placed BTC--EGFR signaling between ciliated-like senders and basal/secretory-like receivers ({{< fig 5 flow-alad >}}).
+Likewise, STACCato's fine columns S5 and S4 recovered the PYY--NPY1R and GCG--GLP1R signaling of IBD components 3 and 4 but sent both hormones from all EE cells to all EC or tuft cells.
 CCC-RISE instead separated villus-like PYY senders from crypt-like GCG senders along a continuum of EE cells ({{< fig 5 flow-ibd >}}).
 Because CCC-RISE weights cells by eigen-state rather than directly by ligand and receptor expression, we checked these subpopulations against an independent single-cell measure.
 Scriabin also represents interaction programs per cell\ [@doi:10.1038/s41587-023-01782-z], but we found its LR sets agreed poorly between random seeds ({{< fig comparator-single-cell scriabin-seeds >}}).
 We therefore turned to NICHES\ [@doi:10.1093/bioinformatics/btac775], which scores each cell by its expression of a ligand or receptor weighted by the condition's mean expression of the matching partner.
 We called a cell NICHES-positive when the cell expressed at least one of a component's top ligands or receptors and the matching partner was expressed in the cell's condition.
-Crucially, every CCC-RISE sender and receiver population contained a larger fraction of NICHES-positive cells than the corresponding cell-type-defined population ({{< fig 5 niches-fraction >}}; {{< fig comparator-single-cell alad-weights ibd-weights >}}), and this advantage held across most per-cell weight thresholds ({{< fig comparator-single-cell alad-tau ibd-tau >}}).
+Indeed, every CCC-RISE sender and receiver population contained a larger fraction of NICHES-positive cells than the corresponding cell-type-defined population ({{< fig 5 niches-fraction >}}; {{< fig comparator-single-cell alad-weights ibd-weights >}}), and this advantage held across most per-cell weight thresholds ({{< fig comparator-single-cell alad-tau ibd-tau >}}).
 Independent single-cell scoring therefore supported the subpopulations that CCC-RISE resolved within cell types that comparators treated as uniform.

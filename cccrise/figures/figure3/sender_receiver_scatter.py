@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 from .. import common, style
-from ..figureS_alad_pacmaps.weight_pacmaps import plot_value_scatter
 from ._common import COMPONENT, DATASET, EIGENSTATE, SPEC
 from .celltype_pacmap import projection_limit
 
@@ -19,7 +18,7 @@ def plot(axs):
     sender = adata.obsm["sc_B"][:, COMPONENT - 1]
     receiver = adata.obsm["rc_C"][:, COMPONENT - 1]
     projection = adata.obsm["projections"][:, EIGENSTATE - 1]
-    points = plot_value_scatter(ax, sender, receiver, projection)
+    points = common.plot_value_scatter(ax, sender, receiver, projection)
     points.set_clim(-projection_limit(), projection_limit())
     common.colorbar(ax, points, f"Eigen-state {EIGENSTATE} projection")
     r2 = np.corrcoef(sender, receiver)[0, 1] ** 2

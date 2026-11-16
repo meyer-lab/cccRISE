@@ -101,7 +101,8 @@ def draw(axs, dataset: str) -> None:
             box.set_facecolor(face)
     # One row of marks over every component's points
     top = [scores["auroc"].max()] * len(components)
-    significance_marks(ax, x, top, tests.set_index("component")["q"].loc[components])
+    q = tests.set_index("component")["q"].loc[components]
+    significance_marks(ax, x, top, q, values=True)
     common.reference_line(ax, 0.5)
     ax.set_xticks(x, components)
     ax.set_xlim(-0.6, len(components) - 0.4)
@@ -182,21 +183,36 @@ def ligand_points(ax, component_scores, x, rng, width: float = 0.6):
     return points
 
 
-def significance_marks(ax, positions, tops, q) -> None:
+def significance_marks(ax, positions, tops, q, values: bool = False) -> None:
     """A star above each of `positions` (at its data's top, `tops`) where `q`
-    is below `SIG_ALPHA`, else n.s."""
+    is below `SIG_ALPHA`, else n.s.; with `values`, `q` itself (the first
+    prefixed 'q = ' to its left) in black, bold where significant."""
     for x, top, value in zip(positions, tops, q, strict=True):
         significant = value < common.SIG_ALPHA
-        ax.text(
+        if values:
+            label, color = f"{value:.2f}", "black"
+        else:
+            label = "*" if significant else "n.s."
+            color = style.COLORS["ink" if significant else "reference"]
+        text = ax.text(
             x,
             top + TEST_PAD,
-            "*" if significant else "n.s.",
+            label,
             ha="center",
             va="bottom",
             fontsize=style.FONT_SIZE_DENSE,
             fontweight="bold" if significant else "normal",
-            color=style.COLORS["ink"] if significant else style.COLORS["reference"],
+            color=color,
         )
+        if values and x == positions[0]:
+            ax.annotate(
+                "q = ",
+                (0, 0),
+                xycoords=text,
+                ha="right",
+                va="bottom",
+                fontsize=style.FONT_SIZE_DENSE,
+            )
 
 
 def makeFigure():

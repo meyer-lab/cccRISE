@@ -21,10 +21,10 @@ subtitle: "Resolving cell--cell communication programs beyond cell-type boundari
 ALAD cohort, RISE factor matrices, and collinearity and stability of RISE and CPD components.** ({{< panel alad-cohort cohort >}}) Schematic of the ALAD cohort data\ [@doi:10.1016/j.healun.2024.02.007].
 ({{< panel alad-cohort factors genes >}}) RISE factor matrices representing component loadings of conditions and genes; conditions are grouped by ALAD status, then six-month outcome (color strips).
 For visualization, genes outside the top 10% by weight in any component are omitted and each component is normalized to its largest absolute loading.
-({{< panel alad-cohort cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and interquartile range (band) over 10 seeded SVD starts per rank.
+({{< panel alad-cohort cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and interquartile range (band; IQR) over 10 seeded SVD starts per rank.
 ({{< panel alad-cohort rise-fms >}}) RISE gene factor and ({{< panel alad-cohort cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
 Each replicate's components were matched to the reference's by Hungarian matching.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
 
 ![](figures/figureS_ibd_rank_selection/figureS_ibd_rank_selection.svg){width="6.5in"}
 
@@ -34,9 +34,9 @@ IBD rank selection.** ({{< panel ibd-rank-selection cohort >}}) Schematic of the
 ({{< panel ibd-rank-selection bicv-test >}}) BiCV test R^2^X from ({{< panel ibd-rank-selection rise-rank-selection >}}) on its own magnified axis.
 ({{< panel ibd-rank-selection cp-r2x-starts >}}) CPD fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
 ({{< panel ibd-rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each start (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey).
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
 ({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
-({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CPD components across ranks, as the median (line and points) and interquartile range (band) over the starts.
+({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CPD components across ranks, as the median (line and points) and IQR (band) over the starts.
 ({{< panel ibd-rank-selection factors genes >}}) RISE factor matrices at the selected rank representing component loadings of conditions and genes.
 ({{< panel ibd-rank-selection eigenstate-heatmap >}}) RISE cell-type--eigen-state associations derived from RISE rank-60 projection matrices: mean RISE projection of each cell type's cells onto each eigen-state.
 
@@ -44,13 +44,13 @@ Boxes show the median and interquartile range and whiskers show the most extreme
 
 **{{< label ibd-associations >}}.
 Association of CPD components and covariates with IBD biopsy type.** ({{< panel ibd-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each IBD biopsy categorization.
-\*: q < 0.05, Benjamini--Hochberg corrected across all categorizations and components.
+\*: q < 0.05, Benjamini--Hochberg (BH) corrected across all categorizations and components.
 ({{< panel ibd-associations status-loadings >}}) CPD component ({{< panel ibd-associations status-loadings.1 >}}) 3 and ({{< panel ibd-associations status-loadings.2 >}}) 4 condition loadings by CD inflammation status.
 Violins show the distribution of loadings, points show individual biopsies, and ticks mark the median.
-One-way ANOVA F and η^2^, with p Benjamini--Hochberg corrected across all categorizations and components.
+One-way ANOVA F and η^2^, with p BH corrected across all categorizations and components.
 ({{< panel ibd-associations lineage-proportions >}}) Fraction of each biopsy's cells in each coarsely annotated cell type for healthy, CD uninflamed, and CD inflamed samples, on a square-root scale.
-Boxes show the median and interquartile range and whiskers show the most extreme values within 1.5-times the interquartile range.
-q: Kruskal--Wallis test across the three groups, Benjamini--Hochberg corrected across cell types.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+q: Kruskal--Wallis test across the three groups, BH corrected across cell types.
 ({{< panel ibd-associations covariates >}}) One-way ANOVA η^2^ of each biopsy covariate and coarse cell-type fraction against each biopsy categorization, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 
@@ -83,10 +83,10 @@ Comparator recovery of the IBD components, and detection depth in every method's
 ({{< panel comparator-ibd-and-depth depth >}}) Absolute Spearman correlation between the absolute condition loadings of each CCC-RISE component or comparator LR column and the median number of genes detected per cell, computed across samples (ALAD, n = 47) or biopsies (IBD, n = 343).
 Each point is one component or column (ALAD, n = 58; IBD, n = 40), grouped by fit.
 For STAC columns, the condition loadings are the leading vector of each LR component's core slice, mapped through the condition factor.
-Boxes show the median and interquartile range, and whiskers show the full range.
+Boxes show the median and IQR, and whiskers show the full range.
 Kruskal--Wallis test across the fits of each cohort: ALAD, p = 1 × 10^−5^; IBD, p = 1 × 10^−4^.
 A star marks a fit whose components track depth more than the cohort's other components.
-This uses a one-sided Mann--Whitney U test with Benjamini--Hochberg correction across the fits of the cohort, given a Kruskal--Wallis p below 0.05.
+This uses a one-sided Mann--Whitney U test with BH correction across the fits of the cohort, given a Kruskal--Wallis p below 0.05.
 
 ![](figures/figureS_comparator_missed_alad/figureS_comparator_missed_alad.svg){width="6.5in"}
 
@@ -98,7 +98,7 @@ n = 39 columns.
 The dashed line marks 0.5.
 Eighteen columns fall below it.
 ({{< panel comparator-missed-alad associations >}}) Each column's strongest association with an ALAD outcome grouping, as effect size (η^2^) against q, beside the CCC-RISE components that have an association with q < 0.05 (blue).
-One-way ANOVA across samples (n = 47), with Benjamini--Hochberg correction across all nine groupings and all components of each fit.
+One-way ANOVA across samples (n = 47), with BH correction across all nine groupings and all components of each fit.
 The panel draws the eight groupings other than acute rejection.
 The dashed line marks q = 0.05.
 The box lists, for each grouping, the columns and CCC-RISE components with q < 0.05.
@@ -115,8 +115,7 @@ H, healthy; CD, Crohn's disease; U and I, CD uninflamed and inflamed.
 Fifteen columns fall below 0.5.
 ({{< panel comparator-missed-ibd associations >}}) Each column's strongest association with a biopsy grouping.
 One-way ANOVA across biopsies (n = 343), with Benjamini--Hochberg correction across all three groupings and all components of each fit.
-The panel draws H vs. CD and U vs. I.
-({{< panel comparator-missed-ibd contents >}}) Top LR pairs of the 15 columns below 0.5 in ({{< panel comparator-missed-ibd share >}}), sized by absolute loading relative to the column's largest.
+The panel draws H vs. CD and U vs. I. ({{< panel comparator-missed-ibd contents >}}) Top LR pairs of the 15 columns below 0.5 in ({{< panel comparator-missed-ibd share >}}), sized by absolute loading relative to the column's largest.
 The CCC-RISE row shows each LR pair's largest such value in any CCC-RISE component.
 Bold names and red boxes mark the columns with q < 0.05 in ({{< panel comparator-missed-ibd associations >}}) that carry a top LR pair outside every CCC-RISE component's top LR pairs whose ligand and receptor are different genes.
 
