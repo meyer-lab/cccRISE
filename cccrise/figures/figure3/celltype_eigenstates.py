@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 import anndata
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 
@@ -37,12 +38,29 @@ def plot_celltype_eigenstate_association(
     """Cell type (rows, `style.CELL_TYPES` order) x RISE eigenstate mean
     projection (mean over the cell type's cells of each eigenstate projection),
     with the `highlight` eigenstates' columns outlined by dashed boxes."""
+    celltype_col = DATASETS[dataset].celltype_column
     table = celltype_component_association(
         adata,
         factor_type="eigenstate",
-        celltype_col=DATASETS[dataset].celltype_column,
+        celltype_col=celltype_col,
         stat="mean",
     ).reindex(style.CELL_TYPES[dataset])
+    common.source_data(
+        "celltype_eigenstate_mean_projection",
+        table.rename_axis("Cell type").add_prefix("Eigen-state "),
+        "Each cell type's mean RISE projection on each eigen-state, over its "
+        f"cells; eigen-state {', '.join(map(str, highlight))} is outlined.",
+    )
+    common.source_data(
+        "eigenstate_projection_per_cell",
+        pd.DataFrame(
+            np.asarray(adata.obsm["projections"]),
+            index=pd.Index(adata.obs_names, name="Cell barcode"),
+            columns=[f"Eigen-state {j} projection" for j in table.columns],
+        ).assign(**{"Cell type": adata.obs[celltype_col].to_numpy()}),
+        "Each cell's RISE projection on every eigen-state, and its cell type: the "
+        "values averaged in the mean projection file.",
+    )
     vmax = np.nanmax(np.abs(table.to_numpy()))
     image = ax.imshow(
         table.to_numpy(),

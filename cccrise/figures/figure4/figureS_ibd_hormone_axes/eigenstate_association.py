@@ -22,7 +22,7 @@ def plot(axs):
         table,
         "Per eigen-state the hormone programs (C3, C4) load on and cell category: "
         "cells, their mean RISE projection, and their share of the eigen-state's "
-        "squared projection over all cells.",
+        "squared projection over all cells." + S.PER_CELL_NOTE,
     )
     mean = table.pivot(
         index="Eigenstate", columns="Category", values="Mean projection"
