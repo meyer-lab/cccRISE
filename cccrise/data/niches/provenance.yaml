@@ -22,6 +22,7 @@ shared:
   - 0.4
   - 0.5
   - 0.6
+  git_sha: b152ac36fcf6ebfc6c3f0adc0224184085c3d271-dirty
 files:
   cells_alad.parquet:
     sha256: bea97db1624f834cdadbbcfb8f1fbda699bb3a27cd71807a852297d95368e543
@@ -78,10 +79,9 @@ files:
     - LCK^CD8A&CD8B
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
-    git_sha: b152ac36fcf6ebfc6c3f0adc0224184085c3d271-dirty
     generated: '2026-11-16T07:04:28+00:00'
   cells_ibd.parquet:
-    sha256: f5f694eb55039973942fb1ef6855d242c6b3cac4fe7e87d1d6e551acab440e15
+    sha256: 5f7f9bfbb5136fdb59a46ea2187e3fa110be648398d9ef74e62ebfa8f3897de5
     command: uv run cccrise-niches --dataset ibd --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
       --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib --r-workers 8
     dataset: ibd
@@ -105,12 +105,12 @@ files:
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     factors_path: cccrise/data/factors/ibd_ti_factors.nc
-    factors_sha256: 27180af4a6fbceaacdce5ff6fc172280484e00ff3cc3abfe084c518e065aef71
+    factors_sha256: 96751f26e47a977fc8b1451bfac6d36b3fa4f98e874e15f29c5c07290dad2894
     resulting_dims:
       conditions: 343
       genes: 23355
       cells: 634534
-      lr_pairs: 1255
+      lr_pairs: 1337
     niches_pairs:
     - CCL3L1^CCR1
     - CCL8^CCR1
@@ -125,8 +125,7 @@ files:
     - CDH4^CDH4
     - MAG^MAG
     cells_without_niches_score: 10
-    git_sha: 48dbc1b53262b4c548e32be71a44e555e8c321c9
-    generated: '2026-11-10T19:35:33+00:00'
+    generated: '2026-11-16T07:17:20+00:00'
   populations_alad.parquet:
     sha256: 5ed50b1906c596dbe21deabdc4ce1bea25cb22051564f92bde8357b7a6b1eeaa
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
@@ -182,7 +181,6 @@ files:
     - LCK^CD8A&CD8B
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
-    git_sha: b152ac36fcf6ebfc6c3f0adc0224184085c3d271-dirty
     generated: '2026-11-16T07:04:28+00:00'
   populations_ibd.parquet:
     sha256: 36150bd2c686fd316ccc51811a8a0cf9595124596bf96fb1e62b29df5ccd82bb
@@ -209,12 +207,12 @@ files:
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     factors_path: cccrise/data/factors/ibd_ti_factors.nc
-    factors_sha256: 27180af4a6fbceaacdce5ff6fc172280484e00ff3cc3abfe084c518e065aef71
+    factors_sha256: 96751f26e47a977fc8b1451bfac6d36b3fa4f98e874e15f29c5c07290dad2894
     resulting_dims:
       conditions: 343
       genes: 23355
       cells: 634534
-      lr_pairs: 1255
+      lr_pairs: 1337
     niches_pairs:
     - CCL3L1^CCR1
     - CCL8^CCR1
@@ -229,8 +227,7 @@ files:
     - CDH4^CDH4
     - MAG^MAG
     cells_without_niches_score: 10
-    git_sha: 48dbc1b53262b4c548e32be71a44e555e8c321c9
-    generated: '2026-11-10T19:35:33+00:00'
+    generated: '2026-11-16T07:17:20+00:00'
   tau_alad.parquet:
     sha256: 1893026aba1f6cf8289a715c7a0df6df756361049cbc250dab3e1663861990ab
     command: uv run cccrise-niches --dataset alad --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
@@ -286,10 +283,9 @@ files:
     - LCK^CD8A&CD8B
     - NECTIN2^TIGIT
     cells_without_niches_score: 25
-    git_sha: b152ac36fcf6ebfc6c3f0adc0224184085c3d271-dirty
     generated: '2026-11-16T07:04:28+00:00'
   tau_ibd.parquet:
-    sha256: 8fd616fb23821edd65a800e4c95d79392c8000f4c56563455cc15ec7c57de7eb
+    sha256: c74cbc0f5398a31457980ae7bd4f6e2cf19e5beeb846233a2781f1ab43524e6e
     command: uv run cccrise-niches --dataset ibd --niches-source /home/ehurt/Workspaces/cccRISE/rcheck/upstream/niches
       --r-library /home/ehurt/Workspaces/cccRISE/rcheck/lib --r-workers 8
     dataset: ibd
@@ -313,12 +309,12 @@ files:
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     factors_path: cccrise/data/factors/ibd_ti_factors.nc
-    factors_sha256: 27180af4a6fbceaacdce5ff6fc172280484e00ff3cc3abfe084c518e065aef71
+    factors_sha256: 96751f26e47a977fc8b1451bfac6d36b3fa4f98e874e15f29c5c07290dad2894
     resulting_dims:
       conditions: 343
       genes: 23355
       cells: 634534
-      lr_pairs: 1255
+      lr_pairs: 1337
     niches_pairs:
     - CCL3L1^CCR1
     - CCL8^CCR1
@@ -333,5 +329,4 @@ files:
     - CDH4^CDH4
     - MAG^MAG
     cells_without_niches_score: 10
-    git_sha: 48dbc1b53262b4c548e32be71a44e555e8c321c9
-    generated: '2026-11-10T19:35:33+00:00'
+    generated: '2026-11-16T07:17:20+00:00'
