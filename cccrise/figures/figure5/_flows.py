@@ -12,6 +12,7 @@ from matplotlib.path import Path
 from ...runners.datasets import DATASETS
 from .. import common, style
 from ..figure2._common import (
+    GRANULARITY_COMPONENT,
     GRANULARITY_DATASET,
     GROUP_TAU,
     component_weights,
@@ -135,7 +136,7 @@ EPITHELIAL_NAME = "Epithelial cells"
 
 
 def _epithelial_populations() -> pd.Series:
-    """The epithelial label's cells, and its C5 sender and receiver cells."""
+    """The epithelial label's cells, and its EGFR-component sender and receiver cells."""
     cells = common.get_cell_projections(GRANULARITY_DATASET)
     label = DATASETS[GRANULARITY_DATASET].labellings["fine"]
     epithelium = cells.obs[label].astype(str).to_numpy() == EPITHELIAL_LABEL
@@ -155,7 +156,7 @@ def flow_alad(ax) -> None:
     """BTC-EGFR on epithelial cells: all of the label, then its two end populations."""
     t = _epithelial_populations()
     common.source_data(
-        "c5_epithelial_cell_populations",
+        f"c{GRANULARITY_COMPONENT}_epithelial_cell_populations",
         t.rename("Cells").rename_axis("Population").reset_index(),
         "Epithelial cells (the one fine epithelial label), and those past Figure 2's "
         "sender and receiver cutoffs.",
@@ -167,7 +168,7 @@ def flow_alad(ax) -> None:
     _node(ax, BAR_X, 31, 46, EPITHELIAL)
     _note(ax, BAR_X - 2.8, 38.5, EPITHELIAL_NAME, rotation=90)
     _horseshoe(ax, 43.5, 33.5, 5)
-    _title(ax, 20, 27, "CCC-RISE C5")
+    _title(ax, 20, 27, f"CCC-RISE C{GRANULARITY_COMPONENT}")
     top = 21.0
     bottom = top - LENGTH
     _node(ax, BAR_X, top - sender, top, style.COLORS["sender"])
