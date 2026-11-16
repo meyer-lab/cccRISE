@@ -1,7 +1,8 @@
 """
 EMBO Press's Reagents and Tools table, its Software section: Python and every
 package the project depends on (and those its optional extras add on this
-platform), each with its PyPI page and the version `uv.lock` pins, written to
+platform), each with its PyPI page and the version `uv.lock` pins, and the
+comparator methods (`COMPARATORS`) with their repositories, written to
 `output/source_data/software_versions.csv`:
 
     uv run python -m cccrise.figures.software
@@ -14,20 +15,46 @@ import pandas as pd
 from packaging.markers import Marker
 
 from ..runners.provenance import REPO_ROOT
+from ..runners.run_niches import NICHES_COMMIT
 from . import common
 
 OUTPUT_PATH = common.OUTPUT_DIR / "source_data" / "software_versions.csv"
 COLUMNS = ["Reagent/Resource", "Reference or Source", "Identifier or catalogue number"]
 PYPI_URL = "https://pypi.org/project/{}/"
 PYTHON_URL = "https://www.python.org"
+#: The comparator methods, none a Python dependency: NICHES and Scriabin run
+#: as their R packages at these commits (`run_niches`, `run_scriabin_seeds`),
+#: STACCato is re-implemented from its R package at this commit
+#: (`comparators.staccato`), and Tensor-cell2cell's pipeline is re-implemented
+#: from no pinned release (`comparators.methods`).
+COMPARATORS = [
+    (
+        "NICHES",
+        "https://github.com/msraredon/NICHES",
+        f"1.2.4 (commit {NICHES_COMMIT})",
+    ),
+    ("Scriabin", "https://github.com/BlishLab/scriabin", "0.0.0.9000 (commit bce695b)"),
+    (
+        "STACCato",
+        "https://github.com/daiqile96/STACCato",
+        "0.0.0.9000 (commit cb76f21)",
+    ),
+    ("Tensor-cell2cell", "https://github.com/earmingol/cell2cell", ""),
+]
 
 
 def main() -> None:
     rows = [("Python", PYTHON_URL, platform.python_version())]
-    rows += [
-        (name, PYPI_URL.format(name), version)
-        for name, version in sorted(locked_versions().items())
-    ]
+    rows += sorted(
+        [
+            *(
+                (name, PYPI_URL.format(name), version)
+                for name, version in locked_versions().items()
+            ),
+            *COMPARATORS,
+        ],
+        key=lambda row: row[0].lower(),
+    )
     table = pd.DataFrame([("Software", "", ""), *rows], columns=COLUMNS)
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(OUTPUT_PATH, index=False)
