@@ -656,7 +656,7 @@ files:
     git_sha: e1a68354dbb28b52d973b7799b2b51489f19ff00
     generated: '2026-11-14T05:34:04+00:00'
   stac_shares_ibd_fine.parquet:
-    sha256: 94da02c867b8df9ac0fd1ff0a684e89033c9560458a02d5436ceeb5f2da1424a
+    sha256: 4287f93190c390493bd4da6fa091cd5c4fd9ca283169a3521e59530f1976b691
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods stac
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -681,7 +681,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: numpy
     tensor:
-      tensor_shape: [343, 54, 54, 1255]
+      tensor_shape: [343, 54, 54, 1337]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -744,17 +744,12 @@ files:
       varexp_percent: 1.0
       core_shape:
         sample: 13
-        sender: 12
+        sender: 13
         receiver: 11
         lr: 12
       random_state: 42
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T08:20:57+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with.'
+    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e-dirty
+    generated: '2026-11-14T15:45:43+00:00'
   tc2c_elbow_alad_coarse.parquet:
     sha256: cc2a718fd5b31c3d7f3c9b86d01bbc6817df144476399465d7dd018077f25d3a
     command: uv run cccrise-comparators --dataset alad --methods tc2c
@@ -915,8 +910,8 @@ files:
     git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
     generated: '2026-11-14T05:32:41+00:00'
   tc2c_elbow_ibd_fine.parquet:
-    sha256: 9f2ba5e59b7fb8c7e6e5dce2069a995492f04366be2216832e77f6925fe5206f
-    command: uv run cccrise-comparators --dataset ibd --labellings fine --methods tc2c
+    sha256: cf7215aa38b7ed1c33d247573bcca3fae5d7d59a57482f5feebd6deffa94a89a
+    command: uv run cccrise-comparators
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -940,7 +935,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1255]
+      tensor_shape: [343, 54, 54, 1337]
       observed_share: 0.6747131539270617
       celltypes:
       - B cells
@@ -1007,7 +1002,7 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 44
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
@@ -1016,15 +1011,8 @@ files:
         tensorly''s non_negative_parafac with its fill-in, MTTKRP and error built in sample-row
         blocks (same values; different summation order), because tensorly''s own does not
         fit in 24 GB on this tensor'
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T16:59:57+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with. Its masked fits
-      ran through the scratch loop its `scratch_workaround` names, not this command: the command''s
-      tensorly fits do not fit in 24 GB of GPU memory on this tensor.'
+    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e
+    generated: '2026-11-14T15:07:03+00:00'
   tc2c_start_fms_alad_coarse.parquet:
     sha256: e00bb3b257fd30d7d84206cc84a861979b66bb9038694a96444f4d1feece1417
     command: uv run cccrise-comparators --dataset alad --methods tc2c
@@ -1185,8 +1173,8 @@ files:
     git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
     generated: '2026-11-14T05:32:41+00:00'
   tc2c_start_fms_ibd_fine.parquet:
-    sha256: 78e1165ddddcb90d97748511ae683cb643578c6273eda6cdfae1dcee04864470
-    command: uv run cccrise-comparators --dataset ibd --labellings fine --methods tc2c
+    sha256: 71933ef95c7c3ea05dbfea0c001f05fca05e45b68fc5d704facbd22607dbb830
+    command: uv run cccrise-comparators
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -1210,7 +1198,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1255]
+      tensor_shape: [343, 54, 54, 1337]
       observed_share: 0.6747131539270617
       celltypes:
       - B cells
@@ -1277,7 +1265,7 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 44
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
@@ -1286,15 +1274,8 @@ files:
         tensorly''s non_negative_parafac with its fill-in, MTTKRP and error built in sample-row
         blocks (same values; different summation order), because tensorly''s own does not
         fit in 24 GB on this tensor'
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T16:59:57+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with. Its masked fits
-      ran through the scratch loop its `scratch_workaround` names, not this command: the command''s
-      tensorly fits do not fit in 24 GB of GPU memory on this tensor.'
+    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e
+    generated: '2026-11-14T15:07:03+00:00'
   tc2c_starts_alad_coarse.nc:
     sha256: c71bc772e778c397aef2114be0286ccee567c2dc42d7df7f1013867fc68b7215
     command: uv run cccrise-comparators --dataset alad --methods tc2c
@@ -1455,8 +1436,8 @@ files:
     git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
     generated: '2026-11-14T05:32:41+00:00'
   tc2c_starts_ibd_fine.nc:
-    sha256: e993d7d1eb9c486ae50decf0d1350cef98b6e317bea33303a11fd6c4950bb3bb
-    command: uv run cccrise-comparators --dataset ibd --labellings fine --methods tc2c
+    sha256: 346c80cf8f6c8f93b2394d6b6874550059bbefc048c688533c77d86a121c724a
+    command: uv run cccrise-comparators
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
       0)
@@ -1480,7 +1461,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1255]
+      tensor_shape: [343, 54, 54, 1337]
       observed_share: 0.6747131539270617
       celltypes:
       - B cells
@@ -1547,7 +1528,7 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 44
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
@@ -1556,18 +1537,5 @@ files:
         tensorly''s non_negative_parafac with its fill-in, MTTKRP and error built in sample-row
         blocks (same values; different summation order), because tensorly''s own does not
         fit in 24 GB on this tensor'
-    git_sha: ec12ebc0f5c21750ece996cdc76980ac663d3146-dirty
-    generated: '2026-10-31T16:59:57+00:00'
-    consolidated_post_hoc: '2026-11-02; ran uncommitted on branch figure6-cell-resolution
-      at the recorded git_sha (its first commit), with Figure 4''s comparator code (first
-      committed in 425561c on figure4-comparators) and this branch''s rank caps (methods.PB_UPPER_RANKS,
-      TC2C_UPPER_RANKS). Nothing these runs compute has changed since: only provenance writing,
-      and the PB fit seed rule (fmax_best_seed), which the PB fits ran with. Its masked fits
-      ran through the scratch loop its `scratch_workaround` names, not this command: the command''s
-      tensorly fits do not fit in 24 GB of GPU memory on this tensor.'
-
-# Records with `consolidated_post_hoc` were written by their runs as per-file
-# `<stem>.provenance.yaml` sidecars and merged here, on the date it gives,
-# without rerunning: their settings and git_sha are as the runs recorded them,
-# and their `command` was reconstructed from those settings. Running a command
-# replaces its files' records.
+    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e
+    generated: '2026-11-14T15:07:03+00:00'
