@@ -52,7 +52,7 @@ This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell 
 <!--Paragraph 5: comparator discussion (entirely new)-->
 Methods such as Tensor-cell2cell and STACCato establish communication programs from a four-dimensional tensor decomposition, similar to CCC-RISE, to capture between-condition variability\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].
 However, this multi-condition decomposition occurs only after annotation has pooled all cells into one condition used to fix cell-types, thus removing between-condition variation in cell state before the decomposition can use it.
-CCC-RISE instead performs between-condition covariation at both steps of its decomposition resulting in largely coordinated communication programs that pseudobulk methods either split across columns or failed to recover entirely.
+CCC-RISE instead evaluates between-condition covariation at both steps of its decomposition resulting in largely coordinated communication programs that pseudobulk methods either split across columns or failed to recover entirely.
 Although CCC-RISE subpopulations aligned more closely with populations independently scored by NICHES than with cell-type–defined populations, we observed that other single-cell methods available for such checks remained tractable only through aggregation or subsampling
 Specifically, NICHES scores each cell against a sample’s aggregated partner expression\ [@doi:10.1093/bioinformatics/btac775], and Scriabin builds its cell–cell interaction matrix from a small subsample of cells\ [@doi:10.1038/s41587-023-01782-z].
 We found Scriabin’s subsampling in particular to introduce instability that precluded rigorous comparison.

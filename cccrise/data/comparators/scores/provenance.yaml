@@ -466,7 +466,7 @@ files:
     git_sha: 5c7c5882f92fbc862e663a85eb4d214c77948d9d-dirty
     generated: '2026-11-16T08:12:17+00:00'
   reduced_rise_lr_loadings_ibd.parquet:
-    sha256: 0ec94e37e37379b38ffeb876edcbe7ef5febb30964ca4adc629469263ae1f9f4
+    sha256: 997e835bc038a3194a37cf93da2e462120c8845adea65d21d0d209ed91a4a89d
     command: uv run cccrise-reduced-rise --dataset ibd --rise-rank 30 --cp-rank 5
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -509,10 +509,10 @@ files:
     cp_device: auto
     cp_backend: cupy
     cp_dtype: float32
-    r2x_rise: 0.026438443488292385
-    r2x_cp: 0.5254932772055431
-    git_sha: 45b088348643ed7a915734c8d9e07e5925090292
-    generated: '2026-11-12T14:03:07+00:00'
+    r2x_rise: 0.026438437554921257
+    r2x_cp: 0.5100629127842715
+    git_sha: dcd89c138a227a2f6e3a58c1e52b6b081c5c8531
+    generated: '2026-11-16T20:41:57+00:00'
   start_congruence_alad.parquet:
     sha256: 270a24a833b0510b07bd479a4c9e2c48731de18b4866baaf4a6801a97c1b4dc6
     command: uv run cccrise-comparator-scores --dataset alad
