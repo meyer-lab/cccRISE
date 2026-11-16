@@ -11,7 +11,7 @@ CCC-RISE therefore resolves both distinct and overlapping signaling subpopulatio
 <!--Paragraph 2: Introduce modes of interpretation for CCC-RISE (entirely new)-->
 While exploring the advantages of CCC-RISE through ALAD and IBD cohorts, we showcased three distinct modes of interpretation that each defined different kinds of communicating populations through eigen-states.
 ALAD component 6 defined an alveolar repair and fibrosis pathway among epithelial cells, and was unique in its separation of divergent sender and receiver cells by component weight.
-This separability allowed us to threshold the epithelial senders from receivers into groups characterized by distinct gene expression, making this approach especially useful in cases of paracrine signaling between cellular subpopulations.
+This separability allowed us to threshold the epithelial senders and receivers into groups characterized by distinct gene expression, making this approach especially useful in cases of paracrine signaling between cellular subpopulations.
 In contrast, ALAD component 5 represented immune-activation within a subpopulation of lymphocytes that were collinear in sender and receiver weights, suggesting population-level autocrine signaling within a single group of cells.
 Thus, ALAD components 5 and 6 represent two modes of population-level communication that can be understood through similarities and differences in eigen-state projections.
 IBD components 3 and 4 defined complementary hormone-secretion axes and both implicated enteroendocrine (EE) cells as senders.
