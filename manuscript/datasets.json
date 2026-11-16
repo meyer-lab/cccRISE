@@ -1,0 +1,28 @@
+[
+  {
+    "id": "ibdverse-arrayexpress",
+    "type": "dataset",
+    "author": [
+      {"family": "Alegbe", "given": "Tobi"},
+      {"family": "Harris", "given": "Bradley"},
+      {"family": "Raine", "given": "Tim"},
+      {"family": "Anderson", "given": "Carl"}
+    ],
+    "issued": {"date-parts": [[2026]]},
+    "title": "ArrayExpress E-MTAB-16986",
+    "DOI": "10.6019/E-MTAB-16986"
+  },
+  {
+    "id": "ibdverse-ega",
+    "type": "dataset",
+    "author": [
+      {"family": "Alegbe", "given": "Tobi"},
+      {"family": "Harris", "given": "Bradley"},
+      {"family": "Raine", "given": "Tim"},
+      {"family": "Anderson", "given": "Carl"}
+    ],
+    "issued": {"date-parts": [[2026]]},
+    "title": "European Genome-phenome Archive EGAD00001015692",
+    "URL": "https://www.ega-archive.org/datasets/EGAD00001015692"
+  }
+]
