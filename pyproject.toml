@@ -69,6 +69,7 @@ cccrise-ibd-programs = "cccrise.runners.run_ibd_programs:main"
 cccrise-alad-programs = "cccrise.runners.run_alad_programs:main"
 cccrise-niches = "cccrise.runners.run_niches:main"
 cccrise-scriabin-seeds = "cccrise.runners.run_scriabin_seeds:main"
+cccrise-scriabin-reproduction = "cccrise.runners.run_scriabin_reproduction:main"
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]

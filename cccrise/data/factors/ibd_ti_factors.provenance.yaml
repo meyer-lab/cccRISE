@@ -4,7 +4,8 @@
 # these ranks were chosen.
 
 dataset: ibd
-dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed 0)
+dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
+  0)
 source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
 source_sha256: 12b8415309e747c16f64d4f9ecd82a27ea0aeea9e8820f3a30f4b0100bcf23a4
 loader_args:
@@ -18,10 +19,10 @@ loader_args:
 condition_key: sanger_sample_id
 celltype_key: broad_cell_type
 group_key: inflammation_status
-dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy and 111 Crohn''s
-  (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types matching the published DGE tables;
-  `broad_cell_type` holds 8 lineages, of which the mesenchymal one (fibroblasts, endothelial cells, pericytes)
-  is excluded as a biopsy-sampling artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
+dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
+  and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types matching
+  the published DGE tables; `broad_cell_type` holds 8 lineages, of which the mesenchymal one
+  (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
 rise_n_iter_max: 300
 cp_n_iter_max: 4000
 rise_tol: 1.0e-08
@@ -38,19 +39,15 @@ backend: cpu
 communication_score: expression_product
 hill_k: 0.5
 pacmap_embedding: false
-lr_pairs_annotated: 2005
+lr_pairs_annotated: 1938
 resulting_dims:
   conditions: 343
   genes: 23355
   cells: 634534
-  lr_pairs: 1255
-interaction_tensor_shape:
-- 343
-- 60
-- 60
-- 1255
+  lr_pairs: 1337
+interaction_tensor_shape: [343, 60, 60, 1337]
 r2x_pf2: 0.03451037029778936
-r2x_cp: 0.5775700877676836
+r2x_cp: 0.5668503146895351
 rank_selection:
   rise:
     rank: 60
@@ -59,14 +56,16 @@ rank_selection:
   cpd:
     rank: 6
     sweep_file: cccrise/data/rank_selection_results/cpd_rank_ibd.parquet
-    notes: 'Chosen from the seeded-start sweep (10 production SVD starts per rank, GPU float32;
-      the IBD rank-selection supplement). This CP fit predates that sweep: it was made by an
-      earlier multi-start procedure (generated_by below), and the sweep''s production start
-      (seed 42, GPU float32) reproduces it (per-component FMS >= 0.99998).'
-generated_by: an exploratory script (comparators worktree output/cache/story/refit_ibd_cp.py) that calls
-  ccc_rise.fit_cp (production parafac_multistart, uncompressed, CPU) on the communication tensor rebuilt
-  from the RISE fit stored here, and keeps that RISE fit. It reproduces the multi-start sweep's rank-6
-  production optimum (per-component FMS >= 0.99999).
-git_sha: 0cfaa6ab57cc20c3acd64f07c42c2b0e93ec479a-dirty
-generated: '2026-10-15T14:21:18+00:00'
-cp_n_starts: 5
+    notes: 'Largest rank with no start''s LR mode collinear (max |cos| < 0.9; CP 7: 0.993)
+      and the most-reached minimum at 8/10 starts (CP 1-4: 10/10); starts-only sweep, ranks
+      1-10 (10 seeded SVD starts per rank, GPU float32). This fit is that sweep''s production
+      start (seed 42).'
+cp_device: auto
+cp_backend: cupy
+cp_dtype: float32
+generated_by: 'scratchpad/ibd_cp_refit.py (not in the repo): ccc_rise.fit_ccc_cp (seed 42,
+  SVD start, float32, the CPD sweep''s production start) on the communication tensor rebuilt
+  from cccrise/data/Human-2020-Jin-LR-pairs.parquet and the RISE fit stored here, which it
+  keeps (RISE does not read the LR list; RISE fields above are that fit''s).'
+git_sha: 6ba00f41eb10a8f3c955106866d4f13a64ffed1d-dirty
+generated: '2026-11-14T02:10:35+00:00'

@@ -46,15 +46,16 @@ from .tensors import PooledTensor
 
 #: Top of pseudobulk CPD's rank sweep per dataset and labelling (each also
 #: stops at the tensor's smallest mode): fine labels' larger tensor is capped
-#: lower to bound its runtime on IBD.
+#: lower to bound its runtime: ALAD's fine sweep and both of IBD's at 15, well
+#: above the ranks they select.
 PB_UPPER_RANKS = {
-    "alad": {"coarse": 25, "fine": 25},
-    "ibd": {"coarse": 25, "fine": 20},
+    "alad": {"coarse": 25, "fine": 15},
+    "ibd": {"coarse": 15, "fine": 15},
 }
 #: Top of the elbow sweep per dataset and labelling: fine labels' larger tensor
 #: is capped lower to bound its runtime, and IBD's masked fits are memory hungry.
 TC2C_UPPER_RANKS = {
-    "alad": {"coarse": 25, "fine": 20},
+    "alad": {"coarse": 25, "fine": 15},
     "ibd": {"coarse": 15, "fine": 15},
 }
 TC2C_N_ITER_MAX = 1000

@@ -8,7 +8,7 @@ from ..figure2.cp_factor_matrices import AXES, draw  # noqa: F401  (AXES: this p
 from ._common import DATASET, GROUP_COLORS, GROUP_COLUMN, SPEC, samples
 
 EIGENSTATE_TICKS = (1, 15, 30, 45, 60)
-# IBD's components are each carried by a handful of LR pairs: the top 2% (25
+# IBD's components are each carried by a handful of LR pairs: the top 2% (27
 # rows) shows every one of them legibly, where more rows are mostly blank
 TOP_LR_FRACTION = 0.02
 STRIPS = {GROUP_COLUMN: ("Inflammation status", GROUP_COLORS)}
