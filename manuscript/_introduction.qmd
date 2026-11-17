@@ -9,7 +9,7 @@ To better understand how cells interact, researchers have developed computationa
 These methods typically leverage single-cell RNA sequencing (scRNA-seq) to identify the co-expression of ligand--receptor (LR) gene pairs documented in curated databases\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1093/bioinformatics/btab036].
 This approach hinges on the central assumption that transcript levels accurately reflect functional protein abundance, which in turn determines the probability of interaction.
 While this is a simplified premise, it allows for the high-throughput screening of thousands of interactions, providing a data-driven way to prioritize specific communication events for experimental validation\ [@doi:10.1038/s41596-024-01045-4; @doi:10.1093/bib/bbaf280].
-Initial tools such as CellPhoneDB and CellChat use statistical tests to compare communication scores against a null distribution created by randomly permuting cell labels\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
+Initial tools such as CellPhoneDB and CellChat use statistical tests to compare communication scores against a null distribution created by randomly permuting cell labels\ [@doi:10.1038/s41596-020-0292-x; @doi:10.1038/s41467-021-21246-9].
 Originally designed to merely detect the presence of active signaling pathways, these foundational tools have since inspired a diverse analytical toolkit capable of addressing increasingly complex biological questions\ [@doi:10.1038/s41576-023-00685-8].
 
 A critical objective of CCC analysis is to understand how cellular interactions evolve across distinct biological contexts, such as disease states, developmental stages, or treatment groups\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41467-017-02391-6; @doi:10.1073/pnas.1918937117; @doi:10.1186/1471-2105-12-19].
@@ -44,4 +44,4 @@ Although other dimensionality reduction methods could supply these single-cell e
 First, PARAFAC2 has a unique solution, so eigen-states represent a non-arbitrary choice of basis for LR interaction scoring\ [@{doi:10.1002/(SICI)1099-128X(199905/08)13:3/4<295::AID-CEM547>3.0.CO;2-Y}].
 Second, eigen-states are defined by explicit cell and gene weights, so LR interactions can be traced back to individual cells\ [@doi:10.1016/j.cels.2025.101294].
 Here, we apply standard CCC scoring and tensor factorization to RISE's eigen-states to identify core communication programs across varying conditions while preserving the ability to interpret these signals at the single-cell level.
-We then compare CCC-RISE with tensor methods that aggregate cells by annotation to identify which kinds of communication programs are lost.
+We then compare CCC-RISE with tensor methods that aggregate cells by annotation to identify which kinds of communication programs are obscured by the pseudobulk process.
