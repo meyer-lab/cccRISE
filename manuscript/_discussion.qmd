@@ -1,17 +1,15 @@
 ## Discussion
 
-<!--Paragraph 1: re-introduce CCC-RISE's key contribution (revised from original)-->
 We have demonstrated that CCC-RISE provides a comprehensive framework for investigating cell--cell communication (CCC) across multiple conditions while maintaining single-cell resolution.
-Existing computational tools for CCC largely rely on pseudobulking, a process that aggregates single-cell data into pre-defined clusters and obscures the functional diversity of individual cells.
+Existing computational tools for inferring multi-condition CCC largely rely on pseudobulking, a process that aggregates single-cell data into pre-defined clusters and obscures the functional diversity of individual cells.
 This approach depends heavily on the accuracy of annotations and often fails to capture the continuous and multifaceted nature of cellular identities.
-To address these limitations, CCC-RISE scores communication between "eigen-states," which are shared patterns of gene expression identified by RISE.
-Because each cell can be represented as a continuous combination of eigen-states, CCC-RISE allows researchers to map communication programs back onto individual cells according to how strongly each cell participates as a sender or receiver.
-CCC-RISE therefore resolves both distinct and overlapping signaling subpopulations at a granularity defined exclusively by the data.
+To address these limitations, CCC-RISE projects cells into eigen-states, or shared patterns of gene expression across conditions, and scores communication between eigen-states rather than annotated cell types.
+Each cell is represented by a collection of continuous eigen-state projections, which allows researchers to map communication programs back onto individual cells and subpopulations based on their gene expression.
+Through eigen-states, CCC-RISE brings single-cell resolution to multi-condition CCC-inference methods to identify communication programs driven by cellular subpopulations that vary across biological contexts.
 
-<!--Paragraph 2: Introduce modes of interpretation for CCC-RISE (entirely new)-->
 While exploring the advantages of CCC-RISE through ALAD and IBD cohorts, we showcased three distinct modes of interpretation that each defined different kinds of communicating populations through eigen-states.
 ALAD component 6 defined an alveolar repair and fibrosis pathway among epithelial cells, and was unique in its separation of divergent sender and receiver cells by component weight.
-This separability allowed us to threshold the epithelial senders from receivers into groups characterized by distinct gene expression, making this approach especially useful in cases of paracrine signaling between cellular subpopulations.
+This separability allowed us to threshold the epithelial senders and receivers into groups characterized by distinct gene expression, making this approach especially useful in cases of paracrine signaling between cellular subpopulations.
 In contrast, ALAD component 5 represented immune-activation within a subpopulation of lymphocytes that were collinear in sender and receiver weights, suggesting population-level autocrine signaling within a single group of cells.
 Thus, ALAD components 5 and 6 represent two modes of population-level communication that can be understood through similarities and differences in eigen-state projections.
 IBD components 3 and 4 defined complementary hormone-secretion axes and both implicated enteroendocrine (EE) cells as senders.
@@ -19,84 +17,55 @@ However, unlike the senders and receivers of ALAD component 6, IBD component 3 a
 We therefore characterized the cells based on their position along a spectrum between component 3- and component 4-like states, which were ultimately defined by distinct gene expression and receiver cell targets.
 This analysis thus represents a third mode of interpretation, which was distinct not only in its consideration of two components simultaneously but also in its evaluation of continuous, partially overlapping cell states.
 
-<!--Paragraph 3: showcase CCC-RISE's single-cell resolution with ALAD cmp 5 and 4 (revised version of Covid paragraph)-->
 [SMA: in component 5, I'm struggling with linking such a broad communication signature to literature in a concise way. I could focus on a few LR pairs and link them to lung disease or I could try to justify the co-regulation claims currently present.]
-- Applied to a cohort of lung transplant patients, CCC-RISE demonstrated a unique capacity to resolve communication at a subpopulation level, uncovering functional heterogeneity within standard cell-type annotations.
-- The airway repair and fibrosis pathway defined by ALAD component 6 was mediated by BTC--EGFR signaling between ciliated epithelial sender cells and basal and secretory epithelial receiver cells.
-- In healthy lung epithelium, BTC secreted by submucosal ciliated cells is known to initiate tissue repair upon binding EGFR and other growth factor receptors predomintantly expressed on bronchial basal cells\ [@doi:10.1165/ajrcmb.20.5.3308].
-- In traumatized and damaged tissue, such as that of the lung allograft, these signals instead indicate problematic fibrogenesis\ [@doi:10.1038/ki.2012.43; @doi:10.3390/cells11060986].
-- The ability to distinguish these non-overlapping epithelial subpopulations within a single canonical "cell type" highlights CCC-RISE's capacity to identify communication patterns with more granularity than available labels.
-- Similarly, ALAD component 5 represented coordinated communication driving lymphocyte activation in a subpopulation of CD4+ T, CD8+ T, and NK cells.
-- Where the sender and receiver groups of component 6 were defined by differentially expressed genes, the lymphocyte subpopulation implicated in component 5 were defined by co-varying expression of top LR pairs, composed of a host of activating (LCK, CD8, GZMA, CCL5, CD70) and inhibitory (CLEC2D, KLRB1, and TIGIT) molecules.
-- Indeed, markers of immune cell activation are often upregulated together during states of heightened inflammation [source].
-- Similarly, inhibotory markers tend to become upregulated during sustained inflammation, a protective phenomenon whose role is to dampen over-active immune responses [source].
-- In the context of lung transplants, this co-varying communication program likely points to inhibition that naturally follows sustained lymphocyte activation, rather than a problematic profile of exhaustion.
-- Additionally, immune signaling is spatially graded and does not act uniformly over a population, which aligns with the continuously varying sender/receiver weights of activated lymphocytes identified by component 5 [source].
-- These components thus showcase CCC-RISE's single-cell resolution by dissecting classical cell types into more granular subpopulations, defined by raw gene expression and coordinated LR signaling rather than problematic annotations.
+Applied to a cohort of lung transplant patients, CCC-RISE demonstrated a unique capacity to resolve communication at a subpopulation level, uncovering functional heterogeneity within standard cell-type annotations.
+The airway repair and fibrosis pathway defined by ALAD component 6 was mediated by BTC--EGFR signaling between ciliated epithelial sender cells and basal and secretory epithelial receiver cells.
+In healthy lung epithelium, BTC secreted by submucosal ciliated cells is known to initiate tissue repair upon binding EGFR and other growth factor receptors that are predomintantly expressed on bronchial basal cells\ [@doi:10.1165/ajrcmb.20.5.3308].
+In traumatized and damaged tissue, such as that of the lung allograft, these signals instead indicate problematic fibrogenesis\ [@doi:10.1038/ki.2012.43; @doi:10.3390/cells11060986].
+The ability to distinguish these non-overlapping epithelial subpopulations within a single canonical "cell type" highlights CCC-RISE's capacity to identify communication patterns with more granularity than available labels.
+Similarly, ALAD component 5 represented coordinated communication driving lymphocyte activation in a subpopulation of CD4+ T, CD8+ T, and NK cells.
+Where the sender and receiver groups of component 6 were defined by differentially expressed genes, the lymphocyte subpopulation implicated in component 5 was defined by co-varying expression of top LR pairs, composed of a host of activating (LCK, CD8, GZMA, CCL5, CD70) and inhibitory (CLEC2D, KLRB1, and TIGIT) molecules.
+Indeed, markers of immune cell activation are often upregulated together during states of heightened inflammation [source].
+Similarly, inhibotory markers tend to become upregulated during sustained inflammation, a protective phenomenon whose role is to dampen over-active immune responses [source].
+In the context of lung transplants, this co-varying communication program likely points to inhibition that naturally follows sustained lymphocyte activation, rather than a problematic profile of exhaustion.
+Additionally, immune signaling is spatially graded and does not act uniformly over a population, which aligns with the continuously varying sender/receiver weights of activated lymphocytes identified by component 5 [source].
+These components thus showcase CCC-RISE's single-cell resolution by dissecting classical cell types into more granular subpopulations, defined by raw gene expression and coordinated LR signaling rather than problematic cell-type annotations.
 
-[Old ALAD discussion with literature that should be injected into above. With CD70 so far down the list of top LR pairs in the immune component, I'm not sure we should use literature that focuses so exclusively on it. The below references are very CD70-focused.]
-- GZMA-F2R was the primary interaction for NK cells and terminally exhausted CD8 T cells previously identified as predictive of successful outcomes in control patients and conducive to transplant tolerance, potentially reflecting effective immune surveillance without detrimental inflammation.
--  While CD70 is typically repressed shortly after normal T cell activation, sustained expression marks alloreactive T cells\ [@doi:10.1182/bloodadvances.2024012909].
-- By engaging CD27 on neighboring cytotoxic CD4+ receiver cells---which display distinct, high-metabolic markers such as ADA---these CD70+ senders create a continuous, self-amplifying feedback loop.
-This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell proliferation and lowering the activation threshold of the surrounding immune environment\ [@doi:10.1182/bloodadvances.2024012909; @doi:10.4049/jimmunol.179.4.2609; @doi:10.3389/fimmu.2021.715909; @doi:10.1111/j.1600-6143.2005.01215.x].
+<!-- [Old ALAD discussion with literature that should be injected into above. With CD70 so far down the list of top LR pairs in the immune component, I'm not sure we should use literature that focuses so exclusively on it. The below references are very CD70-focused.]
+<!-- - GZMA-F2R was the primary interaction for NK cells and terminally exhausted CD8 T cells previously identified as predictive of successful outcomes in control patients and conducive to transplant tolerance, potentially reflecting effective immune surveillance without detrimental inflammation.
+<!-- -  While CD70 is typically repressed shortly after normal T cell activation, sustained expression marks alloreactive T cells\ [@doi:10.1182/bloodadvances.2024012909].
+<!-- - By engaging CD27 on neighboring cytotoxic CD4+ receiver cells---which display distinct, high-metabolic markers such as ADA---these CD70+ senders create a continuous, self-amplifying feedback loop.
+<!-- This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell proliferation and lowering the activation threshold of the surrounding immune environment\ [@doi:10.1182/bloodadvances.2024012909; @doi:10.4049/jimmunol.179.4.2609; @doi:10.3389/fimmu.2021.715909; @doi:10.1111/j.1600-6143.2005.01215.x].-->
 
-<!--Paragraph 4: Clinical associations with ALAD and IBD (revised version of ALAD paragraphs)-->
-- A key goal of multi-condition CCC inference methods is to identify communication programs associated with disease state.
-- CCC-RISE exhibited this capability in both the ALAD cohort and an independent cohort of CD patients.
-- In the context of lung transplantation, CCC-RISE component 5 exhibited a significant step-wise association with six-month outcome, but the low statistical power of the dataset procluded our ability to make further assertions and contrained our findings to being hypothesis-generating.
-- The IBD dataset provided richness and statistical power beyond the ALAD data.
-- Here, CCC-RISE identified a complementary pair of hormone-communication programs among EE, enterochromafin (EC), and tuft cells that was negatively associated with the shift from CD uninflamed to CD inflamed state.
-- Literature on impact of inflammation on EE cells?
-- Discussion of cell abundance associations (cell type composition tracks inflammation state and EE sender subpopulations decline with inflammation)?
+- A key goal of any multi-condition CCC-inference method is to identify communication programs associated with disease state.
+- CCC-RISE exhibited this capability in two independent biological contexts: lung transplantation and Crohn's disease (CD).
+- In lung allograft patients, CCC-RISE component 5 exhibited a significant step-wise association with six-month outcome, but the low statistical power of the dataset procluded our ability to make further assertions and contrained our findings to being hypothesis-generating.
+- The IBD dataset provided richness and statistical power beyond that of the ALAD data.
+- Here, CCC-RISE identified a complementary pair of hormone-communication programs among EE, enterochromafin (EC), and tuft cells that was negatively associated with the shift from uninflamed to inflamed states in CD patients.
+- Interestingly, EE sender cells were spread continuously between villus- and crypt-like states, defined by components 3 and 4 respectively, but only villus-like cells decreased in per-biopsy abundance with inflammation, linking back to the clinical association.
+- IBD is characterized by the infiltration of immune cells into the gut epithelium and the subsequent killing of otherwise normal epithelial cells [source].
+- Indeed, immune and epithelial cell-type abundances tracked inflammation status in the IBD data, but CCC-RISE further dissected these trends by identifying a specific EE subpopulation that was especially sensitive to inflammation.
+- The crypt-to-villus transition of EE cells is not just a molecular shift, but a spatial one.
+- As they differentiate, crypt cells migrate towards the gut lumen, thus becoming more exposed to external pressures, such as inflammation.
+- Again, through eigen-states, CCC-RISE exhibited the capacity to identify communicatin programs among cellular subpopulations that vary across disease states.
 
-<!--Paragraph 5: comparator discussion (entirely new)-->
 Methods such as Tensor-cell2cell and STACCato establish communication programs from a four-dimensional tensor decomposition, similar to CCC-RISE, to capture between-condition variability\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].
 However, this multi-condition decomposition occurs only after annotation has pooled all cells into one condition used to fix cell-types, thus removing between-condition variation in cell state before the decomposition can use it.
 CCC-RISE instead evaluates between-condition covariation at both steps of its decomposition resulting in largely coordinated communication programs that pseudobulk methods either split across columns or failed to recover entirely.
-Although CCC-RISE subpopulations aligned more closely with populations independently scored by NICHES than with cell-type–defined populations, we observed that other single-cell methods available for such checks remained tractable only through aggregation or subsampling
-Specifically, NICHES scores each cell against a sample’s aggregated partner expression\ [@doi:10.1093/bioinformatics/btac775], and Scriabin builds its cell–cell interaction matrix from a small subsample of cells\ [@doi:10.1038/s41587-023-01782-z].
+Although CCC-RISE subpopulations aligned more closely with populations independently scored by NICHES than with cell-type--defined populations, we observed that other single-cell methods available for such checks remained tractable only through aggregation or subsampling
+Specifically, NICHES scores each cell against a sample’s aggregated partner expression\ [@doi:10.1093/bioinformatics/btac775], and Scriabin builds its cell--cell interaction matrix from a small subsample of cells\ [@doi:10.1038/s41587-023-01782-z].
 We found Scriabin’s subsampling in particular to introduce instability that precluded rigorous comparison.
 Because its communication tensor grows with the number of eigen-states rather than cells, CCC-RISE scales to large multi-condition cohorts while still scoring communication per cell.
 
-<!--Paragraph 6: limitations and future directions (revised from original)-->
-Although RISE's eigen-states enable CCC-RISE to perform tensor decomposition while retaining single-cell resolution, CCC-RISE is not immune from limitations inherent to decomposition techniques and transcriptomic inference at large.
-Principally, researchers must select the rank for both the RISE and CPD steps, a challenging, empirical process that can be aided by held-out prediction such as bi-cross-validation and by resampling such as the jackknife\ [@doi:10.1214/08-AOAS227; @{doi:10.1016/S0169-7439(02)00090-4}].
-Additionally, like other transcriptomic CCC methods, CCC-RISE scores only the interactions catalogued in curated resources such as CellChatDB, so it cannot discover new ligand--receptor interactions, and its inferences depend on the resource chosen\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41467-022-30755-0].
-Downstream validation is similarly bounded by priors such as NicheNet, whose ligand--target links are incomplete and not specific to a tissue or disease context, limiting how accurately the downstream effects of a communication program can be quantified\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
-CCC-RISE also assumes that gene expression is a proportional proxy for protein translation, secretion, and functional interaction.
+Although RISE's eigen-states enable CCC-RISE to perform tensor decomposition while retaining single-cell resolution, they also introduce limitations inherent to decomposition techniques and transcriptomic inference.
+Researchers must select the rank for both RISE and CPD reduction steps, a challenging, empirical process that can be aided by held-out prediction such as bi-cross-validation and by resampling such as the jackknife\ [@doi:10.1214/08-AOAS227; @{doi:10.1016/S0169-7439(02)00090-4}].
+Additionally, like other transcriptomic CCC methods, CCC-RISE scores only the LR interactions catalogued in curated resources such as CellChatDB, so it cannot discover new interactions and its results depend on the LR pairs documented in the chosen database\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41467-022-30755-0].
+CCC-RISE also assumes that gene expression is a sufficiently accurate proxy for protein abundance and functional interaction.
 Because post-transcriptional regulation and binding kinetics can decouple mRNA levels from functional protein interactions, the communication patterns identified should be interpreted as hypotheses requiring experimental validation\ [@doi:10.1093/bib/bbaf280; @doi:10.1038/s41598-019-40939-2].
+Finally, CCC model validation is generally dependent on either simulated datasets such as SERGIO, which fail to capture the structure of real biological data, or prior knowledge such as the NicheNet database, whose ligand--gene-target links are incomplete and not specific to a tissue or disease context\ [@doi:10.1016/j.cels.2020.08.003; @doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Emerging technologies like single-cell proteomics and spatial transcriptomics, together with CCC models that constrain signaling by physical proximity, will be crucial to improve both the capture and validation of molecular signaling\ [@doi:10.1038/s41592-025-02620-7; @doi:10.1016/j.xgen.2025.100973; @doi:10.1038/s41592-022-01728-4].
 
-<!--Paragraph 7: summary (copied from original)-->
 In summary, CCC-RISE provides an unbiased framework for investigating CCC across multiple conditions at single-cell resolution.
 By integrating the cell-alignment capabilities of RISE with the pattern-finding benefits of tensor decomposition, our method reveals context-specific communication programs that are directly interpretable at the level of individual cells.
 As single-cell, multi-condition studies become increasingly common, CCC-RISE will serve as a powerful tool to unravel the complex cellular dialogues that underpin diseases.
 Understanding CCC will rely on high-level analysis tools like CCC-RISE to map the entire landscape of potential interactions in an unbiased way, followed by targeted experiments to confirm which of these predicted pathways are functionally important.
-
-<!-- Legacy:
-
-COVID paragraph:
-The application of CCC-RISE to a COVID-19 cohort illustrated the critical need for this resolution to deconvolve condition-specific communication events.
-While pseudobulk analysis broadly implicated mDCs and B cells in CCL19-CCR7-mediated interactions, CCC-RISE successfully pinpointed the specific high-activity subpopulations driving this recruitment signal, revealing heterogeneity that aggregate methods miss.
-Furthermore, the model disentangled complex epithelial responses by identifying a distinct pro-repair program involving PTN/MDK signaling through PTPRZ1/SDC receptors\ [@doi:10.2147/JHC.S493675; @doi:10.3390/cancers17091516; @doi:10.3390/ijms251910839].
-This signaling axis was associated with only a fraction of the epithelial cell population, aligning with established host defense mechanisms where specific proteins like occludin and E-cadherin are upregulated to reinforce tight junctions and prevent viral transmission\ [@doi:10.1091/mbc.e10-04-0338; @doi:10.1073/pnas.2218623120].
-The ability to distinguish these non-overlapping ligand-receptor programs within a single \"cell type\" highlights the method's capacity to separate disease mechanisms that are mathematically invisible to aggregate approaches.
-
-ALAD results 1:
-In ALAD patients, CCC-RISE pinpointed pathogenic CD40LG-CD40 signaling between dendritic cells and a specific subset of CD4+ T cells enriched for stem-like, homing, and regulatory markers, including FOXP3, SELL, and LEF1.
-This distinct transcriptional profile suggests these cells actively organize the immune response within lymphoid-like structures, a critical biological nuance that aggregate methods would miss.
-Indeed, markers of lymphoid structure formation and regulation have previously been identified as associated with acute cellular rejection\ [@doi:10.1016/j.ebiom.2025.106046].
-Conversely, CCC-RISE also identified counterbalancing, pro-tolerance communication programs.
-First, DC interactions for CD200-CD200R1 suggest a communication program where DCs engage in an anti-inflammatory response and promotes immune tolerance, as suggested by previous studies\ [@doi:10.3390/ijms22041602; @doi:10.3389/fimmu.2022.1092126; @doi:10.1097/MD.0000000000017006].
-Secondly, GZMA-F2R was the primary interaction for NK cells and terminally exhausted CD8 T cells previously identified as predictive of successful outcomes in control patients and conducive to transplant tolerance, potentially reflecting effective immune surveillance without detrimental inflammation.
-By capturing the simultaneous expression of cytotoxic machinery and inhibitory checkpoints like CTLA4 in these receivers, the framework successfully identified a state of strictly regulated immune surveillance that prevents detrimental inflammation.
-Ultimately, these findings highlight that complex clinical outcomes like ALAD are associated with the signaling of highly specialized, transient cell subsets, underscoring the necessity of integrative analytical tools that can bypass rigid cell annotations.
-
-ALAD results 2:
-The model identified Component 7 as the strongest predictor of clinical instability, driven almost entirely by an aberrant CD70-CD27 signaling axis within the CD4+ T cell compartment.
-While CD70 is typically repressed shortly after normal T cell activation, sustained expression marks alloreactive T cells\ [@doi:10.1182/bloodadvances.2024012909].
-The single-cell resolution of CCC-RISE isolated this specific subpopulation of CD4+ T cells characterized by high CD70 expression.
-By engaging CD27 on neighboring cytotoxic CD4+ receiver cells---which display distinct, high-metabolic markers such as ADA---these CD70+ senders create a continuous, self-amplifying feedback loop.
-This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell proliferation and lowering the activation threshold of the surrounding immune environment\ [@doi:10.1182/bloodadvances.2024012909; @doi:10.4049/jimmunol.179.4.2609; @doi:10.3389/fimmu.2021.715909; @doi:10.1111/j.1600-6143.2005.01215.x].
-Mathematically separating this dysregulated, highly specialized subset from the broader CD4+ population again demonstrated the importance of cellular resolution beyond the cell type annotations.
--->
