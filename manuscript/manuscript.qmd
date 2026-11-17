@@ -56,9 +56,7 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to ag
 
 - Scripts to reproduce the manuscript are available on GitHub (https://github.com/meyer-lab/cccRISE).
 
-- The source data of this paper are collected in the following database record: [placeholder].
-
-- Any additional information required to reproduce this work is available from the Lead Contact.
+- Especially large source data of this paper are collected at Zenodo [doi placeholder] ([url placeholder]).
 
 ## References
 
