@@ -31,11 +31,11 @@ In the context of lung transplants, this co-varying communication program likely
 Additionally, immune signaling is spatially graded and does not act uniformly over a population, which aligns with the continuously varying sender/receiver weights of activated lymphocytes identified by component 5 [source].
 These components thus showcase CCC-RISE's single-cell resolution by dissecting classical cell types into more granular subpopulations, defined by raw gene expression and coordinated LR signaling rather than problematic cell-type annotations.
 
-[Old ALAD discussion with literature that should be injected into above. With CD70 so far down the list of top LR pairs in the immune component, I'm not sure we should use literature that focuses so exclusively on it. The below references are very CD70-focused.]
-- GZMA-F2R was the primary interaction for NK cells and terminally exhausted CD8 T cells previously identified as predictive of successful outcomes in control patients and conducive to transplant tolerance, potentially reflecting effective immune surveillance without detrimental inflammation.
--  While CD70 is typically repressed shortly after normal T cell activation, sustained expression marks alloreactive T cells\ [@doi:10.1182/bloodadvances.2024012909].
-- By engaging CD27 on neighboring cytotoxic CD4+ receiver cells---which display distinct, high-metabolic markers such as ADA---these CD70+ senders create a continuous, self-amplifying feedback loop.
-This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell proliferation and lowering the activation threshold of the surrounding immune environment\ [@doi:10.1182/bloodadvances.2024012909; @doi:10.4049/jimmunol.179.4.2609; @doi:10.3389/fimmu.2021.715909; @doi:10.1111/j.1600-6143.2005.01215.x].
+<!-- [Old ALAD discussion with literature that should be injected into above. With CD70 so far down the list of top LR pairs in the immune component, I'm not sure we should use literature that focuses so exclusively on it. The below references are very CD70-focused.]
+<!-- - GZMA-F2R was the primary interaction for NK cells and terminally exhausted CD8 T cells previously identified as predictive of successful outcomes in control patients and conducive to transplant tolerance, potentially reflecting effective immune surveillance without detrimental inflammation.
+<!-- -  While CD70 is typically repressed shortly after normal T cell activation, sustained expression marks alloreactive T cells\ [@doi:10.1182/bloodadvances.2024012909].
+<!-- - By engaging CD27 on neighboring cytotoxic CD4+ receiver cells---which display distinct, high-metabolic markers such as ADA---these CD70+ senders create a continuous, self-amplifying feedback loop.
+<!-- This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell proliferation and lowering the activation threshold of the surrounding immune environment\ [@doi:10.1182/bloodadvances.2024012909; @doi:10.4049/jimmunol.179.4.2609; @doi:10.3389/fimmu.2021.715909; @doi:10.1111/j.1600-6143.2005.01215.x].-->
 
 - A key goal of any multi-condition CCC-inference method is to identify communication programs associated with disease state.
 - CCC-RISE exhibited this capability in two independent biological contexts: lung transplantation and Crohn's disease (CD).
@@ -49,7 +49,6 @@ This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell 
 - As they differentiate, crypt cells migrate towards the gut lumen, thus becoming more exposed to external pressures, such as inflammation.
 - Again, through eigen-states, CCC-RISE exhibited the capacity to identify communicatin programs among cellular subpopulations that vary across disease states.
 
-<!--Paragraph 5: comparator discussion (entirely new)-->
 Methods such as Tensor-cell2cell and STACCato establish communication programs from a four-dimensional tensor decomposition, similar to CCC-RISE, to capture between-condition variability\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].
 However, this multi-condition decomposition occurs only after annotation has pooled all cells into one condition used to fix cell-types, thus removing between-condition variation in cell state before the decomposition can use it.
 CCC-RISE instead evaluates between-condition covariation at both steps of its decomposition resulting in largely coordinated communication programs that pseudobulk methods either split across columns or failed to recover entirely.
@@ -66,36 +65,7 @@ Because post-transcriptional regulation and binding kinetics can decouple mRNA l
 Finally, CCC model validation is generally dependent on either simulated datasets such as SERGIO, which fail to capture the structure of real biological data, or prior knowledge such as the NicheNet database, whose ligand--gene-target links are incomplete and not specific to a tissue or disease context\ [@doi:10.1016/j.cels.2020.08.003; @doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Emerging technologies like single-cell proteomics and spatial transcriptomics, together with CCC models that constrain signaling by physical proximity, will be crucial to improve both the capture and validation of molecular signaling\ [@doi:10.1038/s41592-025-02620-7; @doi:10.1016/j.xgen.2025.100973; @doi:10.1038/s41592-022-01728-4].
 
-<!--Paragraph 7: summary (copied from original)-->
 In summary, CCC-RISE provides an unbiased framework for investigating CCC across multiple conditions at single-cell resolution.
 By integrating the cell-alignment capabilities of RISE with the pattern-finding benefits of tensor decomposition, our method reveals context-specific communication programs that are directly interpretable at the level of individual cells.
 As single-cell, multi-condition studies become increasingly common, CCC-RISE will serve as a powerful tool to unravel the complex cellular dialogues that underpin diseases.
 Understanding CCC will rely on high-level analysis tools like CCC-RISE to map the entire landscape of potential interactions in an unbiased way, followed by targeted experiments to confirm which of these predicted pathways are functionally important.
-
-<!-- Legacy:
-
-COVID paragraph:
-The application of CCC-RISE to a COVID-19 cohort illustrated the critical need for this resolution to deconvolve condition-specific communication events.
-While pseudobulk analysis broadly implicated mDCs and B cells in CCL19-CCR7-mediated interactions, CCC-RISE successfully pinpointed the specific high-activity subpopulations driving this recruitment signal, revealing heterogeneity that aggregate methods miss.
-Furthermore, the model disentangled complex epithelial responses by identifying a distinct pro-repair program involving PTN/MDK signaling through PTPRZ1/SDC receptors\ [@doi:10.2147/JHC.S493675; @doi:10.3390/cancers17091516; @doi:10.3390/ijms251910839].
-This signaling axis was associated with only a fraction of the epithelial cell population, aligning with established host defense mechanisms where specific proteins like occludin and E-cadherin are upregulated to reinforce tight junctions and prevent viral transmission\ [@doi:10.1091/mbc.e10-04-0338; @doi:10.1073/pnas.2218623120].
-The ability to distinguish these non-overlapping ligand-receptor programs within a single \"cell type\" highlights the method's capacity to separate disease mechanisms that are mathematically invisible to aggregate approaches.
-
-ALAD results 1:
-In ALAD patients, CCC-RISE pinpointed pathogenic CD40LG-CD40 signaling between dendritic cells and a specific subset of CD4+ T cells enriched for stem-like, homing, and regulatory markers, including FOXP3, SELL, and LEF1.
-This distinct transcriptional profile suggests these cells actively organize the immune response within lymphoid-like structures, a critical biological nuance that aggregate methods would miss.
-Indeed, markers of lymphoid structure formation and regulation have previously been identified as associated with acute cellular rejection\ [@doi:10.1016/j.ebiom.2025.106046].
-Conversely, CCC-RISE also identified counterbalancing, pro-tolerance communication programs.
-First, DC interactions for CD200-CD200R1 suggest a communication program where DCs engage in an anti-inflammatory response and promotes immune tolerance, as suggested by previous studies\ [@doi:10.3390/ijms22041602; @doi:10.3389/fimmu.2022.1092126; @doi:10.1097/MD.0000000000017006].
-Secondly, GZMA-F2R was the primary interaction for NK cells and terminally exhausted CD8 T cells previously identified as predictive of successful outcomes in control patients and conducive to transplant tolerance, potentially reflecting effective immune surveillance without detrimental inflammation.
-By capturing the simultaneous expression of cytotoxic machinery and inhibitory checkpoints like CTLA4 in these receivers, the framework successfully identified a state of strictly regulated immune surveillance that prevents detrimental inflammation.
-Ultimately, these findings highlight that complex clinical outcomes like ALAD are associated with the signaling of highly specialized, transient cell subsets, underscoring the necessity of integrative analytical tools that can bypass rigid cell annotations.
-
-ALAD results 2:
-The model identified Component 7 as the strongest predictor of clinical instability, driven almost entirely by an aberrant CD70-CD27 signaling axis within the CD4+ T cell compartment.
-While CD70 is typically repressed shortly after normal T cell activation, sustained expression marks alloreactive T cells\ [@doi:10.1182/bloodadvances.2024012909].
-The single-cell resolution of CCC-RISE isolated this specific subpopulation of CD4+ T cells characterized by high CD70 expression.
-By engaging CD27 on neighboring cytotoxic CD4+ receiver cells---which display distinct, high-metabolic markers such as ADA---these CD70+ senders create a continuous, self-amplifying feedback loop.
-This aligns with the known role of CD70-CD27 in promoting antigen-driven T-cell proliferation and lowering the activation threshold of the surrounding immune environment\ [@doi:10.1182/bloodadvances.2024012909; @doi:10.4049/jimmunol.179.4.2609; @doi:10.3389/fimmu.2021.715909; @doi:10.1111/j.1600-6143.2005.01215.x].
-Mathematically separating this dysregulated, highly specialized subset from the broader CD4+ population again demonstrated the importance of cellular resolution beyond the cell type annotations.
--->
