@@ -42,6 +42,8 @@ IBD_PROGRAMS_DIR = DATA_DIR / "ibd_programs"
 #: Upstream NICHES against cccRISE's populations (`run_niches`)
 NICHES_DIR = DATA_DIR / "niches"
 SCRIABIN_DIR = DATA_DIR / "scriabin"
+#: The Scriabin paper's Fig. 2d-e rerun on panc8 (`run_scriabin_reproduction`)
+SCRIABIN_REPRODUCTION_DIR = DATA_DIR / "scriabin_reproduction"
 #: Figure 2's and Figure 3's ALAD program tables (`run_alad_programs`)
 ALAD_PROGRAMS_DIR = DATA_DIR / "alad_programs"
 

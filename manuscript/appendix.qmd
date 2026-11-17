@@ -81,10 +81,10 @@ Comparator recovery of the IBD components, and detection depth in every method's
 ({{< panel comparator-ibd-and-depth ibd-best >}}) Largest cos^2^ between the LR pair loadings of each IBD CCC-RISE component (n = 6) and any single LR column of each comparator fit.
 ({{< panel comparator-ibd-and-depth ibd-containment >}}) Fraction of each IBD CCC-RISE component's LR pair loadings reconstructed by the best combination of all LR columns of each comparator fit.
 ({{< panel comparator-ibd-and-depth depth >}}) Absolute Spearman correlation between the absolute condition loadings of each CCC-RISE component or comparator LR column and the median number of genes detected per cell, computed across samples (ALAD, n = 47) or biopsies (IBD, n = 343).
-Each point is one component or column (ALAD, n = 58; IBD, n = 40), grouped by fit.
+Each point is one component or column (ALAD, n = 62; IBD, n = 40), grouped by fit.
 For STAC columns, the condition loadings are the leading vector of each LR component's core slice, mapped through the condition factor.
 Boxes show the median and IQR, and whiskers show the full range.
-Kruskal--Wallis test across the fits of each cohort: ALAD, p = 1 × 10^−5^; IBD, p = 1 × 10^−4^.
+Kruskal--Wallis test across the fits of each cohort: ALAD, p = 6 × 10^−7^; IBD, p = 1 × 10^−4^.
 A star marks a fit whose components track depth more than the cohort's other components.
 This uses a one-sided Mann--Whitney U test with BH correction across the fits of the cohort, given a Kruskal--Wallis p below 0.05.
 
@@ -94,15 +94,15 @@ This uses a one-sided Mann--Whitney U test with BH correction across the fits of
 Comparator LR columns that are not part of a CCC-RISE component in ALAD.** PB, pseudobulk CPD; STAC, STACCato; C and F, coarse and fine labels.
 LR columns are named by method (P, S) and number, and top LR pairs are as in {{< fig 5 >}}.
 ({{< panel comparator-missed-alad share >}}) Share of each PB and STAC LR column's squared LR pair loading that falls on the top LR pairs of one CCC-RISE component.
-n = 39 columns.
+n = 41 columns.
 The dashed line marks 0.5.
-Eighteen columns fall below it.
+Sixteen columns fall below it.
 ({{< panel comparator-missed-alad associations >}}) Each column's strongest association with an ALAD outcome grouping, as effect size (η^2^) against q, beside the CCC-RISE components that have an association with q < 0.05 (blue).
 One-way ANOVA across samples (n = 47), with BH correction across all nine groupings and all components of each fit.
 The panel draws the eight groupings other than acute rejection.
 The dashed line marks q = 0.05.
 The box lists, for each grouping, the columns and CCC-RISE components with q < 0.05.
-({{< panel comparator-missed-alad contents >}}) Top LR pairs of the 18 columns below 0.5 in ({{< panel comparator-missed-alad share >}}), sized by absolute loading relative to the column's largest.
+({{< panel comparator-missed-alad contents >}}) Top LR pairs of the 16 columns below 0.5 in ({{< panel comparator-missed-alad share >}}), sized by absolute loading relative to the column's largest.
 The CCC-RISE row shows each LR pair's largest such value in any CCC-RISE component.
 Bold names and red boxes mark the columns with q < 0.05 in ({{< panel comparator-missed-alad associations >}}) that carry a top LR pair outside every CCC-RISE component's top LR pairs whose ligand and receptor are different genes.
 
@@ -112,26 +112,26 @@ Bold names and red boxes mark the columns with q < 0.05 in ({{< panel comparator
 Comparator LR columns that are not part of a CCC-RISE component in IBD.** As in {{< fig comparator-missed-alad >}}, for IBD.
 H, healthy; CD, Crohn's disease; U and I, CD uninflamed and inflamed.
 ({{< panel comparator-missed-ibd share >}}) Share of each LR column's squared LR pair loading on the top LR pairs of one CCC-RISE component (n = 28 columns).
-Fifteen columns fall below 0.5.
+Sixteen columns fall below 0.5.
 ({{< panel comparator-missed-ibd associations >}}) Each column's strongest association with a biopsy grouping.
 One-way ANOVA across biopsies (n = 343), with Benjamini--Hochberg correction across all three groupings and all components of each fit.
-The panel draws H vs. CD and U vs. I. ({{< panel comparator-missed-ibd contents >}}) Top LR pairs of the 15 columns below 0.5 in ({{< panel comparator-missed-ibd share >}}), sized by absolute loading relative to the column's largest.
+The panel draws H vs. CD and U vs. I. ({{< panel comparator-missed-ibd contents >}}) Top LR pairs of the 16 columns below 0.5 in ({{< panel comparator-missed-ibd share >}}), sized by absolute loading relative to the column's largest.
 The CCC-RISE row shows each LR pair's largest such value in any CCC-RISE component.
 Bold names and red boxes mark the columns with q < 0.05 in ({{< panel comparator-missed-ibd associations >}}) that carry a top LR pair outside every CCC-RISE component's top LR pairs whose ligand and receptor are different genes.
 
 ![](figures/figureS_comparator_single_cell/figureS_comparator_single_cell.svg){width="6.5in"}
 
 **{{< label comparator-single-cell >}}.
-Single-cell comparison of CCC-RISE populations.** ({{< panel comparator-single-cell scriabin-seeds >}}) Agreement between random seeds, measured as the mean best-match Jaccard index between two seeds' LR sets.
-Scriabin's LR sets are its interaction programs whereas CCC-RISE's are its components' top LR pairs.
-Each point is a pair of seeds, and bars mark medians.
-Scriabin: 10 seeds, n = 45 pairs in each cohort.
-CCC-RISE: 10 refits in ALAD (n = 45 pairs) and 5 in IBD (n = 10 pairs).
-({{< panel comparator-single-cell alad-weights >}}) ALAD and ({{< panel comparator-single-cell ibd-weights >}}) IBD per-cell sender weight against receiver weight on each CCC-RISE component, each relative to its largest value (ALAD, n = 51,273 cells; IBD, n = 634,534 cells).
+Single-cell comparison of CCC-RISE populations.** ({{< panel comparator-single-cell alad-weights >}}) ALAD and ({{< panel comparator-single-cell ibd-weights >}}) IBD per-cell sender weight against receiver weight on each CCC-RISE component, each relative to its largest value (ALAD, n = 51,273 cells; IBD, n = 634,534 cells).
 Dashed lines mark the 0.3 cutoff (τ) that defines each component's sender, receiver and both populations.
 ({{< panel comparator-single-cell alad-tau >}}) ALAD and ({{< panel comparator-single-cell ibd-tau >}}) IBD fraction of NICHES+ cells in each sender (solid) and receiver (dotted) population, minus the fraction predicted by cell type as in {{< fig 5 niches-fraction >}}, across cutoffs τ from 0.1 to 0.6.
 A population is drawn only while it has at least 10 cells.
 The grey line marks the 0.3 cutoff used throughout, and the dashed line marks no difference.
+({{< panel comparator-single-cell scriabin-seeds >}}) Agreement between random seeds, measured as the mean best-match Jaccard index between two seeds' LR sets.
+Scriabin's LR sets are its interaction programs whereas CCC-RISE's are its components' top LR pairs.
+Each point is a pair of seeds, and bars mark medians.
+Scriabin: 10 seeds, n = 45 pairs in each cohort.
+CCC-RISE: 10 refits in ALAD (n = 45 pairs) and 5 in IBD (n = 10 pairs).
 
 {{< include figures/tables/alad_outcome_groups.md >}}
 

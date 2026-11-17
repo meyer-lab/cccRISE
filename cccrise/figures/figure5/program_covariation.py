@@ -1,4 +1,4 @@
-"""Figure 5D: co-variation of ALAD C4 and of its related columns (5C) over all
+"""Figure 5D: co-variation of ALAD C5 and of its related columns (5C) over all
 their carrying pairs, against the random and the expression-matched null
 (`_split.covariation`)."""
 
@@ -9,7 +9,7 @@ AXES = ("fig5_covariation",)
 
 
 def plot(axs):
-    _split.covariation(axs, "alad", (4,), key_loc="lower left")
+    _split.covariation(axs, "alad", (5,), key_loc="lower left")
 
 
 def makeFigure():

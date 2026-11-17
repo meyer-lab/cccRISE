@@ -44,4 +44,4 @@ Although other dimensionality reduction methods could supply these single-cell e
 First, PARAFAC2 has a unique solution, so eigen-states represent a non-arbitrary choice of basis for LR interaction scoring\ [@{doi:10.1002/(SICI)1099-128X(199905/08)13:3/4<295::AID-CEM547>3.0.CO;2-Y}].
 Second, eigen-states are defined by explicit cell and gene weights, so LR interactions can be traced back to individual cells\ [@doi:10.1016/j.cels.2025.101294].
 Here, we apply standard CCC scoring and tensor factorization to RISE's eigen-states to identify core communication programs across varying conditions while preserving the ability to interpret these signals at the single-cell level.
-We then compare CCC-RISE with tensor methods that pool cells by annotation to identify which kinds of communication program pooling loses.
+We then compare CCC-RISE with tensor methods that aggregate cells by annotation to identify which kinds of communication programs are lost.

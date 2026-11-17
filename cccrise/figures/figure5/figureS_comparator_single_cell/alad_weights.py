@@ -4,7 +4,7 @@ populations colored (`_niches.weight_scatters`)."""
 from ... import common
 from .._niches import weight_scatters
 
-AXES = ("full_sixth",) * 5
+AXES = ("full_sixth",) * 6
 JOINED = True  # one panel, lettered once (`common._Joined`)
 
 
