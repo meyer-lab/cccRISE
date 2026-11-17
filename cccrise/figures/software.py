@@ -25,16 +25,13 @@ PYTHON_URL = "https://www.python.org"
 #: package at release v1.2.5 (`run_niches.NICHES_COMMIT`; its DESCRIPTION
 #: still says 1.2.4). Scriabin runs as its R package, and STACCato is
 #: re-implemented from its R package (`comparators.staccato`), at these commits:
-#: neither has a release, and every commit is 0.0.0.9000. Tensor-cell2cell's
-#: pipeline is re-implemented from the current release (`comparators.methods`).
+#: neither has a release, and every commit's version is 0.0.0.9000, so the
+#: commit alone identifies them. Tensor-cell2cell's pipeline is re-implemented
+#: from the current release (`comparators.methods`).
 COMPARATORS = [
     ("NICHES", "https://github.com/msraredon/NICHES", "1.2.5"),
-    ("Scriabin", "https://github.com/BlishLab/scriabin", "0.0.0.9000 (commit bce695b)"),
-    (
-        "STACCato",
-        "https://github.com/daiqile96/STACCato",
-        "0.0.0.9000 (commit cb76f21)",
-    ),
+    ("Scriabin", "https://github.com/BlishLab/scriabin", "commit bce695b"),
+    ("STACCato", "https://github.com/daiqile96/STACCato", "commit cb76f21"),
     ("Tensor-cell2cell", "https://github.com/earmingol/cell2cell", "0.9.0"),
 ]
 
