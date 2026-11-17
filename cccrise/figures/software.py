@@ -15,31 +15,27 @@ import pandas as pd
 from packaging.markers import Marker
 
 from ..runners.provenance import REPO_ROOT
-from ..runners.run_niches import NICHES_COMMIT
 from . import common
 
 OUTPUT_PATH = common.OUTPUT_DIR / "source_data" / "software_versions.csv"
 COLUMNS = ["Reagent/Resource", "Reference or Source", "Identifier or catalogue number"]
 PYPI_URL = "https://pypi.org/project/{}/"
 PYTHON_URL = "https://www.python.org"
-#: The comparator methods, none a Python dependency: NICHES and Scriabin run
-#: as their R packages at these commits (`run_niches`, `run_scriabin_seeds`),
-#: STACCato is re-implemented from its R package at this commit
-#: (`comparators.staccato`), and Tensor-cell2cell's pipeline is re-implemented
-#: from no pinned release (`comparators.methods`).
+#: The comparator methods, none a Python dependency. NICHES runs as its R
+#: package at release v1.2.5 (`run_niches.NICHES_COMMIT`; its DESCRIPTION
+#: still says 1.2.4). Scriabin runs as its R package, and STACCato is
+#: re-implemented from its R package (`comparators.staccato`), at these commits:
+#: neither has a release, and every commit is 0.0.0.9000. Tensor-cell2cell's
+#: pipeline is re-implemented from the current release (`comparators.methods`).
 COMPARATORS = [
-    (
-        "NICHES",
-        "https://github.com/msraredon/NICHES",
-        f"1.2.4 (commit {NICHES_COMMIT})",
-    ),
+    ("NICHES", "https://github.com/msraredon/NICHES", "1.2.5"),
     ("Scriabin", "https://github.com/BlishLab/scriabin", "0.0.0.9000 (commit bce695b)"),
     (
         "STACCato",
         "https://github.com/daiqile96/STACCato",
         "0.0.0.9000 (commit cb76f21)",
     ),
-    ("Tensor-cell2cell", "https://github.com/earmingol/cell2cell", ""),
+    ("Tensor-cell2cell", "https://github.com/earmingol/cell2cell", "0.9.0"),
 ]
 
 
