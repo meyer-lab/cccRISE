@@ -139,3 +139,6 @@ figS_comparator_ibd_and_depth:
   ibd_best: [a]
   ibd_containment: [b]
   depth: [c]
+figR_scriabin:
+  lisi_recapitulation: [a]
+  downsampling_programs: [b]
