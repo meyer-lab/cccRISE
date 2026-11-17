@@ -3,7 +3,8 @@
 -- axes with `.i`), and optionally a second module ending a range. Hyphens
 -- stand in for module names' underscores. Letters come from _panels.yml
 -- (written by cccrise-fbuild), supplement labels from their position in
--- `ev_figures` or `appendix_figures`, and tables' from `appendix_tables`.
+-- `ev_figures` or `appendix_figures`, tables' from `appendix_tables`, and
+-- reviewer figures' (the response only) from `reviewer_figures`.
 local str = pandoc.utils.stringify
 
 local function letters(panels, spec)
@@ -17,23 +18,27 @@ local function letters(panels, spec)
   return index == "" and ls or { ls[tonumber(index)] }
 end
 
--- MSB's classes of supplementary figure: the metadata list naming each
--- class's figures in order, and its label in references and legend titles
+-- MSB's classes of supplementary figure, and the response's reviewer
+-- figures: the metadata list naming each class's figures in order, its label
+-- in references and legend titles, and its figures' prefix in _panels.yml
+-- (figS_<name>, figR_<name>)
 local CLASSES = {
-  { list = "ev_figures", ref = "Fig. EV", title = "Figure EV" },
-  { list = "appendix_figures", ref = "Appendix Fig. S", title = "Appendix Figure S" },
-  { list = "appendix_tables", ref = "Appendix Table S", title = "Appendix Table S" },
+  { list = "ev_figures", ref = "Fig. EV", title = "Figure EV", prefix = "S_" },
+  { list = "appendix_figures", ref = "Appendix Fig. S", title = "Appendix Figure S", prefix = "S_" },
+  { list = "appendix_tables", ref = "Appendix Table S", title = "Appendix Table S", prefix = "S_" },
+  { list = "reviewer_figures", ref = "Reviewer Fig. R", title = "Reviewer Figure R", prefix = "R_" },
 }
 
--- A supplement's reference label and legend title, e.g. "Fig. EV1", "Figure EV1"
+-- A supplement's reference label, legend title and _panels.yml prefix, e.g.
+-- "Fig. EV1", "Figure EV1", "S_"
 local function supplement(name, meta)
   for _, class in ipairs(CLASSES) do
     for i, listed in ipairs(meta[class.list] or {}) do
-      if str(listed) == name then return class.ref .. i, class.title .. i end
+      if str(listed) == name then return class.ref .. i, class.title .. i, class.prefix end
     end
   end
   quarto.log.warning("No supplementary figure or table class for " .. name)
-  return "[" .. name .. "]", "[" .. name .. "]"
+  return "[" .. name .. "]", "[" .. name .. "]", "S_"
 end
 
 -- The figure's label and the letters of panels `args[2]` to `args[3]`
@@ -41,7 +46,9 @@ local function resolve(args, meta)
   local figure = str(args[1]):gsub("-", "_")
   local label = "Fig. " .. figure
   if not figure:match("^%d+$") then
-    label, figure = supplement(figure, meta), "S_" .. figure
+    local _, prefix
+    label, _, prefix = supplement(figure, meta)
+    figure = prefix .. figure
   end
   if #args < 2 then return label, "" end
   local panels = meta["fig" .. figure] or {}
@@ -66,7 +73,7 @@ return {
     local _, panels = resolve(args, meta)
     return pandoc.Str(panels)
   end,
-  -- "Figure EV1", "Appendix Figure S1": a supplement's legend title
+  -- "Figure EV1", "Appendix Figure S1", "Reviewer Figure R1": a legend title
   label = function(args, _, meta)
     local _, title = supplement(str(args[1]):gsub("-", "_"), meta)
     return pandoc.Str(title)

@@ -11,6 +11,13 @@
 # and reads <dir>/{c2s,s2c}.mtx (LR pair x cell), {c2s,s2c}_{rows,cells}.txt
 # and versions.yaml.
 #   Rscript niches_system.R <dir> <NICHES source> <R library> <workers>
+#
+# R setup (the versions the results were made with, recorded in each run's
+# versions.yaml): R 4.5.2 with Seurat 5.6.0, Matrix 1.7.4 and dplyr in
+# <R library>. NICHES is not installed: its R/ files are sourced from a clone
+# at 5d932b8 (`run_niches.NICHES_COMMIT`, checked):
+#   git clone https://github.com/msraredon/NICHES <NICHES source>
+#   git -C <NICHES source> checkout 5d932b8
 args <- commandArgs(TRUE)
 dir <- args[1]
 .libPaths(c(normalizePath(args[3]), .libPaths()))

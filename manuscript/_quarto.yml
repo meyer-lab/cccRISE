@@ -26,6 +26,8 @@ ev_figures: [cmp5_identity, alad_associations, ccc_scoring, ibd_hormone_axes, co
 appendix_figures: [alad_cohort, ibd_rank_selection, ibd_associations, comparator_rank_selection, comparator_ibd_and_depth, comparator_missed_alad, comparator_missed_ibd, comparator_single_cell]
 # Appendix tables (Appendix Table S1, ...), written by `python -m cccrise.figures.tables`
 appendix_tables: [alad_outcome_groups]
+# Reviewer figures (Reviewer Figure R1, ...), in the response to reviewers only
+reviewer_figures: [scriabin]
 
 crossref:
     fig-prefix: Fig.

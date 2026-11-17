@@ -12,6 +12,7 @@ from matplotlib.path import Path
 from ...runners.datasets import DATASETS
 from .. import common, style
 from ..figure2._common import (
+    GRANULARITY_COMPONENT,
     GRANULARITY_DATASET,
     GROUP_TAU,
     component_weights,
@@ -135,7 +136,8 @@ EPITHELIAL_NAME = "Epithelial cells"
 
 
 def _epithelial_cells() -> pd.DataFrame:
-    """The epithelial label's cells, each marked if a C5 sender or receiver."""
+    """The epithelial label's cells, each marked if an EGFR-component sender or
+    receiver."""
     cells = common.get_cell_projections(GRANULARITY_DATASET)
     label = DATASETS[GRANULARITY_DATASET].labellings["fine"]
     epithelium = cells.obs[label].astype(str).to_numpy() == EPITHELIAL_LABEL
@@ -156,25 +158,25 @@ def flow_alad(ax) -> None:
         [pd.Series({EPITHELIAL_NAME: len(cells)}), cells.drop(columns="Cell").sum()]
     )
     common.source_data(
-        "c5_epithelial_cell_populations",
+        f"c{GRANULARITY_COMPONENT}_epithelial_cell_populations",
         t.rename("Cells").rename_axis("Population").reset_index(),
         "Epithelial cells (the one fine epithelial label), and those past Figure 2's "
         "sender and receiver cutoffs.",
     )
     common.source_data(
-        "c5_epithelial_cells",
+        f"c{GRANULARITY_COMPONENT}_epithelial_cells",
         cells,
-        "Each epithelial cell, and whether it is past Figure 2's C5 sender or "
-        "receiver cutoff: the cells counted in the populations file.",
+        f"Each epithelial cell, and whether it is past Figure 2's C{GRANULARITY_COMPONENT} "
+        "sender or receiver cutoff: the cells counted in the populations file.",
     )
     sender = t["Ciliated-like sender"] / t[EPITHELIAL_NAME] * LENGTH
     receiver = t["Basal/secretory-like receiver"] / t[EPITHELIAL_NAME] * LENGTH
     _flow_axes(ax, 40)
-    _title(ax, 20, 50.5, "STAC S10")
+    _title(ax, 20, 50.5, "STAC S12")
     _node(ax, BAR_X, 31, 46, EPITHELIAL)
     _note(ax, BAR_X - 2.8, 38.5, EPITHELIAL_NAME, rotation=90)
     _horseshoe(ax, 43.5, 33.5, 5)
-    _title(ax, 20, 27, "CCC-RISE C5")
+    _title(ax, 20, 27, f"CCC-RISE C{GRANULARITY_COMPONENT}")
     top = 21.0
     bottom = top - LENGTH
     _node(ax, BAR_X, top - sender, top, style.COLORS["sender"])
