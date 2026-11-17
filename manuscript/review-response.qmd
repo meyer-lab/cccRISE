@@ -41,17 +41,47 @@ Also, as detailed below, we now compare our results to a broad panel of existing
 [Needs to be updated based on final comparator work.]
 Points to address are: - single-cell resolution validation (concordance with NICHES, problems with Scriabin), - single-condition performance (problems with Scriabin), - and multi-condition tensor validation (similarities/differences with Tensor-cell2cell, STACCato, and pseudobulk)
 
-We agree that a self-constructed pseudobulk baseline cannot carry this claim, and we now benchmark against the published methods the reviewer names.
-To run them on equal footing, we re-implemented Scriabin, NICHES, and STACCato in Python from the upstream algorithms, and we drive all of themfrom the same ligand-receptor resource and normalized expression, so each comparison isolates the contribution of the algorithm (Methods section *Comparator Methods*).
-
-For the single-cell-resolution claim, we reconstruct a per-cell-pair communication score from CCC-RISE (per-cell RISE projections combined with the sender, receiver, and LR pair CPD factors) and compare it against Scriabin's and NICHES' per-cell-pair edge weights on the same sampled sender/receiver cells and the same LR pairs, reporting rank concordance per condition (Fig. XXX).
-We repeat this on a single-condition subset to test directly whether CCC-RISE degrades relative to Scriabin when there is no cross-condition structure to exploit, and report where the multi-condition model does and does not add value (l. XXX).
-We anticipate that CCC-RISE is strongly concordant with Scriabin within a condition --- the two agree on which cell pairs signal --- while the multi-condition model is what makes the resulting programs comparable *across* conditions, which is the claim the manuscript actually rests on.
-
-For the multi-condition tensor claim, we run Tensor-cell2cell and STACCato on a communication tensor built from the same data and report ALAD-status classification performance (AUC, under the same cross-validation scheme) for all three methods side by side (Fig. XXX, l. XXX).
-
+We agree that a self-constructed pseudobulk ablation cannot carry this claim on its own, and we now benchmark against four of the the published methods the reviewer names.
+We used Tensor-cell2cell and STACCato for all multi-condition tensor related claims, and NICHES and Scriabin as independent checks for single-cell-resolution claims\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005; @doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
 We did not run DeepCOLOR: its distinguishing contribution over Scriabin and NICHES is spatial-colocalization inference, and neither cohort has matched spatial data, so it would be run outside the regime for which it was designed.
 We discuss this in the revised text (l. XXX).
+
+To run all methods on equal footing, every comparator received the same cells, the same normalized expression, and the same CellChatDB LR pairs as CCC-RISE, with protein complexes scored as the minimum over their subunits (Methods section *Comparator Methods*).
+NICHES and Scriabin were run with the authors' own R code at their most recent pinned commits.
+Tensor-cell2cell was fit with the same TensorLy calls, random starts, masked error, and Kneedle elbow as the authors' package.
+STACCato was re-implemented in Python from the authors' R code and matched it to within 10^−14^ when both were run to convergence on the same input tensors.
+We fit each tensor method to both the ALAD and IBD cohorts using the coarse and fine cell-type labels shipped in each cohort's metadata ({{< fig comparator-rank-selection pb-fit-coarse stac-shares-fine >}}).
+
+CCC-RISE assigns each cell a sender weight and a receiver weight for each component, and we do not claim it as a method for directly inferring cell--cell edges.
+Thus, for the single-cell-resolution claim, we compared the components of CCC-RISE to the closest equivalent outputs of NICHES and Scriabin.
+For NICHES, the corresponding outputs used were CellToSystem and SystemToCell scores, rather than its CelltoCell edges.
+Following the reviewer's suggestion, NICHES was run condition by condition, treating each sample as its own system as its authors recommend.
+Aggregated across conditions, we found that every CCC-RISE sender and receiver population contained a larger fraction of positively scored NICHES cell than its' cells cell-type labels predicted within the same sample ({{< fig 5 niches-fraction >}}).
+
+For Scriabin, the closest corresponding output to a CCC-RISE component is an interaction program.
+However, upon running Scriabin's interaction program discovery pipeline, we noticed that the top LR pairs in the programs were inconsistent across seed refitting ({{< fig comparator-single-cell scriabin-seeds >}}).
+To check that this instability did not belong to any changes introduced by our inputs, we reran the robustness analysis of the Scriabin paper (Wilk et al., Fig. 2d--e) exactly as its authors set it up (raw counts, SCTransform, ALRA, OmniPath).
+We reproduced the paper's result that the cell--cell interaction matrix is robust to the artificial downsampling of sequencing depth: after integration, a median of 67% (raw) and 91% (ALRA-denoised) of full-depth cell--cell pairs mixed with the downsampled data, against approximately 72% and 91% in the paper ({{< fig scriabin lisi-recapitulation >}}).
+However, interaction programs built on that same matrix agreed at only 0.10--0.22 (best-match Jaccard) between the full-depth and downsampled data, and at only 0.20--0.49 even between two equivalent downsampling draws of the same cells ({{< fig scriabin downsampling-programs >}}).
+For this reason, we did not use Scriabin's programs as a concordance benchmark.
+
+![](figures/figureR_scriabin/figureR_scriabin.svg){width="6.5in"}
+
+**{{< label scriabin >}}.
+Scriabin's interaction programs under the Scriabin paper's own downsampling test.** The test of Wilk et al. (Fig. 2d--e) was rerun with upstream Scriabin on 12 random subsamples of 300 of the 638 Fluidigm C1 pancreatic islet cells (panc8), whose full-depth counts (ground truth; GT) were downsampled to inDrop depth, with or without ALRA denoising, and each passed through SCTransform and GenerateCCIM (OmniPath).
+({{< panel scriabin lisi-recapitulation >}}) Percentage of GT cell--cell pairs with LISI > 1 after integrating the downsampled interaction matrix with the GT one on all 90,000 GT pairs of the subsample, for each subsample (points, colored by the GT pairs' mean LISI), beside the paper's median and range read off its Fig. 2e (grey; approximate).
+({{< panel scriabin downsampling-programs >}}) Agreement of InteractionPrograms' programs (mean best-match Jaccard of their LR pairs, in both directions) between the GT and a downsampled draw, and between two independent downsampling draws of the same cells, for each subsample (points).
+Boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5-times the IQR.
+
+We did not run CCC-RISE on a single-condition dataset.
+CCC-RISE's components are defined by how communication varies across conditions, so we view that fitting to a single condition does not measure model degradation but rather tests another model entirely.
+
+For the multi-condition tensor claim, we compare what each method recovers rather than which method associates most strongly with ALAD status.
+We did not report ALAD-status AUC for any method as described in our responses to Comments #4 and #5.
+Instead, for each CCC-RISE component, we measure its best match to any single LR column of each comparator fit and the fraction of its LR pair loadings that all of a fit's LR columns together reconstruct ({{< fig 5 cos2-grid span-containment >}}).
+We found that comparator fits largely recovered CCC-RISE components that were only defined by a few top LR pairs, but then split broader programs across several LR columns or missed programs entirely ({{< fig 5 pair-columns >}}; {{< fig comparator-split cos2-pairs alad-c3-columns >}}).
+Tensor-cell2cell reconstructed little of any component, and its condition loadings instead tracked the number of genes detected per cell in each sample ({{< fig comparator-ibd-and-depth depth >}}).
+To give a fair analysis, we also looked at the comparator columns lying outside every CCC-RISE component, and report the disease-associaed signaling that comparators captured and CCC-RISE missed ({{< fig comparator-missed-alad share associations contents >}}; {{< fig comparator-missed-ibd share associations contents >}}).
 
 > 2. The central claim is not quantitatively supported.
 >    The claims "superior granularity" and "subpopulations invisible to aggregate methods" are supported only by qualitative PaCMAP embeddings and communication-score heatmaps.
@@ -75,12 +105,13 @@ For more detail on our new strategy, we point the reviewer to {{< fig 2 sender-r
 Otherwise, done.]
 Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, then we take a weighted average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
-We apply this pipeline to CCC-RISE and to each comparator method.
-For more detail on this extension of the NicheNet database, we point the reviewer to {{< fig 2 nichenet >}}, {{< fig comparator-nichenet >}}, and Methods sections *External Biological Validation* and *Comparator Methods*.
+We applied the same test to every comparator LR column, but because comparators assign one receiver loading per cell type, their receivers were all cells of the most highly loaded cell types, contrasted with all cells of the least loaded.
+In ALAD, target expression exceeded that of shuffled cells for two CCC-RISE components and one pseudobulk CPD column, but for none of STACCato's LR columns ({{< fig 2 nichenet >}}; {{< fig 5 nichenet >}}; Methods section *External Biological Validation*).
+In IBD, every method that captured the inflammatory IL-1 and neutrophil-chemokine program also captured its downstream response ({{< fig 5 nichenet >}}).
 One limitation that we encountered in this analysis is that there is only moderate overlap between the LR pairs highlighted by our method, and the NicheNet target database, due to the limited coverage of the latter.
 
-[Update with Scriabin result] Third, as a quantitative evaluation of sender and receiver cell loadings, we report a concordance analysis against NICHES, which we discussed extensively above in response to Reviewer #1 Comment #1.
-As explained there, while we would have liked to report concordance with Scriabin, ...
+Third, as a quantitative evaluation of per-cell sender and receiver weights, we report concordance with NICHES, which we discuss in detail in our response to Comment #1.
+As explained there, we were unable to report concordance with Scriabin because its interaction programs did not reproduce across random seeds or under the Scriabin paper's own downsampling test, leaving no stable reference to measure concordance against ({{< fig comparator-single-cell scriabin-seeds >}}; {{< label scriabin >}}).
 
 We deliberately did not build the suggested analysis on a SERGIO-style simulator.
 Simulated communication ground truth is generated under an assumed model of how ligand--receptor signaling shapes expression, and agreement with it mainly certifies that our score matches that assumption; where a simulation disagrees with the real-data result, it is not clear which should be believed.
@@ -215,17 +246,18 @@ We agree, and we have added quantitative evaluation and communication program re
 We take two approaches to quantify recovery of "real" biology.
 First, we compare differentially expressed genes in each component's receiver cells with each ligand's downstream gene targets, as defined by the NicheNet v2 ligand--target matrix\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 This analysis is discussed in detail in Reviewer #1 Comment #2, {{< fig 2 nichenet >}}, and Methods section *External Biological Validation*.
-Second, we measure the concordance between cells with high CCC-RISE sender/receiver weights and cells classified as senders/receivers by NICHES\ [@doi:10.1093/bioinformatics/btac775].
-This analysis is discussed in detail in Reviewer #1 Comment #1, {{< fig 4 niches-concordance niches-orderings >}}, {{< fig 5 niches-fraction >}}, {{< fig niches-ibd >}}, and Methods section *External Biological Validation*.
+Second, we measure whether the cells CCC-RISE assigns to each component's sender and receiver populations signal through the component's LR pairs in their own expression, using NICHES\ [@doi:10.1093/bioinformatics/btac775].
+This analysis is discussed in detail in Reviewer #1 Comment #1, {{< fig 5 niches-fraction >}}, {{< fig comparator-single-cell alad-weights ibd-weights alad-tau ibd-tau >}}, and Methods section *External Biological Validation*.
 
-[Update based on comparator results, reference R1 C1] Additionally, we now run Tensor-cell2cell and STACCato (the closest multi-condition tensor methods) and Scriabin and NICHES (the closest single-cell-resolution methods) on the same data, from the same LR resource and preprocessing, and report head-to-head performance: condition-status classification AUC for the tensor methods and per-cell-pair score concordance for the single-cell methods (Fig. XXX, l. XXX).
-[Consolidate into R1 C2 and reference] Because no cohort carries experimentally established communication ground truth, our accuracy metric is recovery of curated ligand → downstream-target relationships (NicheNet ligand-activity AUROC) in the receiver cells each component implicates --- reported for CCC-RISE, for the pseudobulk equivalent, and for the comparator methods where their output permits it ({{< fig 2 nichenet >}}, {{< fig comparator-nichenet >}}).
+As the reviewer suggests, we now compare CCC-RISE with Tensor-cell2cell and with the pseudobulk method, and additionally with STACCato, on both cohorts and on both coarse and fine cell-type labels.
+All methods are run from the same expression and LR pairs, so that differences between them reflect the methods rather than their inputs as discused in Reviewer #1 Comment #1 and Methods section *Comparator Methods*.
 
-[Update based on comparator results, reference R1 C1, or cut] On whether CCC-RISE recovers what cell-type-based decomposition finds: we now report an explicit matched-component comparison against the pseudobulk CPD model, giving for each pseudobulk component its best-matching CCC-RISE component and the congruence of that match per mode (Fig. XXX).
-We would also note that the two models are not estimating the same quantity, and we have made this clearer in the text (l. XXX).
-The pseudobulk tensor is built from cell-type means, so its components describe communication between cell types; CCC-RISE describes the *variation* in communication across conditions at eigen-state resolution, where a single cell-type-level pattern may be split across eigen-states that cut within a type, and a program confined to a subpopulation is diluted --- and may be absent --- in the cell-type average.
-A component-for-component correspondence is therefore not the expected result, and where it fails we now say which of the two behaviors is responsible instead of presenting the discrepancy without comment.
-The condition-factor differences the reviewer notes are largely a consequence of this: both the rank and the condition-association test have changed in the revision (see comment #4 and comment #5), and the revised comparison is made at the ranks each model's own selection criterion supports.
+On whether CCC-RISE recovers all communication patterns revealed by cell-type-based tensor decomposition: plainly, it does not recover all of them.
+As discussed in Reviewer #1 Comment #1, comparator fits tended to recover CCC-RISE components dominated by a few top LR pairs, split apart broad components, or entirely missed others ({{< fig 5 cos2-grid span-containment >}}; {{< fig comparator-split cos2-pairs >}}).
+In addition, we now report five disease-associated comparator LR columns that were associated with LR pairs that no CCC-RISE component included among its associations ({{< fig comparator-missed-alad share associations contents >}}; {{< fig comparator-missed-ibd share associations contents >}}).
+We state these misses in the Results and Discussion, but conclude that cell-type-based decomposition methods and CCC-RISE are not estimating the same quantity so component-for-component correspondence is not the expected result.
+Moreover, the fitted LR columns of the comparators were also sensitive to the granularity of the labels losing disease-associated colums when transitioning from coarse to fine cell types ({{< fig 5 labels-alad labels-ibd >}}).
+CCC-RISE components in contrast were conserved when the model wasas refit at a different number of eigen-states.
 
 [Confirm we actually wish to talk about simulated data somewhere in the manuscript.]
 We chose these quantitations over a simulated ground truth (e.g. SERGIO-based CCC simulators) because a simulator encodes an assumed model of how signaling shapes expression; recovering it certifies agreement with that assumption rather than with the biology of these tissues.
