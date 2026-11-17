@@ -1,6 +1,6 @@
 """Figure 5: what a cell-type-blind model finds that label-based models do not.
 Each ALAD CCC-RISE component's best single LR column in every comparator fit
-(A) and its containment in each fit's LR span (B); ALAD C4's carrying pairs
+(A) and its containment in each fit's LR span (B); ALAD C5's carrying pairs
 in its related comparator columns (C) and the co-variation of each (D); what
 each method keeps and loses when its cells are described more finely, ALAD
 (E) and IBD (F); NicheNet on every PB and STAC column and CCC-RISE component

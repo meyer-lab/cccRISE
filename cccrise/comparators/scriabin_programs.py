@@ -1,6 +1,6 @@
 """Scriabin's interaction-program merge (BlishLab/scriabin, R, pinned at
-``bce695b``; ``FindAllInteractionPrograms``), as PR #275's port has it
-(`cccrise.comparators.scriabin` there): every sample's LR modules pooled and,
+``bce695b``; ``FindAllInteractionPrograms``), ported to Python from PR
+#275: every sample's LR modules (``scriabin/programs.R``) pooled and,
 while the largest Jaccard similarity below 1 exceeds the threshold, every
 module of a pair achieving it replaced by their union. The Jaccard matrix is
 updated one row per merge step rather than recomputed, so IBD's thousands of

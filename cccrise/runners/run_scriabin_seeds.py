@@ -21,9 +21,11 @@ recorded in the folder's ``provenance.yaml``, one row per pair of seeds:
 Inputs (git-ignored, under ``rcheck/out/``): the R runs, one folder per seed
 holding each sample's ``<sample>.json`` (its modules and cell count) and
 ``.rds``; the refits, ``cccrise/<dataset>/s1/seed<seed>.npz`` (``cp_D``,
-``lr_symbols``). PR #275 made both (``rcheck/faithful/ip_runs.R``,
-``rcheck/shared/cccrise_refits.py``, on its branch, not this one). The refits
-are end-to-end (RISE and CP) with compressed RISE at the reported ranks.
+``lr_symbols``). The R runs are ``comparators/scriabin/programs.R`` on
+``comparators/scriabin/export_inputs.py``'s inputs (that folder's README has
+the commands). The refits are cccRISE's own workflow at each seed (PR #275's
+``rcheck/shared/cccrise_refits.py``, with compressed RISE at the reported
+ranks; IBD's last regeneration refit CP only, on its saved RISE fits).
 
     uv run cccrise-scriabin-seeds --dataset alad
 """
