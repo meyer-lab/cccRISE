@@ -15,7 +15,7 @@ those `_panels.yml` has letters for, supplements those `_quarto.yml` lists,
 and letters come from `_panels.yml`, as each figure's last full build
 recorded them. Schematic panels (`SCHEMATIC = True`) need no data, and a
 figure of only those gets no zip. Every panel is listed in the manifest
-(`docs/source_data_manifest.md`). Exits non-zero,
+(`manuscript/source_data_manifest.md`). Exits non-zero,
 writing no zips, if any panel's data is missing or malformed, or a figure
 hasn't been built in full.
 """
@@ -43,7 +43,7 @@ SUPPLEMENT_CLASSES = (
     ("appendix_figures", "Appendix Figure S", "S"),
 )
 OUTPUT_DIR = common.OUTPUT_DIR / "source_data"
-MANIFEST_PATH = REPO_ROOT / "docs" / "source_data_manifest.md"
+MANIFEST_PATH = REPO_ROOT / "manuscript" / "source_data_manifest.md"
 CODE_URL = "https://github.com/meyer-lab/cccRISE"
 
 
