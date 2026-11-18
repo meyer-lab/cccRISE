@@ -106,7 +106,7 @@ Otherwise, done.]
 Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, then we take a weighted average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
 We applied the same test to every comparator LR column, but because comparators assign one receiver loading per cell type, their receivers were all cells of the most highly loaded cell types, contrasted with all cells of the least loaded.
-In ALAD, target expression exceeded that of shuffled cells for two CCC-RISE components and one pseudobulk CPD column, but for none of STACCato's LR columns ({{< fig 2 nichenet >}}; {{< fig 5 nichenet >}}; Methods section *External Biological Validation*).
+In ALAD, target expression exceeded that of shuffled cells for two CCC-RISE components, one pseudobulk CPD column with both coarse and fine labels, and only one of STACCato's 32 LR columns ({{< fig 2 nichenet >}}; {{< fig 5 nichenet >}}; Methods section *External Biological Validation*).
 In IBD, every method that captured the inflammatory IL-1 and neutrophil-chemokine program also captured its downstream response ({{< fig 5 nichenet >}}).
 One limitation that we encountered in this analysis is that there is only moderate overlap between the LR pairs highlighted by our method, and the NicheNet target database, due to the limited coverage of the latter.
 
