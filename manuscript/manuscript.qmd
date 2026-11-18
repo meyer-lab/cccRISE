@@ -38,7 +38,7 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to ag
 
 - Mapping programs back to individual cells reveals mutually exclusive signaling subpopulations whose granularity exceeds that of available annotations
 
-- In a lung transplant cohort, CCC-RISE identifies a coordinated communication axis associated with allograft function and patient survival
+- Communication programs identified by CCC-RISE are obscured by CCC-inference methods that rely on annotated cell types
 
 {{< include _introduction.qmd >}}
 
