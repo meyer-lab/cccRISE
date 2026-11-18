@@ -1,4 +1,5 @@
-"""RISE rank selection by bi-cross-validation, from ``uv run cccrise-riserank``."""
+"""R2X of the full-data RISE fit and of the bi-cross-validation training and
+held-out blocks at each RISE rank, ALAD cohort."""
 
 from matplotlib.lines import Line2D
 

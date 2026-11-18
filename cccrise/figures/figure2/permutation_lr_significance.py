@@ -1,6 +1,7 @@
-"""Permutation significance of communication, from
-``uv run cccrise-significance``: null calibration and observed against
-permutation-null scores."""
+"""Cell-permutation significance of each LR pair's communication scores: the
+distribution over LR pairs of the fraction of condition x eigen-state entries
+with p < 0.05, and each LR pair's mean observed score against its mean
+permutation-null score."""
 
 import numpy as np
 import seaborn as sns

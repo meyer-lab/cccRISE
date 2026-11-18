@@ -1,6 +1,5 @@
-"""Per-cell projection onto the RISE eigenstates behind the granularity
-component's sender (x) and receiver (y) loadings, with dashed lines through
-the origin."""
+"""Each cell's projection onto the RISE eigen-states with CPD component 6's
+largest sender and receiver loadings."""
 
 import pandas as pd
 

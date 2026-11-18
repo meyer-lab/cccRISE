@@ -1,6 +1,6 @@
-"""How closely each alternate score's CP components match the default's:
-the pairing's match score (condition + LR modes) and the paired components'
-sender/receiver |cosine|, an independent check of the pairing."""
+"""Match of each alternate communication score's CPD components to the default
+score's: the factor match score on the condition and LR pair modes, and the
+absolute cosine of the paired components' sender and receiver loadings."""
 
 import numpy as np
 import pandas as pd

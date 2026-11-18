@@ -1,4 +1,8 @@
-"""Every CP component's `N_SHOWN` most heavily weighted LR pairs, each in its
+"""Each CPD component's 20 most heavily weighted LR pairs: log2 ratio of the
+mean depth-normalized score in CLAD/died to that in stable/recovered samples
+against the one-sided patient-permutation p.
+
+Every CPD component's `N_SHOWN` most heavily weighted LR pairs, each in its
 own component's context (`lr_permutation`): log2 ratio of the group means
 of the depth-normalized scores against the pair's one-sided permutation p.
 The outcome-associated component's top `N_TOP` pairs are highlighted and

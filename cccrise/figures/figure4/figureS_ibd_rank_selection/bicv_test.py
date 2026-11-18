@@ -1,4 +1,6 @@
-"""IBD BiCV test R2X alone, on an axis zoomed to it: on the shared axis of
+"""Held-out bi-cross-validation R2X at each RISE rank, IBD cohort.
+
+IBD BiCV test R2X alone, on an axis zoomed to it: on the shared axis of
 the previous panel it runs flat below the fit and BiCV train, from
 ``uv run cccrise-riserank``."""
 

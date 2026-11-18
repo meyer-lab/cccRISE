@@ -1,4 +1,8 @@
-"""Figure 5J: each CCC-RISE population's fraction NICHES-positive against what
+"""Fraction of each CCC-RISE sender and receiver population's cells with a non-
+zero NICHES score against the fraction expected from cell type, ALAD and IBD
+cohorts, with a two-sided Wilcoxon signed-rank test across populations.
+
+Figure 5J: each CCC-RISE population's fraction NICHES-positive against what
 cell type predicts, each population cell at the NICHES-positive rate of its
 fine type in its own sample, ALAD and IBD on one axes (``uv run
 cccrise-niches``; `comparators.niches_programs.population_table`); a paired (Wilcoxon

@@ -1,4 +1,7 @@
-"""Figure 5G: Figure 2's NicheNet test on CCC-RISE and every PB and STAC LR
+"""NicheNet ligand-weighted target score of each CCC-RISE component and each PB
+and STAC LR column, against rankings with shuffled cells, ALAD and IBD cohorts.
+
+Figure 5G: Figure 2's NicheNet test on CCC-RISE and every PB and STAC LR
 column (``cccrise-comparator-nichenet``), ALAD beside IBD, laid out as the
 depth-tracking panel lays out its fits (`_depth`): each column's
 ligand-weighted target score above rankings with shuffled cells, filled and

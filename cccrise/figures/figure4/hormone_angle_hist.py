@@ -1,4 +1,8 @@
-"""The angles of EE cells past the magnitude floor (`hormone_angle_scatter`),
+"""Distribution of the sender weight angle of EE cells above the magnitude
+floor, colored by hormone state: villus-like (mostly component 3), mixed, or
+crypt-like (mostly component 4).
+
+The angles of EE cells past the magnitude floor (`hormone_angle_scatter`),
 bars colored by the class their angle bins a cell into
 (`_common.hormone_extremes`): C3 high up to `EXTREME_SECTOR` degrees, C4
 high from 90 - `EXTREME_SECTOR`, both between."""

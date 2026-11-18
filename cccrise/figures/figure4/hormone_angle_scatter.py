@@ -1,4 +1,9 @@
-"""Each EE cell's C3 and C4 sender weight, each over its largest EE value (as
+"""Each EE cell's sender weights on CPD components 3 and 4, each divided by its
+largest value among EE cells, as a magnitude and an angle (0 degrees: component
+3 only; 90 degrees: component 4 only), colored by angle above the magnitude
+floor.
+
+Each EE cell's C3 and C4 sender weight, each over its largest EE value (as
 Figure 2's cutoff scales them), as a magnitude and an angle
 (`_common.hormone_angles`; 0 degrees C3 only, 90 C4 only), colored by angle
 past the magnitude floor (dotted arc, `_common.EXTREME_FLOOR`). The angle is

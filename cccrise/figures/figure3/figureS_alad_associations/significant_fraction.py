@@ -1,6 +1,6 @@
-"""Fraction of leave-one-patient-out replicates in which each CP component's
-outcome association stays significant (q < alpha, Benjamini-Hochberg
-corrected across the replicate's components)."""
+"""Fraction of leave-one-patient-out replicates in which each CPD component's
+association with the 6-month outcome has Benjamini-Hochberg q < 0.05 across the
+replicate's components."""
 
 from ....validation.stability import JACKKNIFE_AXIS
 from ... import common, style

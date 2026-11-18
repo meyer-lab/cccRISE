@@ -1,4 +1,7 @@
-"""Genes distinguishing the sender (left) and receiver (right) group from
+"""Differential expression of the sender group and of the receiver group of CPD
+component 6 against all other cells (Wilcoxon rank-sum, Benjamini-Hochberg q).
+
+Genes distinguishing the sender (left) and receiver (right) group from
 every other cell (`V.plot_volcano`), on shared axes, labeling the canonical
 pan-epithelial markers (`S.CELLTYPE_MARKERS`), with the color key shared with
 the sender vs. receiver volcano below the receiver's."""

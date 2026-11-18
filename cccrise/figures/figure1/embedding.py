@@ -1,5 +1,4 @@
-"""Placeholder for an illustration of RISE projections as a common cell
-embedding across conditions."""
+"""Schematic of RISE projections as a common cell embedding across conditions."""
 
 from .. import common
 

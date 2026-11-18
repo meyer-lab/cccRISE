@@ -1,5 +1,4 @@
-"""IBD CP fit R2X across ten seeded SVD starts per rank, from ``uv run
-cccrise-cpdrank``."""
+"""Fit R2X of each seeded SVD start at each CPD rank, IBD cohort."""
 
 from ... import common
 

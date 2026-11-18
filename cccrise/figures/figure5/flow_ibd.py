@@ -1,4 +1,6 @@
-"""Figure 5I: PYY and GCG in STAC and in cccRISE."""
+"""IBD cells assigned PYY and GCG communication by STAC (one EE label) and by
+CCC-RISE components 3 and 4 (EE cells by hormone state past each sender cutoff,
+and EC and tuft cells past each receiver cutoff)."""
 
 from .. import common
 from ._flows import flow_ibd

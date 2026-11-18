@@ -1,4 +1,8 @@
-"""Figure 5B: each ALAD CCC-RISE component's containment in each comparator
+"""Containment of each ALAD CCC-RISE component's LR pair loadings in each
+comparator fit's LR column span: the fraction of the loadings reconstructed by
+the best linear combination of the fit's LR columns.
+
+Figure 5B: each ALAD CCC-RISE component's containment in each comparator
 fit's LR span, ||P_S c||^2 (`comparators.scores.containment`): the fraction
 of the component's LR pair loadings the best combination of the fit's LR
 columns reconstructs. IBD's is in `figureS_comparator_ibd_and_depth`."""

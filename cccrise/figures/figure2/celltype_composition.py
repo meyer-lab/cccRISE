@@ -1,5 +1,5 @@
-"""Annotated cell type composition of each group: the only panel using cell
-type labels, as a check on the label-free groups."""
+"""Annotated cell type composition of the sender, receiver, and rest groups of
+CPD component 6."""
 
 import pandas as pd
 

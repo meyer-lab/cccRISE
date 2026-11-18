@@ -1,4 +1,7 @@
-"""Cell category x the hormone programs' eigenstates: each category's mean
+"""Mean RISE projection of each cell category onto each eigen-state IBD CPD
+components 3 and 4 load on.
+
+Cell category x the hormone programs' eigenstates: each category's mean
 RISE projection (as Figure 3's `celltype_eigenstates` for ALAD), from
 `run_ibd_programs.eigenstate_celltypes`. The sender eigenstates are EE
 cells', the receiver eigenstates EC and tuft cells'."""

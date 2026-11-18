@@ -1,4 +1,10 @@
-"""The EE cells fully in one hormone state (`_common.hormone_extremes`: C3's
+"""Fraction of cells detecting and mean expression of crypt, villus, CCK, and
+BMP target genes in EE cells by hormone state (villus-like: mostly component 3;
+crypt-like: mostly component 4; mixed; or below the magnitude floor), for genes
+differing between villus-like and crypt-like cells (Mann-Whitney, Benjamini-
+Hochberg q < 0.05).
+
+The EE cells fully in one hormone state (`_common.hormone_extremes`: C3's
 villus-like and C4's crypt-like extremes, mixed between them, other below
 the magnitude floor) as Figure 2's marker dot plot, by crypt and villus
 markers, CCK (the I-cell step between them; Gehart et al. 2019) and BMP

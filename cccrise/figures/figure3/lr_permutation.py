@@ -1,5 +1,7 @@
-"""Patient-permutation test of whether the outcome-associated CP component's
-top LR pairs are larger in CLAD/Died than in stable/recovered samples.
+"""Patient-permutation test of the difference in mean depth-normalized score
+between CLAD/died and stable/recovered samples for each of CPD component 5's 10
+most heavily weighted LR pairs: the permutation null and the observed
+difference, in units of the null's standard deviation.
 
 Each LR pair is scored per condition in each component's own
 sender/receiver context, divided by the condition's read depth (as the
@@ -15,8 +17,7 @@ The panel is each of the component's `N_TOP` most heavily weighted pairs'
 permutation null beside its observed difference, both in units of the
 null's standard deviation so the pairs share an axis, colored by the
 pair's Benjamini-Hochberg q across the `N_TOP` pairs. `lr_volcano` shows
-the top pairs of every component.
-"""
+the top pairs of every component."""
 
 from functools import cache
 

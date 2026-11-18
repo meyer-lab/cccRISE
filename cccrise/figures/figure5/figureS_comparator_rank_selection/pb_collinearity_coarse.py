@@ -1,4 +1,6 @@
-"""Pseudobulk CPD's LR pair mode's collinearity per start, on ALAD and IBD (coarse labels)."""
+"""Largest absolute cosine between the LR pair loadings of two pseudobulk CPD
+components, per rank and seeded SVD start, ALAD and IBD cohorts, coarse cell
+type labels."""
 
 from ... import common
 from ._panels import pb_collinearity

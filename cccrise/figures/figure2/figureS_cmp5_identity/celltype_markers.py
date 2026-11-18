@@ -1,5 +1,6 @@
-"""Canonical markers of each annotated broad cell type
-(`S.CELLTYPE_MARKERS`) per sender, receiver, and rest group."""
+"""Fraction of cells detecting and mean normalized expression of canonical
+markers of each annotated broad cell type in the sender, receiver, and rest
+groups of CPD component 6."""
 
 from ... import common
 from .. import _common as S

@@ -1,4 +1,7 @@
-"""Cell type x RISE eigenstate association (mean projection), with
+"""Mean projection of each annotated cell type's cells onto each RISE eigen-
+state; eigen-state 16 carries CPD component 5's sender and receiver loadings.
+
+Cell type x RISE eigenstate association (mean projection), with
 `EIGENSTATE`, the eigenstate behind the outcome-associated component's sender
 and receiver weights, outlined."""
 
