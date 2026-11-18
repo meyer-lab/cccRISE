@@ -1,20 +1,22 @@
-# Fig. 2d-e of the Scriabin paper on its Fluidigm C1 pancreas islets, one
-# random 300-cell subsample per call (the legend: "12 different random
-# subsamples of 300 cells"), plus the read-out the paper does not make:
-# whether the same interaction programs come back. From PR #275's
+# Fig. 2d-e of the Scriabin paper on its Fluidigm C1 pancreas islets
+# (figureR_scriabin panel A), one random 300-cell subsample per call (the
+# legend: "12 different random subsamples of 300 cells"). From PR #275's
 # rcheck/authors/panc8_paper_noise.R (same seeds, so the same draws); RNG of
-# every step in panc8_steps.R.
+# every step in panc8_steps.R. Panel B, on the same subsamples, is
+# panc8_programs.R.
 #
 # - GT: the subsample's full-depth counts, SCTransform v1.
-# - down1, down2: two independent downsampling draws to inDrop coverage
-#   (5,828 / the C1 mean of 1,580,200 counts per cell, the paper's ~270-fold),
-#   each raw (SCTransform) and ALRA-denoised.
-# - Programs (panel C): upstream InteractionPrograms at its defaults on GT and
-#   on each draw. At 300 cells it uses the full CCIM (no subsampling), so the
-#   programs of two draws differ only through the downsampling draw.
-# - LISI (panel A, the paper's read-out): upstream GenerateCCIM of GT and of
-#   draw 1, raw and ALRA; Seurat anchor integration (CCA, 30 dims) of each
-#   with the GT CCIM; per-GT-pair LISI on the integrated data's 30 PCs.
+# - down1: a downsampling draw to inDrop coverage (5,828 / the C1 mean of
+#   1,580,200 counts per cell, the paper's ~270-fold), raw (SCTransform) and
+#   ALRA-denoised.
+# - LISI (the paper's read-out): upstream GenerateCCIM of GT and of down1,
+#   raw and ALRA; Seurat anchor integration (CCA, 30 dims) of each with the
+#   GT CCIM; per-GT-pair LISI on the integrated data's 30 PCs.
+#
+# The figure's runs were made when this script also built draw 2 and ran
+# InteractionPrograms on every arm (now panc8_programs.R). Neither touches
+# panel A: each draw is seeded on its own beforehand, and nothing after the
+# programs draws random numbers from R (panel A integrates all pairs).
 #
 # All 90,000 GT cell pairs of the subsample (the same pairs on both sides)
 # enter integration, as the paper's Methods imply. PR #275 capped them at
@@ -32,17 +34,9 @@ dir.create(out, showWarnings = FALSE, recursive = TRUE)
 log <- function(...) cat(format(Sys.time(), "%H:%M:%S"), sprintf("sub%02d", index), ..., "\n")
 
 sub <- c1_subsample(index)
-data <- list(gt = preprocess(sub$counts, sub$meta, index))
-for (d in 1:2) {
-  down <- downsample(sub$counts, sub$prop, index, d)
-  data[[sprintf("down%d", d)]] <- preprocess(down, sub$meta, index)
-  data[[sprintf("down%d_alra", d)]] <- preprocess(down, sub$meta, index, alra = TRUE)
-}
-umis <- vapply(1:2, function(d) mean(colSums(GetAssayData(data[[sprintf("down%d", d)]], assay = "RNA", layer = "counts"))), 0)
-log("preprocessed; downsampled mean counts", paste(round(umis), collapse = ", "))
-
-programs <- lapply(data, programs_of)
-log("programs:", paste(names(programs), vapply(programs, function(p) length(p$modules), 0L), collapse = " "))
+data <- arms(sub, index, draws = 1)
+umis <- mean(colSums(GetAssayData(data$down1, assay = "RNA", layer = "counts")))
+log("preprocessed; downsampled mean counts", round(umis))
 
 gt <- ccim(data$gt, "GT")
 pairs <- colnames(gt)
@@ -60,5 +54,5 @@ for (arm in c("down1", "down1_alra")) {
   log(arm, "LISI mean", round(mean(lisi), 3), "frac>1", round(mean(lisi > 1 + 1e-6), 3), "rho", round(rho, 3))
 }
 save_atomic(list(index = index, cells = sub$cells, prop = sub$prop, downsampled_mean_counts = umis,
-                 lisi = do.call(rbind, lisi_rows), lisi_values = lisi_values, programs = programs), file)
+                 lisi = do.call(rbind, lisi_rows), lisi_values = lisi_values), file)
 log("done")
