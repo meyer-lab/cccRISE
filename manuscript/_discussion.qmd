@@ -17,7 +17,6 @@ However, unlike the senders and receivers of ALAD component 6, IBD component 3 a
 We therefore characterized the cells based on their position along a spectrum between component 3- and component 4-like states, which were ultimately defined by distinct gene expression and receiver cell targets.
 This analysis thus represents a third mode of interpretation, which was distinct not only in its consideration of two components simultaneously but also in its evaluation of continuous, partially overlapping cell states.
 
-[SMA: in component 5, I'm struggling with linking such a broad communication signature to literature in a concise way. I could focus on a few LR pairs and link them to lung disease or I could try to justify the co-regulation claims currently present.]
 Applied to a cohort of lung transplant patients, CCC-RISE demonstrated a unique capacity to resolve communication at a subpopulation level, uncovering functional heterogeneity within standard cell-type annotations.
 The airway repair and fibrosis pathway defined by ALAD component 6 was mediated by BTC--EGFR signaling between ciliated epithelial sender cells and basal and secretory epithelial receiver cells.
 In healthy lung epithelium, BTC secreted by submucosal ciliated cells is known to initiate tissue repair upon binding EGFR and other growth factor receptors that are predomintantly expressed on bronchial basal cells\ [@doi:10.1165/ajrcmb.20.5.3308].
@@ -40,8 +39,8 @@ EE sender cells were spread continuously between villus- and crypt-like states, 
 IBD is characterized by the infiltration of immune cells into the gut epithelium and the inflammation-driven death of otherwise healthy cells that ensues\ [@doi:10.1016/j.immuni.2023.01.002].
 Indeed, immune and epithelial cell-type abundances tracked inflammation status in the IBD data.
 However, CCC-RISE further dissected these compositional trends, identifying villus-like and not crypt-like cells as a specific EE subpopulation that was especially sensitive to inflammation.
-The crypt-to-villus transition among EE cells is not just a molecular shift, but a spatial one: as they differentiate, crypt cells migrate towards the gut lumen, thus becoming more exposed to external pressures such as inflammation\ [@doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7; @doi:10.1038/s41419-018-1275-5].
-Through continuous, non-exclusive eigen-states, CCC-RISE resolved a particular population of hormone-secreting cells whose share of total EE cells decreased with patient inflammation severity.
+The increased sensitivity of villus-like cells to inflammation can be understood from the spatial nature of the crypt-to-villus transition: as they differentiate, crypt cells migrate towards the gut lumen, thus becoming more exposed to external pressures such as inflammation\ [@doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7; @doi:10.1038/s41419-018-1275-5].
+Thus, through continuous, non-exclusive eigen-states, CCC-RISE resolved a particular population of hormone-secreting cells whose share of total EE cells decreased with patient inflammation severity.
 
 Methods such as Tensor-cell2cell and STACCato establish communication programs from a four-dimensional tensor decomposition, similar to CCC-RISE, to capture between-condition variability\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].
 However, this multi-condition decomposition occurs only after annotation has pooled all cells into one condition used to fix cell-types, thus removing between-condition variation in cell state before the decomposition can use it.
