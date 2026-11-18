@@ -14,19 +14,27 @@ recorded in the folder's ``provenance.yaml``, one row per pair of seeds:
   upstream's own, and 2-10) on cccRISE's inputs. Only samples of more than
   `ITERATE_THRESHOLD` cells are subsampled; smaller ones use the full
   cell-cell interaction matrix, identical across seeds, so they are left out.
+- ``Method`` Scriabin, ``Stage`` significant_programs: the same, over the
+  merged programs that upstream's significance test keeps, as the vignette
+  applies it (``comparators/scriabin/significance.R``: kept if any merged
+  sample keeps it with p < `SIGNIFICANCE_P`). Only where every seed's test
+  has run (ALAD).
 - ``Method`` cccRISE, ``Stage`` lr_sets: best-match Jaccard of each
   component's carrying LR pairs (`covariation.carrying_pairs`) between
   cccRISE refits at seeds `CCCRISE_REFITS`.
 
 Inputs (git-ignored, under ``rcheck/out/``): the R runs, one folder per seed
 holding each sample's ``<sample>.json`` (its modules and cell count) and
-``.rds``; the refits, ``cccrise/<dataset>/s1/seed<seed>.npz`` (``cp_D``,
+``.rds``, the seed's merged programs (``merged.json``, ``--stage merge``)
+and their significance test per sample (``significance/<sample>.json``);
+the refits, ``cccrise/<dataset>/s1/seed<seed>.npz`` (``cp_D``,
 ``lr_symbols``). The R runs are ``comparators/scriabin/programs.R`` on
 ``comparators/scriabin/export_inputs.py``'s inputs (that folder's README has
 the commands). The refits are cccRISE's own workflow at each seed (PR #275's
 ``rcheck/shared/cccrise_refits.py``, with compressed RISE at the reported
 ranks; IBD's last regeneration refit CP only, on its saved RISE fits).
 
+    uv run cccrise-scriabin-seeds --dataset alad --stage merge  # before significance.R
     uv run cccrise-scriabin-seeds --dataset alad
 """
 
@@ -58,6 +66,8 @@ SEEDS = (1111, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 #: Each dataset's R runs (under `RUNS_DIR`), on cccRISE's inputs by sample
 SCRIABIN_RUNS = {"alad": "shared/alad/s1", "ibd": "shared/ibd/s1"}
 #: cccRISE refit seeds per dataset (ALAD: seed 42's replicates; IBD: all five)
+#: The vignette's filter on upstream's significance test: kept below this p
+SIGNIFICANCE_P = 0.05
 CCCRISE_REFITS = {
     "alad": tuple(range(42001, 42011)),
     "ibd": (42, 42001, 42002, 42003, 42004),
@@ -111,29 +121,76 @@ def subsampled_samples(root: Path) -> list[str]:
     return [g for g in samples if _run_json(first, g)["n_cells"] > ITERATE_THRESHOLD]
 
 
-def scriabin_rows(root: Path) -> pd.DataFrame:
-    """Best-match Jaccard of the merged programs between every pair of seeds."""
-    samples = subsampled_samples(root)
-    merged = {
-        s: [
-            set(v)
-            for v in merge_programs(
-                {
-                    g: _modules(_run_json(root / f"seed{s}", g)["modules"])
-                    for g in samples
-                },
-                SIM_THRESHOLD,
-            ).values()
-        ]
+def merged_programs(root: Path, samples: list[str]) -> dict[int, dict[str, list]]:
+    """Each seed's programs merged over `samples`, by program name."""
+    return {
+        s: merge_programs(
+            {g: _modules(_run_json(root / f"seed{s}", g)["modules"]) for g in samples},
+            SIM_THRESHOLD,
+        )
         for s in SEEDS
     }
-    print(f"   {root.relative_to(RUNS_DIR)}: {len(samples)} subsampled samples")
+
+
+def write_merged(root: Path) -> None:
+    """Each seed's merged programs and the samples they merge, as
+    ``seed<seed>/merged.json``: the programs significance.R tests."""
+    samples = subsampled_samples(root)
+    for s, merged in merged_programs(root, samples).items():
+        programs = {name: sorted(lr) for name, lr in merged.items()}
+        text = json.dumps({"samples": samples, "programs": programs})
+        (root / f"seed{s}" / "merged.json").write_text(text)
+    print(f"   {root.relative_to(RUNS_DIR)}: merged.json for {len(SEEDS)} seeds")
+
+
+def significant(run: Path, samples: list[str], merged: dict[str, list]) -> list[set]:
+    """The merged programs some sample keeps below `SIGNIFICANCE_P`, after
+    checking the run's merged.json is these programs."""
+    stored = json.loads((run / "merged.json").read_text())
+    assert stored["samples"] == samples, f"{run}: merged.json is stale"
+    assert stored["programs"] == {k: sorted(v) for k, v in merged.items()}, (
+        f"{run}: merged.json is stale"
+    )
+    kept = set()
+    for g in samples:
+        rows = json.loads((run / "significance" / f"{g}.json").read_text())
+        kept |= {r["name"] for r in rows if r["pval"] < SIGNIFICANCE_P}
+    return [set(merged[k]) for k in sorted(kept)]
+
+
+def has_significance(root: Path, samples: list[str]) -> bool:
+    return all(
+        (root / f"seed{s}" / "significance" / f"{g}.json").exists()
+        for s in SEEDS
+        for g in samples
+    )
+
+
+def _pairwise(sets: dict[int, list[set]], stage: str) -> pd.DataFrame:
     return pd.DataFrame(
         [
-            {"SeedA": a, "SeedB": b, "Value": best_match(merged[a], merged[b])}
+            {"SeedA": a, "SeedB": b, "Value": best_match(sets[a], sets[b])}
             for a, b in itertools.combinations(SEEDS, 2)
         ]
-    ).assign(Method="Scriabin", Stage="programs")
+    ).assign(Method="Scriabin", Stage=stage)
+
+
+def scriabin_rows(root: Path) -> pd.DataFrame:
+    """Best-match Jaccard of the merged programs between every pair of
+    seeds, and of the significant ones where the test has run."""
+    samples = subsampled_samples(root)
+    merged = merged_programs(root, samples)
+    print(f"   {root.relative_to(RUNS_DIR)}: {len(samples)} subsampled samples")
+    frames = [
+        _pairwise(
+            {s: [set(v) for v in m.values()] for s, m in merged.items()}, "programs"
+        )
+    ]
+    if has_significance(root, samples):
+        kept = {s: significant(root / f"seed{s}", samples, merged[s]) for s in SEEDS}
+        print("   significant programs per seed:", {s: len(k) for s, k in kept.items()})
+        frames.append(_pairwise(kept, "significant_programs"))
+    return pd.concat(frames, ignore_index=True)
 
 
 def cccrise_rows(dataset: str) -> pd.DataFrame:
@@ -166,6 +223,12 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--dataset", required=True, choices=list(SCRIABIN_RUNS))
+    parser.add_argument(
+        "--stage",
+        choices=["merge", "agreement"],
+        default="agreement",
+        help="merge: write each seed's merged.json for significance.R",
+    )
     return parser
 
 
@@ -173,6 +236,9 @@ def main(argv: list[str] | None = None) -> None:
     args, command = parse_command(build_parser(), "cccrise-scriabin-seeds", argv)
     git_sha()  # pin the code version before anything runs (`provenance.git_sha`)
     dataset = args.dataset
+    if args.stage == "merge":
+        write_merged(RUNS_DIR / SCRIABIN_RUNS[dataset])
+        return
     print(f"=== Scriabin and cccRISE seed agreement: {dataset} ===", flush=True)
     table = seed_agreement(dataset)
     metadata = build_metadata(
@@ -181,6 +247,11 @@ def main(argv: list[str] | None = None) -> None:
             "seeds": list(SEEDS),
             "scriabin_runs": f"rcheck/out/{SCRIABIN_RUNS[dataset]}",
             "merge_threshold": SIM_THRESHOLD,
+            "significance": {
+                "test": "upstream InteractionProgramSignificance, n.replicate 500",
+                "kept_below_p": SIGNIFICANCE_P,
+                "rng": "set.seed(seed) before each sample's test",
+            },
             "iterate_threshold": ITERATE_THRESHOLD,
             "cccrise_refits": {
                 "dir": f"rcheck/out/cccrise/{dataset}/s1",
