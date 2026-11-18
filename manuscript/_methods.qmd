@@ -268,11 +268,12 @@ Concordance was compared with this prediction by a two-sided Wilcoxon signed-ran
 The comparison was repeated at $\tau$ from 0.1 to 0.6 in steps of 0.1, for populations of at least 10 cells.
 
 **Scriabin seed agreement.** Scriabin also represents interaction programs per cell\ [@doi:10.1038/s41587-023-01782-z].
-Its interaction programs were computed with the authors' R package on each sample's cells, from CCC-RISE's normalized expression and LR pairs, at 10 random seeds (1111, the package's own, and 2--10).
+Its interaction programs were computed with the authors' R package on each ALAD sample's cells, from CCC-RISE's normalized expression and LR pairs, at 10 random seeds (1111, the package's own, and 2--10).
 Scriabin subsamples samples of more than 300 cells, so only these subsamples vary between seeds.
 Each seed's programs were merged across samples with the package's merge (Jaccard index 0.15).
+As in the package's tutorial, each merged program was then tested in each sample with the package's significance test (500 random programs) and kept if p < 0.05 in at least one sample.
 The agreement between two seeds was the mean best-match Jaccard index between their programs' LR sets, matching each set to its most similar set of the other seed, in both directions.
-For comparison, the same index was computed over the components' top LR pairs between CCC-RISE refits at 10 (ALAD) and 5 (IBD) random seeds, each refit as in Model re-initialization.
+For comparison, the same index was computed over the components' top LR pairs between 10 CCC-RISE refits at different random seeds, each refit as in Model re-initialization.
 
 ### Comparator Methods
 

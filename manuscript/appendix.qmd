@@ -127,11 +127,10 @@ Dashed lines mark the 0.3 cutoff (τ) that defines each component's sender, rece
 ({{< panel comparator-single-cell alad-tau >}}) ALAD and ({{< panel comparator-single-cell ibd-tau >}}) IBD fraction of NICHES+ cells in each sender (solid) and receiver (dotted) population, minus the fraction predicted by cell type as in {{< fig 5 niches-fraction >}}, across cutoffs τ from 0.1 to 0.6.
 A population is drawn only while it has at least 10 cells.
 The grey line marks the 0.3 cutoff used throughout, and the dashed line marks no difference.
-({{< panel comparator-single-cell scriabin-seeds >}}) Agreement between random seeds, measured as the mean best-match Jaccard index between two seeds' LR sets.
-Scriabin's LR sets are its interaction programs whereas CCC-RISE's are its components' top LR pairs.
+({{< panel comparator-single-cell scriabin-seeds >}}) Agreement between random seeds in ALAD, measured as the mean best-match Jaccard index between two seeds' LR sets.
+Scriabin's LR sets are its interaction programs that pass its significance test, whereas CCC-RISE's are its components' top LR pairs.
 Each point is a pair of seeds, and bars mark medians.
-Scriabin: 10 seeds, n = 45 pairs in each cohort.
-CCC-RISE: 10 refits in ALAD (n = 45 pairs) and 5 in IBD (n = 10 pairs).
+Scriabin: 10 seeds; CCC-RISE: 10 refits (n = 45 pairs each).
 
 {{< include figures/tables/alad_outcome_groups.md >}}
 
