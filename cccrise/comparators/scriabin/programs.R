@@ -1,6 +1,7 @@
 # Upstream Scriabin's interaction programs on cccRISE's inputs, per sample, at
-# one seed (Appendix Figure S8A: `cccrise-scriabin-seeds` merges them and
-# compares seeds). From PR #275's rcheck/faithful/ip_runs.R, its `programs`
+# one seed (Appendix Figure S8A: `cccrise-scriabin-seeds` merges them,
+# significance.R tests the merged programs in each sample, and the runner
+# compares the significant ones between seeds). From PR #275's rcheck/faithful/ip_runs.R, its `programs`
 # mode on the full cells. README.md has the R setup.
 #
 # InteractionPrograms (upstream.R) runs with every argument at its default
@@ -21,7 +22,8 @@
 # `sample_n` errors on them.
 #
 # <in_dir>: export_inputs.py's output; writes <out>/<sample>.json (cell count,
-# LR pair count, modules) and <sample>.rds (modules, cells; the checkpoint).
+# LR pair count, modules) and <sample>.rds (similarity matrix, modules,
+# connectivity, cells; the checkpoint, and significance.R's input).
 #   Rscript cccrise/comparators/scriabin/programs.R <in_dir> <out> <seed> [workers]
 suppressPackageStartupMessages({
   library(Seurat); library(Matrix); library(dplyr); library(tidyr); library(tibble)
@@ -58,7 +60,9 @@ save_programs <- function(ip, cells, file) {
   json <- sub("\\.rds$", ".json", file)
   write_json(list(n_cells = length(cells), n_lr = nrow(ip$cor_mat), modules = ip$modules),
              paste0(json, ".partial"), auto_unbox = TRUE, na = "null")
-  saveRDS(list(modules = ip$modules, cells = cells), paste0(file, ".partial"))
+  # TOM dropped: the significance test and the merge never read it
+  saveRDS(list(cor_mat = ip$cor_mat, modules = ip$modules, connectivity = ip$connectivity,
+               cells = cells), paste0(file, ".partial"))
   # flush both before the .rds (the checkpoint) appears
   system2("sync", c("-d", paste0(json, ".partial"), paste0(file, ".partial")))
   file.rename(paste0(json, ".partial"), json)

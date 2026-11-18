@@ -14,9 +14,11 @@ Writes to ``data/scriabin_reproduction/``, recorded in the folder's
   their mean LISI, and the GT-vs-downsampled CCIM Spearman correlation
   (``panc8_noise.R``).
 - ``downsampling_programs_panc8`` (panel B): per subsample, best-match
-  Jaccard (`best_match`) of upstream InteractionPrograms' programs between
+  Jaccard (`best_match`) of upstream InteractionPrograms' significant
+  programs (upstream's significance test as the vignette applies it) between
   GT and a downsampled draw, raw or ALRA, and between two independent
-  downsampling draws of the same cells (`COMPARISONS`).
+  downsampling draws of the same cells (`COMPARISONS`); and of all their
+  programs, before the test (``panc8_programs.R``).
 - ``lisi_checks_panc8`` (why PR #275's panel A sat above the paper): panel
   A's read-out on subsample 1 with one setting changed at a time: the
   hard-coded seeds, the cap on GT pairs, or no integration
@@ -51,7 +53,7 @@ SCRIPTS = "cccrise/comparators/scriabin"
 #: Each analysis' run folder under `RUNS_DIR` and its R script
 RUNS = {
     "downsampling": ("noise", f"{SCRIPTS}/panc8_noise.R"),
-    "downsampling_programs": ("noise", f"{SCRIPTS}/panc8_noise.R"),
+    "downsampling_programs": ("programs", f"{SCRIPTS}/panc8_programs.R"),
     "lisi_checks": ("lisi_checks", f"{SCRIPTS}/panc8_lisi_checks.R"),
 }
 #: Fig. 2e's inDrop coverage, UMIs per cell
@@ -114,7 +116,8 @@ def downsampling(runs: dict[str, dict]) -> pd.DataFrame:
                 "MeanLisi": row["lisi_mean"],
                 "CcimSpearman": row["ccim_spearman"],
                 "FoldDownsampled": 1 / run["prop"],
-                "DownsampledMeanUmis": run["downsampled_mean_counts"][0],
+                # both draws' means in the figure's runs, draw 1's alone since
+                "DownsampledMeanUmis": np.atleast_1d(run["downsampled_mean_counts"])[0],
             }
             for run in runs.values()
             for row in run["lisi"]
@@ -122,12 +125,20 @@ def downsampling(runs: dict[str, dict]) -> pd.DataFrame:
     )
 
 
+def _significant(arm: dict) -> list[set]:
+    """An arm's programs that pass the significance test (`kept`; jsonlite
+    unboxes a single name)."""
+    kept = arm["kept"] if isinstance(arm["kept"], list) else [arm["kept"]]
+    return [s for k, s in zip(arm["modules"], _sets(arm["modules"])) if k in kept]
+
+
 def downsampling_programs(runs: dict[str, dict]) -> pd.DataFrame:
     rows = []
     for run in runs.values():
         programs = run["programs"]
         for (a, b), name in COMPARISONS.items():
-            sa, sb = (_sets(programs[x]["modules"]) for x in (a, b))
+            sa, sb = (_significant(programs[x]) for x in (a, b))
+            aa, ab = (_sets(programs[x]["modules"]) for x in (a, b))
             rows.append(
                 {
                     "Subsample": run["index"],
@@ -135,6 +146,9 @@ def downsampling_programs(runs: dict[str, dict]) -> pd.DataFrame:
                     "ProgramsA": len(sa),
                     "ProgramsB": len(sb),
                     "Agreement": best_match(sa, sb),
+                    "AllProgramsA": len(aa),
+                    "AllProgramsB": len(ab),
+                    "AgreementAllPrograms": best_match(aa, ab),
                 }
             )
     return pd.DataFrame(rows)

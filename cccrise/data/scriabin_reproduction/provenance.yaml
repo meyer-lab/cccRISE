@@ -7,9 +7,9 @@
 
 shared:
   dataset: panc8
-  git_sha: 70e3f774e8f91875bc5c2a303fbffafa7aa131c4-dirty
 files:
   downsampling_panc8.parquet:
+    git_sha: 70e3f774e8f91875bc5c2a303fbffafa7aa131c4-dirty
     runs: rcheck/out/scriabin_reproduction/noise
     script: cccrise/comparators/scriabin/panc8_noise.R
     subsamples: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
@@ -20,20 +20,22 @@ files:
     lisi_above: 1.000001
     generated: '2026-11-17T10:28:31+00:00'
   downsampling_programs_panc8.parquet:
-    runs: rcheck/out/scriabin_reproduction/noise
-    script: cccrise/comparators/scriabin/panc8_noise.R
-    subsamples: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    sha256: 68e7801904e3fdd38d1b2537a9476711ac774ad6ee8460472c42537eb456f239
+    sha256: 85ae84856c130d87e9927bce980f90f16978b27b4294e0f3ea62104a210eea5f
     command: uv run cccrise-scriabin-reproduction --analysis downsampling_programs
     analysis: downsampling_programs
+    runs: rcheck/out/scriabin_reproduction/programs
+    script: cccrise/comparators/scriabin/panc8_programs.R
+    subsamples: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     comparisons:
       gt vs down1: gt_vs_downsampled
       gt vs down1_alra: gt_vs_downsampled_alra
       down1 vs down2: two_draws
       down1_alra vs down2_alra: two_draws_alra
     power: upstream InteractionPrograms' own (R^2 0.6; 1 if none or above 3)
-    generated: '2026-11-17T10:28:36+00:00'
+    git_sha: e071af803071caf10b3884c9f6487551ff715701-dirty
+    generated: '2026-11-18T03:51:06+00:00'
   lisi_checks_panc8.parquet:
+    git_sha: 70e3f774e8f91875bc5c2a303fbffafa7aa131c4-dirty
     sha256: 001f12d8758a3e4e97f38c0641aed4fec571c5bb953a2015def10b5f8d638450
     command: uv run cccrise-scriabin-reproduction --analysis lisi_checks
     analysis: lisi_checks

@@ -77,12 +77,18 @@ preprocess <- function(m, meta, index, alra = FALSE, sct_seed = 1448145) {
 }
 assay_of <- function(obj) if ("alra" %in% Assays(obj)) "alra" else "SCT"
 
-# upstream InteractionPrograms at its defaults (soft power from R^2 0.6, 1 if
-# none reaches it or it is above 3); at 300 cells it uses the full CCIM
-programs_of <- function(obj) {
-  ip <- suppressWarnings(suppressMessages(InteractionPrograms(
-    obj, assay = assay_of(obj), slot = "data", cell_types = "celltype", return.mat = TRUE)))
-  list(n_lr = ncol(ip$cor_mat), modules = ip$modules)
+# The subsample `sub` (c1_subsample) preprocessed at full depth (gt) and for
+# each downsampling draw d in `draws`, raw (down<d>) and ALRA-denoised
+# (down<d>_alra). Every draw is seeded on its own (downsample, preprocess),
+# so draw 1 is the same whichever draws are built.
+arms <- function(sub, index, draws) {
+  data <- list(gt = preprocess(sub$counts, sub$meta, index))
+  for (d in draws) {
+    down <- downsample(sub$counts, sub$prop, index, d)
+    data[[sprintf("down%d", d)]] <- preprocess(down, sub$meta, index)
+    data[[sprintf("down%d_alra", d)]] <- preprocess(down, sub$meta, index, alra = TRUE)
+  }
+  data
 }
 
 # upstream GenerateCCIM, as a Seurat object labelled `label`
