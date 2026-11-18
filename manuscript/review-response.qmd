@@ -255,7 +255,7 @@ All methods are run from the same expression and LR pairs, so that differences b
 On whether CCC-RISE recovers all communication patterns revealed by cell-type-based tensor decomposition: plainly, it does not recover all of them.
 As discussed in Reviewer #1 Comment #1, comparator fits tended to recover CCC-RISE components dominated by a few top LR pairs, split apart broad components, or entirely missed others ({{< fig 5 cos2-grid span-containment >}}; {{< fig comparator-split cos2-pairs >}}).
 In addition, we now report five disease-associated comparator LR columns that were associated with LR pairs that no CCC-RISE component included among its associations ({{< fig comparator-missed-alad share associations contents >}}; {{< fig comparator-missed-ibd share associations contents >}}).
-We state these misses in the Results and Discussion, but conclude that cell-type-based decomposition methods and CCC-RISE are not estimating the same quantity so component-for-component correspondence is not the expected result.
+We state these misses in the Discussion, but conclude that cell-type-based decomposition methods and CCC-RISE are not estimating the same quantity so component-for-component correspondence is not the expected result.
 Moreover, the fitted LR columns of the comparators were also sensitive to the granularity of the labels losing disease-associated colums when transitioning from coarse to fine cell types ({{< fig 5 labels-alad labels-ibd >}}).
 CCC-RISE components in contrast were conserved when the model wasas refit at a different number of eigen-states.
 
