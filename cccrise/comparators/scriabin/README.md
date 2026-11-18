@@ -12,16 +12,22 @@ never installed.
 | `upstream.R` | Loads the pinned upstream functions from the clone | (all) |
 | `export_inputs.py` | cccRISE's expression, cells and LR pairs for upstream | Appendix Fig. S8A |
 | `programs.R` | InteractionPrograms per sample at one seed | Appendix Fig. S8A (`cccrise-scriabin-seeds`) |
+| `significance.R` | Upstream's significance test of programs, as the vignette applies it; as a script, a seed's merged programs in each sample | Appendix Fig. S8A, `figureR_scriabin` panel B |
 | `panc8_prep.R` | panc8's 638 Fluidigm C1 islet cells, raw counts and meta | `figureR_scriabin` |
 | `panc8_steps.R` | Shared steps of the paper's Fig. 2d-e test; lists every random draw and who seeds it | `figureR_scriabin` |
-| `panc8_noise.R` | One 300-cell subsample: the paper's LISI read-out (panel A) and the programs (panel B) | `figureR_scriabin` |
+| `panc8_noise.R` | One 300-cell subsample: the paper's LISI read-out | `figureR_scriabin` panel A |
+| `panc8_programs.R` | The same subsample: significant programs of GT and two downsampling draws | `figureR_scriabin` panel B |
 | `panc8_lisi_checks.R` | Panel A's read-out with one setting changed at a time (pair cap, hard-coded seeds, no integration) | reviewer response |
 
-S8A's merge of the per-sample programs is upstream's
-FindAllInteractionPrograms merge, ported exactly to Python
+Programs are used as the vignette (`vignettes/interaction-programs.Rmd`) and
+the paper's Methods use them: discovered (InteractionPrograms; S8A merges
+the samples' programs as FindAllInteractionPrograms does), then filtered by
+upstream's InteractionProgramSignificance (500 random programs, the vignette's;
+upstream's default is 10,000; kept below p = 0.05). S8A's merge is upstream's, ported exactly to Python
 (`comparators.scriabin_programs`), because the R merge takes days per seed on
-IBD. S8A's cccRISE side is the seed refits of the production workflow, not
-anything here.
+IBD. S8A is ALAD only: the significance test of IBD's merged programs is
+~70 CPU-hours per seed at 500 random programs (~1,400 at 10,000). S8A's cccRISE side is the seed refits of the
+production workflow, not anything here.
 
 ## R setup
 
@@ -31,7 +37,7 @@ R 4.5.2, with the versions the results were made with (Bioconductor 3.22):
 options(repos = c(CRAN = "https://cloud.r-project.org",
                   BioCsoft = "https://bioconductor.org/packages/3.22/bioc"))
 install.packages(c("Seurat", "qlcMatrix", "WGCNA", "flashClust", "dynamicTreeCut",
-                   "plyr", "jsonlite", "scuttle", "R.utils"))
+                   "plyr", "jsonlite", "scuttle", "R.utils", "stringr", "reshape2"))
 # Seurat 5.6.0, SeuratObject 5.4.0, sctransform 0.4.3, WGCNA 1.74,
 # dynamicTreeCut 1.63-1, qlcMatrix 0.9.9, RSpectra 0.16.2, plyr 1.8.9, scuttle 1.20.0
 remotes::install_version("rsvd", "1.0.5")                     # ALRA's randomized SVD
@@ -58,12 +64,17 @@ so the last bits of the results.
 
 ## Run
 
-Appendix Fig. S8A (seeds 1111, upstream's own, and 2-10; per dataset):
+Appendix Fig. S8A (ALAD; seeds 1111, upstream's own, and 2-10). The
+significance test is ~1.5 CPU-minutes per sample and seed (41 samples):
 
 ```sh
 uv run python -m cccrise.comparators.scriabin.export_inputs singlecell_cache/shared/alad --dataset alad
 for seed in 1111 2 3 4 5 6 7 8 9 10; do
   Rscript cccrise/comparators/scriabin/programs.R singlecell_cache/shared/alad rcheck/out/shared/alad/s1/seed$seed $seed
+done
+uv run cccrise-scriabin-seeds --dataset alad --stage merge
+for seed in 1111 2 3 4 5 6 7 8 9 10; do
+  Rscript cccrise/comparators/scriabin/significance.R rcheck/out/shared/alad/s1/seed$seed $seed
 done
 uv run cccrise-scriabin-seeds --dataset alad
 ```
@@ -76,6 +87,7 @@ integration, ~1.5 h for the raw arm and ~4 h for the ALRA arm per subsample,
 Rscript cccrise/comparators/scriabin/panc8_prep.R
 for i in $(seq 1 12); do
   Rscript cccrise/comparators/scriabin/panc8_noise.R $i rcheck/out/scriabin_reproduction/noise
+  Rscript cccrise/comparators/scriabin/panc8_programs.R $i rcheck/out/scriabin_reproduction/programs
 done
 Rscript cccrise/comparators/scriabin/panc8_lisi_checks.R 1 rcheck/out/scriabin_reproduction/lisi_checks
 for a in downsampling downsampling_programs lisi_checks; do
@@ -97,9 +109,11 @@ uv run cccrise-fbuild R_scriabin
 | CCA (anchor finding) | RSpectra `svds` start | hard-coded in C++ (Spectra `SimpleRandom`, seed 0); RunCCA's `set.seed(42)` only reaches irlba, which Seurat uses below 10^6 entries |
 | Anchor kNN | Annoy | hard-coded (RcppAnnoy's default seed) |
 | InteractionPrograms' cell subsampling | `sample` | hard-coded, `set.seed(1111)`; only above 300 cells, so never here |
+| Significance test's random programs | `sample` | unseeded upstream; caller, `set.seed(index)` (`significance.R`) |
 | GenerateCCIM, ScaleData, IntegrateData weights, WGCNA programs, LISI (exact kd-tree kNN) | none | deterministic |
 
 At 300 cells InteractionPrograms uses the full CCIM. So in panel B, the
 programs of two downsampling draws of the same cells differ only through
-`downsampleMatrix`'s draw. The GT CCIM's only random step is SCTransform's
+`downsampleMatrix`'s draw (and which of them pass the significance test, whose
+random programs are seeded by the subsample). The GT CCIM's only random step is SCTransform's
 hard-coded gene subsample.
