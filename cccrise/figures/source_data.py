@@ -265,9 +265,9 @@ def row(label, folder, name, module, status, entries=()) -> dict:
         "Files": "; ".join(p.name for p, _ in entries),
         "Size (KB)": round(sum(sizes) / 1e3, 1),
         # The docstring's first paragraph; the panel README has all of it
-        "Description": (inspect.getdoc(module) or "").split("\n\n")[0].replace(
-            "\n", " "
-        ),
+        "Description": (inspect.getdoc(module) or "")
+        .split("\n\n")[0]
+        .replace("\n", " "),
     }
 
 
