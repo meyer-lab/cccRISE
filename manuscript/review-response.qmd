@@ -62,7 +62,7 @@ For Scriabin, the closest corresponding output to a CCC-RISE component is an int
 However, upon running Scriabin's interaction program discovery pipeline, we noticed that the top LR pairs in the programs were inconsistent across seed refitting ({{< fig comparator-single-cell scriabin-seeds >}}).
 To check that this instability did not belong to any changes introduced by our inputs, we reran the robustness analysis of the Scriabin paper (Wilk et al., Fig. 2d--e) exactly as its authors set it up (raw counts, SCTransform, ALRA, OmniPath).
 We reproduced the paper's result that the cell--cell interaction matrix is robust to the artificial downsampling of sequencing depth: after integration, a median of 67% (raw) and 91% (ALRA-denoised) of full-depth cell--cell pairs mixed with the downsampled data, against approximately 72% and 91% in the paper ({{< fig scriabin lisi-recapitulation >}}).
-However, interaction programs built on that same matrix agreed at only 0.10--0.22 (best-match Jaccard) between the full-depth and downsampled data, and at only 0.20--0.49 even between two equivalent downsampling draws of the same cells ({{< fig scriabin downsampling-programs >}}).
+However, interaction programs built on that same matrix , kept if they passed Scriabin's significance test, agreed at only 0.10--0.22 (best-match Jaccard) between the full-depth and downsampled data, and at only 0.20--0.49 even between two equivalent downsampling draws of the same cells ({{< fig scriabin downsampling-programs >}}).
 For this reason, we did not use Scriabin's programs as a concordance benchmark.
 
 ![](figures/figureR_scriabin/figureR_scriabin.svg){width="6.5in"}
@@ -70,7 +70,7 @@ For this reason, we did not use Scriabin's programs as a concordance benchmark.
 **{{< label scriabin >}}.
 Scriabin's interaction programs under the Scriabin paper's own downsampling test.** The test of Wilk et al. (Fig. 2d--e) was rerun with upstream Scriabin on 12 random subsamples of 300 of the 638 Fluidigm C1 pancreatic islet cells (panc8), whose full-depth counts (ground truth; GT) were downsampled to inDrop depth, with or without ALRA denoising, and each passed through SCTransform and GenerateCCIM (OmniPath).
 ({{< panel scriabin lisi-recapitulation >}}) Percentage of GT cell--cell pairs with LISI > 1 after integrating the downsampled interaction matrix with the GT one on all 90,000 GT pairs of the subsample, for each subsample (points, colored by the GT pairs' mean LISI), beside the paper's median and range read off its Fig. 2e (grey; approximate).
-({{< panel scriabin downsampling-programs >}}) Agreement of InteractionPrograms' programs (mean best-match Jaccard of their LR pairs, in both directions) between the GT and a downsampled draw, and between two independent downsampling draws of the same cells, for each subsample (points).
+({{< panel scriabin downsampling-programs >}}) Agreement of InteractionPrograms' significant programs (InteractionProgramSignificance with 500 random programs, p < 0.05; mean best-match Jaccard of their LR pairs, in both directions) between the GT and a downsampled draw, and between two independent downsampling draws of the same cells, for each subsample (points).
 Boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5-times the IQR.
 
 We did not run CCC-RISE on a single-condition dataset.
