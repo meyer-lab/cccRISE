@@ -26,7 +26,7 @@ Cell--cell communication (CCC) coordinates cellular activities that vary dynamic
 Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations; conversely, methods that preserve single-cell resolution disregard how communication is differentially regulated across multiple conditions.
 To bridge this gap, we developed CCC-RISE.
 Rather than relying on cell-type labels, CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs defined by conditions, sender cells, receiver cells, and ligand--receptor pairs, then maps each program back to the individual cells involved.
-Applied to lung transplant and Crohn's disease cohorts, CCC-RISE identified transcriptionally distinct sender and receiver subpopulations beyond available cell-type labels, revealed coordinated signaling mediated by immune proteins that was associated with disease outcome, and characterized a transitional spectrum of cells between hormone-secreting states.
+Applied to lung transplant and Crohn's disease cohorts, CCC-RISE identified transcriptionally distinct sender and receiver subpopulations beyond available cell-type labels, revealed coodinated immune signaling mediated by co-varying ligand--receptor pairs, and characterized a transitional spectrum of cells between hormone-secreting states.
 In comparison, aggregate methods missed these programs, decoupled their coordinated signaling, or attributed them to whole cell types broader than the signaling subpopulations.
 CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to aggregate methods by analyzing multi-condition data while preserving single-cell resolution.
 
@@ -34,11 +34,11 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to ag
 
 - CCC-RISE analyzes cell--cell communication across conditions at single-cell resolution, without relying on predefined cell-type labels
 
-- It deconvolves communication into interpretable programs defined by conditions, sender cells, receiver cells, and ligand--receptor pairs
+- CCC-RISE deconvolves communication into interpretable programs defined by conditions, sender cells, receiver cells, and ligand--receptor pairs
 
-- Mapping programs back to individual cells reveals mutually exclusive signaling subpopulations whose granularity exceeds that of available annotations
+- Mapping programs back to individual cells reveals signaling subpopulations with granularity exceeding that of available annotations
 
-- In a lung transplant cohort, CCC-RISE identifies a coordinated communication axis associated with allograft function and patient survival
+- [Placeholder comparator highlight]
 
 {{< include _introduction.qmd >}}
 
