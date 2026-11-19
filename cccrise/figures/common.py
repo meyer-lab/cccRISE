@@ -1422,6 +1422,7 @@ def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
         aspect="auto",
         interpolation="nearest",
     )
+    ax.autoscale(False)  # overlaid labels and leaders never shrink the matrix
     components = np.arange(loadings.shape[1])
     ax.set_xticks(components, components + 1)
     ax.set_xlabel(xlabel)
