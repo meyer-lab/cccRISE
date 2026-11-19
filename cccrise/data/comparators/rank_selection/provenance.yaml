@@ -8,6 +8,7 @@
 shared:
   cp_device: auto
   cp_dtype: float32
+  cp_backend: cupy
 files:
   pb_rank_alad_coarse.parquet:
     sha256: ae18a70c4e5fb286e79c61c08f8c23be1a6529ae8e5107c5377c59c46d2ffd70
@@ -23,7 +24,6 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 8, 8, 570]
       observed_share: 1.0
@@ -65,7 +65,6 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 26, 26, 570]
       observed_share: 1.0
@@ -135,7 +134,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
@@ -186,7 +184,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 54, 54, 1332]
       observed_share: 1.0
@@ -274,7 +271,6 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 8, 8, 570]
       observed_share: 1.0
@@ -316,7 +312,6 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 26, 26, 570]
       observed_share: 1.0
@@ -386,7 +381,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
@@ -437,7 +431,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 54, 54, 1332]
       observed_share: 1.0
@@ -525,7 +518,6 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 8, 8, 570]
       observed_share: 1.0
@@ -564,7 +556,6 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 26, 26, 570]
       observed_share: 1.0
@@ -631,7 +622,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
@@ -656,7 +646,7 @@ files:
     git_sha: 0a8e61f46cbc7e256e9481d01f6dc5f24c58c27b
     generated: '2026-11-19T08:14:17+00:00'
   stac_shares_ibd_fine.parquet:
-    sha256: 4287f93190c390493bd4da6fa091cd5c4fd9ca283169a3521e59530f1976b691
+    sha256: 220e489afeb63096ef3c2ef94ccf5501e5771327bdbacd37b5954e7b4371b4c8
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods stac
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -679,9 +669,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: numpy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -748,8 +737,8 @@ files:
         receiver: 11
         lr: 12
       random_state: 42
-    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e-dirty
-    generated: '2026-11-14T15:45:43+00:00'
+    git_sha: d490ca44e15054b140b0ffd9917ef580060401fb
+    generated: '2026-11-19T08:56:36+00:00'
   tc2c_elbow_alad_coarse.parquet:
     sha256: cc2a718fd5b31c3d7f3c9b86d01bbc6817df144476399465d7dd018077f25d3a
     command: uv run cccrise-comparators --dataset alad --methods tc2c
@@ -764,7 +753,6 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 8, 8, 575]
       observed_share: 0.8720079787234043
@@ -808,7 +796,6 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 26, 26, 575]
       observed_share: 0.8294410172478912
@@ -880,7 +867,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 7, 7, 1337]
       observed_share: 0.9853037424882489
@@ -933,7 +919,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 54, 54, 1337]
       observed_share: 0.6747131539270617
@@ -1027,7 +1012,6 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 8, 8, 575]
       observed_share: 0.8720079787234043
@@ -1071,7 +1055,6 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 26, 26, 575]
       observed_share: 0.8294410172478912
@@ -1143,7 +1126,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 7, 7, 1337]
       observed_share: 0.9853037424882489
@@ -1196,7 +1178,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 54, 54, 1337]
       observed_share: 0.6747131539270617
@@ -1290,7 +1271,6 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 8, 8, 575]
       observed_share: 0.8720079787234043
@@ -1334,7 +1314,6 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
       tensor_shape: [47, 26, 26, 575]
       observed_share: 0.8294410172478912
@@ -1406,7 +1385,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 7, 7, 1337]
       observed_share: 0.9853037424882489
@@ -1459,7 +1437,6 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
       tensor_shape: [343, 54, 54, 1337]
       observed_share: 0.6747131539270617
