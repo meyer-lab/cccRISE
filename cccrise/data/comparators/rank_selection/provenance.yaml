@@ -740,7 +740,7 @@ files:
     git_sha: d490ca44e15054b140b0ffd9917ef580060401fb
     generated: '2026-11-19T08:56:36+00:00'
   tc2c_elbow_alad_coarse.parquet:
-    sha256: cc2a718fd5b31c3d7f3c9b86d01bbc6817df144476399465d7dd018077f25d3a
+    sha256: fa6673526d80d7051279cadaeda70ec3e92f3d28aeb76dc9dfdd70ccee86b9aa
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -754,7 +754,7 @@ files:
     celltype_key: broad_cell_type
     group_key: ALADstatus
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 0.8720079787234043
       celltypes:
       - CD4 T cells
@@ -772,18 +772,18 @@ files:
       runs: 10
       init: random
       first_seed: 42
-      elbow_rank: 10
+      elbow_rank: 9
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 47
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:07:49+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:08:48+00:00'
   tc2c_elbow_alad_fine.parquet:
-    sha256: 154e548597017f3c35393c48a97e63201abc0ac2695a0fbd13df0a160abbae57
+    sha256: f5d50fb4a19717145f67898332224a436032eedad9c5382382af2bd032c42c6c
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -797,7 +797,7 @@ files:
     celltype_key: celltype
     group_key: ALADstatus
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 0.8294410172478912
       celltypes:
       - Activated CD8
@@ -836,13 +836,13 @@ files:
       elbow_rank: 5
       fit:
         init: random
-        best_of_runs_seed: 45
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:54:43+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:49:32+00:00'
   tc2c_elbow_ibd_coarse.parquet:
     sha256: 71b3256a6a515729767139e6d805d77072168d9814c570aafe64f5e37deffb70
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
@@ -999,7 +999,7 @@ files:
     git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e
     generated: '2026-11-14T15:07:03+00:00'
   tc2c_start_fms_alad_coarse.parquet:
-    sha256: e00bb3b257fd30d7d84206cc84a861979b66bb9038694a96444f4d1feece1417
+    sha256: 90bc6d9548f6f3390d53f2f7e67b8c45cc500a1bcacf5351e59f4013b3365657
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -1013,7 +1013,7 @@ files:
     celltype_key: broad_cell_type
     group_key: ALADstatus
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 0.8720079787234043
       celltypes:
       - CD4 T cells
@@ -1031,18 +1031,18 @@ files:
       runs: 10
       init: random
       first_seed: 42
-      elbow_rank: 10
+      elbow_rank: 9
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 47
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:07:49+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:08:48+00:00'
   tc2c_start_fms_alad_fine.parquet:
-    sha256: 1de36ac285b434a9e4bf2486531e87433f74166df9d312c3b56d9ea1810d01f6
+    sha256: 63c73b5804c8f4aa5fd2236c8cdf6e653993cf7658d640cc9f0df73b7d12dd82
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -1056,7 +1056,7 @@ files:
     celltype_key: celltype
     group_key: ALADstatus
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 0.8294410172478912
       celltypes:
       - Activated CD8
@@ -1095,13 +1095,13 @@ files:
       elbow_rank: 5
       fit:
         init: random
-        best_of_runs_seed: 45
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:54:43+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:49:32+00:00'
   tc2c_start_fms_ibd_coarse.parquet:
     sha256: c70c70f8b0f7e4f058f967ba3bedf7706ef335cf50373fe0db98766896a942c0
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
@@ -1258,7 +1258,7 @@ files:
     git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e
     generated: '2026-11-14T15:07:03+00:00'
   tc2c_starts_alad_coarse.nc:
-    sha256: c71bc772e778c397aef2114be0286ccee567c2dc42d7df7f1013867fc68b7215
+    sha256: 7c1da6565e68c0d685f59019b0a1f43ac3e9d6d7b7a604538214d35aefc79bd3
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -1272,7 +1272,7 @@ files:
     celltype_key: broad_cell_type
     group_key: ALADstatus
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 0.8720079787234043
       celltypes:
       - CD4 T cells
@@ -1290,18 +1290,18 @@ files:
       runs: 10
       init: random
       first_seed: 42
-      elbow_rank: 10
+      elbow_rank: 9
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 47
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:07:49+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:08:48+00:00'
   tc2c_starts_alad_fine.nc:
-    sha256: 5458ef28d9f1189a0fc92e574a0f78a6dcf36382d5bfb1251639d76ce4c92f9f
+    sha256: 4e9501ba0dfc1e9f21b464995d0fb962064d20a0c77290ea5fbb07a55212ca3a
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -1315,7 +1315,7 @@ files:
     celltype_key: celltype
     group_key: ALADstatus
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 0.8294410172478912
       celltypes:
       - Activated CD8
@@ -1354,13 +1354,13 @@ files:
       elbow_rank: 5
       fit:
         init: random
-        best_of_runs_seed: 45
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:54:43+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:49:32+00:00'
   tc2c_starts_ibd_coarse.nc:
     sha256: 7d7065bdf2c02d7edddf3e74f9d5ebda0ba764a41614ad47ac75f12e59180e81
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c

@@ -505,7 +505,7 @@ files:
     git_sha: d490ca44e15054b140b0ffd9917ef580060401fb
     generated: '2026-11-19T08:56:36+00:00'
   tc2c_alad_coarse.nc:
-    sha256: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
+    sha256: a75245740fd700f6a36f5120c4e7fb76c85c3a65cd2f2d4a68bb54fc67daaa2a
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -519,7 +519,7 @@ files:
     celltype_key: broad_cell_type
     group_key: ALADstatus
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 0.8720079787234043
       celltypes:
       - CD4 T cells
@@ -537,18 +537,18 @@ files:
       runs: 10
       init: random
       first_seed: 42
-      elbow_rank: 10
+      elbow_rank: 9
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 47
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:07:49+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:08:48+00:00'
   tc2c_alad_fine.nc:
-    sha256: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
+    sha256: 70a4360e920af7c83337d75cec9f78bd87cb2583fef9ff73767ab76cd9a74abc
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -562,7 +562,7 @@ files:
     celltype_key: celltype
     group_key: ALADstatus
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 0.8294410172478912
       celltypes:
       - Activated CD8
@@ -601,13 +601,13 @@ files:
       elbow_rank: 5
       fit:
         init: random
-        best_of_runs_seed: 45
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:54:43+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:49:32+00:00'
   tc2c_ibd_coarse.nc:
     sha256: 11a31e69ddb3102c70e9d246c21a81ec41916eb4ea77b4ea0c587e8040deb6c7
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
