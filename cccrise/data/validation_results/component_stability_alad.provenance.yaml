@@ -24,8 +24,8 @@ n_replicates_per_axis:
   jackknife: 45
 jackknife_unit: patient_id
 group_column: 6monthcondition
-control_label: null
-other_label: null
+control_label: control
+other_label: alad
 ci_level: 95.0
 alpha: 0.05
 patient_column: patient_id
@@ -72,37 +72,37 @@ anova_alignment: each replicate's ANOVA statistics carried onto the reference co
   a group left with one condition stays in the test as a group of one
 component_numbering: core fit cccrise/data/factors/bal_alad_factors.nc (validation.relabel_workflow_fit)
 lr_roster_stable: true
-interaction_tensor_shape: [47, 17, 17, 575]
-r2x_pf2: 0.03148006660270064
-r2x_cp: 0.5993677736203038
+interaction_tensor_shape: [47, 17, 17, 570]
+r2x_pf2: 0.03148010687430847
+r2x_cp: 0.5311300840027199
 reference_eta_squared:
-- 0.07631289225134612
-- 0.020591633674377656
-- 0.09073349770235613
-- 0.08857870527856782
-- 0.3288097050091644
-- 0.053176781456065816
+- .nan
+- .nan
+- .nan
+- .nan
+- .nan
+- .nan
 reference_f:
-- 1.1841868454084088
-- 0.3013520809915356
-- 1.4302885499254732
-- 1.3930200186740818
-- 7.021762889458506
-- 0.8050082837805298
+- .nan
+- .nan
+- .nan
+- .nan
+- .nan
+- .nan
 reference_p:
-- 0.3269791623757229
-- 0.8242284366726242
-- 0.24707025344760866
-- 0.2578348278362094
-- 0.0006030056769742208
-- 0.49800929506689495
+- .nan
+- .nan
+- .nan
+- .nan
+- .nan
+- .nan
 reference_p_adj:
-- 0.49046874356358433
-- 0.8242284366726242
-- 0.49046874356358433
-- 0.49046874356358433
-- 0.003618034061845325
-- 0.5976111540802739
+- .nan
+- .nan
+- .nan
+- .nan
+- .nan
+- .nan
 reference_group_mean_diff:
 - .nan
 - .nan
@@ -115,22 +115,22 @@ reference_top_lr_pair:
 - FLT3LG^FLT3
 - CCL17^CCR4
 - CADM1^CADM1
-- LCK^CD8A&CD8B
+- CLEC2D^KLRB1
 - BTC^EGFR
 reference_top_lr_loading:
-- 0.8458728658498591
-- 0.6445622324003423
-- 0.6347712018762062
-- 0.7215383244078597
-- 0.6435463073661898
-- 0.8564180977908958
-n_components_significant: 1
+- 0.8458771345863204
+- 0.6451954748204504
+- 0.6405543440807457
+- 0.7218660094926546
+- 0.4064716572224529
+- 0.8565031805768122
+n_components_significant: 0
 reference_seed: 42
 first_replicate_seed: 42001
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
-  lr_pairs: 575
-git_sha: 3be62108cea489d1c20b6aeece01ac2d88c665b5
-generated: '2026-11-14T18:22:21+00:00'
+  lr_pairs: 570
+git_sha: d493bc1f97b61edc196c252bcd1f07a60078d3c2
+generated: '2026-11-19T04:20:33+00:00'
