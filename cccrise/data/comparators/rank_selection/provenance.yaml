@@ -844,7 +844,7 @@ files:
     git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
     generated: '2026-11-19T09:49:32+00:00'
   tc2c_elbow_ibd_coarse.parquet:
-    sha256: 71b3256a6a515729767139e6d805d77072168d9814c570aafe64f5e37deffb70
+    sha256: 3b9ffe3ea5fdd39d6f96b568a3675d681a86a664e61e5c514e1f854c19b709d8
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -868,7 +868,7 @@ files:
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 0.9853037424882489
       celltypes:
       - B cell
@@ -893,8 +893,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T05:32:41+00:00'
+    git_sha: 4f32c3ca62c344828793001af3b228e3e3884882
+    generated: '2026-11-19T10:45:25+00:00'
   tc2c_elbow_ibd_fine.parquet:
     sha256: cf7215aa38b7ed1c33d247573bcca3fae5d7d59a57482f5feebd6deffa94a89a
     command: uv run cccrise-comparators
@@ -1103,7 +1103,7 @@ files:
     git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
     generated: '2026-11-19T09:49:32+00:00'
   tc2c_start_fms_ibd_coarse.parquet:
-    sha256: c70c70f8b0f7e4f058f967ba3bedf7706ef335cf50373fe0db98766896a942c0
+    sha256: deb7e36973bb2b75648ef73c05ed576b21d0c6eff7a160d9a3a81059f9238232
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -1127,7 +1127,7 @@ files:
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 0.9853037424882489
       celltypes:
       - B cell
@@ -1152,8 +1152,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T05:32:41+00:00'
+    git_sha: 4f32c3ca62c344828793001af3b228e3e3884882
+    generated: '2026-11-19T10:45:25+00:00'
   tc2c_start_fms_ibd_fine.parquet:
     sha256: 71933ef95c7c3ea05dbfea0c001f05fca05e45b68fc5d704facbd22607dbb830
     command: uv run cccrise-comparators
@@ -1362,7 +1362,7 @@ files:
     git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
     generated: '2026-11-19T09:49:32+00:00'
   tc2c_starts_ibd_coarse.nc:
-    sha256: 7d7065bdf2c02d7edddf3e74f9d5ebda0ba764a41614ad47ac75f12e59180e81
+    sha256: be2b0be908947bf3d8e21fac60b73bd253d036e3d770dc7b6600ec20b12d8722
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -1386,7 +1386,7 @@ files:
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 0.9853037424882489
       celltypes:
       - B cell
@@ -1411,8 +1411,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T05:32:41+00:00'
+    git_sha: 4f32c3ca62c344828793001af3b228e3e3884882
+    generated: '2026-11-19T10:45:25+00:00'
   tc2c_starts_ibd_fine.nc:
     sha256: 346c80cf8f6c8f93b2394d6b6874550059bbefc048c688533c77d86a121c724a
     command: uv run cccrise-comparators
