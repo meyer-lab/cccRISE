@@ -38,9 +38,6 @@ Also, as detailed below, we now compare our results to a broad panel of existing
 >    - For the multi-condition tensor claim: Tensor-cell2cell (Armingol et al., the actual tool) and/or STACCato, which are the closest methodological competitors.
 >      For this, please also report ALAD status AUC as for CCC-RISE
 
-[Needs to be updated based on final comparator work.]
-Points to address are: - single-cell resolution validation (concordance with NICHES, problems with Scriabin), - single-condition performance (problems with Scriabin), - and multi-condition tensor validation (similarities/differences with Tensor-cell2cell, STACCato, and pseudobulk)
-
 We agree that a self-constructed pseudobulk ablation cannot carry this claim on its own, and we now benchmark against four of the the published methods the reviewer names.
 We used Tensor-cell2cell and STACCato for all multi-condition tensor related claims, and NICHES and Scriabin as independent checks for single-cell-resolution claims\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005; @doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
 We did not run DeepCOLOR: its distinguishing contribution over Scriabin and NICHES is spatial-colocalization inference, and neither cohort has matched spatial data, so it would be run outside the regime for which it was designed.
@@ -89,10 +86,6 @@ To give a fair analysis, we also looked at the comparator columns lying outside 
 >    I recognize the field lacks gold standards, but simulation frameworks with defined communication ground truth exist (e.g., the SERGIO-based CCC simulator) and would allow the authors to quantify the resolution advantage.
 >    At minimum, the manuscript should provide a quantitative concordance/discordance analysis against Scriabin on the same data.
 
-[Also needs to be updated once comparator work is complete.
-Paragraphs 2 and 3 need updating, the others are done.]
-Points to address are: <!-- - quantitative evaluations of subpopulation identity (projection-based group definitions in ALAD 5/IBD 3--4),--> - quantitative evaluation of "true" biology (NicheNet analysis, reference R1 C1 NICHES concordance), - lack of Scriabin concordance (reference R1 C1), <!-- - and refusal to use synthetic data-->
-
 We agree that our qualitative observations did not adequatley support this claim.
 Our revision adds three quantitative lines of reasoning/evidence.
 
@@ -101,8 +94,6 @@ The reviewer is correct to point out the weakness of the qualitative PaCMAP embe
 Instead, we now define subpopulations based on quantitative per-cell sender and receiver loadings derived from the projection matrices and sender/receiver factor matrices.
 For more detail on our new strategy, we point the reviewer to {{< fig 2 sender-receiver-strata >}}, {{< fig 4 hormone-angle-scatter >}}, and Methods section *Mapping CCC-RISE Components to Cells*.
 
-[Update based on NicheNet comparator results.
-Otherwise, done.]
 Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, then we take a weighted average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
 We applied the same test to every comparator LR column, but because comparators assign one receiver loading per cell type, their receivers were all cells of the most highly loaded cell types, contrasted with all cells of the least loaded.
@@ -169,11 +160,11 @@ In data not shown here, L1-penalized logistic regression proved unstable in exac
 We therefore opted to test component--condition associations by ANOVA, applied identically to both datasets, with multiple-testing correction across components and outcomes.
 We describe the new association testing in {{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}, {{< fig ibd-associations cp-associations status-loadings >}}, and Methods section *Clinical Association Testing*.
 
-[Need to confirm these claims are present in text] On the negative result: with the rank-selection overhaul and new association testing methodology, this result has flipped.
+On the negative result: with the rank-selection overhaul and new association testing methodology, this result has flipped.
 Now, in the ALAD cohort, a single component shows a graded, statistically significant association with six-month outcome after correction, and the same component is significantly associated with six-month and one-year death, as shown in {{< fig 3 outcome-association >}} and {{< fig alad-associations cp-associations >}}.
-Instead, we fail to identify any communication programs associated with ALAD status, which is now stated in the Results rather than left to the reader to notice [Results XXX].
-We discuss why: with 47 samples from 45 recipients and few events, the cohort has limited statistical power, and the significant associations depend on a small number of highly weighted samples [Discussion XXX].
-We accordingly frame the clinical claims as hypothesis-generating [Discussion XXX].
+Instead, we fail to identify any communication programs associated with ALAD status, which is now stated in the Results rather than left to the reader to notice.
+We discuss why: with 47 samples from 45 recipients and few events, the cohort has limited statistical power, and the significant associations depend on a small number of highly weighted samples.
+We accordingly frame the clinical claims as hypothesis-generating.
 
 > 6. No significance testing for communication programs.
 >    Unlike CellPhoneDB/CellChat, CCC-RISE provides no null model or significance assessment for whether a component's communication exceeds chance.
@@ -195,7 +186,7 @@ We report the results of this permutation test within {{< fig 3 lr-permutation l
 >    - scDiffCom (Lagger et al., Nat Aging 2023), a dedicated differential CCC between conditions with permutation-based significance (c.f. comment #6).
 >    - CrossTalkeR (Nagai et al., Bioinformatics 2021), differential LR-network analysis across conditions.
 
-We have added both methods as well as NATMI to the Introduction and the reference list\ [@doi:10.1038/s43587-023-00514-x; @doi:10.1093/bioinformatics/btab370; @doi:10.1038/s41467-020-18873-z].
+We have added both methods as well as NATMI, SPRUCE, and DeepTalk to the Introduction and the reference list\ [@doi:10.1038/s43587-023-00514-x; @doi:10.1093/bioinformatics/btab370; @doi:10.1038/s41467-020-18873-z].
 These methods collectively define an additional class of CCC-inference approaches that analyze conditions in a pair-wise manner, and they are introduced accordingly.
 
 > 8. Inconsistency between the "label-free" premise and label-dependent interpretation.
@@ -236,11 +227,6 @@ Point-by-point responses follow.
 >    One notable difference is the learned condition factor matrix.
 >    These results suggest that CCC-RISE may miss many meaningful communication patterns revealed by the cell-type-based methods.
 
-[Need to review comparator paragraphs after comparator work is finalized.]
-<!-- - Quantitative metrics for recovery of "real" biology (NicheNet, NICHES, reference R1 C1 for NICHES, R1 C2 for NicheNet)
-<!-- - Performance relative to comparators (tensor-based methods, reference R1 C1)
-<!-- - Refusal to use synthetic data (should re-state for this reviewer or reference R1 C2)-->
-
 We agree, and we have added quantitative evaluation and communication program recovery between methods; much of this overlaps with Reviewer #1 Comments #1 and #2, which we summarize here.
 
 We take two approaches to quantify recovery of "real" biology.
@@ -259,9 +245,8 @@ We state these misses in the Discussion, but conclude that cell-type-based decom
 Moreover, the fitted LR columns of the comparators were also sensitive to the granularity of the labels losing disease-associated colums when transitioning from coarse to fine cell types ({{< fig 5 labels-alad labels-ibd >}}).
 CCC-RISE components in contrast were conserved when the model wasas refit at a different number of eigen-states.
 
-[Confirm we actually wish to talk about simulated data somewhere in the manuscript.]
 We chose these quantitations over a simulated ground truth (e.g. SERGIO-based CCC simulators) because a simulator encodes an assumed model of how signaling shapes expression; recovering it certifies agreement with that assumption rather than with the biology of these tissues.
-We state this reasoning in the manuscript rather than leaving the omission unexplained [Text reference].
+We state this reasoning in the Discussion rather than leaving the omission unexplained.
 Our rationale is further discussed in the response to Reviewer #1 Comment #2.
 
 > 2. The manuscript interprets CCC components based on known biology through case studies but does not systematically validate them to demonstrate that the identified programs reflect coherent biological processes.
