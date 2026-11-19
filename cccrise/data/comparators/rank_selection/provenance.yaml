@@ -163,7 +163,7 @@ files:
     git_sha: 040bf9bad1c620690b2aefa86b4d556c1494fb91
     generated: '2026-11-19T07:29:28+00:00'
   pb_rank_ibd_fine.parquet:
-    sha256: 9743ae5601043c95d8c189af214f26d26b8445ce535fb71112fe5f4b22d10154
+    sha256: d3248e176b05e0a2320272a3c233b834dcce45c2227c4caf242bc16fe881934c
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -188,7 +188,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -258,8 +258,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: d68b8a5129e83e3e27885395847dc275eb0e3804
-    generated: '2026-11-14T06:38:16+00:00'
+    git_sha: 05e02ad7fab54205d1539e4182e44db41f8ead75
+    generated: '2026-11-19T08:06:13+00:00'
   pb_start_fms_alad_coarse.parquet:
     sha256: 4d0d725593b4f01d353ffb55309d7572fc95850165ff12eb639dbf792449a741
     command: uv run cccrise-comparators --dataset alad --methods pb
@@ -414,7 +414,7 @@ files:
     git_sha: 040bf9bad1c620690b2aefa86b4d556c1494fb91
     generated: '2026-11-19T07:29:28+00:00'
   pb_start_fms_ibd_fine.parquet:
-    sha256: 4514a4a72930723642d6c948e240d6722b4eeeeaa50f0a2e2b4044197f097a0e
+    sha256: d35da425d204825a85ed0ff255b5896867b1abacb4304a881f054c61211b6cc6
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -439,7 +439,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -509,8 +509,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: d68b8a5129e83e3e27885395847dc275eb0e3804
-    generated: '2026-11-14T06:38:16+00:00'
+    git_sha: 05e02ad7fab54205d1539e4182e44db41f8ead75
+    generated: '2026-11-19T08:06:13+00:00'
   stac_shares_alad_coarse.parquet:
     sha256: 063315c5064d5a4336cc7dbea15f1eee748d3e176fd211673d1f3fc0d19730e3
     command: uv run cccrise-comparators --dataset alad --methods stac
