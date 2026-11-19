@@ -32,7 +32,7 @@ files:
     git_sha: 9c938632496251cd077bc8032f480d2164461584
     generated: '2026-11-19T18:33:11+00:00'
   associations_ibd.parquet:
-    sha256: 57e305a2130ee7da822d216d745054dc6bf4d7ad88f0538aad5a8bd0191c058f
+    sha256: e672ed9225d553747640b97e7ec3ecfb2820c2e1cf883536fea6aae46a5d9936
     command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -57,14 +57,14 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 7cc45d7cfbf571fd72bb829abaa1b4f19e08547c11197a098fc0db077ed4862b
-      PB fine: 30251b00d0b842a0384be1b87e03ab8cb0360328f11979876490c750c2f242df
-      TC2C coarse: 11a31e69ddb3102c70e9d246c21a81ec41916eb4ea77b4ea0c587e8040deb6c7
-      TC2C fine: 5c7662b355d6e9daa11ac5da2dd6d6cd015dc08c38f56a1c9f315ff266598d48
-      STAC coarse: e237961a871b63d8ee3924e9c0cb79f22c23e81895879e8d19818ec6162b10f9
-      STAC fine: a4f2f2832c57657819f21409412d408139b9e7f9ebbb06b50063e4f2e36bf622
-    git_sha: fc4a21d81b25f4889b8a34b56155221ac87541f3
-    generated: '2026-11-16T06:50:40+00:00'
+      PB coarse: 35c837f93a65d965da7df23c3ba5eff16cad22d34d4a14dc0d6645572e98d1b0
+      PB fine: 665d3814964a4b526e2f35ecd7b462a1ca2db08e9a291ef7628f4a85a028cf77
+      TC2C coarse: 74bc42f739564cf0310f1d441210bc456fbae4a6ff3c3df59f6bc69619762fd0
+      TC2C fine: 20a6d7cc29d455e88fd197035eda9bd6f4124b6a6a7d954f661f022b5775e923
+      STAC coarse: b4afe8919d37bc1d49f3f9505b860d40230cd8f3385a877824c966cacebd0e44
+      STAC fine: 62114a6740ade3afa9752c8c112b1b4a967bfe77a551941f461a573f0d77cd49
+    git_sha: 9e713e833a717ea3ea592650b82c4431a510f119
+    generated: '2026-11-19T21:35:50+00:00'
   containment_alad.parquet:
     sha256: 2dd32ef56c4b5b46007de8cb64f443bc3131b4a3d48b97fc4882ed8aff761a0d
     command: uv run cccrise-comparator-scores --dataset alad
@@ -90,7 +90,7 @@ files:
     git_sha: 9c938632496251cd077bc8032f480d2164461584
     generated: '2026-11-19T18:33:11+00:00'
   containment_ibd.parquet:
-    sha256: 9296a976d7fecb3e6b6709b55c6fcec3b6c01b6da8b69816e3b80c49e0965d4b
+    sha256: ffd9e2beecb8cad944b17d81b31bd3e0d99edc45bccbba90cbd0872b31a1ee3d
     command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -115,14 +115,14 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 7cc45d7cfbf571fd72bb829abaa1b4f19e08547c11197a098fc0db077ed4862b
-      PB fine: 30251b00d0b842a0384be1b87e03ab8cb0360328f11979876490c750c2f242df
-      TC2C coarse: 11a31e69ddb3102c70e9d246c21a81ec41916eb4ea77b4ea0c587e8040deb6c7
-      TC2C fine: 5c7662b355d6e9daa11ac5da2dd6d6cd015dc08c38f56a1c9f315ff266598d48
-      STAC coarse: e237961a871b63d8ee3924e9c0cb79f22c23e81895879e8d19818ec6162b10f9
-      STAC fine: a4f2f2832c57657819f21409412d408139b9e7f9ebbb06b50063e4f2e36bf622
-    git_sha: fc4a21d81b25f4889b8a34b56155221ac87541f3
-    generated: '2026-11-16T06:50:40+00:00'
+      PB coarse: 35c837f93a65d965da7df23c3ba5eff16cad22d34d4a14dc0d6645572e98d1b0
+      PB fine: 665d3814964a4b526e2f35ecd7b462a1ca2db08e9a291ef7628f4a85a028cf77
+      TC2C coarse: 74bc42f739564cf0310f1d441210bc456fbae4a6ff3c3df59f6bc69619762fd0
+      TC2C fine: 20a6d7cc29d455e88fd197035eda9bd6f4124b6a6a7d954f661f022b5775e923
+      STAC coarse: b4afe8919d37bc1d49f3f9505b860d40230cd8f3385a877824c966cacebd0e44
+      STAC fine: 62114a6740ade3afa9752c8c112b1b4a967bfe77a551941f461a573f0d77cd49
+    git_sha: 9e713e833a717ea3ea592650b82c4431a510f119
+    generated: '2026-11-19T21:35:50+00:00'
   covariation_alad.parquet:
     sha256: d490761e0c1bc86fb9471ca626519c1a5d946486a69538bfd2d92f20585b7a0f
     command: uv run cccrise-comparator-scores --dataset alad
@@ -172,7 +172,7 @@ files:
     git_sha: 9c938632496251cd077bc8032f480d2164461584
     generated: '2026-11-19T18:33:11+00:00'
   depth_ibd.parquet:
-    sha256: 39bcc4f3bcbe21004c3803189d9a4614ac74577c255ca12020c6eb496283d79c
+    sha256: c93630f11d8d861b1ff7c27112e3341585ca2e04be4cc973b35eaa018138fbb0
     command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -197,14 +197,14 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 7cc45d7cfbf571fd72bb829abaa1b4f19e08547c11197a098fc0db077ed4862b
-      PB fine: 30251b00d0b842a0384be1b87e03ab8cb0360328f11979876490c750c2f242df
-      TC2C coarse: 11a31e69ddb3102c70e9d246c21a81ec41916eb4ea77b4ea0c587e8040deb6c7
-      TC2C fine: 5c7662b355d6e9daa11ac5da2dd6d6cd015dc08c38f56a1c9f315ff266598d48
-      STAC coarse: e237961a871b63d8ee3924e9c0cb79f22c23e81895879e8d19818ec6162b10f9
-      STAC fine: a4f2f2832c57657819f21409412d408139b9e7f9ebbb06b50063e4f2e36bf622
-    git_sha: fc4a21d81b25f4889b8a34b56155221ac87541f3
-    generated: '2026-11-16T06:50:40+00:00'
+      PB coarse: 35c837f93a65d965da7df23c3ba5eff16cad22d34d4a14dc0d6645572e98d1b0
+      PB fine: 665d3814964a4b526e2f35ecd7b462a1ca2db08e9a291ef7628f4a85a028cf77
+      TC2C coarse: 74bc42f739564cf0310f1d441210bc456fbae4a6ff3c3df59f6bc69619762fd0
+      TC2C fine: 20a6d7cc29d455e88fd197035eda9bd6f4124b6a6a7d954f661f022b5775e923
+      STAC coarse: b4afe8919d37bc1d49f3f9505b860d40230cd8f3385a877824c966cacebd0e44
+      STAC fine: 62114a6740ade3afa9752c8c112b1b4a967bfe77a551941f461a573f0d77cd49
+    git_sha: 9e713e833a717ea3ea592650b82c4431a510f119
+    generated: '2026-11-19T21:35:50+00:00'
   fit_ranks_alad.parquet:
     sha256: 8de73dbfb317f8141bef61a12c2fb5e16290e1dfc66676ec9a7db6f306bed601
     command: uv run cccrise-comparator-scores --dataset alad
@@ -230,7 +230,7 @@ files:
     git_sha: 9c938632496251cd077bc8032f480d2164461584
     generated: '2026-11-19T18:33:11+00:00'
   fit_ranks_ibd.parquet:
-    sha256: 193b54e446b960ead05207890cb18096e9f78ae4fb81168f31ca6c7f657ff664
+    sha256: 685cf44c94d9a618f879239e254c1dfc0e4faf55b488f1cab7ac18aacb2ee609
     command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -255,14 +255,14 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 7cc45d7cfbf571fd72bb829abaa1b4f19e08547c11197a098fc0db077ed4862b
-      PB fine: 30251b00d0b842a0384be1b87e03ab8cb0360328f11979876490c750c2f242df
-      TC2C coarse: 11a31e69ddb3102c70e9d246c21a81ec41916eb4ea77b4ea0c587e8040deb6c7
-      TC2C fine: 5c7662b355d6e9daa11ac5da2dd6d6cd015dc08c38f56a1c9f315ff266598d48
-      STAC coarse: e237961a871b63d8ee3924e9c0cb79f22c23e81895879e8d19818ec6162b10f9
-      STAC fine: a4f2f2832c57657819f21409412d408139b9e7f9ebbb06b50063e4f2e36bf622
-    git_sha: fc4a21d81b25f4889b8a34b56155221ac87541f3
-    generated: '2026-11-16T06:50:40+00:00'
+      PB coarse: 35c837f93a65d965da7df23c3ba5eff16cad22d34d4a14dc0d6645572e98d1b0
+      PB fine: 665d3814964a4b526e2f35ecd7b462a1ca2db08e9a291ef7628f4a85a028cf77
+      TC2C coarse: 74bc42f739564cf0310f1d441210bc456fbae4a6ff3c3df59f6bc69619762fd0
+      TC2C fine: 20a6d7cc29d455e88fd197035eda9bd6f4124b6a6a7d954f661f022b5775e923
+      STAC coarse: b4afe8919d37bc1d49f3f9505b860d40230cd8f3385a877824c966cacebd0e44
+      STAC fine: 62114a6740ade3afa9752c8c112b1b4a967bfe77a551941f461a573f0d77cd49
+    git_sha: 9e713e833a717ea3ea592650b82c4431a510f119
+    generated: '2026-11-19T21:35:50+00:00'
   inner_loss_alad.parquet:
     sha256: 51f61b5c0ff19b137f893e8774445bf1dd7b5284c03869b733b36e28a098ec63
     command: uv run cccrise-comparator-scores --dataset alad
@@ -288,7 +288,7 @@ files:
     git_sha: 9c938632496251cd077bc8032f480d2164461584
     generated: '2026-11-19T18:33:11+00:00'
   inner_loss_ibd.parquet:
-    sha256: 09c591d0114692d3afd2f0c3e5fa7d6d16849df182cdab69c34466e6a66a2c24
+    sha256: 1ddcc10862d7806ec95307f267292604878c2adb4dc64f54ad45cd9e101acc6e
     command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -313,14 +313,14 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 7cc45d7cfbf571fd72bb829abaa1b4f19e08547c11197a098fc0db077ed4862b
-      PB fine: 30251b00d0b842a0384be1b87e03ab8cb0360328f11979876490c750c2f242df
-      TC2C coarse: 11a31e69ddb3102c70e9d246c21a81ec41916eb4ea77b4ea0c587e8040deb6c7
-      TC2C fine: 5c7662b355d6e9daa11ac5da2dd6d6cd015dc08c38f56a1c9f315ff266598d48
-      STAC coarse: e237961a871b63d8ee3924e9c0cb79f22c23e81895879e8d19818ec6162b10f9
-      STAC fine: a4f2f2832c57657819f21409412d408139b9e7f9ebbb06b50063e4f2e36bf622
-    git_sha: fc4a21d81b25f4889b8a34b56155221ac87541f3
-    generated: '2026-11-16T06:50:40+00:00'
+      PB coarse: 35c837f93a65d965da7df23c3ba5eff16cad22d34d4a14dc0d6645572e98d1b0
+      PB fine: 665d3814964a4b526e2f35ecd7b462a1ca2db08e9a291ef7628f4a85a028cf77
+      TC2C coarse: 74bc42f739564cf0310f1d441210bc456fbae4a6ff3c3df59f6bc69619762fd0
+      TC2C fine: 20a6d7cc29d455e88fd197035eda9bd6f4124b6a6a7d954f661f022b5775e923
+      STAC coarse: b4afe8919d37bc1d49f3f9505b860d40230cd8f3385a877824c966cacebd0e44
+      STAC fine: 62114a6740ade3afa9752c8c112b1b4a967bfe77a551941f461a573f0d77cd49
+    git_sha: 9e713e833a717ea3ea592650b82c4431a510f119
+    generated: '2026-11-19T21:35:50+00:00'
   lr_loadings_alad.parquet:
     sha256: 48e3dfc2078b975b64fc6c0410171429d7a7fadafe9e7425981da47aa67e2ebe
     command: uv run cccrise-comparator-scores --dataset alad
@@ -346,7 +346,7 @@ files:
     git_sha: 9c938632496251cd077bc8032f480d2164461584
     generated: '2026-11-19T18:33:11+00:00'
   lr_loadings_ibd.parquet:
-    sha256: 76c0f0946002bc670040e2d01d694ba7ad3f5730d919350fd5be90d197c9b3fd
+    sha256: 3e6d9ff844251493563dde39bbcc4dcb32684ae98e70e23be32228385167f099
     command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -371,14 +371,14 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 7cc45d7cfbf571fd72bb829abaa1b4f19e08547c11197a098fc0db077ed4862b
-      PB fine: 30251b00d0b842a0384be1b87e03ab8cb0360328f11979876490c750c2f242df
-      TC2C coarse: 11a31e69ddb3102c70e9d246c21a81ec41916eb4ea77b4ea0c587e8040deb6c7
-      TC2C fine: 5c7662b355d6e9daa11ac5da2dd6d6cd015dc08c38f56a1c9f315ff266598d48
-      STAC coarse: e237961a871b63d8ee3924e9c0cb79f22c23e81895879e8d19818ec6162b10f9
-      STAC fine: a4f2f2832c57657819f21409412d408139b9e7f9ebbb06b50063e4f2e36bf622
-    git_sha: fc4a21d81b25f4889b8a34b56155221ac87541f3
-    generated: '2026-11-16T06:50:40+00:00'
+      PB coarse: 35c837f93a65d965da7df23c3ba5eff16cad22d34d4a14dc0d6645572e98d1b0
+      PB fine: 665d3814964a4b526e2f35ecd7b462a1ca2db08e9a291ef7628f4a85a028cf77
+      TC2C coarse: 74bc42f739564cf0310f1d441210bc456fbae4a6ff3c3df59f6bc69619762fd0
+      TC2C fine: 20a6d7cc29d455e88fd197035eda9bd6f4124b6a6a7d954f661f022b5775e923
+      STAC coarse: b4afe8919d37bc1d49f3f9505b860d40230cd8f3385a877824c966cacebd0e44
+      STAC fine: 62114a6740ade3afa9752c8c112b1b4a967bfe77a551941f461a573f0d77cd49
+    git_sha: 9e713e833a717ea3ea592650b82c4431a510f119
+    generated: '2026-11-19T21:35:50+00:00'
   nichenet_alad.parquet:
     sha256: 20a06a43ed4e1918aea151ee427197dbcf2c80c32bed3dd6a4d12fdd91a09a2f
     command: uv run cccrise-comparator-nichenet --dataset alad --n-jobs 8
@@ -538,7 +538,7 @@ files:
     git_sha: 9c938632496251cd077bc8032f480d2164461584
     generated: '2026-11-19T18:33:11+00:00'
   start_congruence_ibd.parquet:
-    sha256: ae534d76d0e0378a2e567e940f195c56e12870b8020ab97a439c1e80e031282c
+    sha256: 6e352298463b18c6b4e8f351573ff0989aa52f74136213f7b01f5eaaf7f1f142
     command: uv run cccrise-comparator-scores --dataset ibd
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -563,11 +563,11 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: 7cc45d7cfbf571fd72bb829abaa1b4f19e08547c11197a098fc0db077ed4862b
-      PB fine: 30251b00d0b842a0384be1b87e03ab8cb0360328f11979876490c750c2f242df
-      TC2C coarse: 11a31e69ddb3102c70e9d246c21a81ec41916eb4ea77b4ea0c587e8040deb6c7
-      TC2C fine: 5c7662b355d6e9daa11ac5da2dd6d6cd015dc08c38f56a1c9f315ff266598d48
-      STAC coarse: e237961a871b63d8ee3924e9c0cb79f22c23e81895879e8d19818ec6162b10f9
-      STAC fine: a4f2f2832c57657819f21409412d408139b9e7f9ebbb06b50063e4f2e36bf622
-    git_sha: fc4a21d81b25f4889b8a34b56155221ac87541f3
-    generated: '2026-11-16T06:50:40+00:00'
+      PB coarse: 35c837f93a65d965da7df23c3ba5eff16cad22d34d4a14dc0d6645572e98d1b0
+      PB fine: 665d3814964a4b526e2f35ecd7b462a1ca2db08e9a291ef7628f4a85a028cf77
+      TC2C coarse: 74bc42f739564cf0310f1d441210bc456fbae4a6ff3c3df59f6bc69619762fd0
+      TC2C fine: 20a6d7cc29d455e88fd197035eda9bd6f4124b6a6a7d954f661f022b5775e923
+      STAC coarse: b4afe8919d37bc1d49f3f9505b860d40230cd8f3385a877824c966cacebd0e44
+      STAC fine: 62114a6740ade3afa9752c8c112b1b4a967bfe77a551941f461a573f0d77cd49
+    git_sha: 9e713e833a717ea3ea592650b82c4431a510f119
+    generated: '2026-11-19T21:35:50+00:00'
