@@ -110,11 +110,13 @@ Having demonstrated CCC-RISE's capacity to resolve cellular subpopulation hetero
 The proportional abundances of the broad cell types in these samples showed no significant difference between control, declined, and recovered samples, confirming that cell-type composition did not trivially drive patient associations ({{< fig alad-associations celltype-proportions >}}).
 ANOVA of each component's condition loadings against patient outcomes revealed significant associations between CPD component 5 and three outcomes after multiple-test correction: six-month outcome---comprising stable, ALAD-recovered, CLAD, and died groups---and six-month and one-year death ({{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}).
 The same test applied to the condition loadings of RISE components yielded no significant associations, suggesting that outcome associations emerged only through inferred intercellular communication ({{< fig alad-associations rise-associations >}}).
+
 Component 5's sender and receiver factors both loaded almost exclusively on eigen-state 16, which projected most strongly onto the lymphocyte cluster of CD4+ T cells, CD8+ T cells, and natural killer (NK) cells ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig 3 celltype-eigenstates >}}).
 However, the lymphocyte cluster defined by RISE projection matrices was non-uniformly loaded onto eigen-state 16, suggesting that CPD component 5 represented communication among a subset of lymphocytes ({{< fig 3 celltype-pacmap >}}).
 Per-cell sender and receiver weights on component 5 were nearly identical, indicating that the same cells were acting as both senders and receivers of component 5 signals ({{< fig 3 sender-receiver-scatter >}}).
 Component 5's top LR pairs consisted of markers of immune cell activation (LCK--CD8A/B, GZMA--F2R, CD70--CD27, and CD69--KLRB1), markers of inhibition/exhaustion (CLECL2D--KLRB1 and NECTIN3--TIGIT), and immune-activating chemokines and their receptors (CCL4/CCL5--CCR4/CCR5 and CXCL13--CXCR3) ({{< fig 3 lr-loadings >}}).
-CPD component 5 thus collectively represents an inflammatory communication axis within activated immune populations that is upregulated in CLAD-positive and deceased lung-transplant recipients.
+The top-weighted pair, LCK--CD8, is a known intra-cellular LR interaction, which points to a mis-classification by CellChatDB as LCK and CD8A/B specifically interact at the inner membrane leaflet within individual cells [source].
+Even with the erroneous inclusion of LCK, CPD component 5 collectively represents an inflammatory communication axis within activated immune populations that is upregulated in CLAD-positive and deceased lung-transplant recipients.
 Further, this communication program aligns with a previously identified increase in CD8+ T cell activation and NK cell cytotoxicity during progression from ALAD to CLAD\ [@doi:10.1016/j.healun.2024.02.007].
 
 CPD groups LR pairs based on covariation across conditions, senders, and receivers rather than by their association with outcome.
@@ -122,7 +124,8 @@ Indeed, while some of component 5's top LR pairs exhibited strong individual ass
 Individual outcome association therefore did not explain which LR pairs component 5 grouped together.
 Instead, component 5's top LR pairs were more strongly correlated with one another across conditions than randomly drawn LR pairs, LR pairs with similar mean expression, or other LR pairs with a significant outcome association ({{< fig 3 coordinated-changes.2 >}}).
 The expression-matched baseline excludes shared abundance as the source of this coordination, and the outcome-associated baseline shows that it is not explained by a common association with outcome.
-These results indicate that, by modeling variation across conditions, cells, and LR pairs, CCC-RISE isolates coordinated communication axes from sets of individually varying programs.
+These results illustrate the dependence of CCC-RISE on the integrity of the chosen LR database: intra-cellular LCK--CD8 was captured by CCC-RISE because those genes co-vary in expression with other LR pairs that interact between cells.
+Thus, by modeling variation across conditions, cells, and LR pairs, CCC-RISE isolates coordinated communication axes from sets of individually varying programs.
 
 Given the limited size of the ALAD cohort and the small number of patients in the "died" group, we tested whether the component 5 association could be explained by patient covariates, individual patients, or random patient grouping.
 No patient covariate (besides Caucasian ethnicity, which was weakly associated with one-year death) was associated with outcome, even before multiple-test correction ({{< fig alad-associations covariates >}}).
