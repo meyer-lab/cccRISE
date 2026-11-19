@@ -58,6 +58,9 @@ To resolve the IBD enteroendocrine (EE), enterochromaffin (EC), and tuft cells, 
 From the eigen-states that RISE produces, CCC scores were calculated for all relevant LR pairs in each condition, with each pair of eigen-states as sender and receiver.
 LR pairs were obtained from the human CellChatDB resource of 1,938 annotated interactions, including multimeric complexes\ [@doi:10.1038/s41467-021-21246-9].
 Pairs were retained only if every ligand and receptor subunit gene was present in the expression data, and the expression of a multimeric complex was taken as the minimum expression of its subunits.
+After filtering, we identified a small set of LR interactions defined in CellChatDB that were known to occur within single cells and not between cells, which were meaningless in the context of inter-cellular communication.
+We therefore systematically evaluated every gene in the database using a keyword search on their UniProt subcellular localization descriptions, which yielded a list of possibly intra-cellular genes [@doi:10.1093/nar/gkae1010].
+We manually inspected every resulting gene and narrowed the list down to five genes constituting five LR pairs known to interact within cells, which we subsequently removed: LCK--CD8A&CD8B, HLA-DMA--CD4, HLA-DMB--CD4, HLA-DOA--CD4, and HLA-DOB--CD4.
 
 **Eigen-state expression.** The expression of eigen-state $q$ in condition $i$ was the corresponding row of $P_{i}^{T}X_{\mathrm{sc},i} + \mathbf{1}\mu^{T}$, clipped at 0.
 The per-gene mean $\mu$ is added back because RISE fits centered data: $P_{i}^{T}X_{\mathrm{sc},i}$ alone is a deviation $\Delta$ from $\mu$ that can be negative.
