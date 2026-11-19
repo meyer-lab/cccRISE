@@ -118,8 +118,8 @@ files:
     git_sha: 9a3a408eaab78e23a7dda3529588af1b596627d8
     generated: '2026-11-19T07:25:02+00:00'
   pb_ibd_coarse.nc:
-    sha256: 7cc45d7cfbf571fd72bb829abaa1b4f19e08547c11197a098fc0db077ed4862b
-    command: uv run cccrise-comparators --dataset ibd --methods pb --pb-rank coarse=6 --pb-rank
+    sha256: 35c837f93a65d965da7df23c3ba5eff16cad22d34d4a14dc0d6645572e98d1b0
+    command: uv run cccrise-comparators --dataset ibd --methods pb --pb-rank coarse=5 --pb-rank
       fine=5
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -144,7 +144,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
       celltypes:
       - B cell
@@ -167,13 +167,13 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-      rank: 6
-      fit_seed: 51
-    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e-dirty
-    generated: '2026-11-14T15:09:44+00:00'
+      rank: 5
+      fit_seed: 48
+    git_sha: 4e5d2bd98c654021b9ae4b66037b16c40e48c64a
+    generated: '2026-11-19T08:08:54+00:00'
   pb_ibd_fine.nc:
-    sha256: 30251b00d0b842a0384be1b87e03ab8cb0360328f11979876490c750c2f242df
-    command: uv run cccrise-comparators --dataset ibd --methods pb --pb-rank coarse=6 --pb-rank
+    sha256: 665d3814964a4b526e2f35ecd7b462a1ca2db08e9a291ef7628f4a85a028cf77
+    command: uv run cccrise-comparators --dataset ibd --methods pb --pb-rank coarse=5 --pb-rank
       fine=5
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -198,7 +198,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -269,9 +269,9 @@ files:
       device: null
       dtype: float32
       rank: 5
-      fit_seed: 43
-    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e-dirty
-    generated: '2026-11-14T15:10:26+00:00'
+      fit_seed: 44
+    git_sha: 4e5d2bd98c654021b9ae4b66037b16c40e48c64a
+    generated: '2026-11-19T08:09:37+00:00'
   stac_alad_coarse.nc:
     sha256: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
     command: uv run cccrise-comparators --dataset alad --methods stac
