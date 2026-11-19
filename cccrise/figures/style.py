@@ -37,6 +37,9 @@ LINE_WIDTH = 1.0  # data lines
 LINE_WIDTH_THIN = 0.5  # axes, ticks, box outlines, reference lines
 LINE_STYLE_REFERENCE = "--"  # null, chance, and threshold lines
 TICK_LENGTH = 2.5
+# Prototype (Fig. 2): the axes box in light grey, heavier than the ticks
+BOX_COLOR = "0.8"
+BOX_LINE_WIDTH = 2 * LINE_WIDTH_THIN
 
 ## Markers
 MARKER_SIZE = 3  # `plot(marker=...)` markersize, pt
