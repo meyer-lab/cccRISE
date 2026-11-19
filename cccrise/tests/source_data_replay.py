@@ -168,7 +168,9 @@ def save(path, fig: plt.Figure, index: int | None) -> None:
         fig.savefig(path, bbox_inches="tight", dpi=300)
         return
     ax = fig.axes[index]
-    box = ax.get_tightbbox(fig.canvas.get_renderer()).padded(4)
+    box = ax.get_tightbbox()
+    assert box is not None  # a drawn axes has extents
+    box = box.padded(4)
     fig.savefig(
         path, bbox_inches=box.transformed(fig.dpi_scale_trans.inverted()), dpi=300
     )
@@ -303,7 +305,7 @@ def figure3(z: Zip) -> dict:
             "Spearman correlation"
         ].to_numpy(),
         "baselines": {
-            labels[b]: g.pivot(
+            labels[str(b)]: g.pivot(
                 index="Draw", columns="Pair of pairs", values="Spearman correlation"
             ).to_numpy()
             for b, g in baselines.groupby("Baseline", sort=False)
@@ -320,15 +322,17 @@ def figure3(z: Zip) -> dict:
         f"{lr_permutation.CONTROL_DISPLAY} mean",
     )
     analysis = {
-        int(c): {
+        int(g["Component"].iloc[0]): {
             "observed": g["Observed difference"].to_numpy(),
             "p": g["Permutation p"].to_numpy(),
             "order": np.arange(len(g)),
             "means": (g[case].to_numpy(), g[control].to_numpy()),
-            "log2": ratios.loc[ratios["Component"] == c, "log2 mean ratio"].to_numpy(),
+            "log2": ratios.loc[
+                ratios["Component"] == g["Component"].iloc[0], "log2 mean ratio"
+            ].to_numpy(),
             "names": g["LR pair"].to_numpy(),
         }
-        for c, g in tests.groupby("Component")
+        for _, g in tests.groupby("Component")
     }
     null = z("3I", "top_pair_permutation_null").pivot(
         index="Permutation", columns="LR pair", values="Null difference"
@@ -427,10 +431,9 @@ def figure5(z: Zip) -> dict:
         cos^2 >= `FLOW_FROM`, line width growing with cos^2 (columns in
         exported order, not `_coarse_fine`'s best-match placement)."""
         ax = axs[0]
-        for i, ((left, right), t) in enumerate(
-            cos2.groupby(["From fit", "To fit"], sort=False)
-        ):
+        for i, (_, t) in enumerate(cos2.groupby(["From fit", "To fit"], sort=False)):
             y = -i * 2
+            left, right = t["From fit"].iloc[0], t["To fit"].iloc[0]
             tops, bottoms = (
                 list(dict.fromkeys(t[c])) for c in ("From column", "To column")
             )
@@ -800,7 +803,7 @@ def missed_columns(z: Zip, folder: str, dataset: str) -> pd.DataFrame:
     off its name (e.g. 'P3 C')."""
     t = z(folder, f"comparator_column_share_{dataset}")
     return t.rename(columns={"CCC-RISE component": "Of"}).assign(
-        Column=t["Name"].map(lambda n: int(re.search(r"\d+", n).group()))
+        Column=t["Name"].map(lambda n: int(re.findall(r"\d+", n)[0]))
     )
 
 
@@ -835,6 +838,7 @@ def figure_s7(z: Zip) -> dict:
     value = contents.columns[1]
     rows, pairs = [], list(dict.fromkeys(contents["LR pair"]))
     for name, g in contents.groupby("Column", sort=False):
+        name = str(name)
         if name != "cccRISE":
             method = "PB" if name.startswith("P") else "STAC"
             rows.append((name, method, g.set_index("LR pair")[value]))
