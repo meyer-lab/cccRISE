@@ -164,7 +164,7 @@ def flow_alad(ax) -> None:
     sender = t["Ciliated-like sender"] / t[EPITHELIAL_NAME] * LENGTH
     receiver = t["Basal/secretory-like receiver"] / t[EPITHELIAL_NAME] * LENGTH
     _flow_axes(ax, 40)
-    _title(ax, 20, 50.5, "STAC S12")
+    _title(ax, 20, 50.5, "STAC S11")
     _node(ax, BAR_X, 31, 46, EPITHELIAL)
     _note(ax, BAR_X - 2.8, 38.5, EPITHELIAL_NAME, rotation=90)
     _horseshoe(ax, 43.5, 33.5, 5)
