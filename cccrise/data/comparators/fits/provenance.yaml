@@ -661,7 +661,7 @@ files:
     git_sha: 4f32c3ca62c344828793001af3b228e3e3884882
     generated: '2026-11-19T10:45:25+00:00'
   tc2c_ibd_fine.nc:
-    sha256: 5c7662b355d6e9daa11ac5da2dd6d6cd015dc08c38f56a1c9f315ff266598d48
+    sha256: 20a6d7cc29d455e88fd197035eda9bd6f4124b6a6a7d954f661f022b5775e923
     command: uv run cccrise-comparators
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -685,7 +685,7 @@ files:
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 0.6747131539270617
       celltypes:
       - B cells
@@ -752,7 +752,7 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 46
+        best_of_runs_seed: 44
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
@@ -761,5 +761,5 @@ files:
         tensorly''s non_negative_parafac with its fill-in, MTTKRP and error built in sample-row
         blocks (same values; different summation order), because tensorly''s own does not
         fit in 24 GB on this tensor'
-    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e
-    generated: '2026-11-14T15:07:03+00:00'
+    git_sha: 9c938632496251cd077bc8032f480d2164461584
+    generated: '2026-11-19T21:34:39+00:00'
