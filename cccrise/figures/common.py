@@ -1099,7 +1099,6 @@ def plot_association_heatmap(
     ax.set_yticks(range(len(rows)), rows, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
-    ax.spines[:].set_visible(False)
     colorbar(ax, image, rf"$\eta^2$ (* {p_label} < {SIG_ALPHA})")
 
 
@@ -1427,7 +1426,6 @@ def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
     ax.set_xticks(components, components + 1)
     ax.set_xlabel(xlabel)
     ax.tick_params(length=0)
-    ax.spines[:].set_visible(False)
     return image
 
 

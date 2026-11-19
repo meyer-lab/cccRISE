@@ -69,8 +69,6 @@ def _cell(ax, x: float, y: float, value: float, text: bool = False) -> None:
 
 def _clean_heatmap(ax) -> None:
     ax.tick_params(length=0, pad=1.5)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
 
 
 def _cohort_labels(ax, centers: dict) -> None:

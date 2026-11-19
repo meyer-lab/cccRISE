@@ -444,8 +444,6 @@ def contents(ax, dataset: str) -> None:
         fontsize=style.FONT_SIZE_DENSE - 1,
     )
     ax.tick_params(length=0)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
     _mark(ax, rows, xs, significant(dataset), cccrise_pairs(dataset))
     _size_key(ax)
 
