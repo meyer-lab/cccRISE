@@ -4,11 +4,11 @@ We have demonstrated that CCC-RISE provides a comprehensive framework for invest
 Existing computational tools for inferring multi-condition CCC largely rely on pseudobulking, a process that aggregates single-cell data into pre-defined clusters and obscures the functional diversity of individual cells.
 This approach depends heavily on the accuracy of annotations and often fails to capture the continuous and multifaceted nature of cellular identities.
 To address these limitations, CCC-RISE projects cells into eigen-states, shared patterns of gene expression across conditions, and scores communication between eigen-states rather than annotated cell types.
-Each cell is represented by a continuous projection across all eigen-states, which allows researchers to map communication programs back onto individual cells based on their propensity to send or recieve molecular signals.
+Each cell is represented by a continuous projection across all eigen-states, which allows researchers to map communication programs back onto individual cells based on their propensity to send or receive molecular signals.
 Through eigen-states, CCC-RISE brings single-cell resolution to multi-condition CCC inference to identify communicating subpopulations at a granularity defined exclusively by the data.
 
 While exploring the advantages of CCC-RISE through ALAD and IBD cohorts, we showcased three distinct modes of interpretation that each defined different kinds of communicating populations through eigen-states.
-ALAD component 6 defined an alveolar repair and fibrosis pathway among epithelial cells, and was unique in its separation of divergent sender and receiver cells by component weight.
+ALAD component 6 defined an alveolar repair and fibrosis pathway among epithelial cells and was unique in its separation of divergent sender and receiver cells by component weight.
 This separability allowed us to threshold the epithelial senders and receivers into groups characterized by distinct gene expression, making this approach especially useful in cases of paracrine signaling between cellular subpopulations.
 In contrast, ALAD component 5 represented immune-activation within a subpopulation of lymphocytes that were collinear in sender and receiver weights, suggesting population-level autocrine signaling within a single group of cells.
 Thus, ALAD components 5 and 6 represent two modes of population-level communication that can be understood through similarities and differences in eigen-state projections.
@@ -19,7 +19,7 @@ This analysis thus represents a third mode of interpretation, which was distinct
 
 Applied to a cohort of lung transplant patients, CCC-RISE demonstrated a unique capacity to resolve communication at a subpopulation level, uncovering functional heterogeneity within standard cell-type annotations.
 The airway repair and fibrosis pathway defined by ALAD component 6 was mediated by BTC--EGFR signaling between ciliated epithelial sender cells and basal and secretory epithelial receiver cells.
-In healthy lung epithelium, BTC secreted by submucosal ciliated cells is known to initiate tissue repair upon binding EGFR and other growth factor receptors that are predomintantly expressed on bronchial basal cells\ [@doi:10.1165/ajrcmb.20.5.3308].
+In healthy lung epithelium, BTC secreted by submucosal ciliated cells is known to initiate tissue repair upon binding EGFR and other growth factor receptors that are predominantly expressed on bronchial basal cells\ [@doi:10.1165/ajrcmb.20.5.3308].
 In traumatized and damaged tissue, such as that of the lung allograft, these signals instead indicate problematic fibrogenesis\ [@doi:10.1038/ki.2012.43; @doi:10.3390/cells11060986].
 The ability to distinguish these non-overlapping epithelial subpopulations within a single canonical "cell type" highlights CCC-RISE's capacity to identify communication patterns with more granularity than available labels.
 Similarly, ALAD component 5 represented coordinated communication driving lymphocyte activation in a subpopulation of CD4+ T, CD8+ T, and NK cells.
@@ -32,9 +32,9 @@ These components thus showcase CCC-RISE's single-cell resolution by dissecting c
 
 A key goal of any multi-condition CCC-inference method is to identify communication programs associated with disease state.
 CCC-RISE exhibited this ability in two independent biological contexts: lung transplantation and Crohn's disease (CD).
-In lung allograft patients, CCC-RISE component 5 exhibited a significant step-wise association with six-month outcome, but the low statistical power of the dataset procluded our ability to make further assertions and contrained our findings to being hypothesis-generating.
+In lung allograft patients, CCC-RISE component 5 exhibited a significant stepwise association with six-month outcome, but the low statistical power of the dataset precluded our ability to make further assertions and constrained our findings to being hypothesis-generating.
 The IBD dataset provided richness and statistical power beyond that of the ALAD data.
-Here, CCC-RISE identified a complementary pair of hormone-communication programs among EE, enterochromafin (EC), and tuft cells that was negatively associated with the shift from uninflamed to inflamed states in CD patients.
+Here, CCC-RISE identified a complementary pair of hormone-communication programs among EE, enterochromaffin (EC), and tuft cells that was negatively associated with the shift from uninflamed to inflamed states in CD patients.
 EE sender cells were spread continuously between villus- and crypt-like states, defined by components 3 and 4 respectively.
 IBD is characterized by the infiltration of immune cells into the gut epithelium and the inflammation-driven death of otherwise healthy cells that ensues\ [@doi:10.1016/j.immuni.2023.01.002].
 Indeed, immune and epithelial cell-type abundances tracked inflammation status in the IBD data.
@@ -60,7 +60,7 @@ Despite this abstraction from raw expression, CCC-RISE populations still agreed 
 Although RISE's eigen-states enable CCC-RISE to perform tensor decomposition while retaining single-cell resolution, they also introduce limitations inherent to decomposition techniques and transcriptomic inference.
 Researchers must select the rank and number of eigen-states in RISE, a challenging, empirical process that can be aided by held-out prediction such as bi-cross-validation and resampling such as the jackknife\ [@doi:10.1214/08-AOAS227; @{doi:10.1016/S0169-7439(02)00090-4}].
 Still, RISE drastically reduces the number of hyperparameters relative to classical cell-type annotation pipelines\ [@doi:10.1038/s41576-018-0088-9].
-Additionally, like other transcriptomic CCC methods, CCC-RISE scores only the LR interactions catalogued in curated resources such as CellChatDB, so it cannot discover new interactions and its results depend on the LR pairs documented in the chosen database\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41467-022-30755-0].
+Additionally, like other transcriptomic CCC methods, CCC-RISE scores only the LR interactions catalogued in curated resources such as CellChatDB, so it cannot discover new interactions, and its results depend on the LR pairs documented in the chosen database\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41467-022-30755-0].
 CCC-RISE also assumes that gene expression is a sufficiently accurate proxy for protein abundance and functional interaction.
 Because post-transcriptional regulation and binding kinetics can decouple mRNA levels from functional protein interactions, the communication patterns identified should be interpreted as hypotheses requiring experimental validation\ [@doi:10.1093/bib/bbaf280; @doi:10.1038/s41598-019-40939-2].
 Finally, CCC model validation is generally dependent on either simulated datasets such as SERGIO, which fail to accurately represent the structure of real biological data, or prior knowledge such as the NicheNet database, whose ligand--gene-target links are incomplete and not specific to any disease context\ [@doi:10.1016/j.cels.2020.08.003; @doi:10.1186/s13059-023-02904-1; @doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
