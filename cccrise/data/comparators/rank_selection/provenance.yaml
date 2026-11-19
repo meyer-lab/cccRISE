@@ -608,7 +608,7 @@ files:
     git_sha: 9156eec545a0799f3a74017f04c3d6d52923204b
     generated: '2026-11-19T08:11:19+00:00'
   stac_shares_ibd_coarse.parquet:
-    sha256: 5c1fb55c6d63bc91ab344cb2a1acee25857355c0ee32373d74c94f7a3b5eb415
+    sha256: 1b544fd0f2716585cc5cee0c30a210361e76a5bea79e8626ab1097695865201f
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods stac
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -631,9 +631,9 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: numpy
+    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
       celltypes:
       - B cell
@@ -648,13 +648,13 @@ files:
     stac:
       varexp_percent: 1.0
       core_shape:
-        sample: 7
+        sample: 6
         sender: 4
         receiver: 3
         lr: 5
       random_state: 42
-    git_sha: e1a68354dbb28b52d973b7799b2b51489f19ff00
-    generated: '2026-11-14T05:34:04+00:00'
+    git_sha: 0a8e61f46cbc7e256e9481d01f6dc5f24c58c27b
+    generated: '2026-11-19T08:14:17+00:00'
   stac_shares_ibd_fine.parquet:
     sha256: 4287f93190c390493bd4da6fa091cd5c4fd9ca283169a3521e59530f1976b691
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods stac
