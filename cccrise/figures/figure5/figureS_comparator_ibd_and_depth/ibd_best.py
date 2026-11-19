@@ -1,4 +1,7 @@
-"""Each IBD component's best single LR column in every comparator fit
+"""Each IBD CCC-RISE component's largest cos^2 with a single LR column of each
+comparator fit.
+
+Each IBD component's best single LR column in every comparator fit
 (`_recovery.best_column_grid`; ALAD's is Figure 5A)."""
 
 from ... import common

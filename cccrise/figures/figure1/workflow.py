@@ -1,5 +1,5 @@
-"""Placeholder for an illustration of the CCC-RISE workflow, one axes per
-step: RISE, communication tensor assembly, and CPD."""
+"""Schematic of the CCC-RISE workflow: RISE, communication tensor assembly, and
+CPD."""
 
 from .. import common
 

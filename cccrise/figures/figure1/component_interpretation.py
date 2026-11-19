@@ -1,5 +1,5 @@
-"""Placeholder for an illustration of a CP component's sender, receiver, LR
-pair, and condition loadings."""
+"""Schematic of a CPD component's condition, sender, receiver, and LR pair
+loadings."""
 
 from .. import common
 

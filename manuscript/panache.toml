@@ -17,3 +17,7 @@ no-break-abbreviations = [
 
 [compat]
 quarto = "1.10"
+
+[lint.rules]
+# Citation keys are resolved at render time by pandoc-cite, not from `bibliography`
+citation-keys = false

@@ -27,6 +27,9 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
   empirical p), pairs sharing a gene merged into one
   (``GeneGroups`` of them; `covariation.pairwise_rank_correlations` with
   ``merge``, as Figure 3F).
+- ``covariation_draws``: each null draw's correlations, pair of (merged)
+  pairs by pair of pairs (as Figure 3F's), whose per-draw means give
+  ``covariation``'s 95th percentiles and p's.
 - ``associations``: each component's sample loadings, cccRISE's and each
   comparator's, against every association of the cohort's figure, as Figure 3 tests
   cccRISE's
@@ -236,27 +239,27 @@ def component_contexts(fits, comparators, cccrise_context, tensors) -> list[dict
     return contexts
 
 
-def covariation_summary(context: dict, top: np.ndarray, genes) -> dict:
+def covariation_summary(context: dict, top: np.ndarray, genes) -> tuple[dict, list]:
     """The mean pairwise rank correlation of the LR pairs `top` scored in
     `context` (`covariation`), those sharing a gene (`genes`) merged into one
     in it and in every draw, and the mean and 95th percentile of that mean
     over each baseline's draws, with its one-sided empirical p: one plus the
     draws whose mean reaches the observed, over one plus the draws with a
-    mean. All NaN when `top` leaves no two groups to correlate."""
+    mean; and every draw's correlations, long by draw and pair of pairs. All
+    NaN when `top` leaves no two groups to correlate."""
     if len(top) < 2:  # nothing to co-vary with
-        return {"Observed": np.nan}
+        return {"Observed": np.nan}, []
     scored = covariation.context_scores(
         context["tensor"], context["sender"], context["receiver"]
     )
     observed = covariation.pairwise_rank_correlations(scored, top, genes, merge=True)
     if np.isnan(observed).all():  # every pair merged into one group
-        return {"Observed": np.nan}
-    summary = {"Observed": np.nanmean(observed)}
+        return {"Observed": np.nan}, []
+    summary, draw_frames = {"Observed": np.nanmean(observed)}, []
     for name, draws in covariation.covariation_baselines(
         scored, top, genes=genes, merge=True
     ).items():
-        means = np.nanmean(draws, axis=1)
-        means = means[~np.isnan(means)]
+        means = pd.Series(np.nanmean(draws, axis=1)).dropna()
         if not means.size:  # every draw merged into one group
             continue
         summary |= {
@@ -264,24 +267,39 @@ def covariation_summary(context: dict, top: np.ndarray, genes) -> dict:
             f"{name}_q95": np.quantile(means, 0.95),
             f"{name}_p": (1 + (means >= summary["Observed"]).sum()) / (1 + means.size),
         }
-    return summary
+        draw_frames.append(
+            pd.DataFrame(draws)
+            .rename_axis(index="Draw", columns="Pair of pairs")
+            .stack()
+            .dropna()
+            .rename("Spearman correlation")
+            .reset_index()
+            .assign(Null=name)
+        )
+    return summary, draw_frames
 
 
-def covariation_rows(contexts: list[dict], genes: list[set[str]]) -> pd.DataFrame:
+def covariation_rows(contexts: list[dict], genes: list[set[str]]) -> dict:
     """Every component's top-pair co-variation (`covariation.carrying_pairs`),
-    pairs sharing a gene merged (`covariation_summary`)."""
-    rows = []
+    pairs sharing a gene merged (`covariation_summary`), and its null draws."""
+    rows, draw_frames = [], []
     for context in contexts:
         top = covariation.carrying_pairs(context["lr"])
+        key = {"Method": context["Method"], "Component": context["Component"]}
+        summary, draws = covariation_summary(context, top, genes)
         rows.append(
-            {"Method": context["Method"], "Component": context["Component"]}
+            key
             | {
                 "PairsUsed": len(top),
                 "GeneGroups": len(set(covariation.shared_gene_labels(top, genes))),
             }
-            | covariation_summary(context, top, genes)
+            | summary
         )
-    return pd.DataFrame(rows)
+        draw_frames += [d.assign(**key) for d in draws]
+    return {
+        "covariation": pd.DataFrame(rows),
+        "covariation_draws": pd.concat(draw_frames or [pd.DataFrame()]),
+    }
 
 
 def sample_profiles(fits, comparators, cccrise: Components) -> dict:
@@ -433,7 +451,7 @@ def score_labelling(
     return {
         **fit_tables(spec, adata, labelling, components),
         "inner_loss": inner_loss_rows(cells, column, tensors),
-        "covariation": covariation_rows(contexts, lr_genes(adata)),
+        **covariation_rows(contexts, lr_genes(adata)),
     }
 
 

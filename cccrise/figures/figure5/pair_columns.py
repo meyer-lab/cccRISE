@@ -1,4 +1,7 @@
-"""Figure 5C: ALAD C5's carrying pairs in the component and in its related
+"""Loadings of ALAD CCC-RISE component 5's carrying LR pairs in the component
+and in its related PB and STAC LR columns, coarse and fine cell type labels.
+
+Figure 5C: ALAD C5's carrying pairs in the component and in its related
 columns of each comparator (PB, STAC; coarse and fine apart; C5 has only
 STAC's), with a fit's best combination of its columns (Σ) where it shows two
 or more (`_split`; C5's show one each, so no Σ). ALAD C3 is in the split

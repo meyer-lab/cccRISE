@@ -1,4 +1,7 @@
-"""Figure 5A: each ALAD CCC-RISE component's best single LR column in every
+"""Each ALAD CCC-RISE component's largest cos^2 with a single LR column of each
+comparator fit.
+
+Figure 5A: each ALAD CCC-RISE component's best single LR column in every
 fit, to read against 5B's containment: containment well above the best
 column's cos^2 is a component held across several columns rather than in one.
 IBD's is in `figureS_comparator_ibd_and_depth`."""

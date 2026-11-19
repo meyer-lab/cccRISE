@@ -837,7 +837,7 @@ def plot_r2x_sweep(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None = None) -
     """Fit R2X against CPD rank of a seeded-start `sweep` ('Rank', 'Start',
     'Seed', 'FitR2X'): the median over starts, banded by their range."""
     source_data(
-        "cp_fit_r2x_by_rank_and_start",
+        "cpd_fit_r2x_by_rank_and_start",
         sweep[["Rank", "Start", "Seed", "FitR2X"]],
         "Fit R2X of every seeded SVD start at every CPD rank (start 0 is the "
         "production fit); plotted as the median over starts, banded by their "
@@ -973,17 +973,27 @@ def _collinearity_sweep(
     dataset: str, modes: Sequence[str], part: int | None
 ) -> pd.DataFrame:
     """`dataset`'s CP sweep from rank 2 (one component has no pair), its
-    `modes`' collinearity saved as source data."""
+    `modes`' collinearity saved as source data: the LR pair mode's apart, as
+    panels drawing only it share it with those drawing every mode."""
     sweep = load_cpd_rank(dataset)
-    columns = [f"MaxCos{m}" for m in modes]
-    source_data(
-        "cp_max_cosine_by_rank",
-        sweep[["Rank", "Start", "Seed", *columns]],
-        "Per CPD rank and seeded SVD start, the largest absolute cosine between "
-        "two components in each mode (MaxCosA condition, B sender, C receiver, "
-        "D ligand-receptor pair).",
-        part=part,
-    )
+    keys = ["Rank", "Start", "Seed"]
+    if "D" in modes:
+        source_data(
+            "cpd_lr_pair_max_cosine_by_rank",
+            sweep[[*keys, "MaxCosD"]],
+            "Per CPD rank and seeded SVD start, the largest absolute cosine "
+            "between two components' LR pair loadings.",
+            part=part,
+        )
+    if others := [f"MaxCos{m}" for m in modes if m != "D"]:
+        source_data(
+            "cpd_max_cosine_by_rank",
+            sweep[[*keys, *others]],
+            "Per CPD rank and seeded SVD start, the largest absolute cosine "
+            "between two components in each other mode (MaxCosA condition, B "
+            "sender, C receiver).",
+            part=part,
+        )
     return sweep[sweep["Rank"] > 1]
 
 
@@ -993,26 +1003,29 @@ def _collinearity_axes(ax: plt.Axes, sweep: pd.DataFrame, rank: int | None) -> N
     ax.set_ylim(0, 1.05)
 
 
-def plot_minima(ax: plt.Axes, dataset: str, rank: int | None = None) -> None:
+def plot_minima(
+    ax: plt.Axes, dataset: str, rank: int | None = None, part: int | None = None
+) -> None:
     """`plot_minima_table` of `dataset`'s starts."""
-    plot_minima_table(ax, load_minima(dataset), rank)
+    plot_minima_table(ax, load_minima(dataset), rank, part)
 
 
 def plot_minima_table(
-    ax: plt.Axes, table: pd.DataFrame, rank: int | None = None
+    ax: plt.Axes, table: pd.DataFrame, rank: int | None = None, part: int | None = None
 ) -> None:
     """The starts reaching each distinct minimum at each CPD rank (`table`, as
     `rank_selection.distinct_minima`), stacked from the one most starts
     reach (blue; of two tied, the one with the higher R2X) up, the others
     grey (keyed by `plot_start_boxes`), with `rank` marked above its bar."""
     source_data(
-        "cp_minima_by_rank",
+        "cpd_minima_by_rank",
         table,
         "Distinct minima per CPD rank (starts joined at FMS >= 0.95): the "
         "starts reaching each, its best R2X, its FMS to the minimum most "
         "starts reach (where two minima tie for most, 'Tied', to the one with "
         "the higher R2X), its order by starts (1 = most; ties: higher R2X), "
         "and the seeds of the starts reaching it.",
+        part=part,
     )
     for _, g in table.groupby("Rank"):
         ax.bar(

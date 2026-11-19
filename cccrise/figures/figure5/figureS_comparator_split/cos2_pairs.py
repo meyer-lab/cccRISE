@@ -1,4 +1,7 @@
-"""Figure EV5A: each CCC-RISE component's best single comparator LR column
+"""Each CCC-RISE component's largest cos^2 with a single comparator LR column
+against its number of carrying LR pairs, with their Spearman correlation.
+
+Figure EV5A: each CCC-RISE component's best single comparator LR column
 (its largest cos^2 with one LR column of any PB, TC2C or STAC fit) against
 how many LR pairs carry it (`covariation.carrying_pairs`; their Spearman p
 over the legend, rho in the source data), with, dashed, the axes' anti-diagonal: a perfect

@@ -1,4 +1,7 @@
-"""IBD CP collinearity of every mode across ten seeded SVD starts per rank,
+"""Median over seeded SVD starts of the largest absolute cosine between two
+components in each CPD mode, per rank, IBD cohort.
+
+IBD CPD collinearity of every mode across ten seeded SVD starts per rank,
 from ``uv run cccrise-cpdrank``; `cp_collinearity` shows the LR pair mode's
 per start."""
 

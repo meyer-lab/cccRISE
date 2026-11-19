@@ -1,4 +1,9 @@
-"""Each EE cell's C3 and C4 sender weight, each over its largest EE value (as
+"""Each EE cell's sender weights on CPD components 3 and 4, each divided by its
+largest value among EE cells, as a magnitude and an angle (0 degrees: component
+3 only; 90 degrees: component 4 only), colored by angle above the magnitude
+floor.
+
+Each EE cell's C3 and C4 sender weight, each over its largest EE value (as
 Figure 2's cutoff scales them), as a magnitude and an angle
 (`_common.hormone_angles`; 0 degrees C3 only, 90 C4 only), colored by angle
 past the magnitude floor (dotted arc, `_common.EXTREME_FLOOR`). The angle is
@@ -6,6 +11,7 @@ undefined below the dashed line (shaded), where the two sum to at most 0; the do
 ray and point mark an example cell at 45 degrees on the floor."""
 
 import numpy as np
+import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap
 
 from .. import common, style
@@ -24,15 +30,7 @@ ANGLE_CMAP = LinearSegmentedColormap.from_list(
 
 def plot(axs):
     (ax,) = axs
-    cells = S.programs("enteroendocrine_cells")
-    ee = S.hormone_angles(cells).assign(Class=S.hormone_extremes(cells))
-    common.source_data(
-        "hormone_angle_cells",
-        ee.join(cells[["Cell", "Biopsy", "Status"]]),
-        "Each EE cell's C3 and C4 sender weight over its largest EE value, their "
-        "magnitude and angle (degrees; 0 C3 only, 90 C4 only; NaN where their sum "
-        "is not positive), and its class (`_common.hormone_extremes`).",
-    )
+    ee = angle_cells()
     shown = ee["Angle"].notna() & (ee["Magnitude"] >= FLOOR)
     ax.scatter(
         ee.loc[~shown, "C3 relative"],
@@ -94,6 +92,21 @@ def _guides(ax) -> None:
         rotation_mode="anchor",
         fontsize=style.FONT_SIZE_DENSE,
     )
+
+
+def angle_cells() -> pd.DataFrame:
+    """Each EE cell's `_common.hormone_angles` and class, saved as source data."""
+    cells = S.programs("enteroendocrine_cells")
+    ee = S.hormone_angles(cells).assign(Class=S.hormone_extremes(cells))
+    common.source_data(
+        "hormone_angle_cells",
+        ee.join(cells[["Cell", "Biopsy", "Status"]]),
+        "Each EE cell's C3 and C4 sender weight over its largest EE value, their "
+        "magnitude and angle (degrees; 0 C3 only, 90 C4 only; NaN where their sum "
+        f"is not positive), and its class. The angle histogram bins the cells of "
+        f"magnitude at least {FLOOR}.",
+    )
+    return ee
 
 
 def makeFigure():

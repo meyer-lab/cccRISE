@@ -135,31 +135,39 @@ EPITHELIAL_LABEL = "Lung epithelium"
 EPITHELIAL_NAME = "Epithelial cells"
 
 
-def _epithelial_populations() -> pd.Series:
-    """The epithelial label's cells, and its EGFR-component sender and receiver cells."""
+def _epithelial_cells() -> pd.DataFrame:
+    """The epithelial label's cells, each marked if an EGFR-component sender or
+    receiver."""
     cells = common.get_cell_projections(GRANULARITY_DATASET)
     label = DATASETS[GRANULARITY_DATASET].labellings["fine"]
     epithelium = cells.obs[label].astype(str).to_numpy() == EPITHELIAL_LABEL
     groups = split_cells(*component_weights())
-    return pd.Series(
+    return pd.DataFrame(
         {
-            EPITHELIAL_NAME: int(epithelium.sum()),
-            "Ciliated-like sender": int((groups["sender"] & epithelium).sum()),
-            "Basal/secretory-like receiver": int(
-                (groups["receiver"] & epithelium).sum()
-            ),
+            "Cell": cells.obs_names[epithelium],
+            "Ciliated-like sender": groups["sender"][epithelium],
+            "Basal/secretory-like receiver": groups["receiver"][epithelium],
         }
     )
 
 
 def flow_alad(ax) -> None:
     """BTC-EGFR on epithelial cells: all of the label, then its two end populations."""
-    t = _epithelial_populations()
+    cells = _epithelial_cells()
+    t = pd.concat(
+        [pd.Series({EPITHELIAL_NAME: len(cells)}), cells.drop(columns="Cell").sum()]
+    )
     common.source_data(
         f"c{GRANULARITY_COMPONENT}_epithelial_cell_populations",
         t.rename("Cells").rename_axis("Population").reset_index(),
         "Epithelial cells (the one fine epithelial label), and those past Figure 2's "
         "sender and receiver cutoffs.",
+    )
+    common.source_data(
+        f"c{GRANULARITY_COMPONENT}_epithelial_cells",
+        cells,
+        f"Each epithelial cell, and whether it is past Figure 2's C{GRANULARITY_COMPONENT} "
+        "sender or receiver cutoff: the cells counted in the populations file.",
     )
     sender = t["Ciliated-like sender"] / t[EPITHELIAL_NAME] * LENGTH
     receiver = t["Basal/secretory-like receiver"] / t[EPITHELIAL_NAME] * LENGTH
@@ -188,41 +196,59 @@ def flow_alad(ax) -> None:
     )
 
 
-def _ee_states() -> pd.DataFrame:
-    """Per Figure 4 state: its EE cells, and those past the C3 and C4 sender
-    cutoffs alone, both, or neither."""
+def _ee_cells() -> pd.DataFrame:
+    """Each EE cell's Figure 4 state, and whether it is past the C3 (PYY) and
+    C4 (GCG) sender cutoffs."""
     cells = F4.programs("enteroendocrine_cells")
     ee = cells[cells["Cell type"] == "Enteroendocrine cells"]
     relative = F4.hormone_angles(ee)
-    pyy = relative["C3 relative"] >= GROUP_TAU
-    gcg = relative["C4 relative"] >= GROUP_TAU
+    return pd.DataFrame(
+        {
+            "Cell": ee["Cell"].to_numpy(),
+            "State": F4.hormone_extremes(ee).to_numpy(),
+            "Past C3 sender": (relative["C3 relative"] >= GROUP_TAU).to_numpy(),
+            "Past C4 sender": (relative["C4 relative"] >= GROUP_TAU).to_numpy(),
+        }
+    )
+
+
+def _ee_states(cells: pd.DataFrame) -> pd.DataFrame:
+    """Per Figure 4 state: its EE cells (`_ee_cells`), and those past the C3
+    and C4 sender cutoffs alone, both, or neither."""
+    pyy, gcg = cells["Past C3 sender"], cells["Past C4 sender"]
     t = pd.DataFrame(
         {
-            "State": F4.hormone_extremes(ee).to_numpy(),
-            "PYY only": (pyy & ~gcg).to_numpy(),
-            "Both": (pyy & gcg).to_numpy(),
-            "GCG only": (gcg & ~pyy).to_numpy(),
-            "Neither": (~pyy & ~gcg).to_numpy(),
+            "State": cells["State"],
+            "PYY only": pyy & ~gcg,
+            "Both": pyy & gcg,
+            "GCG only": gcg & ~pyy,
+            "Neither": ~pyy & ~gcg,
         }
     )
     return t.groupby("State").sum().assign(Cells=t["State"].value_counts())
 
 
-def _receivers() -> pd.DataFrame:
-    """EC and tuft cells, and those past the C3 and C4 receiver cutoffs."""
+def _receiver_cells() -> pd.DataFrame:
+    """Each EC and tuft cell, and whether it is past the C3 (EC) or C4 (tuft)
+    receiver cutoff."""
     cells = F4.programs("enteroendocrine_cells")
-    rows = {}
+    frames = []
     for name, label, component in (
         ("EC", "Enterochromaffin cells", 3),
         ("Tuft", "Tuft cells", 4),
     ):
         weight = cells[f"C{component} receiver weight"]
-        typed = weight[cells["Cell type"] == label]
-        rows[name] = {
-            "Cells": len(typed),
-            "Past": int((typed >= GROUP_TAU * weight.max()).sum()),
-        }
-    return pd.DataFrame(rows).T
+        typed = cells["Cell type"] == label
+        frames.append(
+            pd.DataFrame(
+                {
+                    "Cell": cells.loc[typed, "Cell"],
+                    "Population": name,
+                    "Past": weight[typed] >= GROUP_TAU * weight.max(),
+                }
+            )
+        )
+    return pd.concat(frames, ignore_index=True)
 
 
 def _stac_hormones(ax, pyy, gcg, side: float, tuft: float) -> None:
@@ -280,7 +306,11 @@ def _state_bands(ax, t, ends, scale: float, pyy, gcg) -> float:
 def flow_ibd(ax) -> None:
     """PYY and GCG: both bands leave all of STAC's EE label; in cccRISE each
     state's bands overlap over the cells past both sender cutoffs."""
-    t, receivers = _ee_states(), _receivers()
+    ee, receiver_cells = _ee_cells(), _receiver_cells()
+    t = _ee_states(ee)
+    receivers = receiver_cells.groupby("Population")["Past"].agg(
+        Cells="size", Past="sum"
+    )
     common.source_data(
         "ee_states_and_receivers",
         pd.concat(
@@ -291,6 +321,13 @@ def flow_ibd(ax) -> None:
         ),
         "EE cells by Figure 4's state, with those past the C3 (PYY) and C4 (GCG) sender "
         "cutoffs; EC and tuft cells, with those past the C3 and C4 receiver cutoffs.",
+    )
+    common.source_data(
+        "ee_cells_and_receiver_cells",
+        pd.concat([ee, receiver_cells.rename(columns={"Past": "Past receiver"})]),
+        "Each EE cell's state and whether it is past the C3 (PYY) and C4 (GCG) "
+        "sender cutoffs, and each EC and tuft cell (Population) and whether it is "
+        "past the C3 or C4 receiver cutoff: the cells counted in the populations file.",
     )
     pyy, gcg = F4.HORMONE_COLORS[3], F4.HORMONE_COLORS[4]
     _flow_axes(ax, 81)

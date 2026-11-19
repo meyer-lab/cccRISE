@@ -1,4 +1,5 @@
-"""Pseudobulk CPD's fit R2X across seeded starts, on ALAD and IBD (fine labels)."""
+"""Fit R2X of pseudobulk CPD for each seeded SVD start at each rank, ALAD and
+IBD cohorts, fine cell type labels."""
 
 from ... import common
 from ._panels import pb_fit

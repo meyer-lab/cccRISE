@@ -1,4 +1,7 @@
-"""Read-depth-corrected loadings of the CP components associated with
+"""Read-depth-corrected biopsy loadings of IBD CPD components 3 and 4 per
+inflammation-status group, with one-way ANOVA statistics.
+
+Read-depth-corrected loadings of the CPD components associated with
 inflammation in CD (C3, C4) per group, as violins with each biopsy as a point and the median marked, with
 each test's ANOVA statistics, as Figure 3A shows ALAD's."""
 
@@ -112,7 +115,7 @@ def loading_points() -> pd.DataFrame:
 
 def _source_data(points: pd.DataFrame, table: pd.DataFrame) -> None:
     common.source_data(
-        "cp_loadings_by_status",
+        "cpd_loadings_by_status",
         points,
         "Each biopsy's read-depth-corrected loading on each drawn CPD component "
         "and its group in the association drawn with it.",
@@ -122,7 +125,7 @@ def _source_data(points: pd.DataFrame, table: pd.DataFrame) -> None:
         for name, k in TESTS
     )
     common.source_data(
-        "cp_status_anova",
+        "cpd_status_anova",
         tested[ANOVA_COLUMNS],
         "One-way ANOVA of each drawn component's loadings over the association's "
         "groups: F, p, p Benjamini-Hochberg adjusted across every component and "

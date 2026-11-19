@@ -1,7 +1,6 @@
-"""Enteroendocrine (EE), enterochromaffin (EC) and tuft cells on a PaCMAP of
-their RISE projections (zoomed: only these three annotated types), by
-annotated type, and each cell's unscaled C3 and C4 sender weight. As Figure 2
-paints weights on cells."""
+"""PaCMAP of the RISE projections of enteroendocrine (EE), enterochromaffin
+(EC), and tuft cells, colored by annotated cell type and by each cell's sender
+weight on CPD components 3 and 4."""
 
 from .. import common, style
 from . import _common as S

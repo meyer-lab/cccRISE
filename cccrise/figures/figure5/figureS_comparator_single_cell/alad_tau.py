@@ -1,4 +1,8 @@
-"""ALAD: fraction NICHES-positive minus what cell type predicts, across tau
+"""Fraction of each ALAD CCC-RISE population's cells with a non-zero NICHES
+score minus the fraction expected from cell type, across population cutoffs
+(tau).
+
+ALAD: fraction NICHES-positive minus what cell type predicts, across tau
 (`_niches.tau_sweep`)."""
 
 from ... import common

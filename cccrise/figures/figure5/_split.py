@@ -374,6 +374,16 @@ def with_q(t: pd.DataFrame) -> pd.DataFrame:
     return t.assign(expression_matched_q=q)
 
 
+def null_draws(dataset: str, t: pd.DataFrame) -> pd.DataFrame:
+    """The null draws (`run_comparator_scores`' ``covariation_draws``) of
+    `covariation_rows`' rows `t`, by their Name."""
+    keys = t.assign(Labelling=t["Labelling"].replace("", "coarse"))
+    draws = load("covariation_draws", dataset=dataset)
+    return keys[["Name", "Method", "Labelling", "Component"]].merge(draws)[
+        ["Name", "Null", "Draw", "Pair of pairs", "Spearman correlation"]
+    ]
+
+
 def _lollipop(ax, r) -> None:
     """One row's observed co-variation over its nulls' ticks, filled where its
     q is below `common.SIG_ALPHA`."""
@@ -459,6 +469,14 @@ def covariation(axs, dataset: str, programs, key_loc: str = "lower center") -> N
         "expression-matched p's Benjamini-Hochberg q over the panel's tested rows; "
         "NaN where fewer than two groups remain. A point is filled when q < "
         f"{common.SIG_ALPHA}.",
+    )
+    common.source_data(
+        f"covariation_null_draws_{dataset}",
+        null_draws(dataset, t),
+        "Each null draw's pairwise rank correlations (Spearman, across samples) "
+        "for every component and column of the co-variation file (by Name), pair "
+        "of pairs by pair of pairs, merged alike: each draw's mean is a point of "
+        "the null behind its 95th percentiles and p's.",
     )
     for _, r in t.iterrows():
         _lollipop(ax, r)

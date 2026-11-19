@@ -1,5 +1,6 @@
-"""Condition loadings of the CP component associated with the 6-month
-outcome, per outcome level, with a patient's paired samples joined."""
+"""Read-depth-corrected condition loadings of CPD component 5 per 6-month
+outcome group, a patient's paired samples joined, with a one-way ANOVA across
+the groups."""
 
 import pandas as pd
 
@@ -68,7 +69,7 @@ def outcome_points(association: str, component: int) -> pd.DataFrame:
 def _source_data(association: str, component: int) -> None:
     """The plotted loadings, with each sample's patient, and their ANOVA."""
     common.source_data(
-        "cp_loadings_by_outcome",
+        "cpd_loadings_by_outcome",
         outcome_points(association, component),
         f"Each sample's read-depth-corrected loading on CPD component {component} "
         f"and its level of '{association}', with its patient (a patient's "
@@ -77,7 +78,7 @@ def _source_data(association: str, component: int) -> None:
     table = S.association_table()
     row = table[(table["Association"] == association)]
     common.source_data(
-        "cp_outcome_anova",
+        "cpd_outcome_anova",
         row[row["Component"] == component][ANOVA_COLUMNS],
         "One-way ANOVA of the loadings over the outcome levels: F, p, p "
         "Benjamini-Hochberg adjusted across every component and association "

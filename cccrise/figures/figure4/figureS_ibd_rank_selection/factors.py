@@ -1,4 +1,8 @@
-"""The IBD RISE condition factor (A), each component divided by its largest
+"""RISE condition factor of the IBD fit: each biopsy's loading on each RISE
+component, divided by the component's largest absolute loading, biopsies
+grouped by inflammation status.
+
+The IBD RISE condition factor (A), each component divided by its largest
 magnitude (keeping sign), as the ALAD supplement draws ALAD's: biopsies
 grouped by inflammation status (a color strip left of the matrix, each
 status named at a bracket, as Figure 4A names them), and within a status
