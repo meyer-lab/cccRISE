@@ -258,7 +258,7 @@ Our rationale is further discussed in the response to Reviewer #1 Comment #2.
 We agree that biological coherence should be tested rather than argued, and we have added various quantitations to support this.
 
 We attempted to perform gene set enrichment on highly weighted LR pairs, but we observed no significant GO terms in any component across either ALAD or IBD.
-We hypothesize why: the LR pairs retained after filtering consist of a list of 575 pairs, which already makes the test underpowered relative to standard gene set enrichment on a list of genes.
+We hypothesize why: the LR pairs retained after filtering consist of a list of 570 pairs, which already makes the test underpowered relative to standard gene set enrichment on a list of genes.
 To make things worse, in order to measure enrichement of terms in a component, we weighted each LR pair by its CPD component loading, which further reduced the power of the analysis due to the sparse nature of the LR pair factor matrices.
 We thus attribute the failure of this analysis to the limited size of the available LR pairs rather than the lack of biological coherence.
 

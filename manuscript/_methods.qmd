@@ -109,7 +109,7 @@ $$
 
 where $x$ is the scaled expression and $g(x)$ the transformed expression.
 Finally, each gene was centered on its mean, $\mu$, which RISE subtracts internally.
-The final dataset consisted of 51,273 cells and 16,675 genes, with 575 LR pairs retained, and was fit with a 17-component RISE model and a 6-component CPD model, selected as described in Rank Selection.
+The final dataset consisted of 51,273 cells and 16,675 genes, with 570 LR pairs retained, and was fit with a 17-component RISE model and a 6-component CPD model, selected as described in Rank Selection.
 
 **IBD cohort.** The single-cell gene expression, cell-type annotations, and biopsy metadata of terminal-ileum pinch biopsies were obtained from the IBDverse atlas of Krzak et al.: 343 biopsies, one per individual, from 232 healthy participants and 111 patients with Crohn's disease (CD), 47 uninflamed and 64 inflamed\ [@doi:10.1038/s41588-026-02634-7].
 We excluded the mesenchymal lineage (fibroblasts, endothelial cells, and pericytes; 11,286 of 1,185,861 cells), because the authors attribute its underrepresentation in the atlas to the pinch biopsies and the digestive enzymes, which favor capturing epithelial cells; its yield accordingly varied across biopsies, from none to 11% of a biopsy's cells, independently of inflammation status (Kruskal--Wallis p = 0.14).
@@ -117,7 +117,7 @@ This left 7 lineages (coarse labels) and 54 annotated cell types (fine labels).
 Cells and genes were filtered and normalized as for ALAD, with the gene filter measured on all remaining cells, and mitochondrial and ribosomal genes were also removed.
 To fit in memory, each biopsy was capped at 2,000 cells drawn at random from the cells passing the count filter, which subsampled 245 of the 343 biopsies and kept 634,534 of 1,174,575 cells.
 The cap kept the composition of each biopsy: within each subsampled biopsy, no lineage's share changed by more than 2.5%, and every lineage and cell type remained.
-The final dataset consisted of 634,534 cells and 23,355 genes, with 1,337 LR pairs retained, and was fit with a 60-component RISE model and a 6-component CPD model, selected as described in Rank Selection.
+The final dataset consisted of 634,534 cells and 23,355 genes, with 1,332 LR pairs retained, and was fit with a 60-component RISE model and a 6-component CPD model, selected as described in Rank Selection.
 
 ### Fit Evaluation and Component Comparison
 
@@ -186,7 +186,7 @@ Each sample's fraction of cells in each coarse cell type was compared across gro
 **Individual LR pair testing.** For a CPD component with sender and receiver eigen-state loadings $e$ and $f$, the score of LR pair $l$ in sample $i$ was $S_{l,i} = \sum_{s,t} \mathcal{X}_{i,s,t,l}\,e_{s}f_{t}$, where $\mathcal{X}_{i,s,t,l}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in sample $i$.
 Each analysis used one normalization of $S_{l,i}$: division by the sample's total normalized expression for individual associations and for the outcome-label permutation test (Significance Against Nulls); and none for co-variation.
 The total-expression correction applied to condition loadings (above) was not used for LR pair scores, as its trend is fit to the norm across all LR pairs at once and so couples the pairs' corrected scores.
-Each LR pair's normalized score was tested against outcome by one-way ANOVA, corrected across the 575 LR pairs.
+Each LR pair's normalized score was tested against outcome by one-way ANOVA, corrected across the 570 LR pairs.
 
 A set of top LR pairs was tested for co-variation across samples by the Spearman correlation of their uncorrected scores.
 LR pairs sharing a ligand or receptor gene, directly or through another pair, co-vary in part by construction and were first merged into one group by averaging their per-sample score ranks.
