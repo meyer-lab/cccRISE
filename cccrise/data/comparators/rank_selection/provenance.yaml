@@ -112,7 +112,7 @@ files:
     git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
     generated: '2026-11-19T07:24:06+00:00'
   pb_rank_ibd_coarse.parquet:
-    sha256: c81ea44067a1fe5971fb9e8886daa8c0b2010d0c13d20a26047bf2e8e0b0e4c0
+    sha256: 24df407ad1606fdc464734875fbc30ad3fca771904a93ab3fcb489bf99fd711b
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -137,7 +137,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
       celltypes:
       - B cell
@@ -160,8 +160,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T03:32:23+00:00'
+    git_sha: 040bf9bad1c620690b2aefa86b4d556c1494fb91
+    generated: '2026-11-19T07:29:28+00:00'
   pb_rank_ibd_fine.parquet:
     sha256: 9743ae5601043c95d8c189af214f26d26b8445ce535fb71112fe5f4b22d10154
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods pb
@@ -363,7 +363,7 @@ files:
     git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
     generated: '2026-11-19T07:24:06+00:00'
   pb_start_fms_ibd_coarse.parquet:
-    sha256: 0335158731f2f1bf1aa19652db6140e0179fa0d225e5b9f7b17c6d0784bdd6d0
+    sha256: b2ced0ee92dbd9fd93ad9967461d45587bff22582fd45f047fd5138969fe9e5c
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -388,7 +388,7 @@ files:
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
     cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
       celltypes:
       - B cell
@@ -411,8 +411,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T03:32:23+00:00'
+    git_sha: 040bf9bad1c620690b2aefa86b4d556c1494fb91
+    generated: '2026-11-19T07:29:28+00:00'
   pb_start_fms_ibd_fine.parquet:
     sha256: 4514a4a72930723642d6c948e240d6722b4eeeeaa50f0a2e2b4044197f097a0e
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods pb
