@@ -1,5 +1,5 @@
-"""CP collinearity of every mode across ten seeded SVD starts per rank, from
-``uv run cccrise-cpdrank``; Figure 2 shows the LR pair mode's per start."""
+"""Largest absolute cosine between two components in each CPD mode, per rank
+and seeded SVD start, ALAD cohort."""
 
 from ... import common
 

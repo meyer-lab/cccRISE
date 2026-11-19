@@ -1,4 +1,7 @@
-"""ALAD C3's carrying pairs in the component and in its related columns of
+"""Loadings of ALAD CCC-RISE component 3's carrying LR pairs in the component
+and in its related PB and STAC LR columns.
+
+ALAD C3's carrying pairs in the component and in its related columns of
 each PB and STAC fit, with each fit's best combination (Σ) (`_split`)."""
 
 from ... import common

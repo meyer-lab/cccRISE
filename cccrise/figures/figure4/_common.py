@@ -20,6 +20,7 @@ from scipy.stats import kruskal
 from ...anova import adjust_pvalues, run_multiple_factors_anova
 from ...factors import load_factors_netcdf
 from ...runners.datasets import DATASETS, IBD_PROGRAMS_DIR, VALIDATION_DIR
+from ...runners.provenance import relpath
 from ...utils import correct_by_read_depth
 from .. import common
 from ..figure2._common import DOT_FRACTIONS, DOT_SIZE_MAX, GROUP_TAU, label_sections
@@ -98,6 +99,16 @@ EXPRESSION_LABEL = f"Expr. / {EXPRESSION_QUANTILE:.0%} quantile"
 DODGE = 0.27  # x offset between the status groups' boxes
 JITTER = 0.08
 SHARE_PAD = 0.04  # y room past the 0-1 shares' range in `status_boxes`
+
+
+#: Appended to the source data of panels drawn from `eigenstate_celltypes`.
+PER_CELL_NOTE = (
+    " Values summarize all of each category's cells; per-cell projections "
+    "(hundreds of thousands of cells x every eigen-state) exceed the source data "
+    "size limit, but can be recomputed from the public IBDverse data with the RISE "
+    f"factors ({relpath(SPEC.factors_path())}) and `uv run "
+    f"cccrise-ibd-programs --dataset {DATASET}`."
+)
 
 
 def _load(table: str, runner: str = "cohort") -> pd.DataFrame:

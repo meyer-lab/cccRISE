@@ -17,7 +17,8 @@ tested against rankings with the two groups' labels shuffled among their cells
   instead (``Rule`` "fallback").
 
 Writes ``nichenet_<dataset>.parquet`` beside the comparator scores, one row per
-column, adjusted within each fit.
+column, adjusted within each fit, and ``nichenet_null_<dataset>.parquet``, each
+column's weighted score on every shuffled ranking.
 
     uv run cccrise-comparator-nichenet --dataset alad
 """
@@ -120,22 +121,31 @@ def _score_column(job: tuple) -> tuple:
     return key, column, observed, int(pos.sum()), int((~pos).sum()), null
 
 
-def _fit_tests(key, columns: dict, D, lr_pairs, prior) -> pd.DataFrame:
-    """The cell-shuffle test of one fit's columns, adjusted within it."""
+def _fit_tests(key, columns: dict, D, lr_pairs, prior) -> tuple:
+    """The cell-shuffle test of one fit's columns, adjusted within it, and
+    each column's weighted score on every shuffled ranking."""
     rankings = {c: v[:3] for c, v in columns.items()}
     ligand_scores = nichenet.component_ligand_scores(
         D, lr_pairs, prior, rankings, REL_CUTOFF
     )
     cell_null = pd.concat([v[3] for v in columns.values()], ignore_index=True)
-    cells = nichenet.weighted_score_tests(ligand_scores, cell_null)[0]
-    return cells.rename(
+    cells, null = nichenet.weighted_score_tests(ligand_scores, cell_null)
+    named = {"Method": key[0], "Labelling": key[1]}
+    tests = cells.rename(
         columns={
             "component": "Component",
             "null_mean": "null_mean_cell",
             "p": "p_cell",
             "q": "q_cell",
         }
-    ).assign(Method=key[0], Labelling=key[1])
+    ).assign(**named)
+    null = (
+        null.rename("weighted_auroc")
+        .rename_axis(["Component", "Replicate"])
+        .reset_index()
+        .assign(**named)
+    )
+    return tests, null
 
 
 def _lr_pairs(names) -> pd.DataFrame:
@@ -233,7 +243,7 @@ def run_comparator_nichenet(
     )
     keys = ["Method", "Labelling", "Component"]
     table = (
-        pd.concat(frames, ignore_index=True)
+        pd.concat([f[0] for f in frames], ignore_index=True)
         .merge(pd.DataFrame(cccrise_groups + groups), on=keys)
         .merge(sizes, on=keys)
     )
@@ -248,6 +258,13 @@ def run_comparator_nichenet(
         }
     )
     record_output(path, metadata, command, header=HEADER)
+    null_path = COMPARATOR_SCORES_DIR / scores_filename(
+        "nichenet_null", spec.output_key
+    )
+    pd.concat([f[1] for f in frames], ignore_index=True).to_parquet(
+        null_path, index=False
+    )
+    record_output(null_path, metadata, command, header=HEADER)
     return table
 
 

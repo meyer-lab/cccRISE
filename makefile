@@ -19,9 +19,11 @@ output/%.svg: $$(wildcard $$(call fpkg,$$(notdir $$*))*.py $$(call fparent,$$(no
 	uv run cccrise-fbuild $(patsubst figure%,%,$(notdir $*))
 
 # EMBO source data: one zip per figure in output/source_data/, from the panel
-# data each figure's build saves, plus docs/source_data_manifest.md
+# data each figure's build saves, plus docs/source_data_manifest.md and the
+# Reagents and Tools table's software versions
 source_data: all
 	uv run cccrise-sourcedata
+	uv run python -m cccrise.figures.software
 
 # Rebuild every figure from scratch and check its source data is unchanged
 source_data_check: source_data

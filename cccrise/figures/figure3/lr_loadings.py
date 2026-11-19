@@ -1,7 +1,5 @@
-"""Every LR pair's loading on the outcome-associated CP component (cp_D)
-against its rank, on a log rank axis so the head is not lost to the flat
-tail; the component's `N_TOP` most heavily weighted pairs (the pairs tested
-for co-variation in `coordinated_changes`) marked and named."""
+"""Each LR pair's loading on CPD component 5 against its rank, the 10 most
+heavily weighted pairs named."""
 
 import numpy as np
 import pandas as pd
@@ -31,7 +29,7 @@ def plot(axs):
     order = np.argsort(-loadings)
     ranks = np.arange(1, len(order) + 1)
     common.source_data(
-        "cp_lr_pair_loadings_ranked",
+        "cpd_lr_pair_loadings_ranked",
         pd.DataFrame(
             {
                 "Rank": ranks,
@@ -40,7 +38,7 @@ def plot(axs):
                 "Named": ranks <= N_TOP,
             }
         ),
-        f"Every LR pair's loading on CPD component {COMPONENT} (cp_D), by rank; "
+        f"Every LR pair's loading on CPD component {COMPONENT} (factor matrix D), by rank; "
         f"'Named' marks the {N_TOP} most heavily weighted, labeled in the plot.",
     )
     label_ranked_head(ax, loadings, names, N_TOP, LABEL_RANK, LABEL_FLOOR)

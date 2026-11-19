@@ -1,5 +1,5 @@
-"""Placeholder for an illustration of sender and receiver eigen-state
-loadings combined with RISE projections into per-cell weights."""
+"""Schematic of sender and receiver eigen-state loadings combined with RISE
+projections into per-cell weights."""
 
 from .. import common
 

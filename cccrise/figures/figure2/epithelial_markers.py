@@ -1,4 +1,9 @@
-"""Label-free identity of the granularity component's sender and receiver
+"""Fraction of cells detecting and mean normalized expression of pan-epithelial
+markers, the lung epithelial subtype markers differing between sender and
+receiver cells, and the genes of the component's top LR pairs, in the sender,
+receiver, and rest groups of CPD component 6.
+
+Label-free identity of the granularity component's sender and receiver
 groups: canonical pan-epithelial markers (`S.CELLTYPE_MARKERS`), the
 epithelial subtype markers of two lung atlases (`S.EPITHELIAL_SUBTYPE_MARKERS`)
 that stratify sender from receiver (`stratifying_markers`), and the genes of

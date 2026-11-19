@@ -1,6 +1,6 @@
-"""Annotated cell type proportion of each ALAD sample by ALAD status (control,
-declined, recovered), with each cell type's Kruskal-Wallis q across the three
-statuses, Benjamini-Hochberg corrected across cell types."""
+"""Fraction of each ALAD sample's cells in each annotated cell type by ALAD
+status (control, declined, recovered), with each cell type's Kruskal-Wallis q
+(Benjamini-Hochberg)."""
 
 from typing import Any
 

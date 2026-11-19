@@ -1,4 +1,7 @@
-"""Cell category x every RISE eigenstate: each category's mean projection
+"""Mean RISE projection of each cell category onto every RISE eigen-state, IBD
+cohort.
+
+Cell category x every RISE eigenstate: each category's mean projection
 (as Figure 3's `celltype_eigenstates` for ALAD), from
 `run_ibd_programs.eigenstate_celltypes`, categories as
 `figureS_ibd_hormone_axes` breaks the hormone programs' eigenstates down."""
@@ -19,7 +22,8 @@ def plot(axs):
         "eigenstate_category_association_all",
         table,
         "Per RISE eigen-state and cell category: cells, their mean RISE projection, "
-        "and their share of the eigen-state's squared projection over all cells.",
+        "and their share of the eigen-state's squared projection over all cells."
+        + S.PER_CELL_NOTE,
     )
     mean = table.pivot(
         index="Category", columns="Eigenstate", values="Mean projection"

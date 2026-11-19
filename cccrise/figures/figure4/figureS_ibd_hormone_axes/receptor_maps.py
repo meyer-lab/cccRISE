@@ -1,4 +1,7 @@
-"""NPY1R and GLP1R, the receptors of C3's (PYY-NPY1R) and C4's (GCG-GLP1R)
+"""Normalized NPY1R and GLP1R expression of EE, EC, and tuft cells on the
+EE/EC/tuft PaCMAP.
+
+NPY1R and GLP1R, the receptors of C3's (PYY-NPY1R) and C4's (GCG-GLP1R)
 top LR pairs, on Figure 4's zoomed map as Figure 4H draws its ligands,
 stacked beside the receiver weights (`receiver_maps`)."""
 

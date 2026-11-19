@@ -1,4 +1,7 @@
-"""C3's and C4's sender (B) and receiver (C) loadings on their eigenstates
+"""Sender and receiver loadings of IBD CPD components 3 and 4 on each RISE
+eigen-state either loads on.
+
+C3's and C4's sender (B) and receiver (C) loadings on their eigenstates
 (rows as `eigenstate_association`): C3 and C4 share EE sender eigenstates,
 weighted differently, and have separate receiver eigenstates."""
 

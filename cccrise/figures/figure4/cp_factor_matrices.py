@@ -1,4 +1,8 @@
-"""The IBD CP factor matrices, as Figure 2 draws ALAD's
+"""CPD factor matrices of the IBD fit: each component's biopsy, sender eigen-
+state, receiver eigen-state, and LR pair loadings, each divided by the
+component's largest absolute loading, biopsies grouped by inflammation status.
+
+The IBD CPD factor matrices, as Figure 2 draws ALAD's
 (`figure2.cp_factor_matrices`), biopsies grouped by inflammation status, each
 status named at a bracket and each LR label placed clear of the others
 (`compact`)."""

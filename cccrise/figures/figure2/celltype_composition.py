@@ -1,5 +1,5 @@
-"""Annotated cell type composition of each group: the only panel using cell
-type labels, as a check on the label-free groups."""
+"""Annotated cell type composition of the sender, receiver, and rest groups of
+CPD component 6."""
 
 import pandas as pd
 
@@ -24,9 +24,7 @@ def plot(axs):
         columns=style.CELL_TYPES[S.GRANULARITY_DATASET],
         fill_value=0,
     )
-    common.source_data(
-        "cell_groups_celltypes", S.cell_table(), S.CELL_TABLE_DESCRIPTION
-    )
+    common.source_data("cell_weights_groups", S.cell_table(), S.CELL_TABLE_DESCRIPTION)
     common.source_data(
         "celltype_fraction_by_group",
         fractions.rename_axis(index="Group", columns=None),

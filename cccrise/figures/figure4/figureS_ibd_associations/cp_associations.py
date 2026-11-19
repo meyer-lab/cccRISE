@@ -1,4 +1,8 @@
-"""Association of every IBD CP component with every inflammation-status
+"""Eta-squared of one-way ANOVAs of each IBD CPD component's read-depth-
+corrected biopsy loadings against each inflammation-status association,
+Benjamini-Hochberg corrected across all associations and components.
+
+Association of every IBD CPD component with every inflammation-status
 association (one-way ANOVA eta-squared, FDR-corrected across all
 associations and components), as Figure 3 tests ALAD's."""
 

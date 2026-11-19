@@ -1,4 +1,7 @@
-"""Association of each patient covariate with every ALAD outcome tested
+"""Eta-squared of one-way ANOVAs of each patient covariate against each ALAD
+outcome association, with uncorrected p.
+
+Association of each patient covariate with every ALAD outcome tested
 against the components (one-way ANOVA eta-squared, uncorrected p), to flag
 covariates that could confound a component-outcome association. A binary
 covariate is coded 0/1, so its eta-squared is the squared Cramér's V."""

@@ -5,8 +5,7 @@ fig1:
   component_interpretation: [f]
 fig2:
   rise_rank_selection: [a]
-  cp_rank_selection: [b, c]
-  cp_minima: [d]
+  cp_rank_selection: [b, c, d]
   cp_factor_matrices: [e, f, g, h]
   permutation_lr_significance: [i, j]
   nichenet: [k]

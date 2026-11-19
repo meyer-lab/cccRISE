@@ -1,4 +1,8 @@
-"""What each CP component represents under each communication score: one row
+"""Each default-score CPD component's paired component under each communication
+score: its top LR pair loadings and its mean sender and receiver weight per
+cell type, each divided by its largest absolute value.
+
+What each CPD component represents under each communication score: one row
 per default-score component, with the union of every method's top LR pairs
 as a dot plot, and sender and receiver cell-type heatmaps. Loadings are
 divided by their largest magnitude within each component and method,

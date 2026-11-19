@@ -1,4 +1,5 @@
-"""STACCato's eigenvalue shares per mode, on ALAD and IBD (fine labels)."""
+"""STACCato eigenvalue shares of each tensor mode, ALAD and IBD cohorts, fine
+cell type labels."""
 
 from ... import common
 from ._panels import stac_shares

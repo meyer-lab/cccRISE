@@ -63,7 +63,7 @@ def plot_stage(ax, stage: str) -> None:
     common.source_data(
         f"jackknife_fms_{name.lower()}_components",
         replicate_table(jackknife),
-        f"One row per leave-one-sample-out jackknife replicate and {name} "
+        f"One row per leave-one-patient-out jackknife replicate and {name} "
         "component: the factor match score (FMS) of the replicate's "
         "best-matching component to the full-cohort component.",
     )
@@ -73,7 +73,7 @@ def plot_stage(ax, stage: str) -> None:
         aggregate.rename(columns={"FMS": "Aggregate FMS"}),
         f"Each stability replicate's aggregate FMS (mean factor match score to "
         f"the full-cohort fit over {name} components), per stability axis "
-        "(jackknife: leave one sample out; seed_only: refit from another seed).",
+        "(jackknife: leave one patient out; seed_only: refit from another seed).",
     )
     labels = [style.STABILITY_AXIS_LABELS[a] for a in AGGREGATE_AXES]
     columns = pd.concat(

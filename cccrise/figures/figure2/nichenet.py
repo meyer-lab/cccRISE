@@ -1,6 +1,7 @@
-"""NicheNet downstream-target validation of CP components, from
-``uv run cccrise-nichenet``: do a component's top receiver cells upregulate
-the downstream targets of the ligands it weights?
+"""NicheNet target score of each ligand of each CPD component for the genes
+differentially expressed between the component's top and bottom receiver cells,
+against the same scores with those cells' labels shuffled, with a one-sided
+permutation test of the ligand-weighted mean score.
 
 Per component, every ligand's NicheNet target score on the DE of the
 component's top receivers against the bottom receivers
