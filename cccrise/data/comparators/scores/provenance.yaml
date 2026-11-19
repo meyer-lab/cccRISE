@@ -428,7 +428,7 @@ files:
     git_sha: 63947a1d545f34ba6e897773f5ca4daefc34e575
     generated: '2026-11-19T23:50:06+00:00'
   reduced_rise_lr_loadings_alad.parquet:
-    sha256: 4e52f537efa16d303490f12f3e28eec9eb1049cc259eed7f75851f1c9a6029c4
+    sha256: 671587d7c2c841946e28f95600f606c080af5cb6581f5d24ab826579dd45fe16
     command: uv run cccrise-reduced-rise --dataset alad --rise-rank 10 --cp-rank 4
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -461,10 +461,10 @@ files:
     cp_device: auto
     cp_backend: cupy
     cp_dtype: float32
-    r2x_rise: 0.028362457456020618
-    r2x_cp: 0.6331329684423803
-    git_sha: 5c7c5882f92fbc862e663a85eb4d214c77948d9d-dirty
-    generated: '2026-11-16T08:12:17+00:00'
+    r2x_rise: 0.028362457187341317
+    r2x_cp: 0.5541418560831451
+    git_sha: 06ef3ede312c74ca25dd3ac0324e11a146de8d36
+    generated: '2026-11-19T23:51:48+00:00'
   reduced_rise_lr_loadings_ibd.parquet:
     sha256: 997e835bc038a3194a37cf93da2e462120c8845adea65d21d0d209ed91a4a89d
     command: uv run cccrise-reduced-rise --dataset ibd --rise-rank 30 --cp-rank 5
