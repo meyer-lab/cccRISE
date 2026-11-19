@@ -25,5 +25,8 @@ LAYOUT = [
 
 def makeFigure():
     box = {"axes.edgecolor": style.BOX_COLOR, "axes.linewidth": style.BOX_LINE_WIDTH}
+    # Grey tick marks; their labels stay black
+    for axis in "xy":
+        box |= {f"{axis}tick.color": style.BOX_COLOR, f"{axis}tick.labelcolor": "black"}
     with plt.rc_context(box):
         return common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
