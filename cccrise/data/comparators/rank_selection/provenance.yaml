@@ -512,7 +512,7 @@ files:
     git_sha: 05e02ad7fab54205d1539e4182e44db41f8ead75
     generated: '2026-11-19T08:06:13+00:00'
   stac_shares_alad_coarse.parquet:
-    sha256: 063315c5064d5a4336cc7dbea15f1eee748d3e176fd211673d1f3fc0d19730e3
+    sha256: 37c6bc5d600c75664d592d8e8a29b7b18b6bfa267badf292c136a10ca2771cb8
     command: uv run cccrise-comparators --dataset alad --methods stac
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -527,7 +527,7 @@ files:
     group_key: ALADstatus
     cp_backend: cupy
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 1.0
       celltypes:
       - CD4 T cells
@@ -548,10 +548,10 @@ files:
         receiver: 6
         lr: 16
       random_state: 42
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-13T23:47:03+00:00'
+    git_sha: 9156eec545a0799f3a74017f04c3d6d52923204b
+    generated: '2026-11-19T08:10:57+00:00'
   stac_shares_alad_fine.parquet:
-    sha256: 94a0f8ac22c30635c238903b3a58c0fc69ca341d681e07215284959a91fc0a76
+    sha256: d6c2ee3b8cccee15d05a226ec3a514bdbce9c7c4c6f38c81c5cb42d1ba045e4a
     command: uv run cccrise-comparators --dataset alad --methods stac
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -566,7 +566,7 @@ files:
     group_key: ALADstatus
     cp_backend: cupy
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 1.0
       celltypes:
       - Activated CD8
@@ -603,10 +603,10 @@ files:
         sample: 14
         sender: 12
         receiver: 11
-        lr: 16
+        lr: 15
       random_state: 42
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-13T23:47:28+00:00'
+    git_sha: 9156eec545a0799f3a74017f04c3d6d52923204b
+    generated: '2026-11-19T08:11:19+00:00'
   stac_shares_ibd_coarse.parquet:
     sha256: 5c1fb55c6d63bc91ab344cb2a1acee25857355c0ee32373d74c94f7a3b5eb415
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods stac
