@@ -10,7 +10,7 @@ shared:
   cp_dtype: float32
 files:
   pb_rank_alad_coarse.parquet:
-    sha256: bcc95d6eb45a0f4c881f4decd11cbf6a054b9a7a5e17c1664d2afde7ae010ac3
+    sha256: ae18a70c4e5fb286e79c61c08f8c23be1a6529ae8e5107c5377c59c46d2ffd70
     command: uv run cccrise-comparators --dataset alad --methods pb
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -25,7 +25,7 @@ files:
     group_key: ALADstatus
     cp_backend: cupy
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 1.0
       celltypes:
       - CD4 T cells
@@ -49,10 +49,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84
-    generated: '2026-11-13T23:44:41+00:00'
+    git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
+    generated: '2026-11-19T07:20:31+00:00'
   pb_rank_alad_fine.parquet:
-    sha256: fbf76ea2c83e7a4bcd4f68b14e27ff4066fd7aece490e9a7a18dc5a92e95cc8d
+    sha256: 74889bff3ef48764e8b09e7c6371f253fa619cbb1091d04ee520ab7ebd1fbb56
     command: uv run cccrise-comparators --dataset alad --methods pb
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -67,7 +67,7 @@ files:
     group_key: ALADstatus
     cp_backend: cupy
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 1.0
       celltypes:
       - Activated CD8
@@ -109,8 +109,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84
-    generated: '2026-11-13T23:46:51+00:00'
+    git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
+    generated: '2026-11-19T07:24:06+00:00'
   pb_rank_ibd_coarse.parquet:
     sha256: c81ea44067a1fe5971fb9e8886daa8c0b2010d0c13d20a26047bf2e8e0b0e4c0
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods pb
@@ -261,7 +261,7 @@ files:
     git_sha: d68b8a5129e83e3e27885395847dc275eb0e3804
     generated: '2026-11-14T06:38:16+00:00'
   pb_start_fms_alad_coarse.parquet:
-    sha256: 82534b762d73e1d2439f2f85c7a73ff4f520fd134f1da202e56c4ee84ee6b88e
+    sha256: 4d0d725593b4f01d353ffb55309d7572fc95850165ff12eb639dbf792449a741
     command: uv run cccrise-comparators --dataset alad --methods pb
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -276,7 +276,7 @@ files:
     group_key: ALADstatus
     cp_backend: cupy
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 1.0
       celltypes:
       - CD4 T cells
@@ -300,10 +300,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84
-    generated: '2026-11-13T23:44:41+00:00'
+    git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
+    generated: '2026-11-19T07:20:31+00:00'
   pb_start_fms_alad_fine.parquet:
-    sha256: 3953a5f1be3c2dab20f8f724c4d00c07bec45f762b92f464a243b99292b88e25
+    sha256: 588057f08eeb47c06bb827175a2d9a202d16f456cc8408b7e632c5f96f55835c
     command: uv run cccrise-comparators --dataset alad --methods pb
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -318,7 +318,7 @@ files:
     group_key: ALADstatus
     cp_backend: cupy
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 1.0
       celltypes:
       - Activated CD8
@@ -360,8 +360,8 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84
-    generated: '2026-11-13T23:46:51+00:00'
+    git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
+    generated: '2026-11-19T07:24:06+00:00'
   pb_start_fms_ibd_coarse.parquet:
     sha256: 0335158731f2f1bf1aa19652db6140e0179fa0d225e5b9f7b17c6d0784bdd6d0
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods pb
