@@ -18,7 +18,8 @@ recorded them. Schematic panels (`SCHEMATIC = True`) need no data, and a
 figure of only those gets no zip. Every panel is listed in the manifest
 (`manuscript/source_data_manifest.md`). Exits non-zero,
 writing no zips, if any panel's data is missing or malformed, or a figure
-hasn't been built in full.
+hasn't been built in full. `python -m cccrise.tests.source_data_replay`
+redraws a sample of panels from the zips, to check them by eye.
 """
 
 import hashlib
