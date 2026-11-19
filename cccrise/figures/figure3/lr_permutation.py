@@ -37,29 +37,30 @@ from .coordinated_changes import N_TOP
 CASE_DISPLAY = "CLAD/died"
 CONTROL_DISPLAY = "stable/recovered"
 AXES = ("square",)
+#: Top pairs per component the volcano draws; the permutation tests are saved
+#: for these, which include `COMPONENT`'s `N_TOP` drawn here
+N_SHOWN = 20
 
 
 def plot(axs):
-    component = permutation_analysis()[COMPONENT]
+    result = permutation_analysis()
+    save_permutation_tests(result)
+    component = result[COMPONENT]
     plot_pair_nulls(component, N_TOP, axs[0])
     top = component["order"][:N_TOP]
-    p = component["p"][top]
     common.source_data(
-        "top_pair_permutation_tests",
+        "top_pair_standardized_tests",
         pd.DataFrame(
             {
                 "LR pair": LR_NAMES[top],
-                "Observed difference": component["observed"][top],
                 "Null SD": component["null"].std(axis=0),
-                "Permutation p": p,
-                "BH q": false_discovery_control(p),
+                "BH q": false_discovery_control(component["p"][top]),
             }
         ),
-        f"The CPD component {COMPONENT}'s {N_TOP} most heavily weighted LR pairs: "
-        f"{CASE_DISPLAY} minus {CONTROL_DISPLAY} mean depth-normalized score, "
-        f"the SD of its null over {N_PERMS} patient-block permutations of the "
-        "outcome (the plot's units), one-sided permutation p, and p "
-        f"Benjamini-Hochberg adjusted across the {N_TOP} pairs.",
+        f"CPD component {COMPONENT}'s {N_TOP} most heavily weighted LR pairs: "
+        f"the SD of the null over {N_PERMS} patient-block permutations of the "
+        "outcome (the plot's units), and the permutation p Benjamini-Hochberg "
+        f"adjusted across the {N_TOP} pairs.",
     )
     common.source_data(
         "top_pair_permutation_null",
@@ -86,6 +87,38 @@ def plot(axs):
         "Each top pair's per-condition score in the component's sender/receiver "
         "context, divided by the condition's read depth, with the condition's "
         "patient (the permutation unit) and outcome group.",
+    )
+
+
+def save_permutation_tests(result: dict) -> None:
+    """Every component's `N_SHOWN` heaviest pairs' permutation tests, as source
+    data of both panels drawing them (this and `lr_volcano`)."""
+    frames = []
+    for k, r in result.items():
+        shown = r["order"][:N_SHOWN]
+        case, control = r["means"]
+        frames.append(
+            pd.DataFrame(
+                {
+                    "Component": k,
+                    "Loading rank": np.arange(1, N_SHOWN + 1),
+                    "LR pair": LR_NAMES[shown],
+                    f"{CASE_DISPLAY} mean": case[shown],
+                    f"{CONTROL_DISPLAY} mean": control[shown],
+                    "Observed difference": r["observed"][shown],
+                    "Permutation p": r["p"][shown],
+                }
+            )
+        )
+    common.source_data(
+        "top_pair_permutation_tests",
+        pd.concat(frames),
+        f"Every CPD component's {N_SHOWN} most heavily weighted LR pairs (by "
+        f"|loading| rank), in their own component's context: {CASE_DISPLAY} and "
+        f"{CONTROL_DISPLAY} mean depth-normalized scores, their difference, and "
+        f"its one-sided p over {N_PERMS} patient-block permutations of the "
+        f"outcome. The permutation panel draws component {COMPONENT}'s top "
+        f"{N_TOP}.",
     )
 
 

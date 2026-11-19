@@ -973,17 +973,27 @@ def _collinearity_sweep(
     dataset: str, modes: Sequence[str], part: int | None
 ) -> pd.DataFrame:
     """`dataset`'s CP sweep from rank 2 (one component has no pair), its
-    `modes`' collinearity saved as source data."""
+    `modes`' collinearity saved as source data: the LR pair mode's apart, as
+    panels drawing only it share it with those drawing every mode."""
     sweep = load_cpd_rank(dataset)
-    columns = [f"MaxCos{m}" for m in modes]
-    source_data(
-        "cpd_max_cosine_by_rank",
-        sweep[["Rank", "Start", "Seed", *columns]],
-        "Per CPD rank and seeded SVD start, the largest absolute cosine between "
-        "two components in each mode (MaxCosA condition, B sender, C receiver, "
-        "D ligand-receptor pair).",
-        part=part,
-    )
+    keys = ["Rank", "Start", "Seed"]
+    if "D" in modes:
+        source_data(
+            "cpd_lr_pair_max_cosine_by_rank",
+            sweep[[*keys, "MaxCosD"]],
+            "Per CPD rank and seeded SVD start, the largest absolute cosine "
+            "between two components' LR pair loadings.",
+            part=part,
+        )
+    if others := [f"MaxCos{m}" for m in modes if m != "D"]:
+        source_data(
+            "cpd_max_cosine_by_rank",
+            sweep[[*keys, *others]],
+            "Per CPD rank and seeded SVD start, the largest absolute cosine "
+            "between two components in each other mode (MaxCosA condition, B "
+            "sender, C receiver).",
+            part=part,
+        )
     return sweep[sweep["Rank"] > 1]
 
 

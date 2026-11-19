@@ -110,6 +110,32 @@ def test_subfigure_panels_and_missing_data(source_dir, tmp_path):
     assert "Figure 9: no record of its inputs; build it in full" in errors
 
 
+def test_identical_files_are_shared(source_dir, tmp_path):
+    def plot(axs, own):
+        common.source_data("shared", pd.DataFrame({"a": [1, 2]}), "Both panels'.")
+        common.source_data(own, pd.DataFrame({"a": [own]}), "One panel's.")
+
+    panels = {
+        n: _panel(n, lambda axs, n=n: plot(axs, n), AXES=("square",))
+        for n in ("first", "second", "third")
+    }
+    panels["third"].plot = lambda axs: common.source_data(
+        "shared", pd.DataFrame({"a": [3]}), "Different data, same name."
+    )
+    fig = common.compose_fixed([list(panels.values())])
+
+    rows, _ = packager.stage_figure(
+        "Figure 9", "9", common.panel_letters(fig), panels, source_dir, tmp_path / "f"
+    )
+    assert {r["Panel"]: r["Files"] for r in rows} == {
+        "9A": "first.csv",
+        "9A-B": "shared.csv",
+        "9B": "second.csv",
+        "9C": "shared.csv",
+    }
+    assert {r["Panel"]: r["Module"] for r in rows}["9A-B"] == "first; second"
+
+
 def test_span():
     for letters, span in ((["b"], "B"), (["b", "c", "d"], "B-D"), (["b", "d"], "B,D")):
         assert packager.span(letters) == span

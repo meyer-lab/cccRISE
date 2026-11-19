@@ -24,14 +24,7 @@ def draw(ax, dataset: str) -> None:
     lines = common.plot_rise_rank(sweep, ax)
     # The rank line stops below the key
     common.mark_rank(ax, common.selected_ranks(dataset)[0], top=1 - KEY_HEADROOM)
-    common.source_data(
-        "bicv_r2x_by_rise_rank",
-        sweep,
-        "RISE R2X per rank: the full-data fit ('Fit R2X' rows), and each "
-        "bi-cross-validation repeat ('BiCV R2X' rows; R2X of the held-out block, "
-        "and of the training block in 'Train Block R2X', with the cells and "
-        "genes in each and the repeat's seed). Plotted as mean +/- SD over repeats.",
-    )
+    save_sweep(sweep)
     ax.set_ylim(0, ax.dataLim.y1 / (1 - KEY_HEADROOM))
     # The dashed rank line's key, shared by panels A-C
     rank_key = Line2D([], [], label="Selected rank", **common.RANK_LINE)
@@ -41,6 +34,17 @@ def draw(ax, dataset: str) -> None:
         ncols=2,
         fontsize=style.FONT_SIZE_DENSE,
         columnspacing=0.8,
+    )
+
+
+def save_sweep(sweep) -> None:
+    common.source_data(
+        "bicv_r2x_by_rise_rank",
+        sweep,
+        "RISE R2X per rank: the full-data fit ('Fit R2X' rows), and each "
+        "bi-cross-validation repeat ('BiCV R2X' rows; R2X of the held-out block, "
+        "and of the training block in 'Train Block R2X', with the cells and "
+        "genes in each and the repeat's seed). Plotted as mean +/- SD over repeats.",
     )
 
 

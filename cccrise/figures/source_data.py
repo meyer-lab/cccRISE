@@ -7,7 +7,8 @@ panel saved with `common.source_data` during its figure's last build:
 
 Each figure becomes `output/source_data/<label>.zip` (e.g. `Figure 2.zip`,
 `Figure EV1.zip`, `Appendix Figure S2.zip`), one folder per panel (`2A/`,
-`EV1A/`, `S2A/`, or `2B-C/` for files spanning a panel module's letters)
+`EV1A/`, `S2A/`, or `2B-C/` for files spanning a panel module's letters,
+or the letters of every panel module saving an identical copy of a file)
 holding its CSVs and a README (a figure without panel letters is one
 folder, `EV4/`), plus a README of the provenance of every
 factors file and runner output its last full build read. Main figures are
@@ -20,6 +21,7 @@ writing no zips, if any panel's data is missing or malformed, or a figure
 hasn't been built in full.
 """
 
+import hashlib
 import importlib
 import inspect
 import itertools
@@ -129,20 +131,29 @@ def stage_figure(
     shutil.rmtree(out_dir, ignore_errors=True)
     Path(f"{out_dir}.zip").unlink(missing_ok=True)
     rows, errors = [], []
+    for folder, (names, entries) in panel_folders(source_dir, prefix, letters).items():
+        modules = [panels[n] for n in names]
+        errors += [f"{label} {folder}: {e}" for e in check(entries)]
+        stage_panel(out_dir / folder, label, modules, entries)
+        rows.append(row(label, folder, names, modules, "data", entries))
+    more_rows, more_errors = unpackaged(label, prefix, letters, panels, source_dir)
+    rows, errors = rows + more_rows, errors + more_errors
+    rows.sort(key=lambda r: r["Panel"])
+    return rows, errors + add_provenance(label, rows, source_dir, out_dir)
+
+
+def unpackaged(label, prefix, letters, panels, source_dir: Path):
+    """Manifest rows of the panel modules that saved no files, schematic or
+    missing, and an error for each missing one."""
+    rows, errors = [], []
     for name, module in panels.items():
-        files = sorted((source_dir / name).glob("*.csv"))
-        if files:
-            folders = panel_folders(files, prefix, letters[name])
-            for folder, entries in sorted(folders.items()):
-                errors += [f"{label} {folder}: {e}" for e in check(entries)]
-                stage_panel(out_dir / folder, label, module, entries)
-                rows.append(row(label, folder, name, module, "data", entries))
+        if any((source_dir / name).glob("*.csv")):
             continue
         status = "schematic" if getattr(module, "SCHEMATIC", False) else "missing"
         if status == "missing":
             errors.append(f"{label} {name}: no source data")
-        rows.append(row(label, prefix + span(letters[name]), name, module, status))
-    return rows, errors + add_provenance(label, rows, source_dir, out_dir)
+        rows.append(row(label, prefix + span(letters[name]), [name], [module], status))
+    return rows, errors
 
 
 def add_provenance(label: str, rows: list[dict], source_dir: Path, out_dir: Path):
@@ -172,25 +183,47 @@ def figure_inputs(source_dir: Path) -> list[Path] | None:
 
 
 def panel_folders(
-    files: list[Path], prefix: str, letters: list[str]
-) -> dict[str, list[tuple[Path, dict]]]:
-    """A panel module's files, with their `common.source_data` metadata, by
-    the folder their `part` puts them in."""
-    folders: dict[str, list[tuple[Path, dict]]] = {}
-    for path in files:
-        meta = yaml.safe_load(path.with_suffix(".yaml").read_text())
-        part = meta["part"]
-        folder = prefix + span(letters if part is None else [letters[part]])
-        folders.setdefault(folder, []).append((path, meta))
-    return folders
+    source_dir: Path, prefix: str, letters: dict[str, list[str]]
+) -> dict[str, tuple[list[str], list[tuple[Path, dict]]]]:
+    """The panel modules' files in `source_dir`, with their
+    `common.source_data` metadata, by the folder their letters put them in
+    (with the modules saving them): a module's `part`, or all its letters.
+    A file several modules save identically is shared: one copy, in the
+    folder spanning all their letters."""
+    folders: dict[str, tuple[list[str], list[tuple[Path, dict]]]] = {}
+    for names, file_letters, entry in saved_files(source_dir, letters).values():
+        folder_names, entries = folders.setdefault(
+            prefix + span(sorted(file_letters)), ([], [])
+        )
+        folder_names += [n for n in names if n not in folder_names]
+        entries.append(entry)
+    return dict(sorted(folders.items()))
 
 
-def stage_panel(folder: Path, label: str, module, entries) -> None:
+def saved_files(source_dir: Path, letters: dict[str, list[str]]) -> dict:
+    """Each distinct file (name and contents) the panel modules saved: the
+    modules saving it, the letters it spans (a module's `part`, or all its
+    letters), and one copy with its metadata."""
+    copies: dict[tuple, tuple[list[str], set[str], tuple[Path, dict]]] = {}
+    for name, module_letters in letters.items():
+        for path in sorted((source_dir / name).glob("*.csv")):
+            meta = yaml.safe_load(path.with_suffix(".yaml").read_text())
+            part = meta["part"]
+            key = (path.name, hashlib.md5(path.read_bytes()).hexdigest())
+            names, file_letters, _ = copies.setdefault(key, ([], set(), (path, meta)))
+            names.append(name)
+            file_letters.update(
+                module_letters if part is None else [module_letters[part]]
+            )
+    return copies
+
+
+def stage_panel(folder: Path, label: str, modules: list, entries) -> None:
     folder.mkdir(parents=True)
     for path, _ in entries:
         shutil.copy(path, folder)
     (folder / "README.txt").write_text(
-        panel_readme(label, folder.name, module, entries)
+        panel_readme(label, folder.name, modules, entries)
     )
 
 
@@ -218,9 +251,11 @@ def check(entries: list[tuple[Path, dict]]) -> list[str]:
 INDENT = "    "
 
 
-def panel_readme(label: str, folder: str, module, entries) -> str:
-    """The panel's docstring, then each file's description and columns."""
-    lines = [f"{label}, panel {folder}", "", inspect.getdoc(module) or "", ""]
+def panel_readme(label: str, folder: str, modules: list, entries) -> str:
+    """The panels' docstrings, then each file's description and columns."""
+    lines = [f"{label}, panel {folder}", ""]
+    for module in modules:
+        lines += [inspect.getdoc(module) or "", ""]
     for path, meta in entries:
         df = pd.read_csv(path)
         columns = "Columns: " + ", ".join(map(str, df.columns))
@@ -253,21 +288,24 @@ def figure_readme(label: str, inputs: list[Path], rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def row(label, folder, name, module, status, entries=()) -> dict:
+def row(label, folder, names, modules, status, entries=()) -> dict:
     """A manifest row: one panel folder, or one panel module without data."""
     sizes = [p.stat().st_size for p, _ in entries]
     return {
         "Figure": label,
         "Panel": folder,
-        "Module": name,
-        "Script": relpath(module.__file__) if hasattr(module, "__file__") else "",
+        "Module": "; ".join(names),
+        "Script": "; ".join(
+            relpath(m.__file__) for m in modules if hasattr(m, "__file__")
+        ),
         "Status": status,
         "Files": "; ".join(p.name for p, _ in entries),
         "Size (KB)": round(sum(sizes) / 1e3, 1),
-        # The docstring's first paragraph; the panel README has all of it
-        "Description": (inspect.getdoc(module) or "")
-        .split("\n\n")[0]
-        .replace("\n", " "),
+        # Each docstring's first paragraph; the panel README has all of it
+        "Description": " ".join(
+            (inspect.getdoc(m) or "").split("\n\n")[0].replace("\n", " ")
+            for m in modules
+        ),
     }
 
 

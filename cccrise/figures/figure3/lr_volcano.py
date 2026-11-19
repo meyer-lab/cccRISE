@@ -13,13 +13,18 @@ import numpy as np
 import pandas as pd
 from adjustText import adjust_text
 
-from ...factors import load_factors_netcdf
 from .. import common, style
-from ._common import COMPONENT, SPEC
+from ._common import COMPONENT
 from .coordinated_changes import N_TOP
-from .lr_permutation import CASE_DISPLAY, CONTROL_DISPLAY, permutation_analysis
+from .lr_permutation import (
+    CASE_DISPLAY,
+    CONTROL_DISPLAY,
+    LR_NAMES,
+    N_SHOWN,
+    permutation_analysis,
+    save_permutation_tests,
+)
 
-N_SHOWN = 20
 AXES = ("square",)
 # Labels are right-aligned in a column at this log2 ratio, in the empty upper
 # left, and spread vertically by adjustText
@@ -37,15 +42,22 @@ def plot(axs):
         )
         for k, r in result.items()
     }
+    save_permutation_tests(result)
     common.source_data(
-        "top_pairs_by_component",
-        _volcano_data(result),
-        f"Every CPD component's {N_SHOWN} most heavily weighted LR pairs (by "
-        f"|loading| rank), in their own component's context: {CASE_DISPLAY} and "
-        f"{CONTROL_DISPLAY} mean depth-normalized scores, the log2 ratio "
-        "plotted (means offset by 1e-3 x the component's median positive mean), "
-        "and the one-sided patient-permutation p. Per-condition scores of "
-        f"component {COMPONENT}'s top pairs are in the permutation panel's data.",
+        "top_pair_log2_ratios",
+        pd.concat(
+            pd.DataFrame(
+                {
+                    "Component": k,
+                    "LR pair": LR_NAMES[r["order"][:N_SHOWN]],
+                    "log2 mean ratio": points[k][0],
+                }
+            )
+            for k, r in result.items()
+        ),
+        f"The log2 ratio of the {CASE_DISPLAY} to the {CONTROL_DISPLAY} mean "
+        "score plotted for every CPD component's top pairs, the means offset by "
+        "1e-3 x the component's median positive mean.",
     )
     others = [v for k, v in points.items() if k != COMPONENT]
     x, y = points[COMPONENT]
@@ -75,12 +87,11 @@ def plot(axs):
         ax.scatter(tx, ty, s=size, color=color, linewidths=0, label=label)
     common.reference_line(ax, -np.log10(common.SIG_ALPHA))
     common.reference_line(ax, 0, horizontal=False, linestyle=":")
-    lr_names = load_factors_netcdf(SPEC.factors_path())["lr_pair"].values.astype(str)
     label_significant(
         ax,
         x[:N_TOP],
         y[:N_TOP],
-        lr_names[result[COMPONENT]["order"][:N_TOP]],
+        LR_NAMES[result[COMPONENT]["order"][:N_TOP]],
         *(np.concatenate(v) for v in zip(*points.values(), strict=True)),
     )
     ax.set(
@@ -95,28 +106,6 @@ def plot(axs):
         fontsize=style.FONT_SIZE_DENSE,
         title_fontsize=style.FONT_SIZE_DENSE,
     )
-
-
-def _volcano_data(result: dict) -> pd.DataFrame:
-    lr_names = load_factors_netcdf(SPEC.factors_path())["lr_pair"].values.astype(str)
-    frames = []
-    for k, r in result.items():
-        shown = r["order"][:N_SHOWN]
-        case, control = r["means"]
-        frames.append(
-            pd.DataFrame(
-                {
-                    "Component": k,
-                    "Loading rank": np.arange(1, N_SHOWN + 1),
-                    "LR pair": lr_names[shown],
-                    f"{CASE_DISPLAY} mean": case[shown],
-                    f"{CONTROL_DISPLAY} mean": control[shown],
-                    "log2 mean ratio": mean_log2_ratio(r)[shown],
-                    "Permutation p": r["p"][shown],
-                }
-            )
-        )
-    return pd.concat(frames)
 
 
 def mean_log2_ratio(component: dict) -> np.ndarray:

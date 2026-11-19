@@ -14,6 +14,7 @@ from matplotlib.typing import LineStyleType
 
 from .. import common, style
 from . import _common as S
+from .hormone_angle_scatter import angle_cells
 
 AXES = ("square",)
 ANGLE_BINS = np.arange(-45, 135.1, 7.5)
@@ -34,15 +35,10 @@ def sector(angle: float) -> str:
 
 def plot(axs):
     (ax,) = axs
-    polar = S.hormone_angles(S.programs("enteroendocrine_cells"))
+    polar = angle_cells()
     angles = polar.loc[
         polar["Angle"].notna() & (polar["Magnitude"] >= S.EXTREME_FLOOR), "Angle"
     ]
-    common.source_data(
-        "hormone_angle_distribution",
-        angles.to_frame(),
-        f"Angles (degrees) of EE cells with magnitude at least {S.EXTREME_FLOOR}.",
-    )
     bars = S.cell_histogram(ax, angles, ANGLE_BINS)
     for bar in bars:
         bar.set_facecolor(S.SECTOR_COLORS[sector(bar.get_x() + bar.get_width() / 2)])
