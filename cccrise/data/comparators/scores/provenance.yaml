@@ -420,8 +420,8 @@ files:
     top_perc: 10.0
     rel_cutoff: 0.4
     n_shuffle: 1000
-    git_sha: 8bd1fbd13b3b2f896d45e9fbea1b430ecd3e27f1
-    generated: '2026-11-19T19:23:21+00:00'
+    git_sha: 98e05ab20202d9b6001e17a88619ec646290cd71
+    generated: '2026-11-20T02:05:37+00:00'
   nichenet_ibd.parquet:
     sha256: 1b5072674735f4b98e0bf36671f93c534766127b1b4e412f8ec5244b382928a0
     command: uv run cccrise-comparator-nichenet --dataset ibd --n-jobs 3
@@ -452,7 +452,7 @@ files:
     git_sha: 63947a1d545f34ba6e897773f5ca4daefc34e575
     generated: '2026-11-19T23:50:06+00:00'
   nichenet_null_alad.parquet:
-    sha256: 03fad23fe6f863115d2d8392631ac8b671f2ecff728c4902f1e33277745cd330
+    sha256: da4e201a4813fcf469949747d9959ede33513997e179a82e06f0e185fead9b7a
     command: uv run cccrise-comparator-nichenet --dataset alad --n-jobs 8
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -468,8 +468,8 @@ files:
     top_perc: 10.0
     rel_cutoff: 0.4
     n_shuffle: 1000
-    git_sha: c1cc84746fd4fe581593725f3a54ee247fe7d2fa-dirty
-    generated: '2026-11-17T23:26:31+00:00'
+    git_sha: 98e05ab20202d9b6001e17a88619ec646290cd71
+    generated: '2026-11-20T02:05:37+00:00'
   nichenet_null_ibd.parquet:
     sha256: 751224f66e3c694a2ce6130ee246f8f835cd4bc08730af85cebc8646bb2ea881
     command: uv run cccrise-comparator-nichenet --dataset ibd --n-jobs 3
