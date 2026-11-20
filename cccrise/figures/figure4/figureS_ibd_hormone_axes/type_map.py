@@ -1,4 +1,6 @@
-"""Figure 4E's annotated types on the zoomed EE/EC/tuft map, below the
+"""Annotated cell type of each EE, EC, and tuft cell on the EE/EC/tuft PaCMAP.
+
+Figure 4E's annotated types on the zoomed EE/EC/tuft map, below the
 all-cell map (`cell_map`) it zooms into."""
 
 from ... import common

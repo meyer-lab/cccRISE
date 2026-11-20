@@ -1,4 +1,7 @@
-"""PYY and GCG, the ligands of C3's and C4's top LR pairs, on the EE/EC
+"""Normalized PYY and GCG expression of EE and EC cells on the EE/EC region of
+the EE/EC/tuft PaCMAP.
+
+PYY and GCG, the ligands of C3's and C4's top LR pairs, on the EE/EC
 part of the zoomed map: one panel split into two axes, each a window onto
 `ee_state_map`'s PaCMAP (not refit) at exactly its scale, so the EE/EC
 cluster keeps its shape and size, centered on that cluster. Each EE and EC

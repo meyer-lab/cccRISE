@@ -1,4 +1,8 @@
-"""The IBD RISE gene factor, as the ALAD supplement draws ALAD's
+"""RISE gene factor of the IBD fit for the 10% of genes with the largest scaled
+absolute loading on any component, each loading divided by the component's
+largest absolute loading.
+
+The IBD RISE gene factor, as the ALAD supplement draws ALAD's
 (`figure2.figureS_alad_cohort.genes`), sized as `factors` beside it."""
 
 from ... import common

@@ -1,4 +1,8 @@
-"""CP factor matrices: condition (A), sender eigenstate (B), receiver
+"""CPD factor matrices of the ALAD fit: each component's condition, sender
+eigen-state, receiver eigen-state, and LR pair loadings, each divided by the
+component's largest absolute loading.
+
+CPD factor matrices: condition (A), sender eigenstate (B), receiver
 eigenstate (C), and LR pair (D) loadings per component, each divided by its
 largest magnitude within the component (keeping sign); Figure 2 draws the
 canonical ALAD fit (`draw` draws any registered dataset's).
@@ -104,10 +108,10 @@ def _source_data(key: str, adata, loadings, shown=None) -> None:
     if shown is not None:
         df["Shown"] = np.isin(np.arange(len(df)), shown)
     common.source_data(
-        f"cp_{ylabel.lower().replace(' ', '_')}_loadings",
+        f"cpd_{ylabel.lower().replace(' ', '_')}_loadings",
         df,
-        f"CP factor matrix {key}: each {ylabel.lower().replace('lr', 'LR')}'s "
-        "loading on every CP "
+        f"CPD factor matrix {key}: each {ylabel.lower().replace('lr', 'LR')}'s "
+        "loading on every CPD "
         "component, divided by the component's largest |loading| in this matrix."
         + (" 'Shown' marks the LR pairs drawn." if shown is not None else ""),
         part=list(MODES).index(key),

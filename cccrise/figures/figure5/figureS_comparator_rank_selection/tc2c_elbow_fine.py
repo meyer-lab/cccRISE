@@ -1,4 +1,5 @@
-"""Tensor-cell2cell's normalized error across random starts, on ALAD and IBD (fine labels)."""
+"""Normalized error of Tensor-cell2cell for each random start at each rank,
+ALAD and IBD cohorts, fine cell type labels."""
 
 from ... import common
 from ._panels import tc2c_elbow

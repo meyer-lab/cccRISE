@@ -1,4 +1,8 @@
-"""Figure 5D: co-variation of ALAD C5 and of its related columns (5C) over all
+"""Mean pairwise rank correlation across samples of the carrying LR pairs of
+ALAD CCC-RISE component 5 and of its related comparator LR columns, against
+random and expression-matched null draws.
+
+Figure 5D: co-variation of ALAD C5 and of its related columns (5C) over all
 their carrying pairs, against the random and the expression-matched null
 (`_split.covariation`)."""
 

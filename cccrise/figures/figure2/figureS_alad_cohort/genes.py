@@ -1,4 +1,8 @@
-"""The RISE gene factor (C), each component divided by its largest magnitude
+"""RISE gene factor of the ALAD fit for the 10% of genes with the largest
+scaled absolute loading on any component, each loading divided by the
+component's largest absolute loading.
+
+The RISE gene factor (C), each component divided by its largest magnitude
 (keeping sign). Only the `TOP_GENE_FRACTION` of genes with the largest such
 loading on any component are shown, ordered by their most heavily loaded
 component, then by that loading."""

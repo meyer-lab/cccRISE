@@ -1,4 +1,8 @@
-"""The angles of EE cells past the magnitude floor (`hormone_angle_scatter`),
+"""Distribution of the sender weight angle of EE cells above the magnitude
+floor, colored by hormone state: villus-like (mostly component 3), mixed, or
+crypt-like (mostly component 4).
+
+The angles of EE cells past the magnitude floor (`hormone_angle_scatter`),
 bars colored by the class their angle bins a cell into
 (`_common.hormone_extremes`): C3 high up to `EXTREME_SECTOR` degrees, C4
 high from 90 - `EXTREME_SECTOR`, both between."""
@@ -10,6 +14,7 @@ from matplotlib.typing import LineStyleType
 
 from .. import common, style
 from . import _common as S
+from .hormone_angle_scatter import angle_cells
 
 AXES = ("square",)
 ANGLE_BINS = np.arange(-45, 135.1, 7.5)
@@ -30,15 +35,10 @@ def sector(angle: float) -> str:
 
 def plot(axs):
     (ax,) = axs
-    polar = S.hormone_angles(S.programs("enteroendocrine_cells"))
+    polar = angle_cells()
     angles = polar.loc[
         polar["Angle"].notna() & (polar["Magnitude"] >= S.EXTREME_FLOOR), "Angle"
     ]
-    common.source_data(
-        "hormone_angle_distribution",
-        angles.to_frame(),
-        f"Angles (degrees) of EE cells with magnitude at least {S.EXTREME_FLOOR}.",
-    )
     bars = S.cell_histogram(ax, angles, ANGLE_BINS)
     for bar in bars:
         bar.set_facecolor(S.SECTOR_COLORS[sector(bar.get_x() + bar.get_width() / 2)])

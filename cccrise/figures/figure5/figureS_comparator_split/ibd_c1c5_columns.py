@@ -1,4 +1,7 @@
-"""IBD C1 and C5 together: their carrying pairs in each component and in
+"""Loadings of IBD CCC-RISE components 1 and 5's carrying LR pairs in the
+components and in their related PB and STAC LR columns.
+
+IBD C1 and C5 together: their carrying pairs in each component and in
 their related columns of each comparator, with each comparator's best
 combination (Σ); a column related to both names both components, C1 first."""
 

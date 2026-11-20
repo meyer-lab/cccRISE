@@ -1,5 +1,5 @@
-"""Leave-one-patient-out eta-squared distribution per CP component, with the
-full-cohort value overlaid (filled where significant)."""
+"""Eta-squared of each CPD component's association with the 6-month outcome
+across leave-one-patient-out replicates, with the full-cohort value."""
 
 import numpy as np
 import seaborn as sns

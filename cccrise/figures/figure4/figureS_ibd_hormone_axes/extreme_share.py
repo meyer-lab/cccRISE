@@ -1,4 +1,9 @@
-"""Per biopsy (at least `_common.MIN_EE` EE cells), the share of its EE cells
+"""Share of each IBD biopsy's EE cells in each hormone state (villus-like:
+mostly component 3; crypt-like: mostly component 4; mixed; or below the
+magnitude floor) by inflammation status, with Kruskal-Wallis and pairwise Mann-
+Whitney tests (Benjamini-Hochberg q).
+
+Per biopsy (at least `_common.MIN_EE` EE cells), the share of its EE cells
 in each class of Figure 4's marker dot plot (`_common.hormone_extremes`), by
 inflammation status (Kruskal-Wallis q, BH corrected across classes, drawn and in
 the source data; pairwise Mann-Whitney q in the source data): inflammation removes

@@ -1,4 +1,8 @@
-"""Per-cell sender vs. receiver weight on the outcome-associated CP
+"""Each cell's sender against receiver weight on CPD component 5, colored by
+its projection onto RISE eigen-state 16, with the squared Pearson correlation
+of the two weights across all cells.
+
+Per-cell sender vs. receiver weight on the outcome-associated CPD
 component, colored by each cell's projection onto `EIGENSTATE` on the
 lymphocyte blow-up's scale, with the R² between them across all cells."""
 
@@ -33,7 +37,7 @@ def plot(axs):
                 f"Eigen-state {EIGENSTATE} projection": projection,
             }
         ),
-        f"One row per cell: its per-cell sender and receiver weight on CP "
+        f"One row per cell: its per-cell sender and receiver weight on CPD "
         f"component {COMPONENT} (the points), and its projection onto RISE "
         f"eigen-state {EIGENSTATE} (the colors). R² = {r2:.4f} is the squared "
         "Pearson correlation between the two across all cells.",

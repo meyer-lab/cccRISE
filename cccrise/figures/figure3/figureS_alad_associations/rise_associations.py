@@ -1,6 +1,6 @@
-"""Association of every RISE component's condition loading (`pf2_A`) with
-every ALAD outcome tested against the CP components (one-way ANOVA
-eta-squared, FDR-corrected across all associations and components)."""
+"""Eta-squared of one-way ANOVAs of each RISE component's read-depth-corrected
+condition loadings against each ALAD outcome association, Benjamini-Hochberg
+corrected across all associations and components."""
 
 import copy
 

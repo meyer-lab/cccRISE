@@ -1,4 +1,6 @@
-"""Figure 5H: BTC-EGFR in STAC and in cccRISE."""
+"""ALAD epithelial cells assigned BTC-EGFR communication by STAC (one
+epithelial label) and by CCC-RISE component 6 (the cells past its sender and
+receiver cutoffs)."""
 
 from .. import common
 from ._flows import flow_alad

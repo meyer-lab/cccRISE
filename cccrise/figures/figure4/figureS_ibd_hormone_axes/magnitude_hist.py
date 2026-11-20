@@ -1,4 +1,8 @@
-"""The magnitudes of all EE cells' C3/C4 sender weights (Figure 4's angle
+"""Distribution of the magnitude of EE cells' sender weights on CPD components
+3 and 4, each divided by its largest value among EE cells, with the magnitude
+floor.
+
+The magnitudes of all EE cells' C3/C4 sender weights (Figure 4's angle
 scatter, `hormone_angle_scatter`), with the floor past which their angle
 bins them (`_common.EXTREME_FLOOR`, Figure 2's cutoff)."""
 

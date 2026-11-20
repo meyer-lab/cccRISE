@@ -1,4 +1,8 @@
-"""Co-variation of ALAD C3 and of its carrying columns, over all carrying
+"""Mean pairwise rank correlation across samples of the carrying LR pairs of
+ALAD CCC-RISE component 3 and of its related comparator LR columns, against
+random and expression-matched null draws.
+
+Co-variation of ALAD C3 and of its carrying columns, over all carrying
 pairs against the random and the expression-matched null."""
 
 from ... import common

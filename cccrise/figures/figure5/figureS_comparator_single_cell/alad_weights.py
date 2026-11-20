@@ -1,4 +1,7 @@
-"""ALAD: each component's per-cell sender vs. receiver weight, its
+"""Each cell's sender against receiver weight on each ALAD CPD component, each
+divided by its largest value, colored by sender and receiver population.
+
+ALAD: each component's per-cell sender vs. receiver weight, its
 populations colored (`_niches.weight_scatters`)."""
 
 from ... import common

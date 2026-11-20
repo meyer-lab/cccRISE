@@ -1,5 +1,8 @@
-"""Why the comparators merge IBD C1 and C5: the cosine between the two
-components in each CP mode. They share their samples, sender eigenstates and
+"""Cosine between IBD CCC-RISE components 1 and 5 in each CPD mode: sample,
+sender eigen-state, receiver eigen-state, and LR pair loadings.
+
+Why the comparators merge IBD C1 and C5: the cosine between the two
+components in each CPD mode. They share their samples, sender eigenstates and
 receiver eigenstates and differ only in their LR pairs, so a column fit on
 pooled cell types sees one program."""
 
@@ -34,7 +37,7 @@ def plot(axs):
     common.source_data(
         "ibd_c1_c5_mode_cosines",
         pd.Series(cosines, name="Cosine").rename_axis("Mode"),
-        "Cosine between IBD components 1 and 5 in each CP mode (sample, sender "
+        "Cosine between IBD components 1 and 5 in each CPD mode (sample, sender "
         "eigen-state, receiver eigen-state and LR pair loadings).",
     )
     y = np.arange(len(cosines))
