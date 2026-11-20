@@ -39,7 +39,7 @@ CCC-RISE's embeddings and factor matrices thus trace LR signaling programs acros
 ({{< panel 2 permutation-lr-significance.2 >}}) Mean observed against mean permuted communication score per LR pair, colored by fraction of entries significant (as above).
 ({{< panel 2 nichenet >}}) NicheNet target score of each ligand (n = 211) per CPD component on differential expression between the component's top and bottom receiver cells (light boxes; points colored and sized by the ligand's weight in the component), and with the cell labels shuffled (grey boxes, pooled).
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
-q-values above boxes test the ligand-weighted mean score against its 1,000 cell-shuffled values (one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components); bold: q < 0.05.
+Values at the top of each component are q-values testing the ligand-weighted mean score against its 1,000 cell-shuffled values (one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components); bold: q < 0.05.
 ({{< panel 2 sender-receiver-strata >}}) Per-cell component 6 sender against receiver weight.
 ({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each component 6 group.
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of component 6 sender/receiver groups, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
@@ -75,7 +75,7 @@ Collectively, these results show that CCC-RISE components were stable, robust to
 RISE eigen-states allow cellular identity to be traced from CPD component weights back to single-cell gene expression without depending on prior annotations.
 We illustrate this with component 6, whose sender and receiver loadings were spread across multiple eigen-states, suggesting signaling between populations ({{< fig 2 cp-factor-matrices.2 cp-factor-matrices.3 >}}, {{< fig cmp5-identity eigenstate-scatter cmp-eigenstate-loadings >}}).
 Combining these loadings with each cell's RISE projections gave per-cell sender and receiver weights, which few cells carried simultaneously; thresholding defined 67 sender and 58 receiver cells with weights greater than 0.3 times the top cell's sender or receiver weight, respectively ({{< fig 2 sender-receiver-strata >}}).
-We found that these groups both expressed canonical epithelial marker genes (FXYD3, EPCAM, and ELF3) at higher levels than all other cells (q < 0.05) ({{< fig cmp5-identity celltype-markers group-vs-rest >}}).
+We found that these groups both expressed canonical epithelial marker genes (FXYD3, EPCAM, and ELF3) at higher levels than all other cells (q < 0.05) ({{< fig cmp5-identity celltype-markers >}}).
 Individually, the groups expressed unique epithelial subpopulation markers, indicating communication between ciliated sender cells and basal/secretory receiver cells ({{< fig 2 epithelial-markers >}}, {{< fig cmp5-identity sender-vs-receiver >}}).
 Further, all subpopulation markers remained significantly differentially expressed between sender and receiver groups across threshold definitions ({{< fig cmp5-identity sender-vs-receiver tau-sweep >}}).
 These eigen-state--derived epithelial labels aligned closely with available annotations but represented subpopulations more granular than those defined in the data ({{< fig 2 celltype-composition >}}).
@@ -254,7 +254,7 @@ This deviation suggested that CCC-RISE grouped CD70--CD27 into a more informativ
 In a more extreme case, STACCato's coarse and fine fits split ALAD component 3 into five and six LR columns, respectively ({{< fig comparator-split alad-c3-columns >}}; {{< fig comparator-missed-alad share >}}).
 Before correction, the 15 top LR pairs of CCC-RISE's single component correlated across conditions beyond expression-matched LR pairs, as did only one of the split columns, fine S4, which carried just three top LR pairs, consistent with these LR columns being pieces of one coordinated program ({{< fig comparator-split alad-c3-covariation >}}).
 In IBD, components 1 and 5 shared conditions, senders, and receivers but loaded on their LR pairs in opposite directions ({{< fig comparator-split ibd-c1c5-modes >}}).
-Component 1 loaded positively on pairs with the decoy IL1R2 receptor, whereas component 5 loaded positively on CCL3L1, CXCL8, and CXCL1 chemokine pairs and negatively on IL1A–IL1R2 ({{< fig comparator-split ibd-c1c5-columns >}}).
+Component 1 loaded positively on pairs with the decoy IL1R2 receptor, whereas component 5 loaded positively on CCL3L1, CXCL8, and CXCL1 chemokine pairs and negatively on IL1A--IL1R2 ({{< fig comparator-split ibd-c1c5-columns >}}).
 STACCato's fine fit mixed the two programs in each of two columns, with matching signs in S3 and opposing signs in S6, so recovering either component required a signed combination of the two columns ({{< fig comparator-split ibd-c1c5-columns >}}).
 Concisely, CCC-RISE revealed the coordination of LR pairs that comparators kept apart and separated opposing arms of one immune program where comparators mixed them.
 

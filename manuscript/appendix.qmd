@@ -50,7 +50,7 @@ Violins show the distribution of loadings, points show individual biopsies, and 
 One-way ANOVA F and η^2^, with p BH corrected across all categorizations and components.
 ({{< panel ibd-associations lineage-proportions >}}) Fraction of each biopsy's cells in each coarsely annotated cell type for healthy, CD uninflamed, and CD inflamed samples, on a square-root scale.
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
-q: Kruskal--Wallis test across the three groups, BH corrected across cell types.
+Values at the top of each cell type are Kruskal--Wallis q-values across the three groups, BH corrected across cell types.
 ({{< panel ibd-associations covariates >}}) One-way ANOVA η^2^ of each biopsy covariate and coarse cell-type fraction against each biopsy categorization, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 
