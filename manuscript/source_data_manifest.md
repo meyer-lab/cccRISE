@@ -151,7 +151,6 @@ Analyses plotted (with provenance in the zip's README):
 ## Figure EV3
 
 Analyses plotted (with provenance in the zip's README):
-- `cccrise/data/validation_results/alt_score_methods/alt_score_jackknife_alad.parquet`
 - `cccrise/data/validation_results/alt_score_methods/expression_gmean/bal_alad_factors.nc`
 - `cccrise/data/validation_results/alt_score_methods/expression_hill/bal_alad_factors.nc`
 - `cccrise/data/validation_results/alt_score_methods/expression_mean/bal_alad_factors.nc`
@@ -161,9 +160,8 @@ Analyses plotted (with provenance in the zip's README):
 |---|---|---|---|---|---|
 | EV3A | cccrise/figures/figure3/figureS_ccc_scoring/factor_match.py | data | factor_match_scores.csv | 0.6 | Match of each alternate communication score's CPD components to the default score's: the factor match score on the condition and LR pair modes, and the absolute cosine of the paired components' sender and receiver loadings. |
 | EV3B | cccrise/figures/figure3/figureS_ccc_scoring/factor_match.py | data | factor_match_cosines.csv | 1.3 | Match of each alternate communication score's CPD components to the default score's: the factor match score on the condition and LR pair modes, and the absolute cosine of the paired components' sender and receiver loadings. |
-| EV3C | cccrise/figures/figure3/figureS_ccc_scoring/jackknife.py | data | jackknife_fms_by_score.csv | 7.4 | How stable each score's CP fit is under leaving one patient out: each jackknife refit's aggregate factor match score (mean over components, LR mode) against the score's full-cohort fit, from ``uv run cccrise-altcommscore --jackknife``. |
-| EV3D | cccrise/figures/figure3/figureS_ccc_scoring/interpretation.py | data | loading_lr_by_score.csv | 6.1 | Each default-score CPD component's paired component under each communication score: its top LR pair loadings and its mean sender and receiver weight per cell type, each divided by its largest absolute value. |
-| EV3E | cccrise/figures/figure3/figureS_ccc_scoring/interpretation.py | data | loading_celltype_by_score.csv; weight_cells_by_score.csv | 33278.3 | Each default-score CPD component's paired component under each communication score: its top LR pair loadings and its mean sender and receiver weight per cell type, each divided by its largest absolute value. |
+| EV3C | cccrise/figures/figure3/figureS_ccc_scoring/interpretation.py | data | loading_lr_by_score.csv | 5.7 | Each default-score CPD component's paired component under each communication score: its top LR pair loadings and its mean sender and receiver weight per cell type, each divided by its largest absolute value. |
+| EV3D | cccrise/figures/figure3/figureS_ccc_scoring/interpretation.py | data | loading_celltype_by_score.csv; weight_cells_by_score.csv | 33279.5 | Each default-score CPD component's paired component under each communication score: its top LR pair loadings and its mean sender and receiver weight per cell type, each divided by its largest absolute value. |
 
 ## Figure EV4
 
