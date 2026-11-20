@@ -145,7 +145,7 @@ Briefly, we now use a bi-cross-validation (BiCV) scheme to select RISE rank and 
 In addition to providing a benchmark for the rank selection, the internal BiCV scheme also provides a more reliable estimate of the classifier's performance as it is exposed only to the molecular data and not to the sample labels.
 Further, selecting the decomposition rank based on an external prediction limited the use of our approach to applications where such a prediction was available, which the new rank selection scheme avoids.
 Our response to Reviewer #2 Comment #4 discusses the new rank selection procedure in depth and Reviewer #1 Comment #5 expands upon the limitations of our previous approach.
-The new rank selection results are showcased in {{< fig 2 rise-rank-selection cp-minima >}} and {{< fig ibd-rank-selection >}} and the procedure is described in Methods section *Rank Selection*.
+The new rank selection results are showcased in {{< fig 2 rise-rank-selection cp-rank-selection.3 >}} and {{< fig ibd-rank-selection >}} and the procedure is described in Methods section *Rank Selection*.
 
 > 5. Small samples and no independent validation of the classifier.
 >    The COVID cohort has 12 samples; fitting an 18-component L1 logistic regression at the patient level is prone to overfitting.
@@ -299,7 +299,7 @@ For ALAD, both the BiCV and the collinearity clearly indicate an optimal rank.
 For IBD, CPD collinearity provides a similarly specific choice, while BiCV plateaus instead of turning over, but still shows a clear point at which additional components do not improve predictive performance.
 Both criteria are computed by the same runner, with the same parameters, for both datasets, and both depend only on the molecular data.
 The multi-replicate nature of these rank selection procedures also serves as a sensitivity analysis under a parameter sweep, where the paramter is rank.
-The new rank-selection procedure is showcased in {{< fig 2 rise-rank-selection cp-minima >}} and {{< fig ibd-rank-selection >}} and described in detail in Methods sections *Fit Evaluation and Component Comparison* and *Rank Selection*.
+The new rank-selection procedure is showcased in {{< fig 2 rise-rank-selection cp-rank-selection.3 >}} and {{< fig ibd-rank-selection >}} and described in detail in Methods sections *Fit Evaluation and Component Comparison* and *Rank Selection*.
 
 We now also use the Factor Match Score (FMS) to compare individual fits during sensitivity analyses rather than only defining it.
 At the final rank as selected by the above procedures, components are refit under two perturbations---leave-one-patient-out jackknife and re-initializing with a different random seed---and each component is matched to a reference fit by Hungarian assignment and scored by FMS.
