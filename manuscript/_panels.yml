@@ -44,9 +44,8 @@ figS_cmp5_identity:
   eigenstate_scatter: [a]
   cmp_eigenstate_loadings: [b]
   celltype_markers: [c]
-  group_vs_rest: [d, e]
-  sender_vs_receiver: [f]
-  tau_sweep: [g]
+  sender_vs_receiver: [d]
+  tau_sweep: [e]
 figS_alad_associations:
   celltype_proportions: [a]
   cp_associations: [b]
