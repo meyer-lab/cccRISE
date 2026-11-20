@@ -81,10 +81,10 @@ Comparator recovery of the IBD components, and detection depth in every method's
 ({{< panel comparator-ibd-and-depth ibd-best >}}) Largest cos^2^ between the LR pair loadings of each IBD CCC-RISE component (n = 6) and any single LR column of each comparator fit.
 ({{< panel comparator-ibd-and-depth ibd-containment >}}) Fraction of each IBD CCC-RISE component's LR pair loadings reconstructed by the best combination of all LR columns of each comparator fit.
 ({{< panel comparator-ibd-and-depth depth >}}) Absolute Spearman correlation between the absolute condition loadings of each CCC-RISE component or comparator LR column and the median number of genes detected per cell, computed across samples (ALAD, n = 47) or biopsies (IBD, n = 343).
-Each point is one component or column (ALAD, n = 62; IBD, n = 40), grouped by fit.
+Each point is one component or column (ALAD, n = 60; IBD, n = 39), grouped by fit.
 For STAC columns, the condition loadings are the leading vector of each LR component's core slice, mapped through the condition factor.
 Boxes show the median and IQR, and whiskers show the full range.
-Kruskal--Wallis test across the fits of each cohort: ALAD, p = 6 × 10^−7^; IBD, p = 1 × 10^−4^.
+Kruskal--Wallis test across the fits of each cohort: ALAD, p = 4 × 10^−6^; IBD, p = 1 × 10^−4^.
 A star marks a fit whose components track depth more than the cohort's other components.
 This uses a one-sided Mann--Whitney U test with BH correction across the fits of the cohort, given a Kruskal--Wallis p below 0.05.
 
@@ -94,7 +94,7 @@ This uses a one-sided Mann--Whitney U test with BH correction across the fits of
 Comparator LR columns that are not part of a CCC-RISE component in ALAD.** PB, pseudobulk CPD; STAC, STACCato; C and F, coarse and fine labels.
 LR columns are named by method (P, S) and number, and top LR pairs are as in {{< fig 5 >}}.
 ({{< panel comparator-missed-alad share >}}) Share of each PB and STAC LR column's squared LR pair loading that falls on the top LR pairs of one CCC-RISE component.
-n = 41 columns.
+n = 40 columns.
 The dashed line marks 0.5.
 Sixteen columns fall below it.
 ({{< panel comparator-missed-alad associations >}}) Each column's strongest association with an ALAD outcome grouping, as effect size (η^2^) against q, beside the CCC-RISE components that have an association with q < 0.05 (blue).
@@ -111,11 +111,11 @@ Bold names and red boxes mark the columns with q < 0.05 in ({{< panel comparator
 **{{< label comparator-missed-ibd >}}.
 Comparator LR columns that are not part of a CCC-RISE component in IBD.** As in {{< fig comparator-missed-alad >}}, for IBD.
 H, healthy; CD, Crohn's disease; U and I, CD uninflamed and inflamed.
-({{< panel comparator-missed-ibd share >}}) Share of each LR column's squared LR pair loading on the top LR pairs of one CCC-RISE component (n = 28 columns).
-Sixteen columns fall below 0.5.
+({{< panel comparator-missed-ibd share >}}) Share of each LR column's squared LR pair loading on the top LR pairs of one CCC-RISE component (n = 27 columns).
+Fourteen columns fall below 0.5.
 ({{< panel comparator-missed-ibd associations >}}) Each column's strongest association with a biopsy grouping.
 One-way ANOVA across biopsies (n = 343), with Benjamini--Hochberg correction across all three groupings and all components of each fit.
-The panel draws H vs. CD and U vs. I. ({{< panel comparator-missed-ibd contents >}}) Top LR pairs of the 16 columns below 0.5 in ({{< panel comparator-missed-ibd share >}}), sized by absolute loading relative to the column's largest.
+The panel draws H vs. CD and U vs. I. ({{< panel comparator-missed-ibd contents >}}) Top LR pairs of the 14 columns below 0.5 in ({{< panel comparator-missed-ibd share >}}), sized by absolute loading relative to the column's largest.
 The CCC-RISE row shows each LR pair's largest such value in any CCC-RISE component.
 Bold names and red boxes mark the columns with q < 0.05 in ({{< panel comparator-missed-ibd associations >}}) that carry a top LR pair outside every CCC-RISE component's top LR pairs whose ligand and receptor are different genes.
 

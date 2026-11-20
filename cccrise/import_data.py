@@ -49,6 +49,20 @@ IBD_NORMALIZATION = vsparse.RECIPES["parafac2"]
 IBD_EXCLUDED_BROAD_CELL_TYPES = ("Mesenchymal",)
 
 
+#: LR resource columns loaded as categoricals, whatever dtype the parquet stores.
+LR_CATEGORICAL_COLUMNS = (
+    "pathway_name",
+    "ligand",
+    "receptor",
+    "agonist",
+    "antagonist",
+    "co_A_receptor",
+    "co_I_receptor",
+    "evidence",
+    "annotation",
+)
+
+
 @lru_cache(maxsize=1)
 def import_ligand_receptor_pairs(
     filename: str | Path = LR_PAIRS_PATH,
@@ -63,6 +77,8 @@ def import_ligand_receptor_pairs(
     not always name the genes (e.g. ``FLT3L - FLT3`` for FLT3LG).
     """
     df = pd.read_parquet(filename)
+    categorical = [c for c in LR_CATEGORICAL_COLUMNS if c in df.columns]
+    df[categorical] = df[categorical].astype("category")
 
     if update_interaction_names:
         if {"ligand_symbol", "receptor_symbol"} <= set(df.columns):

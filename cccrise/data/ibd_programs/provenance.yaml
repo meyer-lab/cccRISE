@@ -30,7 +30,7 @@ shared:
     one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling artifact
     (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
   factors_path: cccrise/data/factors/ibd_ti_factors.nc
-  factors_sha256: 96751f26e47a977fc8b1451bfac6d36b3fa4f98e874e15f29c5c07290dad2894
+  factors_sha256: 516d9b6531c34347db091ee98d8be06855e08b1f6ab9a623e33117f698d5cab2
   random_state: 0
   pacmap_random_state: 42
   n_perms: 10000
@@ -40,21 +40,21 @@ shared:
     conditions: 343
     genes: 23355
     cells: 634534
-    lr_pairs: 1337
-  git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-  generated: '2026-11-14T03:13:39+00:00'
+    lr_pairs: 1332
+  git_sha: 9e17e7fcd991bf4d12b9030a1056bf548db34e78
+  generated: '2026-11-19T06:22:37+00:00'
 files:
   cell_map_ibd.parquet:
     sha256: dafc44bc185c4a98e872d86e40c088caa2424ec4e57ffb64af7249e5dbf71a6d
   eigenstate_celltypes_ibd.parquet:
-    sha256: ce405443866216fea6fe2fd1d9fde12d558754d4138b8277a9a885b900be77e2
+    sha256: ef97a5353f11a17151cc982b71fff7b40abab85732e180377ff7cbbdccfc517d
   eigenstate_energy_ibd.parquet:
-    sha256: 6a1a87e5a0803f4bbbeb32a475cbe636eb84ac44963cb781e6a7837d68f2da50
+    sha256: 1dda063b2dcf2bbcb03c167f8701a3a97124cab2bef3ee1c8d1f0f32837ac5bb
   enteroendocrine_cells_ibd.parquet:
-    sha256: 1f413f724010187c317e4dac43e68580ee35c275713a13df35daad597a041062
+    sha256: 04a8db5f6e69103538a19272755408ceb15616abfd5f51a00e0c63b27f8d1d87
   myeloid_program_cells_ibd.parquet:
-    sha256: 8f0bf57001cc7a12b1ea512e1bde36f058d79d7b24f0157ffc223487ec77057e
+    sha256: f18ac6f20c68ff67524f0a7f8447b996c0afd497471fb422fd0ca149abf9cf7a
   program_covariation_ibd.parquet:
-    sha256: bfc57ef093606fab3940e07a66a1393ce04134286a5c0fff2f811f5545bcea15
+    sha256: 2c315e39176498ae05c0aded652a252babee26030d128223229cbe772b982277
   program_permutation_ibd.parquet:
-    sha256: c4b3b194a8b988cb24aa0a70fe0ca0e46153585fda33213ab37a4f6b3f2ec328
+    sha256: e61473508ccb7107c2a347403575e8918e9cf109d2a8300e7f6c5c2f5df019ab

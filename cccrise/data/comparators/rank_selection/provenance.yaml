@@ -8,9 +8,10 @@
 shared:
   cp_device: auto
   cp_dtype: float32
+  cp_backend: cupy
 files:
   pb_rank_alad_coarse.parquet:
-    sha256: bcc95d6eb45a0f4c881f4decd11cbf6a054b9a7a5e17c1664d2afde7ae010ac3
+    sha256: ae18a70c4e5fb286e79c61c08f8c23be1a6529ae8e5107c5377c59c46d2ffd70
     command: uv run cccrise-comparators --dataset alad --methods pb
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -23,9 +24,8 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 1.0
       celltypes:
       - CD4 T cells
@@ -49,10 +49,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84
-    generated: '2026-11-13T23:44:41+00:00'
+    git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
+    generated: '2026-11-19T07:20:31+00:00'
   pb_rank_alad_fine.parquet:
-    sha256: fbf76ea2c83e7a4bcd4f68b14e27ff4066fd7aece490e9a7a18dc5a92e95cc8d
+    sha256: 74889bff3ef48764e8b09e7c6371f253fa619cbb1091d04ee520ab7ebd1fbb56
     command: uv run cccrise-comparators --dataset alad --methods pb
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -65,9 +65,8 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 1.0
       celltypes:
       - Activated CD8
@@ -109,10 +108,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84
-    generated: '2026-11-13T23:46:51+00:00'
+    git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
+    generated: '2026-11-19T07:24:06+00:00'
   pb_rank_ibd_coarse.parquet:
-    sha256: c81ea44067a1fe5971fb9e8886daa8c0b2010d0c13d20a26047bf2e8e0b0e4c0
+    sha256: 24df407ad1606fdc464734875fbc30ad3fca771904a93ab3fcb489bf99fd711b
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -135,9 +134,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
       celltypes:
       - B cell
@@ -160,10 +158,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T03:32:23+00:00'
+    git_sha: 040bf9bad1c620690b2aefa86b4d556c1494fb91
+    generated: '2026-11-19T07:29:28+00:00'
   pb_rank_ibd_fine.parquet:
-    sha256: 9743ae5601043c95d8c189af214f26d26b8445ce535fb71112fe5f4b22d10154
+    sha256: d3248e176b05e0a2320272a3c233b834dcce45c2227c4caf242bc16fe881934c
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -186,9 +184,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -258,10 +255,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: d68b8a5129e83e3e27885395847dc275eb0e3804
-    generated: '2026-11-14T06:38:16+00:00'
+    git_sha: 05e02ad7fab54205d1539e4182e44db41f8ead75
+    generated: '2026-11-19T08:06:13+00:00'
   pb_start_fms_alad_coarse.parquet:
-    sha256: 82534b762d73e1d2439f2f85c7a73ff4f520fd134f1da202e56c4ee84ee6b88e
+    sha256: 4d0d725593b4f01d353ffb55309d7572fc95850165ff12eb639dbf792449a741
     command: uv run cccrise-comparators --dataset alad --methods pb
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -274,9 +271,8 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 1.0
       celltypes:
       - CD4 T cells
@@ -300,10 +296,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84
-    generated: '2026-11-13T23:44:41+00:00'
+    git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
+    generated: '2026-11-19T07:20:31+00:00'
   pb_start_fms_alad_fine.parquet:
-    sha256: 3953a5f1be3c2dab20f8f724c4d00c07bec45f762b92f464a243b99292b88e25
+    sha256: 588057f08eeb47c06bb827175a2d9a202d16f456cc8408b7e632c5f96f55835c
     command: uv run cccrise-comparators --dataset alad --methods pb
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -316,9 +312,8 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 1.0
       celltypes:
       - Activated CD8
@@ -360,10 +355,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84
-    generated: '2026-11-13T23:46:51+00:00'
+    git_sha: 2679d7be4e50f1efb584969449f1de5f0771eb10
+    generated: '2026-11-19T07:24:06+00:00'
   pb_start_fms_ibd_coarse.parquet:
-    sha256: 0335158731f2f1bf1aa19652db6140e0179fa0d225e5b9f7b17c6d0784bdd6d0
+    sha256: b2ced0ee92dbd9fd93ad9967461d45587bff22582fd45f047fd5138969fe9e5c
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -386,9 +381,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
       celltypes:
       - B cell
@@ -411,10 +405,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T03:32:23+00:00'
+    git_sha: 040bf9bad1c620690b2aefa86b4d556c1494fb91
+    generated: '2026-11-19T07:29:28+00:00'
   pb_start_fms_ibd_fine.parquet:
-    sha256: 4514a4a72930723642d6c948e240d6722b4eeeeaa50f0a2e2b4044197f097a0e
+    sha256: d35da425d204825a85ed0ff255b5896867b1abacb4304a881f054c61211b6cc6
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods pb
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -437,9 +431,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -509,10 +502,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: d68b8a5129e83e3e27885395847dc275eb0e3804
-    generated: '2026-11-14T06:38:16+00:00'
+    git_sha: 05e02ad7fab54205d1539e4182e44db41f8ead75
+    generated: '2026-11-19T08:06:13+00:00'
   stac_shares_alad_coarse.parquet:
-    sha256: 063315c5064d5a4336cc7dbea15f1eee748d3e176fd211673d1f3fc0d19730e3
+    sha256: 37c6bc5d600c75664d592d8e8a29b7b18b6bfa267badf292c136a10ca2771cb8
     command: uv run cccrise-comparators --dataset alad --methods stac
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -525,9 +518,8 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 1.0
       celltypes:
       - CD4 T cells
@@ -548,10 +540,10 @@ files:
         receiver: 6
         lr: 16
       random_state: 42
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-13T23:47:03+00:00'
+    git_sha: 9156eec545a0799f3a74017f04c3d6d52923204b
+    generated: '2026-11-19T08:10:57+00:00'
   stac_shares_alad_fine.parquet:
-    sha256: 94a0f8ac22c30635c238903b3a58c0fc69ca341d681e07215284959a91fc0a76
+    sha256: d6c2ee3b8cccee15d05a226ec3a514bdbce9c7c4c6f38c81c5cb42d1ba045e4a
     command: uv run cccrise-comparators --dataset alad --methods stac
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -564,9 +556,8 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 1.0
       celltypes:
       - Activated CD8
@@ -603,12 +594,12 @@ files:
         sample: 14
         sender: 12
         receiver: 11
-        lr: 16
+        lr: 15
       random_state: 42
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-13T23:47:28+00:00'
+    git_sha: 9156eec545a0799f3a74017f04c3d6d52923204b
+    generated: '2026-11-19T08:11:19+00:00'
   stac_shares_ibd_coarse.parquet:
-    sha256: 5c1fb55c6d63bc91ab344cb2a1acee25857355c0ee32373d74c94f7a3b5eb415
+    sha256: 1b544fd0f2716585cc5cee0c30a210361e76a5bea79e8626ab1097695865201f
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods stac
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -631,9 +622,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: numpy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 1.0
       celltypes:
       - B cell
@@ -648,15 +638,15 @@ files:
     stac:
       varexp_percent: 1.0
       core_shape:
-        sample: 7
+        sample: 6
         sender: 4
         receiver: 3
         lr: 5
       random_state: 42
-    git_sha: e1a68354dbb28b52d973b7799b2b51489f19ff00
-    generated: '2026-11-14T05:34:04+00:00'
+    git_sha: 0a8e61f46cbc7e256e9481d01f6dc5f24c58c27b
+    generated: '2026-11-19T08:14:17+00:00'
   stac_shares_ibd_fine.parquet:
-    sha256: 4287f93190c390493bd4da6fa091cd5c4fd9ca283169a3521e59530f1976b691
+    sha256: 220e489afeb63096ef3c2ef94ccf5501e5771327bdbacd37b5954e7b4371b4c8
     command: uv run cccrise-comparators --dataset ibd --labellings fine --methods stac
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -679,9 +669,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: numpy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 1.0
       celltypes:
       - B cells
@@ -748,10 +737,10 @@ files:
         receiver: 11
         lr: 12
       random_state: 42
-    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e-dirty
-    generated: '2026-11-14T15:45:43+00:00'
+    git_sha: d490ca44e15054b140b0ffd9917ef580060401fb
+    generated: '2026-11-19T08:56:36+00:00'
   tc2c_elbow_alad_coarse.parquet:
-    sha256: cc2a718fd5b31c3d7f3c9b86d01bbc6817df144476399465d7dd018077f25d3a
+    sha256: fa6673526d80d7051279cadaeda70ec3e92f3d28aeb76dc9dfdd70ccee86b9aa
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -764,9 +753,8 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 0.8720079787234043
       celltypes:
       - CD4 T cells
@@ -784,18 +772,18 @@ files:
       runs: 10
       init: random
       first_seed: 42
-      elbow_rank: 10
+      elbow_rank: 9
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 47
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:07:49+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:08:48+00:00'
   tc2c_elbow_alad_fine.parquet:
-    sha256: 154e548597017f3c35393c48a97e63201abc0ac2695a0fbd13df0a160abbae57
+    sha256: f5d50fb4a19717145f67898332224a436032eedad9c5382382af2bd032c42c6c
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -808,9 +796,8 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 0.8294410172478912
       celltypes:
       - Activated CD8
@@ -849,15 +836,15 @@ files:
       elbow_rank: 5
       fit:
         init: random
-        best_of_runs_seed: 45
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:54:43+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:49:32+00:00'
   tc2c_elbow_ibd_coarse.parquet:
-    sha256: 71b3256a6a515729767139e6d805d77072168d9814c570aafe64f5e37deffb70
+    sha256: 3b9ffe3ea5fdd39d6f96b568a3675d681a86a664e61e5c514e1f854c19b709d8
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -880,9 +867,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 0.9853037424882489
       celltypes:
       - B cell
@@ -907,10 +893,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T05:32:41+00:00'
+    git_sha: 4f32c3ca62c344828793001af3b228e3e3884882
+    generated: '2026-11-19T10:45:25+00:00'
   tc2c_elbow_ibd_fine.parquet:
-    sha256: cf7215aa38b7ed1c33d247573bcca3fae5d7d59a57482f5feebd6deffa94a89a
+    sha256: e81b272749877685536f88517e7631816e95cd8b481eff31a9602ab5d4f0aa46
     command: uv run cccrise-comparators
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -933,9 +919,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 0.6747131539270617
       celltypes:
       - B cells
@@ -1002,7 +987,7 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 46
+        best_of_runs_seed: 44
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
@@ -1011,10 +996,10 @@ files:
         tensorly''s non_negative_parafac with its fill-in, MTTKRP and error built in sample-row
         blocks (same values; different summation order), because tensorly''s own does not
         fit in 24 GB on this tensor'
-    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e
-    generated: '2026-11-14T15:07:03+00:00'
+    git_sha: 9c938632496251cd077bc8032f480d2164461584
+    generated: '2026-11-19T21:34:39+00:00'
   tc2c_start_fms_alad_coarse.parquet:
-    sha256: e00bb3b257fd30d7d84206cc84a861979b66bb9038694a96444f4d1feece1417
+    sha256: 90bc6d9548f6f3390d53f2f7e67b8c45cc500a1bcacf5351e59f4013b3365657
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -1027,9 +1012,8 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 0.8720079787234043
       celltypes:
       - CD4 T cells
@@ -1047,18 +1031,18 @@ files:
       runs: 10
       init: random
       first_seed: 42
-      elbow_rank: 10
+      elbow_rank: 9
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 47
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:07:49+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:08:48+00:00'
   tc2c_start_fms_alad_fine.parquet:
-    sha256: 1de36ac285b434a9e4bf2486531e87433f74166df9d312c3b56d9ea1810d01f6
+    sha256: 63c73b5804c8f4aa5fd2236c8cdf6e653993cf7658d640cc9f0df73b7d12dd82
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -1071,9 +1055,8 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 0.8294410172478912
       celltypes:
       - Activated CD8
@@ -1112,15 +1095,15 @@ files:
       elbow_rank: 5
       fit:
         init: random
-        best_of_runs_seed: 45
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:54:43+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:49:32+00:00'
   tc2c_start_fms_ibd_coarse.parquet:
-    sha256: c70c70f8b0f7e4f058f967ba3bedf7706ef335cf50373fe0db98766896a942c0
+    sha256: deb7e36973bb2b75648ef73c05ed576b21d0c6eff7a160d9a3a81059f9238232
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -1143,9 +1126,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 0.9853037424882489
       celltypes:
       - B cell
@@ -1170,10 +1152,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T05:32:41+00:00'
+    git_sha: 4f32c3ca62c344828793001af3b228e3e3884882
+    generated: '2026-11-19T10:45:25+00:00'
   tc2c_start_fms_ibd_fine.parquet:
-    sha256: 71933ef95c7c3ea05dbfea0c001f05fca05e45b68fc5d704facbd22607dbb830
+    sha256: 97627be82a39a17e723ddb85527e8d66ff9e594439b36f40a71c2c0f1e40731f
     command: uv run cccrise-comparators
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -1196,9 +1178,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 0.6747131539270617
       celltypes:
       - B cells
@@ -1265,7 +1246,7 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 46
+        best_of_runs_seed: 44
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
@@ -1274,10 +1255,10 @@ files:
         tensorly''s non_negative_parafac with its fill-in, MTTKRP and error built in sample-row
         blocks (same values; different summation order), because tensorly''s own does not
         fit in 24 GB on this tensor'
-    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e
-    generated: '2026-11-14T15:07:03+00:00'
+    git_sha: 9c938632496251cd077bc8032f480d2164461584
+    generated: '2026-11-19T21:34:39+00:00'
   tc2c_starts_alad_coarse.nc:
-    sha256: c71bc772e778c397aef2114be0286ccee567c2dc42d7df7f1013867fc68b7215
+    sha256: 7c1da6565e68c0d685f59019b0a1f43ac3e9d6d7b7a604538214d35aefc79bd3
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -1290,9 +1271,8 @@ files:
     condition_key: dsco_id
     celltype_key: broad_cell_type
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 8, 8, 575]
+      tensor_shape: [47, 8, 8, 570]
       observed_share: 0.8720079787234043
       celltypes:
       - CD4 T cells
@@ -1310,18 +1290,18 @@ files:
       runs: 10
       init: random
       first_seed: 42
-      elbow_rank: 10
+      elbow_rank: 9
       fit:
         init: random
-        best_of_runs_seed: 50
+        best_of_runs_seed: 47
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:07:49+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:08:48+00:00'
   tc2c_starts_alad_fine.nc:
-    sha256: 5458ef28d9f1189a0fc92e574a0f78a6dcf36382d5bfb1251639d76ce4c92f9f
+    sha256: 4e9501ba0dfc1e9f21b464995d0fb962064d20a0c77290ea5fbb07a55212ca3a
     command: uv run cccrise-comparators --dataset alad --methods tc2c
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -1334,9 +1314,8 @@ files:
     condition_key: dsco_id
     celltype_key: celltype
     group_key: ALADstatus
-    cp_backend: cupy
     tensor:
-      tensor_shape: [47, 26, 26, 575]
+      tensor_shape: [47, 26, 26, 570]
       observed_share: 0.8294410172478912
       celltypes:
       - Activated CD8
@@ -1375,15 +1354,15 @@ files:
       elbow_rank: 5
       fit:
         init: random
-        best_of_runs_seed: 45
+        best_of_runs_seed: 46
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3a89d2c8159b07a17b920dfa5e4ab72086824f84-dirty
-    generated: '2026-11-14T00:54:43+00:00'
+    git_sha: 4b4e6651652c377a1ef1cdd3093ec6284e27e3c7
+    generated: '2026-11-19T09:49:32+00:00'
   tc2c_starts_ibd_coarse.nc:
-    sha256: 7d7065bdf2c02d7edddf3e74f9d5ebda0ba764a41614ad47ac75f12e59180e81
+    sha256: be2b0be908947bf3d8e21fac60b73bd253d036e3d770dc7b6600ec20b12d8722
     command: uv run cccrise-comparators --dataset ibd --labellings coarse --methods tc2c
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -1406,9 +1385,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 7, 7, 1337]
+      tensor_shape: [343, 7, 7, 1332]
       observed_share: 0.9853037424882489
       celltypes:
       - B cell
@@ -1433,10 +1411,10 @@ files:
       tol: 1.0e-12
       device: null
       dtype: float32
-    git_sha: 3e576b05be6a2c8b3cf08fd454503d1edc17e4fd-dirty
-    generated: '2026-11-14T05:32:41+00:00'
+    git_sha: 4f32c3ca62c344828793001af3b228e3e3884882
+    generated: '2026-11-19T10:45:25+00:00'
   tc2c_starts_ibd_fine.nc:
-    sha256: 346c80cf8f6c8f93b2394d6b6874550059bbefc048c688533c77d86a121c724a
+    sha256: 73d022b855001cb79caa68424cf284b72c65715f699021bb9f0aa939c5ec8a3c
     command: uv run cccrise-comparators
     dataset: ibd
     dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
@@ -1459,9 +1437,8 @@ files:
       matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
       mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
       artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    cp_backend: cupy
     tensor:
-      tensor_shape: [343, 54, 54, 1337]
+      tensor_shape: [343, 54, 54, 1332]
       observed_share: 0.6747131539270617
       celltypes:
       - B cells
@@ -1528,7 +1505,7 @@ files:
       elbow_rank: 3
       fit:
         init: random
-        best_of_runs_seed: 46
+        best_of_runs_seed: 44
       n_iter_max: 1000
       tol: 1.0e-12
       device: null
@@ -1537,5 +1514,5 @@ files:
         tensorly''s non_negative_parafac with its fill-in, MTTKRP and error built in sample-row
         blocks (same values; different summation order), because tensorly''s own does not
         fit in 24 GB on this tensor'
-    git_sha: 87de92d8fb8a9044f14c93381965f82528f53e1e
-    generated: '2026-11-14T15:07:03+00:00'
+    git_sha: 9c938632496251cd077bc8032f480d2164461584
+    generated: '2026-11-19T21:34:39+00:00'

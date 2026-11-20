@@ -56,7 +56,7 @@ To resolve the IBD enteroendocrine (EE), enterochromaffin (EC), and tuft cells, 
 ### Construction of the Aligned 4D Communication Tensor
 
 From the eigen-states that RISE produces, CCC scores were calculated for all relevant LR pairs in each condition, with each pair of eigen-states as sender and receiver.
-LR pairs were obtained from the human CellChatDB resource of 1,938 annotated interactions, including multimeric complexes\ [@doi:10.1038/s41467-021-21246-9].
+LR pairs were obtained from the human CellChatDB resource of 1,933 annotated interactions, including multimeric complexes\ [@doi:10.1038/s41467-021-21246-9].
 Pairs were retained only if every ligand and receptor subunit gene was present in the expression data, and the expression of a multimeric complex was taken as the minimum expression of its subunits.
 After filtering, we identified a small set of LR interactions defined in CellChatDB that were known to occur within single cells and not between cells, which were not relevant in the context of inter-cellular communication.
 We therefore systematically evaluated every gene in the database using a keyword search on their UniProt subcellular localization descriptions, which yielded a list of possible intra-cellular-acting genes/proteins [@doi:10.1093/nar/gkae1010].
@@ -290,17 +290,17 @@ Comparator condition loadings were tested for association as in Clinical Associa
 **Pseudobulk CPD.** Each entry was the product of mean ligand expression in the sender and mean receptor expression in the receiver, with cell types absent from a sample set to zero.
 CPD was fit and its rank selected as for CCC-RISE, so pseudobulk CPD differed from CCC-RISE only in the tensor it decomposed.
 Ranks were swept up to 15 on fine labels in both cohorts, and up to the number of cell types on coarse labels.
-The selected ranks were 4 (coarse) and 5 (fine) on ALAD and 6 and 5 on IBD.
+The selected ranks were 4 (coarse) and 5 (fine) on ALAD and 5 and 5 on IBD.
 
 **Tensor-cell2cell.** Each gene's expression was the fraction of a cell type's cells detecting it, and each entry was the mean of the ligand and receptor values\ [@doi:10.1038/s41467-022-31369-2].
-Non-negative CPD was fit from 10 random starts at each rank up to 25 (coarse) and 15 (fine) on ALAD and 15 on IBD, and the rank was taken at the Kneedle elbow of the mean error, giving 10 and 5 on ALAD and 3 and 3 on IBD.
-A start's congruence was the largest absolute product of the cosines between two of its components over the four modes.
+Non-negative CPD was fit from 10 random starts at each rank up to 25 (coarse) and 15 (fine) on ALAD and 15 on IBD, and the rank was taken at the Kneedle elbow of the mean error, giving 9 and 5 on ALAD and 3 and 3 on IBD.
+A start's congruence was the largest absolute product, over the four modes, of the cosines between two of its components.
 We departed from the published analysis in four ways, each meant to let the method perform at its best: we kept every cell type and masked absent entries, where the published analysis keeps only cell types present in every sample; took the rank from Kneedle rather than by eye; kept the lowest-error start; and ran up to 1,000 iterations at a tolerance of 10^−12^ rather than 100 at 10^−6^.
 
 **STACCato.** Entries were pseudobulk products with the default filters of LIANA, as in the authors' pipeline\ [@doi:10.1016/j.ajhg.2026.05.005; @doi:10.1038/s41467-022-30755-0].
 We kept every cell type, where the authors keep those present in at least 80% of samples, and set absent entries to zero.
 An unsupervised Tucker decomposition, without a sample covariate, was fit with a Python re-implementation of the authors' algorithm, using the default stopping settings of the authors' paper and code; on the same input tensors, it matched the authors' R scripts numerically.
-Each mode kept the components with more than 1% of the eigenvalue share of its unfolding, giving 16 and 14 LR columns on ALAD and 5 and 12 on IBD.
+Each mode kept the components with more than 1% of the eigenvalue share of its unfolding, giving 16 and 15 LR columns on ALAD and 5 and 12 on IBD.
 
 **Matching components to LR columns.** A CCC-RISE component's match to an LR column was the cos^2^ of their LR pair loadings over CCC-RISE's LR pairs.
 A component's best-match cos^2^ was its largest cos^2^ with any LR column of any comparator fit, and across the 11 components of both cohorts it was compared with the component's number of top LR pairs by a two-sided Spearman correlation.

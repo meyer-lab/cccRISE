@@ -42,11 +42,12 @@ imputation_options:
   l2_reg: 0.1
 imputation_dtype: float64
 compare_ridge: false
+ridge_dtype: float64
 random_state: 42
 files:
   sweep: cpd_rank_ibd.parquet
   start_fms: cpd_start_fms_ibd.parquet
-interaction_tensor_shape: [343, 60, 60, 1337]
+interaction_tensor_shape: [343, 60, 60, 1332]
 complex_sep: '&'
 communication_score: expression_product
 hill_k: 0.5
@@ -54,8 +55,8 @@ resulting_dims:
   conditions: 343
   genes: 23355
   cells: 634534
-  lr_pairs: 1255
-lr_pairs_annotated: 2005
+  lr_pairs: 1337
+lr_pairs_annotated: 1938
 r2x_pf2: 0.03451037029778936
-git_sha: b7ff60760babebe9d4569735723092a41edb7d71-dirty
-generated: '2026-11-14T01:59:53+00:00'
+git_sha: d493bc1f97b61edc196c252bcd1f07a60078d3c2
+generated: '2026-11-19T04:02:31+00:00'
