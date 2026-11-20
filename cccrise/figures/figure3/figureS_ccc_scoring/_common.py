@@ -37,8 +37,6 @@ SCORE_LABELS = {
     "expression_gmean": "Geometric mean",
     "expression_hill": "Hill",
 }
-#: Short per-score tick labels, in `ALL_SCORES` order.
-METHOD_TICKS = [SCORE_LABELS[m].replace("Geometric mean", "Gmean") for m in ALL_SCORES]
 #: Tool each score comes from; geometric mean has no single source.
 SCORE_SOURCES = {
     "expression_product": "CCC-RISE",

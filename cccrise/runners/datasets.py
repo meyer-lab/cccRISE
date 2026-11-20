@@ -230,9 +230,6 @@ class DatasetSpec:
     def stability_filename(self) -> str:
         return f"component_stability_{self.output_key}.parquet"
 
-    def alt_score_jackknife_filename(self) -> str:
-        return f"alt_score_jackknife_{self.output_key}.parquet"
-
     def significance_lr_filename(self) -> str:
         return f"significance_lr_{self.output_key}.parquet"
 

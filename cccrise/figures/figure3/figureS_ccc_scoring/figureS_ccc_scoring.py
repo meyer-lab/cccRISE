@@ -1,7 +1,6 @@
 """Supplementary figure: CCC-RISE across the four communication scores --
-how closely each alternate score's CP components match the default's, how
-stable each score's fit is under the jackknife, and what each component
-represents under each score."""
+how closely each alternate score's CP components match the default's, and
+what each component represents under each score."""
 
 from string import ascii_uppercase
 
@@ -10,16 +9,15 @@ from matplotlib.transforms import Bbox
 
 from ... import common, style
 from . import _common as S
-from . import factor_match, interpretation, jackknife
+from . import factor_match, interpretation
 
 PANELS = {
     "factor_match": factor_match,
-    "jackknife": jackknife,
     "interpretation": interpretation,
 }
 LAYOUT = [
-    ["factor_match", "factor_match", "jackknife"],
-    ["interpretation"] * 3,
+    ["factor_match"],
+    ["interpretation"],
 ]
 # mm per row; the interpretation grid needs ~30 mm per CP component.
 ROW_HEIGHTS = [52, 188]
