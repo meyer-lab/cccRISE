@@ -125,7 +125,7 @@ files:
     generated: '2026-11-19T21:35:50+00:00'
   covariation_alad.parquet:
     sha256: d490761e0c1bc86fb9471ca626519c1a5d946486a69538bfd2d92f20585b7a0f
-    command: uv run cccrise-comparator-scores --dataset alad
+    command: uv run cccrise-comparator-scores --dataset alad --tables covariation covariation_draws
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
     source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
@@ -145,10 +145,10 @@ files:
       TC2C fine: 70a4360e920af7c83337d75cec9f78bd87cb2583fef9ff73767ab76cd9a74abc
       STAC coarse: ae31463d41b7897855cdd168a42af119bb6c13009e4f6c210525d8bbdce548cd
       STAC fine: 3e3dedfd1ab209b4ee4a5099b1a20c39746c7c6a62621d19742f5b21ade9ea14
-    git_sha: 9c938632496251cd077bc8032f480d2164461584
-    generated: '2026-11-19T18:33:11+00:00'
+    git_sha: a08b5de6e04f942f366b3cec99e29760a5159452
+    generated: '2026-11-20T01:48:42+00:00'
   covariation_draws_alad.parquet:
-    sha256: 1c1b450fc7a8b5199d917a2fe482b107e3647238786a41f7e4441fe3c89f092e
+    sha256: d3102269a37afb25bba1ca8a9cde6c61e5d00f0b26dabc9f33c5c21e8cb1428a
     command: uv run cccrise-comparator-scores --dataset alad --tables covariation covariation_draws
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -163,14 +163,14 @@ files:
     group_key: ALADstatus
     labelling: coarse and fine
     fit_sha256:
-      PB coarse: a0b6a48e5f9c37a3f104e3a71f06f6dbaee603d59de4072d582647846936df62
-      PB fine: 6a424aa8baf12a39aa7be13ac39f81bc1355155c51453567e82200b4b8a417c4
-      TC2C coarse: 6bd1c969073db523fa75899b97a8f8e424fe451974017b72a64aab9b7b1a7bd5
-      TC2C fine: 8a24f9309355bdbd4df964f159432af00221e63bcfb4b2419dc2ff0408ca3529
-      STAC coarse: 5c28e9451a77174b4ecf559da2d99a92b2bad0daef58dd6019aaf89daf447c35
-      STAC fine: b4593d295824cfce63d34faa4fc5f491ee5f9efd2fa3bedd76a1daee22c2da99
-    git_sha: c1cc84746fd4fe581593725f3a54ee247fe7d2fa
-    generated: '2026-11-17T22:52:02+00:00'
+      PB coarse: 15c9c7946862369e2df539cbfd34ffc1ddb6eb1048a8a6d5d8d8e4c407bfb893
+      PB fine: 457fe178e969b8f65f23e71716394b8bc1209751c262a3cc0223fbfddc4eabb3
+      TC2C coarse: a75245740fd700f6a36f5120c4e7fb76c85c3a65cd2f2d4a68bb54fc67daaa2a
+      TC2C fine: 70a4360e920af7c83337d75cec9f78bd87cb2583fef9ff73767ab76cd9a74abc
+      STAC coarse: ae31463d41b7897855cdd168a42af119bb6c13009e4f6c210525d8bbdce548cd
+      STAC fine: 3e3dedfd1ab209b4ee4a5099b1a20c39746c7c6a62621d19742f5b21ade9ea14
+    git_sha: a08b5de6e04f942f366b3cec99e29760a5159452
+    generated: '2026-11-20T01:48:42+00:00'
   depth_alad.parquet:
     sha256: 45622cf39c7b7bf1bad2022e0505eb7d33f7d3e495b014ba31521602eb7316f2
     command: uv run cccrise-comparator-scores --dataset alad
