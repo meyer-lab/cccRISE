@@ -30,7 +30,7 @@ cp_fit_options:
   init: svd
   svd: randomized_svd
   normalize_factors: true
-r2x_pf2: 0.031514499111503946
-r2x_cp: 0.29937142731505473
-git_sha: d3d45ac7f0279137224a2faefc886c232f90453f-dirty
-generated: '2026-11-19T21:13:40+00:00'
+r2x_pf2: 0.03151473989314568
+r2x_cp: 0.2994474610279195
+git_sha: d493bc1f97b61edc196c252bcd1f07a60078d3c2
+generated: '2026-11-19T03:13:03+00:00'

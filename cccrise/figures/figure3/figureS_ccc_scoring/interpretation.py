@@ -14,6 +14,9 @@ from . import _common as S
 TOP_N_LR = 3
 #: Marker area (pt^2) of a dot with normalized loading magnitude 1.
 DOT_AREA = 40
+METHOD_TICKS = [
+    S.SCORE_LABELS[m].replace("Geometric mean", "Gmean") for m in S.ALL_SCORES
+]
 KINDS = ("lr", "sender", "receiver")
 
 
@@ -71,7 +74,7 @@ def _draw_heatmap(ax, table: pd.DataFrame) -> None:
 
 def _finish(ax, table: pd.DataFrame) -> None:
     ax.set_yticks(range(len(table)), table.index, fontsize=style.FONT_SIZE_DENSE)
-    ax.set_xticks(range(table.shape[1]), S.METHOD_TICKS, fontsize=style.FONT_SIZE_DENSE)
+    ax.set_xticks(range(table.shape[1]), METHOD_TICKS, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlim(-0.5, table.shape[1] - 0.5)
 
 
