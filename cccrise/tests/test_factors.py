@@ -169,7 +169,7 @@ def test_calculate_interaction_tensor():
 def test_import_ligand_receptor_pairs():
     df = import_ligand_receptor_pairs()
     assert isinstance(df, pd.DataFrame)
-    assert len(df) == 1938
+    assert len(df) == 1933
     assert df["ligand"].dtype.name == "category"
     assert df["receptor"].dtype.name == "category"
     assert df["pathway_name"].dtype.name == "category"

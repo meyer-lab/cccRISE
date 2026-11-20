@@ -31,15 +31,15 @@ cp_dtype: float32
 communication_score: expression_product
 hill_k: 0.5
 pacmap_embedding: true
-lr_pairs_annotated: 1938
+lr_pairs_annotated: 1933
 resulting_dims:
   conditions: 47
   genes: 16675
   cells: 51273
-  lr_pairs: 575
-interaction_tensor_shape: [47, 17, 17, 575]
+  lr_pairs: 570
+interaction_tensor_shape: [47, 17, 17, 570]
 r2x_pf2: 0.031514619604229965
-r2x_cp: 0.5999354677383518
+r2x_cp: 0.5322778411027964
 rank_selection:
   rise:
     rank: 17
@@ -49,7 +49,14 @@ rank_selection:
   cpd:
     rank: 6
     sweep_file: cccrise/data/rank_selection_results/cpd_rank_alad.parquet
-    notes: 'CP 6 on the human CellChatDB v1 (HLA-containing) tensor; all 10/10 seeded starts
-      reach the most-reached minimum (CP 7: 8/10; CP 8 LR mode collinear, max |cos| 0.962)'
-git_sha: 4db094f9271cd8956ce14a447574fdd1183298c6-dirty
-generated: '2026-11-14T04:12:29+00:00'
+    notes: 'CP 6 on the clean human CellChatDB v1 tensor (570 pairs): the LR mode is first
+      collinear at rank 8 (worst start max |cos| 0.962) and CP 6 is the largest rank before
+      it whose starts all reach one minimum (10/10; CP 7: 6/10); starts-only sweep, ranks
+      1-17, 10 seeded SVD starts, GPU float32'
+generated_by: 'scratchpad/lr_clean/cp_refit.py (not in the repo): ccc_rise.fit_ccc_cp (seed
+  42, SVD start, float32, the CPD sweep''s production start) on the communication tensor rebuilt
+  from cccrise/data/Human-2020-Jin-LR-pairs.parquet and the RISE fit stored here, which it
+  keeps (RISE does not read the LR list; RISE fields above are that fit''s; the stored PaCMAP
+  embedding of the RISE projections is carried over).'
+git_sha: 74835e950c2f4007ab0e0f000262bb9876b82465-dirty
+generated: '2026-11-19T03:03:49+00:00'
