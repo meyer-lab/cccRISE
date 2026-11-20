@@ -29,4 +29,6 @@ LAYOUT = [
 
 
 def makeFigure():
-    return common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
+    fig = common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
+    common.match_row_extent(fig, "eigenstate_heatmap", "factors", "genes")
+    return fig

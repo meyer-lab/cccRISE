@@ -14,9 +14,9 @@ import pandas as pd
 from ....anova import run_multiple_factors_anova
 from ... import common
 from .. import _common as S
-from ._common import save_association_data
+from ._common import save_association_data, short_names
 
-AXES = ("rect",)
+AXES = ("square",)
 
 
 def plot(axs):
@@ -36,7 +36,7 @@ def draw(ax, table: pd.DataFrame) -> None:
     """The covariate x association eta-squared heatmap, starred at
     uncorrected p < 0.05."""
     common.plot_association_heatmap(
-        table, ax, xlabel="Covariate", p_column="P", p_label="p"
+        short_names(table), ax, xlabel="Covariate", p_column="P", p_label="p"
     )
     ax.tick_params(axis="x", rotation=45)
     for label in ax.get_xticklabels():

@@ -13,7 +13,7 @@ AXES = ("fig5_best",)
 
 
 def plot(axs):
-    best_column_grid(axs[0], ("alad",))
+    best_column_grid(axs[0], ("alad",), bars=False)
     colorbar_beneath(axs[0], COS2_LABEL)
 
 

@@ -20,7 +20,7 @@ from .. import _common as S
 from ._common import save_association_data
 from .lineage_proportions import ordered_lineages, proportions
 
-AXES = ("wide",)
+AXES = ("double_rect",)
 
 
 def plot(axs):

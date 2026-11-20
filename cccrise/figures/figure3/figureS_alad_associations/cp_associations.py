@@ -7,7 +7,7 @@ import pandas as pd
 from ....utils import correct_conditions
 from ... import common
 from .. import _common as S
-from ._common import save_association_data
+from ._common import save_association_data, short_names
 
 AXES = ("rect",)
 
@@ -15,7 +15,7 @@ AXES = ("rect",)
 def plot(axs):
     (ax,) = axs
     table = S.association_table()
-    common.plot_association_heatmap(table, ax)
+    common.plot_association_heatmap(short_names(table), ax)
     loadings = correct_conditions(S.factors_adata())
     save_association_data(
         table,

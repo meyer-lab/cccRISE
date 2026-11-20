@@ -15,11 +15,9 @@ from . import (
 )
 
 LAYOUT = [
-    [celltype_proportions],
-    [cp_associations],
+    [celltype_proportions, cp_associations],
     [rise_associations],
-    [covariates],
-    [effect_size_distributions, significant_fraction],
+    [covariates, effect_size_distributions, significant_fraction],
 ]
 
 

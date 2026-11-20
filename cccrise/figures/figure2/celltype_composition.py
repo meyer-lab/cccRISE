@@ -44,7 +44,6 @@ def plot(axs):
     ax.invert_yaxis()
     ax.set_xlim(0, 1)
     ax.set_xlabel("Fraction of cells")
-    ax.tick_params(axis="y", length=0)
     common.legend(
         ax,
         "right",

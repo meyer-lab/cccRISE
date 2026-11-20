@@ -10,7 +10,7 @@ from ....factors import load_factors_netcdf
 from ....utils import correct_conditions
 from ... import common
 from .. import _common as S
-from ._common import save_association_data
+from ._common import save_association_data, short_names
 
 AXES = ("wide",)
 
@@ -18,7 +18,7 @@ AXES = ("wide",)
 def plot(axs):
     (ax,) = axs
     table = S.rise_association_table()
-    common.plot_association_heatmap(table, ax, xlabel="RISE component")
+    common.plot_association_heatmap(short_names(table), ax, xlabel="RISE component")
     # The read-depth-corrected pf2_A that `S.rise_association_table` tests
     adata = copy.copy(S.factors_adata())
     pf2_A = load_factors_netcdf(S.SPEC.factors_path())["pf2_A"].values

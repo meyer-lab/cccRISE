@@ -22,6 +22,19 @@ TABLE_COLUMNS = [
 ]
 
 
+#: Row label abbreviations, so a heatmap shares a row with another panel
+SHORT_NAMES = {" (All)": "", "6-Month": "6-Mo.", "1-Year": "1-Yr."}
+
+
+def short_names(table: pd.DataFrame) -> pd.DataFrame:
+    """`table` with its associations' names shortened (`SHORT_NAMES`) for row
+    labels."""
+    names = table["Association"]
+    for old, new in SHORT_NAMES.items():
+        names = names.str.replace(old, new, regex=False)
+    return table.assign(Association=names)
+
+
 def save_association_data(
     table: pd.DataFrame,
     values,

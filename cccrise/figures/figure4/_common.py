@@ -383,11 +383,14 @@ def dotplot(
 
 
 def map_axes(
-    ax, title: str | None = None, xlabel: str = f"PaCMAP 1 ({ZOOM_NOTE})"
+    ax,
+    title: str | None = None,
+    xlabel: str = f"PaCMAP 1 ({ZOOM_NOTE})",
+    xlabel_size: float = common.style.FONT_SIZE_DENSE,
 ) -> None:
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_xlabel(xlabel, fontsize=common.style.FONT_SIZE_DENSE)
+    ax.set_xlabel(xlabel, fontsize=xlabel_size)
     ax.set_ylabel("PaCMAP 2")
     if title:
         # y fixed: a colorbar spanning stacked maps would push an auto title up

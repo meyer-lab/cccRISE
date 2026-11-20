@@ -202,6 +202,10 @@ def plot_ranked_loadings(
     ax.set_xlim(0, len(order) + 1)
 
 
+# The most the column of ranked-head names fits without crowding
+RANKED_LABEL_SIZE = 5.5
+
+
 def label_ranked_head(
     ax: plt.Axes,
     loadings: np.ndarray,
@@ -223,7 +227,7 @@ def label_ranked_head(
             y,
             str(names[i]),
             va="center",
-            fontsize=common.FACTOR_LABEL_FONT_SIZE,
+            fontsize=RANKED_LABEL_SIZE,
         )
         for y, i in zip(heights, top, strict=True)
     ]

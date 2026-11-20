@@ -19,7 +19,10 @@ STATUS_COLORS = dict(
     zip(("control", "declined", "recovered"), style.CATEGORICAL, strict=False)
 )
 Y_TICKS = [0, 0.01, 0.05, 0.1, 0.25, 0.5, 1]
-AXES = ("full",)
+AXES = ("half",)
+Y_TOP = 1.3  # room above a fraction of 1 for the q values
+Q_Y = 0.98  # axes fraction: the q values, just under the top
+KEY_TOP = 0.9  # axes fraction: the legend, under the q values
 
 
 def proportions() -> pd.DataFrame:
@@ -74,7 +77,7 @@ def draw(
 ) -> None:
     """Per-sample fraction of each of `celltypes` (`df` columns) by "Status"
     (`colors`' keys, in order; legend `labels`), square-root scaled, each
-    cell type's `q` above it. `vertical` turns the cell type names and the q
+    cell type's `q` (inside the axes' top, the legend under them). `vertical` turns the cell type names and the q
     values on their side, for many cell types."""
     shared: dict[str, Any] = {
         "data": df.melt(id_vars="Status", var_name="Cell type", value_name="Fraction"),
@@ -107,20 +110,20 @@ def draw(
     # Square-root scale, so the minor cell types are not flattened by the major
     ax.set_yscale("function", functions=(np.sqrt, np.square))
     ax.set_yticks(Y_TICKS, [f"{t:g}" for t in Y_TICKS])
-    ax.set_ylim(0, 1)
+    ax.set_ylim(0, Y_TOP)
     _label_celltypes(ax, celltypes, q, vertical)
     handles, _ = ax.get_legend_handles_labels()
-    common.legend(
-        ax,
-        "above",
+    ax.legend(
         handles=handles,
         labels=[labels[s] for s in colors],
-        ncols=len(colors),
+        loc="upper right",
+        bbox_to_anchor=(1, KEY_TOP),
     )
 
 
 def _label_celltypes(ax, celltypes: list[str], q: np.ndarray, vertical: bool) -> None:
-    """Name each cell type below its boxes and write its q above them."""
+    """Name each cell type below its boxes and write its q just under the
+    axes' top."""
     if vertical:
         ax.set_xticks(
             range(len(celltypes)),
@@ -130,7 +133,11 @@ def _label_celltypes(ax, celltypes: list[str], q: np.ndarray, vertical: bool) ->
         )
     else:
         ax.set_xticks(
-            range(len(celltypes)), ["\n".join(c.rsplit(" ", 1)) for c in celltypes]
+            range(len(celltypes)),
+            celltypes,
+            rotation=40,
+            ha="right",
+            rotation_mode="anchor",
         )
     ax.set_xlabel("")
     ax.set_ylabel("Fraction of cells")
@@ -138,11 +145,11 @@ def _label_celltypes(ax, celltypes: list[str], q: np.ndarray, vertical: bool) ->
     for x, value in enumerate(q):
         ax.text(
             x,
-            1,
-            f"{value:.2g}" if vertical else f"q = {value:.2g}",
+            Q_Y,
+            f"{value:.2g}",
             transform=top,
             ha="center",
-            va="bottom",
+            va="top",
             rotation=90 if vertical else 0,
             fontsize=style.FONT_SIZE_DENSE,
             fontweight="bold" if vertical and value < common.SIG_ALPHA else "normal",

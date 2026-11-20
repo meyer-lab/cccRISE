@@ -30,6 +30,7 @@ AXES = ("square",)
 # left, and spread vertically by adjustText
 LABEL_X = -0.3
 LABEL_GAP = 0.1  # between a label and the start of its leader line
+LABEL_TOP = 0.9  # highest label, as a fraction of the highest point
 
 
 def plot(axs):
@@ -66,21 +67,21 @@ def plot(axs):
             *(np.concatenate(v) for v in zip(*others, strict=True)),
             style.POINT_SIZE,
             style.COLORS["muted"],
-            "Other cmps.",
+            f"Other cmps. top {N_SHOWN}",
         ),
         (
             x[N_TOP:],
             y[N_TOP:],
             style.POINT_SIZE,
             style.COLORS["ink"],
-            f"Cmp. {COMPONENT}, {N_TOP + 1}–{N_SHOWN}",
+            f"Cmp. {COMPONENT} {N_TOP + 1}–{N_SHOWN}",
         ),
         (
             x[:N_TOP],
             y[:N_TOP],
             style.POINT_SIZE_FOREGROUND,
             style.COLORS["emphasis"],
-            f"Cmp. {COMPONENT}, 1–{N_TOP}",
+            f"Cmp. {COMPONENT} top {N_TOP}",
         ),
     ]
     for tx, ty, size, color, label in tiers:
@@ -98,13 +99,12 @@ def plot(axs):
         xlabel=f"log$_2$(mean score ratio)\n{CASE_DISPLAY} ÷ {CONTROL_DISPLAY}",
         ylabel="−log$_{10}$(permutation p)",
     )
-    common.legend(
+    other, rest, top = ax.get_legend_handles_labels()[0]
+    common.stacked_legend(
         ax,
-        "above",
-        ncols=2,
-        title=f"Top {N_SHOWN} LR pairs by loading",
-        fontsize=style.FONT_SIZE_DENSE,
-        title_fontsize=style.FONT_SIZE_DENSE,
+        [[top, rest], [other]],
+        columnspacing=0.5,
+        handletextpad=0.1,
     )
 
 
@@ -126,11 +126,14 @@ def label_significant(
     all_y: np.ndarray,
 ) -> None:
     """Name the points above the p = 0.05 line in a column left of them, in
-    their vertical order, evenly spaced and kept clear of every plotted point
+    their vertical order, evenly spaced from `LABEL_TOP` of the highest point
+    down to the line and kept clear of every plotted point
     (`all_x`, `all_y`) by adjustText, each joined to its point."""
     shown = np.flatnonzero(y > -np.log10(common.SIG_ALPHA))
     shown = shown[np.argsort(-y[shown])]
-    heights = np.linspace(y[shown[0]], -np.log10(common.SIG_ALPHA), len(shown))
+    heights = np.linspace(
+        LABEL_TOP * all_y.max(), -np.log10(common.SIG_ALPHA), len(shown)
+    )
     texts = [
         ax.text(
             LABEL_X,
@@ -138,7 +141,7 @@ def label_significant(
             names[i],
             ha="right",
             va="center",
-            fontsize=common.FACTOR_LABEL_FONT_SIZE,
+            fontsize=style.FONT_SIZE_DENSE,
         )
         for h, i in zip(heights, shown, strict=True)
     ]

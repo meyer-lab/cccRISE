@@ -51,7 +51,6 @@ def plot(axs):
         [f"C{k}\n{top_pair(k)}" for k in (3, 4)],
         fontsize=style.FONT_SIZE_DENSE,
     )
-    ax.tick_params(length=0)
 
 
 def top_pair(k: int) -> str:

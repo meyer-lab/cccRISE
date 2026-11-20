@@ -53,10 +53,7 @@ def plot(axs):
     points = common.plot_value_scatter(axs[1], x[inside], y[inside], projection[inside])
     points.set_sizes([style.POINT_SIZE_BACKGROUND])
     axs[1].set(xlim=(box[0], box[0] + box[2]), ylim=(box[1], box[1] + box[3]))
-    map_axes(axs[1], xlabel=ZOOM_XLABEL)
-    for spine in axs[1].spines.values():
-        spine.set(visible=True, linestyle=style.LINE_STYLE_REFERENCE)
-        spine.set_edgecolor(style.COLORS["reference"])
+    map_axes(axs[1], xlabel=ZOOM_XLABEL, xlabel_size=style.FONT_SIZE_LABEL)
     common.colorbar(axs[1], points, f"Eigen-state {EIGENSTATE} projection")
     common.source_data(
         "pacmap_celltype_eigenstate",
@@ -91,12 +88,11 @@ def _celltype_scatter(ax, x, y, celltypes) -> None:
         linewidths=0,
         rasterized=True,
     )
-    map_axes(ax, xlabel="PaCMAP 1")
+    map_axes(ax, xlabel="PaCMAP 1", xlabel_size=style.FONT_SIZE_LABEL)
     common.legend(
         ax,
         "right",
         handles=common.celltype_handles(DATASET),
-        fontsize=style.FONT_SIZE_DENSE,
     )
 
 

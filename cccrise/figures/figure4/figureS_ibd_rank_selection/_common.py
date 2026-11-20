@@ -1,5 +1,5 @@
-"""The IBD RISE factor matrices' component axis: 60 components, labeled
-every `TICK_STEP`."""
+"""The IBD RISE component axis (factor matrices, eigenstate heatmap): 60
+components, labeled every `TICK_STEP`."""
 
 TICK_STEP = 10
 

@@ -7,7 +7,6 @@ from .. import common, style
 
 DATASET = "alad"
 AXES = ("square", "square", "square")
-RANK_LINE_TOP = 0.5  # axes fraction, below the collinearity key
 
 
 def plot(axs):
@@ -31,11 +30,11 @@ def plot(axs):
         "fold split (with its seed); plotted as mean +/- SD over repeats.",
         part=0,
     )
-    # A narrow key fits above the low-rank starts, the rank line stopping below it
+    # A narrow key fits right of the low-collinearity ranks
     common.plot_collinearity_boxes(
-        axs[1], DATASET, part=1, wrap_key=True, key_loc="upper left"
+        axs[1], DATASET, part=1, wrap_key=True, key_loc="center right"
     )
-    common.mark_rank(axs[1], rank, top=RANK_LINE_TOP)
+    common.mark_rank(axs[1], rank)
     common.plot_minima(axs[2], DATASET, rank, part=2)
 
 
