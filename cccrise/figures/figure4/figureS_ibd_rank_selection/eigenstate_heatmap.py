@@ -11,6 +11,7 @@ import numpy as np
 from ... import common, style
 from .. import _common as S
 from ..figureS_ibd_hormone_axes import _common as H
+from ._common import component_ticks
 
 AXES = ("full_labeled",)
 
@@ -36,12 +37,9 @@ def plot(axs):
         vmax=limit,
         aspect="auto",
     )
-    ax.set_xticks(
-        range(mean.shape[1]), mean.columns, rotation=90, fontsize=style.FONT_SIZE_DENSE
-    )
+    component_ticks(ax, mean.shape[1])
     ax.set_yticks(range(len(mean)), mean.index, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlabel("RISE eigen-state")
-    ax.tick_params(length=0)
     common.colorbar(ax, image, "Mean projection")
 
 

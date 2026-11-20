@@ -37,6 +37,11 @@ LINE_WIDTH = 1.0  # data lines
 LINE_WIDTH_THIN = 0.5  # axes, ticks, box outlines, reference lines
 LINE_STYLE_REFERENCE = "--"  # null, chance, and threshold lines
 TICK_LENGTH = 2.5
+# The axes box: light grey, heavier than the (black) ticks
+BOX_COLOR = "0.8"
+BOX_LINE_WIDTH = 2 * LINE_WIDTH_THIN
+# Lines spacing groups apart within an axes: the box's grey, thin
+SPACER = {"color": BOX_COLOR, "linewidth": LINE_WIDTH_THIN}
 
 ## Markers
 MARKER_SIZE = 3  # `plot(marker=...)` markersize, pt
@@ -251,9 +256,10 @@ def apply_style() -> None:
             "pdf.fonttype": 42,
             "axes.titlesize": FONT_SIZE_TITLE,
             "axes.labelsize": FONT_SIZE_LABEL,
-            "axes.linewidth": LINE_WIDTH_THIN,
-            "axes.spines.top": False,
-            "axes.spines.right": False,
+            "axes.linewidth": BOX_LINE_WIDTH,
+            "axes.edgecolor": BOX_COLOR,
+            "axes.spines.top": True,
+            "axes.spines.right": True,
             "axes.grid": False,
             "axes.prop_cycle": plt.cycler(color=CATEGORICAL),
             "figure.titlesize": FONT_SIZE_PANEL_LABEL,

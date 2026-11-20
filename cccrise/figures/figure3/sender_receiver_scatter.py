@@ -9,7 +9,7 @@ lymphocyte blow-up's scale, with the R² between them across all cells."""
 import numpy as np
 import pandas as pd
 
-from .. import common, style
+from .. import common
 from ._common import COMPONENT, DATASET, EIGENSTATE, SPEC
 from .celltype_pacmap import projection_limit
 
@@ -49,7 +49,6 @@ def plot(axs):
         transform=ax.transAxes,
         ha="left",
         va="top",
-        fontsize=style.FONT_SIZE_DENSE,
     )
     ax.set(
         xlabel=f"Cmp. {COMPONENT} sender weight",

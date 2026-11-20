@@ -68,9 +68,7 @@ def _cell(ax, x: float, y: float, value: float, text: bool = False) -> None:
 
 
 def _clean_heatmap(ax) -> None:
-    ax.tick_params(length=0, pad=1.5)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
+    ax.tick_params(pad=1.5)
 
 
 def _cohort_labels(ax, centers: dict) -> None:
@@ -100,10 +98,11 @@ def _cohort_labels(ax, centers: dict) -> None:
         )
 
 
-def fit_grid(ax, grids: dict[str, pd.DataFrame]) -> None:
+def fit_grid(ax, grids: dict[str, pd.DataFrame], bars: bool = True) -> None:
     """A components-by-fits heatmap with values, each cohort's components
     (`grids`, indexed by component, columns (method, labelling)) under the
-    last, fits in `FITS` order, method names above and cohort bars right."""
+    last, fits in `FITS` order, method names above and (if `bars`) cohort bars
+    right."""
     y, ticks, names, centers = 0.0, [], [], {}
     for dataset, grid in grids.items():
         centers[dataset] = y + np.arange(len(grid)) + 0.5
@@ -128,12 +127,14 @@ def fit_grid(ax, grids: dict[str, pd.DataFrame]) -> None:
             va="bottom",
             fontsize=style.FONT_SIZE_DENSE,
         )
-    _cohort_labels(ax, centers)
+    if bars:
+        _cohort_labels(ax, centers)
 
 
-def best_column_grid(ax, datasets=tuple(DATASET_LABELS)) -> None:
+def best_column_grid(ax, datasets=tuple(DATASET_LABELS), bars: bool = True) -> None:
     """Each program's best single column in each fit, the cohorts of
-    `datasets` one under another (ALAD over IBD); no colorbar."""
+    `datasets` one under another (ALAD over IBD); no colorbar. `bars` is
+    `fit_grid`'s."""
     t = pd.concat([best_columns(d).assign(Dataset=DATASET_LABELS[d]) for d in datasets])
     common.source_data(
         "program_best_column_cos2",
@@ -149,6 +150,7 @@ def best_column_grid(ax, datasets=tuple(DATASET_LABELS)) -> None:
             for dataset, label in DATASET_LABELS.items()
             if dataset in datasets
         },
+        bars,
     )
 
 

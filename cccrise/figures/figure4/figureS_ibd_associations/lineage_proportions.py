@@ -15,7 +15,7 @@ from ...figure3.figureS_alad_associations.celltype_proportions import (
 )
 from .. import _common as S
 
-AXES = ("full",)
+AXES = ("double_rect",)  # widened by `match_row_extent`
 
 
 def plot(axs):

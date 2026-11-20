@@ -126,20 +126,23 @@ def plot_volcano(ax, group: str, reference: str, labeled, lims=None) -> None:
     )
 
 
-def legend(ax) -> None:
-    """The volcanoes' shared color key, its title over one row of entries,
-    above `ax` (below its panel letter)."""
-    entries = {name(g).capitalize(): c for g, c in REFERENCE_COLORS.items()}
+def legend(ax, groups=tuple(REFERENCE_COLORS)) -> None:
+    """The volcanoes' color key for `groups`, one row of entries above `ax`
+    (below its panel letter)."""
+    entries = {name(g).capitalize(): REFERENCE_COLORS[g] for g in groups}
     entries["None"] = style.COLORS["muted"]
     handles = [
         Line2D([], [], ls="", marker="o", color=c, label=label)
         for label, c in entries.items()
     ]
-    legend = common.legend(
-        ax, "above", handles=handles, ncol=len(handles), title="Enriched in"
-    )
-    # Wider than the axes: hangs into the row's gaps rather than spreading the
-    # panels apart, its height kept by an empty title padded past it
+    hang_above(ax, handles=handles, labels=[h.get_label() for h in handles])
+
+
+def hang_above(ax, **kwargs) -> None:
+    """A one-row `common.legend` above `ax` (below its panel letter) that,
+    wider than the axes, hangs into the row's gaps rather than spreading the
+    panels apart, its height kept by an empty title padded past it."""
+    legend = common.legend(ax, "above", ncols=len(kwargs["handles"]), **kwargs)
     legend.set_in_layout(False)
     height = legend.get_window_extent().height / ax.figure.dpi + style.LEGEND_PAD
     ax.set_title(" ", pad=height * 72)

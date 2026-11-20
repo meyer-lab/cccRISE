@@ -38,7 +38,10 @@ ROW_GAP, BLOCK_STEP = 0.8, 1.55
 NAME_PAD = 0.1
 #: The cohort bar under the panel, below the last row's names (y units)
 BAR_DROP = 0.55
-NAME_SIZE = style.FONT_SIZE_DENSE - 2.8
+BORDER_DROP = 0.3  # the border's bottom, below the last row
+TOP = 0.3
+X_PAD = 0.05  # beyond the outermost dots, inside the border
+NAME_SIZE = 4.2  # pt: as large as the most crowded row allows
 LONE_SIZE = style.FONT_SIZE_DENSE - 1.5
 END_SIZE = style.FONT_SIZE_DENSE - 1
 #: A lone pair's name: offset from its dot (x, y units), on a leader line
@@ -169,40 +172,39 @@ def _lone(ax, block: Block, cos2: pd.DataFrame, xs, ys) -> None:
                 )
 
 
-def _row_labels(ax, block: Block, ys, method_name: bool) -> None:
-    """Each row's label left of the panel, and, if `method_name`, the method
-    left of those."""
-    labels = [
+def _row_labels(ax, rows: dict, method_names: bool) -> None:
+    """Each row's label as a y tick (`rows`: {block: its two rows' heights}),
+    and, if `method_names`, each method left of them."""
+    ax.set_xticks([])
+    ax.set_yticks(
+        [y for ys in rows.values() for y in ys],
+        [end for block in rows for end in block.ends],
+        fontsize=END_SIZE,
+    )
+    ax.spines[:].set_visible(False)  # `common.data_border` boxes the rows instead
+    if not method_names:
+        return
+    renderer = ax.figure.canvas.get_renderer()
+    width = max(t.get_window_extent(renderer).width for t in ax.get_yticklabels())
+    offset = style.TICK_LENGTH + 1.5 + width * 72 / ax.figure.dpi + 4  # pt
+    for block, ys in rows.items():
         ax.annotate(
-            end,
-            (0, y),
-            xytext=(-6, 0),
+            TITLES.get(block.method, block.method),
+            (0, np.mean(ys)),
+            xycoords=("axes fraction", "data"),
+            xytext=(-offset, 0),
             textcoords="offset points",
             ha="right",
             va="center",
-            fontsize=END_SIZE,
+            fontsize=style.FONT_SIZE_DENSE,
+            fontweight="bold",
         )
-        for end, y in zip(block.ends, ys, strict=True)
-    ]
-    if not method_name:
-        return
-    renderer = ax.figure.canvas.get_renderer()
-    width = max(t.get_window_extent(renderer).width for t in labels)
-    ax.annotate(
-        TITLES.get(block.method, block.method),
-        (0, np.mean(ys)),
-        xytext=(-10 - width * 72 / ax.figure.dpi, 0),
-        textcoords="offset points",
-        ha="right",
-        va="center",
-        fontsize=style.FONT_SIZE_DENSE,
-        fontweight="bold",
-    )
 
 
-def _block(ax, dataset: str, block: Block, cos2, y: float, method_name: bool):
+def _block(ax, dataset: str, block: Block, cos2, y: float) -> tuple[float, float]:
     """`block`'s left fit on row `y`, its right fit `ROW_GAP` below, joined
-    where cos^2 >= `FLOW_FROM`, line width growing with cos^2."""
+    where cos^2 >= `FLOW_FROM`, line width growing with cos^2; returns the
+    rows' heights."""
     (left, right), ys = (
         _positions(cos2, SWAPS.get((dataset, block.method))),
         (y, y - ROW_GAP),
@@ -223,13 +225,13 @@ def _block(ax, dataset: str, block: Block, cos2, y: float, method_name: bool):
     _row(ax, right, ys[1], cos2.columns, block.method, above=False)
     if block.method == "cccRISE":
         _lone(ax, block, cos2, (left, right), ys)
-    _row_labels(ax, block, ys, method_name)
+    return ys
 
 
 def _cohort_bar(ax, dataset: str, y: float) -> None:
     """The cohort's bar at `y` across the panel, its name under it."""
     ax.plot(
-        [-0.02, 1.02],
+        [-X_PAD, 1 + X_PAD],
         [y, y],
         color=DATASET_COLORS[dataset],
         lw=2.5,
@@ -267,7 +269,7 @@ def coarse_to_fine(ax, dataset: str, method_names: bool) -> None:
     pairs = lr_matrix(dataset, "cccRISE").index
     tables = {b: b.cos2(pairs) for b in blocks(dataset)}
     bottom = -BLOCK_STEP * (len(tables) - 1) - ROW_GAP
-    ax.set(xlim=(-0.02, 1.02), ylim=(bottom - BAR_DROP, 0.3))
+    ax.set(xlim=(-X_PAD, 1 + X_PAD), ylim=(bottom - BAR_DROP, TOP))
     common.source_data(
         f"lr_cos2_between_fits_{dataset}",
         pd.concat([_cos2_rows(b, t) for b, t in tables.items()], ignore_index=True),
@@ -276,7 +278,10 @@ def coarse_to_fine(ax, dataset: str, method_names: bool) -> None:
         "the reported fit's, on the reported fit's LR pairs; a line is drawn at "
         f"{FLOW_FROM} or more.",
     )
-    for i, (block, cos2) in enumerate(tables.items()):
-        _block(ax, dataset, block, cos2, -BLOCK_STEP * i, method_names)
-    ax.set_axis_off()
+    rows = {
+        block: _block(ax, dataset, block, cos2, -BLOCK_STEP * i)
+        for i, (block, cos2) in enumerate(tables.items())
+    }
+    _row_labels(ax, rows, method_names)
+    common.data_border(ax, bottom - BORDER_DROP, TOP)
     _cohort_bar(ax, dataset, bottom - BAR_DROP)

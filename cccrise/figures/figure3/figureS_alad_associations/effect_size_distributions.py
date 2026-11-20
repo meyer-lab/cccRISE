@@ -8,7 +8,7 @@ from ....validation.stability import JACKKNIFE_AXIS
 from ... import common, style
 from . import _anova_stability as S
 
-AXES = ("rect",)
+AXES = ("square",)
 
 
 def plot(axs):
@@ -28,7 +28,7 @@ def plot(axs):
     )
     reference = S.reference()
     S.reference_markers(ax, np.arange(len(reference)), reference["EtaSquared"])
-    ax.set_ylim(0, S.replicates()["EtaSquared"].max() * 1.2)  # legend headroom
+    ax.set_ylim(0, S.replicates()["EtaSquared"].max() * 1.4)  # legend headroom
     ax.set_xlabel("CPD component")
     outcome = common.OUTCOME_LABELS.get(S.outcome(), S.outcome())
     ax.set_ylabel(rf"Jackknife $\eta^2$" f"\n({outcome})")

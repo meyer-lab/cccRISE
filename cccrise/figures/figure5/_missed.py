@@ -262,7 +262,7 @@ def _bars(ax, dataset: str, value: str, ylabel: str) -> None:
         x += FIT_GAP
     ax.set(xlim=(-0.8, x - FIT_GAP + 0.2), ylim=(0, 1.04), yticks=[0, 0.5, 1])
     ax.set_xticks(ticks, names, rotation=90, fontsize=TEXT_SIZE - 0.5)
-    ax.tick_params(axis="x", length=0, pad=1)
+    ax.tick_params(axis="x", pad=1)
     ax.set_ylabel(ylabel)
     for name, at in heads.items():
         ax.text(
@@ -443,9 +443,6 @@ def contents(ax, dataset: str) -> None:
         rotation=90,
         fontsize=style.FONT_SIZE_DENSE - 1,
     )
-    ax.tick_params(length=0)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
     _mark(ax, rows, xs, significant(dataset), cccrise_pairs(dataset))
     _size_key(ax)
 

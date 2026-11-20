@@ -47,7 +47,7 @@ RISE enhances the core PARAFAC2 algorithm with key optimizations: $A$ was initia
 **CANDELINC compression.** Analyses requiring many RISE fits (bi-cross-validation, jackknife, and re-initialization, below) used CANDELINC compression; all other RISE fits were uncompressed\ [@{doi:10.1016/S0169-7439(98)00011-2}].
 During compressed fits, the gene space was restricted to an orthonormal basis of the leading $L = \max(2r, r + 20)$ right singular vectors of the stacked, centered, and slice-weighted data, computed with LOBPCG for 20 iterations.
 Each projected condition slice was further truncated to its leading $L$ left singular vectors, and RISE was fit to these compressed slices.
-Compressed fits reduced the gene expression space, but yielded nearly identical components to uncompressed fits.
+Compressed fits reduced the gene expression space but yielded nearly identical components to uncompressed fits.
 
 **Visualization.** PaCMAP was applied to the RISE projections of all cells concatenated across conditions to visualize cell-to-cell variation as an embedding\ [@arxiv:2012.04456].
 PaCMAP was run with its default parameters: two output dimensions, Euclidean distances, 10 nearest neighbors, mid-near and further pair ratios of 0.5 and 2, PCA initialization, and 450 iterations.
@@ -58,6 +58,9 @@ To resolve the IBD enteroendocrine (EE), enterochromaffin (EC), and tuft cells, 
 From the eigen-states that RISE produces, CCC scores were calculated for all relevant LR pairs in each condition, with each pair of eigen-states as sender and receiver.
 LR pairs were obtained from the human CellChatDB resource of 1,933 annotated interactions, including multimeric complexes\ [@doi:10.1038/s41467-021-21246-9].
 Pairs were retained only if every ligand and receptor subunit gene was present in the expression data, and the expression of a multimeric complex was taken as the minimum expression of its subunits.
+After filtering, we identified a small set of LR interactions defined in CellChatDB that were known to occur within single cells and not between cells, which were not relevant in the context of inter-cellular communication.
+We therefore systematically evaluated every gene in the database using a keyword search on their UniProt subcellular localization descriptions, which yielded a list of possible intra-cellular-acting genes/proteins [@doi:10.1093/nar/gkae1010].
+We manually inspected every resulting gene and narrowed the list down to five genes constituting five LR pairs known to interact within cells, which we subsequently removed: LCK--CD8A&CD8B, HLA-DMA--CD4, HLA-DMB--CD4, HLA-DOA--CD4, and HLA-DOB--CD4.
 
 **Eigen-state expression.** The expression of eigen-state $q$ in condition $i$ was the corresponding row of $P_{i}^{T}X_{\mathrm{sc},i} + \mathbf{1}\mu^{T}$, clipped at 0.
 The per-gene mean $\mu$ is added back because RISE fits centered data: $P_{i}^{T}X_{\mathrm{sc},i}$ alone is a deviation $\Delta$ from $\mu$ that can be negative.
@@ -183,7 +186,7 @@ Each sample's fraction of cells in each coarse cell type was compared across gro
 **Individual LR pair testing.** For a CPD component with sender and receiver eigen-state loadings $e$ and $f$, the score of LR pair $l$ in sample $i$ was $S_{l,i} = \sum_{s,t} \mathcal{X}_{i,s,t,l}\,e_{s}f_{t}$, where $\mathcal{X}_{i,s,t,l}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in sample $i$.
 Each analysis used one normalization of $S_{l,i}$: division by the sample's total normalized expression for individual associations and for the outcome-label permutation test (Significance Against Nulls); and none for co-variation.
 The total-expression correction applied to condition loadings (above) was not used for LR pair scores, as its trend is fit to the norm across all LR pairs at once and so couples the pairs' corrected scores.
-Each LR pair's normalized score was tested against outcome by one-way ANOVA, corrected across the 575 LR pairs.
+Each LR pair's normalized score was tested against outcome by one-way ANOVA, corrected across the 570 LR pairs.
 
 A set of top LR pairs was tested for co-variation across samples by the Spearman correlation of their uncorrected scores.
 LR pairs sharing a ligand or receptor gene, directly or through another pair, co-vary in part by construction and were first merged into one group by averaging their per-sample score ranks.
@@ -277,7 +280,7 @@ For comparison, the same index was computed over the components' top LR pairs be
 
 ### Comparator Methods
 
-**Common inputs.** Each comparator used CCC-RISE's normalized expression and CellChatDB LR pairs, and was fit on the coarse and the fine labels of each cohort (Data Processing).
+**Common inputs.** Each comparator used CCC-RISE's normalized expression and CellChatDB LR pairs and was fit on the coarse and the fine labels of each cohort (Data Processing).
 Each tensor had condition, sender cell type, receiver cell type, and LR pair modes, and we call one column of a fit's LR pair factor an LR column.
 For CPD fits, an LR column belongs to one component, which gives it condition, sender, and receiver loadings.
 For STACCato, each LR column's condition, sender, and receiver loadings were the leading left singular vectors of its core slice unfolded along each of those modes, mapped through the factor matrices of those modes.

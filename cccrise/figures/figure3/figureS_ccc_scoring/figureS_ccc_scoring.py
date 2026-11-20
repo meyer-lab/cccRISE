@@ -20,7 +20,8 @@ LAYOUT = [
     ["interpretation"],
 ]
 # mm per row; the interpretation grid needs ~30 mm per CP component.
-ROW_HEIGHTS = [52, 188]
+ROW_HEIGHTS = [46, 188]
+KEY_SPACE = 6  # mm between A-B's letters and axes, for the methods' legend
 # Panels whose second axes (and those right of it) get a letter of their own
 SPLIT_PANELS = {"factor_match", "interpretation"}
 
@@ -32,13 +33,41 @@ def makeFigure():
         PANELS,
         height_ratios=ROW_HEIGHTS,
     )
-    S.method_legend(fig)
     letters = iter(ascii_uppercase)
     for name, subfig in zip(PANELS, fig.subfigs, strict=True):
         subfig.texts[0].set_text(next(letters))
         if name in SPLIT_PANELS:
             _letter_beside(subfig, subfig.axes[1], next(letters))
+    _fit_match_row(fig)
     return fig
+
+
+def _fit_match_row(fig) -> None:
+    """With the layout frozen, A-B's axes narrowed to span from C's LR pair
+    axes' left to D's receiver axes' right, and lowered under the methods'
+    legend, which sits under their letters; A's letter kept left of its
+    labels."""
+    fig.draw_without_rendering()
+    fig.set_layout_engine("none")
+    top, bottom = fig.subfigs
+    a, b = top.axes[:2]
+    left, right = bottom.axes[0].get_position().x0, bottom.axes[2].get_position().x1
+    pa, pb = a.get_position(), b.get_position()
+    gap = pb.x0 - pa.x1 + style.PANEL_GAP_MIN / fig.get_figwidth()
+    width = (right - left - gap) / 2
+    # Positions are fractions of each subfigure, which span the figure's width
+    key = KEY_SPACE * style.MM / (top.bbox.height / fig.dpi)
+    for ax, x0 in ((a, left), (b, left + width + gap)):
+        ax.set_position((x0, pa.y0, width, pa.height - key))
+    S.method_legend(
+        fig,
+        loc="upper center",
+        bbox_to_anchor=((left + right) / 2, pa.y1),
+        bbox_transform=top.transSubfigure,
+    )
+    tight = a.get_tightbbox()
+    letter = top.texts[0]
+    letter.set_x((tight.x0 - top.bbox.x0) / top.bbox.width)
 
 
 def _letter_beside(subfig, ax, letter: str) -> None:

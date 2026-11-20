@@ -8,6 +8,7 @@ from collections import Counter
 
 import numpy as np
 import pandas as pd
+from matplotlib.patches import Patch
 
 from ...runners.datasets import DATASETS
 from ...validation.nichenet import top_pairs
@@ -284,11 +285,12 @@ def plot_dotplot(
     sections: dict[str, list[str]],
     show_legend: bool = False,
     fontsize: float | None = None,
+    key_below: bool = False,
 ):
     """Groups (rows) x genes (columns, under their `sections` names): dot
     size the fraction of the group's cells detecting the gene, color its mean
     expression relative to the gene's largest group mean, every label
-    `fontsize` (default `FACTOR_LABEL_FONT_SIZE`). With `show_legend`, the colorbar and size legend beside it.
+    `fontsize` (default `FACTOR_LABEL_FONT_SIZE`). With `show_legend`, the colorbar beside it and the size legend beside it too, or in one line below if `key_below`.
     Returns the dots."""
     fontsize = fontsize or common.FACTOR_LABEL_FONT_SIZE
     genes = label_sections(ax, sections, fontsize)
@@ -311,16 +313,23 @@ def plot_dotplot(
     ax.set_ylim(len(GROUPS) - 0.5, -0.5)
     if show_legend:
         common.colorbar(ax, points, "Mean expr.\n/ max group")
-        common.legend(
-            ax,
-            "right",
-            handles=[
-                ax.scatter([], [], s=DOT_SIZE_MAX * f, color=style.COLORS["ink"])
-                for f in DOT_FRACTIONS
-            ],
-            labels=[f"{f:.0%}" for f in DOT_FRACTIONS],
-            title="Detected",
-        )
+        handles = [
+            ax.scatter([], [], s=DOT_SIZE_MAX * f, color=style.COLORS["ink"])
+            for f in DOT_FRACTIONS
+        ]
+        labels = [f"{f:.0%}" for f in DOT_FRACTIONS]
+        if key_below:  # the title as a first, handle-less entry
+            common.legend(
+                ax,
+                "below",
+                handles=[Patch(color="none"), *handles],
+                labels=["Detected:", *labels],
+                ncols=len(handles) + 1,
+                handlelength=0.8,
+                columnspacing=0.8,
+            )
+        else:
+            common.legend(ax, "right", handles=handles, labels=labels, title="Detected")
     return points
 
 
@@ -386,7 +395,6 @@ def label_sections(ax, sections: dict[str, list[str]], fontsize: float) -> list[
         rotation_mode="anchor",
     )
     ax.set_xlim(-0.5, len(genes) - 0.5)
-    ax.tick_params(length=0)
     renderer = ax.figure.canvas.get_renderer()
     column_width = ax.bbox.width / len(genes)
     gap = SECTION_GAP * fontsize / 72 * ax.figure.dpi
@@ -414,7 +422,7 @@ def label_sections(ax, sections: dict[str, list[str]], fontsize: float) -> list[
         row_ends[row : row + 1] = [extent.x1]  # appends a new row
         text.set_y(SECTION_Y + row * extent.height / ax.bbox.height)
         if end < len(genes):
-            ax.axvline(end - 0.5, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN)
+            ax.axvline(end - 0.5, **style.SPACER)
         start = end
     return genes
 

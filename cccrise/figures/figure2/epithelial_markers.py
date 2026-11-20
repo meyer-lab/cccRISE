@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import false_discovery_control
 
-from .. import common
+from .. import common, style
 from . import _common as S
 
 AXES = ("strip",)
@@ -31,6 +31,7 @@ def plot(axs):
         # {"Pan-epithelial": S.CELLTYPE_MARKERS["Epithelial cells"]} |
         stratifying_markers() | {"Top LR pairs": S.top_pair_genes()},
         show_legend=True,
+        fontsize=style.FONT_SIZE_TICK,
     )
 
 
