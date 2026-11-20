@@ -56,7 +56,7 @@ def eigenstate_rows(ax) -> list[int]:
     for label, role in zip(ax.get_yticklabels(), roles, strict=True):
         label.set(fontweight="bold", color=style.COLORS[role])
     ax.set_ylim(len(rows) - 0.5, -0.5)
-    ax.axhline(len(groups["sender"]) - 0.5, color=style.COLORS["ink"], lw=0.8)
+    ax.axhline(len(groups["sender"]) - 0.5, **style.SPACER)
     return rows
 
 

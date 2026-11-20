@@ -11,6 +11,7 @@ from ....runners.run_alad_programs import DE_TAUS
 from ... import common, style
 from .. import _common as S
 from ..epithelial_markers import stratifying_markers
+from . import _common as V
 
 AXES = ("square",)
 TAUS = DE_TAUS  # the cutoffs `cccrise-alad-programs` tests at
@@ -47,7 +48,13 @@ def plot(axs):
         xlabel="Group cutoff (τ)",
         ylabel="−log$_{10}$ q, signed\n(+ sender, − receiver)",
     )
-    common.legend(ax, "right", handles=by_section.values(), labels=by_section.keys())
+    V.hang_above(
+        ax,
+        handles=list(by_section.values()),
+        labels=list(by_section),
+        handlelength=1.0,
+        columnspacing=0.8,
+    )
     common.source_data(
         "tau_sweep_sender_vs_receiver",
         sweep,

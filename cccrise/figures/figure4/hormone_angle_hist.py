@@ -55,9 +55,7 @@ def plot(axs):
                 linewidth=style.LINE_WIDTH_THIN,
             )
     ax.set_xticks([0, 45, 90])
-    ax.set_xlabel(
-        f"Angle (°), magnitude ≥ {S.EXTREME_FLOOR}", fontsize=style.FONT_SIZE_DENSE
-    )
+    ax.set_xlabel("Cmp. 3/4 sender angle (°)")
     # Both keys inside the axes, in the room above the bars: the lines' at the
     # top right, the classes' at the top left, one entry per row
     lines = ax.legend(

@@ -43,7 +43,6 @@ def plot(axs):
         rotation_mode="anchor",
         fontsize=style.FONT_SIZE_DENSE,
     )
-    ax.tick_params(length=0)
     H.label_roles(ax)
     common.colorbar(ax, image, "Mean projection")
 

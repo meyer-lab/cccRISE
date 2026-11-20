@@ -116,10 +116,13 @@ def score_label(method: str) -> str:
     return f"{SCORE_LABELS[method]} ({source})" if source else SCORE_LABELS[method]
 
 
-def method_legend(fig) -> None:
-    """One legend of all methods' colors, above `fig`."""
+def method_legend(fig, **kwargs) -> None:
+    """One legend of all methods' colors, above `fig` unless `kwargs` place
+    it."""
     handles = [Patch(color=SCORE_COLORS[m], label=score_label(m)) for m in ALL_SCORES]
-    fig.legend(handles=handles, loc="outside upper center", ncols=len(handles))
+    fig.legend(
+        handles=handles, ncols=len(handles), **{"loc": "outside upper center"} | kwargs
+    )
 
 
 def grouped_bar(ax: plt.Axes, data: pd.DataFrame, ylabel: str) -> None:

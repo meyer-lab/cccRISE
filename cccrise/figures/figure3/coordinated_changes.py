@@ -65,6 +65,8 @@ BASELINES = {  # label, color
     "associated": ("Other associated", style.COLORS["up"]),
 }
 AXES = ("square", "square")
+MARK_SIZE = style.FONT_SIZE_LABEL
+MARK_HEADROOM = 0.22  # above the highest whisker, for its mark
 
 
 def plot(axs):
@@ -105,7 +107,6 @@ def plot_lr_association_distribution(
         facecolor="white",
         edgecolor="none",
         framealpha=1,
-        borderaxespad=0,
     ).set_zorder(5)
 
 
@@ -142,7 +143,11 @@ def plot_lr_covariation(
         zorder=3,
     )
     upper_whiskers = [w.get_ydata().max() for w in boxes["whiskers"][3::2]]
-    significance_marks(ax, range(2, len(groups) + 1), upper_whiskers, padj)
+    significance_marks(
+        ax, range(2, len(groups) + 1), upper_whiskers, padj, fontsize=MARK_SIZE
+    )
+    # Room for the marks within the axes
+    ax.set_ylim(top=max(ax.get_ylim()[1], max(upper_whiskers) + MARK_HEADROOM))
     common.reference_line(ax, 0)
     ax.set_xticks(
         range(1, len(groups) + 1),

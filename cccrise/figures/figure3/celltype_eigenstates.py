@@ -68,5 +68,4 @@ def plot_celltype_eigenstate_association(
             )
         )
     ax.set_xlabel("RISE eigen-state")
-    ax.tick_params(length=0)
     common.colorbar(ax, image, "Mean projection")

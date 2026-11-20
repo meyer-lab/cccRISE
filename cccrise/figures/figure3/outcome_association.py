@@ -3,7 +3,7 @@ outcome, per outcome level, with a patient's paired samples joined."""
 
 import pandas as pd
 
-from .. import common, style
+from .. import common
 from . import _common as S
 
 REGROUPING_KEYS = ("levels", "mapping", "control_label", "other_label")
@@ -47,7 +47,6 @@ def plot_outcome_weights(ax, association: str, component: int) -> None:
         **{k: spec[k] for k in REGROUPING_KEYS if k in spec},
     )
     ax.set_ylabel(f"CPD component {component} loading")
-    ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE)
 
 
 def outcome_points(association: str, component: int) -> pd.DataFrame:

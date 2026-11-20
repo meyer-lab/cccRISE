@@ -11,6 +11,7 @@ from ._programs import FITS
 from ._recovery import colorbar_beneath, fit_grid
 
 AXES = ("fig5_best",)
+JOIN_PREVIOUS = True  # beside 5A, sharing its component axis
 LABEL = "Fraction of LR pair\nloadings reconstructed"
 
 
@@ -27,9 +28,9 @@ def rows(datasets=tuple(DATASET_LABELS)) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
-def containment_grid(ax, datasets=tuple(DATASET_LABELS)) -> None:
+def containment_grid(ax, datasets=tuple(DATASET_LABELS), bars: bool = True) -> None:
     """Each component's containment in each fit, the cohorts of `datasets`
-    one under another; no colorbar."""
+    one under another; no colorbar. `bars` is `fit_grid`'s."""
     t = rows(datasets)
     common.source_data(
         "component_containment_in_comparator_span",
@@ -48,11 +49,13 @@ def containment_grid(ax, datasets=tuple(DATASET_LABELS)) -> None:
             )
             for dataset in datasets
         },
+        bars,
     )
 
 
 def plot(axs):
-    containment_grid(axs[0], ("alad",))
+    containment_grid(axs[0], ("alad",), bars=False)
+    axs[0].tick_params(labelleft=False)  # 5A's component labels serve both
     colorbar_beneath(axs[0], LABEL)
 
 

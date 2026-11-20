@@ -57,8 +57,8 @@ def plot(axs):
     ax.set(
         xlim=LIMITS,
         ylim=LIMITS,
-        xlabel="C3 sender weight / max",
-        ylabel="C4 sender weight / max",
+        xlabel="Cmp. 3 sender weight / max",
+        ylabel="Cmp. 4 sender weight / max",
     )
     common.colorbar(ax, points, "Angle (°)")
 

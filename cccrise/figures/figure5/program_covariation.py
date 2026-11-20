@@ -5,11 +5,11 @@ their carrying pairs, against the random and the expression-matched null
 from .. import common
 from . import _split
 
-AXES = ("fig5_covariation",)
+AXES = ("square",)
 
 
 def plot(axs):
-    _split.covariation(axs, "alad", (5,), key_loc="lower left")
+    _split.covariation(axs, "alad", (5,), key_loc="upper right")
 
 
 def makeFigure():

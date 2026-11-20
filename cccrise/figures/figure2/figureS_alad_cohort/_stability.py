@@ -96,7 +96,7 @@ def plot_stage(ax, stage: str) -> None:
         linewidth=style.LINE_WIDTH_THIN,
         ax=ax,
     )
-    common.reference_line(ax, len(components), horizontal=False, linestyle="-")
+    ax.axvline(len(components), **style.SPACER)
     ax.set_xticks(ax.get_xticks(), ax.get_xticklabels())
     for tick in ax.get_xticklabels()[-len(labels) :]:
         tick.set(rotation=45, ha="right", rotation_mode="anchor")

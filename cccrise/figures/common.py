@@ -397,10 +397,10 @@ class _Joined:
     one panel split into several axes. Declared by the module's `JOINED`; it
     packs as a single box."""
 
-    def __init__(self, boxes: list[_AxesBox]):
+    def __init__(self, boxes: list[_AxesBox], lettered: bool = False):
         self.boxes = boxes
         for b in boxes[1:]:
-            b.lettered = False
+            b.lettered = lettered
         self.offsets = np.cumsum([0] + [b.width + style.JOINED_GAP for b in boxes[:-1]])
         self.width = self.offsets[-1] + boxes[-1].width
         self.height = max(b.height for b in boxes)
@@ -417,14 +417,19 @@ class _Joined:
 
 def _draw_row(fig: Figure, row: list) -> list:
     """The boxes of a row's modules, each list of modules one `_Stack`, each
-    `JOINED` module one `_Joined`, and each `STACKED` module's axes one `_Stack`
-    lettered once."""
+    `JOINED` module one `_Joined`, each `JOIN_PREVIOUS` module one `_Joined`
+    with the axes before it (each lettered), and each `STACKED` module's axes
+    one `_Stack` lettered once."""
     boxes = []
     for item in row:
         if isinstance(item, list):
             boxes.append(_Stack([b for m in item for b in _draw_fixed(fig, m)]))
         elif getattr(item, "JOINED", False):
             boxes.append(_Joined(_draw_fixed(fig, item)))
+        elif getattr(item, "JOIN_PREVIOUS", False) and boxes:
+            previous = boxes.pop()
+            assert isinstance(previous, _AxesBox)  # joins a single axes
+            boxes.append(_Joined([previous, *_draw_fixed(fig, item)], lettered=True))
         elif getattr(item, "STACKED", False):
             stacked = _draw_fixed(fig, item)
             for box in stacked[1:]:
@@ -439,6 +444,35 @@ def panel_axes(fig: Figure, panel: str) -> plt.Axes:
     """The axes `compose_fixed` drew panel module `panel` (its name) into,
     for adjustments spanning panels once the figure is laid out."""
     return next(ax for ax in fig.axes if ax.get_label() == panel)
+
+
+def match_row_extent(
+    fig, panel: str, first: str, last: str, axes_only: bool = False
+) -> None:
+    """Resize panel module `panel`'s axes so it, with its labels, spans from
+    panel `first`'s left extent to panel `last`'s right, letter included; with
+    `axes_only`, its axes alone span from `first`'s axes to `last`'s, its
+    labels and letter left of them."""
+    extent = (lambda a: a.get_window_extent()) if axes_only else _extent
+    left = extent(panel_axes(fig, first)).x0
+    right = extent([ax for ax in fig.axes if ax.get_label() == last][-1]).x1
+    ax = panel_axes(fig, panel)
+    tight, box = _extent(ax), ax.get_window_extent()
+    x0 = left if axes_only else left + box.x0 - tight.x0
+    x1 = right if axes_only else right - (tight.x1 - box.x1)
+    position = ax.get_position()
+    width = fig.bbox.width
+    ax.set_position((x0 / width, position.y0, (x1 - x0) / width, position.height))
+    letters = {text.get_gid(): text for text in fig.texts}
+    letter_x = (x0 - (box.x0 - tight.x0)) / width
+    letters[panel].set_x(letter_x if axes_only else letters[first].get_position()[0])
+
+
+def _extent(ax):
+    """`ax`'s extent with its labels and legends, in display pixels."""
+    tight = ax.get_tightbbox()
+    assert tight is not None
+    return tight
 
 
 def _draw_fixed(fig: Figure, module) -> list[_AxesBox]:
@@ -520,6 +554,52 @@ def legend(ax: plt.Axes, side: str = "right", **kwargs):
         "below": ("upper center", (0.5, y0 - py)),
     }[side]
     return ax.legend(**{"loc": loc, "bbox_to_anchor": anchor} | kwargs)
+
+
+def stacked_legend(
+    ax: plt.Axes, rows: list[list], side: str = "above", title=None, **kwargs
+) -> list[Legend]:
+    """Legends `side` of `ax` ('above' or 'below'), one centered line per
+    `rows` entry (its handles) from top to bottom, the first under `title`:
+    the nearest placed by `legend`, the rest stacked beyond it. `kwargs` go to
+    each; returns them all."""
+    above = side == "above"
+    renderer = ax.figure.canvas.get_renderer()  # ty: ignore[unresolved-attribute]
+    keys: list[Legend] = []
+    for handles in rows[::-1] if above else rows:
+        kw = {"handles": handles, "ncols": len(handles)} | kwargs
+        kw["title"] = title if handles is rows[0] else None
+        if not keys:
+            keys.append(legend(ax, side, **kw))
+            continue
+        ax.add_artist(keys[-1])  # kept when the next replaces it
+        extent = ax.transAxes.inverted().transform(keys[-1].get_window_extent(renderer))
+        keys.append(
+            ax.legend(
+                loc="lower center" if above else "upper center",
+                bbox_to_anchor=(0.5, extent[1, 1] if above else extent[0, 1]),
+                borderaxespad=0,
+                **kw,
+            )
+        )
+    return keys
+
+
+def data_border(ax: plt.Axes, y0: float, y1: float) -> None:
+    """A box in the axes-line style around a diagram drawn without axes lines,
+    across `ax`'s width from data height `y0` to `y1`."""
+    ax.add_patch(
+        Rectangle(
+            (0, y0),
+            1,
+            y1 - y0,
+            transform=blended_transform_factory(ax.transAxes, ax.transData),
+            fill=False,
+            edgecolor=style.BOX_COLOR,
+            linewidth=style.BOX_LINE_WIDTH,
+            clip_on=False,
+        )
+    )
 
 
 def placeholder(fig: Figure | SubFigure | plt.Axes, text: str) -> None:
@@ -789,8 +869,8 @@ def plot_cpd_imputation_r2x(repeats: pd.DataFrame, ax: plt.Axes):
     mean, sd = by_rank.mean(), by_rank.std().fillna(0)
     plot_mean_sd(ax, mean.index, mean, sd, style.COLORS["heldout"], "Imputation")
     ax.set_ylabel("R²X")
-    ax.set_ylim(top=1.25 * ax.dataLim.y1)  # headroom for the legend
-    ax.legend(loc="upper right", borderaxespad=0.1)
+    ax.set_ylim(0, 1.05 * ax.dataLim.y1)
+    ax.legend(loc="lower right", borderaxespad=0.1)
 
 
 # --- CPD rank selection across seeded starts (ALAD Fig 2, IBD Fig 4) -----------
@@ -1098,7 +1178,6 @@ def plot_association_heatmap(
     ax.set_xticks(range(effect.shape[1]), effect.columns)
     ax.set_yticks(range(len(rows)), rows, fontsize=style.FONT_SIZE_DENSE)
     ax.set_xlabel(xlabel)
-    ax.tick_params(length=0)
     colorbar(ax, image, rf"$\eta^2$ (* {p_label} < {SIG_ALPHA})")
 
 
@@ -1291,7 +1370,7 @@ def plot_category_component_weights(
         transform=ax.transAxes,
         ha="left",
         va="top",
-        fontsize=style.FONT_SIZE_DENSE,
+        fontsize=style.FONT_SIZE_LABEL,
     )
 
 
@@ -1425,7 +1504,6 @@ def plot_factor_heatmap(ax: plt.Axes, loadings: np.ndarray, xlabel: str):
     components = np.arange(loadings.shape[1])
     ax.set_xticks(components, components + 1)
     ax.set_xlabel(xlabel)
-    ax.tick_params(length=0)
     return image
 
 
@@ -1532,6 +1610,7 @@ def _center_titles(ax: plt.Axes, key: Legend, titles: list[str]) -> None:
 
 #: `_strip_brackets`: bracket and name right of the matrix, and a tick (in)
 BRACKET_X, BRACKET_NAME_X, BRACKET_TICK = 0.6 * style.MM, 1.6 * style.MM, 0.5 * style.MM
+BRACKET_NAME_ROTATION = 45  # degrees: names angled up, narrowing the margin
 
 
 def _runs(levels: list) -> list[tuple[object, int, int]]:
@@ -1545,7 +1624,7 @@ def _runs(levels: list) -> list[tuple[object, int, int]]:
 
 
 def _strip_brackets(ax: plt.Axes, groups: pd.DataFrame, strips: dict) -> None:
-    """Each run of a strip's level named, in its color, right of the matrix at
+    """Each run of a strip's level named, angled up in its color, right of the matrix at
     a bracket spanning its rows; a name that would crowd the one above moves
     down on a leader line."""
     width = ax.bbox.width / ax.figure.dpi
@@ -1587,6 +1666,8 @@ def _strip_brackets(ax: plt.Axes, groups: pd.DataFrame, strips: dict) -> None:
                 color=color,
                 fontweight="bold",
                 transform=trans,
+                rotation=BRACKET_NAME_ROTATION,
+                rotation_mode="anchor",
             )
 
 
@@ -1656,10 +1737,11 @@ def _data_extent(ax, text) -> tuple[float, float, float, float]:
     return min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)
 
 
-def _is_clear(box, key, boxes: dict, placed: list, n_cols: int, outside: bool) -> bool:
-    """Whether a label's extent clears every other outlined cell and every
-    placed label and (unless `outside`) the heatmap's sides."""
-    if box[0] < -0.5 - 1e-6 or (not outside and box[2] > n_cols - 0.5 + 1e-6):
+def _is_clear(box, key, boxes: dict, placed: list, shape: tuple[int, int]) -> bool:
+    """Whether a label's extent lies within the heatmap and clears every other
+    outlined cell and every placed label."""
+    low, high = -0.5 - 1e-6, np.array(shape[::-1]) - 0.5 + 1e-6
+    if min(box[0], box[1]) < low or box[2] > high[0] or box[3] > high[1]:
         return False
     if any(_overlaps(box, b) for k, b in boxes.items() if k != key):
         return False
@@ -1667,31 +1749,33 @@ def _is_clear(box, key, boxes: dict, placed: list, n_cols: int, outside: bool) -
 
 
 def _candidates(prefer: bool, gap: float):
-    """(outside, right, dy) to try, in order: the side with room then the
-    other, at the label's own height then up and down in half-gap steps;
-    past the right edge last."""
-    for outside in (False, True):
-        for k in range(8):
-            for dy in (0,) if k == 0 else (k * gap / 2, -k * gap / 2):
-                for right in (True,) if outside else (prefer, not prefer):
-                    yield outside, right, dy
+    """(right, dy) to try, in order: the side with room then the other, at the
+    label's own height then up and down in half-gap steps."""
+    for k in range(8):
+        for dy in (0,) if k == 0 else (k * gap / 2, -k * gap / 2):
+            for right in (prefer, not prefer):
+                yield right, dy
 
 
 def _place_label(ax, row, col, name, boxes, placed, shape) -> tuple:
     """The first clear place (`_candidates`, `_is_clear`): (text, leader start,
-    end x, y, extent); the default place, with no extent, when none is."""
+    end x, y, extent); when none is, the default place, kept within the
+    heatmap's height, with no extent."""
     n_rows, n_cols = shape
     gap = FACTOR_LABEL_GAP / (ax.bbox.height / ax.figure.dpi) * n_rows
     prefer = col < n_cols / 2
-    for outside, right, dy in _candidates(prefer, gap):
+    for right, dy in _candidates(prefer, gap):
         y = min(max(row + dy, 0), n_rows - 1)
         text, edge, x = _label_text(ax, y, col, name, right)
         box = _data_extent(ax, text)
-        if _is_clear(box, (row, col), boxes, placed, n_cols, outside):
+        if _is_clear(box, (row, col), boxes, placed, shape):
             return text, edge, x, y, box
         text.remove()
     text, edge, x = _label_text(ax, row, col, name, prefer)
-    return text, edge, x, row, None
+    _, y0, _, y1 = _data_extent(ax, text)
+    y = row + max(-0.5 - y0, 0) - max(y1 - (n_rows - 0.5), 0)
+    text.set_y(y)
+    return text, edge, x, y, None
 
 
 def _clear_labels(ax: plt.Axes, entries, shape: tuple[int, int]) -> None:

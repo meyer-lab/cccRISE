@@ -14,7 +14,7 @@ def plot(axs):
         DATASET,
         rank=common.selected_ranks(DATASET)[1],
         wrap_key=True,
-        key_loc="center right",
+        key_loc="upper left",
     )
 
 

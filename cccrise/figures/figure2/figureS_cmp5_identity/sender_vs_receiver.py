@@ -35,6 +35,7 @@ def plot(axs):
         {g: f"{g} ({SUBTYPE_TAGS[s]})" for g, s in CURATED_DE_MARKERS.items()},
         (x_limit * TAG_ROOM, y_limit),
     )
+    V.legend(axs[0], ("sender", "receiver"))
     V.save_volcano("sender", "receiver")
 
 

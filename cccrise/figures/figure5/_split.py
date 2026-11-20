@@ -406,14 +406,14 @@ def _lollipop(ax, r) -> None:
 
 
 def _covariation_key(ax, loc: str) -> None:
-    """The nulls' ticks along the top row, filled and hollow points (as Figure
-    5G keys them) along the bottom, at `loc` inside the axes."""
+    """The nulls' ticks in the first column, filled and hollow points (as
+    Figure 5G keys them) in the second, at `loc` inside the axes."""
     ticks = [Line2D([], [], **tick) for tick in NULL_TICKS.values()]
     point: dict[str, Any] = {"ls": "", "marker": "o", "ms": 3.2, "mec": "0.4"}
     filled = Line2D([], [], mfc="0.4", label=f"q < {common.SIG_ALPHA}", **point)
     hollow = Line2D([], [], mfc="white", label=f"q ≥ {common.SIG_ALPHA}", **point)
     ax.legend(
-        handles=[ticks[0], filled, ticks[1], hollow],
+        handles=[*ticks, filled, hollow],
         loc=loc,
         ncol=2,
         fontsize=style.FONT_SIZE_DENSE - 1.2,

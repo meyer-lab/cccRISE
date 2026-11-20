@@ -6,7 +6,7 @@ from ... import common
 from .. import _common as S
 from ._common import save_association_data
 
-AXES = ("rect",)
+AXES = ("mid",)
 FDR = "Benjamini-Hochberg FDR-corrected across all associations and components"
 
 

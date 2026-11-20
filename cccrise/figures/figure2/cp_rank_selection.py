@@ -7,7 +7,6 @@ from .. import common, style
 
 DATASET = "alad"
 AXES = ("square", "square")
-RANK_LINE_TOP = 0.5  # axes fraction, below the collinearity key
 
 
 def plot(axs):
@@ -33,9 +32,9 @@ def plot(axs):
     )
     # A narrow key fits above the low-rank starts, the rank line stopping below it
     common.plot_collinearity_boxes(
-        axs[1], DATASET, part=1, wrap_key=True, key_loc="upper left"
+        axs[1], DATASET, part=1, wrap_key=True, key_loc="center right"
     )
-    common.mark_rank(axs[1], rank, top=RANK_LINE_TOP)
+    common.mark_rank(axs[1], rank)
 
 
 def makeFigure():

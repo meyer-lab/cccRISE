@@ -113,30 +113,22 @@ def plot_pair_nulls(component: dict, n_top: int, ax) -> None:
         zorder=3,
     )
     common.reference_line(ax, 0, horizontal=False, linestyle=":")
-    ax.set_yticks(rows, LR_NAMES[top], fontsize=common.FACTOR_LABEL_FONT_SIZE)
+    ax.set_yticks(rows, LR_NAMES[top])
     ax.set_ylim(-0.6, n_top - 0.4)
     ax.set_xlabel(f"Standardized mean score\n{CASE_DISPLAY} − {CONTROL_DISPLAY}")
-    common.legend(
-        ax,
-        "above",
-        ncols=2,
-        handles=[
-            Patch(color=style.COLORS["muted"], alpha=0.8, label="Patient-permuted"),
-            *(
-                Line2D(
-                    [],
-                    [],
-                    marker="D",
-                    linestyle="",
-                    color=style.COLORS[color],
-                    label=f"Observed, q {sign} {common.SIG_ALPHA}",
-                )
-                for color, sign in (("emphasis", "<"), ("ink", "≥"))
-            ),
-        ],
-        fontsize=style.FONT_SIZE_DENSE,
-        columnspacing=0.8,
-    )
+    observed = [
+        Line2D(
+            [],
+            [],
+            marker="D",
+            linestyle="",
+            color=style.COLORS[color],
+            label=f"Observed, q {sign} {common.SIG_ALPHA}",
+        )
+        for color, sign in (("emphasis", "<"), ("ink", "≥"))
+    ]
+    permuted = Patch(color=style.COLORS["muted"], alpha=0.8, label="Patient-permuted")
+    common.stacked_legend(ax, [observed, [permuted]], columnspacing=0.8)
 
 
 @cache

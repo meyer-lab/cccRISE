@@ -35,7 +35,7 @@ def draw(ax, dataset: str) -> None:
     # The dashed rank line's key, shared by panels A-C
     rank_key = Line2D([], [], label="Selected rank", **common.RANK_LINE)
     ax.legend(
-        handles=[*lines, rank_key],
+        handles=[*lines[:2], rank_key, lines[2]],
         loc="upper left",
         ncols=2,
         fontsize=style.FONT_SIZE_DENSE,

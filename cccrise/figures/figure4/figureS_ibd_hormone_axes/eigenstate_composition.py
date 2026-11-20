@@ -35,7 +35,6 @@ def plot(axs):
     ax.set_xlim(0, 1)
     ax.set_xticks([0, 0.5, 1])
     ax.set_xlabel("Share of squared\nprojection")
-    ax.tick_params(axis="y", length=0)
     common.legend(
         ax,
         "right",

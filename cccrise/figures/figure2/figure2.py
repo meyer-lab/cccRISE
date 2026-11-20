@@ -1,7 +1,5 @@
 """Figure 2: cccRISE uncovers robust, integrative patterns of cell communication."""
 
-import matplotlib.pyplot as plt
-
 from .. import common, style
 from . import (
     celltype_composition,
@@ -24,9 +22,4 @@ LAYOUT = [
 
 
 def makeFigure():
-    box = {"axes.edgecolor": style.BOX_COLOR, "axes.linewidth": style.BOX_LINE_WIDTH}
-    # Grey tick marks; their labels stay black
-    for axis in "xy":
-        box |= {f"{axis}tick.color": style.BOX_COLOR, f"{axis}tick.labelcolor": "black"}
-    with plt.rc_context(box):
-        return common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
+    return common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)

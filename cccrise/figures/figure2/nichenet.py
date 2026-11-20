@@ -25,6 +25,7 @@ from .. import common, style
 
 DATASET = "alad"
 TEST_PAD = 0.04  # significance mark height above a component's data
+VALUE_Y = 0.98  # axes fraction: q values just under the top
 BOX_FACE = "0.95"
 NULL_FACE = style.COLORS["muted"]
 BOX_STYLE = {
@@ -109,9 +110,9 @@ def draw(axs, dataset: str) -> None:
     ax.set_xlabel("CPD component")
     ax.set_ylabel("NicheNet target score")
     common.colorbar(ax, points, "Relative ligand weight")
-    common.legend(
-        ax,
-        "above",
+    ax.legend(
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1),
         ncols=2,
         handles=[
             Patch(facecolor=f, edgecolor=style.COLORS["reference"], label=label)
@@ -183,36 +184,32 @@ def ligand_points(ax, component_scores, x, rng, width: float = 0.6):
     return points
 
 
-def significance_marks(ax, positions, tops, q, values: bool = False) -> None:
+def significance_marks(
+    ax, positions, tops, q, values: bool = False, fontsize=style.FONT_SIZE_DENSE
+) -> None:
     """A star above each of `positions` (at its data's top, `tops`) where `q`
-    is below `SIG_ALPHA`, else n.s.; with `values`, `q` itself (the first
-    prefixed 'q = ' to its left) in black, bold where significant."""
+    is below `SIG_ALPHA`, else n.s.; with `values`, `q` itself just under the
+    axes' top, in black, bold where significant."""
     for x, top, value in zip(positions, tops, q, strict=True):
         significant = value < common.SIG_ALPHA
         if values:
             label, color = f"{value:.2f}", "black"
+            y, va, transform = VALUE_Y, "top", ax.get_xaxis_transform()
         else:
             label = "*" if significant else "n.s."
             color = style.COLORS["ink" if significant else "reference"]
-        text = ax.text(
+            y, va, transform = top + TEST_PAD, "bottom", ax.transData
+        ax.text(
             x,
-            top + TEST_PAD,
+            y,
             label,
             ha="center",
-            va="bottom",
-            fontsize=style.FONT_SIZE_DENSE,
+            va=va,
+            transform=transform,
+            fontsize=fontsize,
             fontweight="bold" if significant else "normal",
             color=color,
         )
-        if values and x == positions[0]:
-            ax.annotate(
-                "q = ",
-                (0, 0),
-                xycoords=text,
-                ha="right",
-                va="bottom",
-                fontsize=style.FONT_SIZE_DENSE,
-            )
 
 
 def makeFigure():
