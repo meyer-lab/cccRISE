@@ -4,7 +4,6 @@ from .. import common, style
 from . import (
     celltype_composition,
     cp_factor_matrices,
-    cp_minima,
     cp_rank_selection,
     epithelial_markers,
     nichenet,
@@ -14,7 +13,7 @@ from . import (
 )
 
 LAYOUT = [
-    [rise_rank_selection, cp_rank_selection, cp_minima],
+    [rise_rank_selection, cp_rank_selection],
     [cp_factor_matrices],
     [permutation_lr_significance, nichenet],
     [sender_receiver_strata, [epithelial_markers, celltype_composition]],

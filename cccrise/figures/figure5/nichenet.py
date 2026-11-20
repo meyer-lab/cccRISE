@@ -1,4 +1,7 @@
-"""Figure 5G: Figure 2's NicheNet test on CCC-RISE and every PB and STAC LR
+"""NicheNet ligand-weighted target score of each CCC-RISE component and each PB
+and STAC LR column, against rankings with shuffled cells, ALAD and IBD cohorts.
+
+Figure 5G: Figure 2's NicheNet test on CCC-RISE and every PB and STAC LR
 column (``cccrise-comparator-nichenet``), ALAD beside IBD, laid out as the
 depth-tracking panel lays out its fits (`_depth`): each column's
 ligand-weighted target score above rankings with shuffled cells, filled and
@@ -209,6 +212,25 @@ def plot(axs):
         "Each column's ligand-weighted mean target score, its mean over rankings with "
         "the high and low labels shuffled, their difference (Effect), and the "
         "one-sided permutation p, Benjamini-Hochberg adjusted within the fit (q).",
+    )
+    shown = pd.DataFrame([s[:2] for s in SLOTS], columns=["Method", "Labelling"])
+    common.source_data(
+        "nichenet_cell_shuffle_null_by_column",
+        pd.concat(
+            load("nichenet_null", dataset=d).assign(Cohort=label).merge(shown)
+            for d, label in DATASET_LABELS.items()
+        )[
+            [
+                "Cohort",
+                "Method",
+                "Labelling",
+                "Component",
+                "Replicate",
+                "weighted_auroc",
+            ]
+        ],
+        "Each column's ligand-weighted mean target score on every ranking with the "
+        "high and low labels shuffled: the null behind its mean and p.",
     )
     ax.axhline(0, color=style.COLORS["reference"], ls="--", lw=0.6, zorder=1)
     ax.set_xticks(

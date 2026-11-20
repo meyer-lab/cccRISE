@@ -1,4 +1,7 @@
-"""Robustness of Fig. 2M's sender vs. receiver subtype markers to the group
+"""Signed Wilcoxon rank-sum q of each Figure 2 epithelial subtype marker
+between sender and receiver cells across group cutoffs (tau).
+
+Robustness of Fig. 2M's sender vs. receiver subtype markers to the group
 cutoff: each shown marker's Wilcoxon q, signed by the group it is higher in,
 against the cutoff (`S.split_cells`'s tau), the markers fixed at those shown
 at `S.GROUP_TAU`."""

@@ -1,4 +1,7 @@
-"""Every cell's PaCMAP embedding colored by annotated cell type (left), and a
+"""PaCMAP embedding of all cells colored by annotated cell type, and of the
+lymphocyte cluster colored by each cell's projection onto RISE eigen-state 16.
+
+Every cell's PaCMAP embedding colored by annotated cell type (left), and a
 blow-up of the lymphocyte cluster colored by each cell's projection onto
 `EIGENSTATE`, the RISE eigenstate behind the outcome-associated component's
 sender and receiver weights (right).

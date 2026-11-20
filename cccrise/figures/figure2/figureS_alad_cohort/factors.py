@@ -1,4 +1,7 @@
-"""The RISE condition factor (A), each component divided by its largest
+"""RISE condition factor of the ALAD fit: each sample's loading on each RISE
+component, divided by the component's largest absolute loading.
+
+The RISE condition factor (A), each component divided by its largest
 magnitude (keeping sign); conditions grouped by ALAD status, then six-month
 outcome (`common.condition_strips`), and within a group ordered by their most
 heavily loaded component, then by that loading."""

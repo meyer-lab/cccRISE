@@ -1,4 +1,7 @@
-"""Per-cell sender vs. receiver weight on the granularity component, colored
+"""Each cell's sender against receiver weight on CPD component 6, colored by
+its label-free group: sender, receiver, or rest.
+
+Per-cell sender vs. receiver weight on the granularity component, colored
 by the label-free sender and receiver groups (`S.split_cells`): the
 cells passing either cutoff (`TAU` x each weight's maximum), split by the line
 of equal relative weight."""

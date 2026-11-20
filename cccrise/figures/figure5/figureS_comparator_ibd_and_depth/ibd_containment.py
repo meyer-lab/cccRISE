@@ -1,4 +1,7 @@
-"""Each IBD component's containment in every comparator fit's LR span
+"""Containment of each IBD CCC-RISE component's LR pair loadings in each
+comparator fit's LR column span.
+
+Each IBD component's containment in every comparator fit's LR span
 (`span_containment.containment_grid`; ALAD's is Figure 5B)."""
 
 from ... import common

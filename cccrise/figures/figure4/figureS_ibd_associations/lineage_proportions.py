@@ -1,4 +1,7 @@
-"""Each IBD biopsy's lineage proportions by inflammation status, with each
+"""Fraction of each IBD biopsy's cells in each lineage by inflammation status,
+with each lineage's Kruskal-Wallis q (Benjamini-Hochberg).
+
+Each IBD biopsy's lineage proportions by inflammation status, with each
 lineage's Kruskal-Wallis q across the three statuses (Benjamini-Hochberg
 corrected across lineages), drawn as the ALAD cohort supplement draws ALAD's
 (`figure3.figureS_alad_associations.celltype_proportions`)."""

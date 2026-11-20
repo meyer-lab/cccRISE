@@ -1,4 +1,7 @@
-"""Association of each biopsy covariate with every inflammation-status
+"""Eta-squared of one-way ANOVAs of each biopsy covariate against each
+inflammation-status association, with uncorrected p.
+
+Association of each biopsy covariate with every inflammation-status
 association tested against the components (one-way ANOVA eta-squared,
 uncorrected p), to flag covariates that could confound a
 component-inflammation association, as ALAD's are screened. A binary

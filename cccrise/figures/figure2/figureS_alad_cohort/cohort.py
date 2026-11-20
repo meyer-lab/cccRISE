@@ -1,6 +1,5 @@
-"""Placeholder for a schematic of the ALAD cohort. The schematic is drawn by
-hand, but its patient and sample counts per ALAD status come from the data
-and are saved as its source data."""
+"""Number of patients and BAL samples per ALAD status, shown in the ALAD cohort
+schematic."""
 
 from typing import cast
 

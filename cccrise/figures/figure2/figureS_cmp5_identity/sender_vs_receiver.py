@@ -1,4 +1,8 @@
-"""Genes differing between the sender and receiver groups
+"""Differential expression between the sender and receiver groups of CPD
+component 6 (Wilcoxon rank-sum, Benjamini-Hochberg q), curated markers labeled
+with their epithelial subtype.
+
+Genes differing between the sender and receiver groups
 (`_common.plot_volcano`), labeling `CURATED_DE_MARKERS`, each tagged with its
 epithelial subtype."""
 

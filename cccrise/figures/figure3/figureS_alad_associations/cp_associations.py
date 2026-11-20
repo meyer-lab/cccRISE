@@ -1,5 +1,6 @@
-"""Association of every CP component with every ALAD outcome (one-way ANOVA
-eta-squared, FDR-corrected across all associations and components)."""
+"""Eta-squared of one-way ANOVAs of each CPD component's read-depth-corrected
+condition loadings against each ALAD outcome association, Benjamini-Hochberg
+corrected across all associations and components."""
 
 import pandas as pd
 

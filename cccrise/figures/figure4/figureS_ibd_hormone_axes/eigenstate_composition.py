@@ -1,4 +1,7 @@
-"""Each of the hormone programs' eigenstates (rows as
+"""Share of each eigen-state's squared RISE projection carried by each cell
+category, for the eigen-states IBD CPD components 3 and 4 load on.
+
+Each of the hormone programs' eigenstates (rows as
 `eigenstate_association`) split by the cell categories carrying it: their
 share of its squared RISE projection over all cells. The C3 receiver
 eigenstate is carried by EC cells, C4's by tuft cells."""
@@ -25,7 +28,7 @@ def plot(axs):
         "eigenstate_category_share",
         share[list(H.CATEGORY_COLORS)],
         "Share of each eigen-state's squared RISE projection, over all cells, "
-        "carried by each cell category (immune lineages pooled).",
+        "carried by each cell category (immune lineages pooled)." + S.PER_CELL_NOTE,
     )
     left = np.zeros(len(rows))
     for category, color in H.CATEGORY_COLORS.items():

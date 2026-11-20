@@ -1,4 +1,7 @@
-"""IBD CP collinearity of the LR pair mode across ten seeded SVD starts per
+"""Largest absolute cosine between the LR pair loadings of two components, per
+CPD rank and seeded SVD start, IBD cohort.
+
+IBD CPD collinearity of the LR pair mode across ten seeded SVD starts per
 rank, from ``uv run cccrise-cpdrank``; `mode_collinearity` shows every
 mode's median."""
 

@@ -9,6 +9,9 @@ project:
 citeproc: true
 # Molecular Systems Biology (EMBO Press) author-date style.
 csl: embo-press.csl
+# Hand-written entries (datasets without usable DOI metadata); kept out of the
+# `references` metadata, which pandoc-cite overwrites.
+bibliography: datasets.json
 
 # Panel letters per figure, written by `cccrise-fbuild`, and supplementary
 # figure numbers, referenced via the `fig`/`panel`/`label` shortcodes. MSB has

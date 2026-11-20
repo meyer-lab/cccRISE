@@ -1,4 +1,7 @@
-"""Why Scriabin is not a comparator (`figureS_comparator_single_cell` A). Seed-to-seed
+"""Seed-to-seed best-match Jaccard of Scriabin's significant interaction
+programs and of CCC-RISE components' carrying LR pairs, ALAD cohort.
+
+Why Scriabin is not a comparator (`figureS_comparator_single_cell` A). Seed-to-seed
 agreement of Scriabin's significant interaction programs (upstream R on
 CCC-RISE's inputs, then upstream's significance test as its vignette applies
 it) beside that of CCC-RISE's components' carrying LR pairs, in ALAD: each

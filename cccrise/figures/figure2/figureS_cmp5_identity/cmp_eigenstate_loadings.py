@@ -1,5 +1,4 @@
-"""The granularity CP component's sender and receiver loadings on each RISE
-eigenstate."""
+"""CPD component 6's sender and receiver loadings on each RISE eigen-state."""
 
 import numpy as np
 import pandas as pd
@@ -27,7 +26,7 @@ def plot(axs):
         np.asarray(adata.uns[k])[:, S.GRANULARITY_COMPONENT - 1] for k in "BC"
     )
     common.source_data(
-        "cp_eigenstate_loadings",
+        "cpd_eigenstate_loadings",
         pd.DataFrame(
             {
                 "RISE eigen-state": np.arange(1, len(sender) + 1),

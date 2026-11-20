@@ -1,4 +1,7 @@
-"""Figure 4K's marker tests (`hormone_extreme_markers`: villus-like vs
+"""Mann-Whitney Benjamini-Hochberg q of each hormone state marker gene between
+villus-like and crypt-like EE cells across magnitude floors.
+
+Figure 4K's marker tests (`hormone_extreme_markers`: villus-like vs
 crypt-like Mann-Whitney, BH q across its genes) redone at every magnitude
 floor in `FLOORS` (`_common.hormone_extremes`), and the `N_WORST` genes whose
 largest q over the sweep is highest drawn against the floor."""

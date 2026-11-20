@@ -1,0 +1,15 @@
+[
+  {
+    "id": "ibdverse-arrayexpress",
+    "type": "dataset",
+    "author": [
+      {"family": "Alegbe", "given": "Tobi"},
+      {"family": "Harris", "given": "Bradley"},
+      {"family": "Raine", "given": "Tim"},
+      {"family": "Anderson", "given": "Carl"}
+    ],
+    "issued": {"date-parts": [[2026]]},
+    "title": "ArrayExpress E-MTAB-16986",
+    "DOI": "10.6019/E-MTAB-16986"
+  }
+]

@@ -1,4 +1,10 @@
-"""Coordinated changes: the outcome-associated CP component against its LR
+"""LR pairs scored per condition in CPD component 5's sender/receiver context:
+the eta-squared of each pair's one-way ANOVA against the 6-month outcome, with
+the component's and its 10 top pairs' marked; and the Spearman correlations
+across conditions among the top pairs against those among random, expression-
+matched, and other outcome-associated LR pairs.
+
+Coordinated changes: the outcome-associated CPD component against its LR
 pairs scored on their own, from the raw communication tensor. Every number
 is `cccrise-alad-programs`' (`run_alad_programs`); this module only reads and
 draws them.
@@ -32,8 +38,7 @@ summed over eigenstates).
   p, +1 smoothed so its floor is 1 / (`COVARIATION_DRAWS` + 1), as Figure 5's
   `program_covariation` test), Benjamini-Hochberg-adjusted across baselines. Draws, not pooled
   correlations, are the unit: pairs of pairs within a draw share pairs, so a
-  test over the pooled correlations would overstate n.
-"""
+  test over the pooled correlations would overstate n."""
 
 from functools import cache
 

@@ -1,5 +1,5 @@
-"""Each EE, EC and tuft cell's unscaled C3 and C4 receiver weight on Figure
-5's zoomed map, stacked: C3 receives on EC cells, C4 on tuft cells."""
+"""Each EE, EC, and tuft cell's receiver weight on CPD components 3 and 4, on
+the EE/EC/tuft PaCMAP."""
 
 from ... import common
 from .. import _common as S

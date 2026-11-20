@@ -1,6 +1,5 @@
-"""Placeholder for a schematic of the IBD cohort. The schematic is drawn by
-hand, but its biopsy and cell counts per inflammation status come from the
-data and are saved as its source data."""
+"""Number of donors, terminal ileum biopsies, and cells per inflammation
+status, shown in the IBD cohort schematic."""
 
 from ....factors import load_factors_netcdf
 from ....runners.datasets import DATASETS

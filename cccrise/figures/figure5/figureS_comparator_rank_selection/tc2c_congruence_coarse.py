@@ -1,4 +1,5 @@
-"""Tensor-cell2cell's largest congruence product per start, on ALAD and IBD (coarse labels)."""
+"""Largest congruence product between two Tensor-cell2cell components, per rank
+and random start, ALAD and IBD cohorts, coarse cell type labels."""
 
 from ... import common
 from ._panels import tc2c_congruence
