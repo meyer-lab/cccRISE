@@ -23,7 +23,9 @@ shared:
   random_state: 0
   n_perms: 10000
   n_top: 10
+  component: 5
   outcome: 6-Month Outcome (4-Way)
+  granularity_component: 6
   group_tests:
   - - - sender
       - receiver
@@ -42,26 +44,24 @@ shared:
       - 0.5
       - 0.55
       - 0.6
+  factors_sha256: dcbaeb5d3d706e599fba5c5363b04794b6c141cfbc079288ddb482bdf9149a9e
   resulting_dims:
     conditions: 47
     genes: 16675
     cells: 51273
-    lr_pairs: 575
-  factors_sha256: 0e4269511a6cd1e83caa9ba2e9eb4e26d20a25deb76b816a7f80afe38f12a34f
-  component: 5
-  granularity_component: 6
-  git_sha: 4db094f9271cd8956ce14a447574fdd1183298c6-dirty
-  generated: '2026-11-14T04:55:34+00:00'
+    lr_pairs: 570
+  git_sha: d493bc1f97b61edc196c252bcd1f07a60078d3c2
+  generated: '2026-11-19T03:11:28+00:00'
 files:
   group_de_alad.parquet:
     sha256: 338583e4f1427f1abd05d34918af48c847925ca22548289ee6001c9266e99d0c
   program_context_scores_alad.parquet:
-    sha256: 4bbe5f0335a79847fdd44af5d628c5030821fbbaf81a43544abcdd5a2dcd651c
+    sha256: ff8b11ad123d92e375151374315156181a5d1bf29a46798238d052800a068045
   program_covariation_alad.parquet:
-    sha256: c9cb6fe7d6e170f91df7064407bc921d905b4a48f6f72cdb40c11432d0cf7a40
+    sha256: 3f26cfc68d9318db7c2f560b77b9f88f9e3e7ea5808d4a80afb7a00119061415
   program_lr_association_alad.parquet:
-    sha256: 2e0d421555be18831616443eb7bb22c307d6d39db247fa1d1d0ba110663da6e2
+    sha256: 767bf4845da8219e38a4eb3903aa91bb915b1d63e3e9cda6c4d457f351b3c51a
   program_pair_tests_alad.parquet:
-    sha256: a786846921487159a46b486b587e30de7436460a1e34c6c9e6feb8cf6c05f424
+    sha256: 92113e0b933df57d1bcbf2ed92cfdd3b95671ce1e2502c682fd34d2ffe9ca3e8
   program_permutation_alad.parquet:
-    sha256: b99776bc363eba8d625d6881f7e0d16fe9b6a74b790df54306ab8759b662f87e
+    sha256: a19a7f68f835ac2d677ec2877919131c78224564cf15a972db04289827463450

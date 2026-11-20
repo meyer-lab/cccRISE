@@ -1,0 +1,48 @@
+description: Human CellChatDB v1 LR pairs, genes resolved through the complex table; two upstream defects fixed;
+  intracellular partners excluded.
+source:
+  url: https://github.com/sqjin/CellChat/raw/master/data/CellChatDB.human.rda
+  commit: e4f68625b074247d619c2e488d33970cc531e17c
+  sha256: 5ca4d7aec984a00afe849f56d58bcfac94b33f7e220eb7f49669767c127f4a5c
+  interactions: 1939
+fixes:
+- complex IL2RA_IL2RB_IL2RG subunits IL20RA/IL20RB -> IL2RA/IL2RB (IL2RG kept)
+- GH_GHR dropped (duplicate of GH1_GHR)
+genes_from: ligand/receptor columns resolved via the complex table (ligand_symbol/receptor_symbol)
+excluded_genes:
+  LCK: Src-family kinase on the cytoplasmic face of the T-cell membrane; binds CD8A's cytoplasmic tail in the same
+    cell
+  HLA-DMA: peptide-loading chaperone in late endosome/lysosome membranes; not presented at the surface
+  HLA-DMB: peptide-loading chaperone in late endosome/lysosome membranes; not presented at the surface
+  HLA-DOA: HLA-DM regulator in endosome/lysosome membranes; not presented at the surface
+  HLA-DOB: HLA-DM regulator in endosome/lysosome membranes; not presented at the surface
+excluded_rows:
+- interaction_name: LCK_CD8A_CD8B1
+  interaction_symbol: LCK^CD8A&CD8B
+  pathway_name: LCK
+  annotation: Cell-Cell Contact
+  excluded_by: LCK
+- interaction_name: HLA-DMA_CD4
+  interaction_symbol: HLA-DMA^CD4
+  pathway_name: MHC-II
+  annotation: Cell-Cell Contact
+  excluded_by: HLA-DMA
+- interaction_name: HLA-DMB_CD4
+  interaction_symbol: HLA-DMB^CD4
+  pathway_name: MHC-II
+  annotation: Cell-Cell Contact
+  excluded_by: HLA-DMB
+- interaction_name: HLA-DOA_CD4
+  interaction_symbol: HLA-DOA^CD4
+  pathway_name: MHC-II
+  annotation: Cell-Cell Contact
+  excluded_by: HLA-DOA
+- interaction_name: HLA-DOB_CD4
+  interaction_symbol: HLA-DOB^CD4
+  pathway_name: MHC-II
+  annotation: Cell-Cell Contact
+  excluded_by: HLA-DOB
+rows: 1933
+sha256: 0a4968d6c21d437cea9af4880cbb663927bb5960a0d2748547cb821aa1baa10c
+replaces_sha256: 276adf699edd3b00ca3af2be93e429780de3cdbf381ad8395c4d1776f7e9f68c
+builder: scratchpad/lr_clean/build_v1_clean.py (git-excluded)
