@@ -446,6 +446,110 @@ def panel_axes(fig: Figure, panel: str) -> plt.Axes:
     return next(ax for ax in fig.axes if ax.get_label() == panel)
 
 
+# Bars grouping whole panels of a composed figure, in a cohort's or method's
+# color with its name, made room for by growing the figure at an edge
+# (`grow_figure`) or between rows (`open_figure_gap`), every axes, figure text
+# and figure line kept in place on the page
+GROUP_BAR_WIDTH = 2.5  # pt
+GROUP_NAME_GAP = 1 * style.MM  # in, between a bar and its name
+
+
+def _move_on_page(fig: Figure, size, move: Callable) -> None:
+    """Resize `fig` to `size` (in), each axes (but insets, which follow their
+    parent), figure text and figure line moved by `move(x, y)` (in, from the
+    bottom left)."""
+    w, h = fig.get_size_inches()
+    nw, nh = size
+    for ax in fig.axes:
+        if ax.get_axes_locator() is not None:
+            continue
+        p = ax.get_position()
+        x0, y0 = move(p.x0 * w, p.y0 * h)
+        ax.set_position((x0 / nw, y0 / nh, p.width * w / nw, p.height * h / nh))
+    for text in fig.texts:
+        x, y = move(*(np.array(text.get_position()) * (w, h)))
+        text.set_position((x / nw, y / nh))
+    for line in fig.lines:
+        moved = [move(x * w, y * h) for x, y in line.get_xydata()]
+        line.set_data([x / nw for x, _ in moved], [y / nh for _, y in moved])
+    fig.set_size_inches(nw, nh)
+
+
+def grow_figure(
+    fig: Figure,
+    left: float = 0.0,
+    bottom: float = 0.0,
+    right: float = 0.0,
+    top: float = 0.0,
+) -> None:
+    """Grow `fig` by `left` / `bottom` / `right` / `top` inches at that edge,
+    keeping everything where it was on the page."""
+    w, h = fig.get_size_inches()
+    _move_on_page(
+        fig, (w + left + right, h + bottom + top), lambda x, y: (x + left, y + bottom)
+    )
+
+
+def open_figure_gap(fig: Figure, at: float, height: float) -> None:
+    """Grow `fig` by `height` inches, opening a gap at `at` inches from the
+    bottom: everything above `at` moves up, everything below stays."""
+    w, h = fig.get_size_inches()
+    _move_on_page(fig, (w, h + height), lambda x, y: (x, y + height * (y > at)))
+
+
+def lowest_label(fig: Figure, axes: list) -> float:
+    """The lowest point (in, from the bottom) of `axes`' ticks and labels."""
+    renderer = fig.canvas.get_renderer()  # ty: ignore[unresolved-attribute]
+    return min(ax.get_tightbbox(renderer).y0 for ax in axes) / fig.dpi
+
+
+def highest_label(fig: Figure, axes: list) -> float:
+    """The highest point (in, from the bottom) of `axes`' ticks and labels and
+    of their panel letters (`_letter_axes`)."""
+    renderer = fig.canvas.get_renderer()  # ty: ignore[unresolved-attribute]
+    names = {ax.get_label() for ax in axes}
+    boxes = [ax.get_tightbbox(renderer) for ax in axes] + [
+        t.get_window_extent(renderer) for t in fig.texts if t.get_gid() in names
+    ]
+    return max(b.y1 for b in boxes) / fig.dpi
+
+
+def _group_bar(fig: Figure, axes: list, y: float, name: str, color, above: bool):
+    """A bar `y` inches up across `axes`' width, `name` over or under it."""
+    h = fig.get_size_inches()[1]
+    x0 = min(ax.get_position().x0 for ax in axes)
+    x1 = max(ax.get_position().x1 for ax in axes)
+    fig.add_artist(
+        Line2D(
+            [x0, x1],
+            [y / h] * 2,
+            color=color,
+            lw=GROUP_BAR_WIDTH,
+            solid_capstyle="butt",
+        )
+    )
+    fig.text(
+        (x0 + x1) / 2,
+        (y + (GROUP_NAME_GAP if above else -GROUP_NAME_GAP)) / h,
+        name,
+        ha="center",
+        va="bottom" if above else "top",
+        fontsize=style.FONT_SIZE_DENSE,
+    )
+
+
+def bar_under(fig: Figure, axes: list, y: float, name: str, color) -> None:
+    """A group bar `y` inches from the bottom across `axes`, `name` under it."""
+    _group_bar(fig, axes, y, name, color, above=False)
+
+
+def bar_over(fig: Figure, axes: list, gap: float, name: str, color) -> None:
+    """A group bar `gap` inches above `axes`' top across them, `name` over it."""
+    h = fig.get_size_inches()[1]
+    y = max(ax.get_position().y1 for ax in axes) * h + gap
+    _group_bar(fig, axes, y, name, color, above=True)
+
+
 def match_row_extent(
     fig, panel: str, first: str, last: str, axes_only: bool = False
 ) -> None:

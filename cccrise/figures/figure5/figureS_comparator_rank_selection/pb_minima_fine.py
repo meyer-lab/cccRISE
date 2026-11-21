@@ -4,7 +4,7 @@ at each rank, ALAD and IBD cohorts, fine cell type labels."""
 from ... import common
 from ._panels import pb_minima
 
-AXES = ("square",)
+AXES = ("rank_selection",)
 
 
 def plot(axs):

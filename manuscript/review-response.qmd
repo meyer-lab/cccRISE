@@ -77,8 +77,8 @@ For the multi-condition tensor claim, we compare what each method recovers rathe
 We did not report ALAD-status AUC for any method as described in our responses to Comments #4 and #5.
 Instead, for each CCC-RISE component, we measure its best match to any single LR column of each comparator fit and the fraction of its LR pair loadings that all of a fit's LR columns together reconstruct ({{< fig 5 cos2-grid span-containment >}}).
 We found that comparator fits largely recovered CCC-RISE components that were only defined by a few top LR pairs, but then split broader programs across several LR columns or missed programs entirely ({{< fig 5 pair-columns >}}; {{< fig comparator-split cos2-pairs alad-c3-columns >}}).
-Tensor-cell2cell reconstructed little of any component, and its condition loadings instead tracked the number of genes detected per cell in each sample ({{< fig comparator-ibd-and-depth depth >}}).
-To give a fair analysis, we also looked at the comparator columns lying outside every CCC-RISE component, and report the disease-associaed signaling that comparators captured and CCC-RISE missed ({{< fig comparator-missed-alad share associations contents >}}; {{< fig comparator-missed-ibd share associations contents >}}).
+Tensor-cell2cell reconstructed little of any component, and its condition loadings instead tracked the number of genes detected per cell in each sample ({{< fig comparator-split depth >}}).
+To give a fair analysis, we also looked at the comparator columns lying outside every CCC-RISE component, and report the disease-associaed signaling that comparators captured and CCC-RISE missed ({{< fig comparator-missed alad-share ibd-contents >}}).
 
 > 2. The central claim is not quantitatively supported.
 >    The claims "superior granularity" and "subpopulations invisible to aggregate methods" are supported only by qualitative PaCMAP embeddings and communication-score heatmaps.
@@ -240,7 +240,7 @@ All methods are run from the same expression and LR pairs, so that differences b
 
 On whether CCC-RISE recovers all communication patterns revealed by cell-type-based tensor decomposition: plainly, it does not recover all of them.
 As discussed in Reviewer #1 Comment #1, comparator fits tended to recover CCC-RISE components dominated by a few top LR pairs, split apart broad components, or entirely missed others ({{< fig 5 cos2-grid span-containment >}}; {{< fig comparator-split cos2-pairs >}}).
-In addition, we now report five disease-associated comparator LR columns that were associated with LR pairs that no CCC-RISE component included among its associations ({{< fig comparator-missed-alad share associations contents >}}; {{< fig comparator-missed-ibd share associations contents >}}).
+In addition, we now report five disease-associated comparator LR columns that were associated with LR pairs that no CCC-RISE component included among its associations ({{< fig comparator-missed alad-share ibd-contents >}}).
 We state these misses in the Discussion, but conclude that cell-type-based decomposition methods and CCC-RISE are not estimating the same quantity so component-for-component correspondence is not the expected result.
 Moreover, the fitted LR columns of the comparators were also sensitive to the granularity of the labels losing disease-associated colums when transitioning from coarse to fine cell types ({{< fig 5 labels-alad labels-ibd >}}).
 CCC-RISE components in contrast were conserved when the model wasas refit at a different number of eigen-states.

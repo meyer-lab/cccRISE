@@ -51,6 +51,10 @@ REBUILT = 0.10
 #: pairs is shown with it.
 ON_COMPONENT = 0.25
 SUM = "Σ"
+#: The signed colorbar's height (in)
+CBAR_HEIGHT = 1.6 * style.MM
+#: Block heads slant up at this angle (degrees)
+HEAD_ROTATION = 35
 
 
 def _pair_rows(dataset: str, programs) -> tuple[list, dict]:
@@ -173,7 +177,10 @@ def _outline(ax, x: float, spans: dict) -> None:
 
 
 def _signed_colorbar(ax, drop: float) -> None:
-    cax = ax.inset_axes((0.17, -drop, 0.66, 0.04))
+    """The diverging colorbar `drop` (axes fraction) under `ax`, `CBAR_HEIGHT`
+    tall whatever the axes' height."""
+    height = CBAR_HEIGHT / (ax.bbox.height / ax.figure.dpi)
+    cax = ax.inset_axes((0.17, -drop, 0.66, height))
     ax.figure.colorbar(
         ScalarMappable(Normalize(-1, 1), DIVERGING), cax=cax, orientation="horizontal"
     )
@@ -265,17 +272,39 @@ def _heatmap_source(h: _Heatmap) -> None:
     )
 
 
-def _heatmap_axes(h: _Heatmap) -> None:
-    """Ticks and heads; one component unlabeled at the side (the CCC-RISE
-    column's tick names it)."""
+def _heatmap_axes(h: _Heatmap, slant: bool = False) -> None:
+    """Ticks and heads; with `slant`, the heads slanted up from their block's
+    first column (single-column blocks are narrower than their names) and the
+    column ticks as large as the row ticks; one component unlabeled at the
+    side (the CCC-RISE column's tick names it)."""
     end = h.x - BLOCK_GAP
     ax = h.ax
     _pair_axes(ax, h.rows, h.spans, end, (h.ticks, h.labels, []), h.heads)
-    for text in [t for t in ax.texts if t.get_text() == "CCC-RISE"]:
-        text.set(x=1.0, ha="right")  # flush right of its one column
+    if slant:
+        starts = dict(zip(h.heads, [0.0, *_block_starts(h)], strict=False))
+        for text in [t for t in ax.texts if t.get_text() in starts]:
+            text.set(
+                x=starts[text.get_text()] + 0.2,
+                ha="left",
+                rotation=HEAD_ROTATION,
+                rotation_mode="anchor",
+            )
+    else:
+        for text in [t for t in ax.texts if t.get_text() == "CCC-RISE"]:
+            text.set(x=1.0, ha="right")  # flush right of its one column
+        ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE - 1.6)
     if len(h.programs) == 1:
         _unlabel_side(ax, h.programs[0], end)
-    ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE - 1.6)
+
+
+def _block_starts(h: _Heatmap) -> list[float]:
+    """Each comparator block's first column's x (blocks follow a gap)."""
+    starts, previous = [], None
+    for tick in h.ticks[1:]:
+        if previous is None or tick - previous > 1.01:
+            starts.append(tick - 0.5)
+        previous = tick
+    return starts
 
 
 def _unlabel_side(ax, program: int, end: float) -> None:
@@ -293,6 +322,9 @@ def pair_heatmap(
     name: str | None,
     drop: float = 0.24,
     signed: bool = False,
+    slant: bool = False,
+    columns_of=None,
+    colorbar: bool = True,
 ) -> None:
     """Each component's carrying pairs in the component and in its related
     columns of each comparator, then, where a comparator shows two or more
@@ -308,12 +340,16 @@ def pair_heatmap(
             ax, 0.0, rows, {p: cccrise[p] for p in programs}, signed
         )
     ]
-    chosen = related_columns(dataset, programs)
+    # `columns_of`: the components whose related columns are shown (default
+    # `programs`), so one component's panel can show the columns of a pair
+    chosen = related_columns(dataset, columns_of or programs)
     for method, lab in FITS:
         _fit_block(h, chosen, method, lab)
     _heatmap_source(h)
     h.labels[0] = name or ""
-    _heatmap_axes(h)
+    _heatmap_axes(h, slant)
+    if not colorbar:
+        return
     if signed:
         _signed_colorbar(ax, drop)
     else:
@@ -435,12 +471,15 @@ def _covariation_key(ax, loc: str) -> None:
     )
 
 
-def covariation(axs, dataset: str, programs, key_loc: str = "lower center") -> None:
+def covariation(
+    axs, dataset: str, programs, key_loc: str = "lower center", top: float = 1
+) -> None:
     """Each component's and related column's co-variation over all its carrying
     pairs, against both nulls' 95th percentiles (random dashed,
     expression-matched solid); filled where its one-sided empirical p against
     the expression-matched null, BH-corrected over the panel's tested rows
-    (`with_q`), is below `common.SIG_ALPHA`; keyed at `key_loc`."""
+    (`with_q`), is below `common.SIG_ALPHA`; keyed at `key_loc`; the y axis
+    runs to `top`, room for the key above the data, ticked to 1."""
     (ax,) = axs
     t = with_q(covariation_rows(dataset, programs))
     common.source_data(
@@ -481,7 +520,7 @@ def covariation(axs, dataset: str, programs, key_loc: str = "lower center") -> N
     for _, r in t.iterrows():
         _lollipop(ax, r)
     ax.set(
-        ylim=(0, 1),
+        ylim=(0, top),
         yticks=[0, 0.5, 1],
         ylabel="Mean pairwise correlation\nacross conditions",
         xlim=(t["X"].min() - 0.7, t["X"].max() + 0.7),
