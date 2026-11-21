@@ -82,7 +82,10 @@ class Block:
         t = t[t["Method"] == self.method]
         if self.method == "cccRISE":
             return set(reduced_associated(dataset)["Component"]), set(t["Component"])
-        return tuple(set(t.loc[t["Labelling"] == lab, "Component"]) for lab in LABELS)
+        coarse, fine = (
+            set(t.loc[t["Labelling"] == lab, "Component"]) for lab in LABELS
+        )
+        return coarse, fine
 
     def cos2(self, pairs: pd.Index) -> pd.DataFrame:
         """Left x right LR cos^2 on `pairs`."""

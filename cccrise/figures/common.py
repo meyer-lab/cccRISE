@@ -470,7 +470,7 @@ def _move_on_page(fig: Figure, size, move: Callable) -> None:
         x, y = move(*(np.array(text.get_position()) * (w, h)))
         text.set_position((x / nw, y / nh))
     for line in fig.lines:
-        moved = [move(x * w, y * h) for x, y in line.get_xydata()]
+        moved = [move(x * w, y * h) for x, y in np.asarray(line.get_xydata())]
         line.set_data([x / nw for x, _ in moved], [y / nh for _, y in moved])
     fig.set_size_inches(nw, nh)
 

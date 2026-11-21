@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
+from matplotlib.typing import LegendLocType
 
 from ....comparators import methods
 from ....rank_selection import distinct_minima
@@ -119,7 +120,7 @@ def finish_ranks(ax: plt.Axes, top: int) -> None:
     rank_ticks(ax)
 
 
-def _key(ax: plt.Axes, handles: list, loc: str, ncol: int = 1) -> None:
+def _key(ax: plt.Axes, handles: list, loc: LegendLocType, ncol: int = 1) -> None:
     ax.legend(
         handles=handles,
         loc=loc,
@@ -131,7 +132,7 @@ def _key(ax: plt.Axes, handles: list, loc: str, ncol: int = 1) -> None:
     )
 
 
-def cohort_key(ax: plt.Axes, loc: str) -> None:
+def cohort_key(ax: plt.Axes, loc: LegendLocType) -> None:
     """The cohorts' colors, inside `ax` at `loc`."""
     _key(
         ax,
@@ -143,7 +144,7 @@ def cohort_key(ax: plt.Axes, loc: str) -> None:
     )
 
 
-def kneedle_key(ax: plt.Axes, loc: str) -> None:
+def kneedle_key(ax: plt.Axes, loc: LegendLocType) -> None:
     """The Kneedle elbow's circle, inside `ax` at `loc`."""
     _key(
         ax,
