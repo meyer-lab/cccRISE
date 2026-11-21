@@ -39,7 +39,6 @@ from ..rank_selection import (
     Factors,
     cp_backend,
     kneedle_elbow,
-    max_congruence,
 )
 from .staccato import staccato
 from .tensors import PooledTensor
@@ -231,20 +230,6 @@ def starts_factors(starts: xr.Dataset) -> dict[int, dict[int, Factors]]:
             starts[f"{m}_factor"].to_numpy()[:, columns] for m in MODES
         ]
     return factors_by_rank
-
-
-def start_congruence(starts: xr.Dataset) -> pd.DataFrame:
-    """Each start's `rank_selection.max_congruence`, from `starts_dataset`'s
-    factors: one row per start ('Rank', 'Seed', 'MaxCongruence')."""
-    ranks, seeds = starts["rank"].to_numpy(), starts["seed"].to_numpy()
-    rows = []
-    for rank, seed in sorted(set(zip(ranks.tolist(), seeds.tolist(), strict=True))):
-        columns = np.flatnonzero((ranks == rank) & (seeds == seed))
-        factors = [starts[f"{m}_factor"].to_numpy()[:, columns] for m in MODES]
-        rows.append(
-            {"Rank": rank, "Seed": seed, "MaxCongruence": max_congruence(factors)}
-        )
-    return pd.DataFrame(rows)
 
 
 def tensor_cell2cell_rank(elbow: pd.DataFrame) -> int | None:

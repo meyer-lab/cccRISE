@@ -9,14 +9,19 @@ counterpart is the RISE rank, the number of eigen-states its cells are
 described by. This runner refits the whole pipeline (`run_ccc_rise`'s
 settings: uncompressed RISE, CP from the production SVD start on the
 default device and precision) at `--rise-rank` and `--cp-rank` and writes
-only the fit's LR pair loadings, which is all Figure 5E-F reads, so no
-model file is kept:
+what Figure 5E-F reads, so no model file is kept:
 
     reduced_rise_lr_loadings_<dataset>.parquet
         one row per LR pair and component ('Method' cccRISE, 'RiseRank',
-        'CpdRank', 'Component', 'LRPair', 'Loading'),
+        'CpdRank', 'Component', 'LRPair', 'Loading');
+    reduced_rise_associations_<dataset>.parquet
+        the fit's condition loadings tested against the cohort's outcomes as
+        every fit's are (`run_comparator_scores.loadings_associations`:
+        read-depth corrected, FDR over this fit's associations and
+        components): the associations table's columns, with 'Method'
+        cccRISE, 'Labelling' reduced, 'RiseRank' and 'CpdRank',
 
-beside the comparator scores (`COMPARATOR_SCORES_DIR`), recorded in that
+beside the comparator scores (`COMPARATOR_SCORES_DIR`), each recorded in that
 folder's `provenance.yaml` under its header (`run_comparator_scores.HEADER`).
 The CPD rank is selected by CCC-RISE's rank selection (`run_cpd_rank`'s
 seeded-start sweep and its diagnostics) on the reduced fit.
@@ -26,8 +31,10 @@ seeded-start sweep and its diagnostics) on the reduced fit.
 
 import argparse
 
+import numpy as np
 import pandas as pd
 
+from ..anova import _resolve_factors_and_metadata
 from ..ccc_rise import CP_DTYPE, CP_FIT_OPTIONS, run_ccc_rise_workflow
 from ..import_data import import_ligand_receptor_pairs
 from ._cli import (
@@ -43,9 +50,10 @@ from ._cli import (
 )
 from .datasets import COMPARATOR_SCORES_DIR, DatasetSpec, scores_filename
 from .provenance import build_metadata, git_sha, read_metadata, record_output
-from .run_comparator_scores import HEADER
+from .run_comparator_scores import HEADER, loadings_associations
 
 TABLE = "reduced_rise_lr_loadings"
+ASSOCIATIONS = "reduced_rise_associations"
 
 
 def lr_loading_table(fit: dict, rise_rank: int, cp_rank: int) -> pd.DataFrame:
@@ -62,6 +70,22 @@ def lr_loading_table(fit: dict, rise_rank: int, cp_rank: int) -> pd.DataFrame:
     )[["Method", "RiseRank", "CpdRank", "Component", "LRPair", "Loading"]]
 
 
+def association_table(
+    fit: dict, reference, spec: DatasetSpec, rise_rank: int, cp_rank: int
+) -> pd.DataFrame:
+    """The fit's condition loadings (CP mode 0, rows in sorted condition
+    order, as `import_data.add_cond_idxs` numbers them) tested against the
+    cohort's outcomes on the reported fit's `reference`."""
+    conditions = np.unique(fit["adata"].obs[spec.condition_column].unique())
+    samples = np.asarray(fit["cp_factors"][0])
+    loadings = pd.DataFrame(
+        samples, index=conditions.astype(str), columns=range(1, samples.shape[1] + 1)
+    )
+    return loadings_associations(reference, loadings, spec, "The reduced fit").assign(
+        Method="cccRISE", Labelling="reduced", RiseRank=rise_rank, CpdRank=cp_rank
+    )
+
+
 def run_reduced_rise(
     spec: DatasetSpec,
     rise_rank: int,
@@ -69,12 +93,17 @@ def run_reduced_rise(
     command: str,
     random_state: int = 42,
 ) -> pd.DataFrame:
-    """Fit CCC-RISE at `rise_rank` / `cp_rank` and write its LR loadings."""
+    """Fit CCC-RISE at `rise_rank` / `cp_rank` and write its LR loadings and
+    outcome associations."""
     git_sha()
     print(f"=== Reduced RISE: {spec.label}, RISE {rise_rank} / CPD {cp_rank} ===")
     reported = read_metadata(spec.factors_path())["rank_selection"]
+    adata = spec.load()
+    reference, _, _ = _resolve_factors_and_metadata(
+        spec.factors_path(), adata=adata, condition_column=spec.condition_column
+    )
     fit = run_ccc_rise_workflow(
-        adata=spec.load(),
+        adata=adata,
         rise_rank=rise_rank,
         lr_pairs=import_ligand_receptor_pairs(),
         cp_rank=cp_rank,
@@ -89,9 +118,10 @@ def run_reduced_rise(
         cp_tol=CP_TOL,
     )
     print(f"   RISE R2X {fit['r2x_rise']:.4f}, CP R2X {fit['r2x_cp']:.4f}")
-    table = lr_loading_table(fit, rise_rank, cp_rank)
-    path = COMPARATOR_SCORES_DIR / scores_filename(TABLE, spec.output_key)
-    table.to_parquet(path, index=False)
+    tables = {
+        TABLE: lr_loading_table(fit, rise_rank, cp_rank),
+        ASSOCIATIONS: association_table(fit, reference, spec, rise_rank, cp_rank),
+    }
     metadata = build_metadata(
         dataset_metadata(spec)
         | {
@@ -115,9 +145,12 @@ def run_reduced_rise(
             "r2x_cp": float(fit["r2x_cp"]),
         }
     )
-    record_output(path, metadata, command, header=HEADER)
-    print(f"   wrote {path.name}")
-    return table
+    for name, table in tables.items():
+        path = COMPARATOR_SCORES_DIR / scores_filename(name, spec.output_key)
+        table.to_parquet(path, index=False)
+        record_output(path, metadata, command, header=HEADER)
+        print(f"   wrote {path.name}")
+    return tables[TABLE]
 
 
 def build_parser() -> argparse.ArgumentParser:
