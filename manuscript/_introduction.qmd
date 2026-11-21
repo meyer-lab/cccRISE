@@ -12,7 +12,7 @@ While this is a simplified premise, it allows for the high-throughput screening 
 Initial tools such as CellPhoneDB and CellChat use statistical tests to compare communication scores against a null distribution created by randomly permuting cell labels\ [@doi:10.1038/s41596-020-0292-x; @doi:10.1038/s41467-021-21246-9].
 Originally designed to merely detect the presence of active signaling pathways, these foundational tools have since inspired a diverse analytical toolkit capable of addressing increasingly complex biological questions\ [@doi:10.1038/s41576-023-00685-8].
 
-A critical objective of CCC analysis is to understand how cellular interactions evolve across distinct biological contexts, such as disease states, developmental stages, or treatment groups\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41467-017-02391-6; @doi:10.1073/pnas.1918937117; @doi:10.1186/1471-2105-12-19].
+A critical objective of CCC analysis is to understand how cellular interactions evolve across biological contexts, such as disease states, developmental stages, or treatment groups\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41467-017-02391-6; @doi:10.1073/pnas.1918937117; @doi:10.1186/1471-2105-12-19].
 By mapping alterations in LR activity and signaling pathways, researchers can pinpoint the communication programs that drive phenotypic outcomes and identify potential therapeutic targets.
 The most direct strategies contrast two conditions at a time.
 For example, scDiffCom, CrossTalkeR, and NATMI model differences in communication between conditions to identify interactions associated with disease or phenotypic changes\ [@doi:10.1038/s43587-023-00514-x; @doi:10.1093/bioinformatics/btab370; @doi:10.1038/s41467-020-18873-z].
@@ -20,9 +20,9 @@ However, pairwise comparison tools ignore variation between individual samples a
 
 Computational approaches for multi-condition CCC analysis generally fall into two primary categories: matrix-based and tensor-based methods.
 Matrix-based strategies---including DIALOGUE, MultiNicheNet, and Multicellular Factor Analysis---typically flatten complex data into two-dimensional arrays, such as rows of samples against columns of sender--receiver features\ [@doi:10.1038/s41587-022-01288-0; @doi:10.7554/eLife.93161; @doi:10.1101/2023.06.13.544751].
-While these methods can successfully identify statistically significant LR pairs, the flattening process confounds cells and samples, making it difficult to track context-dependent communication events across specific sender and receiver cell types.
+While these methods can successfully identify statistically significant LR pairs, the flattening process confounds cells and samples, making it difficult to track context-dependent communication events across sender and receiver cells.
 In contrast, tensor-based methods like Tensor-cell2cell, scTensor, STACCato, and scITD address this limitation by modeling data across all dimensions simultaneously.
-By arranging data into higher-order tensors rather than flat matrices, these methods preserve the multi-dimensional structure of the interaction, allowing for the identification of coordinated changes in CCC across conditions\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005; @doi:10.1038/s41587-024-02411-z; @doi:10.1186/s12859-023-05490-y].
+By arranging data into higher-order tensors rather than flat matrices, these methods preserve the multi-dimensional structure of cellular interactions, allowing for the identification of coordinated changes in CCC across conditions\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005; @doi:10.1038/s41587-024-02411-z; @doi:10.1186/s12859-023-05490-y].
 To extract these insights, tensor-based tools employ factorization techniques, such as Canonical Polyadic Decomposition (CPD), which model the tensor as a sum of rank-one components to reveal distinct signaling patterns\ [@doi:10.1137/07070111X; @doi:10.1016/j.cels.2024.07.004].
 
 Despite the advantages of current tensor-based methods, their reliance on pseudobulked single-cell data is a significant limitation.
@@ -44,4 +44,4 @@ Although other dimensionality reduction methods could supply these single-cell e
 First, PARAFAC2 has a unique solution, so eigen-states represent a non-arbitrary choice of basis for LR interaction scoring\ [@{doi:10.1002/(SICI)1099-128X(199905/08)13:3/4<295::AID-CEM547>3.0.CO;2-Y}].
 Second, eigen-states are defined by explicit cell and gene weights, so LR interactions can be traced back to individual cells\ [@doi:10.1016/j.cels.2025.101294].
 Here, we apply standard CCC scoring and tensor factorization to RISE's eigen-states to identify core communication programs across varying conditions while preserving the ability to interpret these signals at the single-cell level.
-We then compare CCC-RISE with tensor methods that aggregate cells by annotation to identify which kinds of communication programs are obscured by the pseudobulk process.
+We then compare CCC-RISE with tensor-based methods that aggregate cells by annotation to identify which kinds of communication programs are obscured by the pseudobulk process.
