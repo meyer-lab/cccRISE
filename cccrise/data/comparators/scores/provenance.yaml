@@ -499,8 +499,8 @@ files:
     n_shuffle: 1000
     git_sha: 8f72df6f61e9fbe36f3efa35df063de313e7c5e6
     generated: '2026-11-20T03:19:39+00:00'
-  reduced_rise_lr_loadings_alad.parquet:
-    sha256: 671587d7c2c841946e28f95600f606c080af5cb6581f5d24ab826579dd45fe16
+  reduced_rise_associations_alad.parquet:
+    sha256: 046cccade07e2a7cd596186d45d3aa0ed92f220ffb88752fbb784abdf0a68b47
     command: uv run cccrise-reduced-rise --dataset alad --rise-rank 10 --cp-rank 4
     dataset: alad
     dataset_label: ALAD Lung Transplant BAL
@@ -533,10 +533,48 @@ files:
     cp_device: auto
     cp_backend: cupy
     cp_dtype: float32
-    r2x_rise: 0.028362457187341317
-    r2x_cp: 0.5541418560831451
-    git_sha: 06ef3ede312c74ca25dd3ac0324e11a146de8d36
-    generated: '2026-11-19T23:51:48+00:00'
+    r2x_rise: 0.028362429294708558
+    r2x_cp: 0.5541416720152725
+    git_sha: d58190f064f49c764cc544f69b16bdfe82643888
+    generated: '2026-11-21T01:05:13+00:00'
+  reduced_rise_lr_loadings_alad.parquet:
+    sha256: 01b61f4f1bf9916ac36964911f774a44e069956af56605398a868b5d87a732bc
+    command: uv run cccrise-reduced-rise --dataset alad --rise-rank 10 --cp-rank 4
+    dataset: alad
+    dataset_label: ALAD Lung Transplant BAL
+    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
+    loader_args:
+      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
+      gene_threshold: 0.001
+      normalize: true
+    condition_key: dsco_id
+    celltype_key: broad_cell_type
+    group_key: ALADstatus
+    rise_rank: 10
+    cp_rank: 4
+    reported_fit:
+      factors_file: bal_alad_factors.nc
+      rise_rank: 17
+      cp_rank: 6
+    random_state: 42
+    rise_compressed: false
+    rise_backend: cupy
+    rise_n_iter_max: 300
+    rise_tol: 1.0e-08
+    cp_n_iter_max: 4000
+    cp_tol: 1.0e-12
+    cp_fit_options:
+      init: svd
+      svd: randomized_svd
+      normalize_factors: true
+    cp_device: auto
+    cp_backend: cupy
+    cp_dtype: float32
+    r2x_rise: 0.028362429294708558
+    r2x_cp: 0.5541416720152725
+    git_sha: d58190f064f49c764cc544f69b16bdfe82643888
+    generated: '2026-11-21T01:05:13+00:00'
   reduced_rise_lr_loadings_ibd.parquet:
     sha256: a4db52eed706a6b8ff7d141370f3e34dbd94487e434eb37e446ae7ea976dc0d2
     command: uv run cccrise-reduced-rise --dataset ibd --rise-rank 30 --cp-rank 5
@@ -585,61 +623,3 @@ files:
     r2x_cp: 0.5101411441025301
     git_sha: a503e978b021637e85014b30574d837ee423e22d
     generated: '2026-11-20T01:00:49+00:00'
-  start_congruence_alad.parquet:
-    sha256: da03b4807a07fc65953c9a935cfb7c14a3dcf579a7b565638a0c5f2b1f14581a
-    command: uv run cccrise-comparator-scores --dataset alad
-    dataset: alad
-    dataset_label: ALAD Lung Transplant BAL
-    source_file: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
-    source_sha256: 06266ede0478205c6df0e10d6ca5e100806982d41ba3ddc4e4434164d1348fd7
-    loader_args:
-      filename: /opt/IVCSC/BAL-scRNAseq.raw.h5ad
-      gene_threshold: 0.001
-      normalize: true
-    condition_key: dsco_id
-    celltype_key: broad_cell_type and celltype
-    group_key: ALADstatus
-    labelling: coarse and fine
-    fit_sha256:
-      PB coarse: 15c9c7946862369e2df539cbfd34ffc1ddb6eb1048a8a6d5d8d8e4c407bfb893
-      PB fine: 457fe178e969b8f65f23e71716394b8bc1209751c262a3cc0223fbfddc4eabb3
-      TC2C coarse: a75245740fd700f6a36f5120c4e7fb76c85c3a65cd2f2d4a68bb54fc67daaa2a
-      TC2C fine: 70a4360e920af7c83337d75cec9f78bd87cb2583fef9ff73767ab76cd9a74abc
-      STAC coarse: ae31463d41b7897855cdd168a42af119bb6c13009e4f6c210525d8bbdce548cd
-      STAC fine: 3e3dedfd1ab209b4ee4a5099b1a20c39746c7c6a62621d19742f5b21ade9ea14
-    git_sha: 9c938632496251cd077bc8032f480d2164461584
-    generated: '2026-11-19T18:33:11+00:00'
-  start_congruence_ibd.parquet:
-    sha256: 6e352298463b18c6b4e8f351573ff0989aa52f74136213f7b01f5eaaf7f1f142
-    command: uv run cccrise-comparator-scores --dataset ibd
-    dataset: ibd
-    dataset_label: IBDverse Crohn's Disease Terminal Ileum (<= 2000 cells per condition, seed
-      0)
-    source_file: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
-    source_sha256: 5ceb34f29472ea55d547356fdc5ae923c34dd1537030b1f1a1d2595c98555fc0
-    loader_args:
-      filename: /opt/IVCSC/full_IBD_cohort.ivcsc.h5ad
-      gene_threshold: 0.001
-      normalize: true
-      max_cells_per_condition: 2000
-      cell_cap_seed: 0
-      excluded_broad_cell_types:
-      - Mesenchymal
-    condition_key: sanger_sample_id
-    celltype_key: broad_cell_type and celltype
-    group_key: inflammation_status
-    dataset_notes: 'Krzak et al. Nat Genet 2026 terminal-ileum cohort: 343 samples, 232 healthy
-      and 111 Crohn''s (64 inflamed / 47 uninflamed). `celltype` holds 57 annotated types
-      matching the published DGE tables; `broad_cell_type` holds 8 lineages, of which the
-      mesenchymal one (fibroblasts, endothelial cells, pericytes) is excluded as a biopsy-sampling
-      artifact (`import_data.IBD_EXCLUDED_BROAD_CELL_TYPES`).'
-    labelling: coarse and fine
-    fit_sha256:
-      PB coarse: 35c837f93a65d965da7df23c3ba5eff16cad22d34d4a14dc0d6645572e98d1b0
-      PB fine: 665d3814964a4b526e2f35ecd7b462a1ca2db08e9a291ef7628f4a85a028cf77
-      TC2C coarse: 74bc42f739564cf0310f1d441210bc456fbae4a6ff3c3df59f6bc69619762fd0
-      TC2C fine: 20a6d7cc29d455e88fd197035eda9bd6f4124b6a6a7d954f661f022b5775e923
-      STAC coarse: b4afe8919d37bc1d49f3f9505b860d40230cd8f3385a877824c966cacebd0e44
-      STAC fine: 62114a6740ade3afa9752c8c112b1b4a967bfe77a551941f461a573f0d77cd49
-    git_sha: 9e713e833a717ea3ea592650b82c4431a510f119
-    generated: '2026-11-19T21:35:50+00:00'
