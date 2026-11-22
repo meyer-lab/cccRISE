@@ -5,8 +5,8 @@ subtitle: "Resolving cell--cell communication programs beyond cell-type boundari
 
 ## Table of Contents
 
-- {{< label alad-cohort >}}: ALAD cohort, RISE factor matrices, and collinearity and stability of RISE and CPD components
-- {{< label ibd-rank-selection >}}: IBD CCC-RISE rank selection and RISE factor matrices
+- {{< label alad-cohort >}}: CCC-RISE factor evaluation in the ALAD cohort
+- {{< label ibd-rank-selection >}}: CCC-RISE rank selection and RISE factor matrices in the IBD cohort
 - {{< label ibd-associations >}}: Association of CPD components and covariates with IBD biopsy type
 - {{< label comparator-rank-selection >}}: Rank selection of the label-based comparators
 - {{< label comparator-ibd-and-depth >}}: Comparator recovery of the IBD components, and detection depth in every method's components
@@ -18,27 +18,26 @@ subtitle: "Resolving cell--cell communication programs beyond cell-type boundari
 ![](figures/figureS_alad_cohort/figureS_alad_cohort.svg){width="6.5in"}
 
 **{{< label alad-cohort >}}.
-ALAD cohort, RISE factor matrices, and collinearity and stability of RISE and CPD components.** ({{< panel alad-cohort cohort >}}) Schematic of the ALAD cohort data\ [@doi:10.1016/j.healun.2024.02.007].
-({{< panel alad-cohort factors genes >}}) RISE factor matrices representing component loadings of conditions and genes; conditions are grouped by ALAD status, then six-month outcome (color strips).
-For visualization, genes outside the top 10% by weight in any component are omitted and each component is normalized to its largest absolute loading.
-({{< panel alad-cohort cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and interquartile range (band; IQR) over 10 seeded SVD starts per rank.
-({{< panel alad-cohort rise-fms >}}) RISE gene factor and ({{< panel alad-cohort cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and, right of the dashed line, the aggregate FMS (mean over components) of each jackknife and re-initialization (seed only, n = 100) replicate.
+CCC-RISE factor evaluation in the ALAD cohort.** ({{< panel alad-cohort cohort >}}) Schematic of the ALAD cohort data\ [@doi:10.1016/j.healun.2024.02.007].
+({{< panel alad-cohort factors genes >}}) RISE factor matrices representing component loadings of conditions and genes; each component normalized to its largest absolute loading.
+({{< panel alad-cohort cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and IQR (band) over 10 seeded SVD starts per rank.
+({{< panel alad-cohort rise-fms >}}) RISE gene factor and ({{< panel alad-cohort cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and the aggregate FMS (mean over components) of each jackknife and re-initialization (n = 100) replicate.
 Each replicate's components were matched to the reference's by Hungarian matching.
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
 
 ![](figures/figureS_ibd_rank_selection/figureS_ibd_rank_selection.svg){width="6.5in"}
 
 **{{< label ibd-rank-selection >}}.
-IBD rank selection.** ({{< panel ibd-rank-selection cohort >}}) Schematic of the IBD cohort data\ [@doi:10.1038/s41588-026-02634-7].
+CCC-RISE rank selection and RISE factor matrices in the IBD cohort.** ({{< panel ibd-rank-selection cohort >}}) Schematic of the IBD cohort data\ [@doi:10.1038/s41588-026-02634-7].
 ({{< panel ibd-rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
 ({{< panel ibd-rank-selection bicv-test >}}) BiCV test R^2^X from ({{< panel ibd-rank-selection rise-rank-selection >}}) on its own magnified axis.
 ({{< panel ibd-rank-selection cp-r2x-starts >}}) CPD fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
 ({{< panel ibd-rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each start (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey).
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
 ({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
-({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, and receiver factors of any two CPD components across ranks, as the median (line and points) and IQR (band) over the starts.
+({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and IQR (band) over the starts.
 ({{< panel ibd-rank-selection factors genes >}}) RISE factor matrices at the selected rank representing component loadings of conditions and genes.
-({{< panel ibd-rank-selection eigenstate-heatmap >}}) RISE cell-type--eigen-state associations derived from RISE rank-60 projection matrices: mean RISE projection of each cell type's cells onto each eigen-state.
+({{< panel ibd-rank-selection eigenstate-heatmap >}}) RISE cell-type--eigen-state associations derived from RISE projection matrices: mean RISE projection of each cell type's cells onto each eigen-state.
 
 ![](figures/figureS_ibd_associations/figureS_ibd_associations.svg){width="6.5in"}
 
@@ -135,6 +134,6 @@ Both Scriabin and CCC-RISE used 10 seed refits (n = 45 pairs each).
 {{< include figures/tables/alad_outcome_groups.md >}}
 
 **{{< label alad-outcome-groups >}}.
-ALAD samples by outcome group.** Number of BAL samples in each ALAD status and six-month outcome group the analyses compare.
+ALAD samples by outcome group.** Number of BAL samples in each ALAD status and six-month outcome group.
 Indented groups are subgroups of the group above them.
 Two of the 45 patients were sampled twice, in different groups.
