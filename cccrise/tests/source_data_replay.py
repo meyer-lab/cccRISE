@@ -488,49 +488,29 @@ def figure5(z: Zip) -> dict:
 
 
 def figure_ev1(z: Zip) -> dict:
-    s, r = F2.GRANULARITY_SENDER_EIGENSTATE, F2.GRANULARITY_RECEIVER_EIGENSTATE
-    projections_csv = z("EV1A", "rise_eigenstate_projection_per_cell")
-    projections = np.zeros((len(projections_csv), max(s, r)))
-    for e in (s, r):
-        projections[:, e - 1] = projections_csv[f"Eigen-state {e} projection"]
-    cells = SimpleNamespace(
-        obsm={"projections": projections}, obs_names=projections_csv["Cell barcode"]
-    )
-    loadings = z("EV1B", "cpd_eigenstate_loadings")
+    loadings = z("EV1A", "cpd_eigenstate_loadings")
     k = F2.GRANULARITY_COMPONENT
     uns = {}
     for mode, column in (("B", "Sender loading (B)"), ("C", "Receiver loading (C)")):
         uns[mode] = np.zeros((len(loadings), k))
         uns[mode][:, k - 1] = loadings[column]
-    de = z("EV1F", "de_sender_vs_receiver").set_index("Gene")
+    de = z("EV1C", "de_sender_vs_receiver").set_index("Gene")
     volcano = (
         de.rename(columns={"q (BH)": "q", "Wilcoxon score": "score"}),
         de["Detected fraction difference"],
         de["-log10 q (plotted, floored at q = 1e-30)"],
     )
-    return (
-        module(
-            "figure2.figureS_cmp5_identity.eigenstate_scatter",
-            {(common, "get_cell_projections"): lambda dataset: cells},
-            {"EV1A": None},
-        )
-        | module(
-            "figure2.figureS_cmp5_identity.cmp_eigenstate_loadings",
-            {
-                (common, "load_factors_to_anndata"): lambda path: SimpleNamespace(
-                    uns=uns
-                )
-            },
-            {"EV1B": None},
-        )
-        | module(
-            "figure2.figureS_cmp5_identity.sender_vs_receiver",
-            {
-                (V, "volcano_data"): lambda *_: volcano,
-                (V, "save_volcano"): lambda *_: None,
-            },
-            {"EV1F": None},
-        )
+    return module(
+        "figure2.figureS_cmp5_identity.cmp_eigenstate_loadings",
+        {(common, "load_factors_to_anndata"): lambda path: SimpleNamespace(uns=uns)},
+        {"EV1A": None},
+    ) | module(
+        "figure2.figureS_cmp5_identity.sender_vs_receiver",
+        {
+            (V, "volcano_data"): lambda *_: volcano,
+            (V, "save_volcano"): lambda *_: None,
+        },
+        {"EV1C": None},
     )
 
 

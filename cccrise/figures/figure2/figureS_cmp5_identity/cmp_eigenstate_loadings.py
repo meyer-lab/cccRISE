@@ -15,21 +15,19 @@ def plot(axs):
     adata = common.load_factors_to_anndata(
         DATASETS[S.GRANULARITY_DATASET].factors_path()
     )
-    common.plot_component_eigenstate_loadings(
-        adata,
-        S.GRANULARITY_COMPONENT,
-        ax,
-        (S.GRANULARITY_SENDER_EIGENSTATE, S.GRANULARITY_RECEIVER_EIGENSTATE),
-    )
-    ax.set_ylabel(f"Cmp. {S.GRANULARITY_COMPONENT} loading")
     sender, receiver = (
         np.asarray(adata.uns[k])[:, S.GRANULARITY_COMPONENT - 1] for k in "BC"
     )
+    eigenstates = np.arange(1, len(sender) + 1)
+    common.plot_component_eigenstate_loadings(
+        adata, S.GRANULARITY_COMPONENT, ax, eigenstates
+    )
+    ax.set_ylabel(f"Cmp. {S.GRANULARITY_COMPONENT} loading")
     common.source_data(
         "cpd_eigenstate_loadings",
         pd.DataFrame(
             {
-                "RISE eigen-state": np.arange(1, len(sender) + 1),
+                "RISE eigen-state": eigenstates,
                 "Sender loading (B)": sender,
                 "Receiver loading (C)": receiver,
             }

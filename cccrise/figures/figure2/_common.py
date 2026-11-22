@@ -15,11 +15,9 @@ from ...validation.nichenet import top_pairs
 from .. import common, style
 
 # The CP component that splits a cell type into sender and receiver
-# subpopulations, and the RISE eigenstates of its largest sender (B) and
-# receiver (C) loadings
+# subpopulations
 GRANULARITY_DATASET = "alad"
 GRANULARITY_COMPONENT = 6
-GRANULARITY_SENDER_EIGENSTATE, GRANULARITY_RECEIVER_EIGENSTATE = 17, 15
 # Cells are split on their per-cell sender (`obsm["sc_B"]`) and receiver
 # (`obsm["rc_C"]`) weights on the component alone (`split_cells`), each
 # cutoff a fraction GROUP_TAU of that weight's largest value, then compared by
