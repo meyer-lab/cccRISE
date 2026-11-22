@@ -9,7 +9,7 @@ from .. import _common as S
 
 #: An eigenstate is the programs' when its sender (B) or receiver (C) loading
 #: on C3 or C4 reaches this
-LOADING_MIN = 0.2
+LOADING_MIN = 0.3
 ROLES = {"sender": "cp_B", "receiver": "cp_C"}
 #: Cell categories, epithelial first; the immune lineages are pooled in bars
 CATEGORIES = [
@@ -83,16 +83,31 @@ def label_roles(ax) -> None:
 
 def zoomed_maps(axs, columns: list[str], draw, label: str) -> None:
     """Each of `columns` of the EE/EC/tuft table painted on Figure 4's zoomed
-    map by `draw` (`S.weight_map` or `expression`), titled by the column, the
-    colorbar (`label`) beside the last."""
+    map by `draw` (`S.weight_map` or `expression`), titled by the column,
+    each with its own colorbar (`label`): `draw` scales each map separately."""
     cells = S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])
     xy = cells[["PaCMAP 1", "PaCMAP 2"]].to_numpy()
     for ax, column in zip(axs, columns, strict=True):
         points = draw(ax, xy, cells[column].to_numpy())
         S.map_axes(ax, column)
-    common.colorbar(axs[-1], points, label)
+        common.colorbar(ax, points, label)
 
 
 def expression(ax, xy, values):
     """`values` as Figure 4H draws expression (`S.relative_expression`)."""
     return S.expression_map(ax, xy, S.relative_expression(values))
+
+
+def receiver_map(axs, component: int) -> None:
+    """Each EE, EC, and tuft cell's receiver weight on CPD `component`, on the
+    zoomed map, with its own colorbar."""
+    column = f"C{component} receiver weight"
+    common.source_data(
+        f"c{component}_receiver_weight_on_map",
+        S.programs("enteroendocrine_cells").dropna(subset=["PaCMAP 1"])[
+            ["PaCMAP 1", "PaCMAP 2", column]
+        ],
+        f"Unscaled per-cell C{component} receiver weight of EE, EC and tuft "
+        "cells, on the zoomed map.",
+    )
+    zoomed_maps(axs, [column], S.weight_map, "Weight")

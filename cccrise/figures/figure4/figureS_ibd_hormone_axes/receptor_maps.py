@@ -3,7 +3,7 @@ EE/EC/tuft PaCMAP.
 
 NPY1R and GLP1R, the receptors of C3's (PYY-NPY1R) and C4's (GCG-GLP1R)
 top LR pairs, on Figure 4's zoomed map as Figure 4H draws its ligands,
-stacked beside the receiver weights (`receiver_maps`)."""
+beside the receiver weights (`receiver_map_c3`, `receiver_map_c4`)."""
 
 from ... import common
 from .. import _common as S

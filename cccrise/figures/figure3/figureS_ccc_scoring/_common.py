@@ -117,9 +117,9 @@ def score_label(method: str) -> str:
 
 
 def method_legend(fig, **kwargs) -> None:
-    """One legend of all methods' colors, above `fig` unless `kwargs` place
-    it."""
-    handles = [Patch(color=SCORE_COLORS[m], label=score_label(m)) for m in ALL_SCORES]
+    """One legend of the alternate methods' colors (the bars compared with the
+    default), above `fig` unless `kwargs` place it."""
+    handles = [Patch(color=SCORE_COLORS[m], label=score_label(m)) for m in ALT_SCORES]
     fig.legend(
         handles=handles, ncols=len(handles), **{"loc": "outside upper center"} | kwargs
     )

@@ -1,5 +1,5 @@
 """Match of each alternate communication score's CPD components to the default
-score's: the factor match score on the condition and LR pair modes, and the
+score's: their mean |cosine| over the condition and LR pair modes, and the
 absolute cosine of the paired components' sender and receiver loadings."""
 
 import numpy as np
@@ -42,8 +42,8 @@ def similarity_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
         "factor_match_scores",
         table[["Method", "Component", "MatchedComponent", "MatchScore"]],
         "One row per (alternate score, default-score CPD component): the "
-        "alternate score's paired component and their match score (factor "
-        "match score on the condition and LR modes).",
+        "alternate score's paired component and their match score (mean "
+        "|cosine| over the condition and LR pair modes).",
         part=0,
     )
     common.source_data(
@@ -67,7 +67,7 @@ def similarity_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
 def plot(fig):
     match, cosine = similarity_tables()
     axs = fig.subplots(1, 2)
-    S.grouped_bar(axs[0], match, "Match score")
+    S.grouped_bar(axs[0], match, "Condition/LR |cosine|\nwith product score")
     S.grouped_bar(axs[1], cosine, "Sender/receiver |cosine|")
     for ax in axs:
         ax.set_ylim(0, 1.05)

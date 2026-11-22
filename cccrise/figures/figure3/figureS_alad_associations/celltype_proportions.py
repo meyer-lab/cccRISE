@@ -1,5 +1,5 @@
 """Fraction of each ALAD sample's cells in each annotated cell type by ALAD
-status (control, declined, recovered), with each cell type's Kruskal-Wallis q
+status (control, recovered, declined), with each cell type's Kruskal-Wallis q
 (Benjamini-Hochberg)."""
 
 from typing import Any
@@ -15,9 +15,12 @@ from ....runners.datasets import DATASETS
 from ... import common, style
 
 DATASET = "alad"
-STATUS_COLORS = dict(
-    zip(("control", "declined", "recovered"), style.CATEGORICAL, strict=False)
-)
+# Drawn in this order; each status keeps its color
+STATUS_COLORS = {
+    "control": style.CATEGORICAL[0],
+    "recovered": style.CATEGORICAL[2],
+    "declined": style.CATEGORICAL[1],
+}
 Y_TICKS = [0, 0.01, 0.05, 0.1, 0.25, 0.5, 1]
 AXES = ("half",)
 Y_TOP = 1.3  # room above a fraction of 1 for the q values
