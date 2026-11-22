@@ -8,7 +8,7 @@ Each cell is therefore represented by a continuous projection across all eigen-s
 Through eigen-states, CCC-RISE brings single-cell resolution to multi-condition CCC inference to identify communicating subpopulations at a granularity defined exclusively by the data.
 
 While exploring the advantages of CCC-RISE through ALAD and IBD cohorts, we showcased three distinct modes of interpretation that each defined different kinds of communicating populations through eigen-states.
-ALAD component 6 defined an alveolar repair and fibrosis pathway among epithelial cells and was unique in its separation of divergent sender and receiver cells by component weight.
+ALAD component 6 defined an airway repair and fibrosis pathway among epithelial cells and was unique in its separation of divergent sender and receiver cells by component weight.
 This separability allowed us to threshold the epithelial senders and receivers into groups characterized by distinct gene expression, making this approach especially useful in cases of paracrine signaling between cellular subpopulations.
 In contrast, ALAD component 5 represented immune-activation within a subpopulation of lymphocytes that were collinear in sender and receiver weights, suggesting population-level autocrine signaling within a single group of cells.
 Thus, ALAD components 5 and 6 represent two modes of population-level communication that can be understood through similarities and differences in eigen-state projections.

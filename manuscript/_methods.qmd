@@ -2,7 +2,7 @@
 
 CCC-RISE infers cell--cell communication (CCC) programs across multiple conditions in three sequential steps: (1) RISE decomposes the multi-condition scRNA-seq data into cell eigen-states; (2) an aligned 4D communication tensor is constructed by scoring ligand--receptor pairs between eigen-states; and (3) CPD decomposes this tensor to extract communication programs.
 Each step is described in turn below, followed by the data processing, rank selection, validation, and interpretation analyses.
-Definitions shared across analyses (top LR pairs, empirical p-values, multiple-test correction, and differential expression) are collected in Quantification and Statistical Analysis.
+Definitions shared across analyses are collected in Quantification and Statistical Analysis.
 
 ### Reduction and Insight in Single-cell Exploration
 
@@ -85,7 +85,7 @@ where $\circ$ is the outer product, $\lambda_{q}$ is the weight of component $q$
 
 **Fitting.** CPD was fit by alternating least squares (ALS), wherein each mode is iteratively solved using least squares.
 Each factor matrix was initialized with the leading $r$ left singular vectors of the corresponding mode unfolding of the tensor, computed by randomized SVD, and the factors were normalized to unit norm at each iteration, with their scale carried by $\lambda$.
-ALS stopped when the change in relative reconstruction error between iterations fell below 1×10^-12^, or after a maximum of 4,000 iterations.
+ALS stopped when the change in relative reconstruction error between iterations fell below 10^-12^, or after a maximum of 4,000 iterations.
 Unless otherwise stated, CPD models were fit using single precision on a GPU.
 
 **Post-fit processing** CPD components are determined only up to order, scale, and sign, so each fit was standardized before interpretation.
@@ -178,7 +178,7 @@ The predictions of all held-out entries were pooled into a single R^2^X against 
 Masked fits ran in double precision because single-precision fits diverged at higher ranks and with a ridge penalty ($\lambda$ = 0.1) because the heavy-tailed communication tensor otherwise let a few large held-out entries dominate.
 Third, the collinearity of each start in each mode: the largest absolute cosine between the factor columns of two of its components.
 Fourth, the agreement between starts: starts whose FMS was at least 0.95 were taken to reach the same solution.
-The rank was chosen as the largest rank at which no start's LR pair mode was collinear nor unstable.
+The chosen rank was the largest at which no start's LR pair mode was collinear and all starts reached the same solution.
 
 ### Clinical Association Testing
 
@@ -227,7 +227,7 @@ Because the conditions were unchanged, RISE was compared on the condition and ge
 **Alternative CCC scoring.** Three alternatives to the expression product combine a sender eigen-state's non-negative ligand expression, $L$, with a receiver eigen-state's non-negative receptor expression, $R$: the arithmetic mean, $(L + R)/2$, used by Tensor-cell2cell and CellPhoneDB; the geometric mean, $\sqrt{LR}$, used by scDiffCom; and a CellChat-style saturating Hill function, $LR / (K_h + LR)$, with half-saturation constant $K_h = 0.5$\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41596-020-0292-x; @doi:10.1038/s43587-023-00514-x; @doi:10.1038/s41467-021-21246-9].
 The communication tensor was recomputed under each scoring function from one shared RISE fit, and each tensor was decomposed with CPD at the selected rank.
 Components of each alternative fit were matched to the expression-product fit by Hungarian matching on their mean absolute cosine over the condition and LR pair modes.
-Reported were the matched FMS and the mean sender and receiver absolute cosine of matched components.
+Reported were the matched components' mean absolute cosine over the condition and LR pair modes and over the sender and receiver eigen-state modes.
 Component cell-type loadings were computed as defined below in Mapping CCC-RISE Components to Cells.
 
 ### Significance Against Nulls
@@ -252,6 +252,7 @@ Eigen-states were mapped to cell types by the mean projection of each cell type'
 **Cell groups.** All groupings used the cutoff $\tau = 0.3$ on relative weight.
 Sender and receiver groups were the cells whose relative sender or receiver weight was at least $\tau$, each cell assigned to the role with the larger relative weight.
 Polar groups of EE cells were defined from each IBD EE cell's relative sender weights on components 3 and 4, $r_3$ and $r_4$, taken relative to their largest values among EE cells, which gave a polar magnitude $\sqrt{r_3^2 + r_4^2}$ and angle $\theta = \operatorname{atan2}(r_4, r_3)$, from 0° (component 3 only) to 90° (component 4 only), defined where $r_3 + r_4 > 0$.
+Cells with magnitude of at least τ were villus-like at θ ≤ 30°, crypt-like at θ ≥ 60°, and mixed in between; all other EE cells were 'other'.
 
 **Comparing groups.** Groups were compared by differential gene expression (see Quantification and Statistical Analysis).
 For ALAD component 6, sender and receiver groups were compared on curated epithelial subtype markers\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2], corrected across the markers present in the data, and markers were reported if q < 0.05 and their detection rates differed by at least 0.2.
@@ -272,7 +273,7 @@ Empirical p-values were corrected across the components of the CCC-RISE fit, whe
 
 **NICHES concordance.** We tested whether the cells CCC-RISE assigned to a component aligned with that component's LR expression using NICHES\ [@doi:10.1093/bioinformatics/btac775].
 NICHES was run on each sample's cells, using CCC-RISE's normalized expression and each component's top LR pairs $\mathcal{C}$.
-NICHES' CellToSystem function scored each cell as a sender by its ligand expression times the mean receptor expression of all cells in its sample and as a receiver by its receptor expression times the mean ligand expression of all cells in its sample.
+NICHES' CellToSystem and SystemToCell functions scored each cell as a sender by its ligand expression times the mean receptor expression of all cells in its sample and as a receiver by its receptor expression times the mean ligand expression of all cells in its sample.
 Cells that were the only one of their coarse cell type in their sample were not scored by NICHES and were excluded (25 cells for ALAD and 10 for IBD).
 Cell $j$'s sender/receiver program scores were $n_{j} = \sum_{l \in \mathcal{C}} g_{l}^{2}s_{j,l}$, where $g_{l}$ is the component's LR pair loading and $s_{j,l}$ the cell's NICHES score for LR pair $l$.
 A cell with $n_{j} > 0$ was NICHES-positive.
@@ -280,7 +281,7 @@ A sender or receiver population's NICHES concordance was its fraction of NICHES-
 The cell-type--predicted concordance was the mean over the population's cells of the fraction of NICHES-positive cells among all cells of the same fine cell type in the same sample.
 NICHES concordance was compared with this cell-label concordance by a two-sided Wilcoxon signed-rank test, paired over all sender and receiver populations of both cohorts.
 Sender/receiver populations were defined as for groups (see Mapping CCC-RISE Components to Cells), but not exclusive: a cell past both tau thresholds belonged to both populations.
-The six ALAD and six IBD components collectively defined 22 total sender/receiver populations by this definition.
+The six ALAD and six IBD components collectively defined 24 total sender/receiver populations by this definition.
 The comparison was repeated at $\tau$ from 0.1 to 0.6 in steps of 0.1, for populations of at least 10 cells.
 
 **Scriabin seed agreement.** Scriabin also represents interaction programs per cell\ [@doi:10.1038/s41587-023-01782-z].
@@ -317,7 +318,7 @@ On the same input tensors, our re-implementation matched the authors' R scripts 
 Each mode kept the components with more than 1% of the eigenvalue share of its unfolding, giving 16 and 15 LR columns on ALAD and 5 and 12 on IBD.
 
 **Matching components to LR columns.** A CCC-RISE component's match to an LR column was the cos^2^ of their LR pair loadings over CCC-RISE's LR pairs.
-A component's best-match cos^2^ was its largest cos^2^ with any LR column of any comparator fit, and across the 11 components of both cohorts it was compared with the component's number of top LR pairs by a two-sided Spearman correlation.
+A component's best-match cos^2^ was its largest cos^2^ with any LR column of any comparator fit, and across the 12 components of both cohorts it was compared with the component's number of top LR pairs by a two-sided Spearman correlation.
 The fraction of a component that a fit reconstructed was $\left\| P_{S}c \right\|^{2}$, where $c$ is the component's unit LR pair loading and $P_{S}$ the orthogonal projection onto the span of the fit's LR columns, computed by QR decomposition.
 $P_{S}c = Ub$, with $U$ the fit's unit LR columns and $b$ the least-squares weights, was the fit's best combination of its columns, and column $j$ reconstructed $b_{j}u_{j}^{T}c$ of the component, the columns' parts summing to $\left\| P_{S}c \right\|^{2}$.
 A column was related to a component when it reconstructed at least 10% of the component or placed at least 25% of its own squared loading on the component's top LR pairs.
