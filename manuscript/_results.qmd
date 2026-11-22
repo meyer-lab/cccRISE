@@ -158,7 +158,7 @@ Genes shown differ between villus-like and crypt-like cells at q < 0.05; Mann--W
 :::
 
 We next sought to extend CCC-RISE to an inflammatory bowel disease (IBD) dataset (IBDverse), representing a biologically distinct disease context with enhanced statistical power compared with the ALAD dataset\ [@doi:10.1038/s41588-026-02634-7].
-In the IBD data, conditions comprised terminal-ileum punch biopsies from individual donors of three groups: healthy (no Crohn's Disease; CD), CD uninflamed, and CD inflamed ({{< fig ibd-rank-selection cohort >}}).
+In the IBD data, conditions comprised terminal-ileum pinch biopsies from individual donors of three groups: healthy (no Crohn's Disease; CD), CD uninflamed, and CD inflamed ({{< fig ibd-rank-selection cohort >}}).
 We selected the IBD ranks with the same BiCV and CPD analyses as for ALAD to construct a CCC-RISE model on IBDverse.
 Unlike for ALAD, held-out R^2^X in the RISE BiCV sweep plateaued no clear maximum, so we used rank 60, the smallest rank within one standard error of the largest held-out R^2^X (rank 85), to decompose the normalized expression tensor ({{< fig ibd-rank-selection rise-rank-selection bicv-test >}}).
 Again, CPD fit R^2^X did not provide a clear choice of rank, but the collinearity criteria did: the LR pair mode first became collinear at rank 7, so we decomposed the communication tensor at rank 6 ({{< fig ibd-rank-selection cp-r2x-starts mode-collinearity >}}).
