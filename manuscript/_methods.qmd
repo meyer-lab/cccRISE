@@ -16,7 +16,7 @@ $$
   \underset{A,C,\mathbf{P}}{\operatorname{argmin}}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{\mathrm{sc},i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2}\text{subject to}\ {P_{i}}^{T}P_{i}\mathbf{\ } = \mathbf{I\ \forall\ }i,
 $$
 
-where $w_{i}$ are the slice weights (see below); $\mathbf{P =}P_{i} \in \mathbb{R}^{J_{\mathrm{sc},i} \times r},\ \ i\  = \ 1,\ 2,\ \ldots,\ I$ are the projection matrices and $r$ is the rank of the RISE decomposition; $\operatorname{diag}\left( a_{i} \right)$ is the diagonal matrix whose nonzero entries are equal to the $i$^th^ row of $A \in \mathbb{R}^{I \times r}$, the condition factor matrix; $C \in \mathbb{R}^{K \times r}$ is the gene factor matrix; and $\mathbf{I}$ is the identity matrix\ [@doi:10/cxfskg].
+where $w_{i}$ are the slice weights (see below); $\mathbf{P =}P_{i} \in \mathbb{R}^{J_{\mathrm{sc},i} \times r},\ \ i\  = \ 1,\ 2,\ \ldots,\ I$ are the projection matrices and $r$ is the rank of the RISE decomposition; $\operatorname{diag}\left( a_{i} \right)$ is the diagonal matrix whose non-zero entries are equal to the $i$^th^ row of $A \in \mathbb{R}^{I \times r}$, the condition factor matrix; $C \in \mathbb{R}^{K \times r}$ is the gene factor matrix; and $\mathbf{I}$ is the identity matrix\ [@doi:10/cxfskg].
 The general PARAFAC2 model includes a third factor matrix, $B \in \mathbb{R}^{r \times r}$, between $P_{i}$ and $\operatorname{diag}\left( a_{i} \right)$; CCC-RISE fixes $B = \mathbf{I}$, so each condition's eigen-state coordinates are the orthonormal columns of $P_{i}$.
 The $r$ cell eigen-states are therefore defined jointly by the projections and the gene factor: eigen-state $q$ has gene profile $c_{q}$, scaled by $a_{iq}$ in condition $i$, and column $q$ of $P_{i}$ gives each cell's projection onto the shared gene expression factors.
 
@@ -88,7 +88,7 @@ Each factor matrix was initialized with the leading $r$ left singular vectors of
 ALS stopped when the change in relative reconstruction error between iterations fell below 10^-12^, or after a maximum of 4,000 iterations.
 Unless otherwise stated, CPD models were fit using single precision on a GPU.
 
-**Post-fit processing** CPD components are determined only up to order, scale, and sign, so each fit was standardized before interpretation.
+**Post-fit processing.** CPD components are determined only up to order, scale, and sign, so each fit was standardized before interpretation.
 Components were ordered by the variance-to-mean ratio of their condition loadings ($D$), in ascending order, and every factor column was normalized to unit norm.
 Signs were then flipped so that the condition, receiver eigen-state, and LR pair factors had positive column means; each flip was matched by a flip of the corresponding sender eigen-state column, leaving the component unchanged, so only sender signs are not directly interpretable.
 
@@ -113,11 +113,12 @@ Finally, each gene was centered on its mean, $\mu$, which RISE subtracts interna
 The final dataset consisted of 51,273 cells and 16,675 genes, with 570 LR pairs retained.
 
 **IBD cohort.** The single-cell gene expression, cell-type annotations, and biopsy metadata of terminal-ileum pinch biopsies were obtained from the IBDverse atlas of Krzak et al.: 343 biopsies, one per individual, from 232 healthy participants and 111 patients with Crohn's disease (CD), 47 uninflamed and 64 inflamed\ [@doi:10.1038/s41588-026-02634-7].
-We excluded the mesenchymal lineage (fibroblasts, endothelial cells, and pericytes; 11,286 of 1,185,861 cells) because the authors attribute their underrepresentation in the atlas to the biopsy type and treatment method, which favor capture of epithelial cells. The mesenchymal yield accordingly varied across biopsies, from none to 11% of a biopsy's cells, independently of inflammation status (Kruskal--Wallis p = 0.14).
+We excluded the mesenchymal lineage (fibroblasts, endothelial cells, and pericytes; 11,286 of 1,185,861 cells) because the authors attribute its underrepresentation in the atlas to the biopsy type and treatment method, which favor capture of epithelial cells.
+The mesenchymal yield accordingly varied across biopsies, from none to 11% of a biopsy's cells, independently of inflammation status (Kruskal--Wallis p = 0.14).
 Their removal left 7 lineages (coarse labels) and 54 annotated cell types (fine labels).
 Cells and genes were filtered and normalized as for ALAD, with the gene filter measured on all remaining cells, and mitochondrial and ribosomal genes were removed.
 To fit in computer memory, each biopsy was capped at 2,000 cells drawn at random from the cells passing the count filter.
-The 245 biopsies with more than 2,000 such cells were downsampled to the cap, so all 343 biopsies and 634,534 of 1,174,575 cells were retained
+The 245 biopsies with more than 2,000 such cells were downsampled to the cap, so all 343 biopsies and 634,534 of 1,174,575 cells were retained.
 The cap kept the composition of each biopsy: within each downsampled biopsy, no lineage's share changed by more than 2.5%, and every lineage and cell type remained.
 The final dataset consisted of 634,534 cells and 23,355 genes, with 1,332 LR pairs retained.
 
@@ -159,7 +160,7 @@ Where stated, analyses instead used a fixed number of LR pairs by absolute loadi
 **Multiple-test correction.** p-values were corrected by the Benjamini--Hochberg (BH) procedure across the family of tests stated with each analysis, and corrected values were reported as q, with q < 0.05 considered significant\ [@doi:10.1111/j.2517-6161.1995.tb02031.x].
 
 **Differential gene expression.** Unless stated otherwise, two groups of cells were compared gene by gene with two-sided Wilcoxon rank-sum tests on the normalized expression of all cells in each group, using scanpy without tie correction\ [@doi:10.1186/s13059-017-1382-0].
-A gene's detection rate in a group was the fraction of the group's cells with nonzero expression.
+A gene's detection rate in a group was the fraction of the group's cells with non-zero expression.
 
 ### Rank Selection
 
@@ -175,7 +176,7 @@ At each rank, CPD was fit from 10 seeded starts of the randomized SVD initializa
 First, the fit R^2^X of each start.
 Second, the imputation R^2^X: tensor entries were split into 10 random folds, and for each fold the held-out entries were set to zero and CPD was fit by masked ALS, which iteratively fills the held-out entries with the current reconstruction.
 The predictions of all held-out entries were pooled into a single R^2^X against the full tensor, averaged over 10 repeated fold splits.
-Masked fits ran in double precision because single-precision fits diverged at higher ranks and with a ridge penalty ($\lambda$ = 0.1) because the heavy-tailed communication tensor otherwise let a few large held-out entries dominate.
+Masked fits ran in double precision, because single-precision masked fits diverged at higher ranks, and with a ridge penalty ($\lambda$ = 0.1), because the heavy-tailed communication tensor otherwise let a few large held-out entries dominate.
 Third, the collinearity of each start in each mode: the largest absolute cosine between the factor columns of two of its components.
 Fourth, the agreement between starts: starts whose FMS was at least 0.95 were taken to reach the same solution.
 The chosen rank was the largest at which no start's LR pair mode was collinear and all starts reached the same solution.
@@ -191,7 +192,7 @@ Covariates were screened against each grouping by the same ANOVA, without the to
 For ALAD, these were six patient covariates: age (years), sex, Caucasian ethnicity, an interstitial lung disease (ILD) transplant diagnosis, cytomegalovirus (CMV) IgG seropositivity, and baseline forced expiratory volume in one second (FEV1).
 For IBD, these were patient covariates (age, recorded in 10-year bins, and sex), sample covariates (10x Genomics chip version, B vs. G, and total sample expression), and cell-type covariates (the fraction of each biopsy's cells in each of the 7 lineages, after the 2,000-cell cap); the 6 biopsies without a recorded chip version were left out of its tests.
 
-Additionally, each sample's fraction of cells in each coarse cell type was compared across groups by a Kruskal--Wallis test, corrected across cell types.
+Additionally, each sample's fraction of cells in each coarse cell type was compared across ALAD status (control, recovered, and declined) or IBD inflammation status (healthy, CD uninflamed, and CD inflamed) by a Kruskal--Wallis test, corrected across cell types.
 
 **Individual LR pair testing.** For a CPD component with sender and receiver eigen-state loadings $e$ and $f$, the score of LR pair $l$ in sample $i$ was $S_{l,i} = \sum_{s,t} \mathcal{X}_{i,s,t,l}\,e_{s}f_{t}$, where $\mathcal{X}_{i,s,t,l}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in sample $i$.
 Each analysis used one normalization of $S_{l,i}$: division by the sample's total normalized expression for individual associations and for the outcome-label permutation test (Significance Against Nulls), and none for co-variation.
@@ -212,7 +213,7 @@ Technical variation that acts uniformly on a sample (e.g., sequencing depth, cap
 Technical variation was also explicitly handled by the following.
 Slice normalization prevented samples with many or highly variable cells from dominating the shared eigen-states.
 The total-expression correction removed sample-wide scaling of the condition loadings before association testing.
-For patients that contributed multiple samples, shared samples were kept together in the jackknife and in outcome-label permutations.
+For patients who contributed multiple samples, their samples were kept together in the jackknife and in outcome-label permutations.
 
 ### Robustness Tests
 
@@ -280,12 +281,12 @@ A cell with $n_{j} > 0$ was NICHES-positive.
 A sender or receiver population's NICHES concordance was its fraction of NICHES-positive cells.
 The cell-type--predicted concordance was the mean over the population's cells of the fraction of NICHES-positive cells among all cells of the same fine cell type in the same sample.
 NICHES concordance was compared with this cell-label concordance by a two-sided Wilcoxon signed-rank test, paired over all sender and receiver populations of both cohorts.
-Sender/receiver populations were defined as for groups (see Mapping CCC-RISE Components to Cells), but not exclusive: a cell past both tau thresholds belonged to both populations.
+Sender/receiver populations were defined as for groups (see Mapping CCC-RISE Components to Cells), but not exclusive: a cell past both $\tau$ cutoffs belonged to both populations.
 The six ALAD and six IBD components collectively defined 24 total sender/receiver populations by this definition.
 The comparison was repeated at $\tau$ from 0.1 to 0.6 in steps of 0.1, for populations of at least 10 cells.
 
 **Scriabin seed agreement.** Scriabin also represents interaction programs per cell\ [@doi:10.1038/s41587-023-01782-z].
-Its interaction programs were computed with the authors' R package on each ALAD sample's cells, from CCC-RISE's normalized expression and LR pairs, at 10 random seeds including the package’s own seed.
+Its interaction programs were computed with the authors' R package on each ALAD sample's cells, from CCC-RISE's normalized expression and LR pairs, at 10 random seeds including the package's own seed.
 Scriabin subsamples samples of more than 300 cells, and only these subsamples vary between seeds.
 Each seed's programs were merged across samples with the package's merge (Jaccard index 0.15).
 As in the package's tutorial, each merged program was then tested in each sample with the package's significance test (500 random programs) and kept if p < 0.05 in at least one sample.

@@ -28,7 +28,7 @@ q: BH corrected p across the six components of each fit.
 ![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
 
 **{{< label ccc-scoring >}}.
-ALAD components across communication scoring methods.** (a–b) Mean absolute cosine similarity between CPD components derived using the expression-product score and each alternate scoring method, comparing (a) condition and LR pair modes and (b) sender and receiver eigen-state modes.
+ALAD components across communication scoring methods.** ({{< panel ccc-scoring factor-match.1 factor-match.2 >}}) Mean absolute cosine similarity between CPD components derived using the expression-product score and each alternate scoring method, comparing ({{< panel ccc-scoring factor-match.1 >}}) condition and LR pair modes and ({{< panel ccc-scoring factor-match.2 >}}) sender and receiver eigen-state modes.
 Components were Hungarian-matched between scoring methods.
 ({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
 LR pairs shown are the union of each score's top 3.
@@ -40,7 +40,7 @@ IBD component 3 and 4 hormone-secreting cell identities.** ({{< panel ibd-hormon
 ({{< panel ibd-hormone-axes eigenstate-association >}}) Eigen-state--cell-type associations of top-loaded eigen-states in components 3 and 4 (mean RISE projection of each cell type's cells).
 ({{< panel ibd-hormone-axes eigenstate-composition >}}) Annotated cell-type compositions of top-loaded eigen-states in components 3 and 4, using IBDverse annotations: each cell type's share of the eigen-state's squared projection over all cells.
 ({{< panel ibd-hormone-axes cell-map >}}) RISE projection embeddings of all cells in IBDverse, showing every EE, EC, and tuft cell and 100,000 randomly drawn other cells.
-Clusters are labeled by course cell type and fine EE, EC, and tuft cell type labels point to their cluster centers
+Clusters are labeled by coarse cell type, and fine EE, EC, and tuft cell type labels point to their cluster centers.
 ({{< panel ibd-hormone-axes type-map >}}) RISE projection embeddings of EE, EC, and tuft cells colored by cell type as annotated in IBDverse.
 ({{< panel ibd-hormone-axes receiver-map-c3 >}}, {{< panel ibd-hormone-axes receiver-map-c4 >}}) RISE projection embeddings of all EE, EC, and tuft cells colored by CPD component ({{< panel ibd-hormone-axes receiver-map-c3 >}}) 3 and ({{< panel ibd-hormone-axes receiver-map-c4 >}}) 4 per-cell receiver weight.
 ({{< panel ibd-hormone-axes receptor-maps.1 >}}, {{< panel ibd-hormone-axes receptor-maps.2 >}}) Same as ({{< panel ibd-hormone-axes receiver-map-c3 >}}, {{< panel ibd-hormone-axes receiver-map-c4 >}}), colored by ({{< panel ibd-hormone-axes receptor-maps.1 >}}) NPY1R and ({{< panel ibd-hormone-axes receptor-maps.2 >}}) GLP1R gene expression normalized to the top 1% of expressing cells.

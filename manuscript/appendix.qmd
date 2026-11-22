@@ -1,6 +1,6 @@
 ---
 title: "Appendix"
-subtitle: "Resolving cell--cell communication programs beyond cell-type boundaries across conditions"
+subtitle: "CCC-RISE resolves cellular communication across conditions at single-cell resolution"
 ---
 
 ## Table of Contents

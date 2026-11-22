@@ -10,7 +10,7 @@ Through eigen-states, CCC-RISE brings single-cell resolution to multi-condition 
 While exploring the advantages of CCC-RISE through ALAD and IBD cohorts, we showcased three distinct modes of interpretation that each defined different kinds of communicating populations through eigen-states.
 ALAD component 6 defined an airway repair and fibrosis pathway among epithelial cells and was unique in its separation of divergent sender and receiver cells by component weight.
 This separability allowed us to threshold the epithelial senders and receivers into groups characterized by distinct gene expression, making this approach especially useful in cases of paracrine signaling between cellular subpopulations.
-In contrast, ALAD component 5 represented immune-activation within a subpopulation of lymphocytes that were collinear in sender and receiver weights, suggesting population-level autocrine signaling within a single group of cells.
+In contrast, ALAD component 5 represented immune activation within a subpopulation of lymphocytes that were collinear in sender and receiver weights, suggesting population-level autocrine signaling within a single group of cells.
 Thus, ALAD components 5 and 6 represent two modes of population-level communication that can be understood through similarities and differences in eigen-state projections.
 Further, IBD components 3 and 4 defined complementary hormone-secretion axes and both implicated enteroendocrine (EE) cells as senders.
 However, unlike ALAD component 6, IBD component 3 and 4 sender weights did not effectively separate EE cells.
@@ -51,9 +51,9 @@ Conversely, because eigen-states are ranked exclusively by the largest sources o
 Single-cell methods such as NICHES and Scriabin avoid labels altogether, but at the the price of poor scaling, because cell pairs grow quadratically, and high noise, because direct single-cell expression is stochastic and sparse\ [@doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
 Thus, both of these methods instituted approximation techniques to address these limitations for larger datasets.
 In particular, NICHES scores each cell's ligand or receptor expression against the average expression of its partner across the cell's sample, whereas Scriabin builds its cell--cell interaction matrix from a small subsample of cells.
-We found that Scriabin’s subsampling introduces instability that renders its interaction programs unstable across random seeds.
+We found that Scriabin's subsampling renders its interaction programs unstable across random seeds.
 Because eigen-states capture only the dominant patterns of gene expression shared across conditions, they largely exclude noise specific to individual cells.
-Furthermore, the communication tensor grows with the number of eigen-states rather than cells allowing CCC-RISE to scale to large multi-condition cohorts.
+Furthermore, the communication tensor grows with the number of eigen-states rather than cells, allowing CCC-RISE to scale to large multi-condition cohorts.
 Despite this abstraction from raw expression, CCC-RISE populations still agreed more closely with NICHES's expression-based scores than cell-type--defined populations did.
 
 Although RISE's eigen-states enable CCC-RISE to perform tensor decomposition while retaining single-cell resolution, they also introduce limitations inherent to data reduction techniques and transcriptomic inference.

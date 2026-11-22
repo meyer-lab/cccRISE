@@ -65,7 +65,7 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to ag
 
 ## Acknowledgements
 
-This work was supported by NIAID U19-AI172713 to A.S.M. and a Cota Robles Fellowship to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice for the development of this method and its application to cell-cell communication.
+This work was supported by NIAID U19-AI172713 to A.S.M. and a Cota Robles Fellowship to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice for the development of this method and its application to cell--cell communication.
 
 ## Author contributions
 
