@@ -52,12 +52,12 @@ CCC-RISE assigns each cell a sender weight and a receiver weight for each compon
 Thus, for the single-cell--resolution claim, we compared the components of CCC-RISE to the closest equivalent outputs of NICHES and Scriabin.
 For NICHES, the corresponding outputs were CellToSystem and SystemToCell scores, rather than CelltoCell edges.
 Following the reviewer's suggestion, NICHES was run condition by condition, treating each sample as its own system like the authors recommend.
-This analysis and its results are detailed in Methods section [XXX] and [Figure YYY].
+This analysis and its results are detailed in the *NICHES concordance* paragraph of Methods section *External Biological Validation* and in {{< fig 5 niches-fraction >}} and {{< fig comparator-single-cell alad-weights ibd-tau >}}.
 
 For Scriabin, the closest corresponding output to a CCC-RISE component is an interaction program.
 However, upon running Scriabin's interaction program discovery pipeline, we noticed that the top LR pairs in the programs were inconsistent across seed refitting ({{< fig comparator-single-cell scriabin-seeds >}}).
-To confirm that this instability was not the result of changes introduced by our implementation, we reran the robustness analysis of the Scriabin paper exactly (Fig. 2d--e from [Wilk et al. source]), using all of its data processing steps and protocols (raw counts, SCTransform, ALRA, OmniPath).
-We reproduced the paper's result that the cell--cell interaction matrix is robust to the artificial downsampling of sequencing depth: after integration, a median of 67% (raw) and 91% (ALRA-denoised) of full-depth cell--cell pairs mixed with the downsampled data, against approximately 72% and 91% reported by [Wilk et al. source] ({{< fig scriabin lisi-recapitulation >}}).
+To confirm that this instability was not the result of changes introduced by our implementation, we reran the robustness analysis of the Scriabin paper exactly (Fig. 2d--e of @doi:10.1038/s41587-023-01782-z), using all of its data processing steps and protocols (raw counts, SCTransform, ALRA, OmniPath).
+We reproduced the paper's result that the cell--cell interaction matrix is robust to the artificial downsampling of sequencing depth: after integration, a median of 67% (raw) and 91% (ALRA-denoised) of full-depth cell--cell pairs mixed with the downsampled data, against approximately 72% and 91% reported by @doi:10.1038/s41587-023-01782-z ({{< fig scriabin lisi-recapitulation >}}).
 However, interaction programs built on that same matrix, kept if they passed Scriabin's significance test, agreed at only 0.10--0.23 (best-match Jaccard) between the full-depth and downsampled data, and at only 0.21--0.49 even between two equivalent downsampling draws of the same cells ({{< fig scriabin downsampling-programs >}}).
 For this reason, we chose not to use Scriabin's programs as a concordance benchmark.
 
@@ -67,7 +67,7 @@ For this reason, we chose not to use Scriabin's programs as a concordance benchm
 Scriabin's interaction programs under the Scriabin paper's own downsampling test.** The test of Wilk et al. (their Fig. 2d--e) was re-run with Scriabin's exact upstream code on 12 random subsamples of 300 of the 638 Fluidigm C1 pancreatic islet cells (panc8).
 The gene full-depth counts (ground truth; GT) of those cells were downsampled to inDrop depth, with or without ALRA denoising, and each passed through SCTransform and GenerateCCIM (OmniPath).
 ({{< panel scriabin lisi-recapitulation >}}) Percentage of GT cell--cell pairs with LISI > 1 after integrating the downsampled and GT interaction matrices on all 90,000 GT pairs of the subsample for each subsample (points, colored by the GT pairs' mean LISI). 
-Also shown are [Wilk et al. source]'s median and range reported in their Fig. 2e (grey; approximate).
+Also shown are the median and range reported in Fig. 2e of @doi:10.1038/s41587-023-01782-z (grey; approximate).
 ({{< panel scriabin downsampling-programs >}}) Agreement of Scriabin InteractionPrograms' significant programs (InteractionProgramSignificance with 500 random programs, p < 0.05; mean best-match Jaccard of their LR pairs, in both directions) between the GT and a downsampled draw, and between two independent downsampling draws of the same cells for each subsample (points).
 Boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5-times the IQR.
 
@@ -98,9 +98,9 @@ For more detail on our new strategy, we point the reviewer to {{< fig 2 sender-r
 Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, then we take a weighted average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
 We applied the same test to every comparator LR column, but because comparators assign one receiver loading per cell type, their receivers were all cells of the most highly loaded cell types, contrasted with all cells of the least loaded.
-For a more detailed description of our approach and its results, we point the reviewer to Methods section External Biological Validation and [figures XXX, YYY, and ZZZ].
+For a more detailed description of our approach and its results, we point the reviewer to Methods section *External Biological Validation* and {{< fig 2 nichenet >}} and {{< fig 5 nichenet >}}.
 Overall, we observed relatively weak alignment between receiver cell gene expression and ligand gene targets, both within CCC-RISE and across comparator methods.
-We attribute this result to the limited overlap between LR pairs highlighted by each method and the NicheNet target database, as discussed in [Disc. XXX and Results YYY].
+We attribute this result to the limited overlap between LR pairs highlighted by each method and the NicheNet target database, as discussed in the Results ({{< fig 2 nichenet >}}) and in the limitations paragraph of the Discussion.
 
 Third, as a quantitative evaluation of per-cell sender and receiver weights, we report concordance with NICHES and attempted to do the same with Scriabin, which we discuss in detail in our response to Reviewer #1 Comment #1.
 
@@ -198,8 +198,8 @@ We have revised the manuscript to consistently work directly with the cell eigen
 
 As a concrete demonstration, the ALAD component 6 describing BTC--EGFR signaling is defined entirely from eigen-state loadings: classifying every cell by its sender and receiver loading percentiles, without reference to any annotation, separates a population that is a strong receiver but not a strong sender for this program and vice versa ({{< fig 2 sender-receiver-strata >}}).
 Only afterward do we ask what the existing annotations call these cells, and the answer is the point: the sender and receiver groups are distinct subpopulations of epithelial cells.
-Annotations are thus used as an interpretive check on label-free structure rather than as its input, and we have rewritten the relevant passages to make that order explicit rather than describing every program through its cell-type labels ({{< fig 2 sender-receiver-strata celltype-composition >}}) and ({{< fig 4 hormone-angle-scatter hormone-extreme-markers >}}).
-The same approach is applied to IBD components 3/4 [Figure XXX].
+Annotations are thus used as an interpretive check on label-free structure rather than as its input, and we have rewritten the relevant passages to make that order explicit rather than describing every program through its cell-type labels ({{< fig 2 sender-receiver-strata celltype-composition >}}).
+The same approach is applied to IBD components 3/4 ({{< fig 4 hormone-angle-scatter hormone-extreme-markers >}}).
 
 ## Reviewer #2
 
