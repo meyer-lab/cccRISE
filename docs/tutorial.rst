@@ -145,9 +145,9 @@ Plot the fit and imputation R²X, and, for each start, the largest cosine simila
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 4))
     cp_sweep = common.production_fits(common.load_cpd_rank("alad"))
-    common.plot_cpd_fit_r2x(cp_sweep, ax[0], rank=5)
+    common.plot_cpd_fit_r2x(cp_sweep, ax[0], rank=6)
     common.plot_cpd_imputation_r2x(common.load_cpd_imputation("alad"), ax[0])
-    common.plot_collinearity_boxes(ax[1], "alad", rank=5)
+    common.plot_collinearity_boxes(ax[1], "alad", rank=6)
     plt.tight_layout()
     plt.show()
 
@@ -160,7 +160,7 @@ Plot the fit and imputation R²X, and, for each start, the largest cosine simila
 - **Fit R²X**: rises with every added component.
 - **Imputation R²X**: the prediction of masked tensor entries. Ranks that keep improving it capture structure rather than noise.
 - **LR pair collinearity**: once two components' LR pair factors become near-duplicates (max cosine near 1), added components split existing programs rather than finding new ones, and the starts disagree on which solution they reach.
-- **ALAD**: the canonical fit uses CPD rank 5 (dashed line), the largest rank at which every start reaches the same solution without collinear LR pair factors.
+- **ALAD**: the canonical fit uses CPD rank 6 (dashed line), the largest rank at which every start reaches the same solution (10 of 10 starts; rank 7: 6 of 10) before the LR pair factors become collinear at rank 8.
 
 
 Running the Factorization
@@ -175,7 +175,7 @@ Based on the rank selection analysis above, choose RISE and CPD ranks and run th
     fit = run_ccc_rise_workflow(
         adata=X,
         rise_rank=17,
-        cp_rank=5,
+        cp_rank=6,
         lr_pairs=lr_pairs,
         rise_n_iter_max=300,
         cp_n_iter_max=4000,
@@ -190,9 +190,9 @@ Based on the rank selection analysis above, choose RISE and CPD ranks and run th
 
     print(f"Variance Explained (R²X): {r2x:.4f}")
 
-For a registered dataset, the ``cccrise-run`` runner fits the same model and saves it as the dataset's canonical factors file (``cccrise/data/factors/bal_alad_factors.nc``), with a provenance file recording the ranks and fit options::
+For a registered dataset, the ``cccrise-run`` runner fits the same model and saves it in the format of the dataset's canonical factors file (``cccrise/data/factors/bal_alad_factors.nc``), with a provenance file recording the ranks and fit options. The committed ALAD file was refit at CPD rank 6 after the ligand-receptor database was cleaned: its CP step was rerun on the stored RISE fit, which does not read the ligand-receptor list, and the provenance file's ``generated_by`` field records that procedure. Rerunning the command below refits RISE as well, so it need not reproduce the committed file exactly::
 
-    uv run cccrise-run --dataset alad --rise-rank 17 --cp-rank 5
+    uv run cccrise-run --dataset alad --rise-rank 17 --cp-rank 6
 
 **Function Parameters**
 
@@ -236,7 +236,7 @@ The function returns a dict with keys ``adata``, ``tensor`` (``None`` unless ``k
 Saving and Loading Factor Models with NetCDF
 --------------------------------------------
 
-Rather than saving entire multi-gigabyte AnnData files containing full single-cell matrices, you can export the decomposition factor matrices and metadata to a compact NetCDF file (< 100 KB - 2 MB)::
+Rather than saving entire multi-gigabyte AnnData files containing full single-cell matrices, you can export the decomposition factor matrices and metadata to a compact NetCDF file (a few MB)::
 
     from cccrise.factors import factors_to_xarray, save_factors_netcdf, load_factors_to_anndata
 
@@ -334,7 +334,7 @@ Explore how individual cells are positioned in the RISE eigenstate space, colore
 Interpreting a Component
 -------------------------
 
-Once you've identified components of interest, dig deeper into the specific cell types and ligand-receptor pairs driving the communication patterns. In ALAD, component 4 is the component whose condition loadings are associated with 6-month outcome (tested by ANOVA; see ``cccrise.anova.run_saved_factors_anova``).
+Once you've identified components of interest, dig deeper into the specific cell types and ligand-receptor pairs driving the communication patterns. In ALAD, component 5 is the component whose condition loadings are associated with 6-month outcome (tested by ANOVA; see ``cccrise.anova.run_saved_factors_anova``).
 
 **Visualize Specific Component Loadings**
 
@@ -342,7 +342,7 @@ Color each cell by its sender and receiver weight on the component::
 
     from cccrise.app.plots import plot_value_pacmap
 
-    component = 4
+    component = 5
     fig, axes = plt.subplots(1, 2, figsize=(8, 3.6), constrained_layout=True)
     for ax, key, role in zip(axes, ["sc_B", "rc_C"], ["Sender", "Receiver"]):
         values = X.obsm[key][:, component - 1]
@@ -368,7 +368,7 @@ Summarize the per-cell weights within each annotated cell type, here as their me
    :width: 800px
    :align: center
 
-Component 4's senders and receivers are mainly CD4+ T, CD8+ T, and NK cells.
+Component 5's senders and receivers are mainly CD4+ T, CD8+ T, and NK cells.
 
 **Analyze Top LR Pairs per Component**
 

@@ -19,13 +19,14 @@ from cccrise.app.plots import (
 )
 from cccrise.factors import load_factors_to_anndata
 from cccrise.figures import common, style
+from cccrise.figures.figure3._common import COMPONENT
 from cccrise.runners.datasets import DATASETS, RANK_SELECTION_DIR
 
+# COMPONENT is the CP component associated with the 6-month outcome.
 OUTPUT_DIR = Path(__file__).parent / "_static" / "tutorial_images"
 DPI = 200
 
 spec = DATASETS["alad"]
-COMPONENT = 4  # the 6-month outcome-associated CP component
 
 
 def save(fig, name: str) -> None:

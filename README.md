@@ -6,7 +6,7 @@ cccRISE decomposes variation into distinct, interpretable patterns associated wi
 
 cccRISE does not require prior cell-type labels or clustering, reducing bias and enabling discovery of novel communication patterns, while maintaining high resolution to identify condition-specific signaling subpopulations missed by pseudobulk or clustering-based approaches. Each resulting component is directly linked to specific conditions, sender cells, receiver cells, and ligand-receptor pairs, making the results biologically tractable.
 
-- **Read the documentation** at [cccRISE Documentation](https://meyer-lab.github.io/cellcommunication-Pf2/).
+- **Read the documentation** at [cccRISE Documentation](https://meyer-lab.github.io/cccRISE/).
 - cccRISE uses the [AnnData](https://anndata.readthedocs.io/) format for handling single-cell data matrices.
 
 ## Installation
@@ -14,13 +14,13 @@ cccRISE does not require prior cell-type labels or clustering, reducing bias and
 To add cccRISE to your Python environment, you can install it directly from GitHub:
 
 ```bash
-pip install git+https://github.com/meyer-lab/cellcommunication-Pf2.git@main
+pip install git+https://github.com/meyer-lab/cccRISE.git@main
 ```
 
 Or add the following line to your `requirements.txt`:
 
 ```
-git+https://github.com/meyer-lab/cellcommunication-Pf2.git@main
+git+https://github.com/meyer-lab/cccRISE.git@main
 ```
 
 ## Quick Start
@@ -66,7 +66,7 @@ adata, r2x = fit["adata"], fit["r2x_cp"]
 # - adata.obsm["PaCMAP"]: PaCMAP embeddings (if doEmbedding=True)
 ```
 
-See the [tutorial](https://meyer-lab.github.io/cellcommunication-Pf2/tutorial.html) for a complete workflow including preprocessing, rank selection, visualization, and interpretation.
+See the [tutorial](https://meyer-lab.github.io/cccRISE/tutorial.html) for a complete workflow including preprocessing, rank selection, visualization, and interpretation.
 
 ## Key Features
 
@@ -82,8 +82,8 @@ See the [tutorial](https://meyer-lab.github.io/cellcommunication-Pf2/tutorial.ht
 
 If you use cccRISE in your work, please cite the cccRISE publication as follows:
 
-**Integrative tensor-based analysis of cell-cell communication in single-cell RNA sequencing across experimental conditions**
+**CCC-RISE resolves cellular communication across conditions at single-cell resolution**
 
-Andrew Ramirez, [...], Aaron Meyer
+Samuel Amidon\*, Ethan Hurt\*, Andrew Ramirez, Nathaniel Thomas, Daniel R. Calabrese, John R. Greenland, Aaron S. Meyer (\*equal contribution)
 
-*In preparation*, 2025.
+*Under revision at Molecular Systems Biology*, 2026.

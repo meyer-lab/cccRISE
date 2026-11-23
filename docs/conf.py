@@ -14,7 +14,7 @@ sys.path.insert(0, str(project_root))
 
 # Project information
 project = "cccRISE"
-copyright = "2025, Andrew Ramirez, Aaron Meyer"
+copyright = "2025-2026, Andrew Ramirez, Aaron Meyer"
 author = "Andrew Ramirez, Aaron Meyer"
 
 # General configuration

@@ -27,4 +27,3 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-.. Updated December 2025

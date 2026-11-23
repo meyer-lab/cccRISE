@@ -46,9 +46,9 @@ gpu = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/meyer-lab/cellcommunication-Pf2"
-Repository = "https://github.com/meyer-lab/cellcommunication-Pf2"
-Documentation = "https://meyer-lab.github.io/cellcommunication-Pf2/"
+Homepage = "https://github.com/meyer-lab/cccRISE"
+Repository = "https://github.com/meyer-lab/cccRISE"
+Documentation = "https://meyer-lab.github.io/cccRISE/"
 
 [project.scripts]
 cccrise-fbuild = "cccrise.figures.common:genFigure"
