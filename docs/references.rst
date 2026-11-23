@@ -6,7 +6,7 @@ If you use cccRISE in your research, please cite the following papers:
 cccRISE Paper
 --------------
 
-Integrative tensor-based analysis of cell-cell communication in single-cell RNA sequencing across experimental conditions. Andrew Ramirez, Aaron Meyer. *In preparation*, 2025.
+CCC-RISE resolves cellular communication across conditions at single-cell resolution. Samuel Amidon\*, Ethan Hurt\*, Andrew Ramirez, Nathaniel Thomas, Daniel R. Calabrese, John R. Greenland, Aaron S. Meyer (\*equal contribution). *Under revision at Molecular Systems Biology*, 2026.
 
 RISE Paper
 ----------

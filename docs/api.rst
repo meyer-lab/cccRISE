@@ -83,7 +83,7 @@ Factor Storage & Reconstruction (xarray / NetCDF)
 .. py:function:: save_factors_netcdf(ds: xr.Dataset, filepath: str | Path)
    :module: cccrise.factors
 
-   Save an xarray Dataset of factors to a compact NetCDF file (< 100 KB - 2 MB).
+   Save an xarray Dataset of factors to a compact NetCDF file (a few MB).
 
 .. py:function:: save_ccc_rise_fit(path: str | Path, adata: anndata.AnnData, cp_fit: dict, condition_column: str, attrs: dict | None = None)
    :module: cccrise.factors
@@ -247,3 +247,142 @@ Analysis Functions
    :type n_bins: int
    :returns: n_bins x n_bins DataFrame with averaged expression products.
    :rtype: pd.DataFrame
+
+Association Testing
+~~~~~~~~~~~~~~~~~~~
+
+One-way ANOVA tests of each CPD component's condition loadings against sample metadata (for example, ALAD status or 6-month outcome).
+
+.. py:function:: run_saved_factors_anova(factors: str | Path | xr.Dataset | anndata.AnnData, adata: anndata.AnnData | None = None, sample_to_group: pd.Series | None = None, group_column: str | None = None, condition_column: str | None = None, control_label: str | None = None, other_label: str | None = None, levels: Sequence[str] | None = None, mapping: Mapping[str, str] | None = None, alpha: float = 0.05, correction: str | None = "fdr_bh", association_name: str | None = None, read_depth_correct: bool = True)
+   :module: cccrise.anova
+
+   Run a one-way ANOVA of every CPD component on a saved factors dataset (e.g. ``bal_alad_factors.nc``).
+
+   :param factors: Path to a saved NetCDF factor dataset, an xarray Dataset, or an AnnData holding the factors in ``uns``.
+   :param adata: AnnData with the condition and group annotations in ``obs``.
+   :param sample_to_group: Pre-extracted condition-to-group mapping, used instead of ``group_column``.
+   :param group_column: Phenotype group column in ``adata.obs``.
+   :param condition_column: Sample/condition column in ``adata.obs``.
+   :param control_label: With ``other_label``, collapses ``group_column`` into two levels.
+   :param levels: Subset of group levels to retain.
+   :param mapping: Dictionary mapping original group levels to new categories.
+   :param alpha: Significance threshold for the ``Significant`` column.
+   :param correction: Multiple testing correction across components ('fdr_bh', 'bonferroni', 'holm' or None).
+   :param association_name: Name to record in an ``Association`` column.
+   :param read_depth_correct: Test the read-depth-corrected condition loadings; this needs the single-cell data in ``adata``. False tests ``uns["A"]`` as is.
+   :returns: One row per component with ``F``, ``P``, ``PAdj``, ``EtaSquared``, ``GroupMeanDiff`` and ``Significant``.
+   :rtype: pd.DataFrame
+
+.. py:function:: run_multiple_factors_anova(factors: str | Path | xr.Dataset | anndata.AnnData, associations: Sequence[dict[str, Any] | str], adata: anndata.AnnData | None = None, condition_column: str | None = None, alpha: float = 0.05, correction: str | None = "fdr_bh", global_correction: bool = False, read_depth_correct: bool = True)
+   :module: cccrise.anova
+
+   Run several ``run_saved_factors_anova`` tests on one factors dataset. Each association is a dictionary (keys such as ``name``, ``group_column``, ``levels``, ``mapping``, ``control_label``, ``other_label``) or the name of an ``adata.obs`` column to test across all its levels. With ``global_correction``, the correction is applied across all associations and components together. Returns one combined DataFrame with an ``Association`` column.
+
+.. py:function:: prepare_anova_inputs(adata: anndata.AnnData, factors: list[np.ndarray], condition_column: str, group_column: str, control_label: str | None = None, other_label: str | None = None, levels: Sequence[str] | None = None, mapping: Mapping[str, str] | None = None)
+   :module: cccrise.anova
+
+   Attach one CPD fit's factors [A, B, C, D] to a copy of ``adata`` (with ``uns["A"]`` read-depth corrected) and derive the group label of each condition. Returns the AnnData copy and the group labels aligned to the rows of ``uns["A"]``.
+
+.. py:function:: prepare_group_labels(sample_to_group: pd.Series, levels: Sequence[str] | None = None, mapping: Mapping[str, str] | None = None, control_label: str | None = None, other_label: str | None = None, condition_order: Sequence[str] | None = None)
+   :module: cccrise.anova
+
+   Filter, recode, or collapse a condition-to-group mapping: ``levels`` keeps a subset (the other conditions become NaN), ``mapping`` renames levels, and ``control_label`` with ``other_label`` collapses the groups into two. Returns the labels aligned to ``condition_order``.
+
+.. py:function:: anova_component_associations(X: anndata.AnnData, sample_to_group: pd.Series, alpha: float = 0.05, control_label: str | None = None, correction: str | None = None, min_group_size: int = 2)
+   :module: cccrise.anova
+
+   One-way ANOVA of each CPD component's condition loading (``X.uns["A"]``) against the group label of each condition. A component's test is NaN when any group has fewer than ``min_group_size`` conditions. Returns one row per component (1-indexed) with ``Component``, ``F``, ``P``, ``PAdj``, ``EtaSquared``, ``GroupMeanDiff``, ``Significant``, ``NGroups`` and ``GroupSizes``.
+
+.. py:function:: adjust_pvalues(p_values: Sequence[float] | np.ndarray, method: str | None = "fdr_bh")
+   :module: cccrise.anova
+
+   Adjust p-values for multiple testing across components: Benjamini-Hochberg ('fdr_bh'), Benjamini-Yekutieli ('fdr_by'), Bonferroni ('bonferroni'), Holm ('holm'), or None for the raw values. NaNs for non-finite inputs are preserved.
+
+Pseudobulk Baseline
+~~~~~~~~~~~~~~~~~~~
+
+.. py:function:: run_pseudobulk_workflow(adata: anndata.AnnData, cp_rank: int = 8, lr_pairs: pd.DataFrame | None = None, condition_column: str = "sample", groupby: str = "celltype", type: str = "mean", n_iter_max: int = 1000, tol: float = 1e-11, random_state: int | None = None, complex_sep: str | None = "&")
+   :module: cccrise.tensor
+
+   Aggregate single cells into pseudobulk matrices per (condition, ``groupby``), compute the four-dimensional communication tensor, fit a CP decomposition, and store the factors, weights and LR pairs in ``adata.uns``.
+
+   :param cp_rank: Rank of the CP decomposition.
+   :param lr_pairs: Ligand-receptor pairs; loaded automatically if None.
+   :param groupby: Column in ``adata.obs`` defining the cell types.
+   :param type: Aggregation method, 'mean' or 'sum'.
+   :returns: The updated AnnData object and the R²X.
+   :rtype: tuple[anndata.AnnData, float]
+
+Utilities
+~~~~~~~~~
+
+.. py:function:: clean_memory()
+   :module: cccrise.factors
+
+   Garbage collect and release CuPy device and pinned host memory pools.
+
+``cccrise.ALAD_FACTORS_PATH`` is the path of the canonical ALAD factors file (``cccrise/data/factors/bal_alad_factors.nc``).
+
+Command-Line Runners
+--------------------
+
+Each runner is installed as a console script and run with ``uv run <script>``. Runners that take ``--dataset`` use the datasets registered in ``cccrise.runners.datasets.DATASETS`` (``alad`` and ``ibd``) and write their results, with a provenance file, under ``cccrise/data/``.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 25 45
+
+   * - Script
+     - Module
+     - Purpose
+   * - ``cccrise-run``
+     - ``cccrise.runners.run_ccc_rise``
+     - The end-to-end cccRISE pipeline; saves the dataset's canonical factors file.
+   * - ``cccrise-riserank``
+     - ``cccrise.runners.run_rise_rank``
+     - RISE (PARAFAC2) rank selection by bi-cross-validation.
+   * - ``cccrise-cpdrank``
+     - ``cccrise.runners.run_cpd_rank``
+     - CPD rank selection on the interaction tensor.
+   * - ``cccrise-reduced-rise``
+     - ``cccrise.runners.run_reduced_rise``
+     - cccRISE refit at a lower RISE rank, for the label-sensitivity panels.
+   * - ``cccrise-stability``
+     - ``cccrise.runners.run_stability``
+     - Per-component stability under patient jackknifing and seed refitting.
+   * - ``cccrise-significance``
+     - ``cccrise.runners.run_significance``
+     - Cell-permutation significance testing of communication.
+   * - ``cccrise-nichenet``
+     - ``cccrise.runners.run_nichenet``
+     - NicheNet-style downstream-target validation of CPD components.
+   * - ``cccrise-altcommscore``
+     - ``cccrise.runners.run_alt_comm_score``
+     - CPD factors for all four communication scores, sharing one RISE fit.
+   * - ``cccrise-cohort``
+     - ``cccrise.runners.run_cohort``
+     - Per-sample and per-cell-type summaries of the cohort a fit was made on.
+   * - ``cccrise-alad-programs``, ``cccrise-ibd-programs``
+     - ``cccrise.runners.run_alad_programs``, ``cccrise.runners.run_ibd_programs``
+     - Tables behind the ALAD and IBD program analyses, from the finalized fit.
+   * - ``cccrise-comparators``
+     - ``cccrise.runners.run_comparators``
+     - Rank selection and fits of the annotation-pooled comparator methods.
+   * - ``cccrise-comparator-scores``
+     - ``cccrise.runners.run_comparator_scores``
+     - How cccRISE's components compare with the comparators'.
+   * - ``cccrise-comparator-nichenet``
+     - ``cccrise.runners.run_comparator_nichenet``
+     - NicheNet tests on cccRISE and every comparator's ligand-receptor columns.
+   * - ``cccrise-niches``
+     - ``cccrise.runners.run_niches``
+     - NICHES on a dataset's production fit, compared with cccRISE's populations.
+   * - ``cccrise-scriabin-seeds``, ``cccrise-scriabin-reproduction``
+     - ``cccrise.runners.run_scriabin_seeds``, ``cccrise.runners.run_scriabin_reproduction``
+     - Scriabin reproducibility analyses.
+   * - ``cccrise-fbuild``
+     - ``cccrise.figures.common``
+     - Build the manuscript figures.
+   * - ``cccrise-sourcedata``
+     - ``cccrise.figures.source_data``
+     - Build the source data files for the figures.
