@@ -88,21 +88,6 @@ def max_mode_cosines(factors: Factors) -> list[float]:
     return cosines
 
 
-def max_congruence(factors: Factors) -> float:
-    """The largest congruence product between two of the fit's components,
-    the product over modes of their |cosine| (NaN for a rank-1 fit): near 1
-    when two components nearly duplicate each other in every mode."""
-    if factors[0].shape[1] < 2:
-        return np.nan
-    product = np.ones((factors[0].shape[1],) * 2)
-    for f in factors:
-        unit = f / np.linalg.norm(f, axis=0, keepdims=True)
-        product *= unit.T @ unit
-    product = np.abs(product)
-    np.fill_diagonal(product, np.nan)
-    return float(np.nanmax(product))
-
-
 def distinct_minima(
     start_fms: pd.DataFrame, r2x: pd.Series, same_minimum_fms: float = 0.95
 ) -> pd.DataFrame:

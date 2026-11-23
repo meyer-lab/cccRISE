@@ -10,10 +10,12 @@ from .. import common
 from . import _split
 
 AXES = ("square",)
+#: The y axis's top: room for the key above every bar (ticks stop at 1)
+KEY_TOP = 1.2
 
 
 def plot(axs):
-    _split.covariation(axs, "alad", (5,), key_loc="upper right")
+    _split.covariation(axs, "alad", (5,), key_loc="upper center", top=KEY_TOP)
 
 
 def makeFigure():

@@ -17,7 +17,7 @@ from cccrise.comparators.tensors import (
     staccato_tensor,
     tensor_cell2cell_tensor,
 )
-from cccrise.rank_selection import kneedle_elbow, max_congruence
+from cccrise.rank_selection import kneedle_elbow
 
 FIT: dict[str, Any] = {"n_iter_max": 100, "tol": 1e-7}
 LR = pd.DataFrame(
@@ -146,17 +146,6 @@ def test_tensor_cell2cell_elbow_keeps_each_runs_factors():
         for seed, expected in by_seed.items():
             for ours, theirs in zip(read_back[rank][seed], expected, strict=True):
                 np.testing.assert_array_equal(ours, theirs)
-    congruence = methods.start_congruence(starts)
-    assert congruence["Rank"].tolist() == [1, 1, 1, 2, 2, 2]
-    assert congruence["MaxCongruence"].iloc[:3].isna().all()
-
-
-def test_max_congruence_is_one_for_duplicate_components():
-    rng = np.random.default_rng(3)
-    factors = [rng.random((n, 2)) for n in (3, 4, 5)]
-    assert max_congruence(factors) < 1
-    duplicated = [np.column_stack([f[:, 0], 2 * f[:, 0]]) for f in factors]
-    assert max_congruence(duplicated) == pytest.approx(1)
 
 
 def test_tensor_cell2cell_inner_keeps_only_types_in_every_sample(adata):

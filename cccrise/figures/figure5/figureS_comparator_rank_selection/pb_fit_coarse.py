@@ -4,7 +4,7 @@ IBD cohorts, coarse cell type labels."""
 from ... import common
 from ._panels import pb_fit
 
-AXES = ("square",)
+AXES = ("rank_selection",)
 
 
 def plot(axs):

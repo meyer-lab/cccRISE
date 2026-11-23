@@ -28,11 +28,11 @@ XLIM = (0.75, 18)
 #: Each label's text, offset (points) from its components' mean position and
 #: alignment, by (cohort, components); a tie gets one label.
 LABELS = {
-    ("ibd", (2, 3, 4)): ("C2–4", (6, 1), "left"),
+    ("ibd", (2, 3, 4)): ("C2–4", (-3, 7), "left"),
     ("ibd", (6,)): ("C6", (4, -2), "left"),
     ("alad", (1,)): ("C1", (4, 0), "left"),
     ("alad", (6,)): ("C6", (0, -7), "center"),
-    ("alad", (2,)): ("C2", (4, 0), "left"),
+    ("alad", (2,)): ("C2", (-5, 0), "right"),
     ("alad", (3,)): ("C3", (-5, 0), "right"),
     ("alad", (5,)): ("C5", (5, 0), "left"),
     ("alad", (4,)): ("C4", (5, 0), "left"),
@@ -143,7 +143,7 @@ def plot(axs):
     ax.set(
         xscale="log",
         xlim=XLIM,
-        ylim=(0, 1.05),
+        ylim=(0, 1.15),
         yticks=[0, 0.5, 1],
         xlabel="Number of top LR pairs",
         ylabel=COS2_LABEL,
