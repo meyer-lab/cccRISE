@@ -11,5 +11,18 @@
     "issued": {"date-parts": [[2026]]},
     "title": "ArrayExpress E-MTAB-16986",
     "DOI": "10.6019/E-MTAB-16986"
+  },
+  {
+    "id": "uniprot2025",
+    "type": "article-journal",
+    "author": [{"literal": "UniProt Consortium"}],
+    "issued": {"date-parts": [[2025]]},
+    "title": "UniProt: the Universal Protein Knowledgebase in 2025",
+    "container-title": "Nucleic Acids Research",
+    "container-title-short": "Nucleic Acids Res",
+    "volume": "53",
+    "issue": "D1",
+    "page": "D609–D617",
+    "DOI": "10.1093/nar/gkae1010"
   }
 ]

@@ -8,8 +8,6 @@ hormone classes; inflammation removes villus-like EE cells but not crypt-like
 ones; Figure 4K's marker tests across magnitude floors. Figure 4E-H show the
 two programs splitting the EE cells expressing their ligands."""
 
-from matplotlib.transforms import Bbox
-
 from ... import common, style
 from . import (
     cell_map,
@@ -19,37 +17,19 @@ from . import (
     extreme_share,
     magnitude_hist,
     marker_floor_sweep,
-    receiver_maps,
+    receiver_map_c3,
+    receiver_map_c4,
     receptor_maps,
     type_map,
 )
 
 LAYOUT = [
     [eigenstate_loadings, eigenstate_association, eigenstate_composition],
-    [[cell_map, type_map], [receiver_maps], [receptor_maps]],
+    [cell_map, type_map, receiver_map_c3],
+    [receiver_map_c4, receptor_maps],
     [magnitude_hist, marker_floor_sweep, extreme_share],
 ]
-#: Stacked map pairs whose one colorbar spans both maps
-SPANNED = (receiver_maps, receptor_maps)
 
 
 def makeFigure():
-    fig = common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
-    for module in SPANNED:
-        span_colorbar(fig, module.__name__.rsplit(".", 1)[-1])
-    return fig
-
-
-def span_colorbar(fig, panel: str) -> None:
-    """Stretch the colorbar beside panel module `panel`'s last (bottom) axes
-    up to its first's top."""
-    axes = [ax for ax in fig.axes if ax.get_label() == panel]
-    top, bottom = axes[0].get_position(), axes[-1].get_position()
-    (cax,) = axes[-1].child_axes
-    span = Bbox.from_bounds(
-        bottom.x1 + style.COLORBAR_PAD / fig.get_figwidth(),
-        bottom.y0,
-        style.COLORBAR_WIDTH / fig.get_figwidth(),
-        top.y1 - bottom.y0,
-    )
-    cax.set_axes_locator(lambda *_: span)  # figure coords
+    return common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)

@@ -9,7 +9,8 @@ project:
 citeproc: true
 # Molecular Systems Biology (EMBO Press) author-date style.
 csl: embo-press.csl
-# Hand-written entries (datasets without usable DOI metadata); kept out of the
+# Hand-written entries (references without usable DOI metadata: datasets,
+# consortium-authored papers); kept out of the
 # `references` metadata, which pandoc-cite overwrites.
 bibliography: datasets.json
 
