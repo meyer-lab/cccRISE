@@ -75,8 +75,8 @@ For the multi-condition tensor claim, we compare what each method recovers rathe
 We did not report ALAD-status AUC for any method as described in our responses to Reviewer #1 Comments #4 and #5.
 Instead, for each CCC-RISE component, we measure its best match to any single LR column of each comparator fit and the fraction of its LR pair loadings that all of a fit's LR columns together reconstruct ({{< fig 5 cos2-grid span-containment >}}).
 Briefly, we found that comparator fits largely recovered CCC-RISE components that were only defined by a few top LR pairs, but split broader programs across several LR columns or missed programs entirely ({{< fig 5 pair-columns >}}; {{< fig comparator-split cos2-pairs alad-c3-columns >}}).
-Additionally, Tensor-cell2cell reconstructed little of any component, and its condition loadings instead tracked the number of genes detected per cell in each sample ({{< fig comparator-ibd-and-depth depth >}}).
-We also looked at the comparator columns lying outside every CCC-RISE component, and we report the disease-associated signaling that comparators captured and CCC-RISE missed ({{< fig comparator-missed-alad share associations contents >}}; {{< fig comparator-missed-ibd share associations contents >}}).
+Additionally, Tensor-cell2cell reconstructed little of any component, and its condition loadings instead tracked the number of genes detected per cell in each sample ({{< fig comparator-split depth >}}).
+We also looked at the comparator columns lying outside every CCC-RISE component, and we report the disease-associated signaling that comparators captured and CCC-RISE missed ({{< fig comparator-missed alad-share ibd-contents >}}).
 
 We chose not to run CCC-RISE on a single-condition dataset.
 CCC-RISE's components are defined by how communication varies across conditions, so in our view, fitting to a single condition does not measure model degradation but rather tests another model entirely.
@@ -132,7 +132,7 @@ We ultimately did not adopt this as the primary fix because it doubles the sende
 
 Finally, we also evaluated whether the communication tensor should be factored with the factor matrices constrained to be non-negative.
 Across multiple datasets, we observed that this constraint significantly reduced the ability of factorization to impute held-out data, indicating that it reduced the fidelity of the factorization as a representation of the communication scoring.
-Therefore, we retained the communication tensor factorization as signed, and use our results as an opportunity to explain how these signs might be interpreted (e.g., IBD components 1 and 5, {{< fig comparator-split ibd-c1c5-columns ibd-c1c5-modes >}}).
+Therefore, we retained the communication tensor factorization as signed, and use our results as an opportunity to explain how these signs might be interpreted (e.g., IBD components 1 and 5, {{< fig comparator-split ibd-c1c5-modes ibd-c5-columns >}}).
 
 > 4. Risk of overfitting in the ALAD classifier.
 >    For the ALAD cohort, the number of eigenstates and CPD components were selected because they "yielded the optimal predictive performance for ALAD status".
@@ -241,7 +241,7 @@ This analysis is detailed in Reviewer #1 Comment #1 and Methods section *Compara
 
 On whether CCC-RISE recovers all communication patterns revealed by cell-type-based tensor decomposition: plainly, it does not.
 As discussed in Reviewer #1 Comment #1, comparator fits tended to recover CCC-RISE components dominated by a few top LR pairs, split apart broad components, or entirely missed others ({{< fig 5 cos2-grid span-containment >}}; {{< fig comparator-split cos2-pairs >}}).
-In addition, we now report five disease-associated comparator LR columns that were associated with LR pairs that no CCC-RISE component included among its associations ({{< fig comparator-missed-alad share associations contents >}}; {{< fig comparator-missed-ibd share associations contents >}}).
+In addition, we now report five disease-associated comparator LR columns that were associated with LR pairs that no CCC-RISE component included among its associations ({{< fig comparator-missed alad-share ibd-contents >}}).
 We state these misses in the Discussion, but conclude that cell-type--based decomposition methods and CCC-RISE are not estimating the same quantity, so component-for-component correspondence is not the expected result.
 Moreover, the fitted LR columns of the comparators were also sensitive to the granularity of the labels, losing disease-associated columns when transitioning from coarse to fine cell types ({{< fig 5 labels-alad labels-ibd >}}).
 In contrast, CCC-RISE components were conserved when the model was refit at a different number of eigen-states.

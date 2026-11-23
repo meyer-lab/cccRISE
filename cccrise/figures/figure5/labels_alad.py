@@ -12,7 +12,7 @@ AXES = ("fig5_labels",)
 
 
 def plot(axs):
-    coarse_to_fine(axs[0], "alad", method_names=True)
+    coarse_to_fine(axs[0], "alad", method_names=True, key=True)
 
 
 def makeFigure():

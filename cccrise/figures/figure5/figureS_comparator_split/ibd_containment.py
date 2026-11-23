@@ -8,11 +8,13 @@ from ... import common
 from .._recovery import colorbar_beneath
 from ..span_containment import LABEL, containment_grid
 
-AXES = ("ibd_grid",)
+AXES = ("split_ibd_grid",)
+JOIN_PREVIOUS = True  # beside A, sharing its component axis, as 5B
 
 
 def plot(axs):
-    containment_grid(axs[0], ("ibd",))
+    containment_grid(axs[0], ("ibd",), bars=False)
+    axs[0].tick_params(labelleft=False)  # the cos^2 grid's labels serve both
     colorbar_beneath(axs[0], LABEL)
 
 

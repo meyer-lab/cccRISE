@@ -211,7 +211,8 @@ The test is one-sided and empirical, against the expression-matched draws, with 
 For PB and STAC, the coarse LR columns sit above the fine ones.
 For CCC-RISE, the components of a refit at a lower RISE rank sit above those of the reported fit.
 Lines join columns whose LR pair cos^2^ is at least 0.09, and wider lines mean larger cos^2^.
-NEGR1--NEGR1 is the single top LR pair of the IBD rank-30 component.
+Larger, named points mark the columns and components, including those of the lower-rank CCC-RISE fit, with an association at q < 0.05 with any outcome grouping.
+Associations were tested by one-way ANOVA across samples (ALAD, n = 47) or biopsies (IBD, n = 343), with BH correction across all of a cohort's groupings and all components of each fit, and are counted over the groupings other than acute rejection (ALAD) and the three-way inflammation status (IBD).
 ({{< panel 5 nichenet >}}) NicheNet target score of each CCC-RISE component and each PB and STAC LR column, minus its mean over rankings in which the labels of the high and low receiver cells were shuffled.
 Filled and named points have q < 0.05.
 The test is one-sided and empirical, against the shuffled rankings, with BH correction across the components or columns of each fit.
@@ -238,12 +239,12 @@ The other two comparators handled this by zero-filling absent entries.
 
 We first evaluated whether the comparators recovered each CCC-RISE component's LR pairs.
 Each comparator fit grouped LR pairs through the column of its LR pair factor, hereafter called LR columns.
-For each component, we identified the closest LR column across all comparator fits by squared cosine similarity to the component's LR pair loadings ({{< fig 5 cos2-grid >}}; {{< fig comparator-ibd-and-depth ibd_best >}}).
+For each component, we identified the closest LR column across all comparator fits by squared cosine similarity to the component's LR pair loadings ({{< fig 5 cos2-grid >}}; {{< fig comparator-split ibd-best >}}).
 Columns matched components less as the number of top LR pairs in a component increased ({{< fig comparator-split cos2-pairs >}}).
 However, one-to-one matching was an incomplete measure of component containment as a comparator could still carry a component's top LR pairs but distributed across several LR columns.
-To quantify this possibility, we computed the fraction of each component's LR pair loadings that the best combination of all LR columns in a comparator fit reconstructed ({{< fig 5 span-containment >}}; {{< fig comparator-ibd-and-depth ibd_containment >}}).
+To quantify this possibility, we computed the fraction of each component's LR pair loadings that the best combination of all LR columns in a comparator fit reconstructed ({{< fig 5 span-containment >}}; {{< fig comparator-split ibd-containment >}}).
 STACCato's fine fit reconstructed most of ALAD component 3 and IBD component 1 despite its closest single column matching to less than half of either component.
-Tensor-cell2cell reconstructed little of any component and instead tracked the number of genes detected per cell in each condition ({{< fig comparator-ibd-and-depth depth >}}), so we omitted it from the remaining comparisons.
+Tensor-cell2cell reconstructed little of any component and instead tracked the number of genes detected per cell in each condition ({{< fig comparator-split depth >}}), so we omitted it from the remaining comparisons.
 Comparator fits therefore largely recovered CCC-RISE components defined by a few top LR pairs, split broader immune programs across several LR columns, and missed others both partially and entirely.
 
 We next characterized what information comparators lost when they missed or divided a component's top LR pairs among several LR columns.
@@ -251,15 +252,15 @@ STACCato reconstructed most of ALAD components 5 and 3, which carried 11 and 14 
 Each of these columns weighted only a subset of the component's top LR pairs heavily and placed little weight on the rest ({{< fig 5 pair-columns >}}; {{< fig comparator-split alad-c3-columns >}}).
 The top LR pairs of component 5 correlated across conditions beyond expression-matched LR pairs, as did those of component 3 before correction ({{< fig 5 program-covariation >}}; {{< fig comparator-split alad-c3-covariation >}}).
 Of their related columns, only STACCato's fine S4 did so, and only before correction, while carrying just three top LR pairs.
-Component 5 also associated significantly with ALAD outcomes, whereas none of its related columns did ({{< fig comparator-missed-alad associations >}}).
+Component 5 also associated significantly with ALAD outcomes, whereas none of its related columns did ({{< fig 5 labels-alad >}}).
 Thus, comparator columns kept LR pairs coordinated only over a few pairs, whereas CCC-RISE grouped larger sets of co-varying LR pairs into single programs.
 In IBD, components 1 and 5 shared conditions, senders, and receivers but loaded on their LR pairs in opposite directions ({{< fig comparator-split ibd-c1c5-modes >}}).
-STACCato's fine fit instead mixed the two programs in each of two columns, so recovering either component from STACCato required a signed combination of the columns ({{< fig comparator-split ibd-c1c5-columns >}}).
+STACCato's fine fit instead mixed the two programs in each of two columns, so recovering either component from STACCato required a signed combination of the columns ({{< fig comparator-split ibd-c1-columns ibd-c5-columns >}}).
 Concisely, CCC-RISE revealed the coordination of LR pairs that comparators kept apart and separated opposing arms of one immune program where comparators mixed them.
 
-Among comparator LR columns that placed less than half of their squared loading on the top LR pairs of any single CCC-RISE component, five were disease-associated and involved LR pairs that CCC-RISE did not include among associations ({{< fig comparator-missed-alad share associations >}}; {{< fig comparator-missed-ibd share associations >}}).
-In ALAD, STACCato's coarse column S14 carried AREG--EGFR and pseudobulk CPD's fine column P5 carried TNFSF11--TNFRSF11A/B ({{< fig comparator-missed-alad contents >}}).
-In IBD, STACCato's coarse column S5, fine column S8, and pseudobulk CPD's coarse column P3 joined CXCR1/CXCR2 ligands\ [@doi:10.1038/s41591-021-01520-5] with SAA1--FPR2\ [@doi:10.1084/jem.189.2.395] in a neutrophil-like recruitment axis ({{< fig comparator-missed-ibd contents >}}).
+Among comparator LR columns that placed less than half of their squared loading on the top LR pairs of any single CCC-RISE component, five were disease-associated and involved LR pairs that CCC-RISE did not include among associations ({{< fig comparator-missed alad-share ibd-share >}}; {{< fig 5 labels-alad labels-ibd >}}).
+In ALAD, STACCato's coarse column S14 carried AREG--EGFR and pseudobulk CPD's fine column P5 carried TNFSF11--TNFRSF11A/B ({{< fig comparator-missed alad-contents >}}).
+In IBD, STACCato's coarse column S5, fine column S8, and pseudobulk CPD's coarse column P3 joined CXCR1/CXCR2 ligands\ [@doi:10.1038/s41591-021-01520-5] with SAA1--FPR2\ [@doi:10.1084/jem.189.2.395] in a neutrophil-like recruitment axis ({{< fig comparator-missed ibd-contents >}}).
 IBD component 5 covered this signaling only partly, through different CXCR1/CXCR2 ligands.
 Intriguingly, neither ALAD S14 nor IBD P3 had a counterpart in the same method's fine label fit ({{< fig 5 labels-alad labels-ibd >}}).
 Across both datasets, 11 of the 30 coarse STACCato and pseudobulk CPD columns had no fine counterpart.

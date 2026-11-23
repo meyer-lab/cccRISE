@@ -11,7 +11,7 @@ AXES = ("split_columns_c3",)
 
 
 def plot(axs):
-    _split.pair_heatmap(axs[0], "alad", (3,), "ALAD C3", drop=0.16)
+    _split.pair_heatmap(axs[0], "alad", (3,), "C3", drop=0.16, slant=True)
 
 
 def makeFigure():

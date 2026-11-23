@@ -4,7 +4,7 @@ cell type labels."""
 from ... import common
 from ._panels import stac_shares
 
-AXES = ("rect",)
+AXES = ("rank_selection_stac",)
 
 
 def plot(axs):

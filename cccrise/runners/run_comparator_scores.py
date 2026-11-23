@@ -11,8 +11,6 @@ Reads cccRISE's canonical fit and each comparator's fit on each labelling
 - ``containment``: each cccRISE component's LR pair loadings in the LR
   column span of each comparator fit ('In') (Figure 5B, Appendix Figure S5B).
 - ``fit_ranks``: each comparator fit's rank.
-- ``start_congruence``: each Tensor-cell2cell start's largest congruence
-  product (`methods.start_congruence`).
 - ``lr_loadings``: every fit's LR columns, one row per LR pair and
   component.
 - ``inner_loss``: what Tensor-cell2cell's published construction (only the
@@ -66,7 +64,7 @@ from scipy.stats import spearmanr
 
 from .. import covariation
 from ..anova import _resolve_factors_and_metadata, run_multiple_factors_anova
-from ..comparators import methods, scores
+from ..comparators import scores
 from ..comparators.scores import Components
 from ..comparators.tensors import (
     PooledTensor,
@@ -83,7 +81,6 @@ from ..import_data import import_ligand_receptor_pairs
 from ._cli import add_dataset_argument, dataset_metadata, parse_command, resolve_dataset
 from .datasets import (
     COMPARATOR_FITS_DIR,
-    COMPARATOR_RANKS_DIR,
     COMPARATOR_SCORES_DIR,
     DatasetSpec,
     comparator_filename,
@@ -145,15 +142,6 @@ def fit_rank_rows(fits: dict[str, xr.Dataset]) -> pd.DataFrame:
             if "core" not in fit
         ]
     )
-
-
-def start_congruence_rows(spec: DatasetSpec, labelling: str) -> pd.DataFrame:
-    """Tensor-cell2cell's `methods.start_congruence`."""
-    path = COMPARATOR_RANKS_DIR / comparator_filename(
-        "tc2c", "starts", spec.output_key, labelling
-    )
-    with xr.open_dataset(path, engine="h5netcdf") as starts:
-        return methods.start_congruence(starts).assign(Method=METHODS["tc2c"])
 
 
 def inner_loss_rows(
@@ -357,8 +345,7 @@ def association_rows(spec: DatasetSpec, fits, comparators) -> pd.DataFrame:
     reference, _, _ = _resolve_factors_and_metadata(
         spec.factors_path(), condition_column=spec.condition_column
     )
-    conditions = np.unique(reference.obs[spec.condition_column]).astype(str)
-    frames = [_associations(reference, spec).assign(Method="cccRISE")]
+    frames = [condition_associations(reference, spec).assign(Method="cccRISE")]
     for other in comparators:
         loadings = pd.DataFrame(
             {
@@ -368,15 +355,30 @@ def association_rows(spec: DatasetSpec, fits, comparators) -> pd.DataFrame:
                 for component in other.modes["lr"].columns
             }
         )
-        if not np.array_equal(loadings.index.to_numpy(), conditions):
-            raise ValueError(f"{other.method}'s samples differ from cccRISE's.")
-        adata = copy.copy(reference)
-        adata.uns = {**adata.uns, "A": loadings.to_numpy()}
-        frames.append(_associations(adata, spec).assign(Method=other.method))
+        frames.append(
+            loadings_associations(reference, loadings, spec, other.method).assign(
+                Method=other.method
+            )
+        )
     return pd.concat(frames, ignore_index=True)
 
 
-def _associations(adata, spec: DatasetSpec) -> pd.DataFrame:
+def loadings_associations(
+    reference, loadings: pd.DataFrame, spec: DatasetSpec, name: str
+) -> pd.DataFrame:
+    """`condition_associations` of another fit's condition `loadings`
+    (conditions x components), tested on cccRISE's `reference` (its conditions,
+    their annotations and depths); `name` names the fit in the error raised if
+    its conditions differ from cccRISE's."""
+    conditions = np.unique(reference.obs[spec.condition_column]).astype(str)
+    if not np.array_equal(loadings.index.to_numpy().astype(str), conditions):
+        raise ValueError(f"{name}'s samples differ from cccRISE's.")
+    adata = copy.copy(reference)
+    adata.uns = {**adata.uns, "A": loadings.to_numpy()}
+    return condition_associations(adata, spec)
+
+
+def condition_associations(adata, spec: DatasetSpec) -> pd.DataFrame:
     """Figure 3's test of `adata`'s condition loadings (``uns["A"]``) against
     every association of the cohort's figure."""
     return run_multiple_factors_anova(
@@ -407,7 +409,7 @@ def labelling_components(spec: DatasetSpec, cells, labelling: str) -> tuple:
 
 #: `fit_tables`' tables that read only the fits and cccRISE's factors, never
 #: the dataset or its per-cell weights.
-DATA_FREE = ("containment", "fit_ranks", "start_congruence", "lr_loadings")
+DATA_FREE = ("containment", "fit_ranks", "lr_loadings")
 
 
 def fit_tables(
@@ -424,7 +426,6 @@ def fit_tables(
     builders = {
         "containment": lambda: containment_rows(cccrise, comparators),
         "fit_ranks": lambda: fit_rank_rows(fits),
-        "start_congruence": lambda: start_congruence_rows(spec, labelling),
         "lr_loadings": lambda: lr_loading_rows([cccrise, *comparators]),
         "associations": lambda: association_rows(spec, fits, comparators),
         "depth": lambda: depth_rows(

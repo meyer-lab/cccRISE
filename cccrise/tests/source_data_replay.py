@@ -614,20 +614,42 @@ def figure_ev4(z: Zip) -> dict:
 
 
 def figure_ev5(z: Zip) -> dict:
-    return {
-        "EV5B": manual(
-            lambda axs: pair_heatmap(
-                axs[0], z("EV5B", "component_pairs_in_related_columns_alad")
-            ),
-            "tall",
-        ),
-        "EV5D": manual(
-            lambda axs: pair_heatmap(
-                axs[0], z("EV5D", "component_pairs_in_related_columns_ibd")
-            ),
-            "tall",
-        ),
+    best = z("EV5B", "program_best_column_cos2").rename(
+        columns={"Best-match cos2": "Cos2"}
+    )
+    depth = z("EV5D", "depth_tracking_by_component")
+    labels = {"ALAD": "alad", "IBD": "ibd"}
+    groups = {
+        dataset: {
+            (m, lab): g["|rho|"].to_numpy()
+            for (m, lab), g in depth[depth["Cohort"] == cohort].groupby(
+                ["Method", "Labelling"], sort=False
+            )
+        }
+        for cohort, dataset in labels.items()
     }
+    heatmaps = {
+        folder: manual(
+            lambda axs, folder=folder, dataset=dataset: pair_heatmap(
+                axs[0], z(folder, f"component_pairs_in_related_columns_{dataset}")
+            ),
+            "tall",
+        )
+        for folder, dataset in (("EV5E", "alad"), ("EV5H", "ibd"), ("EV5I", "ibd"))
+    }
+    return (
+        module(
+            "figure5.figureS_comparator_split.ibd_best",
+            {(_recovery, "best_columns"): lambda dataset: best.drop(columns="Dataset")},
+            {"EV5B": None},
+        )
+        | module(
+            "figure5.figureS_comparator_split.depth",
+            {(_depth, "_values"): lambda dataset: groups[dataset]},
+            {"EV5D": None},
+        )
+        | heatmaps
+    )
 
 
 def figure_s1(z: Zip) -> dict:
@@ -745,36 +767,8 @@ def figure_s4(z: Zip) -> dict:
             {folder: None},
         )
 
-    return (
-        panel("pb_fit_fine", "S4B", "pb_fit_r2x_by_rank_and_start")
-        | panel("tc2c_minima_fine", "S4L", "tc2c_minima_by_rank")
-        | panel("stac_shares_fine", "S4N", "staccato_eigenvalue_shares")
-    )
-
-
-def figure_s5(z: Zip) -> dict:
-    best = z("S5A", "program_best_column_cos2").rename(
-        columns={"Best-match cos2": "Cos2"}
-    )
-    depth = z("S5C", "depth_tracking_by_component")
-    labels = {"ALAD": "alad", "IBD": "ibd"}
-    groups = {
-        dataset: {
-            (m, lab): g["|rho|"].to_numpy()
-            for (m, lab), g in depth[depth["Cohort"] == cohort].groupby(
-                ["Method", "Labelling"], sort=False
-            )
-        }
-        for cohort, dataset in labels.items()
-    }
-    return module(
-        "figure5.figureS_comparator_ibd_and_depth.ibd_best",
-        {(_recovery, "best_columns"): lambda dataset: best.drop(columns="Dataset")},
-        {"S5A": None},
-    ) | module(
-        "figure5.figureS_comparator_ibd_and_depth.depth",
-        {(_depth, "_values"): lambda dataset: groups[dataset]},
-        {"S5C": None},
+    return panel("pb_fit_fine", "S4F", "pb_fit_r2x_by_rank_and_start") | panel(
+        "stac_shares_fine", "S4J", "staccato_eigenvalue_shares"
     )
 
 
@@ -787,34 +781,12 @@ def missed_columns(z: Zip, folder: str, dataset: str) -> pd.DataFrame:
     )
 
 
-def figure_s6(z: Zip) -> dict:
-    columns = missed_columns(z, "S6A", "alad")
-    associations = z("S6B", "comparator_column_associations_alad").rename(
-        columns={"Eta squared": "EtaSquared", "q": "PAdj"}
-    )
-    patches = {
-        (_missed, "columns"): lambda dataset: columns,
-        (_missed, "load"): lambda *_, **__: associations,
-    }
-    return module(
-        "figure5.figureS_comparator_missed_alad.share", patches, {"S6A": None}
-    ) | module(
-        "figure5.figureS_comparator_missed_alad.associations", patches, {"S6B": None}
-    )
-
-
-def figure_s7(z: Zip) -> dict:
-    """S7C's boxes (columns carrying a signalling pair CCC-RISE lacks) are
-    drawn from inputs that aren't its source data: left out."""
-    associations = z("S7B", "comparator_column_associations_ibd").rename(
-        columns={"Eta squared": "EtaSquared", "q": "PAdj"}
-    )
-    columns = (
-        associations[associations["Method"] != "cccRISE"]
-        .rename(columns={"Component": "Column"})[["Method", "Labelling", "Column"]]
-        .drop_duplicates()
-    )
-    contents = z("S7C", "left_over_column_contents_ibd")
+def figure_s5(z: Zip) -> dict:
+    """The contents panels' selection (associated columns carrying a
+    signalling pair CCC-RISE lacks) is drawn from inputs that aren't their
+    source data: their rows are read back from the CSVs instead."""
+    columns = {d: missed_columns(z, f, d) for d, f in (("alad", "S5A"), ("ibd", "S5B"))}
+    contents = z("S5D", "left_over_column_contents_ibd")
     value = contents.columns[1]
     rows, pairs = [], list(dict.fromkeys(contents["LR pair"]))
     for name, g in contents.groupby("Column", sort=False):
@@ -823,29 +795,24 @@ def figure_s7(z: Zip) -> dict:
             method = "PB" if name.startswith("P") else "STAC"
             rows.append((name, method, g.set_index("LR pair")[value]))
     closest = contents[contents["Column"] == "cccRISE"].set_index("LR pair")[value]
-    return module(
-        "figure5.figureS_comparator_missed_ibd.associations",
-        {
-            (_missed, "columns"): lambda dataset: columns,
-            (_missed, "load"): lambda *_, **__: associations,
-        },
-        {"S7B": None},
-    ) | module(
-        "figure5.figureS_comparator_missed_ibd.contents",
-        {
-            (_missed, "_contents_rows"): lambda dataset: (rows, pairs, closest),
-            (_missed, "_contents_source"): lambda *_: None,
-            (_missed, "_mark"): lambda *_: None,
-            (_missed, "significant"): lambda dataset: set(),
-            (_missed, "cccrise_pairs"): lambda dataset: set(),
-        },
-        {"S7C": None},
+    shares = {(_missed, "columns"): lambda dataset: columns[dataset]}
+    return (
+        module("figure5.figureS_comparator_missed.alad_share", shares, {"S5A": None})
+        | module("figure5.figureS_comparator_missed.ibd_share", shares, {"S5B": None})
+        | module(
+            "figure5.figureS_comparator_missed.ibd_contents",
+            {
+                (_missed, "boxed_rows"): lambda dataset: (rows, pairs, closest),
+                (_missed, "_contents_source"): lambda *_: None,
+            },
+            {"S5D": None},
+        )
     )
 
 
-def figure_s8(z: Zip) -> dict:
-    weights = z("S8A", "cell_weights_groups_alad")
-    seeds_table = z("S8E", "seed_to_seed_lr_set_jaccard").rename(
+def figure_s6(z: Zip) -> dict:
+    weights = z("S6A", "cell_weights_groups_alad")
+    seeds_table = z("S6E", "seed_to_seed_lr_set_jaccard").rename(
         columns={"Jaccard": "Value", "Seed A": "SeedA", "Seed B": "SeedB"}
     )
 
@@ -856,11 +823,11 @@ def figure_s8(z: Zip) -> dict:
     return module(
         "figure5.figureS_comparator_single_cell.alad_weights",
         {(_niches, "load"): lambda name, dataset: weights},
-        {"S8A": None},
+        {"S6A": None},
     ) | module(
         "figure5.figureS_comparator_single_cell.scriabin_seeds",
         {(common, "load_runner_output"): seed_agreement},
-        {"S8E": None},
+        {"S6E": None},
     )
 
 
@@ -880,8 +847,6 @@ PANELS: dict[str, Callable[[Zip], dict]] = {
     "Appendix Figure S4": figure_s4,
     "Appendix Figure S5": figure_s5,
     "Appendix Figure S6": figure_s6,
-    "Appendix Figure S7": figure_s7,
-    "Appendix Figure S8": figure_s8,
 }
 
 

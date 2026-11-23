@@ -62,13 +62,22 @@ Comparators split CCC-RISE programs of many LR pairs and merge opposing ones.** 
 Best-match cos^2^ is the component's largest cos^2^ with any single LR column of any PB, TC2C or STAC fit.
 The dashed line is the axes' anti-diagonal, which marks a perfect negative ordering.
 Two-sided Spearman correlation: ρ = −0.84, p = 6 × 10^−4^.
+({{< panel comparator-split ibd-best >}}) Largest cos^2^ between the LR pair loadings of each IBD CCC-RISE component (n = 6) and any single LR column of each comparator fit, as {{< fig 5 cos2-grid >}} shows for ALAD.
+({{< panel comparator-split ibd-containment >}}) Fraction of each IBD CCC-RISE component's LR pair loadings reconstructed by the best combination of all LR columns of each comparator fit, as {{< fig 5 span-containment >}} shows for ALAD.
+({{< panel comparator-split depth >}}) Absolute Spearman correlation between the absolute condition loadings of each CCC-RISE component or comparator LR column and the median number of genes detected per cell, computed across samples (ALAD, n = 47) or biopsies (IBD, n = 343).
+Each point is one component or column (ALAD, n = 60; IBD, n = 39), grouped by fit.
+For STAC columns, the condition loadings are the leading vector of each LR component's core slice, mapped through the condition factor.
+Boxes show the median and IQR, and whiskers show the full range.
+Kruskal--Wallis test across the fits of each cohort: ALAD, p = 4 × 10^−6^; IBD, p = 1 × 10^−4^.
+A star above a box marks a fit whose components track depth more than the cohort's other components.
+This uses a one-sided Mann--Whitney U test with BH correction across the fits of the cohort, given a Kruskal--Wallis p below 0.05.
 ({{< panel comparator-split alad-c3-columns >}}) Top LR pairs of ALAD component 3 (n = 14) in the component and in its related columns of each PB and STAC fit, with related columns defined as in {{< fig 5 pair-columns >}}.
 Each column's absolute loading is shown relative to its largest.
 Outlined columns (Σ) show the best combination of all of a fit's LR columns, drawn for each fit with two or more related columns.
 ({{< panel comparator-split alad-c3-covariation >}}) Co-variation of ALAD component 3 and of the columns in ({{< panel comparator-split alad-c3-columns >}}), as in {{< fig 5 program-covariation >}}, across samples (n = 47), each over its own top LR pairs.
 Columns left with fewer than two LR pairs after merging those that share a gene are not tested: P3 C and S1 C. One-sided empirical test against the expression-matched draws, with BH correction across the 7 tested.
 Filled points have q < 0.05.
-({{< panel comparator-split ibd-c1c5-columns >}}) Top LR pairs of IBD components 1 (n = 4) and 5 (n = 5) in each component and in their related columns.
-Each column's signed loading is shown relative to its largest absolute loading.
-Outlined column (Σ) is as for ({{< panel comparator-split alad-c3-columns >}}) the best combination of STAC's fine columns.
 ({{< panel comparator-split ibd-c1c5-modes >}}) Cosine between IBD components 1 and 5 in each CPD mode.
+({{< panel comparator-split ibd-c1-columns >}}, {{< panel comparator-split ibd-c5-columns >}}) Top LR pairs of IBD component 1 (n = 4; {{< panel comparator-split ibd-c1-columns >}}) and component 5 (n = 5; {{< panel comparator-split ibd-c5-columns >}}) in the component and in the columns related to either component, which the comparators share.
+Each column's signed loading is shown relative to its largest absolute loading.
+Outlined columns (Σ) are as in ({{< panel comparator-split alad-c3-columns >}}), the best combination of STAC's fine columns for each component.

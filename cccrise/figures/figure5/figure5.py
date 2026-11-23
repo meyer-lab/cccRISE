@@ -30,5 +30,11 @@ LAYOUT = [
 ]
 
 
+#: Room grown over the figure, so the top row sits off the page's top (in)
+TOP_ROOM = 2 * style.MM
+
+
 def makeFigure():
-    return common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
+    fig = common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
+    common.grow_figure(fig, top=TOP_ROOM)
+    return fig
