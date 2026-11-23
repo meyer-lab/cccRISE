@@ -7,12 +7,13 @@ pairs against the random and the expression-matched null."""
 
 from ... import common
 from .. import _split
+from ..program_covariation import KEY_TOP
 
-AXES = ("split_covariation_c3",)
+AXES = ("split_columns_c3",)  # as E's heatmap
 
 
 def plot(axs):
-    _split.covariation(axs, "alad", (3,), key_loc="lower left")
+    _split.covariation(axs, "alad", (3,), key_loc="upper center", top=KEY_TOP)
 
 
 def makeFigure():

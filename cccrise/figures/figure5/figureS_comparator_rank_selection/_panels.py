@@ -1,11 +1,9 @@
 """Each annotation-pooled comparator's own rank selection on one labelling,
 ALAD and IBD drawn together, from ``uv run cccrise-comparators`` and the
-scores runner's ``fit_ranks`` and ``start_congruence``: pseudobulk CPD by
+scores runner's ``fit_ranks``: pseudobulk CPD by
 cccRISE's seeded-start sweep (Figure 2's quantities: fit R2X across starts,
 the LR pair mode's collinearity per start, the distinct minima),
-Tensor-cell2cell by the Kneedle elbow of its error (with how nearly two of a
-start's components duplicate each other, per start, and the minima of its
-random starts), and STACCato by each mode's eigenvalue shares above 1%. Each
+Tensor-cell2cell by the Kneedle elbow of its error, and STACCato by each mode's eigenvalue shares above 1%. Each
 cohort's chosen rank is marked in its color."""
 
 from collections.abc import Callable
@@ -14,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
+from matplotlib.typing import LegendLocType
 
 from ....comparators import methods
 from ....rank_selection import distinct_minima
@@ -32,6 +31,10 @@ STAC_MODES = {
 }
 #: Leading eigenvalue shares drawn per STACCato mode.
 STAC_COMPONENTS = 30
+#: A dash of a line two cohorts share (in line widths)
+SHARED_DASH = 3
+#: The STACCato panels' y floor: room under the curves for the modes' key
+STAC_FLOOR = 6e-5
 #: Each cohort's line in the STACCato panels, where color is the mode.
 STAC_LINES = {"alad": "-", "ibd": "--"}
 
@@ -60,10 +63,6 @@ def minima(method: str, sweep: str, dataset: str, labelling: str) -> pd.DataFram
     )
 
 
-def title(ax: plt.Axes, name: str, labelling: str) -> None:
-    ax.set_title(f"{name} {labelling}", loc="left")
-
-
 def rank_ticks(ax: plt.Axes) -> None:
     """Thin a `common.rank_axis` axis's ticks: every rank up to 10, every
     second up to 17, then every fourth (odd ranks crowd a square axis past
@@ -90,8 +89,17 @@ def band(ax: plt.Axes, by_rank, center: pd.Series, dataset: str) -> None:
     ax.plot(center.index, center, color=color)
 
 
-def mark_chosen(ax: plt.Axes, rank: int, dataset: str) -> None:
-    ax.axvline(rank, color=DATASET_COLORS[dataset], ls="--", zorder=1)
+def mark_chosen(ax: plt.Axes, method: str, dataset: str, labelling: str) -> None:
+    """`dataset`'s chosen rank, dashed in its color; where the cohorts chose
+    the same rank, their dashes alternate along one line so both show."""
+    ranks = {d: fit_rank(method, d, labelling) for d in DATASET_LABELS}
+    shared = [d for d, r in ranks.items() if r == ranks[dataset]]
+    ls = "--"
+    if len(shared) > 1:  # dash, gap, the other cohort's dash, gap, ...
+        period = 2 * SHARED_DASH * len(shared)
+        phase = period - 2 * SHARED_DASH * shared.index(dataset)
+        ls = (phase, (SHARED_DASH, period - SHARED_DASH))
+    ax.axvline(ranks[dataset], color=DATASET_COLORS[dataset], ls=ls, zorder=1)
 
 
 def circle_kneedle(ax: plt.Axes, rank: int, value: float) -> None:
@@ -112,28 +120,46 @@ def finish_ranks(ax: plt.Axes, top: int) -> None:
     rank_ticks(ax)
 
 
-def key(ax: plt.Axes) -> None:
-    """The figure's key, inside `ax`."""
-    handles = [
-        *[
+def _key(ax: plt.Axes, handles: list, loc: LegendLocType, ncol: int = 1) -> None:
+    ax.legend(
+        handles=handles,
+        loc=loc,
+        ncol=ncol,
+        fontsize=style.FONT_SIZE_DENSE,
+        handlelength=1.2,
+        columnspacing=0.6,
+        borderaxespad=0.3,
+    )
+
+
+def cohort_key(ax: plt.Axes, loc: LegendLocType) -> None:
+    """The cohorts' colors, inside `ax` at `loc`."""
+    _key(
+        ax,
+        [
             Line2D([], [], color=DATASET_COLORS[d], label=name)
             for d, name in DATASET_LABELS.items()
         ],
-        Line2D(
-            [],
-            [],
-            ls="",
-            marker="o",
-            fillstyle="none",
-            markeredgecolor=common.KNEEDLE_EDGE,
-            label="Kneedle",
-        ),
-    ]
-    ax.legend(
-        handles=handles,
-        loc="lower left",
-        fontsize=style.FONT_SIZE_DENSE,
-        handlelength=1.2,
+        loc,
+    )
+
+
+def kneedle_key(ax: plt.Axes, loc: LegendLocType) -> None:
+    """The Kneedle elbow's circle, inside `ax` at `loc`."""
+    _key(
+        ax,
+        [
+            Line2D(
+                [],
+                [],
+                ls="",
+                marker="o",
+                fillstyle="none",
+                markeredgecolor=common.KNEEDLE_EDGE,
+                label="Kneedle",
+            )
+        ],
+        loc,
     )
 
 
@@ -152,11 +178,12 @@ def pb_fit(axs, labelling: str) -> None:
         by_rank = sweeps[sweeps["Dataset"] == name].groupby("Rank")["FitR2X"]
         median = by_rank.median()
         band(ax, by_rank, median, dataset)
-        mark_chosen(ax, fit_rank("pb", dataset, labelling), dataset)
+        mark_chosen(ax, "pb", dataset, labelling)
         top = max(top, int(median.index.max()))
     finish_ranks(ax, top)
     ax.set_ylabel("Fit $R^2X$")
-    title(ax, "PB", labelling)
+    if labelling == "coarse":
+        cohort_key(ax, "lower right")
 
 
 def tc2c_elbow(axs, labelling: str) -> None:
@@ -179,11 +206,12 @@ def tc2c_elbow(axs, labelling: str) -> None:
         rank = methods.tensor_cell2cell_rank(elbow)
         if rank is not None:
             circle_kneedle(ax, rank, mean[rank])
-        mark_chosen(ax, fit_rank("tc2c", dataset, labelling), dataset)
+        mark_chosen(ax, "tc2c", dataset, labelling)
         top = max(top, int(mean.index.max()))
     finish_ranks(ax, top)
     ax.set_ylabel("Normalized error")
-    title(ax, "TC2C", labelling)
+    if labelling == "coarse":
+        kneedle_key(ax, "upper right")
 
 
 def _per_start(ax: plt.Axes, t: pd.DataFrame, column: str, method: str, labelling):
@@ -194,7 +222,7 @@ def _per_start(ax: plt.Axes, t: pd.DataFrame, column: str, method: str, labellin
         rows = t[(t["Dataset"] == name) & (t["Rank"] > 1)]
         by_rank = rows.groupby("Rank")[column]
         band(ax, by_rank, by_rank.median(), dataset)
-        mark_chosen(ax, fit_rank(method, dataset, labelling), dataset)
+        mark_chosen(ax, method, dataset, labelling)
         top = max(top, int(rows["Rank"].max()))
     finish_ranks(ax, top)
     ax.set_ylim(0, 1.05)
@@ -213,30 +241,6 @@ def pb_collinearity(axs, labelling: str) -> None:
     )
     _per_start(axs[0], sweeps, "MaxCosD", "pb", labelling)
     axs[0].set_ylabel("LR pair max |cosine|")
-
-
-def tc2c_congruence(axs, labelling: str) -> None:
-    """Per rank, the largest congruence product between two of a start's
-    components (`rank_selection.max_congruence`). Non-negative factors
-    overlap by construction, so this asks whether two components duplicate
-    each other in every mode, not whether they cancel, as pseudobulk CPD's
-    collinearity does."""
-
-    def congruence(dataset: str) -> pd.DataFrame:
-        t = load_scores("start_congruence", labelling, dataset)
-        return t[t["Method"] == METHOD_NAMES["tc2c"]].drop(columns="Method")
-
-    t = both_cohorts(congruence)
-    common.source_data(
-        "tc2c_max_congruence_by_rank_and_start",
-        t,
-        "Per Tensor-cell2cell rank and random start, the largest congruence "
-        "product between two components: the product over the four modes of "
-        "their absolute cosine (1 = two components identical up to scale); "
-        "plotted as the median over starts, banded by their range.",
-    )
-    _per_start(axs[0], t, "MaxCongruence", "tc2c", labelling)
-    axs[0].set_ylabel("Max congruence product")
 
 
 def _minima(axs, method: str, sweep: str, labelling: str) -> None:
@@ -267,7 +271,7 @@ def _minima(axs, method: str, sweep: str, labelling: str) -> None:
             marker="o",
             markersize=style.MARKER_SIZE / 2,
         )
-        mark_chosen(ax, fit_rank(method, dataset, labelling), dataset)
+        mark_chosen(ax, method, dataset, labelling)
         top = max(top, int(share.index.max()))
     finish_ranks(ax, top)
     ax.set_ylim(0, 1.05)
@@ -276,18 +280,12 @@ def _minima(axs, method: str, sweep: str, labelling: str) -> None:
 
 def pb_minima(axs, labelling: str) -> None:
     _minima(axs, "pb", "rank", labelling)
-    if labelling == "coarse":
-        key(axs[0])
-
-
-def tc2c_minima(axs, labelling: str) -> None:
-    _minima(axs, "tc2c", "elbow", labelling)
 
 
 def stac_shares(axs, labelling: str) -> None:
     """STACCato's eigenvalue shares per mode, colored by mode, each cohort's
-    line in `STAC_LINES`, its kept core noted (components above the 1%
-    line)."""
+    line in `STAC_LINES`, keyed with its kept core (components above the 1%
+    line); the fine panel keys the modes."""
     ax = axs[0]
     shares = both_cohorts(lambda d: load("stac", "shares", d, labelling))
     common.source_data(
@@ -296,6 +294,7 @@ def stac_shares(axs, labelling: str) -> None:
         "Each mode's eigenvalue shares of its unfolding's Gram matrix, largest "
         "first; STACCato keeps those above 1% per mode.",
     )
+    cores = []
     for i, (dataset, name) in enumerate(DATASET_LABELS.items()):
         rows = shares[shares["Dataset"] == name].drop(columns="Dataset")
         core = methods.staccato_core_shape(rows)
@@ -313,20 +312,16 @@ def stac_shares(axs, labelling: str) -> None:
                 label=label if i == 0 else None,
             )
         kept = "×".join(str(core[m]) for m in STAC_MODES)
-        line = "solid" if STAC_LINES[dataset] == "-" else "dashed"
-        ax.text(
-            0.98,
-            0.98 - 0.09 * i,
-            f"{name} ({line}): core {kept}",
-            transform=ax.transAxes,
-            ha="right",
-            va="top",
-            fontsize=style.FONT_SIZE_DENSE,
+        cores.append(
+            Line2D([], [], color="0.3", ls=STAC_LINES[dataset], label=f"{name} {kept}")
         )
     common.reference_line(ax, methods.STACCATO_VAREXP / 100)
     ax.set_yscale("log")
+    ax.set_ylim(bottom=STAC_FLOOR)
     ax.set_xlabel("Component")
     ax.set_ylabel("Eigenvalue share")
-    title(ax, "STAC", labelling)
-    if labelling == "fine":
-        ax.legend(loc="lower left", fontsize=style.FONT_SIZE_DENSE, handlelength=1.2)
+    modes = ax.get_legend_handles_labels()[0] if labelling == "fine" else []
+    _key(ax, cores, "upper right")
+    if modes:
+        ax.add_artist(ax.get_legend())
+        _key(ax, modes, "lower left", ncol=2)  # two rows clear the curves

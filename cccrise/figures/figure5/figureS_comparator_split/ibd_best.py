@@ -7,11 +7,11 @@ Each IBD component's best single LR column in every comparator fit
 from ... import common
 from .._recovery import COS2_LABEL, best_column_grid, colorbar_beneath
 
-AXES = ("ibd_grid",)
+AXES = ("split_ibd_grid",)
 
 
 def plot(axs):
-    best_column_grid(axs[0], ("ibd",))
+    best_column_grid(axs[0], ("ibd",), bars=False)
     colorbar_beneath(axs[0], COS2_LABEL)
 
 

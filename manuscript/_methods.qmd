@@ -294,7 +294,6 @@ The selected ranks were 4 (coarse) and 5 (fine) on ALAD and 5 and 5 on IBD.
 
 **Tensor-cell2cell.** Each gene's expression was the fraction of a cell type's cells detecting it, and each entry was the mean of the ligand and receptor values\ [@doi:10.1038/s41467-022-31369-2].
 Non-negative CPD was fit from 10 random starts at each rank up to 25 (coarse) and 15 (fine) on ALAD and 15 on IBD, and the rank was taken at the Kneedle elbow of the mean error, giving 9 and 5 on ALAD and 3 and 3 on IBD.
-A start's congruence was the largest absolute product, over the four modes, of the cosines between two of its components.
 We departed from the published analysis in four ways, each meant to let the method perform at its best: we kept every cell type and masked absent entries, where the published analysis keeps only cell types present in every sample; took the rank from Kneedle rather than by eye; kept the lowest-error start; and ran up to 1,000 iterations at a tolerance of 10^−12^ rather than 100 at 10^−6^.
 
 **STACCato.** Entries were pseudobulk products with the default filters of LIANA, as in the authors' pipeline\ [@doi:10.1016/j.ajhg.2026.05.005; @doi:10.1038/s41467-022-30755-0].
@@ -310,6 +309,7 @@ A column was related to a component when it reconstructed at least 10% of the co
 
 **Label granularity.** The coarse and fine LR columns of pseudobulk CPD and STACCato were joined where their cos^2^ was at least 0.09.
 For CCC-RISE, the full pipeline was also refit with uncompressed RISE at a lower rank, 10 (ALAD) and 30 (IBD), with CPD ranks 4 and 5 selected as described in Rank Selection, and its components were joined to those of the reported fit in the same way.
+The lower-rank fit's condition loadings were tested for association as the comparators' were, with BH correction across its own associations and components.
 
 **Columns outside CCC-RISE components.** Each pseudobulk CPD and STACCato LR column's share on a CCC-RISE component was the fraction of its squared LR pair loading on that component's top LR pairs.
 A column whose largest share was below 0.5 was taken as outside CCC-RISE's components.

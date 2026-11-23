@@ -1,47 +1,20 @@
 """How far each component's sample loadings track detection depth, every method,
-and the cohort bars Figure 5's per-fit strips sit over (`cohort_bars`)."""
+under a bar in each cohort's color (`_common.cohort_bar`), as Figure 5G."""
 
 import numpy as np
 import pandas as pd
 from scipy.stats import false_discovery_control, kruskal, mannwhitneyu
 
 from .. import common, style
-from ._common import DATASET_COLORS, DATASET_LABELS, METHOD_COLORS, load
+from ._common import DATASET_LABELS, METHOD_COLORS, cohort_bar, load
 from ._programs import FITS
 
-BAR_DROP = 10.5
-BOX_WIDTH = 0.16
-#: Stars sit just above the y range, at this height.
-STAR_Y = 1.02
-#: Each cohort's Kruskal-Wallis p, at its top left.
-KW_Y = 1.22
-
-
-def cohort_bars(ax, spans: dict, bar_drop: float = BAR_DROP) -> None:
-    """Each cohort's bar and name `bar_drop` mm under `ax`, `spans` its first and
-    last x."""
-    height = ax.bbox.height / ax.figure.dpi
-    drop = bar_drop * style.MM / height
-    transform = ax.get_xaxis_transform()
-    for dataset, (first, last) in spans.items():
-        ax.plot(
-            [first - 0.4, last + 0.4],
-            [-drop, -drop],
-            color=DATASET_COLORS[dataset],
-            lw=2.5,
-            transform=transform,
-            clip_on=False,
-            solid_capstyle="butt",
-        )
-        ax.text(
-            (first + last) / 2,
-            -drop - style.MM / height,
-            DATASET_LABELS[dataset],
-            transform=transform,
-            ha="center",
-            va="top",
-            fontsize=style.FONT_SIZE_DENSE,
-        )
+BOX_WIDTH = 0.32
+#: A star sits this far above its fit's highest point (y units).
+STAR_PAD = 0.02
+#: The y axis's top: room for a star over the highest fit (the caption gives
+#: each cohort's Kruskal-Wallis p).
+Y_TOP = 1.1
 
 
 def _fit_name(method: str, labelling: str) -> str:
@@ -94,7 +67,8 @@ def depth_tracking(ax) -> None:
     """|rho| of each component's condition loadings with median genes detected
     per cell, cccRISE then each comparator fit, ALAD beside IBD: a strip over
     a thin box (quartiles, whiskers to the range) per fit. Per cohort, a
-    Kruskal-Wallis test across fits; a fit is starred where its components
+    Kruskal-Wallis test across fits (in the source data and caption, not
+    drawn); a fit is starred, just above its box, where its components
     track depth more than the cohort's other components (one-sided
     Mann-Whitney, BH within the cohort) at q < `common.SIG_ALPHA` and the
     Kruskal-Wallis p < `common.SIG_ALPHA`."""
@@ -104,14 +78,6 @@ def depth_tracking(ax) -> None:
         groups = _values(dataset)
         kw, qs = _tests(groups)
         start = x
-        ax.text(
-            x - 0.4,
-            KW_Y,
-            common.p_text(kw, "Kruskal–Wallis p"),
-            ha="left",
-            va="top",
-            fontsize=style.FONT_SIZE_DENSE,
-        )
         for (method, lab), values in groups.items():
             _box(ax, x, values)
             ax.scatter(
@@ -126,7 +92,7 @@ def depth_tracking(ax) -> None:
             if kw < common.SIG_ALPHA and qs[(method, lab)] < common.SIG_ALPHA:
                 ax.text(
                     x,
-                    STAR_Y,
+                    values.max() + STAR_PAD,
                     "*",
                     ha="center",
                     va="bottom",
@@ -168,6 +134,7 @@ def depth_tracking(ax) -> None:
         fontsize=style.FONT_SIZE_DENSE - 0.7,
     )
     ax.set(
-        ylim=(0, 1.22), yticks=[0, 0.5, 1], ylabel="|ρ| with genes\ndetected per cell"
+        ylim=(0, Y_TOP), yticks=[0, 0.5, 1], ylabel="|ρ| with genes\ndetected per cell"
     )
-    cohort_bars(ax, spans, BAR_DROP)
+    for dataset, (first, last) in spans.items():
+        cohort_bar(ax, dataset, first - 0.4, last + 0.4)

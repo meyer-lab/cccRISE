@@ -4,7 +4,7 @@ ALAD and IBD cohorts, fine cell type labels."""
 from ... import common
 from ._panels import tc2c_elbow
 
-AXES = ("square",)
+AXES = ("rank_selection",)
 
 
 def plot(axs):

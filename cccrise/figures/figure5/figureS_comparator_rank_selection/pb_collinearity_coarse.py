@@ -5,7 +5,7 @@ type labels."""
 from ... import common
 from ._panels import pb_collinearity
 
-AXES = ("square",)
+AXES = ("rank_selection",)
 
 
 def plot(axs):

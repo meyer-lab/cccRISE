@@ -12,9 +12,8 @@ import pandas as pd
 from matplotlib.transforms import Bbox
 
 from .. import common, style
-from ._common import DATASET_LABELS, METHOD_COLORS, load
+from ._common import DATASET_LABELS, METHOD_COLORS, cohort_bar, load
 from ._data import LABELLINGS, short
-from ._depth import cohort_bars
 
 AXES = ("fig5_nichenet",)
 #: CCC-RISE, then each fit but TC2C's (which tracks depth, `_depth`).
@@ -23,10 +22,11 @@ SLOTS = [("cccRISE", "coarse", "CCC-RISE")] + [
 ]
 SCORE_LABEL = "NicheNet target score\nabove shuffled cells"
 #: Cohort bars below the axes (mm), clear of the rotated fit names.
-BAR_DROP = 9.5
 
 
-def _strip(ax, x: float, g: pd.DataFrame, method: str, lab: str, rng) -> tuple:
+def _strip(
+    ax, x: float, g: pd.DataFrame, method: str, lab: str, rng, dataset: str
+) -> tuple:
     """One fit's columns at `x`: the q < 0.05 ones' (name, x, y), and every
     column's (x, y)."""
     xs = x + rng.uniform(-0.2, 0.2, len(g))
@@ -43,9 +43,11 @@ def _strip(ax, x: float, g: pd.DataFrame, method: str, lab: str, rng) -> tuple:
         zorder=3,
     )
     ax.scatter(xs[hit], effect[hit], s=11, color=color, lw=0, zorder=4)
+    # Named without the labelling (the x axis gives the fit); `FIXED` keys by
+    # cohort and full name ("P4 C"), as a name can repeat across fits
     suffix = "" if method == "cccRISE" else f" {lab[0].upper()}"
     named = [
-        (f"{short(method, int(c))}{suffix}", px, py)
+        (short(method, int(c)), px, py, (dataset, f"{short(method, int(c))}{suffix}"))
         for c, px, py, h in zip(g["Component"], xs, effect, hit, strict=True)
         if h
     ]
@@ -58,9 +60,21 @@ OFFSETS = sorted(
     ((side * dx, dy) for dx in (4, 9) for dy in range(-30, 31, 3) for side in (1, -1)),
     key=lambda o: (abs(o[0]) + abs(o[1]), -o[0]),
 )
-#: Names set by hand (offset from their point, points), moved after the
-#: rest are placed so no other name moves.
-FIXED = {"P4 C": (7, 9)}
+#: Names set by hand, by cohort and full name (offset from their point,
+#: points; left of the point when negative), moved after the rest are placed
+#: so no other name moves.
+FIXED = {
+    ("alad", "P4 C"): (7, 9),
+    ("alad", "S10 F"): (-6, 8),  # up into the space at the top left
+    ("ibd", "S3 C"): (-5, 0),
+    ("ibd", "S3 F"): (6, 6),  # up and right
+    ("ibd", "S8 F"): (6, -6),  # down and right
+}
+#: Leader lines: solid black, under the dots, ending at the name's edge
+LEADER = {"arrowstyle": "-", "lw": 0.4, "color": "black", "shrinkA": 0, "shrinkB": 1}
+LEADER_Z = 2.5
+#: The hits' names (pt), as Figure 5E, F and J name theirs
+NAME_SIZE = style.FONT_SIZE_DENSE - 1
 #: A dot's radius (points) with room to spare, for the collision test.
 DOT_RADIUS = 2.4
 
@@ -121,29 +135,26 @@ def _name_hits(ax, hits: list, points: list) -> None:
     dots = ax.transData.transform(np.array(points))
     placed: list = []
     texts = {}
-    for name, x, y in sorted(hits, key=lambda h: -h[2]):
+    for name, x, y, key in sorted(hits, key=lambda h: -h[2]):
         text = ax.annotate(
             name,
             (x, y),
             xytext=(4, 0),
             textcoords="offset points",
             va="center",
-            fontsize=style.FONT_SIZE_DENSE - 1.2,
+            fontsize=NAME_SIZE,
             zorder=6,
-            arrowprops={
-                "arrowstyle": "-",
-                "lw": 0.4,
-                "color": "0.4",
-                "shrinkA": 0,
-                "shrinkB": 1,
-            },
+            # a tight invisible box, so the leader starts at the name's edge
+            bbox={"boxstyle": "square,pad=0.05", "fc": "none", "ec": "none"},
+            arrowprops=LEADER,
         )
+        text.arrow_patch.set_zorder(LEADER_Z)  # under the dots (3, 4)
         _place(ax, text, ax.transData.transform((x, y)), dots, placed, renderer)
-        texts[name] = text
-    for name, offset in FIXED.items():
-        if name in texts:
-            texts[name].xyann = offset
-            texts[name].set_ha("left")
+        texts[key] = text
+    for key, offset in FIXED.items():
+        if key in texts:
+            texts[key].xyann = offset
+            texts[key].set_ha("left" if offset[0] > 0 else "right")
 
 
 def _key(ax) -> None:
@@ -183,7 +194,7 @@ def plot(axs):
         start = x
         for method, lab, name in SLOTS:
             fit = t[(t["Method"] == method) & (t["Labelling"] == lab)]
-            named, dots = _strip(ax, x, fit, method, lab, rng)
+            named, dots = _strip(ax, x, fit, method, lab, rng, dataset)
             hits += named
             points += dots
             positions.append(x)
@@ -248,7 +259,8 @@ def plot(axs):
     ax.set_xlim(right=positions[-1] + 1.25)  # room for the last strip's names
     _name_hits(ax, hits, points)
     _key(ax)
-    cohort_bars(ax, spans, BAR_DROP)
+    for dataset, (first, last) in spans.items():
+        cohort_bar(ax, dataset, first - 0.4, last + 0.4)
 
 
 def makeFigure():

@@ -15,8 +15,6 @@ from ._common import DATASET_COLORS, DATASET_LABELS
 from ._programs import FITS, best_columns
 
 HEAT = style.CMAPS["weight"]
-#: Red marks tying panels to the missed supplements (`_missed`).
-LINK = "#d00000"
 #: Gap between a heatmap's blocks of columns, in columns.
 BLOCK_GAP = 0.3
 LOADING_LABEL = "|Loading| / max |loading|"
@@ -41,10 +39,32 @@ def colorbar_under(
 BENEATH_DROP, BENEATH_THICKNESS = 5.2, 1.6
 
 
-def colorbar_beneath(ax, label: str) -> None:
+#: Figure 5C's colorbar (`_split.pair_heatmap`: 66% of its axes' width, 4%
+#: of its height thick, its bottom 24% of its height under it), in mm
+_C_WIDTH, _C_HEIGHT = (v / style.MM for v in style.AXIS_SIZE["fig5_columns"])
+C_BAR = {
+    "width": 0.66 * _C_WIDTH,
+    "thickness": 0.04 * _C_HEIGHT,
+    "bottom": 0.24 * _C_HEIGHT,
+}
+
+
+def colorbar_beneath(ax, label: str, like_5c: bool = False) -> None:
     """`colorbar_under` a `fit_grid`'s fit labels at a fixed distance and
-    thickness (mm), whatever the grid's height."""
+    thickness (mm), whatever the grid's height; `like_5c`, at Figure 5C's
+    colorbar's size and distance (`C_BAR`)."""
+    width = ax.bbox.width / ax.figure.dpi / style.MM
     height = ax.bbox.height / ax.figure.dpi / style.MM
+    if like_5c:
+        colorbar_under(
+            ax,
+            label,
+            C_BAR["bottom"] / height,
+            x0=0.5 - C_BAR["width"] / width / 2,
+            width=C_BAR["width"] / width,
+            thickness=C_BAR["thickness"] / height,
+        )
+        return
     colorbar_under(
         ax,
         label,
