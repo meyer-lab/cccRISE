@@ -1,6 +1,6 @@
 [project]
 name = "cccrise"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cell cell communication implementation of PARAFAC2"
 authors = [{name = "Andrew Ramirez", email = "andramirez@ucla.edu" }]
 license = "MIT"
