@@ -20,7 +20,7 @@ def plot(axs):
     )
     eigenstates = np.arange(1, len(sender) + 1)
     common.plot_component_eigenstate_loadings(
-        adata, S.GRANULARITY_COMPONENT, ax, eigenstates
+        adata, S.GRANULARITY_COMPONENT, ax, eigenstates.tolist()
     )
     ax.set_ylabel(f"Cmp. {S.GRANULARITY_COMPONENT} loading")
     common.source_data(
