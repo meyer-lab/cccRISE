@@ -215,7 +215,7 @@ In ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}), "below threshold"
 n = 24 populations: 12 in ALAD and 12 in IBD.
 A cell is NICHES+ when its NICHES score, summed over the component's top LR pairs, is non-zero.
 The dashed line marks equality.
-Two-sided Wilcoxon signed-rank test, paired over the 24 populations: p = 1 × 10^−7^.
+Two-sided Wilcoxon signed-rank test, paired over the 24 sender/receiver populations: p = 1 × 10^−7^.
 :::
 
 To identify CCC patterns revealed only through single-cell resolution, we compared CCC-RISE with three multi-condition pseudobulk methods.
@@ -230,38 +230,35 @@ Each comparator fit grouped LR pairs through the columns of its LR pair factor, 
 For each CCC-RISE component, we identified the closest LR column across all comparator fits by squared cosine similarity between LR pair loadings ({{< fig 5 cos2-grid >}}; {{< fig comparator-split ibd-best >}}).
 Components with one or two top LR pairs closely matched a single comparator column, but matches dropped sharply for components as they broadened to three or more top LR pairs ({{< fig 5 cos2-pairs >}}).
 Because a comparator could distribute a component's LR pairs across several LR columns, we also computed the fraction of each component's LR pair loadings reconstructed by the best combination of LR columns in each comparator fit ({{< fig 5 span-containment >}}; {{< fig comparator-split ibd-containment >}}).
-Only STACCato's fine fit recovered broad components by combining columns, reconstructing most of ALAD component 3 and IBD component 1 although its closest single column matched less than half of either.
+Only STACCato's fine fit reconstructed broad components by combining columns, accounting for most of ALAD component 3 and IBD component 1 even though its closest single column matched less than half of either.
 Both pseudobulk CPD fits, in contrast, reconstructed little more of any component than its closest column.
 Tensor-cell2cell essentially matched no CCC-RISE component and instead tracked the number of genes detected per cell in each condition, so we omitted it from the remaining comparisons ({{< fig comparator-split depth >}}).
-Broad CCC-RISE programs associated with many LR pairs therefore had no single counterpart in any comparator, and no comparator fit recovered every component.
+Broad CCC-RISE programs associated with many LR pairs therefore had no single counterpart in any comparator, and no comparator fit reconstructed every component.
 
-<--need to redo this paragraph-->
-We next characterized what information comparators lost when they missed or divided a component's top LR pairs among several LR columns.
-STACCato reconstructed most of ALAD components 5 and 3, which carried 11 and 14 top LR pairs, only by combining several LR columns ({{< fig 5 cos2-grid span-containment >}}; {{< fig comparator-split alad-c3-columns >}}).
-Each of these columns weighted only a subset of the component's top LR pairs heavily and placed little weight on the rest ({{< fig 5 pair-columns >}}; {{< fig comparator-split alad-c3-columns >}}).
-The top LR pairs of component 5 correlated across conditions beyond expression-matched LR pairs, as did those of component 3 before correction ({{< fig 5 program-covariation >}}; {{< fig comparator-split alad-c3-covariation >}}).
-Of their related columns, only STACCato's fine S4 did so, and only before correction, while carrying just three top LR pairs.
-Component 5 also associated significantly with ALAD outcomes, whereas none of its related columns did ({{< fig 5 labels-alad >}}).
-Thus, comparator columns kept LR pairs coordinated only over a few pairs, whereas CCC-RISE grouped larger sets of co-varying LR pairs into single programs.
+We next characterized what biological information comparators failed to represent when they divided a CCC-RISE component's top LR pairs among several LR columns.
+ALAD component 5 represented a broad program of 11 top LR pairs that was also associated with patient outcomes ({{< fig 5 pair-columns >}}).
+STACCato partly reconstructed this program across coarse and fine fits, whereas pseudobulk CPD reconstructed none of it ({{< fig 5 span-containment >}}).
+Even so, STACCato's best combination of columns weighted mainly the KLRB1 pairs and CD70--CD27, leaving out the chemokine--receptor, cytotoxic and checkpoint pairs ({{< fig 5 pair-columns >}}).
+Moreover, none of the STACCato columns holding these pieces co-varied beyond expression-matched pairs or was associated with patient outcomes ({{< fig comparator-split alad-covariation >}}; {{< fig 5 labels-alad >}}).
+Only by grouping the KLRB1 and CD70--CD27 pairs with the other immune LR pairs did CCC-RISE reveal their co-variation and tie the LR pairs to patient outcomes.
+Across ALAD, three of the five testable CCC-RISE components co-varied, whereas none of the testable comparator columns did, regardless of how many top LR pairs they carried.
+CCC-RISE therefore revealed coordinated signaling programs by grouping LR pairs that varied together across samples, whereas comparators split these programs into columns that could not resolve their coordination.
 
-Among comparator LR columns that placed less than half of their squared loading on the top LR pairs of any single CCC-RISE component, five were disease-associated and involved LR pairs that CCC-RISE did not include among associations ({{< fig comparator-missed alad-share ibd-share >}}; {{< fig 5 labels-alad labels-ibd >}}).
-In ALAD, STACCato's coarse column S14 carried AREG--EGFR and pseudobulk CPD's fine column P5 carried TNFSF11--TNFRSF11A/B ({{< fig comparator-missed alad-contents >}}).
-In IBD, STACCato's coarse column S5, fine column S8, and pseudobulk CPD's coarse column P3 joined CXCR1/CXCR2 ligands with SAA1--FPR2 in a neutrophil-like recruitment axis ({{< fig comparator-missed ibd-contents >}})\ [@doi:10.1038/s41591-021-01520-5; @doi:10.1084/jem.189.2.395].
-IBD component 5 covered this signaling only partly, through different CXCR1/CXCR2 ligands.
-Intriguingly, neither ALAD S14 nor IBD P3 had a counterpart in the same method's fine label fit ({{< fig 5 labels-alad labels-ibd >}}).
-Across both datasets, 11 of the 30 coarse STACCato and pseudobulk CPD columns had no fine counterpart.
-To test whether CCC-RISE showed a similar granularity dependence, we refit ALAD and IBD at a reduced RISE rank and compared each lower-rank component to its closest higher-rank component ({{< fig 5 labels-alad labels-ibd >}}).
-Crucially, every lower-rank component carried over to the higher-rank fit except for one IBD component associated entirely with the homophilic adhesion pair NEGR1.
-Thus, although comparators captured disease-associated signaling that CCC-RISE partly missed, comparator columns were largely sensitive to how cells were exactly labelled, whereas adding eigen-states in CCC-RISE both conserved components and added new ones.
+In the reverse direction, we investigated which outcome-associated programs comparators identified that CCC-RISE did not, and whether those programs persisted across cell-type granularity.
+Of the 11 outcome-associated comparator LR columns, five placed less than half of their squared loading on the top LR pairs of any CCC-RISE component ({{< fig comparator-missed alad-share ibd-share >}}; {{< fig 5 labels-alad labels-ibd >}}).
+These five columns reduced to three signaling programs, two in ALAD carrying AREG--EGFR and TNFSF11--TNFRSF11A/B and one in IBD joining CXCR1/CXCR2 ligands with SAA1--FPR2 ({{< fig comparator-missed alad-contents ibd-contents >}}).
+The IBD program, which IBD component 5 partly covered through other CXCR1/CXCR2 ligands, appeared in both comparators and both STACCato fits, whereas each ALAD program appeared in only a single column at a single granularity.
+More broadly, 11 of the 30 coarse comparator columns lacked a counterpart in the same method's fine fit, and only two of the seven outcome-associated coarse columns had an outcome-associated fine counterpart.
+By contrast, when we refit CCC-RISE at a lower RISE rank, every lower-rank component except one, loaded almost entirely on NEGR1--NEGR1, had a higher-rank counterpart, and all three outcome-associated components remained outcome-associated.
+Thus, CCC-RISE partly missed the IBD CXCR1/CXCR2 program, but most comparator associations changed with the cell-type labels, whereas raising the RISE rank preserved components and their associations while adding new ones.
 
-Finally, where a comparator did recover a component's LR pairs, we compared how each method assigned the communicating sender and receiver populations.
-STACCato's fine column S11 recovered the BTC--EGFR signaling of ALAD component 6 but assigned this signaling from the epithelial cell type to itself.
-Component 6 instead placed BTC--EGFR signaling between ciliated-like senders and basal/secretory-like receivers ({{< fig 5 flow-alad >}}).
-Likewise, STACCato's fine columns S5 and S4 recovered the PYY--NPY1R and GCG--GLP1R signaling of IBD components 3 and 4 but sent both hormones from all EE cells to all EC or tuft cells.
-CCC-RISE instead separated villus-like PYY senders from crypt-like GCG senders along a continuum of EE cells ({{< fig 5 flow-ibd >}}).
-Because CCC-RISE weights cells by eigen-state rather than directly by ligand and receptor expression, we checked these subpopulations against an independent single-cell measure.
-Scriabin also represents interaction programs per cell, but we found its LR sets were inconsistent between random seeds ({{< fig comparator-single-cell scriabin-seeds >}})\ [@doi:10.1038/s41587-023-01782-z].
-We therefore turned to NICHES, which scores each cell by its expression of a ligand or receptor weighted by the condition's mean expression of the matching partner\ [@doi:10.1093/bioinformatics/btac775].
-We called a cell NICHES-positive when the cell expressed at least one of a component's top ligands or receptors and the matching partner was expressed in the cell's condition.
-Indeed, every CCC-RISE sender and receiver population contained a larger fraction of NICHES-positive cells than the corresponding cell-type-defined population, and this advantage held across most per-cell weight thresholds ({{< fig 5 niches-fraction >}}; {{< fig comparator-single-cell alad-weights ibd-tau >}}).
-Independent single-cell scoring therefore supported the subpopulations that CCC-RISE resolved.
+Finally, when a comparator LR column matched a CCC-RISE component's LR pairs, we compared how each method assigned the communicating sender and receiver cells.
+Because pseudobulk comparators score communication betweencell types, matched columns assigned signaling to whole cell types, whereas CCC-RISE components localized it to subpopulations within them ({{< fig 5 flow-alad flow-ibd >}}).
+In ALAD, STACCato's fine fit placed BTC--EGFR signaling from epithelial cells to themselves, whereas component 6 sent it from ciliated to basal/secretory epithelial cells.
+In IBD, STACCato's fine fit sent PYY--NPY1R and GCG--GLP1R from all EE cells to EC and tuft cells, respectively, whereas components 3 and 4 drew PYY from villus-like and GCG from crypt-like EE cells along a continuum.
+Because CCC-RISE weights cells by eigen-state rather than directly by ligand and receptor expression, we assessed whether a direct expression-based single-cell measure also supported these subpopulations.
+For this task, we used NICHES rather than Scriabin, whose interaction programs were inconsistent between random seeds ({{< fig comparator-single-cell scriabin-seeds >}})\ [@doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
+NICHES scores each cell's ligand or receptor expression weighted by the condition's mean expression of the matching partner, and we called a cell NICHES-positive when this score was non-zero for any of a component's top ligands or receptors.
+Indeed, every CCC-RISE sender and receiver population contained a larger fraction of NICHES-positive cells than predicted from the NICHES-positive rates of its cells' own fine cell types within each sample ({{< fig 5 niches-fraction >}}).
+This trend followed across most per-cell weight thresholds used to define CCC-RISE sender and receiver populations ({{< fig comparator-single-cell alad-weights ibd-tau >}}).
+Hence, although CCC-RISE does not score communication directly from expression, its subpopulations were enriched for cells expressing their components' ligands and receptors relative to their nearest fine cell types.
