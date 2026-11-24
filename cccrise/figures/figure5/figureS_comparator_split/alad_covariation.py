@@ -155,9 +155,13 @@ def _key(ax) -> None:
     """Two rows at the top left: the nulls' ticks and the untested cross, then
     filled and hollow points under the ticks (the legend fills by column)."""
     random, matched = (Line2D([], [], **tick) for tick in NULL_TICKS.values())
-    point = {"ls": "", "marker": "o", "ms": 3.8, "mec": "0.4"}
-    filled = Line2D([], [], mfc="0.4", label=f"q < {common.SIG_ALPHA}", **point)
-    hollow = Line2D([], [], mfc="white", label=f"q ≥ {common.SIG_ALPHA}", **point)
+    filled, hollow = (
+        Line2D([], [], ls="", marker="o", ms=3.8, mec="0.4", mfc=fill, label=label)
+        for fill, label in (
+            ("0.4", f"q < {common.SIG_ALPHA}"),
+            ("white", f"q ≥ {common.SIG_ALPHA}"),
+        )
+    )
     untested = Line2D(
         [], [], ls="", marker="x", ms=3.6, mew=0.7, color="0.4", label="< 2 gene groups"
     )

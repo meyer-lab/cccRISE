@@ -183,7 +183,7 @@ def _related(h: _Heatmap, g: pd.DataFrame, method: str, lab: str) -> None:
     for column, parts in g.groupby("Column", sort=False):
         name = short(method, column)
         # ticked with its number: the block's head names the fit
-        drawn = h.column({p: matrix[column] for p in h.programs}, str(int(column)))
+        drawn = h.column({p: matrix[column] for p in h.programs}, f"{column}")
         carries = ", ".join(f"C{q}" for q in parts["Program"])
         h.values += [(method, lab, name, pair, v, carries) for pair, v, _ in drawn]
 
