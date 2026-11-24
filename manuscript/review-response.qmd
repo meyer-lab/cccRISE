@@ -74,7 +74,10 @@ Also shown are the median and range reported in Fig. 2e of @doi:10.1038/s41587-0
 Boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5-times the IQR.
 
 For the multi-condition tensor claim, instead of computing predictive AUCs (which were dropped, as described in Reviewer #1 Comments #4 and #5), we opted to compare methods from a biological point of view, evaluating the LR pairs and cellular populations implicated in communication by each method ({{< fig 5 cos2-grid span-containment flow-alad flow-ibd >}}).
-Briefly, we found that comparator fits largely recovered CCC-RISE components that were only defined by a few top LR pairs but split broader programs across several LR columns or missed programs entirely ({{< fig 5 pair-columns >}}; {{< fig comparator-split cos2-pairs alad-c3-columns >}}).
+For each CCC-RISE component, we measure its best match to any single LR column of each comparator fit and the fraction of its LR pair loadings that all of a fit's LR columns together reconstruct ({{< fig 5 cos2-grid span-containment >}}).
+Briefly, we found that comparator fits largely recovered CCC-RISE components defined by one or two top LR pairs, matched broader components poorly with any single LR column, and missed some components entirely ({{< fig 5 cos2-grid >}}; {{< fig 5 cos2-pairs >}}).
+Only STACCato recovered more of a component by combining several LR columns, and the columns it combined did not keep the component's LR pairs together ({{< fig 5 span-containment >}}; {{< fig 5 pair-columns labels-alad >}}).
+
 Additionally, Tensor-cell2cell reconstructed little of any component, and its condition loadings instead tracked the number of genes detected per cell in each sample ({{< fig comparator-split depth >}}).
 We also looked at the comparator columns lying outside every CCC-RISE component, and we report the disease-associated signaling that comparators captured and CCC-RISE missed ({{< fig comparator-missed alad-share ibd-contents >}}).
 
@@ -97,9 +100,8 @@ For more detail on our new strategy, we point the reviewer to {{< fig 2 sender-r
 
 Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, then we take the average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
-We applied the same test to every comparator LR column, but because comparators assign one receiver loading per cell type, their receivers were all cells of the most highly loaded cell types, contrasted with all cells of the least loaded.
-For a more detailed description of our approach and its results, we point the reviewer to Methods section *External Biological Validation* and {{< fig 2 nichenet >}} and {{< fig 5 nichenet >}}.
-Overall, we observed relatively weak alignment between receiver cell gene expression and ligand gene targets, both within CCC-RISE and across comparator methods.
+For a more detailed description of our approach and its results, we point the reviewer to Methods section *External Biological Validation* and {{< fig 2 nichenet >}}.
+Overall, we observed relatively weak alignment between receiver cell gene expression and ligand gene targets.
 We attribute this result to the limited overlap between LR pairs highlighted by each method and the NicheNet target database, as discussed in the Results ({{< fig 2 nichenet >}}).
 
 Third, as a quantitative evaluation of per-cell sender and receiver weights, we report concordance with NICHES and tried to do the same with Scriabin, which we discuss in detail in our response to Reviewer #1 Comment #1.
@@ -132,7 +134,8 @@ We ultimately did not adopt this as the primary fix because it doubles the sende
 
 Finally, we also evaluated whether the communication tensor should be factored with the factor matrices constrained to be non-negative.
 Across multiple datasets, we saw that this constraint significantly reduced the ability of factorization to impute held-out data, showing that it reduced the fidelity of the factorization as a representation of the communication scoring.
-Therefore, we kept the communication tensor factorization as signed and use our results as an opportunity to explain how these signs might be interpreted (e.g., IBD components 1 and 5, {{< fig comparator-split ibd-c1c5-modes ibd-c5-columns >}}).
+Therefore, we kept the communication tensor factorization as signed.
+We describe this convention in detail in the *Post-fit processing* paragraph of Methods section *Canonical Polyadic Decomposition*.
 
 > 4. Risk of overfitting in the ALAD classifier.
 >    For the ALAD cohort, the number of eigenstates and CPD components were selected because they "yielded the optimal predictive performance for ALAD status".
@@ -239,7 +242,8 @@ As the reviewer suggests, we now compare CCC-RISE with Tensor-cell2cell and with
 This analysis is detailed in Reviewer #1 Comment #1 and Methods section *Comparator Methods*.
 
 On whether CCC-RISE recovers all communication patterns revealed by cell-type-based tensor decomposition: plainly, it does not.
-As discussed in Reviewer #1 Comment #1, comparator fits tended to recover CCC-RISE components dominated by a few top LR pairs, split apart broad components, or entirely missed others ({{< fig 5 cos2-grid span-containment >}}; {{< fig comparator-split cos2-pairs >}}).
+As discussed in Reviewer #1 Comment #1, comparator fits tended to recover CCC-RISE components defined by one or two top LR pairs and entirely missed others ({{< fig 5 cos2-grid cos2-pairs >}}).
+
 In addition, we now report five disease-associated comparator LR columns that were associated with LR pairs that no CCC-RISE component included among its associations ({{< fig comparator-missed alad-share ibd-contents >}}).
 We describe these misses in the Results but conclude that cell-type--based decomposition methods and CCC-RISE are not estimating the same quantity, so component-for-component correspondence is not expected.
 Moreover, the fitted LR columns of the comparators were also sensitive to the granularity of the labels, losing disease-associated columns when transitioning from coarse to fine cell types ({{< fig 5 labels-alad labels-ibd >}}).
@@ -264,10 +268,12 @@ We thus attribute the failure of this analysis to the limited size of the availa
 
 Given the limitations of gene set enrichment, we went on to quantify biological coherence by two alternate approaches.
 First, we present a co-variation analysis among top-weighted LR pairs of outcome-associated components, wherein the correlation of communication scores between LR pairs implicated by a component is compared with that of those randomly drawn from other groups.
-We present these results in {{< fig 3 coordinated-changes.2 >}} and {{< fig 5 program-covariation >}} and define the process in detail in Methods sections *Clinical Association Testing* and *Comparator Methods*.
-The enhanced co-variation of top-weighted LR pairs relative to other groups of LR pairs indicates that the communication program represents a coherent transcriptional pattern.
+We present these results in {{< fig 3 coordinated-changes.2 >}} and {{< fig comparator-split alad-covariation >}} and define the process in detail in Methods sections *Clinical Association Testing* and *Comparator Methods*.
+The enhanced co-variation of CCC-RISE's top-weighted LR pairs relative to other groups of LR pairs indicates that the communication program represents a coherent transcriptional pattern.
+Applied to every LR column of the pseudobulk CPD and STACCato fits, the same test found no column whose top LR pairs co-varied this way ({{< fig comparator-split alad-covariation >}}).
+
 Second, we further test the biological coherence of CCC-RISE components using the previously described NicheNet validations (Reviewer #1 Comment #2).
-Together, these address the mathematical-artifact concern from two directions---the component's LR pairs move together in expression space, and their known gene targets are visibly upregulated in the identified receiver cells.
+Together, these address the mathematical-artifact concern from two directions---the top LR pairs of several components move together across samples beyond matched LR pairs, and their ligands' target genes are enriched in the cells a component identifies as receivers.
 
 > 3. The authors compute communication scores as the product of ligand and receptor expression between eigen-states.
 >    However, this simple calculation does not involve any statistical test and may produce incorrect cell-cell communication inferences between eigen-states as well as between individual cells.

@@ -1,7 +1,7 @@
 """Each CCC-RISE component's largest cos^2 with a single comparator LR column
 against its number of carrying LR pairs, with their Spearman correlation.
 
-Figure EV5A: each CCC-RISE component's best single comparator LR column
+Figure 5C: each CCC-RISE component's best single comparator LR column
 (its largest cos^2 with one LR column of any PB, TC2C or STAC fit) against
 how many LR pairs carry it (`covariation.carrying_pairs`; their Spearman p
 over the legend, rho in the source data), with, dashed, the axes' anti-diagonal: a perfect
@@ -13,13 +13,13 @@ import pandas as pd
 from matplotlib import patheffects
 from scipy.stats import spearmanr
 
-from .... import covariation
-from ... import common, style
-from .._common import DATASET_COLORS, DATASET_LABELS, cohort_handles
-from .._programs import best_columns, carrying_pairs
-from .._recovery import COS2_LABEL, LABEL_SIZE
+from ... import covariation
+from .. import common, style
+from ._common import DATASET_COLORS, DATASET_LABELS, cohort_handles
+from ._programs import best_columns, carrying_pairs
+from ._recovery import COS2_LABEL, LABEL_SIZE
 
-AXES = ("split_cos2_pairs",)
+AXES = ("fig5_cos2_pairs",)
 #: Components sharing an LR pair count within this cos^2 are dodged apart, a
 #: factor of exp(`DODGE`) on the log axis.
 TIE = 0.06
@@ -28,10 +28,10 @@ XLIM = (0.75, 18)
 #: Each label's text, offset (points) from its components' mean position and
 #: alignment, by (cohort, components); a tie gets one label.
 LABELS = {
-    ("ibd", (2, 3, 4)): ("C2–4", (-3, 7), "left"),
-    ("ibd", (6,)): ("C6", (4, -2), "left"),
+    ("ibd", (2, 3, 4)): ("C2–4", (6, 5), "left"),  # up-right, clear of dots and border
+    ("ibd", (6,)): ("C6", (4, -6), "left"),
     ("alad", (1,)): ("C1", (4, 0), "left"),
-    ("alad", (6,)): ("C6", (0, -7), "center"),
+    ("alad", (6,)): ("C6", (5, -2), "left"),  # right, off the diagonal
     ("alad", (2,)): ("C2", (-5, 0), "right"),
     ("alad", (3,)): ("C3", (-5, 0), "right"),
     ("alad", (5,)): ("C5", (5, 0), "left"),
@@ -155,7 +155,7 @@ def plot(axs):
         loc="lower left",
         fontsize=LABEL_SIZE,
         handletextpad=0.2,
-        title=common.p_text(result.pvalue, "Spearman p"),
+        title=f"ρ = {result.statistic:.2f}".replace("-", "−"),
         title_fontsize=LABEL_SIZE,
         alignment="left",
     )

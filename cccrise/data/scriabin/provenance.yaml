@@ -27,13 +27,3 @@ files:
       seeds: [42001, 42002, 42003, 42004, 42005, 42006, 42007, 42008, 42009, 42010]
     git_sha: 8bd1fbd13b3b2f896d45e9fbea1b430ecd3e27f1
     generated: '2026-11-19T19:06:17+00:00'
-  seed_agreement_ibd.parquet:
-    sha256: 2666771b4a6ec06a5932670da19d44fe2be23d09e2f74550bd9315f8321bfd7b
-    command: uv run cccrise-scriabin-seeds --dataset ibd
-    dataset: ibd
-    scriabin_runs: rcheck/out/shared/ibd/s1
-    cccrise_refits:
-      dir: rcheck/out/cccrise/ibd/s1
-      seeds: [42, 42001, 42002, 42003, 42004]
-    git_sha: 696305766eec67a0a31900edba769d87063053ae
-    generated: '2026-11-16T11:13:33+00:00'

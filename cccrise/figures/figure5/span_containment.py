@@ -12,10 +12,9 @@ import pandas as pd
 from .. import common
 from ._common import DATASET_LABELS, load
 from ._programs import FITS
-from ._recovery import colorbar_beneath, fit_grid
+from ._recovery import colorbar_right, fit_grid
 
 AXES = ("fig5_best",)
-JOIN_PREVIOUS = True  # beside 5A, sharing its component axis
 LABEL = "Fraction of LR pair\nloadings reconstructed"
 
 
@@ -59,8 +58,7 @@ def containment_grid(ax, datasets=tuple(DATASET_LABELS), bars: bool = True) -> N
 
 def plot(axs):
     containment_grid(axs[0], ("alad",), bars=False)
-    axs[0].tick_params(labelleft=False)  # 5A's component labels serve both
-    colorbar_beneath(axs[0], LABEL, like_5c=True)
+    colorbar_right(axs[0], LABEL)
 
 
 def makeFigure():

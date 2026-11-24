@@ -35,40 +35,37 @@ def colorbar_under(
     cax.set_xlabel(label, fontsize=style.FONT_SIZE_DENSE, labelpad=0)
 
 
-#: `colorbar_beneath`: the bar's top below the axes, and its thickness (mm)
-BENEATH_DROP, BENEATH_THICKNESS = 5.2, 1.6
+#: `colorbar_below`'s thickness (mm)
+BENEATH_THICKNESS = 1.6
 
 
-#: Figure 5C's colorbar (`_split.pair_heatmap`: 66% of its axes' width, 4%
-#: of its height thick, its bottom 24% of its height under it), in mm
-_C_WIDTH, _C_HEIGHT = (v / style.MM for v in style.AXIS_SIZE["fig5_columns"])
-C_BAR = {
-    "width": 0.66 * _C_WIDTH,
-    "thickness": 0.04 * _C_HEIGHT,
-    "bottom": 0.24 * _C_HEIGHT,
-}
+#: `colorbar_right`: the bar's gap from the axes, and its thickness (mm)
+RIGHT_GAP, RIGHT_THICKNESS = 1.8, 1.6
 
 
-def colorbar_beneath(ax, label: str, like_5c: bool = False) -> None:
-    """`colorbar_under` a `fit_grid`'s fit labels at a fixed distance and
-    thickness (mm), whatever the grid's height; `like_5c`, at Figure 5C's
-    colorbar's size and distance (`C_BAR`)."""
+def colorbar_right(ax, label: str) -> None:
+    """A vertical colorbar `RIGHT_GAP` right of `ax`, `RIGHT_THICKNESS`
+    thick, as tall as the grid, ticked and labelled on its right."""
     width = ax.bbox.width / ax.figure.dpi / style.MM
+    cax = ax.inset_axes((1 + RIGHT_GAP / width, 0, RIGHT_THICKNESS / width, 1))
+    bar = ax.figure.colorbar(ScalarMappable(Normalize(0, 1), HEAT), cax=cax)
+    bar.set_ticks([0, 1])
+    cax.tick_params(labelsize=style.FONT_SIZE_DENSE, length=1.5, pad=1)
+    bar.set_label(label, fontsize=style.FONT_SIZE_DENSE, labelpad=1)
+
+
+#: `colorbar_below`: the bar's gap under a grid whose ticks are on top (mm)
+BELOW_GAP = 2.2
+
+
+def colorbar_below(ax, label: str) -> None:
+    """A horizontal colorbar `BELOW_GAP` under `ax` (its labellings ticked on
+    top, so nothing sits between), `BENEATH_THICKNESS` thick."""
     height = ax.bbox.height / ax.figure.dpi / style.MM
-    if like_5c:
-        colorbar_under(
-            ax,
-            label,
-            C_BAR["bottom"] / height,
-            x0=0.5 - C_BAR["width"] / width / 2,
-            width=C_BAR["width"] / width,
-            thickness=C_BAR["thickness"] / height,
-        )
-        return
     colorbar_under(
         ax,
         label,
-        (BENEATH_DROP + BENEATH_THICKNESS) / height,
+        (BELOW_GAP + BENEATH_THICKNESS) / height,
         thickness=BENEATH_THICKNESS / height,
     )
 
@@ -118,6 +115,10 @@ def _cohort_labels(ax, centers: dict) -> None:
         )
 
 
+#: A method's name above its labellings' top tick labels (points)
+METHOD_RISE = 12.5
+
+
 def fit_grid(ax, grids: dict[str, pd.DataFrame], bars: bool = True) -> None:
     """A components-by-fits heatmap with values, each cohort's components
     (`grids`, indexed by component, columns (method, labelling)) under the
@@ -137,12 +138,15 @@ def fit_grid(ax, grids: dict[str, pd.DataFrame], bars: bool = True) -> None:
     ax.set_yticks(ticks, names)
     ax.set_xticks(np.arange(len(FITS)) + 0.5, [lab[0].upper() for _, lab in FITS])
     ax.tick_params(labelsize=style.FONT_SIZE_DENSE)
+    # labellings on top, under their method's name
+    ax.tick_params(axis="x", top=True, labeltop=True, bottom=False, labelbottom=False)
     _clean_heatmap(ax)
     for i, method in enumerate(dict.fromkeys(m for m, _ in FITS)):
-        ax.text(
-            2 * i + 1,
-            -0.25,
+        ax.annotate(
             method,
+            (2 * i + 1, 0),
+            xytext=(0, METHOD_RISE),
+            textcoords="offset points",
             ha="center",
             va="bottom",
             fontsize=style.FONT_SIZE_DENSE,
