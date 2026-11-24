@@ -68,7 +68,7 @@ Starts are counted as one solution when their FMS is at least 0.95.
 Lines show the mean and bands the range.
 ({{< panel comparator-rank-selection stac-shares-coarse >}}, {{< panel comparator-rank-selection stac-shares-fine >}}) STAC eigenvalue share of each component of each mode's unfolding.
 The dashed line marks the 1% cutoff.
-Cores are given as condition × LR pair × sender × receiver.
+Cores are given as condition by LR pair by sender by receiver.
 
 ![](figures/figureS_comparator_missed/figureS_comparator_missed.svg){width="6.5in"}
 
@@ -85,7 +85,7 @@ The CCC-RISE column shows each LR pair's largest such value in any CCC-RISE comp
 Single-cell comparison of CCC-RISE populations.** ({{< panel comparator-single-cell alad-weights >}}) ALAD and ({{< panel comparator-single-cell ibd-weights >}}) IBD per-cell sender weight against receiver weight on each CCC-RISE component, each relative to its largest value (ALAD, n = 51,273 cells; IBD, n = 634,534 cells).
 Dashed lines mark the 0.3 cutoff (τ) that defines each component's sender, receiver and both populations.
 ({{< panel comparator-single-cell alad-tau >}}) ALAD and ({{< panel comparator-single-cell ibd-tau >}}) IBD fraction of NICHES+ cells in each sender (solid) and receiver (dotted) population, minus the fraction predicted by cell type as in {{< fig 5 niches-fraction >}}, across cutoffs τ from 0.1 to 0.6.
-A population is drawn only while it has at least 10 cells.
+A population is drawn only when it has at least 10 cells.
 The grey line marks the 0.3 cutoff used throughout, and the dashed line marks no difference.
 ({{< panel comparator-single-cell scriabin-seeds >}}) Agreement between random seeds in ALAD, measured as the mean best-match Jaccard index between two seeds' LR sets.
 Scriabin's LR sets are its interaction programs that pass its significance test, whereas CCC-RISE's are its components' top LR pairs.
@@ -96,13 +96,12 @@ Both Scriabin and CCC-RISE used 10 seed refits (n = 45 pairs each).
 
 **{{< label alad-outcome-groups >}}.
 ALAD samples by outcome group.** Number of BAL samples in each ALAD cohort outcome group.
-Shown are label groupings (ALAD status and six-month outcome), high-level patient labels, and sub-group labels.
-Sample sizes are stated for each group and sub-group.
+Shown are label groupings (ALAD status and six-month outcome), high-level patient labels, and subgroup labels.
 Two of the 45 patients were sampled twice, in different groups.
 
 {{< xlsx figures/tables/cohort_cell_types.xlsx >}}
 
 **{{< label cohort-cell-types >}}.
-Cell-type labels in each cohort.** Number of cells under each coarse and fine cell-type label provided with the ALAD and IBD cohorts, which the comparators pooled cells by.
+Cell-type labels in each cohort.** Number of cells under each coarse and fine cell-type label provided with the ALAD and IBD cohorts.
 Shown are coarse labels (ALAD, n = 8; IBD, n = 7) and the fine labels within each (ALAD, n = 26; IBD, n = 54).
 Cell counts are stated for each coarse and fine label (ALAD, n = 51,273 cells; IBD, n = 634,534 cells).

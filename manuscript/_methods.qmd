@@ -299,7 +299,7 @@ Each tensor had condition, sender cell type, receiver cell type, and LR pair mod
 For Tensor-cell2cell and pseudobulk CPD fits, an LR column belongs to one component, which gives it condition, sender, and receiver loadings.
 For STACCato, each LR column's condition, sender, and receiver loadings were the leading left singular vectors of its core slice unfolded along each of those modes, mapped through the factor matrices of those modes.
 Each column's loadings were signed so that their largest-magnitude entry was positive.
-Comparator condition loadings were tested for association as in Clinical Association Testing, and comparator LR columns were tested for co-variation as described in Clinical Association Testing.
+Comparator condition loadings were tested for association and comparator LR columns were tested for co-variation as described in Clinical Association Testing.
 
 **Pseudobulk CPD.** Each communication tensor entry was the product of mean ligand expression in the sender and mean receptor expression in the receiver, with cell types absent from a sample set to zero expression.
 CPD was fit and its rank selected as for CCC-RISE, so pseudobulk CPD differed from CCC-RISE only in the tensor it decomposed.
