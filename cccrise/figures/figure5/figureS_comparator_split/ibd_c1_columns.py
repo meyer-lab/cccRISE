@@ -16,7 +16,7 @@ def plot(axs):
         axs[0],
         "ibd",
         (1,),
-        "C1",
+        "1",
         drop=0.3,
         signed=True,
         slant=True,

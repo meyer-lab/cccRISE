@@ -26,13 +26,10 @@ import numpy as np
 import pandas as pd
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
-from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
-from scipy.stats import false_discovery_control
 
-from ...covariation import CARRYING_CAP
 from .. import common, style
-from ._common import METHOD_COLORS, load
+from ._common import METHOD_COLORS
 from ._data import LABELLINGS, short
 from ._programs import _unit, carrying_pairs, lr_matrix
 from ._recovery import (
@@ -220,7 +217,8 @@ def _related(h: _Heatmap, g: pd.DataFrame, method: str, lab: str) -> None:
     matrix = lr_matrix(h.dataset, method, lab)
     for column, parts in g.groupby("Column", sort=False):
         name = short(method, column)
-        drawn = h.column({p: matrix[column] for p in h.programs}, name)
+        # ticked with its number: the block's head names the fit
+        drawn = h.column({p: matrix[column] for p in h.programs}, str(int(column)))
         carries = ", ".join(f"C{q}" for q in parts["Program"])
         h.values += [(method, lab, name, pair, v, carries) for pair, v, _ in drawn]
 
@@ -292,7 +290,7 @@ def _heatmap_axes(h: _Heatmap, slant: bool = False) -> None:
     else:
         for text in [t for t in ax.texts if t.get_text() == "CCC-RISE"]:
             text.set(x=1.0, ha="right")  # flush right of its one column
-        ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE - 1.6)
+        ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE - 0.6)
     if len(h.programs) == 1:
         _unlabel_side(ax, h.programs[0], end)
 
@@ -356,39 +354,6 @@ def pair_heatmap(
         colorbar_under(ax, LOADING_LABEL, drop=drop, x0=0.17, width=0.66)
 
 
-def covariation_rows(dataset: str, programs) -> pd.DataFrame:
-    """Each component, then its related columns comparator by comparator (as
-    `pair_heatmap`), with their co-variation (`run_comparator_scores`)."""
-    tables = {lab: load("covariation", lab, dataset) for lab in LABELLINGS}
-    chosen = related_columns(dataset, programs)
-    rows, x = [], 0.0
-    for program in programs:
-        t = tables["coarse"]
-        picked = [
-            ("cccRISE", t[(t.Method == "cccRISE") & (t.Component == program)], "")
-        ]
-        for r in chosen[chosen["Program"] == program].itertuples():
-            s = tables[r.Labelling]
-            picked.append(
-                (
-                    r.Method,
-                    s[(s.Method == r.Method) & (s.Component == r.Column)],
-                    r.Labelling,
-                )
-            )
-        for method, row, lab in picked:
-            component = int(row["Component"].iloc[0])
-            suffix = f" {lab[0].upper()}" if lab else ""
-            rows.append(
-                row.assign(
-                    X=x, Name=f"{short(method, component)}{suffix}", Labelling=lab
-                )
-            )
-            x += 1
-        x += 0.7
-    return pd.concat(rows, ignore_index=True)
-
-
 #: Each null's 95th-percentile tick in the co-variation panels.
 NULL_TICKS: dict[str, dict[str, Any]] = {
     "random": {"color": "0.6", "ls": (0, (2, 1.2)), "lw": 0.9, "label": "Random"},
@@ -399,25 +364,6 @@ NULL_TICKS: dict[str, dict[str, Any]] = {
         "label": "Expr.-matched",
     },
 }
-
-
-def with_q(t: pd.DataFrame) -> pd.DataFrame:
-    """`t` with the expression-matched null's BH q over its tested rows (those
-    left with two or more gene groups)."""
-    tested = t["Observed"].notna()
-    q = pd.Series(np.nan, index=t.index)
-    q[tested] = false_discovery_control(t.loc[tested, "expression_matched_p"])
-    return t.assign(expression_matched_q=q)
-
-
-def null_draws(dataset: str, t: pd.DataFrame) -> pd.DataFrame:
-    """The null draws (`run_comparator_scores`' ``covariation_draws``) of
-    `covariation_rows`' rows `t`, by their Name."""
-    keys = t.assign(Labelling=t["Labelling"].replace("", "coarse"))
-    draws = load("covariation_draws", dataset=dataset)
-    return keys[["Name", "Method", "Labelling", "Component"]].merge(draws)[
-        ["Name", "Null", "Draw", "Pair of pairs", "Spearman correlation"]
-    ]
 
 
 def _lollipop(ax, r) -> None:
@@ -449,84 +395,3 @@ def _lollipop(ax, r) -> None:
         facecolor=color if hit else "white",
         edgecolor=color,
     )
-
-
-def _covariation_key(ax, loc: str) -> None:
-    """The nulls' ticks in the first column, filled and hollow points (as
-    Figure 5G keys them) in the second, at `loc` inside the axes."""
-    ticks = [Line2D([], [], **tick) for tick in NULL_TICKS.values()]
-    point: dict[str, Any] = {"ls": "", "marker": "o", "ms": 3.2, "mec": "0.4"}
-    filled = Line2D([], [], mfc="0.4", label=f"q < {common.SIG_ALPHA}", **point)
-    hollow = Line2D([], [], mfc="white", label=f"q ≥ {common.SIG_ALPHA}", **point)
-    ax.legend(
-        handles=[*ticks, filled, hollow],
-        loc=loc,
-        ncol=2,
-        fontsize=style.FONT_SIZE_DENSE - 1.2,
-        handlelength=1.4,
-        handletextpad=0.3,
-        columnspacing=0.8,
-        borderaxespad=0.1,
-        frameon=False,
-    )
-
-
-def covariation(
-    axs, dataset: str, programs, key_loc: str = "lower center", top: float = 1
-) -> None:
-    """Each component's and related column's co-variation over all its carrying
-    pairs, against both nulls' 95th percentiles (random dashed,
-    expression-matched solid); filled where its one-sided empirical p against
-    the expression-matched null, BH-corrected over the panel's tested rows
-    (`with_q`), is below `common.SIG_ALPHA`; keyed at `key_loc`; the y axis
-    runs to `top`, room for the key above the data, ticked to 1."""
-    (ax,) = axs
-    t = with_q(covariation_rows(dataset, programs))
-    common.source_data(
-        f"component_and_related_column_covariation_{dataset}",
-        t[
-            [
-                "Name",
-                "Method",
-                "Labelling",
-                "PairsUsed",
-                "GeneGroups",
-                "Observed",
-                "random_q95",
-                "expression_matched_q95",
-                "random_p",
-                "expression_matched_p",
-                "expression_matched_q",
-            ]
-        ],
-        "Mean pairwise rank correlation across samples of each component's or "
-        "column's carrying pairs (the fewest carrying 90% of squared loading, at most "
-        f"{CARRYING_CAP}), pairs sharing a gene merged into one (Gene "
-        "groups of them, as Figure 3F), with the 95th percentiles of the random and "
-        "of the expression-matched null, merged alike, and each null's one-sided "
-        "empirical p ((1 + draws at or above the observed) / (1 + draws)); the "
-        "expression-matched p's Benjamini-Hochberg q over the panel's tested rows; "
-        "NaN where fewer than two groups remain. A point is filled when q < "
-        f"{common.SIG_ALPHA}.",
-    )
-    common.source_data(
-        f"covariation_null_draws_{dataset}",
-        null_draws(dataset, t),
-        "Each null draw's pairwise rank correlations (Spearman, across samples) "
-        "for every component and column of the co-variation file (by Name), pair "
-        "of pairs by pair of pairs, merged alike: each draw's mean is a point of "
-        "the null behind its 95th percentiles and p's.",
-    )
-    for _, r in t.iterrows():
-        _lollipop(ax, r)
-    ax.set(
-        ylim=(0, top),
-        yticks=[0, 0.5, 1],
-        ylabel="Mean pairwise correlation\nacross conditions",
-        xlim=(t["X"].min() - 0.7, t["X"].max() + 0.7),
-    )
-    ax.set_xticks(t["X"], t["Name"])
-    ax.tick_params(axis="x", labelrotation=55, labelsize=style.FONT_SIZE_DENSE - 0.7)
-    for label in ax.get_xticklabels():
-        label.set(ha="right", rotation_mode="anchor")
-    _covariation_key(ax, key_loc)

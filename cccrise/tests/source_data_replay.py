@@ -476,9 +476,9 @@ def figure5(z: Zip) -> dict:
             {"5B": None},
         )
         | {
-            "5C": manual(
+            "5D": manual(
                 lambda axs: pair_heatmap(
-                    axs[0], z("5C", "component_pairs_in_related_columns_alad")
+                    axs[0], z("5D", "component_pairs_in_related_columns_alad")
                 ),
                 "fig5_columns",
             )
@@ -614,10 +614,10 @@ def figure_ev4(z: Zip) -> dict:
 
 
 def figure_ev5(z: Zip) -> dict:
-    best = z("EV5B", "program_best_column_cos2").rename(
+    best = z("EV5A", "program_best_column_cos2").rename(
         columns={"Best-match cos2": "Cos2"}
     )
-    depth = z("EV5D", "depth_tracking_by_component")
+    depth = z("EV5C", "depth_tracking_by_component")
     labels = {"ALAD": "alad", "IBD": "ibd"}
     groups = {
         dataset: {
@@ -635,18 +635,18 @@ def figure_ev5(z: Zip) -> dict:
             ),
             "tall",
         )
-        for folder, dataset in (("EV5E", "alad"), ("EV5H", "ibd"), ("EV5I", "ibd"))
+        for folder, dataset in (("EV5F", "ibd"), ("EV5G", "ibd"))
     }
     return (
         module(
             "figure5.figureS_comparator_split.ibd_best",
             {(_recovery, "best_columns"): lambda dataset: best.drop(columns="Dataset")},
-            {"EV5B": None},
+            {"EV5A": None},
         )
         | module(
             "figure5.figureS_comparator_split.depth",
             {(_depth, "_values"): lambda dataset: groups[dataset]},
-            {"EV5D": None},
+            {"EV5C": None},
         )
         | heatmaps
     )

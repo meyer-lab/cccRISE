@@ -446,6 +446,23 @@ def panel_axes(fig: Figure, panel: str) -> plt.Axes:
     return next(ax for ax in fig.axes if ax.get_label() == panel)
 
 
+def nudge_panel(
+    fig: Figure,
+    panel: str,
+    right: float = 0.0,
+    up: float = 0.0,
+    grow: float = 0.0,
+) -> None:
+    """Move panel module `panel`'s axes `right` and `up` (in) once the figure
+    is laid out, then raise its top `grow` (in; its bottom stays), so a panel
+    can sit or reach beyond the box its row reserved. Its insets (colorbars)
+    follow; its letter stays where `compose_fixed` put it."""
+    ax = panel_axes(fig, panel)
+    w, h = fig.get_size_inches()
+    p = ax.get_position()
+    ax.set_position((p.x0 + right / w, p.y0 + up / h, p.width, p.height + grow / h))
+
+
 # Bars grouping whole panels of a composed figure, in a cohort's or method's
 # color with its name, made room for by growing the figure at an edge
 # (`grow_figure`) or between rows (`open_figure_gap`), every axes, figure text

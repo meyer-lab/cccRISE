@@ -9,12 +9,14 @@ supplement."""
 
 from .. import common
 from . import _split
+from ._recovery import LOADING_LABEL, colorbar_right
 
 AXES = ("fig5_columns",)
 
 
 def plot(axs):
-    _split.pair_heatmap(axs[0], "alad", (5,), "C5", drop=0.24)
+    _split.pair_heatmap(axs[0], "alad", (5,), "5", colorbar=False)
+    colorbar_right(axs[0], LOADING_LABEL)
 
 
 def makeFigure():
