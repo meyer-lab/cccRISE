@@ -1,41 +1,39 @@
 ## Introduction
 
 Multicellular organisms rely on coordinated cell--cell communication (CCC) to guide development, maintain homeostasis, and mount immune responses\ [@doi:10.1016/j.semcancer.2023.07.001].
-This communication is mediated by a diverse molecular toolkit, including ligands, receptors, chemokines, hormones, and structural proteins\ [@doi:10.1016/j.semcancer.2023.07.001; @doi:10.1038/s41392-024-01888-z].
-CCC is initiated when extracellular signals trigger intracellular cascades, often altering gene expression to regulate cellular behavior and function.
+This communication is mediated by a diverse molecular ensemble, including ligands, receptors, chemokines, hormones, and structural proteins\ [@doi:10.1016/j.semcancer.2023.07.001; @doi:10.1038/s41392-024-01888-z].
+CCC occurs when extracellular ligand--receptor (LR) interactions trigger intracellular cascades, often altering gene expression to regulate cellular behavior and function.
 By mapping how diseases disrupt these pathways, we can characterize the specific cellular coordination that drives and defines pathological states.
 
 To better understand how cells interact, researchers have developed computational techniques to infer CCC from transcriptomic data\ [@doi:10.1038/s41576-020-00292-x; @doi:10.1038/s41467-022-30755-0].
-These methods typically leverage single-cell RNA sequencing (scRNA-seq) to identify the co-expression of ligand--receptor (LR) gene pairs documented in curated databases\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1093/bioinformatics/btab036].
+These methods typically leverage single-cell RNA sequencing (scRNA-seq) to identify the co-expression of LR gene pairs documented in curated databases\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1093/bioinformatics/btab036].
 This approach hinges on the central assumption that transcript levels accurately reflect functional protein abundance, which in turn determines the probability of interaction.
-While this is a simplified premise, it allows for the high-throughput screening of thousands of interactions, providing a data-driven way to prioritize specific communication events for experimental validation\ [@doi:10.1038/s41596-024-01045-4; @doi:10.1093/bib/bbaf280].
-Initial tools such as CellPhoneDB and CellChat use statistical tests to compare communication scores against a null distribution created by randomly permuting cell labels\ [@doi:10.1038/s41596-020-0292-x; @doi:10.1038/s41467-021-21246-9].
+While this is a simplified premise, it allows for the high-throughput screening of thousands of possible interactions, providing a data-driven way to prioritize specific communication events for experimental validation\ [@doi:10.1038/s41596-024-01045-4; @doi:10.1093/bib/bbaf280].
+Initial tools such as CellPhoneDB and CellChat score communication based on ligand and receptor expression, then use statistical tests to compare those scores against a null distribution formed by permuting cell labels\ [@doi:10.1038/s41596-020-0292-x; @doi:10.1038/s41467-021-21246-9].
 Originally designed to merely detect the presence of active signaling pathways, these foundational tools have since inspired a diverse analytical toolkit capable of addressing increasingly complex biological questions\ [@doi:10.1038/s41576-023-00685-8].
 
-A critical objective of CCC analysis is to understand how cellular interactions evolve across biological contexts, such as disease states, developmental stages, or treatment groups\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41467-017-02391-6; @doi:10.1073/pnas.1918937117; @doi:10.1186/1471-2105-12-19].
-By mapping alterations in LR activity and signaling pathways, researchers can pinpoint the communication programs that drive phenotypic outcomes and identify potential therapeutic targets.
-The most direct strategies contrast two conditions at a time.
-For example, scDiffCom, CrossTalkeR, and NATMI model differences in communication between conditions to identify interactions associated with disease or phenotypic changes\ [@doi:10.1038/s43587-023-00514-x; @doi:10.1093/bioinformatics/btab370; @doi:10.1038/s41467-020-18873-z].
-However, pairwise comparison tools ignore variation between individual samples and do not extend to cohorts with many conditions.
+A critical objective of CCC analysis is to understand how cellular interactions shift across biological contexts, such as disease states, developmental stages, treatment groups, or individual patients\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41467-017-02391-6; @doi:10.1073/pnas.1918937117; @doi:10.1186/1471-2105-12-19].
+By mapping alterations in LR activity, researchers can pinpoint the communication programs that drive phenotypic outcomes and identify potential therapeutic targets.
+The most direct strategies, such as scDiffCom, CrossTalkeR, and NATMI, contrast two conditions at a time to identify interactions associated with disease or phenotypic changes\ [@doi:10.1038/s43587-023-00514-x; @doi:10.1093/bioinformatics/btab370; @doi:10.1038/s41467-020-18873-z].
+However, pairwise comparison tools ignore variation between individual samples and miss communication patterns that span many conditions.
 
-Computational approaches for multi-condition CCC analysis generally fall into two primary categories: matrix-based and tensor-based methods.
-Matrix-based strategies---including DIALOGUE, MultiNicheNet, and Multicellular Factor Analysis---typically flatten complex data into two-dimensional arrays, such as rows of samples against columns of sender--receiver features\ [@doi:10.1038/s41587-022-01288-0; @doi:10.7554/eLife.93161; @doi:10.1101/2023.06.13.544751].
-While these methods can successfully identify statistically significant LR pairs, the flattening process confounds cells and samples, making it difficult to track context-dependent communication events across sender and receiver cells.
-In contrast, tensor-based methods like Tensor-cell2cell, scTensor, STACCato, and scITD address this limitation by modeling data across all dimensions simultaneously.
-By arranging data into higher-order tensors rather than flat matrices, these methods preserve the multi-dimensional structure of cellular interactions, allowing for the identification of coordinated changes in CCC across conditions\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005; @doi:10.1038/s41587-024-02411-z; @doi:10.1186/s12859-023-05490-y].
+Multi-condition CCC-inference tools generally fall into two primary categories: matrix-based and tensor-based methods.
+Matrix-based strategies, including DIALOGUE, MultiNicheNet, and Multicellular Factor Analysis, flatten multi-dimensional data into two-dimensions, typically with samples as rows and sender--receiver features as columns\ [@doi:10.1038/s41587-022-01288-0; @doi:10.7554/eLife.93161; @doi:10.1101/2023.06.13.544751].
+While these methods can identify statistically significant LR pairs, flattening forces distinct modes to share rows or columns, which confounds patterns of variation present in individual dimensions.
+In contrast, tensor-based methods like Tensor-cell2cell, scTensor, STACCato, and scITD organize the data into into three- or four-dimensional tensors to preserve its higher-order structure, which allows these methods to identify coordinated changes in CCC across conditions and cells\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005; @doi:10.1038/s41587-024-02411-z; @doi:10.1186/s12859-023-05490-y].
 To extract these insights, tensor-based tools employ factorization techniques, such as Canonical Polyadic Decomposition (CPD), which model the tensor as a sum of rank-one components to reveal distinct signaling patterns\ [@doi:10.1137/07070111X; @doi:10.1016/j.cels.2024.07.004].
 
-Despite the advantages of current tensor-based methods, their reliance on pseudobulked single-cell data is a significant limitation.
-Because standard decompositions like CPD require data dimensions to be strictly aligned (i.e., \"sender cell type 1\" must match across all conditions), researchers are forced to aggregate raw single-cell data into discrete categories.
+Despite their advantages, current tensor-based methods rely on pseudobulked single-cell data, which poses a significant limitation.
+Because standard decompositions like CPD require data dimensions to be strictly aligned (i.e., \"sender cell type 1\" must match across all conditions), researchers are forced to aggregate single-cell measurements based on discrete cell-type labels.
 This approach relies on the reductive assumption that a cell can be fully defined by a single label\ [@doi:10.1093/bib/bbaf280].
-In biological reality, cells are multifaceted entities that often hold simultaneous identities, blending stable lineage markers with transient functional states driven by their immediate environment\ [@doi:10.1038/s41583-019-0125-5; @doi:10.1101/2022.06.03.494765; @doi:10.1186/s13148-022-01253-3].
-Furthermore, the process of annotation itself is fraught with challenges; cell-type labeling is inevitably incomplete or inaccurate, particularly when researchers attempt to define fine-grained labels to capture subtle heterogeneity.
-By forcing cells into rigid, pre-defined cell types, pseudobulking obscures the functional diversity essential for understanding cellular communication, as distinct subpopulations within a single type may participate in entirely different signaling programs.
-Conversely, another class of methods, including Scriabin, NICHES, DeepCOLOR, DeepTalk, and SPRUCE, score interactions between individual cells to attain single-cell resolution\ [@doi:10.1038/s41587-023-01782-z; @doi:10.1093/bioinformatics/btac775; @doi:10.1016/j.cels.2024.01.007; @doi:10.1038/s41467-024-51329-2; @doi:10.1016/j.isci.2023.106025].
-However, these single-cell methods lack the ability to model communication changes across biological contexts, a central advantage of multi-condition, tensor-based methods.
-Therefore, there is a pressing need for a framework that can interpret the multi-dimensional nature of CCC across conditions while preserving the resolution necessary to capture the complex, overlapping identities of individual cells.
+In reality, cells are multifaceted entities that often hold simultaneous identities, blending stable lineage markers with transient functional states driven by their immediate environment\ [@doi:10.1038/s41583-019-0125-5; @doi:10.1101/2022.06.03.494765; @doi:10.1186/s13148-022-01253-3].
+Furthermore, the process of annotation itself is fraught with challenges; cell-type labels are inevitably incomplete or inaccurate, particularly when researchers attempt to define fine-grained cell types needed to capture subtle heterogeneity.
+As a result, pseudobulking obscures the functional diversity that drives cellular communication by merging subpopulations that may participate in entirely distinct signaling programs.
+Conversely, another class of methods such as Scriabin, NICHES, DeepCOLOR, DeepTalk, and SPRUCE avoid pseudobulking by scoring interactions directly between individual cells\ [@doi:10.1038/s41587-023-01782-z; @doi:10.1093/bioinformatics/btac775; @doi:10.1016/j.cels.2024.01.007; @doi:10.1038/s41467-024-51329-2; @doi:10.1016/j.isci.2023.106025].
+However, these single-cell methods do not model coordinated communication changes across many conditions, a central strength of tensor-based methods.
+Therefore, there is a pressing need for a framework that can interpret the multi-dimensional nature of CCC across conditions while preserving the single-cell resolution necessary to capture complex, overlapping cellular identities.
 
-To address these limitations, we developed CCC-RISE, a framework designed to bridge the gap between multi-condition analysis and single-cell resolution.
+Here, we present CCC-RISE, a tensor method designed to bring single-cell resolution to multi-condition CCC analyses.
 CCC-RISE builds upon the Reduction and Insight in Single-cell Exploration (RISE) method, which utilizes PARAFAC2 to analyze scRNA-seq data without requiring predefined cell-type labels or aggregation\ [@doi:10.1016/j.cels.2025.101294].
 PARAFAC2 aligns cells across conditions by projecting each cell onto a shared set of latent expression programs, termed "eigen-states", that capture the dominant axes of transcriptional variation common to all samples.
 Each eigen-state represents a weighted combination of genes, and each cell receives a projection onto every eigen-state, preserving continuous variation rather than forcing discrete assignments.
