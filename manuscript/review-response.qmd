@@ -241,7 +241,7 @@ This analysis is detailed in Reviewer #1 Comment #1 and Methods section *Compara
 On whether CCC-RISE recovers all communication patterns revealed by cell-type-based tensor decomposition: plainly, it does not.
 As discussed in Reviewer #1 Comment #1, comparator fits tended to recover CCC-RISE components dominated by a few top LR pairs, split apart broad components, or entirely missed others ({{< fig 5 cos2-grid span-containment >}}; {{< fig comparator-split cos2-pairs >}}).
 In addition, we now report five disease-associated comparator LR columns that were associated with LR pairs that no CCC-RISE component included among its associations ({{< fig comparator-missed alad-share ibd-contents >}}).
-We describe these misses in the Discussion but conclude that cell-type--based decomposition methods and CCC-RISE are not estimating the same quantity, so component-for-component correspondence is not expected.
+We describe these misses in the Results but conclude that cell-type--based decomposition methods and CCC-RISE are not estimating the same quantity, so component-for-component correspondence is not expected.
 Moreover, the fitted LR columns of the comparators were also sensitive to the granularity of the labels, losing disease-associated columns when transitioning from coarse to fine cell types ({{< fig 5 labels-alad labels-ibd >}}).
 In contrast, CCC-RISE components are conserved when the model is refit at a different number of eigen-states.
 
@@ -258,7 +258,7 @@ Our rationale is further discussed in the response to Reviewer #1 Comment #2.
 We agree that a more systematic validation of biological coherence was necessary.
 
 We attempted to perform gene set enrichment on highly weighted LR pairs, but we observed no significant GO terms in any component across either ALAD or IBD.
-We hypothesize that the LR pairs retained after filtering consist of a list of 570 pairs for ALAD and 1,332 pairs for IBD, which already makes the test underpowered relative to standard gene set enrichment on a list of genes.
+We hypothesize that the low number of LR pairs retained after filtering (570 pairs for ALAD and 1,332 pairs for IBD) makes the test underpowered relative to standard gene set enrichment on a list of genes.
 To make matters worse, when measuring enrichment of terms in a component, we weighted each LR pair by its CPD component loading, which further reduced the power of the analysis due to the sparse nature of the LR pair factor matrices.
 We thus attribute the failure of this analysis to the limited size of the available LR pairs rather than the lack of biological coherence.
 
@@ -326,8 +326,8 @@ For example, the component associated with six-month ALAD outcome shows a monoto
 We would also like to clarify why the previous condition factors were enriched only in one patient group.
 In the original manuscript, the communication tensor was constructed from mean-centered eigen-state loadings, so the CPD components described variation in communication around the cohort average rather than total communication.
 A component loading uniformly high in one group reflected the direction of that variation.
-The new version of CCC-RISE adds back the per-gene means before constructing the communication tensor, so condition loadings reflect additive communication that quantify a program's strength in each sample (see Reviewer #1 Comment #3).
-A byproduct of this change is that the condition loadings generally weight patients across groups.
+The new version of CCC-RISE adds back the per-gene means before constructing the communication tensor, so condition loadings reflect additive communication programs that quantify their strength in each sample (see Reviewer #1 Comment #3).
+A byproduct of this change is that the condition loadings are distributed across patient groups.
 
 > 6. The mathematical symbols in the equations and their biological meanings are not consistently defined or clearly explained.
 >    The Methods section jumps between concepts without a logical flow, making it difficult to follow.

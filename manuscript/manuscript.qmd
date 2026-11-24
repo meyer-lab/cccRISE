@@ -53,10 +53,11 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to ag
 
 ## Data availability
 
-The datasets and computer code produced in this study are available in the following databases:
+The datasets analyzed and computer code produced in this study are available in the following databases:
+
 - BAL scRNA-seq: Gene Expression Omnibus [Placeholder GSE#] ([Placeholder URL])
 - Terminal-ileum pinch biopsy scRNA-seq: Array Express E-MTAB-16986 (https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-16986)
-- Code to reproduce the manuscript: GitHub (https://github.com/meyer-lab/cccRISE).
+- Code to reproduce the manuscript: GitHub (https://github.com/meyer-lab/cccRISE)
 
 ## References
 
