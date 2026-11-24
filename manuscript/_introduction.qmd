@@ -34,7 +34,7 @@ However, these single-cell methods do not model coordinated communication change
 Therefore, there is a pressing need for a framework that can interpret the multi-dimensional nature of CCC across conditions while preserving the single-cell resolution necessary to capture complex, overlapping cellular identities.
 
 Here, we present CCC-RISE, a tensor method designed to bring single-cell resolution to multi-condition CCC analyses.
-CCC-RISE builds upon the Reduction and Insight in Single-cell Exploration (RISE) method, which utilizes PARAFAC2 to analyze scRNA-seq data without requiring predefined cell-type labels or aggregation\ [@doi:10.1016/j.cels.2025.101294].
+CCC-RISE builds upon the Reduction and Insight in Single-cell Exploration (RISE) method, which utilizes PARAFAC2 to analyze scRNA-seq data without requiring pre-defined cell-type labels or aggregation\ [@doi:10.1016/j.cels.2025.101294].
 PARAFAC2 aligns cells across conditions by projecting each cell onto a shared set of latent expression programs, termed "eigen-states", that capture the dominant axes of transcriptional variation common to all samples.
 Further, each cell is defined by its projection onto every eigen-state, so PARAFAC2 preserves continuous variation rather than forcing discrete cell assignments.
 PARAFAC2 thus supplies what tensor-based methods obtain through pseudobulking: an aligned cell dimension that represents the same gene programs in every condition.

@@ -23,7 +23,7 @@ Classification: Research report
 ## Abstract
 
 Cell--cell communication (CCC) coordinates cellular activities that vary dynamically across biological contexts.
-Most computational tools infer CCC by aggregating cells into predefined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations.
+Most computational tools infer CCC by aggregating cells into pre-defined types, obscuring the single-cell heterogeneity that distinguishes functional subpopulations.
 Conversely, methods that preserve single-cell resolution disregard how communication is differentially regulated across multiple conditions.
 To analyze multi-condition single-cell transcriptomic data without relying on cell-type labels, we developed CCC-RISE.
 Built upon Reduction and Insight in Single-cell Exploration (RISE), CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs across conditions, sender cells, receiver cells, and ligand--receptor pairs, then maps programs back to the individual cells involved.
@@ -35,11 +35,11 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to ag
 
 [Placeholder standfirst text (2 sentences, 250 characters)]
 
-- CCC-RISE analyzes cell--cell communication across conditions at single-cell resolution, without relying on predefined cell-type labels
+- CCC-RISE analyzes cell--cell communication across conditions at single-cell resolution, without relying on pre-defined cell-type labels
 
 - CCC-RISE deconvolves single-cell transcriptomic data into interpretable communication programs defined by conditions, sender cells, receiver cells, and ligand--receptor pairs
 
-- Mapping programs back to individual cells reveals signaling subpopulations defined by unsupervised eigen-states rather than predefined cell types
+- Mapping programs back to individual cells reveals signaling subpopulations defined by unsupervised eigen-states rather than pre-defined cell types
 
 - Communication programs identified by CCC-RISE are obscured by CCC-inference methods that rely on annotated cell types
 
@@ -56,7 +56,7 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to ag
 The datasets analyzed and computer code produced in this study are available in the following databases:
 
 - BAL scRNA-seq: Gene Expression Omnibus [Placeholder GSE#] ([Placeholder URL])
-- Terminal-ileum pinch biopsy scRNA-seq: Array Express E-MTAB-16986 (https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-16986)
+- Terminal-ileum pinch biopsy scRNA-seq: ArrayExpress E-MTAB-16986 (https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-16986)
 - Code to reproduce the manuscript: GitHub (https://github.com/meyer-lab/cccRISE)
 
 ## References

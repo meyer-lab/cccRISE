@@ -39,7 +39,7 @@ Also, as detailed below, we now compare our results to a broad panel of existing
 >      For this, please also report ALAD status AUC as for CCC-RISE
 
 We agree that the self-constructed pseudobulk analysis was insufficient on its own, and we now benchmark against four of the published methods mentioned by the reviewer.
-We used Tensor-cell2cell and STACCato for all multi-condition tensor-related comparisons, and NICHES and Scriabin as independent checks for single-cell-resolution claims\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005; @doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
+We used Tensor-cell2cell and STACCato for all multi-condition tensor-related comparisons, and NICHES and Scriabin as independent checks for single-cell resolution claims\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005; @doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
 We did not run DeepCOLOR because its distinguishing contribution over Scriabin and NICHES is spatial-colocalization inference, and neither of our cohorts has matched spatial data.
 
 To run all methods on equal footing, every comparator received the same cells, the same normalized expression, and the same CellChatDB LR pairs as CCC-RISE, with protein complexes scored as the minimum over their subunits (Methods section *Comparator Methods*).
@@ -48,7 +48,7 @@ Tensor-cell2cell was fit with the same TensorLy calls, random starts, masked err
 STACCato was re-implemented in Python from the authors' R code.
 We fit each tensor method to both the ALAD and IBD cohorts using the coarse and fine cell-type labels shipped in each cohort's metadata ({{< fig comparator-rank-selection pb-fit-coarse stac-shares-fine >}}).
 
-For the single-cell--resolution claim, we compared the components of CCC-RISE to the closest equivalent outputs of NICHES and Scriabin.
+For the single-cell resolution claim, we compared the components of CCC-RISE to the closest equivalent outputs of NICHES and Scriabin.
 The canonical outputs of NICHES are cell--cell edges (quantifying direct interactions between cells), but CCC-RISE assigns each cell a sender/receiver weight for each component, and we do not claim that it infers exact cell--cell communication.
 Thus, for NICHES, the corresponding outputs were CellToSystem and SystemToCell scores, rather than its CellToCell edges.
 Following the reviewer's suggestion, NICHES was run condition by condition, treating each sample as its own system like the authors recommend.
@@ -71,7 +71,7 @@ The full-depth gene counts (ground truth; GT) of those cells were downsampled to
 ({{< panel scriabin lisi-recapitulation >}}) Percentage of GT cell--cell pairs with LISI > 1 after integrating the downsampled and GT interaction matrices on all 90,000 GT pairs of each subsample (points, colored by the GT pairs' mean LISI).
 Also shown are the median and range reported in Fig. 2e of @doi:10.1038/s41587-023-01782-z (grey; approximate).
 ({{< panel scriabin downsampling-programs >}}) Agreement of Scriabin InteractionPrograms' significant programs (InteractionProgramSignificance with 500 random programs, p < 0.05; mean best-match Jaccard of their LR pairs, in both directions) between the GT and a downsampled draw, and between two independent downsampling draws of the same cells for each subsample (points).
-Boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5-times the IQR.
+Boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5 times the IQR.
 
 For the multi-condition tensor claim, instead of computing predictive AUCs (which were dropped, as described in Reviewer #1 Comments #4 and #5), we opted to compare methods from a biological point of view, evaluating the LR pairs and cellular populations implicated in communication by each method ({{< fig 5 cos2-grid span-containment flow-alad flow-ibd >}}).
 For each CCC-RISE component, we measure its best match to any single LR column of each comparator fit and the fraction of its LR pair loadings that all of a fit's LR columns together reconstruct ({{< fig 5 cos2-grid span-containment >}}).
@@ -99,7 +99,7 @@ Instead, we now define subpopulations based on quantitative per-cell sender and 
 For more detail on our new strategy, we point the reviewer to {{< fig 2 sender-receiver-strata >}}, {{< fig 4 hormone-angle-scatter >}}, and Methods section *Mapping CCC-RISE Components to Cells*.
 
 Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
-Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, then we take the average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
+Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, and then we take the average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
 For a more detailed description of our approach and its results, we point the reviewer to Methods section *External Biological Validation* and {{< fig 2 nichenet >}}.
 Overall, we observed relatively weak alignment between receiver cell gene expression and ligand gene targets.
 We attribute this result to the limited overlap between LR pairs highlighted by each method and the NicheNet target database, as discussed in the Results ({{< fig 2 nichenet >}}).
@@ -144,8 +144,8 @@ We describe this convention in detail in the *Post-fit processing* paragraph of 
 >    Please clarify the CV scheme and, if selection was not nested, re-estimate performance with nested CV.
 
 We have substantially revised our approach to rank selection to address the overfitting concern and to improve the interpretability of the results.
-Briefly, we now use a bi-cross-validation (BiCV) scheme to select RISE rank and a cross-component collinearity and stability analysis to select CPD rank, none of which see the sample labels.
-In addition to providing a benchmark for the rank selection, the internal BiCV scheme also provides a more reliable estimate of the RISE's performance as it is exposed only to the molecular data and not to the sample labels.
+Briefly, we now use a bi-cross-validation (BiCV) scheme to select RISE rank and a cross-component collinearity and stability analysis to select CPD rank, none of which sees the sample labels.
+In addition to providing a benchmark for the rank selection, the internal BiCV scheme also provides a more reliable estimate of RISE's performance as it is exposed only to the molecular data and not to the sample labels.
 Further, selecting the decomposition rank based on an external prediction limited the use of our approach to applications where such a prediction was available, which the new rank selection scheme avoids.
 Our response to Reviewer #2 Comment #4 discusses the new rank selection procedure in depth and Reviewer #1 Comment #5 expands upon the limitations of our earlier approach.
 The new rank selection results are displayed in {{< fig 2 rise-rank-selection cp-rank-selection.3 >}} and {{< fig ibd-rank-selection >}} and the procedure is described in Methods section *Rank Selection*.
@@ -163,7 +163,7 @@ In data not shown here, L1-penalized logistic regression proved unstable in exac
 We therefore opted to test component--condition associations by ANOVA, applied identically to both datasets, with multiple-testing correction across components and outcomes.
 We describe the new association testing in {{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}, {{< fig ibd-associations cp-associations status-loadings >}}, and Methods section *Clinical Association Testing*.
 
-On the negative result: with the rank-selection overhaul and new association testing method, this result has flipped.
+On the negative result: with the rank selection overhaul and new association testing method, this result has flipped.
 Now, in the ALAD cohort, a single component shows a graded, statistically significant association with six-month outcome after correction, and the same component is significantly associated with six-month and one-year death, as shown in {{< fig 3 outcome-association >}} and {{< fig alad-associations cp-associations >}}.
 Instead, we did not find any communication programs associated with ALAD status.
 We state this result explicitly in the Results section and attribute it to the weak clinical definition of ALAD.
@@ -206,7 +206,7 @@ The same approach is applied to IBD components 3/4 ({{< fig 4 hormone-angle-scat
 ## Reviewer #2
 
 > This manuscript presents CCC-RISE, a computational framework for inferring cell-cell communication (CCC) programs across multiple biological conditions while preserving single-cell resolution.
-> The method extends the RISE framework (based on PARAFAC2) to project cells from multi-condition scRNA-seq data onto shared latent eigen-states-continuous transcriptional programs that capture cellular heterogeneity without requiring predefined cell-type labels.
+> The method extends the RISE framework (based on PARAFAC2) to project cells from multi-condition scRNA-seq data onto shared latent eigen-states-continuous transcriptional programs that capture cellular heterogeneity without requiring pre-defined cell-type labels.
 > Communication scores are computed between eigen-states for all ligand-receptor pairs across conditions, forming a 4D tensor that is decomposed via Canonical Polyadic Decomposition (CPD) into interpretable communication programs defined by sender states, receiver states, LR pairs, and conditions.
 > The framework is applied to COVID-19 severity and lung transplant (ALAD) cohorts, identifying disease-associated communication programs and tracing them to specific signaling subpopulations.
 >
@@ -241,7 +241,7 @@ This analysis is discussed in detail in Reviewer #1 Comment #1, {{< fig 5 niches
 As the reviewer suggests, we now compare CCC-RISE with Tensor-cell2cell and with the pseudobulk method, and additionally with STACCato, on both cohorts and on both coarse and fine cell-type labels.
 This analysis is detailed in Reviewer #1 Comment #1 and Methods section *Comparator Methods*.
 
-On whether CCC-RISE recovers all communication patterns revealed by cell-type-based tensor decomposition: plainly, it does not.
+On whether CCC-RISE recovers all communication patterns revealed by cell-type--based tensor decomposition: plainly, it does not.
 As discussed in Reviewer #1 Comment #1, comparator fits tended to recover CCC-RISE components defined by one or two top LR pairs and entirely missed others ({{< fig 5 cos2-grid cos2-pairs >}}).
 
 In addition, we now report five disease-associated comparator LR columns that were associated with LR pairs that no CCC-RISE component included among its associations ({{< fig comparator-missed alad-share ibd-contents >}}).
@@ -306,7 +306,7 @@ For ALAD, both the BiCV and the collinearity clearly indicate an optimal rank.
 For IBD, CPD collinearity provides a similarly specific choice, while BiCV plateaus instead of turning over, but still shows a clear point at which additional components do not improve predictive performance.
 Both criteria are computed by the same runner, with the same parameters, for both datasets, and both depend only on the molecular data.
 The multi-replicate nature of these rank selection procedures also serves as a sensitivity analysis under a parameter sweep, where the parameter is rank.
-The new rank-selection procedure is showcased in {{< fig 2 rise-rank-selection cp-rank-selection.3 >}} and {{< fig ibd-rank-selection >}} and described in detail in Methods sections *Quantification and Statistical Analysis* and *Rank Selection*.
+The new rank selection procedure is showcased in {{< fig 2 rise-rank-selection cp-rank-selection.3 >}} and {{< fig ibd-rank-selection >}} and described in detail in Methods sections *Quantification and Statistical Analysis* and *Rank Selection*.
 
 We now also use the Factor Match Score (FMS) to compare individual fits during sensitivity analyses.
 At the final rank, as selected by the above procedures, components are refit under two perturbations---leave-one-patient-out jackknife and re-initializing with a different random seed---and each component is matched to a reference fit by Hungarian assignment and scored by FMS.
@@ -352,16 +352,16 @@ We have also gone through the Methods and standardized notation so that each sym
 >    What are the advantages of PARAFAC2-derived states in capturing communication-relevant heterogeneity?
 
 This is an interesting point.
-In fact, at a high level, a similar approach could indeed be taken using other methods that project single cell RNA-seq data into a lower-dimensional space.
-As described in our previous work\ [@pmid:40378843], PARAFAC2 is uniquely suited for multi-condition single-cell analysis because it provides a unique solution for decomposing the data into a low-dimensional representation that captures both cell type heterogeneity and quantitation of the variation across conditions.
+In fact, at a high level, a similar approach could indeed be taken using other methods that project single-cell RNA-seq data into a lower-dimensional space.
+As described in our previous work\ [@pmid:40378843], PARAFAC2 is uniquely suited for multi-condition single-cell analysis because it provides a unique solution for decomposing the data into a low-dimensional representation that captures both cell-type heterogeneity and quantitation of the variation across conditions.
 By contrast, PCA is rotationally invariant and so it and VAE models will not provide a unique solution to provide a reliable basis for interpretable communication scoring.
 CCA provides a unique solution but cannot be easily broken into a description of the differences between conditions, separated from the single-cell variation.
 NMF does provide a unique solution, and it is possible to quantitate the abundance of a pattern within each condition, but non-negativity splits counter-balanced regulatory patterns, such as differentiation programs, into multiple non-negative components.
 We have expanded our introduction to the manuscript to include a more detailed comparison of these methods and the relative advantage of PARAFAC2 (final paragraph of the Introduction).
 
 In unpublished work, we have a more extensive benchmarking between these alternatives.
-In fact, we find that, using the bi-cross-validation strategy described above, PARAFAC2 consistently outperforms these methods in prediction of held-out single cell RNA-seq data, suggesting that it is a better representation of the data.
-Furthermore, we have traced the reason for this to (1) PARAFAC2's ability to emit a unique solution with relatively minimal constraints, (2) its ability to express counter-regulatory patterns by avoiding non-negativity constraints, and (3) that most cellular programs are not sparse, and methods often incorrectly assume the opposite.
+In fact, we find that, using the bi-cross-validation strategy described above, PARAFAC2 consistently outperforms these methods in prediction of held-out single-cell RNA-seq data, suggesting that it is a better representation of the data.
+Furthermore, we have traced the reason for this to (1) PARAFAC2's ability to emit a unique solution with relatively minimal constraints, (2) its ability to express counter-regulatory patterns by avoiding non-negativity constraints, and (3) the fact that most cellular programs are not sparse, and methods often incorrectly assume the opposite.
 However, this more mechanistic and detailed discussion will have to remain beyond the scope of this manuscript.
 
 > 2. The analysis spans multiple patient samples and conditions, but it is unclear how batch effects, patient heterogeneity, or technical variation are handled.

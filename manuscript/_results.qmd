@@ -21,7 +21,7 @@ This process yields a four-dimensional tensor of data across experimental condit
 Finally, to extract patterns from this high-dimensional structure, CCC-RISE employs CPD, which decomposes the tensor into distinct components that each represent a communication program defined by a source of variation across the four modes ({{< fig 1 workflow.3 >}}).
 
 CCC-RISE preserves cell identity through its projection matrices and eigen-state--component associations, which allows for interpretation of CPD factors at single-cell resolution.
-The eigen-states define shared gene-expression programs, so the projection matrices weight cells from every condition in a common embedding where close proximity reflects transcriptional similarity ({{< fig 1 embedding >}})\ [@arxiv:2012.04456].
+The eigen-states define shared gene expression programs, so the projection matrices weight cells from every condition in a common embedding where close proximity reflects transcriptional similarity ({{< fig 1 embedding >}})\ [@arxiv:2012.04456].
 Further, by multiplying RISE projections with the sender and receiver eigen-state factors, the associations of individual cells with each communication component are recovered ({{< fig 1 cell-mapping >}}).
 CCC-RISE's embeddings and factor matrices thus trace LR signaling programs across conditions without losing the granularity of the underlying single-cell data ({{< fig 1 component-interpretation >}}).
 
@@ -32,28 +32,28 @@ CCC-RISE's embeddings and factor matrices thus trace LR signaling programs acros
 
 **CCC-RISE isolates stable, robust communication programs among epithelial subpopulations in ALAD.** ({{< panel 2 rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± standard deviation (SD) over 10 repeats per rank.
 ({{< panel 2 cp-rank-selection.1 >}}) CPD fit R^2^X and aggregate imputation R^2^X of held-out entries over 10 folds across ranks; mean ± SD over 10 repeated fold splits per rank.
-({{< panel 2 cp-rank-selection.2 >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each of 10 seeded starts per rank (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey); boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5-times the IQR.
+({{< panel 2 cp-rank-selection.2 >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each of 10 seeded starts per rank (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey); boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5 times the IQR.
 ({{< panel 2 cp-rank-selection.3 >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at factor match score (FMS) ≥ 0.95): the solution most starts reach (blue) and each other solution (grey).
 ({{< panel 2 cp-factor-matrices >}}) CPD factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs; each component normalized to its largest absolute loading.
 ({{< panel 2 aggregate-fms >}}) Aggregate FMS (mean over components) of the RISE and CPD factors for each leave-one-patient-out jackknife (n = 45) and re-initialization (n = 100) replicate (points), with the mean ± SD over replicates (large points and error bars).
 Each replicate's components were matched to the reported fit by Hungarian matching.
 ({{< panel 2 permutation-lr-significance >}}) Mean observed against mean permuted communication score per LR pair (n = 570), colored by the fraction of the LR pair's condition by sender by receiver entries exceeding a null of within-sample cell permutations at p < 0.05 (one-sided empirical test).
 ({{< panel 2 nichenet >}}) NicheNet target score of each ligand (n = 211) per CPD component on differential expression between the component's top and bottom receiver cells (light boxes; points colored and sized by the ligand's weight in the component), and with the cell labels shuffled (grey boxes, pooled).
-Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 Values at the top of each component are q-values testing the ligand-weighted mean score against its 1,000 cell-shuffled values (one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components); bold: q < 0.05.
 ({{< panel 2 sender-receiver-strata >}}) Per-cell component 6 sender against receiver weight.
 ({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each component 6 group.
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of component 6 sender/receiver groups, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
 :::
 
-We first applied CCC-RISE to a lung transplant dataset in which conditions represented individual bronchoalveolar lavage (BAL) samples from lung-transplant patients with and without acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007; @alad-geo].
+We first applied CCC-RISE to a lung transplant dataset in which conditions represented individual bronchoalveolar lavage (BAL) samples from lung transplant patients with and without acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007; @alad-geo].
 ALAD is an acute decline in lung function following transplantation that either resolves or progresses to chronic lung allograft dysfunction (CLAD), a predominantly irreversible loss of graft function that leads to re-transplantation or death\ [@doi:10.1016/j.trre.2021.100626; @doi:10.1016/j.healun.2022.05.005].
 Each sample was defined by status at the time of collection (control/no ALAD, ALAD-recovered, and ALAD-declined) and by status six months after collection (stable, ALAD-recovered, declined to CLAD, or died) ({{< tbl alad-outcome-groups >}}).
 We used this cohort to establish how a CCC-RISE model is selected, validated, and interpreted.
 
 We selected RISE rank by bi-cross-validation (BiCV), which fits RISE to a random half of all cells and genes and scores the fit's ability to predict the held-out block of cells and genes\ [@doi:10.1214/08-AOAS227].
 Held-out R^2^X rose steeply, plateaued around rank 10, and reached a maximum at rank 17, which we used to construct the communication tensor ({{< fig 2 rise-rank-selection >}}).
-Seeking a similarly definitive rank-selection criterion for CPD, we evaluated the reconstruction and imputation accuracy (i.e., the accuracy with which the outer product of CPD factors approximates either the original communication tensor or entries held out during fitting, respectively) of CPD models at varying ranks.
+Seeking a similarly definitive rank selection criterion for CPD, we evaluated the reconstruction and imputation accuracy (i.e., the accuracy with which the outer product of CPD factors approximates either the original communication tensor or entries held out during fitting, respectively) of CPD models at varying ranks.
 Both CPD fit R^2^X and imputation R^2^X generally increased with rank, indicating that higher-rank CPD models did not lose predictive accuracy ({{< fig 2 cp-rank-selection.1 >}}).
 However, neither reconstruction metric provided a specific choice for CPD rank, so we turned from prediction accuracy to between-component collinearity (a measure of degeneracy) and fit-to-fit instability.
 Specifically, we varied CPD rank and initialization seed, refactored the communication tensor, compared components within fits by cosine similarity, and compared converged optima across fits by factor match score (FMS).
@@ -89,7 +89,7 @@ In sum, label-free interpretation of CCC-RISE factors isolated a well-validated 
 ![](figures/figure3/figure3.svg){width="6.5in"}
 
 **CCC-RISE identifies a coordinated immune signaling axis associated with ALAD outcome.** ({{< panel 3 outcome-association >}}) CPD component 5 condition loadings stratified by six-month outcome: stable (n = 21), ALAD-recovered (n = 12), CLAD (n = 12), and died (n = 2).
-Lines connect samples from the same patient, boxes show the median and IQR, and whiskers show the most extreme values within 1.5-times the IQR.
+Lines connect samples from the same patient, boxes show the median and IQR, and whiskers show the most extreme values within 1.5 times the IQR.
 Associations were tested by one-way ANOVA with BH correction across all outcomes and components.
 ({{< panel 3 celltype-eigenstates >}}) Mean projection of each annotated cell type's cells onto each RISE eigen-state.
 ({{< panel 3 celltype-pacmap.1 >}}) PaCMAP embedding of all cells colored by annotated cell type, drawn in random order; the dashed box marks the lymphocyte cluster.
@@ -99,7 +99,7 @@ Associations were tested by one-way ANOVA with BH correction across all outcomes
 ({{< panel 3 coordinated-changes.1 >}}) ANOVA association strength of each LR pair's communication score with six-month outcome.
 Component 5's top 10 LR pairs and its condition loading association strength are marked.
 ({{< panel 3 coordinated-changes.2 >}}) Spearman correlation across conditions between each pair of component 5's top 10 LR pairs, and between pairs drawn from either random LR pairs, pairs matched in expression to top pairs, or other pairs associated with six-month outcome.
-Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 \*: q < 0.05 for the mean correlation of the top 10 LR pairs against the mean correlations of each baseline's 2,000 draws; one-sided empirical test, BH corrected across the three baselines.
 ({{< panel 3 lr-permutation >}}) Difference in mean communication score between CLAD/died and stable/recovered samples (n = 14 and 33, respectively) of each of component 5's top 10 LR pairs (diamonds).
 Distributions show null differences across 10,000 permutations of patient outcome labels.
@@ -130,7 +130,7 @@ Thus, by modeling variation across conditions, cells, and LR pairs, CCC-RISE iso
 Given the limited size of the ALAD cohort and the small number of patients in the "died" group, we tested whether the component 5 association could be explained by patient covariates, individual patients, or random patient grouping.
 No patient covariate (besides Caucasian ethnicity, which was weakly associated with one-year death) was associated with outcome, even before multiple-test correction ({{< fig alad-associations covariates >}}).
 Further, the six-month outcome association remained significant in 40 of 45 leave-one-patient-out jackknife replicates ({{< fig alad-associations effect-size-distributions significant-fraction >}}).
-Of the five exceptions, one patient died and had the highest component 5 weight and the others were controls or ALAD-recovered with ordinary condition loadings.
+Of the five exceptions, one patient died and had the highest component 5 weight, and the others were controls or ALAD-recovered with ordinary condition loadings.
 While the association remained significant for most held-out patients, the five failures point to the low statistical power of the ALAD data.
 Still, the coordinated communication program represented by the associated component is a real biological pattern present in the expression data.
 We next applied scDiffCom's condition-label permutation scheme to our communication tensor by testing whether each LR pair's difference in communication score between CLAD/died and stable/recovered samples exceeded those obtained with permuted patient outcome labels\ [@doi:10.1038/s43587-023-00514-x].
@@ -170,7 +170,7 @@ The data describe several diverse communication programs, so we tested the assoc
 While many components tracked three-way inflammation status and distinguished healthy from CD samples, only components 3 and 4 were able to differentiate CD sample inflammation states ({{< fig ibd-associations cp-associations >}}).
 Unlike ALAD associations, IBD component 3 and 4 condition weights were higher in uninflamed than inflamed CD samples, indicating a loss of communication following inflammation ({{< fig ibd-associations status-loadings >}}).
 Cell-type compositions directly tracked condition state: immune cells increased, and epithelial cells decreased in abundance with inflammation ({{< fig ibd-associations lineage-proportions covariates >}}).
-Thus, CPD components were associated with inflammation status and tracked cell-type composition, as expected for a disease characterized by immune-cell invasion and epithelial cell death\ [@doi:10.1016/j.immuni.2023.01.002].
+Thus, CPD components were associated with inflammation status and tracked cell-type composition, as expected for a disease characterized by immune cell invasion and epithelial cell death\ [@doi:10.1016/j.immuni.2023.01.002].
 
 CPD components 3 and 4 represented distinct but complementary hormone-signaling axes.
 They were associated with similar sender eigen-states---albeit with distinct distributions---that collectively defined a subpopulation of enteroendocrine (EE) cells.
@@ -224,10 +224,10 @@ To identify CCC patterns revealed only through single-cell resolution, we compar
 Tensor-cell2cell and STACCato served as external benchmarks, each with its own communication score, decomposition, and rank selection\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].
 Pseudobulk CPD served as a matched ablation to CCC-RISE by swapping the RISE-derived communication tensor with a pseudobulked version.
 To test sensitivity to annotation granularity, we fit each comparator method to both cohorts using their provided coarse and fine cell-type labels ({{< fig comparator-rank-selection pb-fit-coarse stac-shares-fine >}}; {{< tbl cohort-cell-types >}}).
-The published Tensor-cell2cell analysis keeps only cell types present in every condition, so to avoid ommitting substantial data, we instead kept every cell type and left out of the fit any communication score whose sender or receiver cell type was absent from that condition.
+The published Tensor-cell2cell analysis keeps only cell types present in every condition, so to avoid omitting substantial data, we instead kept every cell type and left out of the fit any communication score whose sender or receiver cell type was absent from that condition.
 The other two comparators instead set missing communication scores to zero.
 
-We first evaluated whether the comparators recovered each CCC-RISE component’s LR pairs.
+We first evaluated whether the comparators recovered each CCC-RISE component's LR pairs.
 Each comparator fit grouped LR pairs through the columns of its LR pair factor, hereafter called LR columns.
 For each CCC-RISE component, we identified the closest LR column across all comparator fits by squared cosine similarity between LR pair loadings ({{< fig 5 cos2-grid >}}; {{< fig comparator-split ibd-best >}}).
 Components with one or two top LR pairs closely matched single comparator columns, but matches dropped sharply for components as they broadened to three or more top LR pairs ({{< fig 5 cos2-pairs >}}).

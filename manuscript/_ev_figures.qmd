@@ -4,7 +4,7 @@
 
 **{{< label cmp5-identity >}}.
 ALAD component 6 sender and receiver cell identities.** ({{< panel cmp5-identity cmp-eigenstate-loadings >}}) Component 6 sender and receiver eigen-state loadings.
-({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell type markers in component 6's sender/receiver groups and all other cells.
+({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell-type markers in component 6's sender/receiver groups and all other cells.
 ({{< panel cmp5-identity sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene (non-zero normalized expression) between sender and receiver cells against its Wilcoxon rank-sum q (BH corrected across all genes).
 Labeled are epithelium-specific genes selected from those differentially expressed between the groups.
 ({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} across group cutoffs τ, signed positive when higher in sender cells; dotted line: τ = 0.3 used throughout, dashed lines: q = 0.05.
@@ -13,7 +13,7 @@ Labeled are epithelium-specific genes selected from those differentially express
 
 **{{< label alad-associations >}}.
 ALAD outcome associations.** ({{< panel alad-associations celltype-proportions >}}) Fraction of each sample's cells in each annotated cell type for control, ALAD-recovered, and ALAD-declined samples, on a square-root scale.
-Boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5-times the IQR.
+Boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5 times the IQR.
 Values at the top of each cell type are Kruskal--Wallis q-values across the three groups, BH corrected across cell types.
 ({{< panel alad-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each ALAD outcome.
 \*: q < 0.05, BH corrected across all outcomes and components.
@@ -40,24 +40,24 @@ IBD component 3 and 4 hormone-secreting cell identities.** ({{< panel ibd-hormon
 ({{< panel ibd-hormone-axes eigenstate-association >}}) Eigen-state--cell-type associations of top-loaded eigen-states in components 3 and 4 (mean RISE projection of each cell type's cells).
 ({{< panel ibd-hormone-axes eigenstate-composition >}}) Annotated cell-type compositions of top-loaded eigen-states in components 3 and 4, using IBDverse annotations: each cell type's share of the eigen-state's squared projection over all cells.
 ({{< panel ibd-hormone-axes cell-map >}}) RISE projection embeddings of all cells in IBDverse, showing every EE, EC, and tuft cell and 100,000 randomly drawn other cells.
-Clusters are labeled by coarse cell type, and fine EE, EC, and tuft cell type labels point to their cluster centers.
+Clusters are labeled by coarse cell type, and fine EE, EC, and tuft cell-type labels point to their cluster centers.
 ({{< panel ibd-hormone-axes type-map >}}) RISE projection embeddings of EE, EC, and tuft cells colored by cell type as annotated in IBDverse.
 ({{< panel ibd-hormone-axes receiver-map-c3 >}}, {{< panel ibd-hormone-axes receiver-map-c4 >}}) RISE projection embeddings of all EE, EC, and tuft cells colored by CPD component ({{< panel ibd-hormone-axes receiver-map-c3 >}}) 3 and ({{< panel ibd-hormone-axes receiver-map-c4 >}}) 4 per-cell receiver weight.
 ({{< panel ibd-hormone-axes receptor-maps.1 >}}, {{< panel ibd-hormone-axes receptor-maps.2 >}}) Same as ({{< panel ibd-hormone-axes receiver-map-c3 >}}, {{< panel ibd-hormone-axes receiver-map-c4 >}}), colored by ({{< panel ibd-hormone-axes receptor-maps.1 >}}) NPY1R and ({{< panel ibd-hormone-axes receptor-maps.2 >}}) GLP1R gene expression normalized to the top 1% of expressing cells.
 ({{< panel ibd-hormone-axes magnitude-hist >}}) Distribution of polar magnitudes over EE cells.
 Dashed line shows the reported magnitude threshold of 0.3.
 ({{< panel ibd-hormone-axes marker-floor-sweep >}}) q-values signifying the significance of gene expression differences between villus- and crypt-like cells, swept over polar magnitude thresholds.
-Genes shown are the six with the largest (least significant) q-value.
+Genes shown are the six with the largest (least significant) q-values.
 Dotted line shows the reported magnitude threshold of 0.3; dashed line shows q = 0.05.
 q: Mann--Whitney U test, BH corrected across all markers tested at each threshold.
 ({{< panel ibd-hormone-axes extreme-share >}}) Contribution of EE cell groups to total EE cell population stratified by biopsy type, for biopsies with at least 3 EE cells (healthy, n = 200; CD uninflamed, n = 44; CD inflamed, n = 45).
-Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 q: Kruskal--Wallis test across the three groups, BH corrected across EE cell groups.
 
 ![](figures/figureS_comparator_split/figureS_comparator_split.svg){width="6.5in"}
 
 **{{< label comparator-split >}}.
-Comparators split CCC-RISE programs of many LR pairs.** Abbreviations, LR column names and top LR pairs are as in {{< fig 5 >}}.
+Comparators split CCC-RISE programs of many LR pairs.** Abbreviations, LR column names, and top LR pairs are as in {{< fig 5 >}}.
 ({{< panel comparator-split ibd-best >}}) Largest cos^2^ between the LR pair loadings of each IBD CCC-RISE component (n = 6) and any single LR column of each comparator fit, as {{< fig 5 cos2-grid >}} shows for ALAD.
 ({{< panel comparator-split ibd-containment >}}) Fraction of each IBD CCC-RISE component's LR pair loadings reconstructed by the best combination of all LR columns of each comparator fit, as {{< fig 5 span-containment >}} shows for ALAD.
 ({{< panel comparator-split depth >}}) Absolute Spearman correlation between the absolute condition loadings of each CCC-RISE component or comparator LR column and the median number of genes detected per cell, computed across samples (ALAD, n = 47) or biopsies (IBD, n = 343).
