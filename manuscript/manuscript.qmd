@@ -31,7 +31,9 @@ Applied to lung transplant and Crohn's disease cohorts, CCC-RISE identified dist
 In comparison, aggregate methods either missed these programs, decoupled their coordinated signaling, or attributed them to whole cell types broader than signaling subpopulations.
 CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to aggregate methods by analyzing multi-condition data with single-cell resolution.
 
-**Highlights**
+**Synopsis**
+
+[Placeholder standfirst text (2 sentences, 250 characters)]
 
 - CCC-RISE analyzes cell--cell communication across conditions at single-cell resolution, without relying on predefined cell-type labels
 
@@ -74,7 +76,7 @@ A.R. and A.S.M. conceived of the study.
 All authors performed the computational analysis and helped analyze the data.
 All authors wrote and revised the paper.
 
-## Disclosure and competing interest statement
+## Disclosure statement and competing interests
 
 The authors declare that they have no competing interests.
 
