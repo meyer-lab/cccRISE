@@ -46,7 +46,7 @@ Values at the top of each component are q-values testing the ligand-weighted mea
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of component 6 sender/receiver groups, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
 :::
 
-We first applied CCC-RISE to a lung transplant dataset in which conditions represented individual bronchoalveolar lavage (BAL) samples from lung-transplant patients with and without acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007].
+We first applied CCC-RISE to a lung transplant dataset in which conditions represented individual bronchoalveolar lavage (BAL) samples from lung-transplant patients with and without acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007; @alad-geo].
 ALAD is an acute decline in lung function following transplantation that either resolves or progresses to chronic lung allograft dysfunction (CLAD), a predominantly irreversible loss of graft function that leads to re-transplantation or death\ [@doi:10.1016/j.trre.2021.100626; @doi:10.1016/j.healun.2022.05.005].
 Each sample was defined by status at the time of collection (control/no ALAD, ALAD-recovered, and ALAD-declined) and by status six months after collection (stable, ALAD-recovered, declined to CLAD, or died) ({{< tbl alad-outcome-groups >}}).
 We used this cohort to establish how a CCC-RISE model is selected, validated, and interpreted.
@@ -158,7 +158,7 @@ Dotted ray and arc indicate an example polar coordinate: (0.3, 45°).
 Genes shown differ between villus-like and crypt-like cells at q < 0.05; Mann--Whitney U test, BH corrected across all markers tested.
 :::
 
-We next sought to extend CCC-RISE to an inflammatory bowel disease (IBD) dataset (IBDverse), representing a biologically distinct disease context with enhanced statistical power compared with the ALAD dataset\ [@doi:10.1038/s41588-026-02634-7].
+We next sought to extend CCC-RISE to an inflammatory bowel disease (IBD) dataset (IBDverse), representing a biologically distinct disease context with enhanced statistical power compared with the ALAD dataset\ [@doi:10.1038/s41588-026-02634-7; @ibdverse-arrayexpress].
 In the IBD data, conditions comprised terminal-ileum pinch biopsies from individual donors of three groups: healthy (no Crohn's disease; CD), CD uninflamed, and CD inflamed ({{< fig ibd-rank-selection cohort >}}).
 We selected the IBD ranks with the same BiCV and CPD analyses as for ALAD to construct a CCC-RISE model on IBDverse.
 Unlike for ALAD, held-out R^2^X in the RISE BiCV sweep plateaued with no clear maximum, so we used rank 60, the smallest rank within one standard error of the largest held-out R^2^X (rank 85), to decompose the normalized expression tensor ({{< fig ibd-rank-selection rise-rank-selection bicv-test >}}).

@@ -1,5 +1,13 @@
 [
   {
+    "id": "alad-geo",
+    "type": "dataset",
+    "author": [{"literal": "[Placeholder authors]"}],
+    "issued": {"date-parts": [[2026]]},
+    "title": "Gene Expression Omnibus [Placeholder GSE#]",
+    "URL": "[Placeholder URL]"
+  },
+  {
     "id": "ibdverse-arrayexpress",
     "type": "dataset",
     "author": [
@@ -10,6 +18,7 @@
     ],
     "issued": {"date-parts": [[2026]]},
     "title": "ArrayExpress E-MTAB-16986",
+    "URL": "https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-16986",
     "DOI": "10.6019/E-MTAB-16986"
   },
   {
