@@ -45,9 +45,9 @@ However, pseudobulk methods like these first annotate cell types on cells groupe
 CCC-RISE instead maintains between-condition variation both while defining eigen-states and when decomposing communication programs.
 This allows CCC-RISE to recover coordinated programs of LR pairs that pseudobulk methods either split across several programs or miss entirely.
 Because eigen-states and cell types capture different structure from the same expression data, the programs identified by each method are not guaranteed to overlap\ [@doi:10.1016/j.cels.2025.101294].
-Furthermore, even re-annotating cells at a finer resolution caused pseudobulk methods to lose previously found disease-associated programs, emphasizing the inconsistency of single-identity labels.
-This suggests that condition effects act on cell states that cross annotation boundaries, so adding finer labels only dilutes communication signals into groups too small to detect.
-Conversely, when fit with more eigen-states, CCC-RISE largely preserved the programs found with fewer eigen-states, because each added eigen-state captures a smaller source of variation than those before it\ [@doi:10.1016/j.cels.2025.101294].
+Furthermore, re-annotating cells at a finer resolution caused pseudobulk methods to lose disease-associated programs, emphasizing the inconsistency of single-identity labels.
+This suggests that condition effects act on cell states that cross annotation boundaries, so adding finer labels dilutes communication signals into groups too small to detect.
+Conversely, when fit with more eigen-states, CCC-RISE largely preserved the programs found with fewer eigen-states, because each additional eigen-state captures a smaller source of variation than those before it\ [@doi:10.1016/j.cels.2025.101294].
 As a result, CCC-RISE removes the dependence of communication findings on rigid cell-type labels and instead recovers coordinated signaling anchored to the largest sources of variation in the data.
 
 Single-cell methods such as NICHES and Scriabin avoid labels altogether by scoring every cell pair, but the number of pairs grows quadratically and each score inherits the sparsity and stochasticity of single-cell expression\ [@doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
