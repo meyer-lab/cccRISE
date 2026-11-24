@@ -11,7 +11,8 @@ subtitle: "CCC-RISE resolves cellular communication across conditions at single-
 - {{< label comparator-rank-selection >}}: Rank selection of the label-based comparators
 - {{< label comparator-missed >}}: Comparator LR columns that are not part of a CCC-RISE component
 - {{< label comparator-single-cell >}}: Single-cell comparison of CCC-RISE populations
-- {{< label alad-outcome-groups >}}: ALAD samples by outcome group
+- {{< label alad-outcome-groups >}}: Table of ALAD samples by outcome group
+- {{< label cohort-cell-types >}}: Table of cell-type labels in each cohort
 
 ![](figures/figureS_alad_cohort/figureS_alad_cohort.svg){width="6.5in"}
 
@@ -54,8 +55,8 @@ Values at the top of each cell type are Kruskal--Wallis q-values across the thre
 ![](figures/figureS_comparator_rank_selection/figureS_comparator_rank_selection.svg){width="6.5in"}
 
 **{{< label comparator-rank-selection >}}.
-Rank selection of the label-based comparators.** Each method's own rank selection on coarse (top row) and fine (bottom row) labels, ALAD and IBD together; the bar under each row's panels names their method and labelling.
-Dashed lines mark each cohort's chosen rank, alternating in both cohorts' colors where they chose the same rank, and red circles mark the Kneedle elbow.
+Rank selection of the label-based comparators.**
+Dashed lines mark each cohort's chosen rank.
 PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato.
 ({{< panel comparator-rank-selection pb-fit-coarse >}}, {{< panel comparator-rank-selection pb-fit-fine >}}) PB fit R^2^X across ranks, over 10 seeded SVD starts per rank.
 Lines show the median and bands the range over starts.
@@ -73,12 +74,9 @@ Cores are given as condition × LR pair × sender × receiver.
 
 **{{< label comparator-missed >}}.
 Comparator LR columns that are not part of a CCC-RISE component.** PB, pseudobulk CPD; STAC, STACCato; C and F, coarse and fine labels.
-LR columns are named by method (P, S) and number, and top LR pairs are as in {{< fig 5 >}}.
 ({{< panel comparator-missed alad-share ibd-share >}}) Share of each PB and STAC LR column's squared LR pair loading that falls on the top LR pairs of one CCC-RISE component, in ALAD ({{< panel comparator-missed alad-share >}}; n = 40 columns) and IBD ({{< panel comparator-missed ibd-share >}}; n = 27).
-Each fit starts at the same height in both cohorts.
-Sixteen ALAD and fourteen IBD columns fall below 0.5.
 ({{< panel comparator-missed alad-contents ibd-contents >}}) Top LR pairs of the columns below 0.5 that have an association at q < 0.05, as in {{< fig 5 labels-alad labels-ibd >}}, and carry a top LR pair outside every CCC-RISE component's top LR pairs whose ligand and receptor are different genes, in ALAD ({{< panel comparator-missed alad-contents >}}) and IBD ({{< panel comparator-missed ibd-contents >}}).
-Points are sized by absolute loading relative to the column's largest.
+Points are sized by absolute loading, with each component and column normalized to its largest absolute loading.
 The CCC-RISE column shows each LR pair's largest such value in any CCC-RISE component.
 
 ![](figures/figureS_comparator_single_cell/figureS_comparator_single_cell.svg){width="6.5in"}
@@ -94,9 +92,17 @@ Scriabin's LR sets are its interaction programs that pass its significance test,
 Each point is a pair of seeds, and bars mark medians.
 Both Scriabin and CCC-RISE used 10 seed refits (n = 45 pairs each).
 
-{{< include figures/tables/alad_outcome_groups.md >}}
+{{< xlsx figures/tables/alad_outcome_groups.xlsx >}}
 
 **{{< label alad-outcome-groups >}}.
-ALAD samples by outcome group.** Number of BAL samples in each ALAD status and six-month outcome group.
-Indented groups are subgroups of the group above them.
+ALAD samples by outcome group.** Number of BAL samples in each ALAD cohort outcome group.
+Shown are label groupings (ALAD status and six-month outcome), high-level patient labels, and sub-group labels.
+Sample sizes are stated for each group and sub-group.
 Two of the 45 patients were sampled twice, in different groups.
+
+{{< xlsx figures/tables/cohort_cell_types.xlsx >}}
+
+**{{< label cohort-cell-types >}}.
+Cell-type labels in each cohort.** Number of cells under each coarse and fine cell-type label provided with the ALAD and IBD cohorts, which the comparators pooled cells by.
+Shown are coarse labels (ALAD, n = 8; IBD, n = 7) and the fine labels within each (ALAD, n = 26; IBD, n = 54).
+Cell counts are stated for each coarse and fine label (ALAD, n = 51,273 cells; IBD, n = 634,534 cells).
