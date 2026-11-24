@@ -323,9 +323,12 @@ The original difference was historical: Spearman correlation was used for the CO
 In the revision, component--condition associations are tested by ANOVA in both datasets, with multiple-testing correction across components and outcomes (see Methods section *Clinical Association Testing*).
 
 On consistency with the condition factors: we now present the association result and the condition loadings together, so the reported association can be read off the factor itself ({{< fig 3 outcome-association >}}).
-The component associated with six-month ALAD outcome shows a monotone, stepwise separation across outcome groups, which is visible in the raw condition factor and is not an artifact of the test.
-We would also like to clarify what the condition factor is and is not: because the tensor is centered, components describe *variation* in communication around the cohort average rather than total communication, so a component loading uniformly high in one group reflects the direction of that variation, and the apparent absence of "control-enriched" components in the original figure reflects sign convention and scaling rather than the absence of control-associated signal.
-The revised figures state the normalization on the colorbar (see Reviewer #2 Minor Comment #5), which we expect resolves most of this reading.
+For example, the component associated with six-month ALAD outcome shows a monotone, stepwise separation across outcome groups, which is visible in the raw condition factor and is not an artifact of the test.
+We would also like to clarify why the previous condition factor was enriched only in one patient group.
+In the original manuscript, the communication tensor was centered, so the CPD components described variation in communication around the cohort average rather than total communication.
+A component loading uniformly high in one group reflected the direction of that variation, and the apparent absence of "control-enriched" components in the original figure reflected sign convention and scaling rather than the absence of control-associated signal.
+The new version of CCC-RISE adds back the per-gene means before constructing the communication tensor, so condition loadings reflect additive communication programs that quantify a program's strength in each sample (see Reviewer #1 Comment #3).
+A byproduct of this change is that the condition loadings are spread across patient groups.
 
 > 6. The mathematical symbols in the equations and their biological meanings are not consistently defined or clearly explained.
 >    The Methods section jumps between concepts without a logical flow, making it difficult to follow.
