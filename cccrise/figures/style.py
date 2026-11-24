@@ -161,10 +161,10 @@ ROW_GAP = 1 * MM
 # slots (`_missed.slots`: 5 + 5 + 16 + 15 rows, 3 gaps of 1.2 and the ends'
 # 1.0) 2.4 mm apart; beside them ALAD's contents over IBD's, as wide as each
 # other, pairs `_MISSED_PITCH` apart so IBD's grid ends level with the bars'
-# (their axes span 6.4 and 9.4 rows; 12 mm between the grids: ALAD's column
-# names and IBD's cohort bar)
+# (their axes span 6.4 and 9.4 rows; 16.2 mm between the grids: ALAD's
+# angled column names and IBD's cohort bar)
 _MISSED_BARS = (41 + 3 * 1.2 + 1.0) * 2.4
-_MISSED_PITCH = (_MISSED_BARS - 12.0) / (6.4 + 9.4)
+_MISSED_PITCH = (_MISSED_BARS - 16.2) / (6.4 + 9.4)
 AXIS_SIZE["missed_bars"] = (34 * MM, _MISSED_BARS * MM)
 AXIS_SIZE["missed_contents_alad"] = (40 * MM, 6.4 * _MISSED_PITCH * MM)
 AXIS_SIZE["missed_contents_ibd"] = (40 * MM, 9.4 * _MISSED_PITCH * MM)
