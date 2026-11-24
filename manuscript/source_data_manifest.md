@@ -24,6 +24,7 @@ Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/rank_selection_results/cpd_rank_alad.parquet`
 - `cccrise/data/rank_selection_results/cpd_start_fms_alad.parquet`
 - `cccrise/data/rank_selection_results/rise_rank_alad.parquet`
+- `cccrise/data/validation_results/component_stability_alad.parquet`
 - `cccrise/data/validation_results/nichenet_cell_null_alad.parquet`
 - `cccrise/data/validation_results/nichenet_scores_alad.parquet`
 - `cccrise/data/validation_results/significance_lr_alad.parquet`
@@ -38,7 +39,8 @@ Analyses plotted (with provenance in the zip's README):
 | 2F | cccrise/figures/figure2/cp_factor_matrices.py | data | cpd_sender_eigen-state_loadings.csv | 2.1 | CPD factor matrices of the ALAD fit: each component's condition, sender eigen-state, receiver eigen-state, and LR pair loadings, each divided by the component's largest absolute loading. |
 | 2G | cccrise/figures/figure2/cp_factor_matrices.py | data | cpd_receiver_eigen-state_loadings.csv | 2.1 | CPD factor matrices of the ALAD fit: each component's condition, sender eigen-state, receiver eigen-state, and LR pair loadings, each divided by the component's largest absolute loading. |
 | 2H | cccrise/figures/figure2/cp_factor_matrices.py | data | cpd_lr_pair_loadings.csv | 87.0 | CPD factor matrices of the ALAD fit: each component's condition, sender eigen-state, receiver eigen-state, and LR pair loadings, each divided by the component's largest absolute loading. |
-| 2I-J | cccrise/figures/figure2/permutation_lr_significance.py | data | permutation_significance_by_lr_pair.csv | 99.0 | Cell-permutation significance of each LR pair's communication scores: the distribution over LR pairs of the fraction of condition x eigen-state entries with p < 0.05, and each LR pair's mean observed score against its mean permutation-null score. |
+| 2I | cccrise/figures/figure2/aggregate_fms.py | data | aggregate_fms_by_replicate.csv | 10.6 | Aggregate RISE and CPD stability (a replicate's mean FMS over components) under leave-one-patient-out jackknifing and seed refits, ALAD cohort: the mean ± SD over replicates, each replicate jittered about it. |
+| 2J | cccrise/figures/figure2/permutation_lr_significance.py | data | permutation_significance_by_lr_pair.csv | 99.0 | Cell-permutation significance of each LR pair's communication scores: each LR pair's mean observed score against its mean permutation-null score. |
 | 2K | cccrise/figures/figure2/nichenet.py | data | nichenet_cell_shuffle_weighted_scores.csv; nichenet_target_score_per_ligand.csv; nichenet_weighted_score_tests.csv | 225.8 | NicheNet target score of each ligand of each CPD component for the genes differentially expressed between the component's top and bottom receiver cells, against the same scores with those cells' labels shuffled, with a one-sided permutation test of the ligand-weighted mean score. |
 | 2L,N | cccrise/figures/figure2/sender_receiver_strata.py; cccrise/figures/figure2/celltype_composition.py | data | cell_weights_groups.csv | 4015.8 | Each cell's sender against receiver weight on CPD component 6, colored by its label-free group: sender, receiver, or rest. Annotated cell type composition of the sender, receiver, and rest groups of CPD component 6. |
 | 2M | cccrise/figures/figure2/epithelial_markers.py | data | de_sender_vs_receiver_subtype_markers.csv; marker_expression_per_cell.csv; marker_expression_per_group.csv | 4055.2 | Fraction of cells detecting and mean normalized expression of pan-epithelial markers, the lung epithelial subtype markers differing between sender and receiver cells, and the genes of the component's top LR pairs, in the sender, receiver, and rest groups of CPD component 6. |
@@ -203,15 +205,17 @@ Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/factors/bal_alad_factors.nc`
 - `cccrise/data/rank_selection_results/cpd_rank_alad.parquet`
 - `cccrise/data/validation_results/component_stability_alad.parquet`
+- `cccrise/data/validation_results/significance_lr_alad.parquet`
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
 | S1A | cccrise/figures/figure2/figureS_alad_cohort/cohort.py | data | cohort_sample_sizes.csv | 0.1 | Number of patients and BAL samples per ALAD status, shown in the ALAD cohort schematic. |
-| S1B | cccrise/figures/figure2/figureS_alad_cohort/factors.py | data | rise_condition_factor.csv | 16.5 | RISE condition factor of the ALAD fit: each sample's loading on each RISE component, divided by the component's largest absolute loading. |
-| S1C | cccrise/figures/figure2/figureS_alad_cohort/genes.py | data | rise_gene_factor_top_genes.csv | 614.8 | RISE gene factor of the ALAD fit for the 10% of genes with the largest scaled absolute loading on any component, each loading divided by the component's largest absolute loading. |
-| S1D | cccrise/figures/figure2/figureS_alad_cohort/cp_collinearity.py | data | cpd_lr_pair_max_cosine_by_rank.csv; cpd_max_cosine_by_rank.csv | 14.9 | Largest absolute cosine between two components in each CPD mode, per rank and seeded SVD start, ALAD cohort. |
-| S1E | cccrise/figures/figure2/figureS_alad_cohort/rise_fms.py | data | aggregate_fms_rise_by_replicate.csv; jackknife_fms_rise_components.csv | 43.8 | Factor match score of each RISE component to the full-cohort fit across leave-one-patient-out jackknife replicates, and the mean over components for each jackknife and seed refit replicate, ALAD cohort. |
-| S1F | cccrise/figures/figure2/figureS_alad_cohort/cpd_fms.py | data | aggregate_fms_cpd_by_replicate.csv; jackknife_fms_cpd_components.csv | 18.0 | Factor match score of each CPD component to the full-cohort fit across leave-one-patient-out jackknife replicates, and the mean over components for each jackknife and seed refit replicate, ALAD cohort. |
+| S1B | cccrise/figures/figure2/figureS_alad_cohort/cp_collinearity.py | data | cpd_lr_pair_max_cosine_by_rank.csv; cpd_max_cosine_by_rank.csv | 14.9 | Largest absolute cosine between two components in each CPD mode, per rank and seeded SVD start, ALAD cohort. |
+| S1C | cccrise/figures/figure2/figureS_alad_cohort/factors.py | data | rise_condition_factor.csv | 16.5 | RISE condition factor of the ALAD fit: each sample's loading on each RISE component, divided by the component's largest absolute loading. |
+| S1D | cccrise/figures/figure2/figureS_alad_cohort/genes.py | data | rise_gene_factor_top_genes.csv | 614.8 | RISE gene factor of the ALAD fit for the 10% of genes with the largest scaled absolute loading on any component, each loading divided by the component's largest absolute loading. |
+| S1E | cccrise/figures/figure2/figureS_alad_cohort/rise_fms.py | data | jackknife_fms_rise_components.csv | 39.2 | Factor match score of each RISE component to the full-cohort fit across leave-one-patient-out jackknife replicates, ALAD cohort. |
+| S1F | cccrise/figures/figure2/figureS_alad_cohort/cpd_fms.py | data | jackknife_fms_cpd_components.csv | 13.4 | Factor match score of each CPD component to the full-cohort fit across leave-one-patient-out jackknife replicates, ALAD cohort, on `rise_fms`'s FMS axis (labeled there). |
+| S1G | cccrise/figures/figure2/figureS_alad_cohort/permutation_fraction.py | data | permutation_significance_by_lr_pair.csv | 99.0 | Distribution over LR pairs of the fraction of each LR pair's condition x eigen-state entries exceeding their cell-permutation null at p < 0.05, ALAD cohort. |
 
 ## Appendix Figure S2
 
