@@ -174,7 +174,7 @@ We agree and have implemented two complementary permutation-based null models fo
 
 The first asks whether a given tensor entry is unusual at all, the direct analogue of CellPhoneDB/CellChat's own null, which permutes discrete cell-cluster labels and recomputes each cluster pair's mean-expression score.
 RISE has no discrete clusters and so we generalize the permutation accordingly: within each condition, we shuffle which cell's expression is paired with each projection row, and recompute the communication tensor from these shuffled pairings.
-The results of this permutation test are contained within {{< fig 2 permutation-lr-significance >}} and the approach is defined in Methods section *Significance Against Nulls*.
+The results of this permutation test are contained within {{< fig 2 permutation-lr-significance >}} and {{< fig alad-cohort permutation-fraction >}}, and the approach is defined in Methods section *Significance Against Nulls*.
 
 A second test answers whether an entry differs between two groups of samples, akin to scDiffCom's own permutation scheme.
 We adapted this to CCC-RISE's structure directly: since the communication tensor already has one slice per sample along its condition axis (the same axis as the CPD condition factor), we permute the outcome label assigned to each slice rather than resampling cells and rebuilding the tensor, allowing us to calculate this test directly and efficiently.
@@ -307,7 +307,7 @@ We now also use the Factor Match Score (FMS) to compare individual fits during s
 At the final rank, as selected by the above procedures, components are refit under two perturbations---leave-one-patient-out jackknife and re-initializing with a different random seed---and each component is matched to a reference fit by Hungarian assignment and scored by FMS.
 Patient jackknife interrogates the contribution of individual patients to the stability of factorization results.
 Random-seed refitting serves as the reference point for how much of the observed spread is attributable to the data rather than to initialization.
-The results of these sensitivity analyses are reported in {{< fig alad-cohort rise-fms cpd-fms >}} and described in detail in Methods section *Robustness Tests*.
+The results of these sensitivity analyses are reported in {{< fig 2 aggregate-fms >}} and {{< fig alad-cohort rise-fms cpd-fms >}}, and described in detail in Methods section *Robustness Tests*.
 
 > 5. Different methods were used for identifying condition-specific components across datasets, and inconsistent results were observed.
 >    In the COVID-19 analysis, the authors use Spearman correlation between condition factors and disease severity to identify condition-specific components (Components 3, 5, 8).

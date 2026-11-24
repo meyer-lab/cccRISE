@@ -19,9 +19,10 @@ subtitle: "CCC-RISE resolves cellular communication across conditions at single-
 CCC-RISE factor evaluation in the ALAD cohort.** ({{< panel alad-cohort cohort >}}) Schematic of the ALAD cohort data\ [@doi:10.1016/j.healun.2024.02.007].
 ({{< panel alad-cohort factors genes >}}) RISE factor matrices representing component loadings of conditions and genes; each component normalized to its largest absolute loading.
 ({{< panel alad-cohort cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and IQR (band) over 10 seeded SVD starts per rank.
-({{< panel alad-cohort rise-fms >}}) RISE gene factor and ({{< panel alad-cohort cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and the aggregate FMS (mean over components) of each jackknife and re-initialization (n = 100) replicate.
+({{< panel alad-cohort rise-fms >}}) RISE gene factor and ({{< panel alad-cohort cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45); aggregate FMS under jackknife and re-initialization is shown in {{< fig 2 aggregate-fms >}}.
 Each replicate's components were matched to the reference's by Hungarian matching.
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+({{< panel alad-cohort permutation-fraction >}}) Fraction of each LR pair's (n = 570) condition by sender by receiver entries exceeding a null of within-sample cell permutations at p < 0.05 (one-sided empirical test).
 
 ![](figures/figureS_ibd_rank_selection/figureS_ibd_rank_selection.svg){width="6.5in"}
 
