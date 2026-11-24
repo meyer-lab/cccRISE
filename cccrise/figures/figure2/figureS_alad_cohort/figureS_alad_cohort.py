@@ -1,6 +1,6 @@
-"""Supplementary figure: the ALAD cohort; the canonical ALAD RISE factor
-matrices, sized as Figure 2's CP factor matrices; the collinearity of every
-CP mode across ranks; per-component RISE and CP stability under patient
+"""Supplementary figure: the ALAD cohort; the collinearity of every CP mode
+across ranks; the canonical ALAD RISE factor matrices, sized as Figure 2's CP
+factor matrices; per-component RISE and CP stability under patient
 jackknifing; and beside them the fraction of each LR pair's entries passing
 the cell-permutation test."""
 
@@ -17,8 +17,8 @@ from . import (
 
 LAYOUT = [
     [cohort],
-    [factors, genes],
     [cp_collinearity],
+    [factors, genes],
     [rise_fms, cpd_fms, permutation_fraction],
 ]
 
