@@ -64,7 +64,8 @@ For this reason, we chose not to use Scriabin's programs as a concordance benchm
 ![](figures/figureR_scriabin/figureR_scriabin.svg){width="6.5in"}
 
 **{{< label scriabin >}}.
-Scriabin's interaction programs under the Scriabin paper's own downsampling test.** The test of Wilk et al. (their Fig. 2d--e) was re-run with Scriabin's exact upstream code on 12 random subsamples of 300 of the 638 Fluidigm C1 pancreatic islet cells (panc8).
+Scriabin's interaction programs under the Scriabin paper's own downsampling test.** The test of Wilk et al.
+(their Fig. 2d--e) was re-run with Scriabin's exact upstream code on 12 random subsamples of 300 of the 638 Fluidigm C1 pancreatic islet cells (panc8).
 The full-depth gene counts (ground truth; GT) of those cells were downsampled to inDrop depth, with or without ALRA denoising, and each passed through SCTransform and GenerateCCIM (OmniPath).
 ({{< panel scriabin lisi-recapitulation >}}) Percentage of GT cell--cell pairs with LISI > 1 after integrating the downsampled and GT interaction matrices on all 90,000 GT pairs of each subsample (points, colored by the GT pairs' mean LISI).
 Also shown are the median and range reported in Fig. 2e of @doi:10.1038/s41587-023-01782-z (grey; approximate).

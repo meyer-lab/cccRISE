@@ -52,7 +52,7 @@ As a result, CCC-RISE removes the dependence of communication findings on rigid 
 
 Single-cell methods such as NICHES and Scriabin avoid labels altogether by scoring every cell pair, but the number of pairs grows quadratically and each score inherits the sparsity and stochasticity of single-cell expression\ [@doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
 For large datasets, this quadratic growth quickly becomes computationally intractable, so both methods rely on approximation techniques.
-NICHES scores each cell’s ligand or receptor expression against the average expression of its partner across the cell’s sample, and Scriabin discovers interaction programs from cell--cell interaction matrices built on repeated subsamples of cells.
+NICHES scores each cell's ligand or receptor expression against the average expression of its partner across the cell's sample, and Scriabin discovers interaction programs from cell--cell interaction matrices built on repeated subsamples of cells.
 We found that this subsampling makes Scriabin's interaction programs unstable across random seeds.
 Because eigen-states capture only the dominant patterns of gene expression shared across conditions, they largely exclude noise specific to individual cells.
 Furthermore, the communication tensor grows with the number of eigen-states rather than cells, allowing CCC-RISE to scale to large multi-condition cohorts\ [@doi:10.1016/j.cels.2025.101294].
