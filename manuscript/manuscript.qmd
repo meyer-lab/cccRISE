@@ -53,13 +53,10 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to ag
 
 ## Data availability
 
-- The ALAD single-cell gene expression, cell-type annotations, and clinical annotations were obtained from Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
-
-- The IBD single-cell gene expression, cell-type annotations, and biopsy metadata were obtained from Array Express E-MTAB-16986 (https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-16986)\ [@ibdverse-arrayexpress; @doi:10.1038/s41588-026-02634-7].
-
-- Scripts to reproduce the manuscript are available on GitHub (https://github.com/meyer-lab/cccRISE).
-
-- Especially large source data of this paper are collected at Zenodo [doi placeholder] ([url placeholder]).
+The datasets and computer code produced in this study are available in the following databases:
+- BAL scRNA-seq: Gene Expression Omnibus [Placeholder GSE#] ([Placeholder URL])
+- Terminal-ileum pinch biopsy scRNA-seq: Array Express E-MTAB-16986 (https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-16986)
+- Code to reproduce the manuscript: GitHub (https://github.com/meyer-lab/cccRISE).
 
 ## References
 
