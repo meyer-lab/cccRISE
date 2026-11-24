@@ -41,20 +41,24 @@ However, CCC-RISE further dissected these compositional trends, identifying vill
 The increased sensitivity of villus-like cells to inflammation can be understood from the spatial nature of the crypt-to-villus transition: as they differentiate, crypt cells migrate towards the gut lumen, thus becoming more exposed to external pressures such as inflammation\ [@doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7; @doi:10.1038/s41419-018-1275-5].
 Through continuous, non-exclusive eigen-states, CCC-RISE resolved a particular population of hormone-secreting cells whose share of total EE cells decreased with patient inflammation severity.
 
-Similar to CCC-RISE, Tensor-cell2cell and STACCato decompose a four-dimensional tensor to find communication programs that vary across conditions\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].
-However, pseudobulk methods like these first annotate cell types on cells grouped across all conditions, thus removing between-condition variation in cell state before the decomposition can use it.
-CCC-RISE instead uses between-condition variation both when defining eigen-states and when decomposing communication, recovering coordinated programs of LR pairs that pseudobulk methods either split across several programs or missed.
-Because eigen-states and cell types retain different structure from the same expression data, neither method's programs are guaranteed to match, or contain, the other's.
-However, re-annotating cells at finer resolution cost pseudobulk methods disease-associated programs showcasing the inconsistentcy of single-identity labels as their granularity shifts.
-Conversely, because eigen-states are ranked exclusively by the largest sources of variation in the data, adding eigen-states still preserved nearly all existing CCC-RISE programs from a lower RISE rank.
+Similar to CCC-RISE, Tensor-cell2cell and STACCato decompose a four-dimensional communication tensor to find signaling programs that vary across conditions\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].
+However, pseudobulk methods like these first annotate cell types on cells grouped across all conditions, thus removing between-condition variation in cell state before it can be used by the communication decomposition.
+CCC-RISE instead maintains between-condition variation both while defining eigen-states and when decomposing communication programs.
+This allows CCC-RISE to recover coordinated programs of LR pairs that pseudobulk methods either split across several programs or miss entirely.
+Because eigen-states and cell types capture different structure from the same expression data, the programs identified by each method are not guaranteed to overlap\ [@doi:10.1016/j.cels.2025.101294].
+Furthermore, even re-annotating cells at a finer resolution caused pseudobulk methods to lose previously found disease-associated programs, emphasizing the inconsistency of single-identity labels.
+This suggests that condition effects act on cell states that cross annotation boundaries, so adding finer labels only dilutes communication signals into groups too small to detect.
+Conversely, when fit with more eigen-states, CCC-RISE largely preserved the programs found with fewer eigen-states, because each added eigen-state captures a smaller source of variation than those before it\ [@doi:10.1016/j.cels.2025.101294].
+As a result, CCC-RISE removes the dependence of communication findings on rigid cell-type labels and instead recovers coordinated signaling anchored to the largest sources of variation in the data.
 
-Single-cell methods such as NICHES and Scriabin avoid labels altogether, but at the the price of poor scaling, because cell pairs grow quadratically, and high noise, because direct single-cell expression is stochastic and sparse\ [@doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
-Thus, both of these methods instituted approximation techniques to address these limitations for larger datasets.
-In particular, NICHES scores each cell's ligand or receptor expression against the average expression of its partner across the cell's sample, whereas Scriabin builds its cell--cell interaction matrix from a small subsample of cells.
-We found that Scriabin's subsampling renders its interaction programs unstable across random seeds.
+Single-cell methods such as NICHES and Scriabin avoid labels altogether by scoring every cell pair, but the number of pairs grows quadratically and each score inherits the sparsity and stochasticity of single-cell expression\ [@doi:10.1093/bioinformatics/btac775; @doi:10.1038/s41587-023-01782-z].
+For large datasets, this quadratic growth quickly becomes computationally intractable, so both methods rely on approximation techniques.
+NICHES scores each cell’s ligand or receptor expression against the average expression of its partner across the cell’s sample, and Scriabin discovers interaction programs from cell--cell interaction matrices built on repeated subsamples of cells.
+We found that this subsampling makes Scriabin's interaction programs unstable across random seeds.
 Because eigen-states capture only the dominant patterns of gene expression shared across conditions, they largely exclude noise specific to individual cells.
-Furthermore, the communication tensor grows with the number of eigen-states rather than cells, allowing CCC-RISE to scale to large multi-condition cohorts.
-Despite this abstraction from raw expression, CCC-RISE populations still agreed more closely with NICHES's expression-based scores than cell-type--defined populations did.
+Furthermore, the communication tensor grows with the number of eigen-states rather than cells, allowing CCC-RISE to scale to large multi-condition cohorts\ [@doi:10.1016/j.cels.2025.101294].
+Despite this abstraction from raw expression, CCC-RISE populations agreed more closely with NICHES's expression-based scores than populations defined by cell types, which are themselves annotated from raw expression.
+This suggests that a continuous representation of cell state matters more than proximity to raw expression, allowing CCC-RISE to approach single-cell resolution without the computational and statistical costs of scoring every cell pair.
 
 Although RISE's eigen-states enable CCC-RISE to perform tensor decomposition while retaining single-cell resolution, they also introduce limitations inherent to data reduction techniques and transcriptomic inference.
 Specifically, researchers must select the rank and number of eigen-states in RISE, a challenging, empirical process that can be aided by held-out prediction such as bi-cross-validation and resampling such as the jackknife\ [@doi:10.1214/08-AOAS227; @{doi:10.1016/S0169-7439(02)00090-4}].
