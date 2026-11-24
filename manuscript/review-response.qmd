@@ -74,7 +74,7 @@ Boxes show the median and interquartile range (IQR) and whiskers show the most e
 For the multi-condition tensor claim, we compare what each method recovers rather than which method associates most strongly with ALAD status.
 We did not report ALAD-status AUC for any method as described in our responses to Reviewer #1 Comments #4 and #5.
 Instead, for each CCC-RISE component, we measure its best match to any single LR column of each comparator fit and the fraction of its LR pair loadings that all of a fit's LR columns together reconstruct ({{< fig 5 cos2-grid span-containment >}}).
-Briefly, we found that comparator fits largely recovered CCC-RISE components that were only defined by a few top LR pairs, but split broader programs across several LR columns or missed programs entirely ({{< fig 5 pair-columns >}}; {{< fig 5 cos2-pairs >}}; {{< fig comparator-split alad-c3-columns >}}).
+Briefly, we found that comparator fits largely recovered CCC-RISE components that were only defined by a few top LR pairs, but split broader programs across several LR columns or missed programs entirely ({{< fig 5 cos2-pairs pair-columns >}}; {{< fig comparator-split alad-c3-columns >}}).
 Additionally, Tensor-cell2cell reconstructed little of any component, and its condition loadings instead tracked the number of genes detected per cell in each sample ({{< fig comparator-split depth >}}).
 We also looked at the comparator columns lying outside every CCC-RISE component, and we report the disease-associated signaling that comparators captured and CCC-RISE missed ({{< fig comparator-missed alad-share ibd-contents >}}).
 
