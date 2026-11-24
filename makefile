@@ -1,4 +1,4 @@
-.PHONY: clean test ty profile_cpu manuscript source_data source_data_check tables
+.PHONY: clean test ty profile_cpu manuscript figures source_data source_data_check tables
 
 # One package per figure (cccrise/figures/figure<N>/; a supplement is nested as
 # figure<N>/figureS_<name>/, or top-level if it supports no one figure), built
@@ -14,14 +14,22 @@ fparent = $(dir $(patsubst %/,%,$(call fpkg,$(1))))
 
 all: $(allOutput)
 
+# The figures the manuscript uses: those packaged as source data, then the
+# reviewer figures; listed only when `figures` is built (secondary expansion)
+manuscriptFigures = $(shell uv run python -c "import yaml; from cccrise.figures.source_data import QUARTO_PATH, figures; \
+	names = [f[0] for f in figures()] + ['R_' + n for n in yaml.safe_load(QUARTO_PATH.read_text())['reviewer_figures']]; \
+	print(' '.join(f'output/figure{n}/figure{n}.svg' for n in names))")
+
 .SECONDEXPANSION:
+figures: $$(manuscriptFigures)
+
 output/%.svg: $$(wildcard $$(call fpkg,$$(notdir $$*))*.py $$(call fparent,$$(notdir $$*))_common.py) $(figureDeps)
 	uv run cccrise-fbuild $(patsubst figure%,%,$(notdir $*))
 
 # EMBO source data: one zip per figure in output/source_data/, from the panel
 # data each figure's build saves, plus manuscript/source_data_manifest.md and the
 # Reagents and Tools table's software versions
-source_data: all
+source_data: figures
 	uv run cccrise-sourcedata
 	uv run python -m cccrise.figures.software
 
