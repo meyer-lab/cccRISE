@@ -15,7 +15,7 @@ AXES = ("fig5_columns",)
 
 
 def plot(axs):
-    _split.pair_heatmap(axs[0], "alad", (5,), "5", colorbar=False)
+    _split.pair_heatmap(axs[0], "alad", (5,), "5")
     colorbar_right(axs[0], LOADING_LABEL)
 
 

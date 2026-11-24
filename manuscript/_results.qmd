@@ -222,19 +222,20 @@ To identify CCC patterns revealed only through single-cell resolution, we compar
 Tensor-cell2cell and STACCato served as external benchmarks, each with its own communication score, decomposition, and rank selection\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].
 Pseudobulk CPD served as a matched ablation to CCC-RISE by swapping the RISE-derived communication tensor with a pseudobulked version.
 To test sensitivity to annotation granularity, we fit each comparator method to both cohorts using their provided coarse and fine cell-type labels ({{< fig comparator-rank-selection pb-fit-coarse stac-shares-fine >}}; {{< tbl cohort-cell-types >}}).
-Tensor-cell2cell defaults to dropping any cell type absent from a single condition, but to avoid losing substantial data, we chose to mask absent cell type entries.
-The other two comparators handled this by zero-filling absent entries.
+The published Tensor-cell2cell analysis keeps only cell types present in every condition, so to avoid ommitting substantial data, we instead kept every cell type and left out of the fit any communication score whose sender or receiver cell type was absent from that condition.
+The other two comparators instead set those communication scores to zero.
 
 We first evaluated whether the comparators recovered each CCC-RISE component’s LR pairs.
-Each comparator fit grouped LR pairs through the column of its LR pair factor, hereafter called LR columns.
+Each comparator fit grouped LR pairs through the columns of its LR pair factor, hereafter called LR columns.
 For each CCC-RISE component, we identified the closest LR column across all comparator fits by squared cosine similarity between LR pair loadings ({{< fig 5 cos2-grid >}}; {{< fig comparator-split ibd-best >}}).
-Comparator columns matched CCC-RISE components less as the number of top LR pairs in a component increased ({{< fig 5 cos2-pairs >}}).
-However, one-to-one matching was an incomplete measure of component containment, as a comparator could distribute a component’s top LR pairs across several LR columns.
-To quantify this, we computed the fraction of each component’s LR pair loadings reconstructed by the best combination of all LR columns in each comparator fit  ({{< fig 5 span-containment >}}; {{< fig comparator-split ibd-containment >}}).
-Workshop this line (what are we trying to say here? Perhaps it would make more sense for us to add an additional sentence to spell out a trend rather than just making an observation, delete this after workshopping): STACCato's fine fit reconstructed most of ALAD component 3 and IBD component 1 despite its closest single column matching to less than half of either component.
-Tensor-cell2cell reconstructed little of any component and instead tracked the number of genes detected per cell in each condition, so we omitted it from the remaining comparisons ({{< fig comparator-split depth >}}).
-Comparator fits therefore largely recovered CCC-RISE components defined by a few top LR pairs, split broader immune programs across several LR columns, and missed some components entirely.
+Components with one or two top LR pairs closely matched a single comparator column, but matches dropped sharply for components as they broadened to three or more top LR pairs ({{< fig 5 cos2-pairs >}}).
+Because a comparator could distribute a component's LR pairs across several LR columns, we also computed the fraction of each component's LR pair loadings reconstructed by the best combination of LR columns in each comparator fit ({{< fig 5 span-containment >}}; {{< fig comparator-split ibd-containment >}}).
+Only STACCato's fine fit recovered broad components by combining columns, reconstructing most of ALAD component 3 and IBD component 1 although its closest single column matched less than half of either.
+Both pseudobulk CPD fits, in contrast, reconstructed little more of any component than its closest column.
+Tensor-cell2cell essentially matched no CCC-RISE component and instead tracked the number of genes detected per cell in each condition, so we omitted it from the remaining comparisons ({{< fig comparator-split depth >}}).
+Broad CCC-RISE programs associated with many LR pairs therefore had no single counterpart in any comparator, and no comparator fit recovered every component.
 
+<--need to redo this paragraph-->
 We next characterized what information comparators lost when they missed or divided a component's top LR pairs among several LR columns.
 STACCato reconstructed most of ALAD components 5 and 3, which carried 11 and 14 top LR pairs, only by combining several LR columns ({{< fig 5 cos2-grid span-containment >}}; {{< fig comparator-split alad-c3-columns >}}).
 Each of these columns weighted only a subset of the component's top LR pairs heavily and placed little weight on the rest ({{< fig 5 pair-columns >}}; {{< fig comparator-split alad-c3-columns >}}).
@@ -242,9 +243,6 @@ The top LR pairs of component 5 correlated across conditions beyond expression-m
 Of their related columns, only STACCato's fine S4 did so, and only before correction, while carrying just three top LR pairs.
 Component 5 also associated significantly with ALAD outcomes, whereas none of its related columns did ({{< fig 5 labels-alad >}}).
 Thus, comparator columns kept LR pairs coordinated only over a few pairs, whereas CCC-RISE grouped larger sets of co-varying LR pairs into single programs.
-In IBD, components 1 and 5 shared conditions, senders, and receivers but loaded on their LR pairs in opposite directions ({{< fig comparator-split ibd-c1c5-modes >}}).
-STACCato's fine fit instead mixed the two programs in each of two columns, so recovering either component from STACCato required a signed combination of the columns ({{< fig comparator-split ibd-c1-columns ibd-c5-columns >}}).
-Concisely, CCC-RISE revealed the coordination of LR pairs that comparators kept apart and separated opposing arms of one immune program where comparators mixed them.
 
 Among comparator LR columns that placed less than half of their squared loading on the top LR pairs of any single CCC-RISE component, five were disease-associated and involved LR pairs that CCC-RISE did not include among associations ({{< fig comparator-missed alad-share ibd-share >}}; {{< fig 5 labels-alad labels-ibd >}}).
 In ALAD, STACCato's coarse column S14 carried AREG--EGFR and pseudobulk CPD's fine column P5 carried TNFSF11--TNFRSF11A/B ({{< fig comparator-missed alad-contents >}}).

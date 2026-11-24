@@ -24,8 +24,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from matplotlib.cm import ScalarMappable
-from matplotlib.colors import Normalize
 from matplotlib.patches import Rectangle
 
 from .. import common, style
@@ -37,7 +35,6 @@ from ._recovery import (
     LOADING_LABEL,
     _cell,
     _pair_axes,
-    colorbar_under,
 )
 
 #: The comparators, each labelling its own.
@@ -48,10 +45,6 @@ REBUILT = 0.10
 #: pairs is shown with it.
 ON_COMPONENT = 0.25
 SUM = "Σ"
-#: The signed colorbar's height (in)
-CBAR_HEIGHT = 1.6 * style.MM
-#: Block heads slant up at this angle (degrees)
-HEAD_ROTATION = 35
 
 
 def _pair_rows(dataset: str, programs) -> tuple[list, dict]:
@@ -125,34 +118,20 @@ def _fit_name(method: str, lab: str) -> str:
     return f"{method} {lab[0].upper()}"
 
 
-#: Signed panels' colormap.
-DIVERGING = style.CMAPS["diverging"]
-SIGNED_LABEL = "Loading / max |loading|"
-
-
-def _paint(ax, x: float, y: float, value: float, signed: bool) -> None:
-    if signed:
-        color = DIVERGING((value + 1) / 2)
-        ax.add_patch(Rectangle((x, y), 1, 1, fc=color, ec="black", lw=0.3))
-    else:
-        _cell(ax, x, y, abs(value))
-
-
-def _scaled(loadings: pd.Series, pairs, signed: bool) -> pd.Series:
-    """`pairs`' loadings over the column's heaviest |loading|, signed or not."""
+def _scaled(loadings: pd.Series, pairs) -> pd.Series:
+    """`pairs`' |loadings| over the column's heaviest |loading|."""
     scale = loadings.abs().max()
     values = loadings.reindex(pairs).fillna(0) / scale if scale > 0 else 0 * loadings
-    return values if signed else values.abs()
+    return values.abs()
 
 
-def _block(ax, x: float, rows, loadings: dict, signed: bool) -> list:
+def _block(ax, x: float, rows, loadings: dict) -> list:
     """One column at `x`: each row's value from `loadings[program]` (a
     component's own column per program, or one comparator column for all)."""
     out = []
     for program, pair, y in rows:
-        column = loadings[program]
-        value = float(_scaled(column, [pair], signed).iloc[0])
-        _paint(ax, x, y, value, signed)
+        value = float(_scaled(loadings[program], [pair]).iloc[0])
+        _cell(ax, x, y, value)
         out.append((pair, value, program))
     return out
 
@@ -173,19 +152,6 @@ def _outline(ax, x: float, spans: dict) -> None:
         )
 
 
-def _signed_colorbar(ax, drop: float) -> None:
-    """The diverging colorbar `drop` (axes fraction) under `ax`, `CBAR_HEIGHT`
-    tall whatever the axes' height."""
-    height = CBAR_HEIGHT / (ax.bbox.height / ax.figure.dpi)
-    cax = ax.inset_axes((0.17, -drop, 0.66, height))
-    ax.figure.colorbar(
-        ScalarMappable(Normalize(-1, 1), DIVERGING), cax=cax, orientation="horizontal"
-    )
-    cax.set_xticks([-1, 0, 1])
-    cax.tick_params(labelsize=style.FONT_SIZE_DENSE, length=1.5, pad=1)
-    cax.set_xlabel(SIGNED_LABEL, fontsize=style.FONT_SIZE_DENSE, labelpad=0)
-
-
 @dataclass
 class _Heatmap:
     """What `pair_heatmap` builds up across its blocks: the next column's x,
@@ -196,7 +162,6 @@ class _Heatmap:
     programs: tuple
     rows: list
     spans: dict
-    signed: bool
     x: float = 1 + BLOCK_GAP
     ticks: list = field(default_factory=lambda: [0.5])
     labels: list = field(default_factory=lambda: [""])
@@ -205,7 +170,7 @@ class _Heatmap:
 
     def column(self, loadings: dict, label: str) -> list:
         """One column at `x` (`_block`), ticked with `label`; its drawn cells."""
-        drawn = _block(self.ax, self.x, self.rows, loadings, self.signed)
+        drawn = _block(self.ax, self.x, self.rows, loadings)
         self.x += 1
         self.ticks.append(self.x - 0.5)
         self.labels.append(label)
@@ -245,7 +210,6 @@ def _fit_block(h: _Heatmap, chosen: pd.DataFrame, method: str, lab: str) -> None
 
 
 def _heatmap_source(h: _Heatmap) -> None:
-    label = SIGNED_LABEL if h.signed else LOADING_LABEL
     common.source_data(
         f"component_pairs_in_related_columns_{h.dataset}",
         pd.DataFrame(
@@ -255,7 +219,7 @@ def _heatmap_source(h: _Heatmap) -> None:
                 "Labelling",
                 "Column",
                 "LR pair",
-                label,
+                LOADING_LABEL,
                 "Component",
             ],
         ),
@@ -264,45 +228,22 @@ def _heatmap_source(h: _Heatmap) -> None:
         f"{ON_COMPONENT:.0%} of its own squared loading on the component's carrying "
         "pairs, and, where a comparator shows two or more columns, in its best "
         f"combination of all its columns (Column {SUM}, the projection whose squared "
-        "norm is the containment); each column's "
-        + ("signed loading" if h.signed else "|loading|")
-        + " relative to its heaviest pair.",
+        "norm is the containment); each column's |loading| relative to its "
+        "heaviest pair.",
     )
 
 
-def _heatmap_axes(h: _Heatmap, slant: bool = False) -> None:
-    """Ticks and heads; with `slant`, the heads slanted up from their block's
-    first column (single-column blocks are narrower than their names) and the
-    column ticks as large as the row ticks; one component unlabeled at the
-    side (the CCC-RISE column's tick names it)."""
+def _heatmap_axes(h: _Heatmap) -> None:
+    """Ticks and heads, the CCC-RISE head flush right of its one column; one
+    component unlabeled at the side (the CCC-RISE column's tick names it)."""
     end = h.x - BLOCK_GAP
     ax = h.ax
     _pair_axes(ax, h.rows, h.spans, end, (h.ticks, h.labels, []), h.heads)
-    if slant:
-        starts = dict(zip(h.heads, [0.0, *_block_starts(h)], strict=False))
-        for text in [t for t in ax.texts if t.get_text() in starts]:
-            text.set(
-                x=starts[text.get_text()] + 0.2,
-                ha="left",
-                rotation=HEAD_ROTATION,
-                rotation_mode="anchor",
-            )
-    else:
-        for text in [t for t in ax.texts if t.get_text() == "CCC-RISE"]:
-            text.set(x=1.0, ha="right")  # flush right of its one column
-        ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE - 0.6)
+    for text in [t for t in ax.texts if t.get_text() == "CCC-RISE"]:
+        text.set(x=1.0, ha="right")
+    ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE - 0.6)
     if len(h.programs) == 1:
         _unlabel_side(ax, h.programs[0], end)
-
-
-def _block_starts(h: _Heatmap) -> list[float]:
-    """Each comparator block's first column's x (blocks follow a gap)."""
-    starts, previous = [], None
-    for tick in h.ticks[1:]:
-        if previous is None or tick - previous > 1.01:
-            starts.append(tick - 0.5)
-        previous = tick
-    return starts
 
 
 def _unlabel_side(ax, program: int, end: float) -> None:
@@ -313,45 +254,25 @@ def _unlabel_side(ax, program: int, end: float) -> None:
         line.remove()
 
 
-def pair_heatmap(
-    ax,
-    dataset: str,
-    programs,
-    name: str | None,
-    drop: float = 0.24,
-    signed: bool = False,
-    slant: bool = False,
-    columns_of=None,
-    colorbar: bool = True,
-) -> None:
+def pair_heatmap(ax, dataset: str, programs, name: str | None) -> None:
     """Each component's carrying pairs in the component and in its related
     columns of each comparator, then, where a comparator shows two or more
     columns, its best combination of all its columns (Σ, outlined); each column
-    scaled to its heaviest pair, |loading| or `signed`, each ticked with its
-    name, the component's column with `name` (e.g. 'ALAD C4')."""
+    scaled to its heaviest |loading|, each ticked with its name, the
+    component's column with `name` (e.g. 'ALAD C4'). No colorbar."""
     rows, spans = _pair_rows(dataset, programs)
-    h = _Heatmap(ax, dataset, tuple(programs), rows, spans, signed)
+    h = _Heatmap(ax, dataset, tuple(programs), rows, spans)
     cccrise = lr_matrix(dataset, "cccRISE")
     h.values = [
         ("cccRISE", "", f"C{p}", pair, v, f"C{p}")
-        for pair, v, p in _block(
-            ax, 0.0, rows, {p: cccrise[p] for p in programs}, signed
-        )
+        for pair, v, p in _block(ax, 0.0, rows, {p: cccrise[p] for p in programs})
     ]
-    # `columns_of`: the components whose related columns are shown (default
-    # `programs`), so one component's panel can show the columns of a pair
-    chosen = related_columns(dataset, columns_of or programs)
+    chosen = related_columns(dataset, programs)
     for method, lab in FITS:
         _fit_block(h, chosen, method, lab)
     _heatmap_source(h)
     h.labels[0] = name or ""
-    _heatmap_axes(h, slant)
-    if not colorbar:
-        return
-    if signed:
-        _signed_colorbar(ax, drop)
-    else:
-        colorbar_under(ax, LOADING_LABEL, drop=drop, x0=0.17, width=0.66)
+    _heatmap_axes(h)
 
 
 #: Each null's 95th-percentile tick in the co-variation panels.

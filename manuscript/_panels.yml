@@ -110,9 +110,6 @@ figS_comparator_split:
   ibd_containment: [b]
   depth: [c]
   alad_covariation: [d]
-  ibd_c1c5_modes: [e]
-  ibd_c1_columns: [f]
-  ibd_c5_columns: [g]
 figS_comparator_missed:
   alad_share: [a]
   ibd_share: [b]

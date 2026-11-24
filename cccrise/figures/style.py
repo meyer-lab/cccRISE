@@ -109,14 +109,10 @@ AXIS_SIZE = {
     "fig5_flow_ibd": (72 * MM, 49 * MM),
     "fig5_niches": (42 * MM, 42 * MM),
     # `figureS_comparator_split`: IBD's recovery grids (as 5A-B) beside depth;
-    # every component's and column's co-variation across the page; the C1/C5
-    # mode cosines beside C1's and C5's heatmaps, all one height
+    # every component's and column's co-variation across the page
     "split_ibd_grid": (40 * MM, 26 * MM),
     "split_depth": (48 * MM, 30 * MM),
     "split_covariation": (FIGURE_WIDTH_DOUBLE - 22 * MM, 32 * MM),
-    "split_modes": (36 * MM, 20 * MM),
-    "split_columns_ibd_c1": (38 * MM, 20 * MM),
-    "split_columns_ibd_c5": (38 * MM, 20 * MM),
     # `figureS_comparator_rank_selection`: a row per labelling, five diagnostics
     "rank_selection": (22 * MM, 22 * MM),
     "rank_selection_stac": (30 * MM, 22 * MM),

@@ -57,7 +57,7 @@ q: Kruskal--Wallis test across the three groups, BH corrected across EE cell gro
 ![](figures/figureS_comparator_split/figureS_comparator_split.svg){width="6.5in"}
 
 **{{< label comparator-split >}}.
-Comparators split CCC-RISE programs of many LR pairs and merge opposing ones.** Abbreviations, LR column names and top LR pairs are as in {{< fig 5 >}}.
+Comparators split CCC-RISE programs of many LR pairs.** Abbreviations, LR column names and top LR pairs are as in {{< fig 5 >}}.
 ({{< panel comparator-split ibd-best >}}) Largest cos^2^ between the LR pair loadings of each IBD CCC-RISE component (n = 6) and any single LR column of each comparator fit, as {{< fig 5 cos2-grid >}} shows for ALAD.
 ({{< panel comparator-split ibd-containment >}}) Fraction of each IBD CCC-RISE component's LR pair loadings reconstructed by the best combination of all LR columns of each comparator fit, as {{< fig 5 span-containment >}} shows for ALAD.
 ({{< panel comparator-split depth >}}) Absolute Spearman correlation between the absolute condition loadings of each CCC-RISE component or comparator LR column and the median number of genes detected per cell, computed across samples (ALAD, n = 47) or biopsies (IBD, n = 343).
@@ -70,7 +70,3 @@ Crosses mark components and columns left with fewer than two gene groups.
 Dashed and solid ticks mark the 95th percentiles of random and expression-matched draws of as many LR pairs.
 One-sided empirical test against the expression-matched draws, with BH correction within each fit.
 Filled points have q < 0.05 and lie above both 95th percentiles.
-({{< panel comparator-split ibd-c1c5-modes >}}) Cosine between IBD components 1 and 5 in each CPD mode.
-({{< panel comparator-split ibd-c1-columns >}}, {{< panel comparator-split ibd-c5-columns >}}) Top LR pairs of IBD component 1 (n = 4; {{< panel comparator-split ibd-c1-columns >}}) and component 5 (n = 5; {{< panel comparator-split ibd-c5-columns >}}) in the component and in the columns related to either component, which the comparators share.
-Each component and column normalized to its largest absolute loading.
-Outlined columns (Σ) show the best combination of all of STAC's fine LR columns for each component.

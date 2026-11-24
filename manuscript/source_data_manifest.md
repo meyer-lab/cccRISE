@@ -189,7 +189,6 @@ Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/comparators/scores/depth_alad.parquet`
 - `cccrise/data/comparators/scores/depth_ibd.parquet`
 - `cccrise/data/comparators/scores/lr_loadings_ibd.parquet`
-- `cccrise/data/factors/ibd_ti_factors.nc`
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
@@ -197,9 +196,6 @@ Analyses plotted (with provenance in the zip's README):
 | EV5B | cccrise/figures/figure5/figureS_comparator_split/ibd_containment.py | data | component_containment_in_comparator_span.csv | 1.4 | Containment of each IBD CCC-RISE component's LR pair loadings in each comparator fit's LR column span. |
 | EV5C | cccrise/figures/figure5/figureS_comparator_split/depth.py | data | depth_tracking_by_component.csv | 7.7 | Absolute Spearman correlation between each component's sample loadings and median genes detected per cell, for every method's fit, ALAD and IBD cohorts, with Kruskal-Wallis tests across fits and one-sided Mann-Whitney tests per fit. |
 | EV5D | cccrise/figures/figure5/figureS_comparator_split/alad_covariation.py | data | component_and_column_covariation_alad.csv; covariation_null_draw_means_alad.csv | 5908.3 | Mean pairwise rank correlation across samples of the carrying LR pairs of every ALAD CCC-RISE component and every PB and STAC LR column, against random and expression-matched null draws. |
-| EV5E | cccrise/figures/figure5/figureS_comparator_split/ibd_c1c5_modes.py | data | ibd_c1_c5_mode_cosines.csv | 0.1 | Cosine between IBD CCC-RISE components 1 and 5 in each CPD mode: sample, sender eigen-state, receiver eigen-state, and LR pair loadings. |
-| EV5F | cccrise/figures/figure5/figureS_comparator_split/ibd_c1_columns.py | data | component_pairs_in_related_columns_ibd.csv | 1.2 | Loadings of IBD CCC-RISE component 1's carrying LR pairs in the component and in the PB and STAC LR columns related to IBD C1 or C5. |
-| EV5G | cccrise/figures/figure5/figureS_comparator_split/ibd_c5_columns.py | data | component_pairs_in_related_columns_ibd.csv | 1.5 | Loadings of IBD CCC-RISE component 5's carrying LR pairs in the component and in the PB and STAC LR columns related to IBD C1 or C5. |
 
 ## Appendix Figure S1
 
