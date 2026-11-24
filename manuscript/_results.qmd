@@ -188,37 +188,32 @@ All genes except the intermediate marker CCK remained differentially expressed b
 In agreement with the loss of function following inflammation indicated by component 3 associations ({{< fig ibd-associations status-loadings.1 >}}), component 3-high cells gradually contributed less to the overall EE population in a stepwise manner over healthy, CD uninflamed, and CD inflamed biopsies, indicating that more-exposed, villus-like cells are more sensitive to inflammatory pressure compared with other EE subpopulations ({{< fig ibd-hormone-axes extreme-share >}}).
 In sum, CCC-RISE components 3 and 4 described sender cells on a continuum between two prevailing states with distinct activity: crypt-like producers of GCG communicating with tuft cells and villus-like producers of PYY communicating with EC cells.
 
-### CCC-RISE reveals CCC structure obscured by pseudobulk methods
+### CCC-RISE reveals communication structure obscured by pseudobulk methods
 
 ::: {#fig-5}
 ![](figures/figure5/figure5.svg){width="6.5in"}
 
 **CCC-RISE prioritizes coordinated CCC programs that pseudobulk methods miss or only partly recover.** PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato; C and F, coarse and fine cell-type labels.
-LR columns are named by method (P, T, S) and number.
+CCC-RISE components are named C1--C6 in ({{< panel 5 cos2-grid >}}--{{< panel 5 cos2-pairs >}}); elsewhere, components and LR columns are numbered within the fit named beside them.
 A component's or column's top LR pairs are the fewest that carry 90% of its squared LR pair loading.
 ({{< panel 5 cos2-grid >}}) Largest squared cosine (cos^2^) between the LR pair loadings of each ALAD CCC-RISE component (n = 6) and any single LR column of each comparator fit.
 ({{< panel 5 span-containment >}}) Fraction of each ALAD CCC-RISE component's LR pair loadings reconstructed by the best linear combination of all LR columns of each comparator fit.
+({{< panel 5 cos2-pairs >}}) Each CCC-RISE component's best-match cos^2^ against its number of top LR pairs, in ALAD and IBD (n = 12 components).
+The dashed line marks a perfect negative ordering.
+Two-sided Spearman correlation: ρ = −0.84, p = 6 × 10^−4^.
 ({{< panel 5 pair-columns >}}) Top LR pairs of ALAD component 5 (n = 11) in the component and in its related comparator LR columns.
 Each column's absolute loading is shown relative to its largest.
 A comparator LR column is related to a component when it reconstructs at least 10% of the component or places at least 25% of its own squared loading on the component's top LR pairs.
-For component 5, these are STAC's S6, S7, S13 and S16 (coarse) and S12 and S13 (fine).
-({{< panel 5 program-covariation >}}) Mean pairwise Spearman correlation across samples (n = 47) among the top LR pairs of ALAD component 5 and of each column in ({{< panel 5 pair-columns >}}), each over its own top LR pairs.
-LR pairs sharing a gene were merged into one group: component 5 has 11 LR pairs in 8 groups; coarse S6 has 11 in 8, S7 5 in 3, S13 15 in 9, and S16 15 in 7; fine S12 has 15 in 9 and S13 10 in 7.
-Dashed and solid ticks mark the 95th percentiles of random and expression-matched draws of as many LR pairs.
-Filled points have q < 0.05.
-The test is one-sided and empirical, against the expression-matched draws, with BH correction across the seven tests.
+Outlined columns (Σ) show the best combination of all of a fit's LR columns.
 ({{< panel 5 labels-alad labels-ibd >}}) LR columns that each method keeps and loses when cells are described more finely, in ALAD ({{< panel 5 labels-alad >}}) and IBD ({{< panel 5 labels-ibd >}}).
 For PB and STAC, the coarse LR columns sit above the fine ones.
 For CCC-RISE, the components of a refit at a lower RISE rank sit above those of the reported fit.
 Lines join columns whose LR pair cos^2^ is at least 0.09, and wider lines mean larger cos^2^.
-Larger, named points mark the columns and components, including those of the lower-rank CCC-RISE fit, with an association at q < 0.05 with any outcome grouping.
+Larger points, named by number, mark the columns and components, including those of the lower-rank CCC-RISE fit, with an association at q < 0.05 with any outcome grouping.
 Associations were tested by one-way ANOVA across samples (ALAD, n = 47) or biopsies (IBD, n = 343), with BH correction across all of a cohort's groupings and all components of each fit, and are counted over the groupings other than acute rejection (ALAD) and the three-way inflammation status (IBD).
-({{< panel 5 nichenet >}}) NicheNet target score of each CCC-RISE component and each PB and STAC LR column, minus its mean over rankings in which the labels of the high and low receiver cells were shuffled.
-Filled and named points have q < 0.05.
-The test is one-sided and empirical, against the shuffled rankings, with BH correction across the components or columns of each fit.
-({{< panel 5 flow-alad >}}) BTC--EGFR in STAC's fine column S11 and in ALAD component 6, among the 288 cells with the fine label epithelial cells.
+({{< panel 5 flow-alad >}}) BTC--EGFR in STAC's fine column 11 and in ALAD component 6, among the 288 cells with the fine label epithelial cells.
 Bars show each population's fraction of the label's cells.
-({{< panel 5 flow-ibd >}}) PYY--NPY1R and GCG--GLP1R in STAC's fine columns S5 and S4, and in IBD components 3 and 4.
+({{< panel 5 flow-ibd >}}) PYY--NPY1R and GCG--GLP1R in STAC's fine columns 5 and 4, and in IBD components 3 and 4.
 Bars show fractions of each cell type's cells.
 Sender and receiver sides are scaled separately.
 In ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}), "below threshold" marks a cell type's cells that lie outside the CCC-RISE populations, because their per-cell weight is under 0.3 of its largest value.
@@ -240,7 +235,7 @@ The other two comparators handled this by zero-filling absent entries.
 We first evaluated whether the comparators recovered each CCC-RISE component's LR pairs.
 Each comparator fit grouped LR pairs through the column of its LR pair factor, hereafter called LR columns.
 For each component, we identified the closest LR column across all comparator fits by squared cosine similarity to the component's LR pair loadings ({{< fig 5 cos2-grid >}}; {{< fig comparator-split ibd-best >}}).
-Columns matched components less as the number of top LR pairs in a component increased ({{< fig comparator-split cos2-pairs >}}).
+Columns matched components less as the number of top LR pairs in a component increased ({{< fig 5 cos2-pairs >}}).
 However, one-to-one matching was an incomplete measure of component containment as a comparator could still carry a component's top LR pairs but distributed across several LR columns.
 To quantify this possibility, we computed the fraction of each component's LR pair loadings that the best combination of all LR columns in a comparator fit reconstructed ({{< fig 5 span-containment >}}; {{< fig comparator-split ibd-containment >}}).
 STACCato's fine fit reconstructed most of ALAD component 3 and IBD component 1 despite its closest single column matching to less than half of either component.

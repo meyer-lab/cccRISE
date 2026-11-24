@@ -203,7 +203,7 @@ A set of top LR pairs was tested for co-variation across samples by the Spearman
 LR pairs sharing a ligand or receptor gene, directly or through another pair (e.g., A--B and A--C or A--B and B--C), co-vary in part by construction and were first merged into one group by averaging their per-sample score ranks.
 Observed correlations were compared with those of as many LR pairs drawn 2,000 times, and merged in the same way, from each baseline: random LR pairs; expression-matched LR pairs, each drawn from the 20 LR pairs nearest a top pair in log mean score; and the other LR pairs associated with outcome (q < 0.05).
 The statistic was the mean pairwise correlation between groups, $\bar{\rho}$, with an empirical p-value against each baseline corrected over the three baselines.
-During comparison with other tensor-based methods, p-values against the expression-matched baseline were corrected across the component and the related comparator LR columns.
+During comparison with other tensor-based methods, p-values against the expression-matched baseline were corrected within each CCC-RISE or comparator fit.
 Components and columns with fewer than two groups were not tested.
 
 **Batch and patient effects.** RISE does not explicitly remove batch effects, but its structure isolates sample-level variation.
@@ -265,7 +265,6 @@ Each biopsy's share of its EE cells in each polar group, for biopsies with at le
 
 **NicheNet downstream-target validation.** We tested whether each component's receiver cells upregulated the downstream gene targets of the component's ligands using the NicheNet v2 ligand--gene-target database\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 For a CCC-RISE component, receiver cell types were the coarse cell types whose mean per-cell receiver weight was at least 0.4 times that of the top cell type; top receivers were the cells of those types above the 90th percentile of receiver weight within them, and bottom receivers were the other cells below the 10th percentile of receiver weight across all cells.
-A comparator LR column has one receiver loading per label, so its high receivers were all cells of the labels with a receiver loading of at least 0.4 times the largest, and its low receivers were the cells of the lowest-loading labels, added until they held at least 10% of cells.
 Genes detected in at least 10% of cells of either group were ranked by a Wilcoxon rank-sum test between the two groups.
 To correct for hub genes linked to many ligands, each ligand's top 250 targets in the NicheNet database were weighted by $\log(N_{L}/n_{t})$, where $N_{L}$ is the number of ligands in the prior and $n_{t}$ the number of ligands listing target $t$.
 Each ligand was scored by the AUROC with which the Wilcoxon statistics ranked its weighted targets above non-targets, and these target scores were averaged with each ligand's loading (the norm of the LR pair loadings of its LR pairs) as weight.
@@ -300,7 +299,7 @@ Each tensor had condition, sender cell type, receiver cell type, and LR pair mod
 For Tensor-cell2cell and pseudobulk CPD fits, an LR column belongs to one component, which gives it condition, sender, and receiver loadings.
 For STACCato, each LR column's condition, sender, and receiver loadings were the leading left singular vectors of its core slice unfolded along each of those modes, mapped through the factor matrices of those modes.
 Each column's loadings were signed so that their largest-magnitude entry was positive.
-Comparator condition loadings were tested for association as in Clinical Association Testing, and comparator LR columns were tested for co-variation and NicheNet targets as described in Clinical Association Testing and External Biological Validation.
+Comparator condition loadings were tested for association as in Clinical Association Testing, and comparator LR columns were tested for co-variation as described in Clinical Association Testing.
 
 **Pseudobulk CPD.** Each communication tensor entry was the product of mean ligand expression in the sender and mean receptor expression in the receiver, with cell types absent from a sample set to zero expression.
 CPD was fit and its rank selected as for CCC-RISE, so pseudobulk CPD differed from CCC-RISE only in the tensor it decomposed.
