@@ -163,8 +163,7 @@ We describe the new association testing in {{< fig 3 outcome-association >}}, {{
 On the negative result: with the rank-selection overhaul and new association testing method, this result has flipped.
 Now, in the ALAD cohort, a single component shows a graded, statistically significant association with six-month outcome after correction, and the same component is significantly associated with six-month and one-year death, as shown in {{< fig 3 outcome-association >}} and {{< fig alad-associations cp-associations >}}.
 Instead, we did not find any communication programs associated with ALAD status.
-We discuss why: with 47 samples from 45 recipients and few events, the cohort has limited statistical power, and the significant associations depend on a small number of highly weighted samples.
-We accordingly frame the clinical claims regarding ALAD/CLAD as hypothesis-generating.
+We state this result explicitly in the Results section and attribute it to the weak clinical definition of ALAD.
 
 > 6. No significance testing for communication programs.
 >    Unlike CellPhoneDB/CellChat, CCC-RISE provides no null model or significance assessment for whether a component's communication exceeds chance.
