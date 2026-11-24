@@ -11,7 +11,7 @@ subtitle: "CCC-RISE resolves cellular communication across conditions at single-
 - {{< label comparator-rank-selection >}}: Rank selection of the label-based comparators
 - {{< label comparator-missed >}}: Comparator LR columns that are not part of a CCC-RISE component
 - {{< label comparator-single-cell >}}: Single-cell comparison of CCC-RISE populations
-- {{< label alad-outcome-groups >}}: ALAD samples by outcome group
+- {{< label alad-outcome-groups >}}: Table of ALAD samples by outcome group
 
 ![](figures/figureS_alad_cohort/figureS_alad_cohort.svg){width="6.5in"}
 
@@ -95,9 +95,10 @@ Scriabin's LR sets are its interaction programs that pass its significance test,
 Each point is a pair of seeds, and bars mark medians.
 Both Scriabin and CCC-RISE used 10 seed refits (n = 45 pairs each).
 
-{{< include figures/tables/alad_outcome_groups.md >}}
+{{< xlsx figures/tables/alad_outcome_groups.xlsx >}}
 
 **{{< label alad-outcome-groups >}}.
-ALAD samples by outcome group.** Number of BAL samples in each ALAD status and six-month outcome group.
-Indented groups are subgroups of the group above them.
+ALAD samples by outcome group.** Number of BAL samples in each ALAD cohort outcome group.
+Shown are label groupings (ALAD status and six-month outcome), high-level patient labels, and sub-group labels.
+Sample sizes are stated for each group and sub-group.
 Two of the 45 patients were sampled twice, in different groups.
