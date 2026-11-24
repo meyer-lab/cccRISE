@@ -192,8 +192,8 @@ def heatmap(ax, values: pd.DataFrame, xlabel: str) -> None:
 
 def pair_heatmap(ax, t: pd.DataFrame) -> None:
     """A `_split.pair_heatmap` as a plain heatmap: each column's carrying
-    pairs at their exported loading (blank where a column doesn't carry the
-    pair; signed loadings on a diverging scale), columns in exported order."""
+    pairs at their exported |loading| (blank where a column doesn't carry the
+    pair), columns in exported order."""
     t = t.assign(
         Name=t["Method"].str.replace("cccRISE", "CCC-RISE")
         + " "
@@ -203,11 +203,10 @@ def pair_heatmap(ax, t: pd.DataFrame) -> None:
     )
     value = t.columns[4]
     grid = t.pivot_table(index="LR pair", columns="Name", values=value, sort=False)
-    signed = (grid < 0).any().any()
     image = ax.imshow(
         grid.to_numpy(),
-        cmap=style.CMAPS["diverging" if signed else "weight"],
-        vmin=-1 if signed else 0,
+        cmap=style.CMAPS["weight"],
+        vmin=0,
         vmax=1,
         aspect="auto",
     )
@@ -476,9 +475,9 @@ def figure5(z: Zip) -> dict:
             {"5B": None},
         )
         | {
-            "5C": manual(
+            "5D": manual(
                 lambda axs: pair_heatmap(
-                    axs[0], z("5C", "component_pairs_in_related_columns_alad")
+                    axs[0], z("5D", "component_pairs_in_related_columns_alad")
                 ),
                 "fig5_columns",
             )
@@ -614,10 +613,10 @@ def figure_ev4(z: Zip) -> dict:
 
 
 def figure_ev5(z: Zip) -> dict:
-    best = z("EV5B", "program_best_column_cos2").rename(
+    best = z("EV5A", "program_best_column_cos2").rename(
         columns={"Best-match cos2": "Cos2"}
     )
-    depth = z("EV5D", "depth_tracking_by_component")
+    depth = z("EV5C", "depth_tracking_by_component")
     labels = {"ALAD": "alad", "IBD": "ibd"}
     groups = {
         dataset: {
@@ -628,27 +627,14 @@ def figure_ev5(z: Zip) -> dict:
         }
         for cohort, dataset in labels.items()
     }
-    heatmaps = {
-        folder: manual(
-            lambda axs, folder=folder, dataset=dataset: pair_heatmap(
-                axs[0], z(folder, f"component_pairs_in_related_columns_{dataset}")
-            ),
-            "tall",
-        )
-        for folder, dataset in (("EV5E", "alad"), ("EV5H", "ibd"), ("EV5I", "ibd"))
-    }
-    return (
-        module(
-            "figure5.figureS_comparator_split.ibd_best",
-            {(_recovery, "best_columns"): lambda dataset: best.drop(columns="Dataset")},
-            {"EV5B": None},
-        )
-        | module(
-            "figure5.figureS_comparator_split.depth",
-            {(_depth, "_values"): lambda dataset: groups[dataset]},
-            {"EV5D": None},
-        )
-        | heatmaps
+    return module(
+        "figure5.figureS_comparator_split.ibd_best",
+        {(_recovery, "best_columns"): lambda dataset: best.drop(columns="Dataset")},
+        {"EV5A": None},
+    ) | module(
+        "figure5.figureS_comparator_split.depth",
+        {(_depth, "_values"): lambda dataset: groups[dataset]},
+        {"EV5C": None},
     )
 
 

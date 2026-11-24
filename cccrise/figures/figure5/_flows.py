@@ -172,11 +172,11 @@ def flow_alad(ax) -> None:
     sender = t["Ciliated-like sender"] / t[EPITHELIAL_NAME] * LENGTH
     receiver = t["Basal/secretory-like receiver"] / t[EPITHELIAL_NAME] * LENGTH
     _flow_axes(ax, 40)
-    _title(ax, 20, 50.5, "STAC S11")
+    _title(ax, 20, 50.5, "STAC F 11")
     _node(ax, BAR_X, 31, 46, EPITHELIAL)
     _note(ax, BAR_X - 2.8, 38.5, EPITHELIAL_NAME, rotation=90)
     _horseshoe(ax, 43.5, 33.5, 5)
-    _title(ax, 20, 27, f"CCC-RISE C{GRANULARITY_COMPONENT}")
+    _title(ax, 20, 27, f"CCC-RISE {GRANULARITY_COMPONENT}")
     top = 21.0
     bottom = top - LENGTH
     _node(ax, BAR_X, top - sender, top, style.COLORS["sender"])
@@ -252,7 +252,7 @@ def _receiver_cells() -> pd.DataFrame:
 
 
 def _stac_hormones(ax, pyy, gcg, side: float, tuft: float) -> None:
-    _title(ax, 15, 50.5, "STAC S5, S4")
+    _title(ax, 15, 50.5, "STAC F 5, 4")
     _node(ax, 5, TOP - SPAN, TOP, BAR)
     _node(ax, 25, TOP - side, TOP, BAR)
     _node(ax, 25, tuft - side, tuft, BAR)
@@ -335,7 +335,7 @@ def flow_ibd(ax) -> None:
     side = (SPAN - RECEIVER_GAP) / 2
     tuft = TOP - side - RECEIVER_GAP
     _stac_hormones(ax, pyy, gcg, side, tuft)
-    _title(ax, 56, 50.5, "CCC-RISE C3, C4")
+    _title(ax, 56, 50.5, "CCC-RISE 3, 4")
     ends = _receiver_bars(ax, receivers, side, tuft)
     y = _state_bands(ax, t, ends, scale, pyy, gcg)
     other = t.loc["Other", "Cells"] * scale

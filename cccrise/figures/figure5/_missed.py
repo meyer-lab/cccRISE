@@ -18,7 +18,7 @@ import pandas as pd
 from ... import covariation
 from .. import common, style
 from ._common import METHOD_COLORS, cohort_bar, load
-from ._data import LABELLINGS, short
+from ._data import LABELLINGS
 from ._programs import lr_matrix
 from ._recovery import LOADING_LABEL
 
@@ -48,6 +48,13 @@ def dot_size(value):
 DOT_AREA = 80
 #: Tick names in the bar and contents panels (pt)
 NAME_SIZE = style.FONT_SIZE_DENSE
+#: Fit names beside the ALAD bar panel's blocks, as the split supplement's
+#: co-variation blocks name them (pt, as the axis labels), and their gap from
+#: the column numbers (in)
+FIT_NAME_SIZE = style.FONT_SIZE_LABEL
+FIT_NAME_PAD = 0.8 * style.MM
+#: The contents panels' column names, angled as the split supplement's depth panel
+CONTENTS_TICK_ROTATION = 45
 
 
 METHODS = ("PB", "STAC")
@@ -60,7 +67,12 @@ FIT_GAP = 1.2
 
 
 def _column_name(method: str, column: int, labelling: str) -> str:
-    return f"{short(method, column)} {labelling[0].upper()}"
+    """As the split supplement's co-variation blocks name fits: "STAC C 14"."""
+    return f"{_fit_name(method, labelling)} {column}"
+
+
+def _fit_name(method: str, labelling: str) -> str:
+    return f"{method} {labelling[0].upper()}"
 
 
 @cache
@@ -126,27 +138,51 @@ def slots() -> dict:
     return starts
 
 
-def _hbars(ax, dataset: str, value: str, xlabel: str) -> None:
+def _hbars(ax, dataset: str, value: str, xlabel: str, fit_names: bool) -> None:
     """Each column's `value` as a horizontal bar, each fit (`FITS`) from its
-    slot's top (`slots`, shared by the cohorts), largest first, named with its
-    labelling (`_column_name`)."""
+    slot's top (`slots`, shared by the cohorts), largest first, ticked with its
+    number; with `fit_names`, each block named by its fit (`_name_fits`), which
+    then names the other cohort's level blocks too."""
     t = columns(dataset)
-    ticks, names = [], []
+    ticks, names, blocks = [], [], []
     for method, lab in FITS:
         g = t[(t["Method"] == method) & (t["Labelling"] == lab)]
         y = slots()[(method, lab)]
+        blocks.append((y, y + len(g) - 1, _fit_name(method, lab)))
         for r in g.sort_values([value, "Column"], ascending=[False, True]).itertuples():
             ax.barh(y, getattr(r, value), height=0.8, color=METHOD_COLORS[method], lw=0)
             ticks.append(y)
-            names.append(r.Name)
+            names.append(str(r.Column))
             y += 1
     ax.set(xlim=(0, 1.04), xticks=[0, 0.5, 1], ylim=(slots()["end"] - 0.2, -0.8))
     ax.set_yticks(ticks, names, fontsize=NAME_SIZE)
     ax.tick_params(axis="y", pad=1)
     ax.set_xlabel(xlabel)
+    if fit_names:
+        ax.figure.canvas.draw()  # the column numbers' extent, to set names beside
+        _name_fits(ax, blocks)
 
 
-def share(ax, dataset: str) -> None:
+def _name_fits(ax, blocks: list) -> None:
+    """Each fit's name beside its block, reading up, `FIT_NAME_PAD` left of
+    the column numbers."""
+    renderer = ax.figure.canvas.get_renderer()
+    left = min(t.get_window_extent(renderer).x0 for t in ax.get_yticklabels())
+    x = ax.transAxes.inverted().transform((left - FIT_NAME_PAD * ax.figure.dpi, 0))[0]
+    for first, last, name in blocks:
+        ax.text(
+            x,
+            (first + last) / 2,
+            name,
+            transform=ax.get_yaxis_transform(),
+            rotation=90,
+            ha="right",
+            va="center",
+            fontsize=FIT_NAME_SIZE,
+        )
+
+
+def share(ax, dataset: str, fit_names: bool = False) -> None:
     common.source_data(
         f"comparator_column_share_{dataset}",
         columns(dataset)[["Method", "Labelling", "Name", "Share", "Of"]].rename(
@@ -155,7 +191,9 @@ def share(ax, dataset: str) -> None:
         "Each PB and STAC LR column's largest share of its squared LR pair loading "
         "on one CCC-RISE component's carrying pairs, and that component.",
     )
-    _hbars(ax, dataset, "Share", "Squared loading on\ncomponent's top LR pairs")
+    _hbars(
+        ax, dataset, "Share", "Squared loading on\ncomponent's top LR pairs", fit_names
+    )
 
 
 def missed(dataset: str) -> pd.DataFrame:
@@ -285,8 +323,11 @@ def boxed_contents(ax, dataset: str, key: bool) -> None:
     cohort_bar(ax, dataset, -0.7, x + 0.7)
     ax.set_xticks(
         [*range(len(rows)), x],
-        [n for n, _, _ in rows] + ["CCC-\nRISE"],
+        [n for n, _, _ in rows] + ["CCC-RISE"],
         fontsize=NAME_SIZE,
+        rotation=CONTENTS_TICK_ROTATION,
+        ha="right",
+        rotation_mode="anchor",
     )
     ax.set_yticks(
         list(ys.values()),

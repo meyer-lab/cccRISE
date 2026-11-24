@@ -34,15 +34,17 @@ COMPARATORS = ("PB", "STAC")
 FLOW_FROM = 0.09
 #: `run_reduced_rise`'s table
 REDUCED = "reduced_rise_lr_loadings"
-TITLES = {"cccRISE": "CCC-RISE"}
+TITLES = {"cccRISE": "CCC-\nRISE"}  # sideways, on two lines
 #: A comparator block's left and right fit
 LABELS = ("coarse", "fine")
 #: A method's two rows apart, and one method's top row to the next's (y units)
-ROW_GAP, BLOCK_STEP = 0.8, 1.55
+ROW_GAP, BLOCK_STEP = 0.8, 1.6
 #: Names' clearance from their dot (y units)
-NAME_PAD = 0.1
-BORDER_DROP = 0.5  # the border's bottom, below the last row
-TOP = 0.95  # the border's top, above the first row: room for the key
+NAME_PAD = 0.11
+#: Below a dot, a name sits further off: its digits fill the top of its box
+NAME_PAD_BELOW = 0.18
+BORDER_DROP = 0.8  # the border's bottom, below the last row: room for its names
+TOP = 0.85  # the border's top, above the first row: room for the key
 X_PAD = 0.09  # beyond the outermost dots, inside the border
 NAME_SIZE = style.FONT_SIZE_DENSE - 1  # pt: as Figure 5J's names
 END_SIZE = style.FONT_SIZE_DENSE - 1
@@ -158,8 +160,8 @@ def _row(ax, xs, y: float, columns, method: str, above: bool, named) -> None:
             continue
         ax.text(
             x,
-            y + (NAME_PAD if above else -NAME_PAD),
-            short(method, column),
+            y + (NAME_PAD if above else -NAME_PAD_BELOW),
+            str(int(column)),  # its row names the method and fit
             ha="center",
             va="bottom" if above else "top",
             fontsize=NAME_SIZE,
@@ -191,6 +193,9 @@ def _row_labels(ax, rows: dict, method_names: bool) -> None:
             textcoords="offset points",
             ha="right",
             va="center",
+            rotation=90,
+            multialignment="center",
+            linespacing=1.0,
             fontsize=style.FONT_SIZE_DENSE,
             fontweight="bold",
         )
@@ -246,7 +251,7 @@ def size_key(ax) -> None:
     ]
     ax.legend(
         loc="center left",
-        bbox_to_anchor=(KEY_X, (TOP + names_top) / 2),
+        bbox_to_anchor=(KEY_X, 0.3 * TOP + 0.7 * names_top),  # nearer the rows
         bbox_transform=blended_transform_factory(ax.transAxes, ax.transData),
         handles=handles,
         labels=[f"q < {common.SIG_ALPHA}", f"q ≥ {common.SIG_ALPHA}"],

@@ -98,26 +98,21 @@ AXIS_SIZE = {
     "tall": (2.5 * AXIS_WIDTH, 3 * AXIS_HEIGHT),
     # A few groups x many genes along x (dot plots)
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
-    # Figure 5's panels, sized to share their rows (5A and B as tall as 5C, so
-    # their x axes line up; 5E and F with room for the dot-size key inside)
-    "fig5_best": (30 * MM, 22 * MM),
-    "fig5_columns": (26 * MM, 22 * MM),
-    "fig5_covariation": (24 * MM, 28 * MM),
-    "fig5_nichenet": (46 * MM, 32 * MM),
-    "fig5_labels": (44 * MM, 41 * MM),
+    # Figure 5's panels, sized to share their rows: A-C (C laid out short enough
+    # to fit the row, its top raised after layout, `figure5.makeFigure`); D
+    # beside E and F, which fill its height
+    "fig5_best": (40 * MM, 26 * MM),
+    "fig5_cos2_pairs": (34 * MM, 20 * MM),
+    "fig5_columns": (36 * MM, 34 * MM),
+    "fig5_labels": (48 * MM, 33 * MM),
     "fig5_flow_alad": (34 * MM, 49 * MM),
     "fig5_flow_ibd": (72 * MM, 49 * MM),
     "fig5_niches": (42 * MM, 42 * MM),
-    # `figureS_comparator_split`: A beside IBD's recovery grids (as 5A-B);
-    # depth beside ALAD C3's heatmap and its co-variation, as large; the C1/C5
-    # mode cosines beside C1's and C5's heatmaps, all one height
-    "split_cos2_pairs": (30 * MM, 30 * MM),
-    "split_ibd_grid": (56 * MM, 26 * MM),
-    "split_depth": (50 * MM, 30 * MM),
-    "split_columns_c3": (38 * MM, 34 * MM),
-    "split_modes": (36 * MM, 20 * MM),
-    "split_columns_ibd_c1": (38 * MM, 20 * MM),
-    "split_columns_ibd_c5": (38 * MM, 20 * MM),
+    # `figureS_comparator_split`: IBD's recovery grids (as 5A-B) beside depth;
+    # every component's and column's co-variation across the page
+    "split_ibd_grid": (40 * MM, 26 * MM),
+    "split_depth": (48 * MM, 30 * MM),
+    "split_covariation": (FIGURE_WIDTH_DOUBLE - 22 * MM, 32 * MM),
     # `figureS_comparator_rank_selection`: a row per labelling, five diagnostics
     "rank_selection": (22 * MM, 22 * MM),
     "rank_selection_stac": (30 * MM, 22 * MM),
@@ -162,10 +157,10 @@ ROW_GAP = 1 * MM
 # slots (`_missed.slots`: 5 + 5 + 16 + 15 rows, 3 gaps of 1.2 and the ends'
 # 1.0) 2.4 mm apart; beside them ALAD's contents over IBD's, as wide as each
 # other, pairs `_MISSED_PITCH` apart so IBD's grid ends level with the bars'
-# (their axes span 6.4 and 9.4 rows; 12 mm between the grids: ALAD's column
-# names and IBD's cohort bar)
+# (their axes span 6.4 and 9.4 rows; 16.2 mm between the grids: ALAD's
+# angled column names and IBD's cohort bar)
 _MISSED_BARS = (41 + 3 * 1.2 + 1.0) * 2.4
-_MISSED_PITCH = (_MISSED_BARS - 12.0) / (6.4 + 9.4)
+_MISSED_PITCH = (_MISSED_BARS - 16.2) / (6.4 + 9.4)
 AXIS_SIZE["missed_bars"] = (34 * MM, _MISSED_BARS * MM)
 AXIS_SIZE["missed_contents_alad"] = (40 * MM, 6.4 * _MISSED_PITCH * MM)
 AXIS_SIZE["missed_contents_ibd"] = (40 * MM, 9.4 * _MISSED_PITCH * MM)
