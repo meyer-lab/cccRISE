@@ -5,7 +5,7 @@ Existing computational tools for inferring multi-condition CCC largely rely on p
 This approach relies on the accuracy of cell-type annotations and often fails to capture the continuous and multifaceted nature of cellular identities.
 To address these limitations, CCC-RISE projects cells into eigen-states, or shared patterns of gene expression across conditions, and scores communication between eigen-states rather than annotated cell types.
 Each cell is therefore represented by a continuous projection across all eigen-states, which allows researchers to map communication programs back onto individual cells based on their propensity to send or receive molecular signals.
-Through eigen-states, CCC-RISE brings single-cell resolution to multi-condition CCC inference to identify communicating subpopulations based on unsupervised transcriptional profiles.
+By deriving eigen-states from transcriptional variation across conditions, CCC-RISE identifies signaling subpopulations with single-cell resolution, allowing researchers to infer communication patterns directly from the structure of their single-cell measurements irrespective of cell types.
 
 While exploring the advantages of CCC-RISE through ALAD and IBD cohorts, we showcased three distinct modes of interpretation that each defined different kinds of communicating populations through eigen-states.
 First, ALAD component 6 defined an airway repair and fibrosis pathway among epithelial cells and was unique in its separation of divergent sender and receiver cells by component weight.
@@ -30,10 +30,10 @@ Additionally, immune signaling is spatially graded and does not act uniformly ov
 These components thus showcase the interpretive advantage of CCC-RISE's single-cell resolution by dissecting classical cell types into more granular subpopulations, defined by raw gene expression and coordinated LR signaling rather than problematic cell-type annotations.
 
 A key goal of any multi-condition CCC-inference method is to identify communication programs associated with disease state by modeling the variation between samples.
-In lung allograft patients, CCC-RISE component 5 exhibited a significant stepwise association with six-month outcome, but the low statistical power of the dataset precluded our ability to make further assertions and constrained our findings to being hypothesis-generating.
+In ALAD, CCC-RISE component 5 exhibited a significant stepwise association with six-month outcome, but the low statistical power of the dataset precluded our ability to make further assertions and constrained our findings to being hypothesis-generating.
 The IBD dataset provided richness and statistical power beyond that of the ALAD data.
 Here, CCC-RISE identified a complementary pair of hormone-communication programs among EE, enterochromaffin (EC), and tuft cells that was negatively associated with the shift from uninflamed to inflamed states in CD patients.
-EE sender cells were spread continuously between villus- and crypt-like states, captured by components 3 and 4 respectively.
+EE sender cells were spread continuously between villus- and crypt-like states, captured by components 3 and 4.
 IBD is characterized by the infiltration of immune cells into the gut epithelium and the inflammation-driven death of otherwise healthy cells that ensues\ [@doi:10.1016/j.immuni.2023.01.002].
 Indeed, the immune and epithelial cell-type abundances closely tracked inflammation status in the IBD data.
 However, CCC-RISE further dissected these compositional trends, identifying villus-like EE cells as the specific subpopulation most sensitive to the inflammatory environment.
@@ -54,9 +54,9 @@ Single-cell methods such as NICHES and Scriabin avoid labels altogether by scori
 For large datasets, this quadratic growth quickly becomes computationally intractable, so both methods rely on approximation techniques.
 NICHES scores each cell's ligand or receptor expression against the average expression of its partner across the cell's sample, and Scriabin discovers interaction programs from cell--cell interaction matrices built on repeated subsamples of cells.
 We found that this subsampling makes Scriabin's interaction programs unstable across random seeds.
-Because eigen-states capture only the dominant patterns of gene expression shared across conditions, they largely exclude noise specific to individual cells.
-Furthermore, the communication tensor grows with the number of eigen-states rather than cells, allowing CCC-RISE to scale to large multi-condition cohorts\ [@doi:10.1016/j.cels.2025.101294].
-Despite this abstraction from raw expression, CCC-RISE populations agreed more closely with NICHES's expression-based scores than populations defined by cell types, which are themselves annotated from raw expression.
+Because eigen-states capture only the dominant patterns of gene expression shared across conditions, they largely exclude noise specific to individual cells\ [@doi:10.1016/j.cels.2025.101294].
+Furthermore, the communication tensor grows with the number of eigen-states rather than cells, allowing CCC-RISE to scale to large multi-condition cohorts.
+Despite this abstraction from raw expression, CCC-RISE populations agreed more closely with NICHES' expression-based scores than populations defined by cell types, which are themselves annotated from raw expression.
 This suggests that a continuous representation of cell state matters more than proximity to raw expression, allowing CCC-RISE to approach single-cell resolution without the computational and statistical costs of scoring every cell pair.
 
 Although RISE's eigen-states enable CCC-RISE to perform tensor decomposition while retaining single-cell resolution, the method remains subject to limitations inherent to tensor decomposition techniques and transcriptomic inference.
@@ -67,7 +67,7 @@ CCC-RISE also assumes that gene expression is a sufficiently accurate proxy for 
 Because post-transcriptional regulation and binding kinetics can decouple mRNA levels from functional protein interactions, the communication patterns identified should be interpreted as hypotheses requiring experimental validation\ [@doi:10.1093/bib/bbaf280; @doi:10.1038/s41598-019-40939-2].
 Finally, available validation approaches for CCC models remain limited.
 For example, simulated datasets such as SERGIO attempt to define a ground truth transcriptomic signal, but fail to accurately represent the structure of real biological data\ [@doi:10.1016/j.cels.2020.08.003; @doi:10.1186/s13059-023-02904-1].
-Additionally, attempts to validate based on prior knowledge, such as the NicheNet database, suffer from references that are incomplete or biased in construction\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
+Additionally, attempts to compare against prior knowledge, such as the NicheNet database, suffer from references that are incomplete or biased in construction\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Emerging technologies like single-cell proteomics and spatial transcriptomics, together with CCC models that constrain signaling by physical proximity, will be crucial to improve both the capture and validation of molecular signaling\ [@doi:10.1038/s41592-025-02620-7; @doi:10.1016/j.xgen.2025.100973; @doi:10.1038/s41592-022-01728-4].
 
 In summary, CCC-RISE provides an unbiased framework for investigating CCC across multiple conditions at single-cell resolution.
