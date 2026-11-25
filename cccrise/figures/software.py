@@ -1,8 +1,9 @@
 """
 EMBO Press's Reagents and Tools table, its Software section: CCC-RISE's
-repository at the commit generating the table, Python and every package the
-project depends on (and those its optional extras add on this platform), each
-with its PyPI page and the version `uv.lock` pins, and the comparator methods
+repository at the commit generating the table, Python and the packages the
+method itself rests on (`CORE_PACKAGES`, not those only plotting, serving the
+app or reading/writing files), each with its PyPI page and the version
+`uv.lock` pins, and the comparator methods
 (`COMPARATORS`) with their papers and repositories. Written to
 `output/source_data/software_versions.csv`, and as an HTML table (with *et
 al.* italicized, which CSV can't hold) to copy into the manuscript's table:
@@ -15,7 +16,6 @@ import platform
 import tomllib
 
 import pandas as pd
-from packaging.markers import Marker
 
 from ..runners.provenance import REPO_ROOT, git_sha
 from . import common
@@ -26,6 +26,25 @@ COLUMNS = ["Reagent/Resource", "Reference or Source", "Identifier or catalogue n
 PYPI_URL = "https://pypi.org/project/{}/"
 PYTHON_URL = "https://www.python.org"
 ET_AL = "et al."
+#: The packages the method rests on: fitting, rank selection, normalization,
+#: statistics, embedding, and the optional GPU backend (`gpu` extra).
+CORE_PACKAGES = [
+    "anndata",
+    "cupy-cuda12x",
+    "kneed",
+    "numpy",
+    "nvmath-python",
+    "pacmap",
+    "pandas",
+    "parafac2",
+    "scanpy",
+    "scikit-learn",
+    "scipy",
+    "scrise",
+    "tensorly",
+    "tensorly-viz",
+    "vsparse",
+]
 #: The comparator methods, none a Python dependency, each with its paper as
 #: the reference list cites it (first author, year first published). NICHES
 #: runs as its R package at release v1.2.5 (`run_niches.NICHES_COMMIT`; its
@@ -105,23 +124,10 @@ def html_table(table: pd.DataFrame) -> str:
 
 
 def locked_versions() -> dict[str, str]:
-    """The version `uv.lock` pins of each of the project's dependencies, and
-    of those its optional extras pull in through their own extras (e.g.
-    parafac2's `gpu`), skipping any whose marker excludes this platform."""
+    """The version `uv.lock` pins of each of `CORE_PACKAGES`."""
     lock = tomllib.loads((REPO_ROOT / "uv.lock").read_text())
-    packages = {p["name"]: p for p in lock["package"]}
-    project = packages["cccrise"]
-    deps = list(project["dependencies"])
-    for extra in project.get("optional-dependencies", {}).values():
-        for dep in extra:
-            deps.append(dep)
-            for name in dep.get("extra", []):
-                deps += packages[dep["name"]]["optional-dependencies"][name]
-    return {
-        d["name"]: packages[d["name"]]["version"]
-        for d in deps
-        if "marker" not in d or Marker(d["marker"]).evaluate()
-    }
+    versions = {p["name"]: p["version"] for p in lock["package"]}
+    return {name: versions[name] for name in CORE_PACKAGES}
 
 
 if __name__ == "__main__":
