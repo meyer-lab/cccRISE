@@ -261,10 +261,10 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
     colorbars) are measured and set the space around it, so they never shrink
     the axes. Rows are centered, spreading leftover width into the gaps up
     to `style.PANEL_GAP_MAX`; `width` defaults to the widest row's."""
-    # Measured at the save dpi: text hinting makes low-dpi extents narrower.
+    # Measured at 300 dpi or more: text hinting makes low-dpi extents narrower.
     fig = plt.figure(
         figsize=(FIXED_MEASURE_SIZE, FIXED_MEASURE_SIZE),
-        dpi=plt.rcParams["savefig.dpi"],
+        dpi=style.MEASURE_DPI,
     )
     grid = [_draw_row(fig, row) for row in rows]
     natural = [sum(b.left + b.width + b.right for b in row) for row in grid]
@@ -1169,7 +1169,7 @@ def plot_start_boxes(
         jitter=0.2,
         size=1.8,
         edgecolor=style.COLORS["ink"],
-        linewidth=0.2,
+        linewidth=style.LINE_WIDTH_MIN,
     )
     _collinearity_axes(ax, sweep, rank)
     if key_loc is None:

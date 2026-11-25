@@ -153,7 +153,7 @@ def label_significant(
             [LABEL_X + LABEL_GAP, x[i]],
             [text.get_position()[1], y[i]],
             color=style.COLORS["reference"],
-            lw=style.LINE_WIDTH_THIN / 2,
+            lw=style.LINE_WIDTH_MIN,
         )
 
 

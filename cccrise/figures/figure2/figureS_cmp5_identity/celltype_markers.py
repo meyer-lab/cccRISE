@@ -5,7 +5,7 @@ groups of CPD component 6."""
 from ... import common, style
 from .. import _common as S
 
-AXES = ("strip",)
+AXES = ("cmp5_markers",)
 
 
 def plot(axs):
@@ -13,7 +13,7 @@ def plot(axs):
         axs[0],
         S.CELLTYPE_MARKERS,
         show_legend=True,
-        fontsize=style.FONT_SIZE_DENSE,
+        fontsize=style.FONT_SIZE_LABEL,
         key_below=True,
     )
 

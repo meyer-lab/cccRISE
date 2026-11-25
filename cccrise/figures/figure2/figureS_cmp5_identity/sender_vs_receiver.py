@@ -9,7 +9,7 @@ epithelial subtype."""
 from ... import common
 from . import _common as V
 
-AXES = ("rect",)  # wide enough for the tagged labels
+AXES = ("half",)  # wide enough for the tagged labels
 
 # Epithelium-specific, coordinated genes hand-picked from all the
 # differentially expressed ones, and their epithelial subtype

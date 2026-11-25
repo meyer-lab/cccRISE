@@ -35,6 +35,7 @@ FONT_SIZE_DENSE = 6
 ## Lines (pt)
 LINE_WIDTH = 1.0  # data lines
 LINE_WIDTH_THIN = 0.5  # axes, ticks, box outlines, reference lines
+LINE_WIDTH_MIN = 0.3  # EMBO's thinnest: marker edges, leader lines
 LINE_STYLE_REFERENCE = "--"  # null, chance, and threshold lines
 TICK_LENGTH = 2.5
 # The axes box: light grey, heavier than the (black) ticks
@@ -42,6 +43,11 @@ BOX_COLOR = "0.8"
 BOX_LINE_WIDTH = 2 * LINE_WIDTH_THIN
 # Lines spacing groups apart within an axes: the box's grey, thin
 SPACER = {"color": BOX_COLOR, "linewidth": LINE_WIDTH_THIN}
+
+## Resolution (dpi). Rasterized marks (heat maps, cell embeddings) are saved
+# at EMBO's line-art resolution; layouts are measured at a fixed, lower dpi.
+RASTER_DPI = 1000
+MEASURE_DPI = 300
 
 ## Markers
 MARKER_SIZE = 3  # `plot(marker=...)` markersize, pt
@@ -98,24 +104,25 @@ AXIS_SIZE = {
     "tall": (2.5 * AXIS_WIDTH, 3 * AXIS_HEIGHT),
     # A few groups x many genes along x (dot plots)
     "strip": (1.5 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
-    # Figure 5's panels, sized to share their rows: A-C (C laid out short enough
-    # to fit the row, its top raised after layout, `figure5.makeFigure`); D
-    # beside E and F, which fill its height
-    "fig5_best": (40 * MM, 26 * MM),
-    "fig5_cos2_pairs": (34 * MM, 20 * MM),
-    "fig5_columns": (36 * MM, 34 * MM),
-    "fig5_labels": (48 * MM, 33 * MM),
+    # Figure 5's panels, sized to share their rows: A-C as tall as each other
+    # (C square); D beside E and F, which fill its height
+    "fig5_best": (40 * MM, 34 * MM),
+    "fig5_cos2_pairs": (34 * MM, 34 * MM),
+    "fig5_columns": (35 * MM, 34 * MM),
+    "fig5_labels": (44 * MM, 33 * MM),
     "fig5_flow_alad": (34 * MM, 49 * MM),
     "fig5_flow_ibd": (72 * MM, 49 * MM),
     "fig5_niches": (42 * MM, 42 * MM),
     # `figureS_comparator_split`: IBD's recovery grids (as 5A-B) beside depth;
     # every component's and column's co-variation across the page
     "split_ibd_grid": (40 * MM, 26 * MM),
-    "split_depth": (48 * MM, 30 * MM),
+    "split_depth": (60 * MM, 30 * MM),
     "split_covariation": (FIGURE_WIDTH_DOUBLE - 22 * MM, 32 * MM),
     # `figureS_comparator_rank_selection`: a row per labelling, five diagnostics
     "rank_selection": (22 * MM, 22 * MM),
     "rank_selection_stac": (30 * MM, 22 * MM),
+    # `figureS_cmp5_identity` B: a strip of 24 markers, wide enough for 7 pt names
+    "cmp5_markers": (2.4 * AXIS_WIDTH, 0.4 * AXIS_HEIGHT),
     # A few rows: stacked bars, small heatmaps
     "short": (AXIS_WIDTH, 0.5 * AXIS_HEIGHT),
     # Ranked curves with a column of many labels
@@ -290,6 +297,11 @@ def apply_style() -> None:
             "legend.handletextpad": LEGEND_HANDLETEXTPAD,
             "legend.borderaxespad": LEGEND_BORDERAXESPAD,
             "legend.markerscale": LEGEND_MARKERSCALE,
-            "savefig.dpi": 300,
+            # Math (R^2, eta^2, ...) in the figures' font, not DejaVu Sans
+            "mathtext.fontset": "custom",
+            "mathtext.rm": FONT_NAMES[0],
+            "mathtext.it": f"{FONT_NAMES[0]}:italic",
+            "mathtext.bf": f"{FONT_NAMES[0]}:bold",
+            "savefig.dpi": RASTER_DPI,
         }
     )
