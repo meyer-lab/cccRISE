@@ -6,6 +6,7 @@ subtitle: "CCC-RISE resolves cellular communication across conditions at single-
 ## Table of Contents
 
 - {{< label alad-cohort >}}: CCC-RISE factor evaluation in the ALAD cohort
+- {{< label ccc-scoring >}}: ALAD components across communication scoring methods
 - {{< label ibd-rank-selection >}}: CCC-RISE rank selection and RISE factor matrices in the IBD cohort
 - {{< label ibd-associations >}}: Association of CPD components and covariates with IBD biopsy type
 - {{< label comparator-rank-selection >}}: Rank selection of the label-based comparators
@@ -18,12 +19,20 @@ subtitle: "CCC-RISE resolves cellular communication across conditions at single-
 
 **{{< label alad-cohort >}}.
 CCC-RISE factor evaluation in the ALAD cohort.** ({{< panel alad-cohort cohort >}}) Schematic of the ALAD cohort data\ [@doi:10.1016/j.healun.2024.02.007].
-({{< panel alad-cohort cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and IQR (band) over 10 seeded SVD starts per rank.
+({{< panel alad-cohort cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median and IQR over 10 seeded SVD starts per rank.
 ({{< panel alad-cohort factors genes >}}) RISE factor matrices representing component loadings of conditions and genes; each component normalized to its largest absolute loading.
 ({{< panel alad-cohort rise-fms >}}) RISE gene factor and ({{< panel alad-cohort cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45).
 Each replicate's components were matched to the reported fit by Hungarian matching.
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 ({{< panel alad-cohort permutation-fraction >}}) Fraction of each LR pair's (n = 570) condition by sender by receiver entries exceeding a null of within-sample cell permutations at p < 0.05 (one-sided empirical test).
+
+![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
+
+**{{< label ccc-scoring >}}.
+ALAD components across communication scoring methods.** ({{< panel ccc-scoring factor-match.1 factor-match.2 >}}) Mean absolute cosine similarity between CPD components derived using the expression-product score and each alternate scoring method, comparing ({{< panel ccc-scoring factor-match.1 >}}) condition and LR pair modes and ({{< panel ccc-scoring factor-match.2 >}}) sender and receiver eigen-state modes.
+Components were Hungarian-matched between scoring methods.
+({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
+LR pairs shown are the union of each score's top 3.
 
 ![](figures/figureS_ibd_rank_selection/figureS_ibd_rank_selection.svg){width="6.5in"}
 
@@ -31,11 +40,11 @@ Boxes show the median and IQR and whiskers show the most extreme values within 1
 CCC-RISE rank selection and RISE factor matrices in the IBD cohort.** ({{< panel ibd-rank-selection cohort >}}) Schematic of the IBD cohort data\ [@doi:10.1038/s41588-026-02634-7].
 ({{< panel ibd-rank-selection rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± SD over 10 repeats per rank.
 ({{< panel ibd-rank-selection bicv-test >}}) BiCV test R^2^X from ({{< panel ibd-rank-selection rise-rank-selection >}}) on its own magnified axis.
-({{< panel ibd-rank-selection cp-r2x-starts >}}) CPD fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
-({{< panel ibd-rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each start (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey).
+({{< panel ibd-rank-selection cp-r2x-starts >}}) CPD fit R^2^X across ranks: the median and range over 10 seeded SVD starts per rank.
+({{< panel ibd-rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each start (points), colored by whether the start reaches the solution most starts reach at its rank or another solution.
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
-({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
-({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and IQR (band) over the starts.
+({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach and each other solution, colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
+({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median and IQR over the starts.
 ({{< panel ibd-rank-selection factors genes >}}) RISE factor matrices at the selected rank representing component loadings of conditions and genes.
 ({{< panel ibd-rank-selection eigenstate-heatmap >}}) RISE cell-type--eigen-state associations derived from RISE projection matrices: mean RISE projection of each cell type's cells onto each eigen-state.
 
@@ -57,18 +66,14 @@ Values at the top of each cell type are Kruskal--Wallis q-values across the thre
 
 **{{< label comparator-rank-selection >}}.
 Rank selection of the label-based comparators.**
-Dashed lines mark each cohort's chosen rank.
 PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato.
-({{< panel comparator-rank-selection pb-fit-coarse >}}, {{< panel comparator-rank-selection pb-fit-fine >}}) PB fit R^2^X across ranks, over 10 seeded SVD starts per rank.
-Lines show the median and bands the range over starts.
+({{< panel comparator-rank-selection pb-fit-coarse >}}, {{< panel comparator-rank-selection pb-fit-fine >}}) PB fit R^2^X across ranks: the median and range over 10 seeded SVD starts per rank.
 ({{< panel comparator-rank-selection pb-collinearity-coarse >}}, {{< panel comparator-rank-selection pb-collinearity-fine >}}) Largest absolute cosine between the LR pair factors of any two PB components, over the same starts.
 Median and range, as in ({{< panel comparator-rank-selection pb-fit-coarse >}}, {{< panel comparator-rank-selection pb-fit-fine >}}).
 ({{< panel comparator-rank-selection pb-minima-coarse >}}, {{< panel comparator-rank-selection pb-minima-fine >}}) Share of a rank's PB starts that reach its most common solution.
 Starts are counted as one solution when their FMS is at least 0.95.
-({{< panel comparator-rank-selection tc2c-elbow-coarse >}}, {{< panel comparator-rank-selection tc2c-elbow-fine >}}) TC2C normalized reconstruction error across ranks, over 10 random starts per rank.
-Lines show the mean and bands the range.
-({{< panel comparator-rank-selection stac-shares-coarse >}}, {{< panel comparator-rank-selection stac-shares-fine >}}) STAC eigenvalue share of each component of each mode's unfolding.
-The dashed line marks the 1% cutoff.
+({{< panel comparator-rank-selection tc2c-elbow-coarse >}}, {{< panel comparator-rank-selection tc2c-elbow-fine >}}) TC2C normalized reconstruction error across ranks: the mean and range over 10 random starts per rank.
+({{< panel comparator-rank-selection stac-shares-coarse >}}, {{< panel comparator-rank-selection stac-shares-fine >}}) STAC eigenvalue share of each component of each mode's unfolding, with STAC's 1% cutoff.
 Cores are given as condition by LR pair by sender by receiver.
 
 ![](figures/figureS_comparator_missed/figureS_comparator_missed.svg){width="6.5in"}
@@ -84,10 +89,9 @@ The CCC-RISE column shows each LR pair's largest such value in any CCC-RISE comp
 
 **{{< label comparator-single-cell >}}.
 Single-cell comparison of CCC-RISE populations.** ({{< panel comparator-single-cell alad-weights >}}) ALAD and ({{< panel comparator-single-cell ibd-weights >}}) IBD per-cell sender weight against receiver weight on each CCC-RISE component, each relative to its largest value (ALAD, n = 51,273 cells; IBD, n = 634,534 cells).
-Dashed lines mark the 0.3 cutoff (τ) that defines each component's sender, receiver, and both populations.
-({{< panel comparator-single-cell alad-tau >}}) ALAD and ({{< panel comparator-single-cell ibd-tau >}}) IBD fraction of NICHES+ cells in each sender (solid) and receiver (dotted) population, minus the fraction predicted by cell type as in {{< fig 5 niches-fraction >}}, across cutoffs τ from 0.1 to 0.6.
+A cutoff of τ = 0.3 on each weight defines each component's sender, receiver, and both populations.
+({{< panel comparator-single-cell alad-tau >}}) ALAD and ({{< panel comparator-single-cell ibd-tau >}}) IBD fraction of NICHES+ cells in each sender and receiver population, minus the fraction predicted by cell type as in {{< fig 5 niches-fraction >}}, across cutoffs τ from 0.1 to 0.6.
 A population is drawn only when it has at least 10 cells.
-The grey line marks the 0.3 cutoff used throughout, and the dashed line marks no difference.
 ({{< panel comparator-single-cell scriabin-seeds >}}) Agreement between random seeds in ALAD, measured as the mean best-match Jaccard index between two seeds' LR sets.
 Scriabin's LR sets are its interaction programs that pass its significance test, whereas CCC-RISE's are its components' top LR pairs.
 Each point is a pair of seeds, and bars mark medians.

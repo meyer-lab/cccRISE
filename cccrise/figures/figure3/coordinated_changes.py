@@ -72,6 +72,8 @@ BASELINES = {  # label, color
 AXES = ("square", "square")
 MARK_SIZE = style.FONT_SIZE_LABEL
 MARK_HEADROOM = 0.22  # above the highest whisker, for its mark
+TICK_ROTATION = 30  # degrees: shallow, so the labels take little height
+TICK_NAMES = {"Other associated": "Other assoc."}  # shortened on the axis only
 
 
 def plot(axs):
@@ -156,8 +158,8 @@ def plot_lr_covariation(
     common.reference_line(ax, 0)
     ax.set_xticks(
         range(1, len(groups) + 1),
-        list(groups),
-        rotation=45,
+        [TICK_NAMES.get(g, g) for g in groups],
+        rotation=TICK_ROTATION,
         ha="right",
         rotation_mode="anchor",
     )

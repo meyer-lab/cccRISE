@@ -10,7 +10,8 @@ Only the `TOP_LR_FRACTION` of LR pairs with the largest such loading on any
 component are shown, plus each component's top pairs, which are outlined and
 labeled: those with |loading| at least 0.4 x the component's largest, the
 rule `nichenet` picks its tested ligands by (`validation.nichenet.top_pairs`),
-here over every LR pair rather than only those NicheNet can score.
+here over every LR pair rather than only those NicheNet can score; Figure 2
+labels only those at `FIGURE_REL_CUTOFF` x or more.
 Conditions are grouped by ALAD status, then six-month outcome
 (`common.condition_strips`), and within a group, like LR pairs, ordered by
 their most heavily loaded component, then by that loading."""
@@ -37,10 +38,21 @@ EIGENSTATE_TICKS = (1, 5, 10, 15)
 TOP_LR_FRACTION = 0.15
 AXES = ("slim", "slim", "slim", "square")
 REL_CUTOFF = 0.4  # percent of a components top-weighted ligand above which LR pairs should be labeled
+# Figure 2's labels: fewer than the NicheNet rule's, so the labels stay legible
+FIGURE_REL_CUTOFF = 0.7
+# Labeled whatever their loading: {1-based component: LR pairs}
+FIGURE_FORCED_LABELS: dict[int, tuple[str, ...]] = {6: ("BTC^EGFR&ERBB2",)}
 
 
 def plot(axs):
-    draw(axs, DATASET, condition_obs(), common.CONDITION_STRIPS)
+    draw(
+        axs,
+        DATASET,
+        condition_obs(),
+        common.CONDITION_STRIPS,
+        rel_cutoff=FIGURE_REL_CUTOFF,
+        forced_labels=FIGURE_FORCED_LABELS,
+    )
 
 
 def draw(
@@ -51,11 +63,15 @@ def draw(
     eigenstate_ticks: Sequence[int] = EIGENSTATE_TICKS,
     top_lr_fraction: float = TOP_LR_FRACTION,
     compact: bool = False,
+    rel_cutoff: float = REL_CUTOFF,
+    forced_labels: dict[int, tuple[str, ...]] | None = None,
 ):
     """`dataset`'s CP factor matrices on `axs` (one per mode), conditions
     grouped by their `groups` (obs indexed by condition) under `strips`
     (`common.condition_strips`), the eigenstate axes ticked at
-    `eigenstate_ticks` and the `top_lr_fraction` of LR pairs shown. With
+    `eigenstate_ticks` and the `top_lr_fraction` of LR pairs shown, those at
+    `rel_cutoff` of their component's largest loading or more labeled, as are
+    `forced_labels` ({1-based component: LR pairs}). With
     `compact`, the strips are named at brackets instead of a legend and each
     LR label is placed clear of every outlined cell and other label, the
     colorbar right of any that has to sit past the matrix."""
@@ -65,7 +81,9 @@ def draw(
         loadings = loadings / np.abs(loadings).max(axis=0)
         labeled = {}
         if key == "D":
-            rows, labeled = _shown_lr_pairs(adata, loadings, top_lr_fraction)
+            rows, labeled = _shown_lr_pairs(
+                adata, loadings, top_lr_fraction, rel_cutoff, forced_labels
+            )
             _source_data(key, adata, loadings, rows)
             loadings = loadings[rows]
             ylabel = f"Top {top_lr_fraction:.0%} LR pair"
@@ -119,13 +137,18 @@ def _source_data(key: str, adata, loadings, shown=None) -> None:
 
 
 def _shown_lr_pairs(
-    adata, loadings, top_lr_fraction: float
+    adata, loadings, top_lr_fraction: float, rel_cutoff: float, forced: dict | None
 ) -> tuple[np.ndarray, dict[int, tuple]]:
     """Rows of D shown (the top `top_lr_fraction` by largest normalized
-    loading, plus the top pairs), and {shown row: (0-based component, pair
-    name)} for the top pairs."""
+    loading, plus the top pairs and the `forced` ones), and {shown row:
+    (0-based component, pair name)} for those labeled pairs."""
     names = pd.Series(np.asarray(adata.uns["lr_pairs"]).astype(str))
-    top = _top_pairs(adata.uns["D"], names)
+    top = _top_pairs(adata.uns["D"], names, rel_cutoff)
+    top |= {
+        int(names.index[names == pair][0]): c
+        for c, pairs in (forced or {}).items()
+        for pair in pairs
+    }
     strongest = np.abs(loadings).max(axis=1)
     n_top = round(top_lr_fraction * len(loadings))
     rows = np.union1d(np.argsort(-strongest)[:n_top], list(top))
@@ -133,7 +156,7 @@ def _shown_lr_pairs(
     return rows, {shown[r]: (c - 1, names[r].replace("^", "–")) for r, c in top.items()}
 
 
-def _top_pairs(D, names: pd.Series) -> dict[int, int]:
+def _top_pairs(D, names: pd.Series, rel_cutoff: float) -> dict[int, int]:
     """{row of D: 1-based component} of each component's top pairs: NicheNet's
     relative-loading rule over every LR pair, not only those NicheNet can
     score."""
@@ -142,7 +165,7 @@ def _top_pairs(D, names: pd.Series) -> dict[int, int]:
     return {
         int(row): c
         for c in range(1, np.shape(D)[1] + 1)
-        for row in top_pairs(D, lr_pairs, c, ligands, rel_cutoff=REL_CUTOFF)
+        for row in top_pairs(D, lr_pairs, c, ligands, rel_cutoff=rel_cutoff)
     }
 
 

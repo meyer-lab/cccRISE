@@ -11,6 +11,7 @@ from collections.abc import Callable
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.legend import Legend
 from matplotlib.lines import Line2D
 from matplotlib.typing import LegendLocType
 
@@ -120,8 +121,8 @@ def finish_ranks(ax: plt.Axes, top: int) -> None:
     rank_ticks(ax)
 
 
-def _key(ax: plt.Axes, handles: list, loc: LegendLocType, ncol: int = 1) -> None:
-    ax.legend(
+def _key(ax: plt.Axes, handles: list, loc: LegendLocType, ncol: int = 1) -> Legend:
+    return ax.legend(
         handles=handles,
         loc=loc,
         ncol=ncol,
@@ -133,15 +134,23 @@ def _key(ax: plt.Axes, handles: list, loc: LegendLocType, ncol: int = 1) -> None
 
 
 def cohort_key(ax: plt.Axes, loc: LegendLocType) -> None:
-    """The cohorts' colors, inside `ax` at `loc`."""
-    _key(
+    """`mark_chosen`'s dashes, heading the cohorts' colors, on a half-opaque key
+    inside `ax` at `loc`."""
+    chosen = Line2D(
+        [], [], color=style.COLORS["reference"], ls="--", label="Chosen\nrank"
+    )
+    key = _key(
         ax,
-        [
+        [chosen]
+        + [
             Line2D([], [], color=DATASET_COLORS[d], label=name)
             for d, name in DATASET_LABELS.items()
         ],
         loc,
     )
+    # Half-opaque over the chosen ranks' dashes
+    key.set_frame_on(True)
+    key.get_frame().set(facecolor="white", edgecolor="none", alpha=0.5)
 
 
 def kneedle_key(ax: plt.Axes, loc: LegendLocType) -> None:
@@ -315,7 +324,17 @@ def stac_shares(axs, labelling: str) -> None:
         cores.append(
             Line2D([], [], color="0.3", ls=STAC_LINES[dataset], label=f"{name} {kept}")
         )
-    common.reference_line(ax, methods.STACCATO_VAREXP / 100)
+    cutoff = methods.STACCATO_VAREXP / 100
+    common.reference_line(ax, cutoff)
+    ax.text(
+        STAC_COMPONENTS,
+        cutoff,
+        f"{methods.STACCATO_VAREXP:g}%",
+        ha="right",
+        va="bottom",
+        fontsize=style.FONT_SIZE_DENSE,
+        color=style.COLORS["reference"],
+    )
     ax.set_yscale("log")
     ax.set_ylim(bottom=STAC_FLOOR)
     ax.set_xlabel("Component")

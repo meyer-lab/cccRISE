@@ -147,21 +147,6 @@ Analyses plotted (with provenance in the zip's README):
 ## Figure EV3
 
 Analyses plotted (with provenance in the zip's README):
-- `cccrise/data/validation_results/alt_score_methods/expression_gmean/bal_alad_factors.nc`
-- `cccrise/data/validation_results/alt_score_methods/expression_hill/bal_alad_factors.nc`
-- `cccrise/data/validation_results/alt_score_methods/expression_mean/bal_alad_factors.nc`
-- `cccrise/data/validation_results/alt_score_methods/expression_product/bal_alad_factors.nc`
-
-| Panel | Script | Status | Files | Size (KB) | Description |
-|---|---|---|---|---|---|
-| EV3A | cccrise/figures/figure3/figureS_ccc_scoring/factor_match.py | data | factor_match_scores.csv | 0.6 | Match of each alternate communication score's CPD components to the default score's: their mean \|cosine\| over the condition and LR pair modes, and the absolute cosine of the paired components' sender and receiver loadings. |
-| EV3B | cccrise/figures/figure3/figureS_ccc_scoring/factor_match.py | data | factor_match_cosines.csv | 1.3 | Match of each alternate communication score's CPD components to the default score's: their mean \|cosine\| over the condition and LR pair modes, and the absolute cosine of the paired components' sender and receiver loadings. |
-| EV3C | cccrise/figures/figure3/figureS_ccc_scoring/interpretation.py | data | loading_lr_by_score.csv | 5.7 | Each default-score CPD component's paired component under each communication score: its top LR pair loadings and its mean sender and receiver weight per cell type, each divided by its largest absolute value. |
-| EV3D | cccrise/figures/figure3/figureS_ccc_scoring/interpretation.py | data | loading_celltype_by_score.csv; weight_cells_by_score.csv | 33279.5 | Each default-score CPD component's paired component under each communication score: its top LR pair loadings and its mean sender and receiver weight per cell type, each divided by its largest absolute value. |
-
-## Figure EV4
-
-Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/factors/ibd_ti_factors.nc`
 - `cccrise/data/ibd_programs/cell_map_ibd.parquet`
 - `cccrise/data/ibd_programs/eigenstate_celltypes_ibd.parquet`
@@ -170,19 +155,19 @@ Analyses plotted (with provenance in the zip's README):
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| EV4A | cccrise/figures/figure4/figureS_ibd_hormone_axes/eigenstate_loadings.py | data | program_eigenstate_loadings.csv | 0.3 | Sender and receiver loadings of IBD CPD components 3 and 4 on each RISE eigen-state either loads on. |
-| EV4B | cccrise/figures/figure4/figureS_ibd_hormone_axes/eigenstate_association.py | data | eigenstate_category_association.csv | 3.6 | Mean RISE projection of each cell category onto each eigen-state IBD CPD components 3 and 4 load on. |
-| EV4C | cccrise/figures/figure4/figureS_ibd_hormone_axes/eigenstate_composition.py | data | eigenstate_category_share.csv | 0.9 | Share of each eigen-state's squared RISE projection carried by each cell category, for the eigen-states IBD CPD components 3 and 4 load on. |
-| EV4D | cccrise/figures/figure4/figureS_ibd_hormone_axes/cell_map.py | data | all_cell_map.csv | 5819.3 | PaCMAP of the RISE projections of all EE, EC, and tuft cells and a random sample of other cells, colored by lineage. |
-| EV4E | cccrise/figures/figure4/figureS_ibd_hormone_axes/type_map.py | data | zoomed_cell_types.csv | 212.4 | Annotated cell type of each EE, EC, and tuft cell on the EE/EC/tuft PaCMAP. |
-| EV4F | cccrise/figures/figure4/figureS_ibd_hormone_axes/receiver_map_c3.py | data | c3_receiver_weight_on_map.csv | 284.5 | Each EE, EC, and tuft cell's receiver weight on CPD component 3, on the EE/EC/tuft PaCMAP. |
-| EV4G | cccrise/figures/figure4/figureS_ibd_hormone_axes/receiver_map_c4.py | data | c4_receiver_weight_on_map.csv | 277.8 | Each EE, EC, and tuft cell's receiver weight on CPD component 4, on the EE/EC/tuft PaCMAP. |
-| EV4H-I | cccrise/figures/figure4/figureS_ibd_hormone_axes/receptor_maps.py | data | receptor_expression_on_map.csv | 256.1 | Normalized NPY1R and GLP1R expression of EE, EC, and tuft cells on the EE/EC/tuft PaCMAP. |
-| EV4J | cccrise/figures/figure4/figureS_ibd_hormone_axes/magnitude_hist.py | data | hormone_magnitude_distribution.csv | 33.0 | Distribution of the magnitude of EE cells' sender weights on CPD components 3 and 4, each divided by its largest value among EE cells, with the magnitude floor. |
-| EV4K | cccrise/figures/figure4/figureS_ibd_hormone_axes/marker_floor_sweep.py | data | hormone_extreme_markers_by_floor.csv | 16.0 | Mann-Whitney Benjamini-Hochberg q of each hormone state marker gene between villus-like and crypt-like EE cells across magnitude floors. |
-| EV4L | cccrise/figures/figure4/figureS_ibd_hormone_axes/extreme_share.py | data | hormone_extreme_share_by_biopsy.csv; hormone_extreme_share_kruskal.csv; hormone_extreme_share_pairwise.csv | 22.9 | Share of each IBD biopsy's EE cells in each hormone state (villus-like: mostly component 3; crypt-like: mostly component 4; mixed; or below the magnitude floor) by inflammation status, with Kruskal-Wallis and pairwise Mann- Whitney tests (Benjamini-Hochberg q). |
+| EV3A | cccrise/figures/figure4/figureS_ibd_hormone_axes/eigenstate_loadings.py | data | program_eigenstate_loadings.csv | 0.3 | Sender and receiver loadings of IBD CPD components 3 and 4 on each RISE eigen-state either loads on. |
+| EV3B | cccrise/figures/figure4/figureS_ibd_hormone_axes/eigenstate_association.py | data | eigenstate_category_association.csv | 3.6 | Mean RISE projection of each cell category onto each eigen-state IBD CPD components 3 and 4 load on. |
+| EV3C | cccrise/figures/figure4/figureS_ibd_hormone_axes/eigenstate_composition.py | data | eigenstate_category_share.csv | 0.9 | Share of each eigen-state's squared RISE projection carried by each cell category, for the eigen-states IBD CPD components 3 and 4 load on. |
+| EV3D | cccrise/figures/figure4/figureS_ibd_hormone_axes/cell_map.py | data | all_cell_map.csv | 5819.3 | PaCMAP of the RISE projections of all EE, EC, and tuft cells and a random sample of other cells, colored by lineage. |
+| EV3E | cccrise/figures/figure4/figureS_ibd_hormone_axes/type_map.py | data | zoomed_cell_types.csv | 212.4 | Annotated cell type of each EE, EC, and tuft cell on the EE/EC/tuft PaCMAP. |
+| EV3F | cccrise/figures/figure4/figureS_ibd_hormone_axes/receiver_map_c3.py | data | c3_receiver_weight_on_map.csv | 284.5 | Each EE, EC, and tuft cell's receiver weight on CPD component 3, on the EE/EC/tuft PaCMAP. |
+| EV3G | cccrise/figures/figure4/figureS_ibd_hormone_axes/receiver_map_c4.py | data | c4_receiver_weight_on_map.csv | 277.8 | Each EE, EC, and tuft cell's receiver weight on CPD component 4, on the EE/EC/tuft PaCMAP. |
+| EV3H-I | cccrise/figures/figure4/figureS_ibd_hormone_axes/receptor_maps.py | data | receptor_expression_on_map.csv | 256.1 | Normalized NPY1R and GLP1R expression of EE, EC, and tuft cells on the EE/EC/tuft PaCMAP. |
+| EV3J | cccrise/figures/figure4/figureS_ibd_hormone_axes/magnitude_hist.py | data | hormone_magnitude_distribution.csv | 33.0 | Distribution of the magnitude of EE cells' sender weights on CPD components 3 and 4, each divided by its largest value among EE cells, with the magnitude floor. |
+| EV3K | cccrise/figures/figure4/figureS_ibd_hormone_axes/marker_floor_sweep.py | data | hormone_extreme_markers_by_floor.csv | 16.0 | Mann-Whitney Benjamini-Hochberg q of each hormone state marker gene between villus-like and crypt-like EE cells across magnitude floors. |
+| EV3L | cccrise/figures/figure4/figureS_ibd_hormone_axes/extreme_share.py | data | hormone_extreme_share_by_biopsy.csv; hormone_extreme_share_kruskal.csv; hormone_extreme_share_pairwise.csv | 22.9 | Share of each IBD biopsy's EE cells in each hormone state (villus-like: mostly component 3; crypt-like: mostly component 4; mixed; or below the magnitude floor) by inflammation status, with Kruskal-Wallis and pairwise Mann- Whitney tests (Benjamini-Hochberg q). |
 
-## Figure EV5
+## Figure EV4
 
 Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/comparators/scores/containment_ibd.parquet`
@@ -194,10 +179,10 @@ Analyses plotted (with provenance in the zip's README):
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| EV5A | cccrise/figures/figure5/figureS_comparator_split/ibd_best.py | data | program_best_column_cos2.csv | 1.4 | Each IBD CCC-RISE component's largest cos^2 with a single LR column of each comparator fit. |
-| EV5B | cccrise/figures/figure5/figureS_comparator_split/ibd_containment.py | data | component_containment_in_comparator_span.csv | 1.4 | Containment of each IBD CCC-RISE component's LR pair loadings in each comparator fit's LR column span. |
-| EV5C | cccrise/figures/figure5/figureS_comparator_split/depth.py | data | depth_tracking_by_component.csv | 7.7 | Absolute Spearman correlation between each component's sample loadings and median genes detected per cell, for every method's fit, ALAD and IBD cohorts, with Kruskal-Wallis tests across fits and one-sided Mann-Whitney tests per fit. |
-| EV5D | cccrise/figures/figure5/figureS_comparator_split/alad_covariation.py | data | component_and_column_covariation_alad.csv; covariation_null_draw_means_alad.csv | 5908.3 | Mean pairwise rank correlation across samples of the carrying LR pairs of every ALAD CCC-RISE component and every PB and STAC LR column, against random and expression-matched null draws. |
+| EV4A | cccrise/figures/figure5/figureS_comparator_split/ibd_best.py | data | program_best_column_cos2.csv | 1.4 | Each IBD CCC-RISE component's largest cos^2 with a single LR column of each comparator fit. |
+| EV4B | cccrise/figures/figure5/figureS_comparator_split/ibd_containment.py | data | component_containment_in_comparator_span.csv | 1.4 | Containment of each IBD CCC-RISE component's LR pair loadings in each comparator fit's LR column span. |
+| EV4C | cccrise/figures/figure5/figureS_comparator_split/depth.py | data | depth_tracking_by_component.csv | 7.7 | Absolute Spearman correlation between each component's sample loadings and median genes detected per cell, for every method's fit, ALAD and IBD cohorts, with Kruskal-Wallis tests across fits and one-sided Mann-Whitney tests per fit. |
+| EV4D | cccrise/figures/figure5/figureS_comparator_split/alad_covariation.py | data | component_and_column_covariation_alad.csv; covariation_null_draw_means_alad.csv | 5908.3 | Mean pairwise rank correlation across samples of the carrying LR pairs of every ALAD CCC-RISE component and every PB and STAC LR column, against random and expression-matched null draws. |
 
 ## Appendix Figure S1
 
@@ -220,6 +205,21 @@ Analyses plotted (with provenance in the zip's README):
 ## Appendix Figure S2
 
 Analyses plotted (with provenance in the zip's README):
+- `cccrise/data/validation_results/alt_score_methods/expression_gmean/bal_alad_factors.nc`
+- `cccrise/data/validation_results/alt_score_methods/expression_hill/bal_alad_factors.nc`
+- `cccrise/data/validation_results/alt_score_methods/expression_mean/bal_alad_factors.nc`
+- `cccrise/data/validation_results/alt_score_methods/expression_product/bal_alad_factors.nc`
+
+| Panel | Script | Status | Files | Size (KB) | Description |
+|---|---|---|---|---|---|
+| S2A | cccrise/figures/figure3/figureS_ccc_scoring/factor_match.py | data | factor_match_scores.csv | 0.6 | Match of each alternate communication score's CPD components to the default score's: their mean \|cosine\| over the condition and LR pair modes, and the absolute cosine of the paired components' sender and receiver loadings. |
+| S2B | cccrise/figures/figure3/figureS_ccc_scoring/factor_match.py | data | factor_match_cosines.csv | 1.3 | Match of each alternate communication score's CPD components to the default score's: their mean \|cosine\| over the condition and LR pair modes, and the absolute cosine of the paired components' sender and receiver loadings. |
+| S2C | cccrise/figures/figure3/figureS_ccc_scoring/interpretation.py | data | loading_lr_by_score.csv | 5.7 | Each default-score CPD component's paired component under each communication score: its top LR pair loadings and its mean sender and receiver weight per cell type, each divided by its largest absolute value. |
+| S2D | cccrise/figures/figure3/figureS_ccc_scoring/interpretation.py | data | loading_celltype_by_score.csv; weight_cells_by_score.csv | 33279.5 | Each default-score CPD component's paired component under each communication score: its top LR pair loadings and its mean sender and receiver weight per cell type, each divided by its largest absolute value. |
+
+## Appendix Figure S3
+
+Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/factors/ibd_ti_factors.nc`
 - `cccrise/data/ibd_programs/eigenstate_celltypes_ibd.parquet`
 - `cccrise/data/rank_selection_results/cpd_rank_ibd.parquet`
@@ -230,17 +230,17 @@ Analyses plotted (with provenance in the zip's README):
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S2A | cccrise/figures/figure4/figureS_ibd_rank_selection/cohort.py | data | cohort_sample_sizes.csv | 0.1 | Number of donors, terminal ileum biopsies, and cells per inflammation status, shown in the IBD cohort schematic. |
-| S2B-C | cccrise/figures/figure4/figureS_ibd_rank_selection/rise_rank_selection.py; cccrise/figures/figure4/figureS_ibd_rank_selection/bicv_test.py | data | bicv_r2x_by_rise_rank.csv | 13.8 | R2X of the full-data RISE fit and of the bi-cross-validation training and held-out blocks at each RISE rank, IBD cohort. Held-out bi-cross-validation R2X at each RISE rank, IBD cohort. |
-| S2D | cccrise/figures/figure4/figureS_ibd_rank_selection/cp_r2x_starts.py | data | cpd_fit_r2x_by_rank_and_start.csv | 2.6 | Fit R2X of each seeded SVD start at each CPD rank, IBD cohort. |
-| S2E,G | cccrise/figures/figure4/figureS_ibd_rank_selection/cp_collinearity.py; cccrise/figures/figure4/figureS_ibd_rank_selection/mode_collinearity.py | data | cpd_lr_pair_max_cosine_by_rank.csv | 2.5 | Largest absolute cosine between the LR pair loadings of two components, per CPD rank and seeded SVD start, IBD cohort. Median over seeded SVD starts of the largest absolute cosine between two components in each CPD mode, per rank, IBD cohort. |
-| S2F | cccrise/figures/figure4/figureS_ibd_rank_selection/cp_minima.py | data | cpd_minima_by_rank.csv | 1.6 | Number of seeded SVD starts reaching each distinct minimum at each CPD rank, IBD cohort. |
-| S2G | cccrise/figures/figure4/figureS_ibd_rank_selection/mode_collinearity.py | data | cpd_max_cosine_by_rank.csv | 5.9 | Median over seeded SVD starts of the largest absolute cosine between two components in each CPD mode, per rank, IBD cohort. |
-| S2H | cccrise/figures/figure4/figureS_ibd_rank_selection/factors.py | data | rise_condition_factor.csv | 413.7 | RISE condition factor of the IBD fit: each biopsy's loading on each RISE component, divided by the component's largest absolute loading, biopsies grouped by inflammation status. |
-| S2I | cccrise/figures/figure4/figureS_ibd_rank_selection/genes.py | data | rise_gene_factor_top_genes.csv | 3063.9 | RISE gene factor of the IBD fit for the 10% of genes with the largest scaled absolute loading on any component, each loading divided by the component's largest absolute loading. |
-| S2J | cccrise/figures/figure4/figureS_ibd_rank_selection/eigenstate_heatmap.py | data | eigenstate_category_association_all.csv | 35.4 | Mean RISE projection of each cell category onto every RISE eigen-state, IBD cohort. |
+| S3A | cccrise/figures/figure4/figureS_ibd_rank_selection/cohort.py | data | cohort_sample_sizes.csv | 0.1 | Number of donors, terminal ileum biopsies, and cells per inflammation status, shown in the IBD cohort schematic. |
+| S3B-C | cccrise/figures/figure4/figureS_ibd_rank_selection/rise_rank_selection.py; cccrise/figures/figure4/figureS_ibd_rank_selection/bicv_test.py | data | bicv_r2x_by_rise_rank.csv | 13.8 | R2X of the full-data RISE fit and of the bi-cross-validation training and held-out blocks at each RISE rank, IBD cohort. Held-out bi-cross-validation R2X at each RISE rank, IBD cohort. |
+| S3D | cccrise/figures/figure4/figureS_ibd_rank_selection/cp_r2x_starts.py | data | cpd_fit_r2x_by_rank_and_start.csv | 2.6 | Fit R2X of each seeded SVD start at each CPD rank, IBD cohort. |
+| S3E,G | cccrise/figures/figure4/figureS_ibd_rank_selection/cp_collinearity.py; cccrise/figures/figure4/figureS_ibd_rank_selection/mode_collinearity.py | data | cpd_lr_pair_max_cosine_by_rank.csv | 2.5 | Largest absolute cosine between the LR pair loadings of two components, per CPD rank and seeded SVD start, IBD cohort. Median over seeded SVD starts of the largest absolute cosine between two components in each CPD mode, per rank, IBD cohort. |
+| S3F | cccrise/figures/figure4/figureS_ibd_rank_selection/cp_minima.py | data | cpd_minima_by_rank.csv | 1.6 | Number of seeded SVD starts reaching each distinct minimum at each CPD rank, IBD cohort. |
+| S3G | cccrise/figures/figure4/figureS_ibd_rank_selection/mode_collinearity.py | data | cpd_max_cosine_by_rank.csv | 5.9 | Median over seeded SVD starts of the largest absolute cosine between two components in each CPD mode, per rank, IBD cohort. |
+| S3H | cccrise/figures/figure4/figureS_ibd_rank_selection/factors.py | data | rise_condition_factor.csv | 413.7 | RISE condition factor of the IBD fit: each biopsy's loading on each RISE component, divided by the component's largest absolute loading, biopsies grouped by inflammation status. |
+| S3I | cccrise/figures/figure4/figureS_ibd_rank_selection/genes.py | data | rise_gene_factor_top_genes.csv | 3063.9 | RISE gene factor of the IBD fit for the 10% of genes with the largest scaled absolute loading on any component, each loading divided by the component's largest absolute loading. |
+| S3J | cccrise/figures/figure4/figureS_ibd_rank_selection/eigenstate_heatmap.py | data | eigenstate_category_association_all.csv | 35.4 | Mean RISE projection of each cell category onto every RISE eigen-state, IBD cohort. |
 
-## Appendix Figure S3
+## Appendix Figure S4
 
 Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/factors/ibd_ti_factors.nc`
@@ -249,12 +249,12 @@ Analyses plotted (with provenance in the zip's README):
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S3A | cccrise/figures/figure4/figureS_ibd_associations/cp_associations.py | data | anova_component_inflammation.csv; component_values_by_biopsy.csv | 59.2 | Eta-squared of one-way ANOVAs of each IBD CPD component's read-depth- corrected biopsy loadings against each inflammation-status association, Benjamini-Hochberg corrected across all associations and components. |
-| S3B-C | cccrise/figures/figure4/figureS_ibd_associations/status_loadings.py | data | cpd_loadings_by_status.csv; cpd_status_anova.csv | 18.0 | Read-depth-corrected biopsy loadings of IBD CPD components 3 and 4 per inflammation-status group, with one-way ANOVA statistics. |
-| S3D | cccrise/figures/figure4/figureS_ibd_associations/lineage_proportions.py | data | lineage_fraction_kruskal.csv; lineage_fraction_per_biopsy.csv | 113.6 | Fraction of each IBD biopsy's cells in each lineage by inflammation status, with each lineage's Kruskal-Wallis q (Benjamini-Hochberg). |
-| S3E | cccrise/figures/figure4/figureS_ibd_associations/covariates.py | data | anova_covariate_inflammation.csv; covariate_values_by_biopsy.csv | 53.6 | Eta-squared of one-way ANOVAs of each biopsy covariate against each inflammation-status association, with uncorrected p. |
+| S4A | cccrise/figures/figure4/figureS_ibd_associations/cp_associations.py | data | anova_component_inflammation.csv; component_values_by_biopsy.csv | 59.2 | Eta-squared of one-way ANOVAs of each IBD CPD component's read-depth- corrected biopsy loadings against each inflammation-status association, Benjamini-Hochberg corrected across all associations and components. |
+| S4B-C | cccrise/figures/figure4/figureS_ibd_associations/status_loadings.py | data | cpd_loadings_by_status.csv; cpd_status_anova.csv | 18.0 | Read-depth-corrected biopsy loadings of IBD CPD components 3 and 4 per inflammation-status group, with one-way ANOVA statistics. |
+| S4D | cccrise/figures/figure4/figureS_ibd_associations/lineage_proportions.py | data | lineage_fraction_kruskal.csv; lineage_fraction_per_biopsy.csv | 113.6 | Fraction of each IBD biopsy's cells in each lineage by inflammation status, with each lineage's Kruskal-Wallis q (Benjamini-Hochberg). |
+| S4E | cccrise/figures/figure4/figureS_ibd_associations/covariates.py | data | anova_covariate_inflammation.csv; covariate_values_by_biopsy.csv | 53.6 | Eta-squared of one-way ANOVAs of each biopsy covariate against each inflammation-status association, with uncorrected p. |
 
-## Appendix Figure S4
+## Appendix Figure S5
 
 Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/comparators/rank_selection/pb_rank_alad_coarse.parquet`
@@ -278,18 +278,18 @@ Analyses plotted (with provenance in the zip's README):
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S4A | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_fit_coarse.py | data | pb_fit_r2x_by_rank_and_start.csv | 4.6 | Fit R2X of pseudobulk CPD for each seeded SVD start at each rank, ALAD and IBD cohorts, coarse cell type labels. |
-| S4B | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_collinearity_coarse.py | data | pb_lr_max_cosine_by_rank_and_start.csv | 4.5 | Largest absolute cosine between the LR pair loadings of two pseudobulk CPD components, per rank and seeded SVD start, ALAD and IBD cohorts, coarse cell type labels. |
-| S4C | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_minima_coarse.py | data | pb_minima_by_rank.csv | 2.5 | Share of pseudobulk CPD's seeded SVD starts reaching its most common minimum at each rank, ALAD and IBD cohorts, coarse cell type labels. |
-| S4D | cccrise/figures/figure5/figureS_comparator_rank_selection/tc2c_elbow_coarse.py | data | tc2c_error_by_rank_and_run.csv | 20.2 | Normalized error of Tensor-cell2cell for each random start at each rank, ALAD and IBD cohorts, coarse cell type labels. |
-| S4E | cccrise/figures/figure5/figureS_comparator_rank_selection/stac_shares_coarse.py | data | staccato_eigenvalue_shares.csv | 75.6 | STACCato eigenvalue shares of each tensor mode, ALAD and IBD cohorts, coarse cell type labels. |
-| S4F | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_fit_fine.py | data | pb_fit_r2x_by_rank_and_start.csv | 9.3 | Fit R2X of pseudobulk CPD for each seeded SVD start at each rank, ALAD and IBD cohorts, fine cell type labels. |
-| S4G | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_collinearity_fine.py | data | pb_lr_max_cosine_by_rank_and_start.csv | 9.1 | Largest absolute cosine between the LR pair loadings of two pseudobulk CPD components, per rank and seeded SVD start, ALAD and IBD cohorts, fine cell type labels. |
-| S4H | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_minima_fine.py | data | pb_minima_by_rank.csv | 8.5 | Share of pseudobulk CPD's seeded SVD starts reaching its most common minimum at each rank, ALAD and IBD cohorts, fine cell type labels. |
-| S4I | cccrise/figures/figure5/figureS_comparator_rank_selection/tc2c_elbow_fine.py | data | tc2c_error_by_rank_and_run.csv | 15.1 | Normalized error of Tensor-cell2cell for each random start at each rank, ALAD and IBD cohorts, fine cell type labels. |
-| S4J | cccrise/figures/figure5/figureS_comparator_rank_selection/stac_shares_fine.py | data | staccato_eigenvalue_shares.csv | 83.7 | STACCato eigenvalue shares of each tensor mode, ALAD and IBD cohorts, fine cell type labels. |
+| S5A | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_fit_coarse.py | data | pb_fit_r2x_by_rank_and_start.csv | 4.6 | Fit R2X of pseudobulk CPD for each seeded SVD start at each rank, ALAD and IBD cohorts, coarse cell type labels. |
+| S5B | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_collinearity_coarse.py | data | pb_lr_max_cosine_by_rank_and_start.csv | 4.5 | Largest absolute cosine between the LR pair loadings of two pseudobulk CPD components, per rank and seeded SVD start, ALAD and IBD cohorts, coarse cell type labels. |
+| S5C | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_minima_coarse.py | data | pb_minima_by_rank.csv | 2.5 | Share of pseudobulk CPD's seeded SVD starts reaching its most common minimum at each rank, ALAD and IBD cohorts, coarse cell type labels. |
+| S5D | cccrise/figures/figure5/figureS_comparator_rank_selection/tc2c_elbow_coarse.py | data | tc2c_error_by_rank_and_run.csv | 20.2 | Normalized error of Tensor-cell2cell for each random start at each rank, ALAD and IBD cohorts, coarse cell type labels. |
+| S5E | cccrise/figures/figure5/figureS_comparator_rank_selection/stac_shares_coarse.py | data | staccato_eigenvalue_shares.csv | 75.6 | STACCato eigenvalue shares of each tensor mode, ALAD and IBD cohorts, coarse cell type labels. |
+| S5F | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_fit_fine.py | data | pb_fit_r2x_by_rank_and_start.csv | 9.3 | Fit R2X of pseudobulk CPD for each seeded SVD start at each rank, ALAD and IBD cohorts, fine cell type labels. |
+| S5G | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_collinearity_fine.py | data | pb_lr_max_cosine_by_rank_and_start.csv | 9.1 | Largest absolute cosine between the LR pair loadings of two pseudobulk CPD components, per rank and seeded SVD start, ALAD and IBD cohorts, fine cell type labels. |
+| S5H | cccrise/figures/figure5/figureS_comparator_rank_selection/pb_minima_fine.py | data | pb_minima_by_rank.csv | 8.5 | Share of pseudobulk CPD's seeded SVD starts reaching its most common minimum at each rank, ALAD and IBD cohorts, fine cell type labels. |
+| S5I | cccrise/figures/figure5/figureS_comparator_rank_selection/tc2c_elbow_fine.py | data | tc2c_error_by_rank_and_run.csv | 15.1 | Normalized error of Tensor-cell2cell for each random start at each rank, ALAD and IBD cohorts, fine cell type labels. |
+| S5J | cccrise/figures/figure5/figureS_comparator_rank_selection/stac_shares_fine.py | data | staccato_eigenvalue_shares.csv | 83.7 | STACCato eigenvalue shares of each tensor mode, ALAD and IBD cohorts, fine cell type labels. |
 
-## Appendix Figure S5
+## Appendix Figure S6
 
 Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/comparators/scores/associations_alad.parquet`
@@ -299,12 +299,12 @@ Analyses plotted (with provenance in the zip's README):
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S5A | cccrise/figures/figure5/figureS_comparator_missed/alad_share.py | data | comparator_column_share_alad.csv | 1.7 | Each PB and STAC LR column's largest share of its squared loading on one ALAD CCC-RISE component's carrying LR pairs (`_missed.share`), each fit's block named beside it for both cohorts' panels. |
-| S5B | cccrise/figures/figure5/figureS_comparator_missed/ibd_share.py | data | comparator_column_share_ibd.csv | 1.1 | Each PB and STAC LR column's largest share of its squared loading on one IBD CCC-RISE component's carrying LR pairs (`_missed.share`). |
-| S5C | cccrise/figures/figure5/figureS_comparator_missed/alad_contents.py | data | left_over_column_contents_alad.csv | 0.5 | Carrying LR pairs of the ALAD PB and STAC columns under half share that are associated (q < 0.05) and carry a signalling pair CCC-RISE lacks, beside each pair's largest loading in any CCC-RISE component (`_missed.boxed_contents`). |
-| S5D | cccrise/figures/figure5/figureS_comparator_missed/ibd_contents.py | data | left_over_column_contents_ibd.csv | 1.3 | Carrying LR pairs of the IBD PB and STAC columns under half share that are associated (q < 0.05) and carry a signalling pair CCC-RISE lacks, beside each pair's largest loading in any CCC-RISE component (`_missed.boxed_contents`). |
+| S6A | cccrise/figures/figure5/figureS_comparator_missed/alad_share.py | data | comparator_column_share_alad.csv | 1.7 | Each PB and STAC LR column's largest share of its squared loading on one ALAD CCC-RISE component's carrying LR pairs (`_missed.share`), each fit's block named beside it for both cohorts' panels. |
+| S6B | cccrise/figures/figure5/figureS_comparator_missed/ibd_share.py | data | comparator_column_share_ibd.csv | 1.1 | Each PB and STAC LR column's largest share of its squared loading on one IBD CCC-RISE component's carrying LR pairs (`_missed.share`). |
+| S6C | cccrise/figures/figure5/figureS_comparator_missed/alad_contents.py | data | left_over_column_contents_alad.csv | 0.5 | Carrying LR pairs of the ALAD PB and STAC columns under half share that are associated (q < 0.05) and carry a signalling pair CCC-RISE lacks, beside each pair's largest loading in any CCC-RISE component (`_missed.boxed_contents`). |
+| S6D | cccrise/figures/figure5/figureS_comparator_missed/ibd_contents.py | data | left_over_column_contents_ibd.csv | 1.3 | Carrying LR pairs of the IBD PB and STAC columns under half share that are associated (q < 0.05) and carry a signalling pair CCC-RISE lacks, beside each pair's largest loading in any CCC-RISE component (`_missed.boxed_contents`). |
 
-## Appendix Figure S6
+## Appendix Figure S7
 
 Analyses plotted (with provenance in the zip's README):
 - `cccrise/data/niches/cells_alad.parquet`
@@ -315,8 +315,8 @@ Analyses plotted (with provenance in the zip's README):
 
 | Panel | Script | Status | Files | Size (KB) | Description |
 |---|---|---|---|---|---|
-| S6A | cccrise/figures/figure5/figureS_comparator_single_cell/alad_weights.py | data | cell_weights_groups_alad.csv | 10526.6 | Each cell's sender against receiver weight on each ALAD CPD component, each divided by its largest value, colored by sender and receiver population. |
-| S6B | cccrise/figures/figure5/figureS_comparator_single_cell/ibd_weights.py | data | cell_weights_groups_ibd.csv | 182511.8 | Each cell's sender against receiver weight on each IBD CPD component, each divided by its largest value, colored by sender and receiver population. |
-| S6C | cccrise/figures/figure5/figureS_comparator_single_cell/alad_tau.py | data | niches_positive_fraction_by_tau_alad.csv | 5.8 | Fraction of each ALAD CCC-RISE population's cells with a non-zero NICHES score minus the fraction expected from cell type, across population cutoffs (tau). |
-| S6D | cccrise/figures/figure5/figureS_comparator_single_cell/ibd_tau.py | data | niches_positive_fraction_by_tau_ibd.csv | 6.1 | Fraction of each IBD CCC-RISE population's cells with a non-zero NICHES score minus the fraction expected from cell type, across population cutoffs (tau). |
-| S6E | cccrise/figures/figure5/figureS_comparator_single_cell/scriabin_seeds.py | data | seed_to_seed_lr_set_jaccard.csv | 4.4 | Seed-to-seed best-match Jaccard of Scriabin's significant interaction programs and of CCC-RISE components' carrying LR pairs, ALAD cohort. |
+| S7A | cccrise/figures/figure5/figureS_comparator_single_cell/alad_weights.py | data | cell_weights_groups_alad.csv | 10526.6 | Each cell's sender against receiver weight on each ALAD CPD component, each divided by its largest value, colored by sender and receiver population. |
+| S7B | cccrise/figures/figure5/figureS_comparator_single_cell/ibd_weights.py | data | cell_weights_groups_ibd.csv | 182511.8 | Each cell's sender against receiver weight on each IBD CPD component, each divided by its largest value, colored by sender and receiver population. |
+| S7C | cccrise/figures/figure5/figureS_comparator_single_cell/alad_tau.py | data | niches_positive_fraction_by_tau_alad.csv | 5.8 | Fraction of each ALAD CCC-RISE population's cells with a non-zero NICHES score minus the fraction expected from cell type, across population cutoffs (tau). |
+| S7D | cccrise/figures/figure5/figureS_comparator_single_cell/ibd_tau.py | data | niches_positive_fraction_by_tau_ibd.csv | 6.1 | Fraction of each IBD CCC-RISE population's cells with a non-zero NICHES score minus the fraction expected from cell type, across population cutoffs (tau). |
+| S7E | cccrise/figures/figure5/figureS_comparator_single_cell/scriabin_seeds.py | data | seed_to_seed_lr_set_jaccard.csv | 4.4 | Seed-to-seed best-match Jaccard of Scriabin's significant interaction programs and of CCC-RISE components' carrying LR pairs, ALAD cohort. |

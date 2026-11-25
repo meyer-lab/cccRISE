@@ -34,10 +34,9 @@ TOP_ROOM = 2 * style.MM
 
 def makeFigure():
     fig = common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
-    # C, laid out short enough to fit row 1, raised beside A and B's method
-    # names and a little right; E and F lower, their cohort bars further under
-    # their letters
-    common.nudge_panel(fig, "cos2_pairs", right=2 * style.MM, grow=6.5 * style.MM)
+    # C a little right; E and F lower, their cohort bars further under their
+    # letters
+    common.nudge_panel(fig, "cos2_pairs", right=2 * style.MM)
     for panel in ("labels_alad", "labels_ibd"):
         common.nudge_panel(fig, panel, up=-3.5 * style.MM)
     common.grow_figure(fig, top=TOP_ROOM)

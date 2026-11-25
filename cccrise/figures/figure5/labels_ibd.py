@@ -12,7 +12,9 @@ AXES = ("fig5_labels",)
 
 
 def plot(axs):
-    coarse_to_fine(axs[0], "ibd", method_names=False, key=False)  # E keys both
+    coarse_to_fine(
+        axs[0], "ibd", method_names=False, key="widths"
+    )  # E keys the dot sizes
 
 
 def makeFigure():

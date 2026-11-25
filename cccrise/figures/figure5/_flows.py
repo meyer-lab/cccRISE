@@ -26,12 +26,14 @@ BELOW = "0.82"
 BAR = "0.45"
 BAND_ALPHA = 0.55
 NODE_WIDTH = 1.6
-TEXT_SIZE = style.FONT_SIZE_DENSE - 0.7
+TEXT_SIZE = style.FONT_SIZE_LABEL
 STATES = ("Villus-like", "Mixed", "Crypt-like")
 #: Bands of `flow_ibd`, on axes of (0, 81) x (0, 52).
 TOP, SPAN, STATE_GAP, RECEIVER_GAP = 47.0, 40.6, 0.8, 2.5
 #: Length of `flow_alad`'s bars and where its horseshoes start.
 LENGTH, BAR_X = 15.0, 12
+#: `flow_ibd`'s STAC block, shifted left: clear of CCC-RISE's state names
+STAC_X = -2.0
 
 
 def _node(ax, x: float, y0: float, y1: float, color) -> None:
@@ -252,16 +254,17 @@ def _receiver_cells() -> pd.DataFrame:
 
 
 def _stac_hormones(ax, pyy, gcg, side: float, tuft: float) -> None:
-    _title(ax, 15, 50.5, "STAC F 5, 4")
-    _node(ax, 5, TOP - SPAN, TOP, BAR)
-    _node(ax, 25, TOP - side, TOP, BAR)
-    _node(ax, 25, tuft - side, tuft, BAR)
+    x = STAC_X
+    _title(ax, x + 15, 50.5, "STAC F 5, 4")
+    _node(ax, x + 5, TOP - SPAN, TOP, BAR)
+    _node(ax, x + 25, TOP - side, TOP, BAR)
+    _node(ax, x + 25, tuft - side, tuft, BAR)
     ee = (TOP - SPAN, TOP)
-    _band(ax, 5.8, ee, 24.2, (TOP - side, TOP), pyy)
-    _band(ax, 5.8, ee, 24.2, (tuft - side, tuft), gcg)
-    _note(ax, 2.6, TOP - SPAN / 2, "EE", rotation=90)
-    _note(ax, 27.6, TOP - side / 2, "EC", ha="left")
-    _note(ax, 27.6, tuft - side / 2, "Tuft", ha="left")
+    _band(ax, x + 5.8, ee, x + 24.2, (TOP - side, TOP), pyy)
+    _band(ax, x + 5.8, ee, x + 24.2, (tuft - side, tuft), gcg)
+    _note(ax, x + 2.6, TOP - SPAN / 2, "EE", rotation=90)
+    _note(ax, x + 27.6, TOP - side / 2, "EC", ha="left")
+    _note(ax, x + 27.6, tuft - side / 2, "Tuft", ha="left")
 
 
 def _receiver_bars(ax, receivers, side: float, tuft: float) -> dict:

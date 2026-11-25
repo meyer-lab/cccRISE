@@ -19,7 +19,7 @@ HEAT = style.CMAPS["weight"]
 BLOCK_GAP = 0.3
 LOADING_LABEL = "|Loading| / max |loading|"
 COS2_LABEL = "Best-match cos$^2$"
-LABEL_SIZE = style.FONT_SIZE_DENSE - 0.7
+LABEL_SIZE = style.FONT_SIZE_LABEL
 
 
 def colorbar_under(
@@ -31,8 +31,8 @@ def colorbar_under(
         ScalarMappable(Normalize(0, 1), HEAT), cax=cax, orientation="horizontal"
     )
     cax.set_xticks([0, 1])
-    cax.tick_params(labelsize=style.FONT_SIZE_DENSE, length=1.5, pad=1)
-    cax.set_xlabel(label, fontsize=style.FONT_SIZE_DENSE, labelpad=0)
+    cax.tick_params(labelsize=style.FONT_SIZE_LABEL, length=1.5, pad=1)
+    cax.set_xlabel(label, fontsize=style.FONT_SIZE_LABEL, labelpad=0)
 
 
 #: `colorbar_below`'s thickness (mm)
@@ -50,8 +50,8 @@ def colorbar_right(ax, label: str) -> None:
     cax = ax.inset_axes((1 + RIGHT_GAP / width, 0, RIGHT_THICKNESS / width, 1))
     bar = ax.figure.colorbar(ScalarMappable(Normalize(0, 1), HEAT), cax=cax)
     bar.set_ticks([0, 1])
-    cax.tick_params(labelsize=style.FONT_SIZE_DENSE, length=1.5, pad=1)
-    bar.set_label(label, fontsize=style.FONT_SIZE_DENSE, labelpad=1)
+    cax.tick_params(labelsize=style.FONT_SIZE_LABEL, length=1.5, pad=1)
+    bar.set_label(label, fontsize=style.FONT_SIZE_LABEL, labelpad=1)
 
 
 #: `colorbar_below`: the bar's gap under a grid whose ticks are on top (mm)
@@ -79,7 +79,7 @@ def _cell(ax, x: float, y: float, value: float, text: bool = False) -> None:
             f"{value:.2f}",
             ha="center",
             va="center",
-            fontsize=style.FONT_SIZE_DENSE - 1,
+            fontsize=style.FONT_SIZE_LABEL,
             color="white" if value > 0.6 else style.COLORS["ink"],
         )
 
@@ -137,7 +137,7 @@ def fit_grid(ax, grids: dict[str, pd.DataFrame], bars: bool = True) -> None:
     ax.set(xlim=(0, len(FITS)), ylim=(y - 0.5, 0))
     ax.set_yticks(ticks, names)
     ax.set_xticks(np.arange(len(FITS)) + 0.5, [lab[0].upper() for _, lab in FITS])
-    ax.tick_params(labelsize=style.FONT_SIZE_DENSE)
+    ax.tick_params(labelsize=style.FONT_SIZE_LABEL)
     # labellings on top, under their method's name
     ax.tick_params(axis="x", top=True, labeltop=True, bottom=False, labelbottom=False)
     _clean_heatmap(ax)
@@ -149,7 +149,7 @@ def fit_grid(ax, grids: dict[str, pd.DataFrame], bars: bool = True) -> None:
             textcoords="offset points",
             ha="center",
             va="bottom",
-            fontsize=style.FONT_SIZE_DENSE,
+            fontsize=style.FONT_SIZE_LABEL,
         )
     if bars:
         _cohort_labels(ax, centers)
@@ -184,14 +184,14 @@ def _pair_axes(ax, rows, spans, end: float, ticks, heads) -> None:
     ax.set_yticks(
         [y + 0.5 for *_, y in rows],
         [pair.replace("^", "–").replace("&", "+") for _, pair, _ in rows],
-        fontsize=style.FONT_SIZE_DENSE - 0.7,
+        fontsize=style.FONT_SIZE_LABEL,
     )
-    ax.set_xticks(positions, labels, fontsize=style.FONT_SIZE_DENSE - 0.7)
+    ax.set_xticks(positions, labels, fontsize=style.FONT_SIZE_LABEL)
     for i in set(bold):
         ax.get_xticklabels()[i].set_fontweight("bold")
     _clean_heatmap(ax)
     for name, x in heads.items():
-        ax.text(x, -0.4, name, ha="center", va="bottom", fontsize=style.FONT_SIZE_DENSE)
+        ax.text(x, -0.4, name, ha="center", va="bottom", fontsize=style.FONT_SIZE_LABEL)
     for program, (y0, y1) in spans.items():
         ax.plot(
             [end + 0.25] * 2, [y0 + 0.1, y1 - 0.1], color="0.5", lw=0.6, clip_on=False
@@ -201,6 +201,6 @@ def _pair_axes(ax, rows, spans, end: float, ticks, heads) -> None:
             (y0 + y1) / 2,
             f"C{program}",
             va="center",
-            fontsize=style.FONT_SIZE_DENSE,
+            fontsize=style.FONT_SIZE_LABEL,
             clip_on=False,
         )

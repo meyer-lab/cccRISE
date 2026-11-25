@@ -120,7 +120,7 @@ def plot(axs):
         f"{result.statistic:.2f} (p {result.pvalue:.2g}); the dashed line is the "
         "axes' anti-diagonal, a perfect negative ordering (rho = -1).",
     )
-    ax.plot(
+    (perfect,) = ax.plot(
         [0, 1],
         [1, 0],
         transform=ax.transAxes,
@@ -128,6 +128,7 @@ def plot(axs):
         ls=style.LINE_STYLE_REFERENCE,
         lw=0.6,
         zorder=1,
+        label="ρ = −1",
     )
     for _, r in t.iterrows():
         ax.scatter(
@@ -151,7 +152,7 @@ def plot(axs):
     ax.set_xticks([1, 2, 5, 10], ["1", "2", "5", "10"])
     ax.minorticks_off()
     ax.legend(
-        handles=cohort_handles(),
+        handles=[*cohort_handles(), perfect],
         loc="lower left",
         fontsize=LABEL_SIZE,
         handletextpad=0.2,

@@ -76,6 +76,6 @@ def cohort_bar(ax, dataset: str, left: float, right: float) -> None:
         DATASET_LABELS[dataset],
         ha="center",
         va="bottom",
-        fontsize=style.FONT_SIZE_DENSE,
+        fontsize=style.FONT_SIZE_LABEL,
         transform=ax.get_xaxis_transform(),
     )

@@ -43,10 +43,14 @@ def plot(axs):
         )
     handles, labels = ax.get_legend_handles_labels()
     by_section = dict(zip(labels, handles, strict=True))
-    for y in (-np.log10(common.SIG_ALPHA), np.log10(common.SIG_ALPHA)):
-        common.reference_line(ax, y)
+    q_line, _ = (
+        common.reference_line(ax, y, label=f"q = {common.SIG_ALPHA}")
+        for y in (-np.log10(common.SIG_ALPHA), np.log10(common.SIG_ALPHA))
+    )
     common.reference_line(ax, 0, linestyle="-")
-    common.reference_line(ax, S.GROUP_TAU, horizontal=False, linestyle=":")
+    tau_line = common.reference_line(
+        ax, S.GROUP_TAU, horizontal=False, linestyle=":", label=f"τ = {S.GROUP_TAU}"
+    )
     ax.set(
         xlabel="Group cutoff (τ)",
         ylabel="−log$_{10}$ q, signed\n(+ sender, − receiver)",
@@ -58,6 +62,8 @@ def plot(axs):
         handlelength=1.0,
         columnspacing=0.8,
     )
+    ax.add_artist(ax.get_legend())
+    common.legend(ax, "right", handles=[tau_line, q_line], handlelength=1.5)
     common.source_data(
         "tau_sweep_sender_vs_receiver",
         sweep,

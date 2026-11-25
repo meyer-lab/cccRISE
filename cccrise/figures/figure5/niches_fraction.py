@@ -22,11 +22,11 @@ LEADERS = [
     ("ibd", 3, "sender", "C3 S", (0.3, 0.93)),
     ("ibd", 4, "sender", "C4 S", (0.06, 0.84)),
     ("ibd", 3, "receiver", "C3 R", (0.6, 0.47)),
-    ("ibd", 4, "receiver", "C4 R", (0.41, 0.22)),
+    ("ibd", 4, "receiver", "C4 R", (0.34, 0.12)),
     ("alad", 6, "receiver", "C6 R", (0.13, 0.45)),
     ("alad", 6, "sender", "C6 S", (0.1, 0.025)),
 ]
-TEXT_SIZE = style.FONT_SIZE_DENSE - 1
+TEXT_SIZE = style.FONT_SIZE_LABEL
 PREDICTED = "Cell type predicted"
 
 
