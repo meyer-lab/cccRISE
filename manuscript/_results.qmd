@@ -56,7 +56,7 @@ Labeled are epithelium-specific genes selected from those differentially express
 ({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} across group cutoffs τ, signed positive when higher in sender cells.
 
 We first applied CCC-RISE to a dataset in which conditions represented individual bronchoalveolar lavage (BAL) samples from lung transplant patients with and without acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007; @alad-geo].
-ALAD is an acute decline in lung function following transplantation that either resolves or progresses to chronic lung allograft dysfunction (CLAD), a predominantly irreversible loss of graft function that leads to re-transplantation or death\ [@doi:10.1016/j.healun.2026.01.006; @doi:10.1016/j.healun.2019.03.009].
+ALAD is an acute decline in lung function following transplantation that either resolves or progresses to chronic lung allograft dysfunction (CLAD), a predominantly irreversible loss of graft function that leads to re-transplantation or death\ [@doi:10.1016/j.trre.2021.100626; @doi:10.1016/j.healun.2026.01.006; @doi:10.1016/j.healun.2019.03.009].
 Each sample was defined by status at the time of collection (control/no ALAD, ALAD-recovered, and ALAD-declined) and by status six months after collection (stable, ALAD-recovered, declined to CLAD, or died) ({{< tbl alad-outcome-groups >}}).
 We used this cohort to establish how a CCC-RISE model is selected, validated, and interpreted.
 

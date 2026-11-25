@@ -5,14 +5,14 @@ This communication is mediated by a diverse molecular ensemble, including ligand
 CCC occurs when extracellular ligand--receptor (LR) interactions trigger intracellular cascades, often altering gene expression to regulate cellular behavior and function.
 By mapping how diseases disrupt these pathways, we can characterize the specific cellular coordination that drives and defines pathological states.
 
-To better understand how cells interact, researchers have developed computational techniques to infer CCC from transcriptomic data\ [@doi:10.1038/s41576-020-00292-x; @doi:10.1038/s41467-022-30755-0].
+To better understand how cells interact, researchers have developed computational techniques to infer CCC from transcriptomic data\ [@doi:10.1038/s41576-020-00292-x; @doi:10.1038/s41467-022-30755-0; @doi:10.1016/j.semcancer.2023.07.001].
 These methods typically leverage single-cell RNA sequencing (scRNA-seq) to identify the co-expression of LR gene pairs documented in curated databases\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1093/bioinformatics/btab036].
 This approach hinges on the central assumption that transcript levels accurately reflect functional protein abundance, which in turn determines the probability of interaction.
 While this is a simplified premise, it allows for the high-throughput screening of thousands of possible interactions, providing a data-driven way to prioritize specific communication events for experimental validation\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1093/bib/bbaf280].
 Initial tools such as CellPhoneDB and CellChat score communication based on ligand and receptor expression, then use statistical tests to compare those scores against a null distribution formed by permuting cell labels\ [@doi:10.1038/s41596-020-0292-x; @doi:10.1038/s41467-021-21246-9].
 Originally designed to merely detect the presence of active signaling pathways, these foundational tools have since inspired a diverse analytical toolkit capable of addressing increasingly complex biological questions\ [@doi:10.1038/s41576-023-00685-8].
 
-A critical objective of CCC analysis is to understand how cellular interactions shift across biological contexts, such as disease states, developmental stages, treatment groups, or individual patients\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.celrep.2018.10.047; @doi:10.1016/j.cell.2019.06.029; @doi:10.1186/1471-2105-12-19].
+A critical objective of CCC analysis is to understand how cellular interactions shift across biological contexts, such as disease states, developmental stages, treatment groups, or individual patients\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.celrep.2018.10.047; @doi:10.1016/j.cell.2019.06.029; @doi:10.1073/pnas.1918937117; @doi:10.1186/1471-2105-12-19].
 By mapping alterations in LR activity, researchers can pinpoint the communication programs that drive phenotypic outcomes and identify potential therapeutic targets.
 The most direct strategies, such as scDiffCom, CrossTalkeR, and NATMI, contrast two conditions at a time to identify interactions associated with disease or phenotypic changes\ [@doi:10.1038/s43587-023-00514-x; @doi:10.1093/bioinformatics/btab370; @doi:10.1038/s41467-020-18873-z].
 However, pairwise comparison tools ignore variation between individual samples and miss communication patterns that span many conditions.
