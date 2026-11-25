@@ -18,11 +18,12 @@ subtitle: "CCC-RISE resolves cellular communication across conditions at single-
 
 **{{< label alad-cohort >}}.
 CCC-RISE factor evaluation in the ALAD cohort.** ({{< panel alad-cohort cohort >}}) Schematic of the ALAD cohort data\ [@doi:10.1016/j.healun.2024.02.007].
-({{< panel alad-cohort factors genes >}}) RISE factor matrices representing component loadings of conditions and genes; each component normalized to its largest absolute loading.
 ({{< panel alad-cohort cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and IQR (band) over 10 seeded SVD starts per rank.
-({{< panel alad-cohort rise-fms >}}) RISE gene factor and ({{< panel alad-cohort cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45), and the aggregate FMS (mean over components) of each jackknife and re-initialization (n = 100) replicate.
-Each replicate's components were matched to the reference's by Hungarian matching.
-Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+({{< panel alad-cohort factors genes >}}) RISE factor matrices representing component loadings of conditions and genes; each component normalized to its largest absolute loading.
+({{< panel alad-cohort rise-fms >}}) RISE gene factor and ({{< panel alad-cohort cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45).
+Each replicate's components were matched to the reported fit by Hungarian matching.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
+({{< panel alad-cohort permutation-fraction >}}) Fraction of each LR pair's (n = 570) condition by sender by receiver entries exceeding a null of within-sample cell permutations at p < 0.05 (one-sided empirical test).
 
 ![](figures/figureS_ibd_rank_selection/figureS_ibd_rank_selection.svg){width="6.5in"}
 
@@ -32,7 +33,7 @@ CCC-RISE rank selection and RISE factor matrices in the IBD cohort.** ({{< panel
 ({{< panel ibd-rank-selection bicv-test >}}) BiCV test R^2^X from ({{< panel ibd-rank-selection rise-rank-selection >}}) on its own magnified axis.
 ({{< panel ibd-rank-selection cp-r2x-starts >}}) CPD fit R^2^X across ranks: the median (line) and range (band) over 10 seeded SVD starts per rank.
 ({{< panel ibd-rank-selection cp-collinearity >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each start (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey).
-Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 ({{< panel ibd-rank-selection cp-minima >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at FMS ≥ 0.95): the solution most starts reach (blue, bottom) and each other solution (grey), colored as in ({{< panel ibd-rank-selection cp-collinearity >}}).
 ({{< panel ibd-rank-selection mode-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median (line and points) and IQR (band) over the starts.
 ({{< panel ibd-rank-selection factors genes >}}) RISE factor matrices at the selected rank representing component loadings of conditions and genes.
@@ -47,7 +48,7 @@ Association of CPD components and covariates with IBD biopsy type.** ({{< panel 
 Violins show the distribution of loadings, points show individual biopsies, and ticks mark the median.
 One-way ANOVA F and η^2^, with p BH corrected across all categorizations and components.
 ({{< panel ibd-associations lineage-proportions >}}) Fraction of each biopsy's cells in each coarsely annotated cell type for healthy, CD uninflamed, and CD inflamed samples, on a square-root scale.
-Boxes show the median and IQR and whiskers show the most extreme values within 1.5-times the IQR.
+Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 Values at the top of each cell type are Kruskal--Wallis q-values across the three groups, BH corrected across cell types.
 ({{< panel ibd-associations covariates >}}) One-way ANOVA η^2^ of each biopsy covariate and coarse cell-type fraction against each biopsy categorization, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
@@ -83,7 +84,7 @@ The CCC-RISE column shows each LR pair's largest such value in any CCC-RISE comp
 
 **{{< label comparator-single-cell >}}.
 Single-cell comparison of CCC-RISE populations.** ({{< panel comparator-single-cell alad-weights >}}) ALAD and ({{< panel comparator-single-cell ibd-weights >}}) IBD per-cell sender weight against receiver weight on each CCC-RISE component, each relative to its largest value (ALAD, n = 51,273 cells; IBD, n = 634,534 cells).
-Dashed lines mark the 0.3 cutoff (τ) that defines each component's sender, receiver and both populations.
+Dashed lines mark the 0.3 cutoff (τ) that defines each component's sender, receiver, and both populations.
 ({{< panel comparator-single-cell alad-tau >}}) ALAD and ({{< panel comparator-single-cell ibd-tau >}}) IBD fraction of NICHES+ cells in each sender (solid) and receiver (dotted) population, minus the fraction predicted by cell type as in {{< fig 5 niches-fraction >}}, across cutoffs τ from 0.1 to 0.6.
 A population is drawn only when it has at least 10 cells.
 The grey line marks the 0.3 cutoff used throughout, and the dashed line marks no difference.

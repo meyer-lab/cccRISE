@@ -1243,7 +1243,7 @@ def plot_minima_table(
         ax.plot(rank, 1.07 * n_starts, clip_on=False, **RANK_MARKER)
     ax.set_ylim(0, n_starts)
     ax.set_yticks(np.arange(0, n_starts + 1, n_starts // 2))
-    ax.set_ylabel("Starts")
+    ax.set_ylabel("Number of starts\nreaching each solution")
     rank_axis(ax, table["Rank"].unique())
 
 

@@ -1,22 +1,22 @@
-"""Cell-permutation significance of each LR pair's communication scores: the
-distribution over LR pairs of the fraction of condition x eigen-state entries
-with p < 0.05, and each LR pair's mean observed score against its mean
-permutation-null score."""
+"""Cell-permutation significance of each LR pair's communication scores:
+each LR pair's mean observed score against its mean permutation-null score."""
 
-import numpy as np
-import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
 
 from ...runners.datasets import DATASETS, VALIDATION_DIR
 from .. import common, style
 
 DATASET = "alad"
-AXES = ("square", "square")
+AXES = ("square",)
 COLORBAR_TICKS = (0, common.SIG_ALPHA, 0.1, 0.2)
-KEY_HEADROOM = 1.25  # y-limit over the histogram's, for the legend
 
 
 def plot(axs):
+    _observed_vs_null(lr_significance(), axs[0])
+
+
+def lr_significance():
+    """Each LR pair's permutation significance summary, saved as source data."""
     spec = DATASETS[DATASET]
     lr_table = common.load_runner_output(
         spec.significance_lr_filename(), VALIDATION_DIR
@@ -32,35 +32,7 @@ def plot(axs):
         "and null mean and SD are deposited separately "
         "(significance_entries_alad.nc).",
     )
-    _calibration(lr_table, axs[0])
-    _observed_vs_null(lr_table, axs[1])
-
-
-def _calibration(lr_table, ax):
-    """Fraction of significant condition x eigenstate entries per LR pair,
-    against the 5% expected under the null."""
-    fractions = lr_table["FractionSignificant_p05"].dropna()
-    x_max = max(0.25, np.ceil(fractions.max() * 20) / 20)
-    sns.histplot(
-        fractions,
-        kde=True,
-        ax=ax,
-        color=style.COLORS["emphasis"],
-        bins=np.linspace(0, x_max, 26),
-        stat="density",
-        alpha=0.4,
-        edgecolor="white",
-        linewidth=style.LINE_WIDTH_THIN,
-    )
-    null_line = common.reference_line(
-        ax, common.SIG_ALPHA, horizontal=False, label="Permutation null (5%)"
-    )
-    null_line.set_ydata([0, 1 / KEY_HEADROOM])  # stops below the legend
-    ax.set_xlim(0, x_max)
-    ax.set_ylim(top=ax.get_ylim()[1] * KEY_HEADROOM)
-    ax.set_xlabel("Fraction of entries significant\nper LR pair (p < 0.05)")
-    ax.set_ylabel("Density")
-    ax.legend(loc="upper right")
+    return lr_table
 
 
 def _observed_vs_null(lr_table, ax):

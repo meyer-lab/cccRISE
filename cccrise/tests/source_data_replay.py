@@ -648,24 +648,16 @@ def figure_s1(z: Zip) -> dict:
     collinearity = z("S1D", "cpd_lr_pair_max_cosine_by_rank").merge(
         z("S1D", "cpd_max_cosine_by_rank"), on=["Rank", "Start", "Seed"]
     )
-    # Each component's jackknife rows, and each seed refit as one row at its
-    # aggregate FMS (the per-component seed rows aren't drawn or exported)
-    jackknife = (
+    stability = (
         z("S1E", "jackknife_fms_rise_components")
-        .rename(columns={"Model": "Stage"})
+        .rename(
+            columns={
+                "Model": "Stage",
+                "Left-out sample": "LeftOut",
+                "Matched replicate component": "MatchedComponent",
+            }
+        )
         .assign(Axis=_stability.JACKKNIFE_AXIS)
-    )
-    aggregate = z("S1E", "aggregate_fms_rise_by_replicate")
-    seed_rows = (
-        aggregate[aggregate["Axis"] != _stability.JACKKNIFE_AXIS]
-        .rename(columns={"Aggregate FMS": "FMS"})
-        .assign(Stage=jackknife["Stage"].iloc[0], Component=1)
-    )
-    stability = pd.concat([jackknife, seed_rows], ignore_index=True).rename(
-        columns={
-            "Left-out sample": "LeftOut",
-            "Matched replicate component": "MatchedComponent",
-        }
     )
     return (
         {"S1B": manual(condition_factor)}

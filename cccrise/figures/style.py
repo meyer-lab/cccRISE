@@ -145,11 +145,11 @@ PANEL_GAP_MIN = 1.5 * MM
 PANEL_GAP_MAX = 4 * MM
 # Three to a row, spanning "full" at the widest panel gap
 AXIS_SIZE["full_third"] = ((AXIS_SIZE["full"][0] - 2 * PANEL_GAP_MAX) / 3, AXIS_HEIGHT)
-# RISE and CP stability boxes side by side spanning "wide" at the widest panel
-# gap, in proportion to their 20 and 8 box slots
+# RISE and CP stability boxes side by side, CP's 6 at the box pitch of 17
+# spanning "wide"; RISE's narrower, leaving room for a square panel in the row
 _FMS = AXIS_SIZE["wide"][0] - PANEL_GAP_MAX
-AXIS_SIZE["fms_rise"] = (_FMS * 20 / 28, AXIS_HEIGHT)
-AXIS_SIZE["fms_cpd"] = (_FMS * 8 / 28, AXIS_HEIGHT)
+AXIS_SIZE["fms_rise"] = (62 * MM, AXIS_HEIGHT)
+AXIS_SIZE["fms_cpd"] = (_FMS * 6 / 23, AXIS_HEIGHT)
 # A short strip the width of "full", aligned above full panels
 AXIS_SIZE["full_strip"] = (AXIS_SIZE["full"][0], 0.45 * AXIS_HEIGHT)
 ROW_GAP = 1 * MM
@@ -199,7 +199,7 @@ STABILITY_AXIS_COLORS = {
     "jackknife": _PINK,
 }
 STABILITY_AXIS_LABELS = {
-    "seed_only": "Seed only",
+    "seed_only": "Seed refit",
     "jackknife": "Jackknife",
 }
 

@@ -1,6 +1,5 @@
 """Factor match score of each RISE component to the full-cohort fit across
-leave-one-patient-out jackknife replicates, and the mean over components for
-each jackknife and seed refit replicate, ALAD cohort."""
+leave-one-patient-out jackknife replicates, ALAD cohort."""
 
 from ....validation.stability import STAGE_RISE
 from ... import common

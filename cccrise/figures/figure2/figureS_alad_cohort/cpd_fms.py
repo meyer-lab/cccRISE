@@ -1,10 +1,6 @@
 """Factor match score of each CPD component to the full-cohort fit across
-leave-one-patient-out jackknife replicates, and the mean over components for
-each jackknife and seed refit replicate, ALAD cohort.
-
-Per-component CPD stability under leave-one-patient-out jackknifing, and
-aggregate CPD stability under the jackknife and seed refits, on `rise_fms`'s
-FMS axis (labeled there)."""
+leave-one-patient-out jackknife replicates, ALAD cohort, on `rise_fms`'s FMS
+axis (labeled there)."""
 
 from ....validation.stability import STAGE_CPD
 from ... import common
