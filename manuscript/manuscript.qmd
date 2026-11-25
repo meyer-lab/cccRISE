@@ -81,5 +81,3 @@ The authors declare that they have no competing interests.
 ## Lead contact
 
 Further information and requests for resources should be directed to and will be fulfilled by the Lead Contact, Aaron Meyer (ameyer@asmlab.org).
-
-{{< include _ev_figures.qmd >}}
