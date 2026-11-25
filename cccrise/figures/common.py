@@ -22,6 +22,7 @@ import functools
 import importlib
 import itertools
 import shutil
+import subprocess
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -833,10 +834,11 @@ def genFigure():
     uv run cccrise-fbuild 2                      # figures/figure2/figure2.py
     uv run cccrise-fbuild 2 rise_rank_selection  # figures/figure2/rise_rank_selection.py
     uv run cccrise-fbuild 2 --png                # PNG instead of SVG
+    uv run cccrise-fbuild 2 --pdf                # a PDF beside the SVG (`svg_to_pdf`)
     uv run cccrise-fbuild S_alad_cohort        # figures/figure2/figureS_alad_cohort/
     """
     start = time.time()
-    args = [arg for arg in sys.argv[1:] if arg != "--png"]
+    args = [arg for arg in sys.argv[1:] if arg not in ("--png", "--pdf")]
     extension = "png" if "--png" in sys.argv else "svg"
     figure, panel = args[0], (args[1] if len(args) > 1 else None)
 
@@ -849,14 +851,41 @@ def genFigure():
     fig = build_figure(figure, panel)
     output_dir.mkdir(parents=True, exist_ok=True)
     # No bbox_inches="tight": figures are drawn at their final print size.
-    fig.savefig(output_dir / f"{panel or f'figure{figure}'}.{extension}")
+    path = output_dir / f"{panel or f'figure{figure}'}.{extension}"
+    _save(fig, path)
     if panel is None:
-        record_panel_letters(figure, fig)
-        _SOURCE["dir"].mkdir(parents=True, exist_ok=True)
-        (_SOURCE["dir"] / SOURCE_INPUTS).write_text(
-            yaml.safe_dump(sorted(str(p) for p in _SOURCE["inputs"] | LOADED_PATHS))
-        )
+        _record_figure(figure, fig)
     print(f"Figure {' '.join(args)} is done after {time.time() - start:.1f} s.\n")
+
+
+def _save(fig: Figure, path: Path) -> None:
+    """`fig` saved to `path`, and with --pdf, a PDF beside an SVG."""
+    fig.savefig(path)
+    if "--pdf" in sys.argv and path.suffix == ".svg":
+        svg_to_pdf(path)
+
+
+def _record_figure(figure: str, fig: Figure) -> None:
+    """A whole figure's panel letters (`record_panel_letters`) and the inputs
+    its source data came from."""
+    record_panel_letters(figure, fig)
+    _SOURCE["dir"].mkdir(parents=True, exist_ok=True)
+    (_SOURCE["dir"] / SOURCE_INPUTS).write_text(
+        yaml.safe_dump(sorted(str(p) for p in _SOURCE["inputs"] | LOADED_PATHS))
+    )
+
+
+def svg_to_pdf(svg: Path) -> None:
+    """A PDF of `svg` beside it, converted by librsvg (`rsvg-convert`) with its
+    fonts embedded: matplotlib's own PDF lays out math text (R^2, p_adj) with
+    other font metrics than its SVG, up to ~1 mm apart, so the PDF is drawn
+    from the SVG to look the same as it (and as an Illustrator edit of it)."""
+    if shutil.which("rsvg-convert") is None:
+        sys.exit("--pdf needs rsvg-convert (librsvg2-bin / brew install librsvg)")
+    subprocess.run(
+        ["rsvg-convert", "-f", "pdf", "-o", str(svg.with_suffix(".pdf")), str(svg)],
+        check=True,
+    )
 
 
 def record_panel_letters(figure: str, fig: Figure) -> None:
