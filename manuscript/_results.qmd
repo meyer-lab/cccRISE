@@ -32,15 +32,15 @@ CCC-RISE's embeddings and factor matrices thus trace LR signaling programs acros
 
 **CCC-RISE isolates stable, robust communication programs among epithelial subpopulations in ALAD.** ({{< panel 2 rise-rank-selection >}}) RISE R^2^X across ranks of the fit on all data and, in BiCV, of the fit on the training block (BiCV train) and its prediction of the held-out block (BiCV test); mean ± standard deviation (SD) over 10 repeats per rank.
 ({{< panel 2 cp-rank-selection.1 >}}) CPD fit R^2^X and aggregate imputation R^2^X of held-out entries over 10 folds across ranks; mean ± SD over 10 repeated fold splits per rank.
-({{< panel 2 cp-rank-selection.2 >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each of 10 seeded starts per rank (points), colored by whether the start reaches the solution most starts reach at its rank (blue) or another solution (grey); boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5 times the IQR.
-({{< panel 2 cp-rank-selection.3 >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at factor match score (FMS) ≥ 0.95): the solution most starts reach (blue) and each other solution (grey).
+({{< panel 2 cp-rank-selection.2 >}}) Largest absolute cosine between the LR pair factors of any two CPD components across ranks, for each of 10 seeded starts per rank (points), colored by whether the start reaches the solution most starts reach at its rank or another solution; boxes show the median and interquartile range (IQR) and whiskers show the most extreme values within 1.5 times the IQR.
+({{< panel 2 cp-rank-selection.3 >}}) Number of the 10 starts reaching each distinct solution across ranks (starts joined at factor match score (FMS) ≥ 0.95), colored as in ({{< panel 2 cp-rank-selection.2 >}}).
 ({{< panel 2 cp-factor-matrices >}}) CPD factor matrices representing component loadings of conditions, sender/receiver eigen-states, and LR pairs; each component normalized to its largest absolute loading.
-({{< panel 2 aggregate-fms >}}) Aggregate FMS (mean over components) of the RISE and CPD factors for each leave-one-patient-out jackknife (n = 45) and re-initialization (n = 100) replicate (points), with the mean ± SD over replicates (large points and error bars).
+({{< panel 2 aggregate-fms >}}) Aggregate FMS (mean over components) of the RISE and CPD factors for each leave-one-patient-out jackknife (n = 45) and re-initialization (n = 100) replicate (points), with the mean ± SD over replicates.
 Each replicate's components were matched to the reported fit by Hungarian matching.
 ({{< panel 2 permutation-lr-significance >}}) Mean observed against mean permuted communication score per LR pair (n = 570), colored by the fraction of the LR pair's condition by sender by receiver entries exceeding a null of within-sample cell permutations at p < 0.05 (one-sided empirical test).
-({{< panel 2 nichenet >}}) NicheNet target score of each ligand (n = 211) per CPD component on differential expression between the component's top and bottom receiver cells (light boxes; points colored and sized by the ligand's weight in the component), and with the cell labels shuffled (grey boxes, pooled).
+({{< panel 2 nichenet >}}) NicheNet target score of each ligand (n = 211) per CPD component on differential expression between the component's top and bottom receiver cells (points colored and sized by the ligand's weight in the component), and with the cell labels shuffled (pooled).
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
-Values at the top of each component are q-values testing the ligand-weighted mean score against its 1,000 cell-shuffled values (one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components); bold: q < 0.05.
+Values at the top of each component are q-values testing the ligand-weighted mean score against its 1,000 cell-shuffled values (one-sided empirical test, Benjamini--Hochberg (BH) corrected across the six components).
 ({{< panel 2 sender-receiver-strata >}}) Per-cell component 6 sender against receiver weight.
 ({{< panel 2 epithelial-markers >}}) Expression of canonical epithelial subtype markers and top LR pair genes in each component 6 group.
 ({{< panel 2 celltype-composition >}}) Annotated cell-type composition of component 6 sender/receiver groups, using coarse labels defined by Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
@@ -53,7 +53,7 @@ ALAD component 6 sender and receiver cell identities.** ({{< panel cmp5-identity
 ({{< panel cmp5-identity celltype-markers >}}) Expression of canonical respiratory cell-type markers in component 6's sender/receiver groups and all other cells.
 ({{< panel cmp5-identity sender-vs-receiver >}}) Difference in the fraction of cells detecting each gene (non-zero normalized expression) between sender and receiver cells against its Wilcoxon rank-sum q (BH corrected across all genes).
 Labeled are epithelium-specific genes selected from those differentially expressed between the groups.
-({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} across group cutoffs τ, signed positive when higher in sender cells; dotted line: τ = 0.3 used throughout, dashed lines: q = 0.05.
+({{< panel cmp5-identity tau-sweep >}}) Sender versus receiver Wilcoxon rank-sum q of each epithelial subtype marker shown in {{< fig 2 epithelial-markers >}} across group cutoffs τ, signed positive when higher in sender cells.
 
 We first applied CCC-RISE to a lung transplant dataset in which conditions represented individual bronchoalveolar lavage (BAL) samples from lung transplant patients with and without acute lung allograft dysfunction (ALAD) ({{< fig alad-cohort cohort >}})\ [@doi:10.1016/j.healun.2024.02.007; @alad-geo].
 ALAD is an acute decline in lung function following transplantation that either resolves or progresses to chronic lung allograft dysfunction (CLAD), a predominantly irreversible loss of graft function that leads to re-transplantation or death\ [@doi:10.1016/j.trre.2021.100626; @doi:10.1016/j.healun.2022.05.005].
@@ -101,7 +101,7 @@ In sum, label-free interpretation of CCC-RISE factors isolated a well-validated 
 Lines connect samples from the same patient, boxes show the median and IQR, and whiskers show the most extreme values within 1.5 times the IQR.
 Associations were tested by one-way ANOVA with BH correction across all outcomes and components.
 ({{< panel 3 celltype-eigenstates >}}) Mean projection of each annotated cell type's cells onto each RISE eigen-state.
-({{< panel 3 celltype-pacmap.1 >}}) PaCMAP embedding of all cells colored by annotated cell type, drawn in random order; the dashed box marks the lymphocyte cluster.
+({{< panel 3 celltype-pacmap.1 >}}) PaCMAP embedding of all cells colored by annotated cell type, drawn in random order.
 ({{< panel 3 celltype-pacmap.2 >}}) The lymphocyte cluster colored by each cell's projection onto eigen-state 16.
 ({{< panel 3 sender-receiver-scatter >}}) Per-cell CPD component 5 sender against receiver weight, with R^2^ across all cells, colored by each cell's projection onto eigen-state 16.
 ({{< panel 3 lr-loadings >}}) CPD component 5 LR pair loadings against their rank, with the top 10 LR pairs labeled.
@@ -110,7 +110,7 @@ Component 5's top 10 LR pairs and its condition loading association strength are
 ({{< panel 3 coordinated-changes.2 >}}) Spearman correlation across conditions between each pair of component 5's top 10 LR pairs, and between pairs drawn from either random LR pairs, pairs matched in expression to top pairs, or other pairs associated with six-month outcome.
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 \*: q < 0.05 for the mean correlation of the top 10 LR pairs against the mean correlations of each baseline's 2,000 draws; one-sided empirical test, BH corrected across the three baselines.
-({{< panel 3 lr-permutation >}}) Difference in mean communication score between CLAD/died and stable/recovered samples (n = 14 and 33, respectively) of each of component 5's top 10 LR pairs (diamonds).
+({{< panel 3 lr-permutation >}}) Difference in mean communication score between CLAD/died and stable/recovered samples (n = 14 and 33, respectively) of each of component 5's top 10 LR pairs.
 Distributions show null differences across 10,000 permutations of patient outcome labels.
 All results are normalized by standard deviations of the null.
 q: one-sided empirical test, BH corrected across the 10 pairs.
@@ -129,7 +129,6 @@ Values at the top of each cell type are Kruskal--Wallis q-values across the thre
 ({{< panel alad-associations covariates >}}) One-way ANOVA η^2^ of each patient covariate against each ALAD outcome, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 ({{< panel alad-associations effect-size-distributions >}}) ANOVA η^2^ of each CPD component's condition loadings against six-month outcome across leave-one-patient-out jackknife replicates (n = 45), each replicate's components matched to a reference fit's by Hungarian matching.
-Diamonds mark the full-cohort η^2^, filled where q < 0.05.
 ({{< panel alad-associations significant-fraction >}}) Fraction of jackknife replicates in which each CPD component's association with six-month outcome has q < 0.05.
 q: BH corrected p across the six components of each fit.
 
@@ -186,7 +185,7 @@ Overall, CCC-RISE's expression product generally agreed with other available sco
 ({{< panel 4 hormone-expression-map >}}) RISE projection embeddings of EE and EC cells colored by PYY (left) or GCG (right) expression normalized to the expression in the top 1% of expressing cells.
 ({{< panel 4 hormone-angle-scatter >}}) Each EE cell's component 3/4 sender weight normalized to the maximum weight, colored by polar angle where the polar magnitude is at least 0.3 (dotted arc).
 Shaded region excludes cells exceeding 180°.
-Dotted ray and arc indicate an example polar coordinate: (0.3, 45°).
+An example polar coordinate, (0.3, 45°), is marked.
 ({{< panel 4 hormone-angle-hist >}}) Distribution of polar angles over EE cells with polar magnitude of at least 0.3, colored by angle-based thresholds at 30 and 60°.
 ({{< panel 4 hormone-extreme-markers >}}) Expression of crypt, intermediate (int.), and villus EE cell markers and BMP target genes in each component 3/4 group.
 Genes shown differ between villus-like and crypt-like cells at q < 0.05; Mann--Whitney U test, BH corrected across all markers tested.
@@ -204,10 +203,8 @@ Clusters are labeled by coarse cell type, and fine EE, EC, and tuft cell-type la
 ({{< panel ibd-hormone-axes receiver-map-c3 >}}, {{< panel ibd-hormone-axes receiver-map-c4 >}}) RISE projection embeddings of all EE, EC, and tuft cells colored by CPD component ({{< panel ibd-hormone-axes receiver-map-c3 >}}) 3 and ({{< panel ibd-hormone-axes receiver-map-c4 >}}) 4 per-cell receiver weight.
 ({{< panel ibd-hormone-axes receptor-maps.1 >}}, {{< panel ibd-hormone-axes receptor-maps.2 >}}) Same as ({{< panel ibd-hormone-axes receiver-map-c3 >}}, {{< panel ibd-hormone-axes receiver-map-c4 >}}), colored by ({{< panel ibd-hormone-axes receptor-maps.1 >}}) NPY1R and ({{< panel ibd-hormone-axes receptor-maps.2 >}}) GLP1R gene expression normalized to the top 1% of expressing cells.
 ({{< panel ibd-hormone-axes magnitude-hist >}}) Distribution of polar magnitudes over EE cells.
-Dashed line shows the reported magnitude threshold of 0.3.
 ({{< panel ibd-hormone-axes marker-floor-sweep >}}) q-values signifying the significance of gene expression differences between villus- and crypt-like cells, swept over polar magnitude thresholds.
 Genes shown are the six with the largest (least significant) q-values.
-Dotted line shows the reported magnitude threshold of 0.3; dashed line shows q = 0.05.
 q: Mann--Whitney U test, BH corrected across all markers tested at each threshold.
 ({{< panel ibd-hormone-axes extreme-share >}}) Contribution of EE cell groups to total EE cell population stratified by biopsy type, for biopsies with at least 3 EE cells (healthy, n = 200; CD uninflamed, n = 44; CD inflamed, n = 45).
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
@@ -253,13 +250,12 @@ In sum, CCC-RISE components 3 and 4 described sender cells on a continuum betwee
 ({{< panel 5 cos2-grid >}}) Largest squared cosine (cos^2^) between the LR pair loadings of each ALAD CCC-RISE component (n = 6) and any single LR column of each comparator fit.
 ({{< panel 5 span-containment >}}) Fraction of each ALAD CCC-RISE component's LR pair loadings reconstructed by the best linear combination of all LR columns of each comparator fit.
 ({{< panel 5 cos2-pairs >}}) Each CCC-RISE component's best-match cos^2^ against its number of top LR pairs, in ALAD and IBD (n = 12 components).
-The dashed line marks a perfect negative ordering.
 Two-sided Spearman correlation: ρ = −0.84, p = 6 × 10^−4^.
 ({{< panel 5 pair-columns >}}) Top LR pairs of ALAD component 5 (n = 11) in the component and in its related comparator LR columns with each component and column normalized to its largest absolute loading.
 Outlined columns (Σ) show the best combination of all of a fit's LR columns.
 ({{< panel 5 labels-alad labels-ibd >}}) LR columns that each method keeps and loses when cells are described more finely, in ALAD ({{< panel 5 labels-alad >}}) and IBD ({{< panel 5 labels-ibd >}}).
-Lines join columns whose LR pair cos^2^ is at least 0.09, and wider lines mean larger cos^2^.
-Larger points, named by number, mark the columns and components, including those of the lower-rank CCC-RISE fit, with an association at q < 0.05 with any outcome grouping.
+Lines join columns whose LR pair cos^2^ is at least 0.09.
+Numbered columns and components, including those of the lower-rank CCC-RISE fit, have an association at q < 0.05 with any outcome grouping.
 Associations were tested by one-way ANOVA across samples (ALAD, n = 47) or biopsies (IBD, n = 343), with BH correction across all of a cohort's groupings and all components of each fit.
 ({{< panel 5 flow-alad >}}) BTC--EGFR in STAC's fine column 11 and in ALAD component 6, among the 288 cells with the fine label epithelial cells.
 Bars show each population's fraction of the label's cells.
@@ -270,7 +266,6 @@ In ({{< panel 5 flow-alad >}}) and ({{< panel 5 flow-ibd >}}), "below threshold"
 ({{< panel 5 niches-fraction >}}) Fraction of NICHES+ cells in each CCC-RISE sender (S) and receiver (R) population, against the fraction predicted by cell type.
 n = 24 populations: 12 in ALAD and 12 in IBD.
 A cell is NICHES+ when its NICHES score, summed over the component's top LR pairs, is non-zero.
-The dashed line marks equality.
 Two-sided Wilcoxon signed-rank test, paired over the 24 sender/receiver populations: p = 1 × 10^−7^.
 :::
 
@@ -284,12 +279,10 @@ Comparators split CCC-RISE programs of many LR pairs.** Abbreviations, LR column
 Each point is one component or column (ALAD, n = 60; IBD, n = 39), grouped by fit.
 Boxes show the median and IQR, and whiskers show the full range.
 Kruskal--Wallis test across the fits of each cohort: ALAD, p = 4 × 10^−6^; IBD, p = 1 × 10^−4^.
-A star above a box marks a fit whose components track depth more than the cohort's other components using a one-sided Mann--Whitney U test with BH correction across the fits of the cohort.
+\*: q < 0.05 for a fit's components tracking depth more than the cohort's other components; one-sided Mann--Whitney U test, BH corrected across the fits of the cohort.
 ({{< panel comparator-split alad-covariation >}}) Mean pairwise Spearman correlation across samples (n = 47) among the top LR pairs of each ALAD CCC-RISE component (n = 6) and of every PB and STAC LR column (n = 40), each over its own top LR pairs.
-Crosses mark components and columns left with fewer than two gene groups.
-Dashed and solid ticks mark the 95th percentiles of random and expression-matched draws of as many LR pairs.
+Ticks mark the 95th percentiles of random and expression-matched draws of as many LR pairs.
 One-sided empirical test against the expression-matched draws, with BH correction within each fit.
-Filled points have q < 0.05 and lie above both 95th percentiles.
 
 To identify CCC patterns revealed only through single-cell resolution, we compared CCC-RISE with three multi-condition pseudobulk methods.
 Tensor-cell2cell and STACCato served as external benchmarks, each with its own communication score, decomposition, and rank selection\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1016/j.ajhg.2026.05.005].

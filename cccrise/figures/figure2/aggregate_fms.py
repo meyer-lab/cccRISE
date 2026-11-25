@@ -46,10 +46,21 @@ def plot(axs):
                 label=style.STABILITY_AXIS_LABELS[a],
             )
             for a in S.AGGREGATE_AXES
+        ]
+        + [
+            Line2D(
+                [],
+                [],
+                ls="",
+                marker="o",
+                markersize=np.sqrt(style.POINT_SIZE_FOREGROUND),
+                markerfacecolor="white",
+                markeredgecolor=style.COLORS["ink"],
+                markeredgewidth=style.LINE_WIDTH_THIN,
+                label="Mean",
+            )
         ],
-        loc="lower center",
-        bbox_to_anchor=(0.5, 1),
-        ncols=2,
+        loc="lower right",
     )
     ax.set_ylim(0, 1.02)
     ax.set_ylabel("Aggregate FMS")

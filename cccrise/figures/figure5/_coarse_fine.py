@@ -20,6 +20,7 @@ from functools import cache
 
 import numpy as np
 import pandas as pd
+from matplotlib.lines import Line2D
 from matplotlib.transforms import blended_transform_factory
 
 from .. import common, style
@@ -213,7 +214,7 @@ def _block(ax, dataset: str, block: Block, cos2, y: float) -> tuple[float, float
                 [left[i], right[j]],
                 ys,
                 color=METHOD_COLORS[block.method],
-                lw=0.25 + 1.4 * value,
+                lw=line_width(value),
                 alpha=0.75,
                 solid_capstyle="butt",
                 zorder=2,
@@ -222,6 +223,11 @@ def _block(ax, dataset: str, block: Block, cos2, y: float) -> tuple[float, float
     _row(ax, left, ys[0], cos2.index, block.method, above=True, named=named[0])
     _row(ax, right, ys[1], cos2.columns, block.method, above=False, named=named[1])
     return ys
+
+
+def line_width(cos2: float) -> float:
+    """A join's line width (pt) at LR `cos2`."""
+    return 0.25 + 1.4 * cos2
 
 
 def _cos2_rows(block: Block, cos2: pd.DataFrame) -> pd.DataFrame:
@@ -239,23 +245,33 @@ def _cos2_rows(block: Block, cos2: pd.DataFrame) -> pd.DataFrame:
 
 
 def size_key(ax) -> None:
-    """The dots' sizes keyed in one line inside the border's top, centred
-    between it and the top of PB's names (a name's height over the first row,
-    the same in every panel), toward the left: named (an association at q <
-    `common.SIG_ALPHA`) and not, in grey, as Figure 5G keys its dots."""
+    """The dots' sizes and the joins' widths (`line_width`) keyed in one line
+    inside the border's top, centred between it and the top of PB's names (a
+    name's height over the first row, the same in every panel), toward the
+    left: named (an association at q < `common.SIG_ALPHA`) and not, in grey, as
+    Figure 5G keys its dots."""
     y0, y1 = ax.get_ylim()
     per_inch = (y1 - y0) / (ax.bbox.height / ax.figure.dpi)
     names_top = NAME_PAD + NAME_SIZE / 72 * per_inch
     handles = [
         ax.scatter([], [], s=size, color=KEY_COLOR, lw=0) for size in (NAMED_DOT, DOT)
+    ] + [
+        Line2D([], [], color=KEY_COLOR, lw=line_width(value), solid_capstyle="butt")
+        for value in (FLOW_FROM, 1)
     ]
     ax.legend(
         loc="center left",
         bbox_to_anchor=(KEY_X, 0.3 * TOP + 0.7 * names_top),  # nearer the rows
         bbox_transform=blended_transform_factory(ax.transAxes, ax.transData),
         handles=handles,
-        labels=[f"q < {common.SIG_ALPHA}", f"q ≥ {common.SIG_ALPHA}"],
-        ncols=2,
+        labels=[
+            f"q < {common.SIG_ALPHA}",
+            f"q ≥ {common.SIG_ALPHA}",
+            f"cos² {FLOW_FROM}",
+            "cos² 1",
+        ],
+        ncols=4,
+        handlelength=1.0,
         fontsize=KEY_SIZE,
         handletextpad=0.2,
         columnspacing=1.0,
