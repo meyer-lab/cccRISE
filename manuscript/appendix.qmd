@@ -6,6 +6,7 @@ subtitle: "CCC-RISE resolves cellular communication across conditions at single-
 ## Table of Contents
 
 - {{< label alad-cohort >}}: CCC-RISE factor evaluation in the ALAD cohort
+- {{< label ccc-scoring >}}: ALAD components across communication scoring methods
 - {{< label ibd-rank-selection >}}: CCC-RISE rank selection and RISE factor matrices in the IBD cohort
 - {{< label ibd-associations >}}: Association of CPD components and covariates with IBD biopsy type
 - {{< label comparator-rank-selection >}}: Rank selection of the label-based comparators
@@ -24,6 +25,14 @@ CCC-RISE factor evaluation in the ALAD cohort.** ({{< panel alad-cohort cohort >
 Each replicate's components were matched to the reported fit by Hungarian matching.
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 ({{< panel alad-cohort permutation-fraction >}}) Fraction of each LR pair's (n = 570) condition by sender by receiver entries exceeding a null of within-sample cell permutations at p < 0.05 (one-sided empirical test).
+
+![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
+
+**{{< label ccc-scoring >}}.
+ALAD components across communication scoring methods.** ({{< panel ccc-scoring factor-match.1 factor-match.2 >}}) Mean absolute cosine similarity between CPD components derived using the expression-product score and each alternate scoring method, comparing ({{< panel ccc-scoring factor-match.1 >}}) condition and LR pair modes and ({{< panel ccc-scoring factor-match.2 >}}) sender and receiver eigen-state modes.
+Components were Hungarian-matched between scoring methods.
+({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
+LR pairs shown are the union of each score's top 3.
 
 ![](figures/figureS_ibd_rank_selection/figureS_ibd_rank_selection.svg){width="6.5in"}
 

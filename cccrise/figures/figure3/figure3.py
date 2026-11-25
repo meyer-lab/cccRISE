@@ -1,5 +1,7 @@
 """Figure 3: Alterations in cell communication are associated with ALAD outcomes."""
 
+import itertools
+
 from .. import common, style
 from . import (
     celltype_eigenstates,
@@ -21,4 +23,9 @@ LAYOUT = [
 
 
 def makeFigure():
-    return common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
+    fig = common.compose_fixed(LAYOUT, width=style.FIGURE_WIDTH_DOUBLE)
+    # Each row raised into the room the row above leaves over it
+    names = [[m.__name__.rsplit(".", 1)[-1] for m in row] for row in LAYOUT]
+    for upper, lower in itertools.pairwise(names):
+        common.close_row_gap(fig, upper, lower)
+    return fig

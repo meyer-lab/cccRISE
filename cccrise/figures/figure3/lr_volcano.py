@@ -100,12 +100,7 @@ def plot(axs):
         ylabel="−log$_{10}$(permutation p)",
     )
     other, rest, top = ax.get_legend_handles_labels()[0]
-    common.stacked_legend(
-        ax,
-        [[top, rest], [other]],
-        columnspacing=0.5,
-        handletextpad=0.1,
-    )
+    common.legend(ax, "right", handles=[top, rest, other], handletextpad=0.1)
 
 
 def mean_log2_ratio(component: dict) -> np.ndarray:

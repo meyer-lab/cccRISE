@@ -162,7 +162,7 @@ def plot_pair_nulls(component: dict, n_top: int, ax) -> None:
         for color, sign in (("emphasis", "<"), ("ink", "≥"))
     ]
     permuted = Patch(color=style.COLORS["muted"], alpha=0.8, label="Patient-permuted")
-    common.stacked_legend(ax, [observed, [permuted]], columnspacing=0.8)
+    common.legend(ax, "right", handles=[*observed, permuted])
 
 
 @cache

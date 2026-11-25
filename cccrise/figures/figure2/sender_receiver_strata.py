@@ -33,9 +33,8 @@ def plot(axs):
     common.source_data("cell_weights_groups", S.cell_table(), S.CELL_TABLE_DESCRIPTION)
     rest, *groups = ax.get_legend_handles_labels()[0]  # rest first: drawn beneath
     for legend in common.stacked_legend(
-        ax, [groups, [rest]], "below", handletextpad=0.2, columnspacing=0.8
+        ax, [groups, [rest]], handletextpad=0.2, columnspacing=0.8
     ):
-        legend.set_in_layout(False)  # hangs into the row's spare height below
         for handle in legend.legend_handles:
             handle.set_sizes([LEGEND_MARKER_SIZE])  # ty: ignore[unresolved-attribute]
 

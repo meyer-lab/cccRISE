@@ -452,15 +452,56 @@ def nudge_panel(
     right: float = 0.0,
     up: float = 0.0,
     grow: float = 0.0,
+    letter: bool = False,
 ) -> None:
     """Move panel module `panel`'s axes `right` and `up` (in) once the figure
     is laid out, then raise its top `grow` (in; its bottom stays), so a panel
     can sit or reach beyond the box its row reserved. Its insets (colorbars)
-    follow; its letter stays where `compose_fixed` put it."""
+    follow; its letter stays where `compose_fixed` put it unless `letter`."""
     ax = panel_axes(fig, panel)
     w, h = fig.get_size_inches()
     p = ax.get_position()
     ax.set_position((p.x0 + right / w, p.y0 + up / h, p.width, p.height + grow / h))
+    if letter:
+        for text in fig.texts:
+            if text.get_gid() == panel:
+                x, y = text.get_position()
+                text.set_position((x + right / w, y + up / h))
+
+
+def close_row_gap(
+    fig: Figure, upper: list[str], lower: list[str], gap: float = style.PANEL_GAP_MIN
+) -> None:
+    """Close the empty band under the row of panel modules `upper`: everything
+    above the row of panels `lower` (their letters included) moves down until
+    they come within `gap` (in) of each other (`panel_room`; if not already),
+    and the figure shrinks by as much."""
+    room, top = panel_room(fig, upper, lower)
+    open_figure_gap(fig, top + 1e-3, -max(room - gap, 0))
+
+
+def panel_room(
+    fig: Figure, upper: list[str], lower: list[str], lower_letters: bool = True
+) -> tuple[float, float]:
+    """The vertical room (in) between panel modules `upper` and the panels
+    `lower` under them, from any mark (`_mark_extents`, and the panels'
+    letters, unless not `lower_letters`) of one to a mark of the other it
+    overlaps across the page; and the top (in, from the bottom) of `lower`'s
+    marks."""
+    fig.draw_without_rendering()  # places the insets
+    renderer = fig.canvas.get_renderer()  # ty: ignore[unresolved-attribute]
+
+    def extents(panels, letters=True):
+        axes = [ax for ax in fig.axes if ax.get_label() in panels]
+        return [b for ax in axes for b in _mark_extents(ax, renderer)] + [
+            t.get_window_extent(renderer)
+            for t in fig.texts
+            if letters and t.get_gid() in panels
+        ]
+
+    above, below = extents(upper), extents(lower, lower_letters)
+    room = min(a.y0 - b.y1 for a in above for b in below if a.x0 < b.x1 and b.x0 < a.x1)
+    return room / fig.dpi, max(b.y1 for b in below) / fig.dpi
 
 
 # Bars grouping whole panels of a composed figure, in a cohort's or method's
@@ -509,9 +550,30 @@ def grow_figure(
 
 def open_figure_gap(fig: Figure, at: float, height: float) -> None:
     """Grow `fig` by `height` inches, opening a gap at `at` inches from the
-    bottom: everything above `at` moves up, everything below stays."""
+    bottom: everything above `at` moves up, everything below stays (a
+    negative `height` closes one)."""
     w, h = fig.get_size_inches()
     _move_on_page(fig, (w, h + height), lambda x, y: (x, y + height * (y > at)))
+
+
+def _mark_extents(ax: plt.Axes, renderer) -> list:
+    """The display extents of `ax`'s box, each axis (its tick labels and
+    label), title, texts and legends, and its insets, one by one: finer than
+    its tight bbox, which spans the empty corners between them."""
+    axes = [axis.get_tightbbox(renderer) for axis in (ax.xaxis, ax.yaxis)]
+    insets = [b for child in ax.child_axes for b in _mark_extents(child, renderer)]  # ty: ignore[invalid-argument-type]
+    return [
+        ax.bbox,
+        *(m.get_window_extent(renderer) for m in _free_marks(ax)),
+        *(b for b in axes if b is not None),
+        *insets,
+    ]
+
+
+def _free_marks(ax: plt.Axes) -> list:
+    """`ax`'s title and texts that have text, and its legends."""
+    texts = [t for t in (ax.title, *ax.texts) if t.get_text()]
+    return texts + [a for a in (*ax.artists, ax.get_legend()) if isinstance(a, Legend)]
 
 
 def lowest_label(fig: Figure, axes: list) -> float:

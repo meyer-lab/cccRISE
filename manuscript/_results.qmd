@@ -132,14 +132,6 @@ Values at the top of each cell type are Kruskal--Wallis q-values across the thre
 ({{< panel alad-associations significant-fraction >}}) Fraction of jackknife replicates in which each CPD component's association with six-month outcome has q < 0.05.
 q: BH corrected p across the six components of each fit.
 
-![](figures/figureS_ccc_scoring/figureS_ccc_scoring.svg){width="6.5in"}
-
-**{{< label ccc-scoring >}}.
-ALAD components across communication scoring methods.** ({{< panel ccc-scoring factor-match.1 factor-match.2 >}}) Mean absolute cosine similarity between CPD components derived using the expression-product score and each alternate scoring method, comparing ({{< panel ccc-scoring factor-match.1 >}}) condition and LR pair modes and ({{< panel ccc-scoring factor-match.2 >}}) sender and receiver eigen-state modes.
-Components were Hungarian-matched between scoring methods.
-({{< panel ccc-scoring interpretation.1 >}}) LR pair and ({{< panel ccc-scoring interpretation.2 >}}) mean sender and receiver cell-type loadings of each matched component under each score, each divided by its largest absolute loading within the component and score.
-LR pairs shown are the union of each score's top 3.
-
 Having demonstrated CCC-RISE's capacity to resolve cellular subpopulation heterogeneity, we next asked whether CCC-RISE components were associated with clinical outcome.
 The proportional abundances of the broad cell types in these samples showed no significant difference between control, recovered, and declined samples, confirming that cell-type composition did not trivially drive patient associations ({{< fig alad-associations celltype-proportions >}}).
 ANOVA of each component's condition loadings against patient outcomes revealed significant associations between CPD component 5 and three outcomes after multiple-test correction: six-month outcome---comprising stable, ALAD-recovered, CLAD, and died groups---and six-month and one-year death ({{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}).
