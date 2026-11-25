@@ -66,7 +66,7 @@ The datasets analyzed and computer code produced in this study are available in 
 
 ## Acknowledgements
 
-This work was supported by NIAID U19-AI172713 to A.S.M. and a Cota Robles Fellowship to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice for the development of this method and its application to cell--cell communication.
+This work was supported by NIAID U19-AI172713 and the Emerging Leader Award from the Mark Foundation for Cancer Research awarded to A.S.M. and a Cota Robles Fellowship awarded to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice regarding the development of this method and its application to cell--cell communication.
 
 ## Author contributions
 
