@@ -10,7 +10,7 @@ title: "CCC-RISE resolves cellular communication across conditions at single-cel
 ^2^Department of Computer Science, UCLA, Los Angeles, CA 90095, USA\
 ^3^Department of Medicine, University of California, San Francisco (UCSF), San Francisco, CA 94143, USA\
 ^4^Medical Service, San Francisco VA Health Care System, San Francisco, CA 94121, USA\
-^5^Jonsson Comprehensive Cancer Center, UCLA, Los Angeles, CA, USA\
+^5^Jonsson Comprehensive Cancer Center, UCLA, Los Angeles, CA 90024, USA\
 ^6^Eli and Edythe Broad Center of Regenerative Medicine and Stem Cell Research, UCLA, Los Angeles, CA 90095, USA\
 ^\*^Equal contribution\
 ^\†^Corresponding author.
@@ -28,17 +28,17 @@ Conversely, methods that preserve single-cell resolution disregard how communica
 To analyze multi-condition single-cell transcriptomic data without relying on cell-type labels, we developed CCC-RISE.
 Built upon Reduction and Insight in Single-cell Exploration (RISE), CCC-RISE uses PARAFAC2-derived eigen-states to deconvolve communication into interpretable programs across conditions, sender cells, receiver cells, and ligand--receptor pairs, then maps programs back to the individual cells involved.
 Applied to lung transplant and Crohn's disease cohorts, CCC-RISE identified distinct sender and receiver subpopulations within canonical cell types, revealed coordinated immune signaling mediated by co-varying ligand--receptor expression, and characterized a transitional spectrum of cells between hormone-secreting states.
-In comparison, aggregate methods either missed these programs, decoupled their coordinated signaling, or attributed them to whole cell types broader than signaling subpopulations.
-CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to aggregate methods by analyzing multi-condition data with single-cell resolution.
+In comparison, pseudobulk methods missed these programs, decoupled their coordinated signaling, or attributed them to whole cell types broader than signaling subpopulations.
+CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to pseudobulk methods by analyzing multi-condition data with single-cell resolution.
 
 **Synopsis**
 
-CCC-RISE decomposes cell–cell communication across conditions using continuous expression states instead of discrete cell types.
+CCC-RISE decomposes cell--cell communication across conditions using continuous expression states instead of discrete cell types.
 This preserves single-cell resolution, revealing the distinct sender and receiver subpopulations that drive signaling.
 
-- By scoring ligand-receptor interactions between eigen-states, CCC-RISE decomposes single-cell transcriptomic data into interpretable communication programs spanning conditions, sender cells, receiver cells, and ligand-receptor pairs.
+- By scoring ligand--receptor interactions between eigen-states, CCC-RISE decomposes single-cell transcriptomic data into interpretable communication programs spanning conditions, sender cells, receiver cells, and ligand--receptor pairs.
 
-- In lung transplant recipients, CCC-RISE resolved an airway repair program between ciliated and basal/secretory epithelial cells, and a coordinated immune signaling program confined to a subset of lymphocytes.
+- In lung transplant recipients, CCC-RISE resolved an airway repair program between ciliated and basal/secretory epithelial cells and a coordinated immune signaling program confined to a subset of lymphocytes.
 
 - In Crohn's disease, CCC-RISE resolved hormone-secreting enteroendocrine cells along a continuum from crypt-like GCG producers to villus-like PYY producers.
 
@@ -67,7 +67,7 @@ The datasets analyzed and computer code produced in this study are available in 
 
 ## Acknowledgements
 
-This work was supported by NIAID U19-AI172713 and the Emerging Leader Award from the Mark Foundation for Cancer Research awarded to A.S.M. and a Cota Robles Fellowship awarded to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice regarding the development of this method and its application to cell--cell communication.
+This work was supported by NIAID U19-AI172713 and the Emerging Leader Award from the Mark Foundation for Cancer Research awarded to A.S.M. and a Eugene V. Cota-Robles Fellowship awarded to A.R. We thank Erick Armingol and Hratch M. Baghdassarian for their valuable advice regarding the development of this method and its application to cell--cell communication.
 
 ## Author contributions
 

@@ -2,21 +2,21 @@
 
 CCC-RISE infers cell--cell communication (CCC) programs across multiple conditions in three sequential steps: (1) RISE decomposes the multi-condition scRNA-seq data into cell eigen-states; (2) an aligned 4D communication tensor is constructed by scoring ligand--receptor pairs between eigen-states; and (3) CPD decomposes this tensor to extract communication programs.
 Each step is described in turn below, followed by the data processing, rank selection, validation, and interpretation analyses.
-Definitions shared across analyses are collected in Quantification and Statistical Analysis.
+Definitions shared across analyses are collected in Quantification and statistical analysis.
 
 ### Reduction and Insight in Single-cell Exploration
 
 Reduction and Insight in Single-cell Exploration (RISE) is a computational framework based on the PARAFAC2 tensor decomposition method, optimized for analyzing multi-condition scRNA-seq data\ [@doi:10.1016/j.cels.2025.101294].
 A major challenge in scRNA-seq is that the data lack alignment when reconstructed into a 3D tensor, because the same cell is not measured across conditions.
-RISE overcomes this by using the PARAFAC2 model, which solves for the alignment of the data along one dimension---the cell axis.
-The input to RISE, $X_{\mathrm{sc},i} \in \mathbb{R}^{J_{\mathrm{sc},i} \times K}$, is the normalized expression (see Data Processing) of the $J_{\mathrm{sc},i}$ cells of condition $i = 1, \ldots, I$ over $K$ genes, centered on $\mu \in \mathbb{R}^{K}$, the per-gene mean over all cells of all conditions.
+RISE overcomes this misalignment by using the PARAFAC2 model, which solves for the alignment of the data along one dimension---the cell axis.
+The input to RISE, $X_{\mathrm{sc},i} \in \mathbb{R}^{J_{\mathrm{sc},i} \times K}$, is the normalized expression (see Data processing) of the $J_{\mathrm{sc},i}$ cells of condition $i = 1, \ldots, I$ (one BAL sample in ALAD or one biopsy in IBD) over $K$ genes, centered on $\mu \in \mathbb{R}^{K}$, the per-gene mean over all cells of all conditions.
 In fitting the RISE model, we seek:
 
 $$
-  \underset{A,C,\mathbf{P}}{\operatorname{argmin}}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{\mathrm{sc},i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2}\text{subject to}\ {P_{i}}^{T}P_{i}\mathbf{\ } = \mathbf{I\ \forall\ }i,
+  \underset{A,C,\mathbf{P}}{\operatorname{argmin}}\sum_{i=1}^{I}w_{i}^{2}\left\| X_{\mathrm{sc},i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2}\quad\text{subject to}\quad P_{i}^{T}P_{i} = \mathbf{I}\ \ \forall\, i,
 $$
 
-where $w_{i}$ are the slice weights (see below); $\mathbf{P =}P_{i} \in \mathbb{R}^{J_{\mathrm{sc},i} \times r},\ \ i\  = \ 1,\ 2,\ \ldots,\ I$ are the projection matrices and $r$ is the rank of the RISE decomposition; $\operatorname{diag}\left( a_{i} \right)$ is the diagonal matrix whose non-zero entries are equal to the $i$^th^ row of $A \in \mathbb{R}^{I \times r}$, the condition factor matrix; $C \in \mathbb{R}^{K \times r}$ is the gene factor matrix; and $\mathbf{I}$ is the identity matrix\ [@doi:10/cxfskg].
+where $w_{i}$ are the slice weights (see below); $\mathbf{P} = \{P_{i}\}_{i=1}^{I}$, $P_{i} \in \mathbb{R}^{J_{\mathrm{sc},i} \times r}$, are the projection matrices and $r$ is the rank of the RISE decomposition; $\operatorname{diag}\left( a_{i} \right)$ is the diagonal matrix whose non-zero entries are equal to the $i$^th^ row of $A \in \mathbb{R}^{I \times r}$, the condition factor matrix; $C \in \mathbb{R}^{K \times r}$ is the gene factor matrix; and $\mathbf{I}$ is the identity matrix\ [@doi:10/cxfskg].
 The general PARAFAC2 model includes a third factor matrix, $B \in \mathbb{R}^{r \times r}$, between $P_{i}$ and $\operatorname{diag}\left( a_{i} \right)$; CCC-RISE fixes $B = \mathbf{I}$, so each condition's eigen-state coordinates are the orthonormal columns of $P_{i}$.
 The $r$ cell eigen-states are therefore defined jointly by the projections and the gene factor: eigen-state $q$ has gene profile $c_{q}$, scaled by $a_{iq}$ in condition $i$, and column $q$ of $P_{i}$ gives each cell's projection onto the shared gene expression factors.
 
@@ -35,12 +35,12 @@ $$
   = \underset{A,C}{\operatorname{argmin}}\sum_{i=1}^{I}\left\| w_{i}P_{i}^{T}X_{\mathrm{sc},i} - \operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2},
 $$
 
-which is equivalent to one alternating least-squares (ALS) update of $A$ and $C$ in a PARAFAC model of the aligned third-order tensor whose $i$^th^ slice along the first mode is $w_{i}P_{i}^{T}X_{\mathrm{sc},i}$, with the eigen-state factor fixed to the identity.
-Then, the projection matrices, $\mathbf{P,}$ were updated by solving the Orthogonal Procrustes problem.
-Given matrices $M,N \in \mathbb{R}^{n \times m}$, the Orthogonal Procrustes problem seeks an orthogonal matrix $Q \in \mathbb{R}^{n \times n}$ that minimizes $\left\| MQ - N \right\|_{F}^{2}$.
-The solution is given by $Q = UV^{T}$, where $U\Sigma V^{T}$ is the singular value decomposition of $N^{T}M$.
-For a low-rank decomposition, we updated each $P_{i} \in \mathbf{P}$ as $P_{i} = UV^{T}$, the product of the $r$ left and right singular vectors from the thin singular value decomposition (SVD) $U\Sigma V^{T}$ of $X_{\mathrm{sc},i}C\,\operatorname{diag}\left( a_{i} \right)$.
-This cycle of aligning the tensor and then factoring it was repeated until the decrease in the weighted relative squared error, $\sum_{i}w_{i}^{2}\left\| X_{\mathrm{sc},i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2} / \sum_{i}w_{i}^{2}\left\| X_{\mathrm{sc},i} \right\|^{2}$, between iterations fell below 1×10^-8^, or until 300 iterations elapsed.
+which is equivalent to one alternating least squares (ALS) update of $A$ and $C$ in a PARAFAC model of the aligned third-order tensor whose $i$^th^ slice along the first mode is $w_{i}P_{i}^{T}X_{\mathrm{sc},i}$, with the eigen-state factor fixed to the identity.
+Then, the projection matrices, $\mathbf{P}$, were updated by solving the Orthogonal Procrustes problem.
+Given matrices $M,N \in \mathbb{R}^{n \times m}$, the Orthogonal Procrustes problem seeks an orthogonal matrix $Q \in \mathbb{R}^{m \times m}$ that minimizes $\left\| MQ - N \right\|_{F}^{2}$.
+The solution is given by $Q = UV^{T}$, where $U\Sigma V^{T}$ is the singular value decomposition (SVD) of $M^{T}N$.
+For a low-rank decomposition, we updated each $P_{i} \in \mathbf{P}$ as $P_{i} = UV^{T}$, the product of the $r$ left and right singular vectors from the thin SVD $U\Sigma V^{T}$ of $X_{\mathrm{sc},i}C\,\operatorname{diag}\left( a_{i} \right)$.
+This cycle of aligning the tensor and then factoring it was repeated until the decrease in the weighted relative squared error, $\sum_{i}w_{i}^{2}\left\| X_{\mathrm{sc},i} - P_{i}\operatorname{diag}\left( a_{i} \right)C^{T} \right\|^{2} / \sum_{i}w_{i}^{2}\left\| X_{\mathrm{sc},i} \right\|^{2}$, between iterations fell below 10^−8^, or until 300 iterations elapsed.
 RISE models were fit on single-precision expression data using double-precision arithmetic with a GPU.
 
 RISE enhances the core PARAFAC2 algorithm with key optimizations: $A$ was initialized to ones, $C$ was initialized to the leading $r$ right singular vectors of the stacked, centered, and slice-weighted data (computed with an iterative LOBPCG eigensolver from a random start), and fitted components were ordered by the variance-to-mean ratio of their condition loadings, normalized, and sign-flipped to a consistent orientation\ [@doi:10.1016/j.cels.2025.101294; @doi:10.1137/S1064827500366124; @doi:10/cxfskg; @doi:10.1016/j.chemolab.2021.104312].
@@ -51,16 +51,16 @@ Each projected condition slice was further truncated to its leading $L$ left sin
 Compressed fits reduced the gene expression space but yielded nearly identical components to uncompressed fits.
 
 **Visualization.** PaCMAP was applied to the RISE projections of all cells concatenated across conditions to visualize cell-to-cell variation as an embedding\ [@arxiv:2012.04456].
-PaCMAP was run with its default parameters: two output dimensions, Euclidean distances, 10 nearest neighbors, mid-near and further pair ratios of 0.5 and 2, PCA initialization, and 450 iterations.
+PaCMAP was run with its default parameters: two output dimensions, Euclidean distances, 10 nearest neighbors, mid-near and further pair ratios of 0.5 and 2, principal component analysis (PCA) initialization, and 450 iterations.
 To resolve the IBD enteroendocrine, enterochromaffin, and tuft cells, PaCMAP was refit with the same parameters to the projections of only these cells.
 
-### Construction of the Aligned 4D Communication Tensor
+### Construction of the aligned 4D communication tensor
 
 From the eigen-states that RISE produces, CCC scores were calculated for all relevant LR pairs in each condition, with each pair of eigen-states as sender and receiver.
 LR pairs were obtained from the human CellChatDB resource of 1,933 annotated interactions, including multimeric complexes\ [@doi:10.1038/s41467-021-21246-9].
 Pairs were retained only if every ligand and receptor subunit gene was present in the expression data, and the expression of a multimeric complex was taken as the minimum expression of its subunits.
-After filtering, we identified a small set of LR interactions defined in CellChatDB that were known to occur within single cells and not between cells, which were not relevant in the context of inter-cellular communication.
-We therefore systematically evaluated every gene in the database using a keyword search on their UniProt subcellular localization descriptions, which yielded a list of possible intra-cellular-acting genes/proteins [@uniprot2025].
+After filtering, we identified a small set of LR interactions defined in CellChatDB that were known to occur within single cells and not between cells, which were not relevant in the context of intercellular communication.
+We therefore systematically evaluated all genes in the database using a keyword search on their UniProt subcellular localization descriptions, which yielded a list of possible intracellularly acting genes/proteins\ [@uniprot2025].
 We manually inspected every resulting gene and narrowed the list down to five genes constituting five LR pairs known to interact within cells, which we subsequently removed: LCK--CD8A&CD8B, HLA-DMA--CD4, HLA-DMB--CD4, HLA-DOA--CD4, and HLA-DOB--CD4.
 
 **Eigen-state expression.** The expression of eigen-state $q$ in condition $i$ was the corresponding row of $P_{i}^{T}X_{\mathrm{sc},i} + \mathbf{1}\mu^{T}$, clipped at 0.
@@ -83,9 +83,9 @@ $$
 
 where $\circ$ is the outer product, $\lambda_{q}$ is the weight of component $q$, and $d_{q}$, $e_{q}$, $f_{q}$, and $g_{q}$ are the $q$^th^ columns of the condition ($D$), sender eigen-state ($E$), receiver eigen-state ($F$), and LR pair ($G$) factor matrices.
 
-**Fitting.** CPD was fit by alternating least squares (ALS), wherein each mode is iteratively solved using least squares.
+**Fitting.** CPD was fit by ALS, wherein each mode is iteratively solved using least squares.
 Each factor matrix was initialized with the leading $r$ left singular vectors of the corresponding mode unfolding of the tensor, computed by randomized SVD, and the factors were normalized to unit norm at each iteration, with their scale carried by $\lambda$.
-ALS stopped when the change in relative reconstruction error between iterations fell below 10^-12^, or after a maximum of 4,000 iterations.
+ALS stopped when the change in relative reconstruction error between iterations fell below 10^−12^, or after a maximum of 4,000 iterations.
 Unless otherwise stated, CPD models were fit using single precision on a GPU.
 
 **Post-fit processing.** CPD components are determined only up to order, scale, and sign, so each fit was standardized before interpretation.
@@ -96,10 +96,10 @@ Condition loadings scale with each sample's total normalized expression, the sum
 Because sequencing depth was removed by per-cell normalization, this total was dominated by the number of cells per sample, not by read depth.
 For each set of condition loadings, the norm of each sample's loading row was regressed on the sample's total normalized expression by ordinary least squares with an intercept, and each row was divided by its fitted value.
 
-### Data Processing
+### Data processing
 
 **ALAD cohort.** The single-cell gene expression, cell-type annotations, and clinical annotations of bronchoalveolar lavage (BAL) samples were obtained from Calabrese et al.\ [@doi:10.1016/j.healun.2024.02.007].
-The authors' annotations give 8 broad cell types (coarse labels) and 26 cell types (fine labels).
+The authors' annotations give 8 coarse and 26 fine cell types (coarse and fine labels).
 Cells with 10 or fewer total counts and genes with a mean raw count of 0.001 or less across all cells were removed.
 Each cell was scaled to the median per-cell total count, and each gene was then scaled by its sum across cells.
 The data were then log-transformed as
@@ -113,16 +113,17 @@ Finally, each gene was centered on its mean, $\mu$, which RISE subtracts interna
 The final dataset consisted of 51,273 cells and 16,675 genes, with 570 LR pairs retained.
 
 **IBD cohort.** The single-cell gene expression, cell-type annotations, and biopsy metadata of terminal-ileum pinch biopsies were obtained from the IBDverse atlas of Krzak et al.: 343 biopsies, one per individual, from 232 healthy participants and 111 patients with Crohn's disease (CD), 47 uninflamed and 64 inflamed\ [@doi:10.1038/s41588-026-02634-7].
-We excluded the mesenchymal lineage (fibroblasts, endothelial cells, and pericytes; 11,286 of 1,185,861 cells) because the authors attribute its underrepresentation in the atlas to the biopsy type and treatment method, which favor capture of epithelial cells.
+We excluded the mesenchymal lineage (fibroblasts, endothelial cells, and pericytes; 11,286 of 1,185,861 cells) because the authors attribute its underrepresentation in the atlas to the biopsy type and an enzymatic dissociation protocol, both of which favor capture of epithelial cells.
 The mesenchymal yield accordingly varied across biopsies, from none to 11% of a biopsy's cells, independently of inflammation status (Kruskal--Wallis p = 0.14).
-Their removal left 7 lineages (coarse labels) and 54 annotated cell types (fine labels).
-Cells and genes were filtered and normalized as for ALAD, with the gene filter measured on all remaining cells, and mitochondrial and ribosomal genes were removed.
-To fit in computer memory, each biopsy was capped at 2,000 cells drawn at random from the cells passing the count filter.
+Removing this lineage left 7 lineages (coarse labels) and 54 annotated cell types (fine labels).
+Cells and genes were filtered and normalized as for ALAD, with the gene filter measured on all remaining cells.
+Mitochondrial and ribosomal genes were also removed.
+To fit the data in memory, we capped each biopsy at 2,000 cells drawn at random from those passing the count filter.
 The 245 biopsies with more than 2,000 such cells were downsampled to the cap, so all 343 biopsies and 634,534 of 1,174,575 cells were retained.
 The cap kept the composition of each biopsy: within each downsampled biopsy, no lineage's share changed by more than 2.5%, and every lineage and cell type remained.
 The final dataset consisted of 634,534 cells and 23,355 genes, with 1,332 LR pairs retained.
 
-### Quantification and Statistical Analysis
+### Quantification and statistical analysis
 
 **Reconstruction.** The fraction of variance a model explains, R^2^X, was
 
@@ -157,12 +158,12 @@ Each analysis below names the modes it compares.
 **Top LR pairs.** A component's top LR pairs were the fewest LR pairs, taken in order of absolute LR pair loading $\left| g_{l} \right|$, that together carried 90% of its squared loading $\sum_{l} g_{l}^{2}$, up to 15.
 Where stated, analyses instead used a fixed number of LR pairs by absolute loading.
 
-**Multiple-test correction.** p-values were corrected by the Benjamini--Hochberg (BH) procedure across the family of tests stated with each analysis, and corrected values were reported as q, with q < 0.05 considered significant\ [@doi:10.1111/j.2517-6161.1995.tb02031.x].
+**Multiple-test correction.** We corrected p-values by the Benjamini--Hochberg (BH) procedure across the family of tests stated with each analysis and reported corrected values as q, with q < 0.05 considered significant\ [@doi:10.1111/j.2517-6161.1995.tb02031.x].
 
 **Differential gene expression.** Unless stated otherwise, two groups of cells were compared gene by gene with two-sided Wilcoxon rank-sum tests on the normalized expression of all cells in each group, using scanpy without tie correction\ [@doi:10.1186/s13059-017-1382-0].
 A gene's detection rate in a group was the fraction of the group's cells with non-zero expression.
 
-### Rank Selection
+### Rank selection
 
 The RISE rank was selected by bi-cross-validation (BiCV)\ [@doi:10.1214/08-AOAS227].
 In each repeat, 50% of the cells within each condition and 50% of the genes were held out, and compressed RISE was fit to the training cells and training genes.
@@ -173,7 +174,7 @@ For IBD, ranks 30 to 90 were tested in steps of 5 and we selected the smallest r
 
 CPD ranks from 1 to the selected RISE rank (for ALAD) or to 20 (for IBD) were evaluated on the communication tensor from the uncompressed RISE fit.
 At each rank, CPD was fit from 10 seeded starts of the randomized SVD initialization and four quantities were computed.
-First, was the fit R^2^X of each start.
+First, the fit R^2^X of each start.
 Second, the imputation R^2^X: tensor entries were split into 10 random folds, and for each fold the held-out entries were set to zero and CPD was fit by masked ALS, which iteratively fills the held-out entries with the current reconstruction.
 The predictions of all held-out entries were pooled into a single R^2^X against the full tensor, averaged over 10 repeated fold splits.
 Masked fits ran in double precision, because single-precision masked fits diverged at higher ranks, and with a ridge penalty ($\lambda$ = 0.1), because the heavy-tailed communication tensor otherwise let a few large held-out entries dominate.
@@ -181,7 +182,7 @@ Third, the collinearity of each start in each mode: the largest absolute cosine 
 Fourth, the agreement between starts: starts whose FMS was at least 0.95 were taken to reach the same solution.
 The chosen rank was the largest at which no start's LR pair mode was collinear and all starts reached the same solution.
 
-### Clinical Association Testing
+### Clinical association testing
 
 Associations were tested with the sample as the unit of analysis, using the total-expression--corrected CPD condition loadings.
 For ALAD, we tested nine groupings of samples: ALAD status (control vs. ALAD; control, declined, and recovered); six-month outcome (stable, recovered, CLAD, and died; CLAD vs. stable/recovered, excluding deaths; died vs. alive); one-year outcome (stable, recovered, CLAD, and died; CLAD vs. no CLAD; died vs. alive); and acute rejection (yes vs. no).
@@ -190,12 +191,12 @@ For each component and grouping, we reported the one-way analysis of variance (A
 
 Covariates were screened against each grouping by the same ANOVA, without the total-expression correction or multiple-test correction, with binary covariates coded 0/1.
 For ALAD, these were six patient covariates: age (years), sex, Caucasian ethnicity, an interstitial lung disease (ILD) transplant diagnosis, cytomegalovirus (CMV) IgG seropositivity, and baseline forced expiratory volume in one second (FEV1).
-For IBD, these were patient covariates (age, recorded in 10-year bins, and sex), sample covariates (10x Genomics chip version, B vs. G, and total sample expression), and cell-type covariates (the fraction of each biopsy's cells in each of the 7 lineages, after the 2,000-cell cap); the 6 biopsies without a recorded chip version were left out of its tests.
+For IBD, these were patient covariates (age, recorded in 10-year bins, and sex), sample covariates (10x Genomics chip version, B vs. G, and total sample expression), and cell-type covariates (the fraction of each biopsy's cells in each of the seven lineages, after the 2,000-cell cap); the six biopsies without a recorded chip version were left out of its tests.
 
 Additionally, each sample's fraction of cells in each coarse cell type was compared across ALAD status (control, recovered, and declined) or IBD inflammation status (healthy, CD uninflamed, and CD inflamed) by a Kruskal--Wallis test, corrected across cell types.
 
 **Individual LR pair testing.** For a CPD component with sender and receiver eigen-state loadings $e$ and $f$, the score of LR pair $l$ in sample $i$ was $S_{l,i} = \sum_{s,t} \mathcal{X}_{i,s,t,l}\,e_{s}f_{t}$, where $\mathcal{X}_{i,s,t,l}$ is the communication score of LR pair $l$ from sender eigen-state $s$ to receiver eigen-state $t$ in sample $i$.
-Each analysis used one normalization of $S_{l,i}$: division by the sample's total normalized expression for individual associations and for the outcome-label permutation test (Significance Against Nulls), and none for co-variation.
+Each analysis used one normalization of $S_{l,i}$: division by the sample's total normalized expression for individual associations and for the outcome-label permutation test (Significance against nulls), and none for co-variation.
 The total-expression correction applied to condition loadings (above) was not used for LR pair scores, as its trend is fit to the norm across all LR pairs at once and so couples the pairs' corrected scores.
 Each LR pair's normalized score was tested against outcome by one-way ANOVA, corrected across the 570 LR pairs.
 
@@ -210,28 +211,28 @@ Components and columns with fewer than two groups were not tested.
 Each sample is projected by its own projection matrix onto eigen-states shared across samples, so variation in how strongly a sample expresses a program is carried by its condition loading rather than distorting the shared eigen-state definitions; the eigen-states themselves are estimated from structure common across samples.
 Technical variation that acts uniformly on a sample (e.g., sequencing depth, capture efficiency) is therefore expressed as a condition-factor offset, so we test associations on the condition factor with the sample as the unit of analysis rather than the cell.
 
-Technical variation was also explicitly handled by the following.
+Three further steps addressed technical variation.
 Slice normalization prevented samples with many or highly variable cells from dominating the shared eigen-states.
 The total-expression correction removed sample-wide scaling of the condition loadings before association testing.
 For patients who contributed multiple samples, their samples were kept together in the jackknife and in outcome-label permutations.
 
-### Robustness Tests
+### Robustness tests
 
 **Patient jackknife.** Each patient was left out in turn, with both samples of a two-sample patient left out together, and each replicate was refit end to end at the selected ranks using compressed RISE fits.
 Replicates were matched to a reference fit on the full data with the same settings.
 Because the condition roster changed between replicates, RISE was compared on the gene mode only and CPD on the LR pair mode only.
-The component--outcome ANOVA was repeated on each replicate's corrected CPD condition loadings, corrected across the components of that replicate, and assigned to the matched reference component.
+The component--outcome ANOVA was repeated on each replicate's total-expression--corrected CPD condition loadings, with BH correction across the components of that replicate, and assigned to the matched reference component.
 
 **Model re-initialization.** The full data were refit end to end with different random seeds, using the same fits and reference as the jackknife.
 Because the conditions were unchanged, RISE was compared on the condition and gene modes and CPD on the condition and LR pair modes.
 
-**Alternative CCC scoring.** Three alternatives to the expression product combine a sender eigen-state's non-negative ligand expression, $L$, with a receiver eigen-state's non-negative receptor expression, $R$: the arithmetic mean, $(L + R)/2$, used by Tensor-cell2cell and CellPhoneDB; the geometric mean, $\sqrt{LR}$, used by scDiffCom; and a CellChat-style saturating Hill function, $LR / (K_h + LR)$, with half-saturation constant $K_h = 0.5$\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41596-020-0292-x; @doi:10.1038/s43587-023-00514-x; @doi:10.1038/s41467-021-21246-9].
+**Alternative CCC scoring.** Three alternatives to the expression-product score combine a sender eigen-state's non-negative ligand expression, $L$, with a receiver eigen-state's non-negative receptor expression, $R$: the arithmetic mean, $(L + R)/2$, used by Tensor-cell2cell and CellPhoneDB; the geometric mean, $\sqrt{LR}$, used by scDiffCom; and a CellChat-style saturating Hill function, $LR / (K_h + LR)$, with half-saturation constant $K_h = 0.5$\ [@doi:10.1038/s41467-022-31369-2; @doi:10.1038/s41596-020-0292-x; @doi:10.1038/s43587-023-00514-x; @doi:10.1038/s41467-021-21246-9].
 The communication tensor was recomputed under each scoring function from one shared RISE fit, and each tensor was decomposed with CPD at the selected rank.
 Components of each alternative fit were matched to the expression-product fit by Hungarian matching on their mean absolute cosine over the condition and LR pair modes.
 Reported were the matched components' mean absolute cosine over the condition and LR pair modes and over the sender and receiver eigen-state modes.
-Component cell-type loadings were computed as defined below in Mapping CCC-RISE Components to Cells.
+Component cell-type loadings were computed as defined below in Mapping CCC-RISE components to cells.
 
-### Significance Against Nulls
+### Significance against nulls
 
 We extended the cluster-label permutation of CellPhoneDB and CellChat to continuous eigen-states\ [@doi:10.1038/s41467-021-21246-9; @doi:10.1038/s41596-020-0292-x].
 Within each condition, the rows of the projection matrix $P_{i}$ were shuffled, permuting which cell was paired with each projection row, and the communication tensor was recomputed from the RISE fit.
@@ -241,7 +242,7 @@ Following scDiffCom, we tested whether each LR pair's per-sample score, divided 
 The statistic was the difference in mean score between the two groups, compared with 10,000 permutations of outcome labels between patients, which moved a patient's samples together and exchanged labels only between patients with the same number of samples.
 Empirical p-values were corrected across component 5's top 10 LR pairs by absolute loading.
 
-### Mapping CCC-RISE Components to Cells
+### Mapping CCC-RISE components to cells
 
 **Per-cell weights.** Because each cell's projection onto the eigen-states is retained in $P_{i}$, CPD eigen-state factors can be mapped back to individual cells.
 The per-cell sender and receiver weights of all cells are $PE$ and $PF$, respectively, where $P$ stacks the projection matrices $P_{i}$ of all conditions by row, and $E$ and $F$ are the CPD sender and receiver eigen-state factor matrices.
@@ -253,34 +254,34 @@ Eigen-states were mapped to cell types by the mean projection of each cell type'
 **Cell groups.** All groupings used the cutoff $\tau = 0.3$ on relative weight.
 Sender and receiver groups were the cells whose relative sender or receiver weight was at least $\tau$, each cell assigned to the role with the larger relative weight.
 Polar groups of EE cells were defined from each IBD EE cell's relative sender weights on components 3 and 4, $r_3$ and $r_4$, taken relative to their largest values among EE cells, which gave a polar magnitude $\sqrt{r_3^2 + r_4^2}$ and angle $\theta = \operatorname{atan2}(r_4, r_3)$, from 0° (component 3 only) to 90° (component 4 only), defined where $r_3 + r_4 > 0$.
-Cells with magnitude of at least τ were villus-like at θ ≤ 30°, crypt-like at θ ≥ 60°, and mixed in between; all other EE cells were 'other'.
+Cells with magnitude of at least $\tau$ were villus-like at θ ≤ 30°, crypt-like at θ ≥ 60°, and mixed in between; all other EE cells were "other".
 
-**Comparing groups.** Groups were compared by differential gene expression (see Quantification and Statistical Analysis).
+**Comparing groups.** Groups were compared by differential gene expression (see Quantification and statistical analysis).
 For ALAD component 6, sender and receiver groups were compared on curated epithelial subtype markers\ [@doi:10.1038/s41586-020-2922-4; @doi:10.1038/s41591-023-02327-2], corrected across the markers present in the data, and markers were reported if q < 0.05 and their detection rates differed by at least 0.2.
 Each group was also compared with all other cells, and the groups with each other, corrected across all genes.
-For IBD components 3 and 4, villus-like and crypt-like cells were compared by Mann--Whitney U tests on 11 curated crypt, intermediate, villus, and BMP-target genes\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7], corrected across those genes, and the test was repeated across magnitude thresholds.
-Each biopsy's share of its EE cells in each polar group, for biopsies with at least 3 such cells, was compared across biopsy types by a Kruskal--Wallis test, corrected across the four groups.
+For IBD components 3 and 4, villus-like and crypt-like cells were compared by two-sided Wilcoxon rank-sum tests with tie correction (SciPy) on 11 curated crypt, intermediate, villus, and BMP-target genes\ [@doi:10.1038/s41556-018-0143-y; @doi:10.1016/j.cell.2020.04.036; @doi:10.1016/j.cell.2018.12.029; @doi:10.1038/s41588-026-02634-7], corrected across those genes, and the test was repeated across magnitude thresholds.
+Each biopsy's share of its EE cells in each polar group, for biopsies with at least three such cells, was compared across biopsy types by a Kruskal--Wallis test, corrected across the four groups.
 
-### External Biological Validation
+### External biological validation
 
 **NicheNet downstream-target validation.** We tested whether each component's receiver cells upregulated the downstream gene targets of the component's ligands using the NicheNet v2 ligand--gene-target database\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 For a CCC-RISE component, receiver cell types were the coarse cell types whose mean per-cell receiver weight was at least 0.4 times that of the top cell type; top receivers were the cells of those types above the 90th percentile of receiver weight within them, and bottom receivers were the other cells below the 10th percentile of receiver weight across all cells.
 Genes detected in at least 10% of cells of either group were ranked by a Wilcoxon rank-sum test between the two groups.
-To correct for hub genes linked to many ligands, each ligand's top 250 targets in the NicheNet database were weighted by $\log(N_{L}/n_{t})$, where $N_{L}$ is the number of ligands in the prior and $n_{t}$ the number of ligands listing target $t$.
+To correct for hub genes linked to many ligands, each ligand's top 250 targets in the NicheNet database were weighted by $\log(N_{L}/n_{t})$, where $N_{L}$ is the number of ligands in the NicheNet prior and $n_{t}$ the number of ligands listing target $t$.
 Each ligand was scored by the AUROC with which the Wilcoxon statistics ranked its weighted targets above non-targets, and these target scores were averaged with each ligand's loading (the norm of the LR pair loadings of its LR pairs) as weight.
 A null was formed by shuffling the receiver-group labels among those cells 1,000 times, preserving group sizes, and repeating the gene filter, test, target scoring, and weighted mean; only ligands scored on every shuffle entered the observed and null weighted means.
 Empirical p-values were corrected across the components of the CCC-RISE fit, where the effect was the observed weighted target score minus its mean over shuffles.
 
 **NICHES concordance.** We tested whether the cells CCC-RISE assigned to a component aligned with that component's LR expression using NICHES\ [@doi:10.1093/bioinformatics/btac775].
 NICHES was run on each sample's cells, using CCC-RISE's normalized expression and each component's top LR pairs $\mathcal{C}$.
-NICHES' CellToSystem and SystemToCell functions scored each cell as a sender by its ligand expression times the mean receptor expression of all cells in its sample and as a receiver by its receptor expression times the mean ligand expression of all cells in its sample.
+The NICHES CellToSystem and SystemToCell functions scored each cell as a sender by its ligand expression times the mean receptor expression of all cells in its sample and as a receiver by its receptor expression times the mean ligand expression of all cells in its sample.
 Cells that were the only one of their coarse cell type in their sample were not scored by NICHES and were excluded (25 cells for ALAD and 10 for IBD).
 Cell $j$'s sender/receiver program scores were $n_{j} = \sum_{l \in \mathcal{C}} g_{l}^{2}s_{j,l}$, where $g_{l}$ is the component's LR pair loading and $s_{j,l}$ the cell's NICHES score for LR pair $l$.
 A cell with $n_{j} > 0$ was NICHES-positive.
 A sender or receiver population's NICHES concordance was its fraction of NICHES-positive cells.
 The cell-type--predicted concordance was the mean over the population's cells of the fraction of NICHES-positive cells among all cells of the same fine cell type in the same sample.
-NICHES concordance was compared with this cell-label concordance by a two-sided Wilcoxon signed-rank test, paired over all sender and receiver populations of both cohorts.
-Sender/receiver populations were defined as for groups (see Mapping CCC-RISE Components to Cells), but not exclusive: a cell past both $\tau$ cutoffs belonged to both populations.
+NICHES concordance was compared with this cell-type--predicted concordance by a two-sided Wilcoxon signed-rank test, paired over all sender and receiver populations of both cohorts.
+Sender/receiver populations were defined as for groups (see Mapping CCC-RISE components to cells), but not exclusive: a cell past both $\tau$ cutoffs belonged to both populations.
 The six ALAD and six IBD components collectively defined 24 total sender/receiver populations by this definition.
 The comparison was repeated at $\tau$ from 0.1 to 0.6 in steps of 0.1, for populations of at least 10 cells.
 
@@ -292,14 +293,14 @@ As in the package's tutorial, each merged program was then tested in each sample
 The agreement between two seeds was the mean best-match Jaccard index between their programs' LR sets, matching each set to its most similar set of the other seed, in both directions.
 For comparison, the same index was computed over the components' top LR pairs between 10 CCC-RISE refits at different random seeds, each refit as in Model re-initialization.
 
-### Comparator Methods
+### Comparator methods
 
-**Common inputs.** Each comparator used CCC-RISE's normalized expression and CellChatDB LR pairs and was fit on the coarse and the fine labels of each cohort (Data Processing).
+**Common inputs.** Each comparator used CCC-RISE's normalized expression and CellChatDB LR pairs and was fit on the coarse and the fine labels of each cohort (Data processing).
 Each tensor had condition, sender cell type, receiver cell type, and LR pair modes, and we call one column of a fit's LR pair factor an LR column.
 For Tensor-cell2cell and pseudobulk CPD fits, an LR column belongs to one component, which gives it condition, sender, and receiver loadings.
 For STACCato, each LR column's condition, sender, and receiver loadings were the leading left singular vectors of its core slice unfolded along each of those modes, mapped through the factor matrices of those modes.
 Each column's loadings were signed so that their largest-magnitude entry was positive.
-Comparator condition loadings were tested for association and comparator LR columns were tested for co-variation as described in Clinical Association Testing.
+Comparator condition loadings were tested for association and comparator LR columns were tested for co-variation as described in Clinical association testing.
 
 **Pseudobulk CPD.** Each communication tensor entry was the product of mean ligand expression in the sender and mean receptor expression in the receiver, with cell types absent from a sample set to zero expression.
 CPD was fit and its rank selected as for CCC-RISE, so pseudobulk CPD differed from CCC-RISE only in the tensor it decomposed.
@@ -308,7 +309,7 @@ The selected ranks were 4 (coarse) and 5 (fine) on ALAD and 5 and 5 on IBD.
 
 **Tensor-cell2cell.** Each gene's expression was the fraction of a cell type's cells detecting it, and each entry was the mean of the ligand and receptor values\ [@doi:10.1038/s41467-022-31369-2].
 Non-negative CPD was fit from 10 random starts at each rank up to 25 (coarse) and 15 (fine) on ALAD and 15 on IBD, and the rank was taken at the Kneedle elbow of the mean error, giving 9 and 5 on ALAD and 3 and 3 on IBD\ [@doi:10.1109/ICDCSW.2011.20].
-We departed from the published analysis in four ways, each meant to let the method perform at its best: we kept every cell type and masked absent entries, where the published analysis keeps only cell types present in every sample; we took the rank from Kneedle rather than by eye; we kept the lowest-error start; and we ran up to 1,000 iterations at a tolerance of 10^-12^ rather than 100 at 10^-6^.
+We departed from the published analysis in four ways, each meant to let the method perform at its best: we kept every cell type and masked absent entries, where the published analysis keeps only cell types present in every sample; we took the rank from Kneedle rather than by eye; we kept the lowest-error start; and we ran up to 1,000 iterations at a tolerance of 10^−12^ rather than 100 at 10^−6^.
 
 **STACCato.** Communication tensor entries were pseudobulk products with the default filters as in the authors' pipeline\ [@doi:10.1016/j.ajhg.2026.05.005; @doi:10.1038/s41467-022-30755-0].
 We kept every cell type, where the authors keep those present in at least 80% of samples, and set absent entries to zero.
@@ -319,11 +320,11 @@ Each mode kept the components with more than 1% of the eigenvalue share of its u
 **Matching components to LR columns.** A CCC-RISE component's match to an LR column was the cos^2^ of their LR pair loadings over CCC-RISE's LR pairs.
 A component's best-match cos^2^ was its largest cos^2^ with any LR column of any comparator fit, and across the 12 components of both cohorts it was compared with the component's number of top LR pairs by a two-sided Spearman correlation.
 The fraction of a component that a fit reconstructed was $\left\| P_{S}c \right\|^{2}$, where $c$ is the component's unit LR pair loading and $P_{S}$ the orthogonal projection onto the span of the fit's LR columns, computed by QR decomposition.
-$P_{S}c = Ub$, with $U$ the fit's unit LR columns and $b$ the least-squares weights, was the fit's best combination of its columns, and column $j$ reconstructed $b_{j}u_{j}^{T}c$ of the component, the columns' parts summing to $\left\| P_{S}c \right\|^{2}$.
+The fit's best combination of its columns was $P_{S}c = Ub$, with $U$ the fit's unit LR columns and $b$ the least-squares weights, and column $j$ reconstructed $b_{j}u_{j}^{T}c$ of the component, the columns' parts summing to $\left\| P_{S}c \right\|^{2}$.
 A column was related to a component when it reconstructed at least 10% of the component or placed at least 25% of its own squared loading on the component's top LR pairs.
 
 **Label granularity.** The coarse and fine LR columns of pseudobulk CPD and STACCato were joined where their cos^2^ was at least 0.09.
-For CCC-RISE, the full pipeline was also refit with uncompressed RISE at a lower rank, 10 (ALAD) and 30 (IBD), with CPD ranks 4 and 5 selected as described in Rank Selection, and its components were joined to those of the reported fit in the same way.
+For CCC-RISE, the full pipeline was also refit with uncompressed RISE at a lower rank, 10 (ALAD) and 30 (IBD), with CPD ranks 4 and 5 selected as described in Rank selection, and its components were joined to those of the reported fit in the same way.
 The lower-rank fit's condition loadings were tested for association as the comparators' were, with BH correction across its own associations and components.
 
 **Columns outside CCC-RISE components.** Each pseudobulk CPD and STACCato LR column's share on a CCC-RISE component was the fraction of its squared LR pair loading on that component's top LR pairs.
@@ -334,4 +335,4 @@ Associations were read from the groupings other than acute rejection (ALAD) and 
 **Detection depth.** A sample's detection depth was its median number of genes detected per cell.
 Per-cell normalization rescales counts but not which genes are detected, so detection depth is distinct from the sequencing depth that normalization removes.
 Depth tracking was the absolute Spearman correlation across samples between the absolute condition loadings of a component or LR column and detection depth.
-Within each cohort, depth tracking was compared across fits by a Kruskal--Wallis test, and the components of each fit were compared with the cohort's other components by a one-sided Mann--Whitney U test, corrected across the cohort's fits.
+Within each cohort, depth tracking was compared across fits by a Kruskal--Wallis test, and the components of each fit were compared with the cohort's other components by a one-sided Wilcoxon rank-sum test, corrected across the cohort's fits.
