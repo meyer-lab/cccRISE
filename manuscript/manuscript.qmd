@@ -33,15 +33,16 @@ CCC-RISE thus resolves disease-relevant signaling subpopulations invisible to ag
 
 **Synopsis**
 
-[Placeholder standfirst text (2 sentences, 250 characters)]
+CCC-RISE decomposes cell–cell communication across conditions using continuous expression states instead of discrete cell types.
+This preserves single-cell resolution, revealing the distinct sender and receiver subpopulations that drive signaling.
 
-- CCC-RISE analyzes cell--cell communication across conditions at single-cell resolution, without relying on pre-defined cell-type labels
+- By scoring ligand-receptor interactions between eigen-states, CCC-RISE decomposes single-cell transcriptomic data into interpretable communication programs spanning conditions, sender cells, receiver cells, and ligand-receptor pairs.
 
-- CCC-RISE deconvolves single-cell transcriptomic data into interpretable communication programs defined by conditions, sender cells, receiver cells, and ligand--receptor pairs
+- In lung transplant recipients, CCC-RISE resolved an airway repair program between ciliated and basal/secretory epithelial cells, and a coordinated immune signaling program confined to a subset of lymphocytes.
 
-- Mapping programs back to individual cells reveals signaling subpopulations defined by unsupervised eigen-states rather than pre-defined cell types
+- In Crohn's disease, CCC-RISE resolved hormone-secreting enteroendocrine cells along a continuum from crypt-like GCG producers to villus-like PYY producers.
 
-- Communication programs identified by CCC-RISE are obscured by CCC-inference methods that rely on annotated cell types
+- CCC-RISE identified signaling subpopulations and co-varying communication programs obscured by cell-type-based inference.
 
 {{< include _introduction.qmd >}}
 
