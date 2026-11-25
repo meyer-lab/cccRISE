@@ -1,7 +1,7 @@
 """Fraction of cells detecting and mean expression of crypt, villus, CCK, and
 BMP target genes in EE cells by hormone state (villus-like: mostly component 3;
 crypt-like: mostly component 4; mixed; or below the magnitude floor), for genes
-differing between villus-like and crypt-like cells (Mann-Whitney, Benjamini-
+differing between villus-like and crypt-like cells (Wilcoxon rank-sum, Benjamini-
 Hochberg q < 0.05).
 
 The EE cells fully in one hormone state (`_common.hormone_extremes`: C3's
@@ -9,7 +9,7 @@ villus-like and C4's crypt-like extremes, mixed between them, other below
 the magnitude floor) as Figure 2's marker dot plot, by crypt and villus
 markers, CCK (the I-cell step between them; Gehart et al. 2019) and BMP
 targets (the villus-tip signal; Beumer et al. 2018). Genes shown differ
-between the villus-like and crypt-like cells (Mann-Whitney, BH
+between the villus-like and crypt-like cells (Wilcoxon rank-sum, BH
 q < `common.SIG_ALPHA`)."""
 
 import pandas as pd
@@ -29,8 +29,9 @@ EXTREMES = ("Villus-like", "Crypt-like")
 
 
 def extreme_genes(cells: pd.DataFrame, state: pd.Series) -> pd.DataFrame:
-    """Each `SECTIONS` gene's Mann-Whitney p and BH q, villus-like vs
-    crypt-like cells."""
+    """Each `SECTIONS` gene's two-sided Wilcoxon rank-sum p and BH q,
+    villus-like vs crypt-like cells (SciPy `mannwhitneyu`, the same test with
+    tie correction; named Wilcoxon rank-sum in the manuscript)."""
     genes = [g for section in SECTIONS.values() for g in section]
     a, b = (cells.loc[state == group, genes].astype(float) for group in EXTREMES)
     p = [mannwhitneyu(a[g], b[g]).pvalue for g in genes]
@@ -52,7 +53,7 @@ def plot(axs):
         "Mean expression and fraction detected per EE class (villus-like: angle "
         f"at most {S.EXTREME_SECTOR} degrees, crypt-like: at least "
         f"{90 - S.EXTREME_SECTOR}, both magnitude at least {S.EXTREME_FLOOR}; "
-        "mixed between; other below it), with Mann-Whitney p and BH q between "
+        "mixed between; other below it), with Wilcoxon rank-sum p and BH q between "
         f"villus-like and crypt-like; genes with q < {common.SIG_ALPHA} are drawn.",
     )
     classed = state.notna()
@@ -62,7 +63,7 @@ def plot(axs):
             Class=state[classed]
         ),
         "Each classed EE cell's expression of every tested gene, the values behind "
-        "the class means, fractions detected and Mann-Whitney tests.",
+        "the class means, fractions detected and Wilcoxon rank-sum tests.",
     )
     labels = [S.EXTREME_LABELS[name].replace(" (", "\n(") for name in S.EXTREME_NAMES]
     S.dotplot(

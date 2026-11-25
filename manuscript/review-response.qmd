@@ -96,7 +96,7 @@ Our revision adds three quantitative lines of reasoning/evidence.
 First, we overhauled our strategy for defining subpopulations beyond classical cell-type boundaries.
 The reviewer is correct to point out the weakness of the qualitative PaCMAP embeddings and communication-score heatmaps.
 Instead, we now define subpopulations based on quantitative per-cell sender and receiver loadings derived from the projection matrices and sender/receiver factor matrices.
-For more detail on our new strategy, we point the reviewer to {{< fig 2 sender-receiver-strata >}}, {{< fig 4 hormone-angle-scatter >}}, and Methods section *Mapping CCC-RISE Components to Cells*.
+For more detail on our new strategy, we point the reviewer to {{< fig 2 sender-receiver-strata >}}; {{< fig 4 hormone-angle-scatter >}}, and Methods section *Mapping CCC-RISE Components to Cells*.
 
 Second, as a real-data accuracy metric, we tested each component against an independent, literature-curated ligand to downstream-target prior (the NicheNet v2 ligand--target matrix)\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 Briefly, for each component, we compare the differentially expressed genes in top receiver cells with each ligand's NicheNet target genes to derive a NicheNet score per ligand, and then we take the average of ligand scores weighted by each ligand's loading to determine if top-weighted ligands' target genes are over-expressed in receiver cells.
@@ -161,7 +161,7 @@ The twelve-sample COVID-19 cohort has been replaced as the primary demonstration
 We have also changed how condition associations are tested.
 In data not shown here, L1-penalized logistic regression proved unstable in exactly the way this comment anticipates: with collinear components, the penalty selects arbitrarily among them, and the selected regularization strength varies from resample to resample, so the identity of the "predictive" components changed with rank and with the bootstrap draw.
 We therefore opted to test component--condition associations by ANOVA, applied identically to both datasets, with multiple-testing correction across components and outcomes.
-We describe the new association testing in {{< fig 3 outcome-association >}}, {{< fig alad-associations cp-associations >}}, {{< fig ibd-associations cp-associations status-loadings >}}, and Methods section *Clinical Association Testing*.
+We describe the new association testing in {{< fig 3 outcome-association >}}; {{< fig alad-associations cp-associations >}}; {{< fig ibd-associations cp-associations status-loadings >}}, and Methods section *Clinical Association Testing*.
 
 On the negative result: with the rank selection overhaul and new association testing method, this result has flipped.
 Now, in the ALAD cohort, a single component shows a graded, statistically significant association with six-month outcome after correction, and the same component is significantly associated with six-month and one-year death, as shown in {{< fig 3 outcome-association >}} and {{< fig alad-associations cp-associations >}}.
@@ -236,7 +236,7 @@ We take two approaches to quantify recovery of "real" biology.
 First, we compare differentially expressed genes in each component's receiver cells with each ligand's downstream gene targets, as defined by the NicheNet v2 ligand--target matrix\ [@doi:10.1038/s41592-019-0667-5; @doi:10.1038/s41596-024-01121-9].
 This analysis is discussed in detail in Reviewer #1 Comment #2, {{< fig 2 nichenet >}}, and Methods section *External Biological Validation*.
 Second, we measure whether the cells CCC-RISE assigns to each component's sender and receiver populations signal through the component's LR pairs in their own expression, using NICHES\ [@doi:10.1093/bioinformatics/btac775].
-This analysis is discussed in detail in Reviewer #1 Comment #1, {{< fig 5 niches-fraction >}}, {{< fig comparator-single-cell alad-weights ibd-weights alad-tau ibd-tau >}}, and Methods section *External Biological Validation*.
+This analysis is discussed in detail in Reviewer #1 Comment #1, {{< fig 5 niches-fraction >}}; {{< fig comparator-single-cell alad-weights ibd-weights alad-tau ibd-tau >}}, and Methods section *External Biological Validation*.
 
 As the reviewer suggests, we now compare CCC-RISE with Tensor-cell2cell and with the pseudobulk method, and additionally with STACCato, on both cohorts and on both coarse and fine cell-type labels.
 This analysis is detailed in Reviewer #1 Comment #1 and Methods section *Comparator Methods*.

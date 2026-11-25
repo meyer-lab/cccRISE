@@ -1,6 +1,6 @@
 """Absolute Spearman correlation between each component's sample loadings and
 median genes detected per cell, for every method's fit, ALAD and IBD cohorts,
-with Kruskal-Wallis tests across fits and one-sided Mann-Whitney tests per fit.
+with Kruskal-Wallis tests across fits and one-sided Wilcoxon rank-sum tests per fit.
 
 How far every method's components track detection depth, ALAD beside IBD
 (`_depth.depth_tracking`): |Spearman rho| of each component's sample loadings

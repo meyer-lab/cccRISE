@@ -327,6 +327,8 @@ def manifest_markdown(manifest: pd.DataFrame) -> str:
             f"## {label}",
             "",
             "Analyses plotted (with provenance in the zip's README):",
+            # Pandoc Markdown never lets a list interrupt a paragraph
+            "",
         ]
         lines += [f"- `{p}`" for p in inputs if p] + [
             "",

@@ -1,13 +1,13 @@
 """Share of each IBD biopsy's EE cells in each hormone state (villus-like:
 mostly component 3; crypt-like: mostly component 4; mixed; or below the
-magnitude floor) by inflammation status, with Kruskal-Wallis and pairwise Mann-
-Whitney tests (Benjamini-Hochberg q).
+magnitude floor) by inflammation status, with Kruskal-Wallis and pairwise
+Wilcoxon rank-sum tests (Benjamini-Hochberg q).
 
 Per biopsy (at least `_common.MIN_EE` EE cells), the share of its EE cells
 in each class of Figure 4's marker dot plot (`_common.hormone_extremes`), by
 inflammation status (Kruskal-Wallis q, BH corrected across classes, drawn and in
-the source data; pairwise Mann-Whitney q in the source data): inflammation removes
-villus-like cells, not crypt-like ones."""
+the source data; pairwise Wilcoxon rank-sum q, via SciPy `mannwhitneyu`, in the
+source data): inflammation removes villus-like cells, not crypt-like ones."""
 
 import pandas as pd
 from scipy.stats import mannwhitneyu
@@ -50,8 +50,9 @@ def plot(axs):
     common.source_data(
         "hormone_extreme_share_pairwise",
         pairwise.assign(q=adjust_pvalues(pairwise["p"])),
-        "Mann-Whitney p of each class's per-biopsy share between CD uninflamed (U) "
-        "or healthy (H) and CD inflamed (I) biopsies, and its Benjamini-Hochberg "
+        "Wilcoxon rank-sum p of each class's per-biopsy share between CD "
+        "uninflamed (U) or healthy (H) and CD inflamed (I) biopsies, and its "
+        "Benjamini-Hochberg "
         "q across all classes and pairs.",
     )
     q = S.status_boxes(

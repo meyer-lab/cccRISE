@@ -13,8 +13,10 @@ Calabrese
 CPD's
 Cota
 [Cc]ytotoxicity
+data's
 DCs
 [Dd]econvolve(s)?
+[Dd]ownsampled
 [Dd]ysregulated
 [Ee]igen-state(s)?
 [Ee]igenstate(s)?
@@ -22,9 +24,12 @@ Frobenius
 [Gg]eneralizability
 [Gg]ranzyme(s)?
 [Hh]eatmaps?
+[Hh]omotypic
 Hratch
 [Hh]yperparameters?
+[Ii]dentifiability
 [Ii]nterpretability
+[Ii]ntracellularly
 mDCs
 [Mm]ultimeric
 Nagai
@@ -32,6 +37,7 @@ Nesterov
 [Nn]ull
 [Oo]ccludin
 [Oo]verfitting
+[Pp]aracrine
 pDCs
 [Pp]lasmacytoid
 [Pp]olyadic
@@ -46,10 +52,13 @@ RISE's
 [Rr]otationally
 scTensor
 STACCato
+[Ss]tochasticity
+[Ss]ubmucosal
 [Ss]ubsampling
 [Tt]ensor
 [Tt]hresholded
 [Tt]ranscriptomic
+[Tt]ranscriptomics
 [Uu]npenalized
 [Uu]pregulated
 Wilcoxon

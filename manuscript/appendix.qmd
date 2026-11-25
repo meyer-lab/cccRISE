@@ -22,7 +22,7 @@ CCC-RISE factor evaluation in the ALAD cohort.** ({{< panel alad-cohort cohort >
 ({{< panel alad-cohort cp-collinearity >}}) Largest absolute cosine between the condition, sender, receiver, and LR pair factors of any two CPD components across ranks, as the median and IQR over 10 seeded SVD starts per rank.
 ({{< panel alad-cohort factors genes >}}) RISE factor matrices representing component loadings of conditions and genes; each component normalized to its largest absolute loading.
 ({{< panel alad-cohort rise-fms >}}) RISE gene factor and ({{< panel alad-cohort cpd-fms >}}) CPD LR pair factor FMS of each component across leave-one-patient-out jackknife replicates (n = 45).
-Each replicate's components were matched to the reported fit by Hungarian matching.
+Each replicate's components were matched to a reference fit on the full cohort by Hungarian matching.
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 ({{< panel alad-cohort permutation-fraction >}}) Fraction of each LR pair's (n = 570) condition by sender by receiver entries exceeding a null of within-sample cell permutations at p < 0.05 (one-sided empirical test).
 
@@ -51,22 +51,21 @@ Boxes show the median and IQR and whiskers show the most extreme values within 1
 ![](figures/figureS_ibd_associations/figureS_ibd_associations.svg){width="6.5in"}
 
 **{{< label ibd-associations >}}.
-Association of CPD components and covariates with IBD biopsy type.** ({{< panel ibd-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each IBD biopsy categorization.
-\*: q < 0.05, Benjamini--Hochberg (BH) corrected across all categorizations and components.
+Association of CPD components and covariates with IBD biopsy type.** ({{< panel ibd-associations cp-associations >}}) One-way ANOVA η^2^ of each CPD component's condition loadings against each IBD biopsy grouping.
+\*: q < 0.05, Benjamini--Hochberg (BH) corrected across all groupings and components.
 ({{< panel ibd-associations status-loadings >}}) CPD component ({{< panel ibd-associations status-loadings.1 >}}) 3 and ({{< panel ibd-associations status-loadings.2 >}}) 4 condition loadings by CD inflammation status.
 Violins show the distribution of loadings, points show individual biopsies, and ticks mark the median.
-One-way ANOVA F and η^2^, with p BH corrected across all categorizations and components.
+One-way ANOVA F and η^2^, with p BH corrected across all groupings and components.
 ({{< panel ibd-associations lineage-proportions >}}) Fraction of each biopsy's cells in each coarsely annotated cell type for healthy, CD uninflamed, and CD inflamed samples, on a square-root scale.
 Boxes show the median and IQR and whiskers show the most extreme values within 1.5 times the IQR.
 Values at the top of each cell type are Kruskal--Wallis q-values across the three groups, BH corrected across cell types.
-({{< panel ibd-associations covariates >}}) One-way ANOVA η^2^ of each biopsy covariate and coarse cell-type fraction against each biopsy categorization, with binary covariates coded 0/1.
+({{< panel ibd-associations covariates >}}) One-way ANOVA η^2^ of each biopsy covariate and coarse cell-type fraction against each biopsy grouping, with binary covariates coded 0/1.
 \*: p < 0.05, uncorrected.
 
 ![](figures/figureS_comparator_rank_selection/figureS_comparator_rank_selection.svg){width="6.5in"}
 
 **{{< label comparator-rank-selection >}}.
-Rank selection of the label-based comparators.**
-PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato.
+Rank selection of the label-based comparators.** PB, pseudobulk CPD; TC2C, Tensor-cell2cell; STAC, STACCato.
 ({{< panel comparator-rank-selection pb-fit-coarse >}}, {{< panel comparator-rank-selection pb-fit-fine >}}) PB fit R^2^X across ranks: the median and range over 10 seeded SVD starts per rank.
 ({{< panel comparator-rank-selection pb-collinearity-coarse >}}, {{< panel comparator-rank-selection pb-collinearity-fine >}}) Largest absolute cosine between the LR pair factors of any two PB components, over the same starts.
 Median and range, as in ({{< panel comparator-rank-selection pb-fit-coarse >}}, {{< panel comparator-rank-selection pb-fit-fine >}}).

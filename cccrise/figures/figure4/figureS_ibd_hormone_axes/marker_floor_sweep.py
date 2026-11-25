@@ -1,8 +1,8 @@
-"""Mann-Whitney Benjamini-Hochberg q of each hormone state marker gene between
+"""Wilcoxon rank-sum Benjamini-Hochberg q of each hormone state marker gene between
 villus-like and crypt-like EE cells across magnitude floors.
 
 Figure 4K's marker tests (`hormone_extreme_markers`: villus-like vs
-crypt-like Mann-Whitney, BH q across its genes) redone at every magnitude
+crypt-like Wilcoxon rank-sum, BH q across its genes) redone at every magnitude
 floor in `FLOORS` (`_common.hormone_extremes`), and the `N_WORST` genes whose
 largest q over the sweep is highest drawn against the floor."""
 
@@ -43,7 +43,7 @@ def plot(axs):
     common.source_data(
         "hormone_extreme_markers_by_floor",
         sweep,
-        "Each Figure 4K gene's Mann-Whitney p between villus-like and crypt-like "
+        "Each Figure 4K gene's Wilcoxon rank-sum p between villus-like and crypt-like "
         "EE cells, and its BH q across the genes, with the classes' magnitude "
         f"floor (Figure 4K: {S.EXTREME_FLOOR}) at each value from {FLOORS[0]} to "
         f"{FLOORS[-1]}, and the cells in each class at that floor.",

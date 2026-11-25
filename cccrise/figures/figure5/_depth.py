@@ -32,7 +32,8 @@ def _values(dataset: str) -> dict:
 
 def _tests(groups: dict) -> tuple[float, dict]:
     """Kruskal-Wallis p across `groups`, and each group's BH q against the
-    cohort's other components (one-sided Mann-Whitney: tracks depth more)."""
+    cohort's other components (one-sided Wilcoxon rank-sum via SciPy
+    `mannwhitneyu`: tracks depth more)."""
     _, p = kruskal(*groups.values())
     keys = list(groups)
     ps = [
@@ -70,7 +71,7 @@ def depth_tracking(ax) -> None:
     Kruskal-Wallis test across fits (in the source data and caption, not
     drawn); a fit is starred, just above its box, where its components
     track depth more than the cohort's other components (one-sided
-    Mann-Whitney, BH within the cohort) at q < `common.SIG_ALPHA` and the
+    Wilcoxon rank-sum, BH within the cohort) at q < `common.SIG_ALPHA` and the
     Kruskal-Wallis p < `common.SIG_ALPHA`."""
     rng = np.random.default_rng(0)
     x, positions, names, spans, frames = 0.0, [], [], {}, []
@@ -122,8 +123,9 @@ def depth_tracking(ax) -> None:
         "|Spearman correlation| between each component's absolute condition loadings "
         "and per-sample depth (median genes detected per cell); per cohort, the "
         "Kruskal-Wallis p across fits, and each fit's BH q (within the cohort) of a "
-        "one-sided Mann-Whitney test that its components track depth more than the "
-        f"cohort's other components; starred where both are below {common.SIG_ALPHA}.",
+        "one-sided Wilcoxon rank-sum test that its components track depth more "
+        "than the cohort's other components; starred where both are below "
+        f"{common.SIG_ALPHA}.",
     )
     ax.set_xticks(
         positions,
