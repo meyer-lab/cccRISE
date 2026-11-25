@@ -40,9 +40,9 @@ This preserves single-cell resolution, revealing the distinct sender and receive
 
 - In lung transplant recipients, CCC-RISE resolved an airway repair program between ciliated and basal/secretory epithelial cells and a coordinated immune signaling program confined to a subset of lymphocytes.
 
-- In Crohn's disease, CCC-RISE resolved hormone-secreting enteroendocrine cells along a continuum from crypt-like GCG producers to villus-like PYY producers.
+- In patients with Crohn's disease, CCC-RISE resolved hormone-secreting enteroendocrine cells along a continuum from crypt-like GCG producers to villus-like PYY producers.
 
-- CCC-RISE identified signaling subpopulations and co-varying communication programs obscured by cell-type-based inference.
+- CCC-RISE identified signaling subpopulations and co-varying communication programs obscured by cell-type--based inference methods.
 
 {{< include _introduction.qmd >}}
 
