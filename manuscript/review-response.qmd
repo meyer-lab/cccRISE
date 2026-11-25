@@ -353,7 +353,7 @@ We have also gone through the Methods and standardized notation so that each sym
 
 This is an interesting point.
 In fact, at a high level, a similar approach could indeed be taken using other methods that project single-cell RNA-seq data into a lower-dimensional space.
-As described in our previous work\ [@pmid:40378843], PARAFAC2 is uniquely suited for multi-condition single-cell analysis because it provides a unique solution for decomposing the data into a low-dimensional representation that captures both cell-type heterogeneity and quantitation of the variation across conditions.
+As described in our previous work\ [@doi:10.1016/j.cels.2025.101294], PARAFAC2 is uniquely suited for multi-condition single-cell analysis because it provides a unique solution for decomposing the data into a low-dimensional representation that captures both cell-type heterogeneity and quantitation of the variation across conditions.
 By contrast, PCA is rotationally invariant and so it and VAE models will not provide a unique solution to provide a reliable basis for interpretable communication scoring.
 CCA provides a unique solution but cannot be easily broken into a description of the differences between conditions, separated from the single-cell variation.
 NMF does provide a unique solution, and it is possible to quantitate the abundance of a pattern within each condition, but non-negativity splits counter-balanced regulatory patterns, such as differentiation programs, into multiple non-negative components.
