@@ -131,6 +131,8 @@ AXIS_SIZE = {
     "rect_half": (AXIS_WIDTH / 2, AXIS_HEIGHT),
     # Between square and rect, for a row of three wider strips
     "mid": (38 * MM, AXIS_HEIGHT),
+    # `figureS_comparator_single_cell` C-D: a "mid" narrowed for a square beside
+    "mid_narrow": (31 * MM, AXIS_HEIGHT),
     # A "mid" widened into the spare width of its row (a dot plot of many genes)
     "mid_wide": (43 * MM, AXIS_HEIGHT),
     # Two to a row, wider than rect
@@ -145,8 +147,6 @@ AXIS_SIZE["half_square"] = ((AXIS_HEIGHT - JOINED_GAP) / 2, AXIS_HEIGHT)
 # Six joined squares spanning "full" (small multiples)
 _SIXTH = (AXIS_SIZE["full"][0] - 5 * JOINED_GAP) / 6
 AXIS_SIZE["full_sixth"] = (_SIXTH, _SIXTH)
-# `figureS_comparator_single_cell` A: two cohorts' strips beside ALAD's five sixths
-AXIS_SIZE["seed_strip"] = (_SIXTH - 9.5 * MM, _SIXTH)
 PAGE_MARGIN = 1 * MM
 PANEL_GAP_MIN = 1.5 * MM
 PANEL_GAP_MAX = 4 * MM
