@@ -24,8 +24,8 @@ metadata-files:
 shortcodes:
     - _panels.lua
     - _xlsx.lua
-ev_figures: [cmp5_identity, alad_associations, ccc_scoring, ibd_hormone_axes, comparator_split]
-appendix_figures: [alad_cohort, ibd_rank_selection, ibd_associations, comparator_rank_selection, comparator_missed, comparator_single_cell]
+ev_figures: [cmp5_identity, alad_associations, ibd_hormone_axes, comparator_split]
+appendix_figures: [alad_cohort, ccc_scoring, ibd_rank_selection, ibd_associations, comparator_rank_selection, comparator_missed, comparator_single_cell]
 # Appendix tables (Appendix Table S1, ...), written by `python -m cccrise.figures.tables`
 appendix_tables: [alad_outcome_groups, cohort_cell_types]
 # Reviewer figures (Reviewer Figure R1, ...), in the response to reviewers only

@@ -65,7 +65,7 @@ def _observed_vs_null(lr_table, ax):
     )
     ax.set_xlim(low, high)
     ax.set_ylim(low, high)
-    ax.set_xlabel("Mean observed\nLR pair score")
+    ax.set_xlabel("Mean observed LR pair score")
     ax.set_ylabel("Mean cell-permuted\nnull LR pair score")
 
 

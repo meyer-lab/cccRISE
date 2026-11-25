@@ -22,6 +22,7 @@ import functools
 import importlib
 import itertools
 import shutil
+import subprocess
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -261,10 +262,10 @@ def compose_fixed(rows: list[list], width: float | None = None) -> Figure:
     colorbars) are measured and set the space around it, so they never shrink
     the axes. Rows are centered, spreading leftover width into the gaps up
     to `style.PANEL_GAP_MAX`; `width` defaults to the widest row's."""
-    # Measured at the save dpi: text hinting makes low-dpi extents narrower.
+    # Measured at 300 dpi or more: text hinting makes low-dpi extents narrower.
     fig = plt.figure(
         figsize=(FIXED_MEASURE_SIZE, FIXED_MEASURE_SIZE),
-        dpi=plt.rcParams["savefig.dpi"],
+        dpi=style.MEASURE_DPI,
     )
     grid = [_draw_row(fig, row) for row in rows]
     natural = [sum(b.left + b.width + b.right for b in row) for row in grid]
@@ -452,15 +453,56 @@ def nudge_panel(
     right: float = 0.0,
     up: float = 0.0,
     grow: float = 0.0,
+    letter: bool = False,
 ) -> None:
     """Move panel module `panel`'s axes `right` and `up` (in) once the figure
     is laid out, then raise its top `grow` (in; its bottom stays), so a panel
     can sit or reach beyond the box its row reserved. Its insets (colorbars)
-    follow; its letter stays where `compose_fixed` put it."""
+    follow; its letter stays where `compose_fixed` put it unless `letter`."""
     ax = panel_axes(fig, panel)
     w, h = fig.get_size_inches()
     p = ax.get_position()
     ax.set_position((p.x0 + right / w, p.y0 + up / h, p.width, p.height + grow / h))
+    if letter:
+        for text in fig.texts:
+            if text.get_gid() == panel:
+                x, y = text.get_position()
+                text.set_position((x + right / w, y + up / h))
+
+
+def close_row_gap(
+    fig: Figure, upper: list[str], lower: list[str], gap: float = style.PANEL_GAP_MIN
+) -> None:
+    """Close the empty band under the row of panel modules `upper`: everything
+    above the row of panels `lower` (their letters included) moves down until
+    they come within `gap` (in) of each other (`panel_room`; if not already),
+    and the figure shrinks by as much."""
+    room, top = panel_room(fig, upper, lower)
+    open_figure_gap(fig, top + 1e-3, -max(room - gap, 0))
+
+
+def panel_room(
+    fig: Figure, upper: list[str], lower: list[str], lower_letters: bool = True
+) -> tuple[float, float]:
+    """The vertical room (in) between panel modules `upper` and the panels
+    `lower` under them, from any mark (`_mark_extents`, and the panels'
+    letters, unless not `lower_letters`) of one to a mark of the other it
+    overlaps across the page; and the top (in, from the bottom) of `lower`'s
+    marks."""
+    fig.draw_without_rendering()  # places the insets
+    renderer = fig.canvas.get_renderer()  # ty: ignore[unresolved-attribute]
+
+    def extents(panels, letters=True):
+        axes = [ax for ax in fig.axes if ax.get_label() in panels]
+        return [b for ax in axes for b in _mark_extents(ax, renderer)] + [
+            t.get_window_extent(renderer)
+            for t in fig.texts
+            if letters and t.get_gid() in panels
+        ]
+
+    above, below = extents(upper), extents(lower, lower_letters)
+    room = min(a.y0 - b.y1 for a in above for b in below if a.x0 < b.x1 and b.x0 < a.x1)
+    return room / fig.dpi, max(b.y1 for b in below) / fig.dpi
 
 
 # Bars grouping whole panels of a composed figure, in a cohort's or method's
@@ -509,9 +551,30 @@ def grow_figure(
 
 def open_figure_gap(fig: Figure, at: float, height: float) -> None:
     """Grow `fig` by `height` inches, opening a gap at `at` inches from the
-    bottom: everything above `at` moves up, everything below stays."""
+    bottom: everything above `at` moves up, everything below stays (a
+    negative `height` closes one)."""
     w, h = fig.get_size_inches()
     _move_on_page(fig, (w, h + height), lambda x, y: (x, y + height * (y > at)))
+
+
+def _mark_extents(ax: plt.Axes, renderer) -> list:
+    """The display extents of `ax`'s box, each axis (its tick labels and
+    label), title, texts and legends, and its insets, one by one: finer than
+    its tight bbox, which spans the empty corners between them."""
+    axes = [axis.get_tightbbox(renderer) for axis in (ax.xaxis, ax.yaxis)]
+    insets = [b for child in ax.child_axes for b in _mark_extents(child, renderer)]  # ty: ignore[invalid-argument-type]
+    return [
+        ax.bbox,
+        *(m.get_window_extent(renderer) for m in _free_marks(ax)),
+        *(b for b in axes if b is not None),
+        *insets,
+    ]
+
+
+def _free_marks(ax: plt.Axes) -> list:
+    """`ax`'s title and texts that have text, and its legends."""
+    texts = [t for t in (ax.title, *ax.texts) if t.get_text()]
+    return texts + [a for a in (*ax.artists, ax.get_legend()) if isinstance(a, Legend)]
 
 
 def lowest_label(fig: Figure, axes: list) -> float:
@@ -771,10 +834,11 @@ def genFigure():
     uv run cccrise-fbuild 2                      # figures/figure2/figure2.py
     uv run cccrise-fbuild 2 rise_rank_selection  # figures/figure2/rise_rank_selection.py
     uv run cccrise-fbuild 2 --png                # PNG instead of SVG
+    uv run cccrise-fbuild 2 --pdf                # a PDF beside the SVG (`svg_to_pdf`)
     uv run cccrise-fbuild S_alad_cohort        # figures/figure2/figureS_alad_cohort/
     """
     start = time.time()
-    args = [arg for arg in sys.argv[1:] if arg != "--png"]
+    args = [arg for arg in sys.argv[1:] if arg not in ("--png", "--pdf")]
     extension = "png" if "--png" in sys.argv else "svg"
     figure, panel = args[0], (args[1] if len(args) > 1 else None)
 
@@ -787,14 +851,41 @@ def genFigure():
     fig = build_figure(figure, panel)
     output_dir.mkdir(parents=True, exist_ok=True)
     # No bbox_inches="tight": figures are drawn at their final print size.
-    fig.savefig(output_dir / f"{panel or f'figure{figure}'}.{extension}")
+    path = output_dir / f"{panel or f'figure{figure}'}.{extension}"
+    _save(fig, path)
     if panel is None:
-        record_panel_letters(figure, fig)
-        _SOURCE["dir"].mkdir(parents=True, exist_ok=True)
-        (_SOURCE["dir"] / SOURCE_INPUTS).write_text(
-            yaml.safe_dump(sorted(str(p) for p in _SOURCE["inputs"] | LOADED_PATHS))
-        )
+        _record_figure(figure, fig)
     print(f"Figure {' '.join(args)} is done after {time.time() - start:.1f} s.\n")
+
+
+def _save(fig: Figure, path: Path) -> None:
+    """`fig` saved to `path`, and with --pdf, a PDF beside an SVG."""
+    fig.savefig(path)
+    if "--pdf" in sys.argv and path.suffix == ".svg":
+        svg_to_pdf(path)
+
+
+def _record_figure(figure: str, fig: Figure) -> None:
+    """A whole figure's panel letters (`record_panel_letters`) and the inputs
+    its source data came from."""
+    record_panel_letters(figure, fig)
+    _SOURCE["dir"].mkdir(parents=True, exist_ok=True)
+    (_SOURCE["dir"] / SOURCE_INPUTS).write_text(
+        yaml.safe_dump(sorted(str(p) for p in _SOURCE["inputs"] | LOADED_PATHS))
+    )
+
+
+def svg_to_pdf(svg: Path) -> None:
+    """A PDF of `svg` beside it, converted by librsvg (`rsvg-convert`) with its
+    fonts embedded: matplotlib's own PDF lays out math text (R^2, p_adj) with
+    other font metrics than its SVG, up to ~1 mm apart, so the PDF is drawn
+    from the SVG to look the same as it (and as an Illustrator edit of it)."""
+    if shutil.which("rsvg-convert") is None:
+        sys.exit("--pdf needs rsvg-convert (librsvg2-bin / brew install librsvg)")
+    subprocess.run(
+        ["rsvg-convert", "-f", "pdf", "-o", str(svg.with_suffix(".pdf")), str(svg)],
+        check=True,
+    )
 
 
 def record_panel_letters(figure: str, fig: Figure) -> None:
@@ -1107,7 +1198,7 @@ def plot_start_boxes(
         jitter=0.2,
         size=1.8,
         edgecolor=style.COLORS["ink"],
-        linewidth=0.2,
+        linewidth=style.LINE_WIDTH_MIN,
     )
     _collinearity_axes(ax, sweep, rank)
     if key_loc is None:

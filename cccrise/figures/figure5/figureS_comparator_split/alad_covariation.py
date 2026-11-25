@@ -30,7 +30,7 @@ SLOT_GAP = 0.7
 KEY_TOP = 1.05
 #: Column numbers (each block's name gives its fit): horizontal, at this size (pt)
 TICK_ROTATION = 0
-TICK_SIZE = style.FONT_SIZE_DENSE
+TICK_SIZE = style.FONT_SIZE_LABEL
 FIT = ["Method", "Labelling", "Component"]
 
 
@@ -147,7 +147,7 @@ def _name_blocks(ax, blocks: list) -> None:
             transform=ax.get_xaxis_transform(),
             ha="center",
             va="top",
-            fontsize=style.FONT_SIZE_DENSE - 0.5,
+            fontsize=style.FONT_SIZE_LABEL,
         )
 
 
@@ -169,7 +169,7 @@ def _key(ax) -> None:
         handles=[random, filled, matched, hollow, untested],
         loc="upper left",
         ncol=3,
-        fontsize=style.FONT_SIZE_DENSE - 0.3,
+        fontsize=style.FONT_SIZE_LABEL,
         handlelength=1.6,
         handletextpad=0.3,
         columnspacing=0.8,

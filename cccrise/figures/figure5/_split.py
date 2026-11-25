@@ -241,7 +241,7 @@ def _heatmap_axes(h: _Heatmap) -> None:
     _pair_axes(ax, h.rows, h.spans, end, (h.ticks, h.labels, []), h.heads)
     for text in [t for t in ax.texts if t.get_text() == "CCC-RISE"]:
         text.set(x=1.0, ha="right")
-    ax.tick_params(axis="x", labelsize=style.FONT_SIZE_DENSE - 0.6)
+    ax.tick_params(axis="x", labelsize=style.FONT_SIZE_LABEL)
     if len(h.programs) == 1:
         _unlabel_side(ax, h.programs[0], end)
 

@@ -68,8 +68,12 @@ def tau_sweep(ax, dataset: str) -> None:
         lw=style.LINE_WIDTH_THIN,
         ls=style.LINE_STYLE_REFERENCE,
     )
-    ax.axvline(
-        GROUP_TAU, color=style.COLORS["muted"], lw=style.LINE_WIDTH_THIN, zorder=0
+    tau_line = ax.axvline(
+        GROUP_TAU,
+        color=style.COLORS["muted"],
+        lw=style.LINE_WIDTH_THIN,
+        zorder=0,
+        label=f"τ = {GROUP_TAU}",
     )
     components = sorted(table["Component"].unique())
     for k in components:
@@ -94,20 +98,24 @@ def tau_sweep(ax, dataset: str) -> None:
     ax.set_title(
         DATASET_LABELS[dataset], fontsize=style.FONT_SIZE_LABEL, fontweight="bold"
     )
-    handles = [
-        Line2D([], [], color=PROGRAM_COLORS[k], lw=style.LINE_WIDTH, label=f"C{k}")
-        for k in components
-    ] + [
-        Line2D(
-            [],
-            [],
-            color=style.COLORS["ink"],
-            lw=style.LINE_WIDTH,
-            ls=ls,
-            label=side.title(),
-        )
-        for side, ls in SIDE_STYLES.items()
-    ]
+    handles = (
+        [
+            Line2D([], [], color=PROGRAM_COLORS[k], lw=style.LINE_WIDTH, label=f"C{k}")
+            for k in components
+        ]
+        + [
+            Line2D(
+                [],
+                [],
+                color=style.COLORS["ink"],
+                lw=style.LINE_WIDTH,
+                ls=ls,
+                label=side.title(),
+            )
+            for side, ls in SIDE_STYLES.items()
+        ]
+        + [tau_line]
+    )
     common.legend(ax, "right", handles=handles, fontsize=style.FONT_SIZE_DENSE)
 
 

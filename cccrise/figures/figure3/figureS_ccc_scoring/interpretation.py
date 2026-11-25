@@ -165,6 +165,9 @@ def plot(fig):
         row[2].sharey(row[1])
         row[2].tick_params(axis="y", labelleft=False)
         row[0].set_ylabel(f"Component {i}", fontweight="bold")
+        for ax in row:  # square, leaving the width for the row's labels
+            ax.set_box_aspect(1)
+        row[0].set_anchor("E")  # the spare width left of it, for its labels
     # Method labels on the bottom row only, column titles on the top only.
     for ax in axs[:-1].ravel():
         ax.tick_params(axis="x", labelbottom=False)
@@ -177,6 +180,10 @@ def plot(fig):
         aspect=60,
         label="Loading / max |loading|",
     )
+    # After the colorbar, which anchors its parents east: each receiver heatmap
+    # against its sender heatmap, whose cell types it shares
+    for ax in axs[:, 2]:
+        ax.set_anchor("W")
 
 
 def makeFigure():

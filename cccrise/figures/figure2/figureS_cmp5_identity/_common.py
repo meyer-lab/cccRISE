@@ -23,7 +23,7 @@ LABEL_BOX = {"edgecolor": "none", "pad": 0.5}  # pad in points
 REFERENCE_ZORDER, LABEL_ZORDER = 0.5, 0.8  # points at 1
 ARROWPROPS = {
     "arrowstyle": "-",
-    "lw": style.LINE_WIDTH_THIN / 2,
+    "lw": style.LINE_WIDTH_MIN,
     "color": style.COLORS["reference"],
 }
 
@@ -156,7 +156,7 @@ def _label(ax, labels: dict[str, str], delta, y) -> None:
     box, hiding the reference lines under it."""
     step = (
         LABEL_LINE_SPACING
-        * common.FACTOR_LABEL_FONT_SIZE
+        * style.FONT_SIZE_LABEL
         / 72
         * ax.figure.dpi
         / ax.bbox.height
@@ -174,7 +174,7 @@ def _label(ax, labels: dict[str, str], delta, y) -> None:
                 xytext=(side * (_row_edge(delta * side, y, slot, step) + dx), slot),
                 ha="left" if side > 0 else "right",
                 va="center",
-                fontsize=common.FACTOR_LABEL_FONT_SIZE,
+                fontsize=style.FONT_SIZE_LABEL,
                 bbox=LABEL_BOX | {"facecolor": ax.get_facecolor()},
                 zorder=LABEL_ZORDER,
                 arrowprops=ARROWPROPS,

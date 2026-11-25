@@ -254,7 +254,7 @@ def label_ranked_head(
                 "arrowstyle": "-",
                 "shrinkA": 1,
                 "shrinkB": 2,
-                "lw": style.LINE_WIDTH_THIN / 2,
+                "lw": style.LINE_WIDTH_MIN,
                 "color": style.COLORS["reference"],
             },
         )

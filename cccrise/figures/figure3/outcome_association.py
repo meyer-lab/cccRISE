@@ -9,6 +9,7 @@ from . import _common as S
 
 REGROUPING_KEYS = ("levels", "mapping", "control_label", "other_label")
 AXES = ("square",)
+TICK_ROTATION = 30  # degrees: shallow, so the labels take little height
 ANOVA_COLUMNS = [
     "Association",
     "Component",
@@ -25,7 +26,7 @@ def plot(axs):
     plot_outcome_weights(axs[0], S.OUTCOME, S.COMPONENT)
     # Angled, as the four levels crowd the square axes
     for label in axs[0].get_xticklabels():
-        label.set(rotation=40, ha="right", rotation_mode="anchor")
+        label.set(rotation=TICK_ROTATION, ha="right", rotation_mode="anchor")
     _source_data(S.OUTCOME, S.COMPONENT)
 
 

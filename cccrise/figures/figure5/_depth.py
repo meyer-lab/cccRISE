@@ -131,7 +131,7 @@ def depth_tracking(ax) -> None:
         rotation=45,
         ha="right",
         rotation_mode="anchor",
-        fontsize=style.FONT_SIZE_DENSE - 0.7,
+        fontsize=style.FONT_SIZE_LABEL,
     )
     ax.set(
         ylim=(0, Y_TOP), yticks=[0, 0.5, 1], ylabel="|ρ| with genes\ndetected per cell"

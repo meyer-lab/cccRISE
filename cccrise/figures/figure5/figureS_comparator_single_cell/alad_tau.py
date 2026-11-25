@@ -8,7 +8,7 @@ ALAD: fraction NICHES-positive minus what cell type predicts, across tau
 from ... import common
 from .._niches import tau_sweep
 
-AXES = ("mid",)
+AXES = ("mid_narrow",)
 
 
 def plot(axs):

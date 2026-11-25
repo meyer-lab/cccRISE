@@ -50,6 +50,14 @@ def plot(axs):
             linewidth=style.LINE_WIDTH_THIN,
         )
     )
+    axs[0].text(
+        box[0],
+        box[1],
+        "Lymphocytes",
+        ha="left",
+        va="top",
+        color=style.COLORS["reference"],
+    )
     points = common.plot_value_scatter(axs[1], x[inside], y[inside], projection[inside])
     points.set_sizes([style.POINT_SIZE_BACKGROUND])
     axs[1].set(xlim=(box[0], box[0] + box[2]), ylim=(box[1], box[1] + box[3]))

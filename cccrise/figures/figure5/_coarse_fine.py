@@ -20,6 +20,7 @@ from functools import cache
 
 import numpy as np
 import pandas as pd
+from matplotlib.lines import Line2D
 from matplotlib.transforms import blended_transform_factory
 
 from .. import common, style
@@ -46,13 +47,13 @@ NAME_PAD_BELOW = 0.18
 BORDER_DROP = 0.8  # the border's bottom, below the last row: room for its names
 TOP = 0.85  # the border's top, above the first row: room for the key
 X_PAD = 0.09  # beyond the outermost dots, inside the border
-NAME_SIZE = style.FONT_SIZE_DENSE - 1  # pt: as Figure 5J's names
-END_SIZE = style.FONT_SIZE_DENSE - 1
+NAME_SIZE = style.FONT_SIZE_LABEL  # pt: as Figure 5J's names
+END_SIZE = style.FONT_SIZE_LABEL
 #: Dot area (pt^2): every column, and those named
 DOT, NAMED_DOT = 3, 10
 #: The size key's dots and text (pt), as Figure 5G's key, and its left edge
 #: (axes fraction): in from the left, not against it
-KEY_COLOR, KEY_SIZE = "0.4", style.FONT_SIZE_DENSE - 1
+KEY_COLOR, KEY_SIZE = "0.4", style.FONT_SIZE_LABEL
 KEY_X = 0.06
 #: `run_reduced_rise`'s associations table
 REDUCED_ASSOCIATIONS = "reduced_rise_associations"
@@ -196,7 +197,7 @@ def _row_labels(ax, rows: dict, method_names: bool) -> None:
             rotation=90,
             multialignment="center",
             linespacing=1.0,
-            fontsize=style.FONT_SIZE_DENSE,
+            fontsize=style.FONT_SIZE_LABEL,
             fontweight="bold",
         )
 
@@ -213,7 +214,7 @@ def _block(ax, dataset: str, block: Block, cos2, y: float) -> tuple[float, float
                 [left[i], right[j]],
                 ys,
                 color=METHOD_COLORS[block.method],
-                lw=0.25 + 1.4 * value,
+                lw=line_width(value),
                 alpha=0.75,
                 solid_capstyle="butt",
                 zorder=2,
@@ -222,6 +223,11 @@ def _block(ax, dataset: str, block: Block, cos2, y: float) -> tuple[float, float
     _row(ax, left, ys[0], cos2.index, block.method, above=True, named=named[0])
     _row(ax, right, ys[1], cos2.columns, block.method, above=False, named=named[1])
     return ys
+
+
+def line_width(cos2: float) -> float:
+    """A join's line width (pt) at LR `cos2`."""
+    return 0.25 + 1.4 * cos2
 
 
 def _cos2_rows(block: Block, cos2: pd.DataFrame) -> pd.DataFrame:
@@ -238,24 +244,35 @@ def _cos2_rows(block: Block, cos2: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def size_key(ax) -> None:
-    """The dots' sizes keyed in one line inside the border's top, centred
-    between it and the top of PB's names (a name's height over the first row,
-    the same in every panel), toward the left: named (an association at q <
-    `common.SIG_ALPHA`) and not, in grey, as Figure 5G keys its dots."""
+def size_key(ax, kind: str) -> None:
+    """The dots' sizes (`kind` "sizes": named, an association at q <
+    `common.SIG_ALPHA`, and not) or the joins' widths ("widths", `line_width`)
+    keyed in grey in one line inside the border's top, centred between it and
+    the top of PB's names (a name's height over the first row, the same in
+    every panel), toward the left, as Figure 5G keys its dots."""
     y0, y1 = ax.get_ylim()
     per_inch = (y1 - y0) / (ax.bbox.height / ax.figure.dpi)
     names_top = NAME_PAD + NAME_SIZE / 72 * per_inch
-    handles = [
-        ax.scatter([], [], s=size, color=KEY_COLOR, lw=0) for size in (NAMED_DOT, DOT)
-    ]
+    if kind == "sizes":
+        handles = [
+            ax.scatter([], [], s=size, color=KEY_COLOR, lw=0)
+            for size in (NAMED_DOT, DOT)
+        ]
+        labels = [f"q < {common.SIG_ALPHA}", f"q ≥ {common.SIG_ALPHA}"]
+    else:
+        handles = [
+            Line2D([], [], color=KEY_COLOR, lw=line_width(v), solid_capstyle="butt")
+            for v in (FLOW_FROM, 1)
+        ]
+        labels = [f"cos² {FLOW_FROM}", "cos² 1"]
     ax.legend(
         loc="center left",
         bbox_to_anchor=(KEY_X, 0.3 * TOP + 0.7 * names_top),  # nearer the rows
         bbox_transform=blended_transform_factory(ax.transAxes, ax.transData),
         handles=handles,
-        labels=[f"q < {common.SIG_ALPHA}", f"q ≥ {common.SIG_ALPHA}"],
+        labels=labels,
         ncols=2,
+        handlelength=1.0,
         fontsize=KEY_SIZE,
         handletextpad=0.2,
         columnspacing=1.0,
@@ -264,10 +281,12 @@ def size_key(ax) -> None:
     )
 
 
-def coarse_to_fine(ax, dataset: str, method_names: bool, key: bool = False) -> None:
+def coarse_to_fine(
+    ax, dataset: str, method_names: bool, key: str | None = None
+) -> None:
     """Each method's left fit's LR columns over its right fit's (module
     docstring); `method_names` names the methods left of the rows; `key` keys
-    the dot sizes inside the panel (`size_key`)."""
+    the dot sizes or the join widths inside the panel (`size_key`)."""
     pairs = lr_matrix(dataset, "cccRISE").index
     tables = {b: b.cos2(pairs) for b in blocks(dataset)}
     bottom = -BLOCK_STEP * (len(tables) - 1) - ROW_GAP
@@ -297,5 +316,5 @@ def coarse_to_fine(ax, dataset: str, method_names: bool, key: bool = False) -> N
     _row_labels(ax, rows, method_names)
     common.data_border(ax, bottom - BORDER_DROP, TOP)
     if key:
-        size_key(ax)
+        size_key(ax, key)
     cohort_bar(ax, dataset, -X_PAD, 1 + X_PAD)
